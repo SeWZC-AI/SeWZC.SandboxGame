@@ -2,24 +2,20 @@ const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { chromiumLaunchOptions, observeBrowserErrors } = require('./browser-support.cjs');
 
 const output = path.resolve(__dirname, '../../artifacts/browser-tests');
 const baseUrl = process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.SandboxGame/';
 fs.mkdirSync(output, { recursive: true });
 
 (async () => {
-    const browser = await chromium.launch({
-        ...(process.env.CHROMIUM_EXECUTABLE ? { executablePath: process.env.CHROMIUM_EXECUTABLE } : {}),
-        headless: true,
-        args: ['--no-sandbox', '--disable-dev-shm-usage', '--enable-unsafe-swiftshader']
-    });
+    const browser = await chromium.launch(chromiumLaunchOptions());
     const context = await browser.newContext({
         viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1
     });
     const page = await context.newPage();
-    const errors = [];
-    page.on('pageerror', error => errors.push(error.message));
-    page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+    const diagnostics = observeBrowserErrors(page);
+    const errors = diagnostics.errors;
 
     // Avalonia renders controls on a canvas; coordinates target this fixed viewport.
     const save = async () => {
@@ -53,6 +49,7 @@ fs.mkdirSync(output, { recursive: true });
         await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
         await page.waitForFunction(() => document.querySelector('canvas')?.width > 0 && !document.querySelector('.loading'), {}, { timeout: 60000 });
         await page.waitForTimeout(1000);
+        await diagnostics.assertHealthy('mobile startup');
         await page.touchscreen.tap(105, 785); // Pause for the baseline snapshot.
         await page.waitForTimeout(150);
         await page.touchscreen.tap(135, 630); // Life category selects humans.
@@ -99,11 +96,13 @@ fs.mkdirSync(output, { recursive: true });
         await page.touchscreen.tap(348, 184); // Fit the world for the evidence screenshot.
         await page.waitForTimeout(200);
         await page.screenshot({ path: path.join(output, 'mobile.png') });
+        await diagnostics.assertHealthy('mobile after interactions');
         fs.writeFileSync(path.join(output, 'mobile-results.json'), JSON.stringify({
             viewport: { width: 390, height: 844 }, chromiumViewportEmulation: true,
-            baseline, spawned, paused, dragUnchanged: true, pinchUnchanged: true, errors
+            baseline, spawned, paused, dragUnchanged: true, pinchUnchanged: true, errors,
+            fallbacks: diagnostics.fallbacks, rendererChecks: diagnostics.rendererChecks
         }, null, 2));
-        console.log('PASS mobile drag and pinch preserve the world; no browser errors');
+        console.log('PASS mobile drag and pinch preserve the world; no unexpected browser errors');
     } catch (error) {
         await page.screenshot({ path: path.join(output, 'mobile-failure.png') }).catch(() => {});
         throw error;

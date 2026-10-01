@@ -17,6 +17,7 @@
 | 桌面浏览器交互 | 1440×960 窗口实际执行 IndexedDB 保存、投放 12 位居民并保持暂停时间、地形绘制、整轮撤销、下载导出、文件选择导入、无效导入保留旧世界、刷新恢复存档；全部通过，未记录 JavaScript 错误 |
 | 界面渲染 | Chromium 桌面 1440×960 与触屏模拟尺寸 390×844 均显示中文、地图和菜单，加载遮罩正常消失；此项不等于真实手机验收 |
 | 触屏模拟交互 | 390×844 Chromium 触屏上下文完成居民投放与 IndexedDB 保存，暂停时间保持稳定；CDP 单指平移及双指捏合前后的完整世界存档一致，手势没有误编辑世界；未记录 JavaScript 错误 |
+| CI 软件回退复现 | 禁用 WebGL 后重新运行完整桌面与触屏检查，两套均通过；实际 2D 画布在启动及最终交互后均有非透明多色像素，桌面刷新后重新取证。已额外检查 `pageerror`、近似诊断文本及无关 `console.error` 均被拒绝 |
 | 浏览器短时压力 | 软件 WebGL 的 Chromium 中，256×256 地图、2,000 名初始居民、16 国及 8 场战争运行 15 秒，世界从 tick 6 推进到 76，人口增至 2,126，保持 16 国 / 16 支军队；控制台、页面异常、HTTP 请求失败及世界状态校验均无错误 |
 
 软件 WebGL 压力场景记录到主线程长任务，最长约 441 ms（统计包含保存操作）。短时模拟能够推进，但该结果不支持 30 FPS 或真实手机流畅运行的结论。
@@ -70,6 +71,7 @@ npm run test:mobile --prefix tests/browser
 | --- | --- |
 | `WORLDBOX_BASE_URL` | 已运行站点的完整地址，包含项目子路径及结尾 `/` |
 | `CHROMIUM_EXECUTABLE` | 使用已有 Chromium 的可执行文件路径；未设置时使用 Playwright 安装的版本 |
+| `WORLDBOX_TEST_DISABLE_WEBGL` | 仅在值为 `1` 时为测试浏览器禁用 WebGL，用于复现软件渲染回退；默认不禁用，不改变应用渲染优先顺序 |
 
 例如使用本机已有的 Chromium：
 
@@ -81,6 +83,17 @@ CHROMIUM_EXECUTABLE=/usr/bin/chromium npm test --prefix tests/browser
 检查在独立浏览器上下文中运行，使用示例世界，不操作日常浏览器中的存档。截图、导出及导入样本写入 `artifacts/browser-tests`；CI 额外保存 HTTP 与测试日志，并在成功或失败时上传 `worldbox-browser-tests`。
 
 Avalonia 使用画布呈现界面，因此桌面脚本固定 1440×960 视口并按坐标点击；按下与松开间隔 80 ms，以跨越输入分发过程。触屏脚本 `mobile-smoke.cjs` 固定 390×844 视口并派发触摸手势。界面布局变化后需要同步检查这些坐标；脚本会读取实际世界存档验证行为，不能只凭截图判断成功。
+
+CI 机器可能无法创建 WebGL2 / WebGL 上下文，Avalonia 会记录后端诊断并转用软件渲染。共享检查器只接受以下两条完整匹配的 `console.error` 文本；所有 `pageerror` 和其他 `console.error` 仍导致失败：
+
+```text
+Failed to create render target for mode 3 : HTMLCanvasElement.getContext returned null.
+Failed to create render target for mode 2 : HTMLCanvasElement.getContext returned null.
+```
+
+观察到这些诊断时，检查器必须从当前页面的 `#out canvas.avalonia-canvas` 获取实际 2D 像素，至少采到 32 个非透明点和 8 种 RGB 颜色，才允许测试通过。刷新会重置当前页面的诊断状态，刷新后的画布需重新检查，避免使用旧页面的绘制证据。桌面与触屏测试在启动和最后交互后执行检查，记录渲染器及像素采样信息；原有模拟、编辑、存档和触屏断言全部保留。
+
+部署任务成功后，独立的在线验证任务会以实际 GitHub Pages URL 重新执行桌面及触屏检查，并上传 `worldbox-live-browser-tests`，用于验证真实公网部署。
 
 ## 限制与后续验证
 
