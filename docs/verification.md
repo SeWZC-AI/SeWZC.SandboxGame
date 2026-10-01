@@ -1,5 +1,36 @@
 # 构建与验证记录
 
+## 第三轮实现验证（2026-10-01）
+
+本条对应实现提交 [`16dfc7a`](https://github.com/SeWZC-AI/SeWZC.SandboxGame/commit/16dfc7aa126741bad38e1064f61466b209d601cf)（基线 `959761c`），不是下方旧构建的结果。环境为 Linux x64、.NET SDK 10.0.401、Avalonia 12.1.3、Node.js 24.19.0 和系统 Chromium 151.0.7922.173；手机为 390×844 触屏仿真，并检查 844×390 横屏。未使用真实 Android / iOS 设备，也未重跑 2,000 人压力基准或强制软件渲染。
+
+- Release 完整构建通过，0 警告、0 错误；核心 **34 / 34** 通过。新增验证覆盖规则关闭值持久化、非法规则原子拒绝、放置预览只读、赐予与施工差异、发展受阻及恢复、外交接触和结盟递送、外国军令隔离、实地迁徙和性格预设的实际影响。
+- 发布裁剪后的 WASM 通过静态资源及仓库子路径检查。
+- 桌面、触屏、运动三套真实浏览器脚本均通过；正常与 `?e2e=1` 入口无渲染回退、页面或控制台错误。核对了姓名编辑保持其他字段精度、枚举与数值表单、导入导出及刷新恢复、无效放置不修改世界、免费完工建筑与材料施工、独立规则预设、四类工具不打开面板、手机默认地图区域超过屏幕高度的 75%、触屏预览确认、拖动／捏合、编辑横竖屏切换、居民点选及跟随、暂停冻结和实际帧内运动。截图与 JSON 在本次运行的 `artifacts/browser-tests`，长程结果在 `artifacts/evolution-probe.json`。
+
+五个 256×256 示例世界各运行 6,000 tick，相当于默认 1 倍速 20 分钟，再分别比较保存恢复后 60 tick 与不间断运行，全部一致。计数只包括建国、增长、建设、研究、外交、战争与灾害；排除贸易、通信、施法及个人文化变化，避免把高频记录数量当作玩法进展。
+
+| 种子 | 上述事件数 | 最长空档（1 倍速秒） | 末期人口 | 末期国家／聚落 | 末期已掌握研究总数 |
+| --- | ---: | ---: | ---: | --- | ---: |
+| 73921 | 87 | 150.8 | 192 | 4／4 | 9 |
+| 42 | 136 | 68.4 | 174 | 4／4 | 12 |
+| 223 | 141 | 93 | 211 | 3／6 | 17 |
+| 17 | 157 | 71 | 247 | 4／6 | 18 |
+| 9876 | 107 | 120 | 204 | 2／3 | 12 |
+
+这验证了这些种子的活动节奏、研究进展及确定续演；不保证所有种子、地形或干预都有相同结果，也不能直接证明主观乐趣。默认强度下样本以发展和合作为主，战争记录包含国家消亡，不能都解释为自主宣战。完整战争目标、家族故事、更长时期内容与平衡仍需扩展。
+
+复现长程检查（独立运行，不加入每次 CI 的核心测试）：
+
+```bash
+dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- \
+  --evolution artifacts/evolution-probe.json
+```
+
+桌面、触屏和运动脚本见下方复现命令。当前存档格式与模拟版本为 **3**，导入格式 1、2、999 均明确拒绝且保留当前世界；旧格式 2 需新建。
+
+## 历史构建 ba395b9
+
 记录日期：2026-10-01。以下结果对应实现提交 [`ba395b9`](https://github.com/SeWZC-AI/SeWZC.SandboxGame/commit/ba395b9ffe400af69dfd90b89fa97d3873332277)，不自动适用于后续源码，也不代表所有浏览器或设备都已通过验收。本次文档整理引用已有证据，没有重新执行游戏验收。
 
 该提交的 [Actions 运行 36868079900](https://github.com/SeWZC-AI/SeWZC.SandboxGame/actions/runs/36868079900) 中，构建与验证、alpha 部署、部署后的桌面／触屏／运动检查均成功。公网结果来自实际 [Pages 站点](https://sewzc-ai.github.io/SeWZC.SandboxGame/)，[浏览器证据产物](https://github.com/SeWZC-AI/SeWZC.SandboxGame/actions/runs/36868079900/artifacts/11165088174) 随 Actions 的保留策略可能过期；普通／强制软件的本地复验及独立压力测量另见下文，不能推断为每次 CI 都执行了所有压力检查。
@@ -58,8 +89,8 @@ bash scripts/publish-browser.sh
 
 ```bash
 dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- \
-  --export-browser-fixture artifacts/stress-world-v2.json
-node tests/browser/stress.cjs artifacts/stress-world-v2.json
+  --export-browser-fixture artifacts/stress-world-v3.json
+node tests/browser/stress.cjs artifacts/stress-world-v3.json
 ```
 
 核心导出选项只生成并校验场景，不运行完整测试套件。浏览器压力脚本需要已运行的静态站点及 Playwright；默认输出 `artifacts/browser-tests/stress-report.json`，不加入普通 CI 冒烟。场景以平坦草地、充足资源及固定八场战争隔离人口与军队负载，不覆盖复杂山海地形或长期资源匮乏情况。
