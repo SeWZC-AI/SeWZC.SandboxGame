@@ -46,16 +46,17 @@ public sealed partial class WorldEngine
                 if ((State.Tick + person.Id) % 8 == 0) ObserveAgentEnvironment(person);
                 continue;
             }
-            var consumption = person.Age < 14 ? 0.025 : person.Race == RaceKind.Orc ? 0.064 : 0.05;
+            var consumption = !State.Rules.Hunger ? 0 : person.Age < 14 ? 0.025 : person.Race == RaceKind.Orc ? 0.064 : 0.05;
             var meal = Math.Min(consumption, person.Inventory.Food);
             person.Inventory.Food -= meal;
             person.Hunger = Math.Clamp(person.Hunger + (meal >= consumption - 0.000001 ? -3 : 2 * (1 - meal / consumption)), 0, 100);
             if (Distance(person.X, person.Y, home.X, home.Y) <= 1)
             {
                 TransferPersonalProduction(person, home);
+                if ((State.Tick + person.Id) % 12 == 0) DeliverLocalDiscoveries(person, home);
                 if (person.Inventory.Food < 0.3)
                 {
-                    var ration = Math.Min(home.Resources.Food, 1.2 - person.Inventory.Food);
+                    var ration = Math.Min(home.Resources.Food, TravelReserve(person) - person.Inventory.Food);
                     home.Resources.Food -= ration; person.Inventory.Food += ration;
                 }
             }
@@ -70,12 +71,17 @@ public sealed partial class WorldEngine
         }
     }
 
+    // Explorers carry food taken from the home warehouse; extra provisions are not produced cargo.
+    private double TravelReserve(Resident person) => person.Profession is Profession.Messenger or Profession.Trader
+        && !person.Agent.Memory.Any(f => f.Kind == AgentFactKind.SettlementLocation && f.Value != person.NationId
+            && State.Tick - f.ObservedTick < 1200) ? 6 : 1.2;
+
     private void TransferPersonalProduction(Resident person, Settlement home)
     {
         // Mission food stays with the carrier until its recorded destination is reached.
         if (person.Agent.DestinationSettlementId != 0
             && person.Agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage or AgentGoalKind.Petition) return;
-        var food = Math.Max(0, person.Inventory.Food - 1.2);
+        var food = Math.Max(0, person.Inventory.Food - TravelReserve(person));
         home.Resources.Food += food; person.Inventory.Food -= food;
         home.Resources.Wood += person.Inventory.Wood; person.Inventory.Wood = 0;
         home.Resources.Stone += person.Inventory.Stone; person.Inventory.Stone = 0;
@@ -103,6 +109,8 @@ public sealed partial class WorldEngine
                 (180 - personality.Courage * 30) * (dangerFact is null ? 1 : Math.Max(0.6, AgentFactReliability(dangerFact))),
                 dangerFact?.OriginResidentId == person.Id ? "亲眼见到附近危险，先离开危险区域" : "可信的近时报告指出附近危险，先离开核实", dangerFact));
         }
+        if (agent.Goal.Kind == AgentGoalKind.Migrate && choices.Count == 0 && State.Tick - agent.Goal.StartedTick < 360)
+        { agent.NextThinkTick = State.Tick + 6; return; }
         var activeMission = agent.DestinationSettlementId != 0 && State.Tick - agent.MissionStartedTick < 360
             && agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage or AgentGoalKind.Petition;
         if (activeMission && choices.Count == 0 && !(person.Hunger > 85 && person.Inventory.Food < 0.05))
@@ -120,7 +128,7 @@ public sealed partial class WorldEngine
         if (person.Inventory.Food < 0.3 && (foodFact is null || foodFact.Value > 0 || AgentFactReliability(foodFact) < 0.5))
             choices.Add(new(AgentGoalKind.Eat, home.X, home.Y, 48 + person.Hunger,
                 foodFact is null ? "随身口粮不足，返回家园查看粮仓" : $"口粮不足；上次获知家乡有 {foodFact.Value:0.0} 份粮食", foodFact, home.Id));
-        if (person.Inventory.Food >= 4 || person.Inventory.Wood + person.Inventory.Stone + person.Inventory.Ore >= 3)
+        if (person.Inventory.Food >= Math.Max(4, TravelReserve(person) + 1) || person.Inventory.Wood + person.Inventory.Stone + person.Inventory.Ore >= 3)
             choices.Add(new(AgentGoalKind.ReturnHome, home.X, home.Y, 75 + personality.Diligence * 12,
                 "背包已有产物，亲自运回家园入库", null, home.Id));
         if (agent.MissionOriginSettlementId != 0 && agent.DestinationSettlementId == 0
@@ -232,6 +240,10 @@ public sealed partial class WorldEngine
     private void ActOnAgentGoal(Resident person, Settlement home)
     {
         var goal = person.Agent.Goal;
+        if (goal.Kind == AgentGoalKind.Migrate)
+        {
+            ActOnMigration(person); return;
+        }
         if (goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage or AgentGoalKind.Petition)
         {
             ActOnAgentMission(person, home);
@@ -251,7 +263,7 @@ public sealed partial class WorldEngine
                 person.Activity = ResidentActivity.Eating;
                 if (Distance(person.X, person.Y, home.X, home.Y) <= 1 && person.Inventory.Food < 1.2)
                 {
-                    var ration = Math.Min(home.Resources.Food, 1.2 - person.Inventory.Food);
+                    var ration = Math.Min(home.Resources.Food, TravelReserve(person) - person.Inventory.Food);
                     home.Resources.Food -= ration; person.Inventory.Food += ration;
                     ObserveAgentEnvironment(person);
                 }

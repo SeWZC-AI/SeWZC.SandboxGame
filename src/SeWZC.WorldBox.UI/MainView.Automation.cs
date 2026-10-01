@@ -37,6 +37,7 @@ public sealed partial class MainView
                 Enabled = control.IsEffectivelyEnabled && control.IsHitTestVisible,
                 Value = control switch
                 {
+                    NumericUpDown number => number.Value?.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     TextBox input => input.Text,
                     ComboBox combo => combo.SelectedIndex.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     CheckBox check => check.IsChecked?.ToString(),
@@ -62,6 +63,7 @@ public sealed partial class MainView
             Category = _category, Inspector = _inspectorMode, Status = _status.Text,
             SelectedResidentId = _selectedResidentId, SelectedNationId = _selectedNationId,
             ModalOpen = _modal.IsVisible, Width = Bounds.Width, Height = Bounds.Height,
+            ToolsOpen = _toolsOpen, InspectorOpen = _mobilePanel, PendingPlacement = _map.HasPendingPlacement,
             ToolSlots = _slotTools.ToArray(),
             Controls = controls,
             Map = new UiAutomationMap
@@ -77,6 +79,9 @@ public sealed partial class MainView
 
 internal sealed class UiAutomationSnapshot
 {
+    public bool ToolsOpen { get; init; }
+    public bool InspectorOpen { get; init; }
+    public bool PendingPlacement { get; init; }
     public bool Ready { get; init; }
     public bool Paused { get; init; }
     public bool Saving { get; init; }

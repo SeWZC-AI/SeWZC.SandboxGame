@@ -25,11 +25,17 @@ const summary = world => ({ population: world.Residents.length, tick: world.Tick
         await ui.ready();
         await ui.paused();
         await diagnostics.assertHealthy('mobile startup');
+        const start = await ui.snapshot();
+        assert(!start.toolsOpen && !start.inspectorOpen, 'Mobile must start with an unobstructed map');
+        const bottom = ui.control(start, 'event-spotlight').y;
+        assert((bottom - start.map.y) / start.height >= .75, 'At least 75% of mobile height must be unobstructed map');
         const before = await ui.save();
         const home = before.Settlements[0];
         await ui.tool('life', 'Human');
         await ui.paused(false);
         await ui.clickTile(home.X, home.Y);
+        assert((await ui.snapshot()).pendingPlacement, 'Touch placement must first show a preview');
+        await ui.click('placement-confirm');
         const spawned = await ui.save();
         assert(spawned.Residents.length >= before.Residents.length + 12);
         assert.equal((await ui.snapshot()).paused, true, 'Editing must automatically pause');
@@ -103,7 +109,7 @@ const summary = world => ({ population: world.Residents.length, tick: world.Tick
         console.log('PASS mobile resident editing, stable tab actions, and open-dialog rotation');
 
         const fixedControls = await ui.stableToolLayout();
-        await ui.tool('inspect', 'inspect');
+        await ui.click('tool-suspend');
         await ui.click('map-fit');
         await page.screenshot({ path: path.join(output, 'mobile.png') });
         await diagnostics.assertHealthy('mobile after interactions');

@@ -7,13 +7,13 @@ const { chromiumLaunchOptions, observeBrowserErrors } = require('./browser-suppo
 const { UiDriver, testUrl } = require('./ui-driver.cjs');
 
 const fixturePath = process.argv[2] ? path.resolve(process.argv[2])
-    : path.resolve(__dirname, '../../artifacts/stress-world-v2.json');
+    : path.resolve(__dirname, '../../artifacts/stress-world-v3.json');
 const output = path.resolve(__dirname, '../../artifacts/browser-tests');
 const baseUrl = process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.SandboxGame/';
 
 (async () => {
     const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
-    assert.equal(fixture.FormatVersion, 2, 'Generate a fixture for the current alpha version');
+    assert.equal(fixture.FormatVersion, 3, 'Generate a fixture for the current alpha version');
     assert.equal(fixture.Width, 256);
     assert(fixture.Residents.length >= 2000, 'Scale scenario must start with at least 2,000 residents');
     fs.mkdirSync(output, { recursive: true });

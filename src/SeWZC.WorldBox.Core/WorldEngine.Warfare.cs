@@ -4,23 +4,23 @@ public sealed partial class WorldEngine
 {
     private bool IsKnownHostile(Resident resident, int targetNationId)
     {
-        var order = resident.Agent.Memory.Where(f => f.SubjectId == targetNationId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
+        var order = resident.Agent.Memory.Where(f => (f.TargetNationId == 0 || f.TargetNationId == resident.NationId) && f.SubjectId == targetNationId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
             .OrderByDescending(f => f.ObservedTick).ThenByDescending(f => f.Id).FirstOrDefault();
         if (order is not null) return order.Kind == AgentFactKind.WarOrder;
         return State.Armies.Any(a => a.Id == resident.ArmyId && a.TargetNationId == targetNationId && a.KnownDiplomacy == DiplomaticStatus.War);
     }
-    private void PublishDiplomaticOrder(int nationId, int enemyId, DiplomaticStatus status)
+    private void PublishDiplomaticOrder(int nationId, int enemyId, DiplomaticStatus status, int? knownX = null, int? knownY = null, long? observedTick = null)
     {
         var capital = State.Settlements.FirstOrDefault(t => t.Id == _nations[nationId].CapitalId);
         var enemyCapital = State.Settlements.FirstOrDefault(t => t.Id == _nations[enemyId].CapitalId);
         if (capital is null || enemyCapital is null) return;
         var witness = State.Residents.FirstOrDefault(r => r.NationId == nationId && Distance(r.X, r.Y, capital.X, capital.Y) <= 4);
         var fact = new AgentFact { Id = NewId(), Kind = status == DiplomaticStatus.War ? AgentFactKind.WarOrder : AgentFactKind.PeaceOrder,
-            SubjectId = enemyId, X = enemyCapital.X, Y = enemyCapital.Y, Value = enemyCapital.Id, ObservedTick = State.Tick,
+            SubjectId = enemyId, TargetNationId = nationId, X = knownX ?? enemyCapital.X, Y = knownY ?? enemyCapital.Y, Value = knownX.HasValue ? 0 : enemyCapital.Id, ObservedTick = observedTick ?? State.Tick,
             LearnedTick = State.Tick, OriginResidentId = witness?.Id ?? 0, SourceResidentId = witness?.Id ?? 0,
             Text = status == DiplomaticStatus.War ? "首都宣布开战，征召当地志愿者" : "首都宣布停止敌对，前线须等待消息送达" };
         capital.PublicKnowledge.RemoveAll(f => f.SubjectId == enemyId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder);
-        capital.PublicKnowledge.Add(fact);
+        AddPublicFact(capital, fact);
         if (capital.PublicKnowledge.Count > 24) capital.PublicKnowledge.RemoveAt(0);
         foreach (var person in State.Residents.Where(r => r.NationId == nationId && Distance(r.X, r.Y, capital.X, capital.Y) <= 4))
             RememberAgentFact(person, fact);
@@ -35,7 +35,7 @@ public sealed partial class WorldEngine
                 if (State.Armies.Any(a => a.NationId == nation.Id)) continue;
                 var capital = State.Settlements.FirstOrDefault(s => s.Id == nation.CapitalId);
                 if (capital is null) continue;
-                var order = capital.PublicKnowledge.Where(f => f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
+                var order = capital.PublicKnowledge.Where(f => f.SubjectId != nation.Id && f.SubjectId > 0 && (f.TargetNationId == 0 || f.TargetNationId == nation.Id) && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
                     .OrderByDescending(f => f.ObservedTick).ThenByDescending(f => f.Id).FirstOrDefault();
                 if (order is null || order.Kind != AgentFactKind.WarOrder) continue;
                 var recruits = State.Residents.Where(r => r.NationId == nation.Id && r.ArmyId == 0 && r.Age >= 16 && r.Health > 50
@@ -69,7 +69,7 @@ public sealed partial class WorldEngine
             var commander = soldiers.FirstOrDefault(r => r.Id == army.CommanderId) ?? soldiers[0];
             army.CommanderId = commander.Id;
             var received = soldiers.SelectMany(r => r.Agent.Memory)
-                .Where(f => f.SubjectId == army.TargetNationId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
+                .Where(f => (f.TargetNationId == 0 || f.TargetNationId == army.NationId) && f.SubjectId == army.TargetNationId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
                 .OrderByDescending(f => f.ObservedTick).ThenByDescending(f => f.Id).FirstOrDefault();
             if (received is not null && (received.ObservedTick > army.LastOrderTick || received.Kind == AgentFactKind.PeaceOrder))
             {
@@ -79,7 +79,8 @@ public sealed partial class WorldEngine
             }
             foreach (var soldier in soldiers)
             {
-                if (Distance(soldier.X, soldier.Y, army.X, army.Y) <= 2 && army.Supplies >= 0.08)
+                if (!State.Rules.Hunger) soldier.Hunger = 0;
+                else if (Distance(soldier.X, soldier.Y, army.X, army.Y) <= 2 && army.Supplies >= 0.08)
                 { army.Supplies -= 0.08; soldier.Hunger = Math.Max(0, soldier.Hunger - 3); }
                 else if (soldier.Inventory.Food >= 0.05) { soldier.Inventory.Food -= 0.05; soldier.Hunger = Math.Max(0, soldier.Hunger - 3); }
                 else soldier.Hunger = Math.Min(100, soldier.Hunger + 2);

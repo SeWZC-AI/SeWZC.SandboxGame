@@ -32,13 +32,13 @@ public sealed partial class WorldEngine
         bool PositionValid(int x, int y) => x >= 0 && y >= 0 && x < state.Width && y < state.Height;
         bool WalkablePosition(int x, int y) => PositionValid(x, y) && state.Tiles[y * state.Width + x].IsWalkable;
 
-        Require(state.FormatVersion == 2, "不支持该存档版本。");
+        Require(state.FormatVersion == 3, "不支持该存档版本。");
         Require(state.Width is >= 32 and <= 256 && state.Height is >= 32 and <= 256, "地图尺寸超出范围。");
         Require(state.Tick is >= 0 and <= 120_000_000 && state.RandomState != 0 && state.NextId is > 0 and < 2_000_000_000, "时间或随机数状态无效。");
         Require(state.Tiles is not null && state.Tiles.Length == state.Width * state.Height, "地图地格数量不匹配。");
         Require(state.Residents is not null && state.Residents.Count <= MaxPopulation && state.Settlements is not null && state.Settlements.Count <= 256 && state.Nations is not null && state.Nations.Count <= 64, "实体数量超出范围。");
         Require(state.Armies is not null && state.Armies.Count <= 64 && state.Diplomacies is not null && state.Diplomacies.Count <= 2016 && state.TradeRoutes is not null && state.TradeRoutes.Count <= 256 && state.Events is not null && state.Events.Count <= 400, "世界记录数量超出范围。");
-        Require(state.SimulationVersion == 2 && state.PendingMessages is not null && state.PendingMessages.Count <= MaxPopulation * 2 && state.ArchivedResidents is not null && state.ArchivedResidents.Count <= 256 && state.Society is not null, "认知或社会记录无效。");
+        Require(state.SimulationVersion == 3 && state.PendingMessages is not null && state.PendingMessages.Count <= MaxPopulation * 2 && state.ArchivedResidents is not null && state.ArchivedResidents.Count <= 256 && state.Society is not null, "认知或社会记录无效。");
         var ids = new HashSet<int>();
         bool IdValid(int id) => id > 0 && id < state.NextId && ids.Add(id);
         foreach (var nation in state.Nations!) Require(nation is not null && IdValid(nation.Id) && TextValid(nation.Name, 40) && nation.Name.Length > 0 && Enum.IsDefined(nation.FoundingRace) && nation.Technology is >= 1 and <= 5 && TextValid(nation.Decision, 240) && StockValid(nation.Resources), "国家数据无效。");
@@ -92,6 +92,17 @@ public sealed partial class WorldEngine
             if (snapshots.TryGetValue(fact.Id, out var prior)) Require(SameFactSnapshot(prior, fact), "相同信息编号包含冲突内容。");
             else snapshots[fact.Id] = fact;
         }
+        ValidateWorldRules(state.Rules);
+        foreach (var town in state.Settlements)
+            Require(TextValid(town.DevelopmentGoal, 160) && TextValid(town.DevelopmentBlocker, 240)
+                && FiniteRange(town.Unrest, 100) && town.LastDevelopmentTick >= 0 && town.LastDevelopmentTick <= state.Tick
+                && town.LastPoliticalChangeTick >= 0 && town.LastPoliticalChangeTick <= state.Tick, "发展记录无效。");
+        foreach (var relation in state.Diplomacies)
+            Require(relation.LastChangedTick >= 0 && relation.LastChangedTick <= state.Tick && relation.LastContactTick >= 0
+                && relation.LastContactTick <= state.Tick && relation.LastEvaluatedTick >= 0 && relation.LastEvaluatedTick <= state.Tick
+                && relation.LastEventId >= 0 && relation.LastEventId < state.NextId && TextValid(relation.Reason, 240)
+                && relation.AllianceOfferTick >= 0 && relation.AllianceOfferTick <= state.Tick
+                && (relation.AllianceOfferNationId == 0 || relation.AllianceOfferNationId == relation.FirstNationId || relation.AllianceOfferNationId == relation.SecondNationId), "外交过程记录无效。");
         ValidateSocietyState(state);
     }
 }
