@@ -1,0 +1,123 @@
+name: Build, test and deploy WorldBox
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worldbox-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "true"
+
+jobs:
+  build:
+    name: Build and verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Install WebAssembly workload
+        run: dotnet workload install wasm-tools
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build -c Release --no-restore
+
+      - name: Test simulation
+        run: dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build
+
+      - name: Publish and check static site
+        run: bash scripts/publish-browser.sh
+
+      - name: Install Node.js for browser checks
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/browser/package-lock.json
+
+      - name: Install browser test dependencies
+        run: npm ci --prefix tests/browser
+
+      - name: Install Chromium
+        working-directory: tests/browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Test published site under its GitHub Pages path
+        env:
+          WORLDBOX_BASE_URL: http://127.0.0.1:8080/SeWZC.SandboxGame/
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/browser-preview/SeWZC.SandboxGame artifacts/browser-tests
+          cp -a artifacts/site/. artifacts/browser-preview/SeWZC.SandboxGame/
+          python3 -m http.server 8080 --bind 127.0.0.1 --directory artifacts/browser-preview > artifacts/browser-tests/http.log 2>&1 &
+          worldbox_server_pid=$!
+          trap 'kill "$worldbox_server_pid" 2>/dev/null || true' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent "$WORLDBOX_BASE_URL" > /dev/null; then break; fi
+            sleep 1
+          done
+          curl --fail --silent "$WORLDBOX_BASE_URL" > /dev/null
+          npm test --prefix tests/browser 2>&1 | tee artifacts/browser-tests/smoke.log
+          npm run test:mobile --prefix tests/browser 2>&1 | tee artifacts/browser-tests/mobile-smoke.log
+
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: worldbox-browser-tests
+          path: artifacts/browser-tests
+          if-no-files-found: ignore
+
+      - name: Upload static site for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: worldbox-static-site
+          path: artifacts/site
+          include-hidden-files: true
+
+      - name: Prepare GitHub Pages artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/alpha'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: artifacts/site
+
+  deploy:
+    name: Deploy alpha to GitHub Pages
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/alpha'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check Pages configuration
+        # Pages uses GitHub Actions as its source; the github-pages environment
+        # must permit alpha deployments even when alpha is not the default branch.
+        uses: actions/configure-pages@v5
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

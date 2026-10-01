@@ -1,0 +1,9 @@
+{
+  "name": "sewzc-worldbox-browser-tests",
+  "private": true,
+  "scripts": {
+    "test": "node smoke.cjs",
+    "test:mobile": "node mobile-smoke.cjs"
+  },
+  "devDependencies": { "playwright": "1.57.0" }
+}

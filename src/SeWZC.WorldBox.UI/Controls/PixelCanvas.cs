@@ -1,0 +1,50 @@
+using System;
+
+namespace SeWZC.WorldBox.UI.Controls;
+
+/// <summary>A small managed RGBA canvas used to cache original pixel terrain.</summary>
+internal sealed class PixelCanvas(int width, int height)
+{
+    public int Width { get; } = width;
+    public int Height { get; } = height;
+    public byte[] Pixels { get; } = new byte[checked(width * height * 4)];
+
+    public void Pixel(int x, int y, uint rgba)
+    {
+        if ((uint)x >= (uint)Width || (uint)y >= (uint)Height)
+            return;
+        var i = (y * Width + x) * 4;
+        Pixels[i] = (byte)(rgba >> 24);
+        Pixels[i + 1] = (byte)(rgba >> 16);
+        Pixels[i + 2] = (byte)(rgba >> 8);
+        Pixels[i + 3] = (byte)rgba;
+    }
+
+    public void Rect(int x, int y, int width, int height, uint rgba)
+    {
+        var right = Math.Min(Width, x + width);
+        var bottom = Math.Min(Height, y + height);
+        for (var py = Math.Max(0, y); py < bottom; py++)
+        for (var px = Math.Max(0, x); px < right; px++)
+            Pixel(px, py, rgba);
+    }
+
+    public static uint Shade(uint rgba, int offset)
+    {
+        static uint Shift(uint component, int amount) => (uint)Math.Clamp((int)component + amount, 0, 255);
+        return Shift(rgba >> 24, offset) << 24 |
+               Shift((rgba >> 16) & 255, offset) << 16 |
+               Shift((rgba >> 8) & 255, offset) << 8 |
+               (rgba & 255);
+    }
+
+    public static uint Noise(int x, int y, int salt = 0)
+    {
+        unchecked
+        {
+            var h = (uint)(x * 374761393 + y * 668265263 + salt * 1442695041);
+            h = (h ^ (h >> 13)) * 1274126177;
+            return h ^ (h >> 16);
+        }
+    }
+}
