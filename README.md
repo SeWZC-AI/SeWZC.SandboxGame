@@ -4,6 +4,8 @@
 
 当前版本是古代文明的早期可运行原型。浏览器入口使用 .NET WebAssembly，可作为纯静态文件部署到 **GitHub Pages**；桌面入口与浏览器共用模拟核心和 Avalonia 界面。无需游戏服务器。
 
+开发与 AI 接续工作请从 [文档索引](docs/README.md) 开始；其中分别记录 [产品约定](docs/product.md)、[开发约定](docs/development.md) 和 [设计原因](docs/decisions/README.md)。
+
 ## 当前范围
 
 - 种子地图与 12 种地形；肥力、采集资源、通行成本与魔力恢复随地形变化，支持地形笔刷和四种族投放。
@@ -127,6 +129,6 @@ tests/
 scripts/                    # 静态发布与资源检查
 ```
 
-设计取舍与模块扩展见 [架构说明](docs/architecture.md)，本轮确认的设计与验收见 [第二轮范围](docs/iteration-2-spec.md)。后续先完善古代生产、交通、政治与战争的平衡及可解释性，验证规模与真机表现，再扩展科技帝国、奇幻帝国及融合路线。
+模块关系见 [架构说明](docs/architecture.md)，当前产品边界与验收目标见 [产品约定](docs/product.md)；[第二轮范围](docs/iteration-2-spec.md) 保留当时的问答输入。后续先完善古代生产、交通、政治与战争的平衡及可解释性，验证规模与真机表现，再扩展科技帝国、奇幻帝国及融合路线。
 
 中文字体随应用打包，使用 Noto CJK 字体；其版权及许可见 [字体许可文件](src/SeWZC.WorldBox.UI/Assets/Fonts/LICENSE.txt)。
