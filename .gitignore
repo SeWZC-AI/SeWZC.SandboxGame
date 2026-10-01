@@ -1,0 +1,30 @@
+# .NET / IDE
+**/bin/
+**/obj/
+**/node_modules/
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build, test and local preview outputs
+artifacts/
+TestResults/
+**/TestResults/
+playwright-report/
+test-results/
+__pycache__/
+*.pyc
+node_modules/
+
+# Local configuration and saves
+.env
+.env.*
+!.env.example
+*.worldbox.json
+
+# OS metadata
+.DS_Store
+Thumbs.db

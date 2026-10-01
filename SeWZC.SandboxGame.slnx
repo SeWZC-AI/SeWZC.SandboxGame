@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SeWZC.WorldBox.Browser/SeWZC.WorldBox.Browser.csproj" />
+    <Project Path="src/SeWZC.WorldBox.Core/SeWZC.WorldBox.Core.csproj" />
+    <Project Path="src/SeWZC.WorldBox.Desktop/SeWZC.WorldBox.Desktop.csproj" />
+    <Project Path="src/SeWZC.WorldBox.UI/SeWZC.WorldBox.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/SeWZC.WorldBox.Core.Tests/SeWZC.WorldBox.Core.Tests.csproj" />
+  </Folder>
+</Solution>

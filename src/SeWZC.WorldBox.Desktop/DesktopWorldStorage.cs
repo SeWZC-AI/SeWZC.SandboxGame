@@ -1,0 +1,122 @@
+using System.Text;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Platform.Storage;
+using SeWZC.WorldBox.UI.Platform;
+
+namespace SeWZC.WorldBox.Desktop;
+
+internal sealed class DesktopWorldStorage : IWorldStorage
+{
+    private const int MaxFileBytes = 32 * 1024 * 1024;
+    private static readonly UTF8Encoding Utf8 = new(false, true);
+    private static readonly FilePickerFileType WorldFileType = new("WorldBox 世界存档")
+    {
+        Patterns = ["*.json", "*.worldbox"],
+        MimeTypes = ["application/json"]
+    };
+    private readonly SemaphoreSlim _saveLock = new(1, 1);
+    private readonly string _savePath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "SeWZC", "WorldBox", "autosave.json");
+
+    private static Window? MainWindow =>
+        (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
+
+    public bool IsBackground => MainWindow is { IsActive: false };
+
+    public async Task SaveAsync(string json)
+    {
+        CheckSize(json);
+        await _saveLock.WaitAsync();
+        string? temporaryPath = null;
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(_savePath)!);
+            temporaryPath = _savePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+            await File.WriteAllTextAsync(temporaryPath, json, Utf8);
+            // Same-directory rename replaces the previous complete snapshot atomically.
+            File.Move(temporaryPath, _savePath, overwrite: true);
+        }
+        finally
+        {
+            try { if (temporaryPath is not null && File.Exists(temporaryPath)) File.Delete(temporaryPath); }
+            finally { _saveLock.Release(); }
+        }
+    }
+
+    public async Task<string?> LoadAsync()
+    {
+        await _saveLock.WaitAsync();
+        try
+        {
+            if (!File.Exists(_savePath)) return null;
+            await using var stream = File.OpenRead(_savePath);
+            return await ReadUtf8Async(stream);
+        }
+        finally { _saveLock.Release(); }
+    }
+
+    public async Task ExportAsync(string json, string fileName)
+    {
+        CheckSize(json);
+        var provider = GetStorageProvider();
+        if (!provider.CanSave) throw new IOException("此平台暂不支持文件导出。");
+        var file = await provider.SaveFilePickerAsync(new FilePickerSaveOptions
+        {
+            Title = "导出 WorldBox 世界",
+            SuggestedFileName = fileName,
+            DefaultExtension = "json",
+            FileTypeChoices = [WorldFileType],
+            ShowOverwritePrompt = true
+        });
+        if (file is null) throw new OperationCanceledException("已取消导出。");
+        using (file)
+        await using (var stream = await file.OpenWriteAsync())
+        {
+            if (stream.CanSeek) stream.SetLength(0);
+            await using var writer = new StreamWriter(stream, Utf8);
+            await writer.WriteAsync(json);
+        }
+    }
+
+    public async Task<string?> ImportAsync()
+    {
+        var provider = GetStorageProvider();
+        if (!provider.CanOpen) throw new IOException("此平台暂不支持文件导入。");
+        var files = await provider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "导入 WorldBox 世界",
+            AllowMultiple = false,
+            FileTypeFilter = [WorldFileType]
+        });
+        if (files.Count == 0) return null;
+        using var file = files[0];
+        await using var stream = await file.OpenReadAsync();
+        return await ReadUtf8Async(stream);
+    }
+
+    private static IStorageProvider GetStorageProvider() => MainWindow?.StorageProvider
+        ?? throw new InvalidOperationException("主窗口尚未准备好。");
+
+    private static void CheckSize(string json)
+    {
+        if (Utf8.GetByteCount(json) > MaxFileBytes) throw new IOException("存档不能超过 32 MiB。");
+    }
+
+    private static async Task<string> ReadUtf8Async(Stream stream)
+    {
+        if (stream.CanSeek && stream.Length > MaxFileBytes) throw new IOException("存档不能超过 32 MiB。");
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
+        int count;
+        while ((count = await stream.ReadAsync(chunk)) != 0)
+        {
+            if (buffer.Length + count > MaxFileBytes) throw new IOException("存档不能超过 32 MiB。");
+            buffer.Write(chunk, 0, count);
+        }
+        var text = Utf8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
+        return text.StartsWith('\uFEFF') ? text[1..] : text;
+    }
+}
