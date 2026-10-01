@@ -40,9 +40,14 @@ public sealed partial class WorldEngine
         {
             for (var race = 0; race < 4; race++)
             {
-                var x = (int)(width * (race % 2 == 0 ? 0.34 : 0.66));
-                var y = (int)(height * (race < 2 ? 0.34 : 0.66));
-                var location = engine.FindWalkable(x, y, Math.Max(width, height));
+                var x = width / 2 + (race % 2 == 0 ? -1 : 1) * Math.Clamp((int)(width * .06), 10, 16);
+                var y = height / 2 + (race < 2 ? -1 : 1) * Math.Clamp((int)(height * .06), 10, 16);
+                // Demo settlements start within travelling distance on land that can feed them.
+                // This chooses initial conditions, not knowledge granted to the inhabitants.
+                var location = engine.Circle(x, y, 20).Where(i => state.Tiles[i].IsWalkable && state.Tiles[i].Fertility >= 50
+                    && state.Tiles[i].NationId == 0 && state.Settlements.All(t => Distance(t.X, t.Y, i % width, i / width) >= 16))
+                    .OrderBy(i => Distance(x, y, i % width, i / width)).FirstOrDefault(-1);
+                if (location < 0) location = engine.FindWalkable(x, y, Math.Max(width, height));
                 if (location >= 0) engine.SpawnResidents(location % width, location / width, (RaceKind)race, 36);
             }
             engine.AddEvent(WorldEventKind.Founding, "四个种族抵达这片大陆。河流、粮食与山脉将塑造他们的命运。");
@@ -80,7 +85,7 @@ public sealed partial class WorldEngine
         var importance = kind switch
         {
             WorldEventKind.Founding => EventImportance.Historic,
-            WorldEventKind.War or WorldEventKind.Disaster => EventImportance.Major,
+            WorldEventKind.War or WorldEventKind.Disaster or WorldEventKind.Research or WorldEventKind.Diplomacy => EventImportance.Major,
             WorldEventKind.Trade or WorldEventKind.Personal or WorldEventKind.Communication => EventImportance.Routine,
             _ => EventImportance.Notable
         };

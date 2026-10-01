@@ -55,7 +55,17 @@ public sealed partial class WorldEngine
         if (patch.Age is { } age) candidate.Age = age;
         if (patch.Health is { } health) candidate.Health = health;
         if (patch.Hunger is { } hunger) candidate.Hunger = hunger;
-        if (patch.Trait is not null) candidate.Trait = patch.Trait;
+        if (patch.Trait is not null)
+        {
+            candidate.Trait = patch.Trait;
+            switch (patch.Trait)
+            {
+                case "勤劳": candidate.Agent.Personality.Diligence = .9; break;
+                case "勇敢": candidate.Agent.Personality.Courage = .9; break;
+                case "好奇": candidate.Agent.Personality.Ambition = .9; break;
+                case "温和": candidate.Agent.Personality.Sociability = .9; break;
+            }
+        }
         if (patch.Mana is { } mana) candidate.Mana = mana;
         if (patch.MagicTalent is { } talent) candidate.MagicTalent = talent;
         if (patch.MagicTraining is { } training) candidate.MagicTraining = training;
@@ -149,7 +159,7 @@ public sealed partial class WorldEngine
     }
 
     private static bool SameFactSnapshot(AgentFact first, AgentFact second) => first.Kind == second.Kind
-        && first.SubjectId == second.SubjectId && first.X == second.X && first.Y == second.Y
+        && first.TargetNationId == second.TargetNationId && first.SubjectId == second.SubjectId && first.X == second.X && first.Y == second.Y
         && first.Value == second.Value && first.ObservedTick == second.ObservedTick
         && first.OriginResidentId == second.OriginResidentId && first.OriginProfession == second.OriginProfession
         && first.Text == second.Text;

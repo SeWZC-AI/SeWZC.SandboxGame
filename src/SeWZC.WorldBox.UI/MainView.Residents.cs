@@ -56,12 +56,12 @@ public sealed partial class MainView
         panel.Children.Add(Text("个人履历", 12, Mint));
         LiveRows(panel, () => Current().History.Select((entry, index) => (entry, index)).Reverse().Take(40), item => item.index.ToString(), item => $"{ImportanceName(item.entry.Importance)} · {DateLabel(item.entry.Tick)}\n{item.entry.Text}\n经历类型 {ExperienceName(item.entry.Experience)} · 心理影响 {item.entry.Impact:+0.00;-0.00;0}{(item.entry.PlayerEdited ? " · 玩家编辑" : "")}", item => ShowHistoryEntryEditor(id, item.index));
         panel.Children.Add(Named(Button("添加个人经历", () => ShowHistoryEntryEditor(id, null)), "resident-history-add"));
-        panel.Children.Add(Named(Button("高级历史编辑（全部字段）", () => ShowResidentJsonEditor(id, true)), "resident-history-edit"));
-        panel.Children.Add(Named(Button("高级认知编辑（全部字段）", () => ShowResidentJsonEditor(id, false)), "resident-mind-json"));
+
+
     }
 
     private string FactLabel(AgentFact fact) => $"{FactKindName(fact.Kind)} · 置信度 {fact.Confidence:P0}\n{fact.Text}\n观察 {DateLabel(fact.ObservedTick)} · 获知 {DateLabel(fact.LearnedTick)}\n消息年龄 {Math.Max(0, _engine.State.Tick - fact.ObservedTick)} 日 · 经过 {fact.Hops} 次转述\n来源 {ResidentName(fact.SourceResidentId)} · 地点 {fact.X},{fact.Y} · 值 {fact.Value:F1}";
-    private static string FactKindName(AgentFactKind kind) => kind switch { AgentFactKind.FoodSupply => "粮食供给", AgentFactKind.Danger => "危险", AgentFactKind.SettlementLocation => "聚落位置", AgentFactKind.ReliefRequest => "救济请求", AgentFactKind.Policy => "政策", AgentFactKind.WarOrder => "战争命令", AgentFactKind.PeaceOrder => "和平命令", AgentFactKind.Culture => "文化", AgentFactKind.Research => "研究", _ => "个人记忆" };
+    private static string FactKindName(AgentFactKind kind) => kind switch { AgentFactKind.FoodSupply => "粮食供给", AgentFactKind.Danger => "危险", AgentFactKind.SettlementLocation => "聚落位置", AgentFactKind.ReliefRequest => "救济请求", AgentFactKind.Policy => "政策", AgentFactKind.WarOrder => "战争命令", AgentFactKind.PeaceOrder => "和平命令", AgentFactKind.Culture => "文化", AgentFactKind.Research => "研究", AgentFactKind.TradeExchange => "贸易往来", AgentFactKind.DiplomaticNotice => "外交声明", _ => "个人记忆" };
 
     private void ShowResidentEditor(int id)
     {
@@ -72,18 +72,18 @@ public sealed partial class MainView
         var tabs = Named(new TabControl { ItemsSource = new[] { Named(new TabItem { Header = Text("身份", 12), Content = identity }, "resident-tab-identity"), Named(new TabItem { Header = Text("生理", 12), Content = condition }, "resident-tab-condition"), Named(new TabItem { Header = Text("归属", 12), Content = belonging }, "resident-tab-belonging"), Named(new TabItem { Header = Text("魔法", 12), Content = magic }, "resident-tab-magic"), Named(new TabItem { Header = Text("物品", 12), Content = possessions }, "resident-tab-possessions") }, SelectedIndex = 0 }, "resident-editor-tabs");
         panel.Children.Add(tabs);
         var name = Field(identity, "姓名", resident.Name, "resident-name");
-        var trait = Field(identity, "特质", resident.Trait, "resident-trait");
+        var trait = ObjectField(identity, "性格预设（选择后同步调整对应倾向）", new[] { (0, "保持当前性格"), (1, "勤劳"), (2, "勇敢"), (3, "好奇"), (4, "温和") }, 0, "resident-trait");
         var race = EnumField(identity, "种族", resident.Race, RaceName, "resident-race");
         var profession = EnumField(identity, "职业", resident.Profession, ProfessionName, "resident-profession");
-        var culture = Field(belonging, "文化编号", resident.CultureId, "resident-culture");
-        var home = Field(belonging, "居住聚落编号", resident.SettlementId, "resident-settlement");
-        belonging.Children.Add(Paragraph(string.Join(" · ", _engine.State.Settlements.Select(t => $"{t.Id} {t.Name}"))));
+        var culture = ObjectField(belonging, "文化", _engine.State.Society.Cultures.Select(c => (c.Id, c.Name)), resident.CultureId, "resident-culture", false);
+        var home = ObjectField(belonging, "居住聚落", _engine.State.Settlements.Select(t => (t.Id, t.Name)), resident.SettlementId, "resident-settlement", false);
+        belonging.Children.Add(Paragraph("迁居会同步调整国家归属；文化认同保留你的选择。"));
         var age = Field(condition, "年龄", resident.Age, "resident-age");
         var health = Field(condition, "生命 0–100", resident.Health, "resident-health");
         var hunger = Field(condition, "饥饿 0–100", resident.Hunger, "resident-hunger");
         var sickness = Field(condition, "疫病剩余日数", resident.SicknessTicks, "resident-sickness");
         var x = Field(belonging, "位置 X", resident.X, "resident-x"); var y = Field(belonging, "位置 Y", resident.Y, "resident-y");
-        var army = Field(belonging, "军队编号 · 0 表示无", resident.ArmyId, "resident-army");
+        var army = ObjectField(belonging, "军队", _engine.State.Armies.Where(a => a.NationId == resident.NationId).Select(a => (a.Id, NationName(a.NationId) + " · " + a.Status)), resident.ArmyId, "resident-army", true);
         var mana = Field(magic, "魔力", resident.Mana, "resident-mana");
         var talent = Field(magic, "魔法天赋", resident.MagicTalent, "resident-magic-talent");
         var training = Field(magic, "魔法训练", resident.MagicTraining, "resident-magic-training");
@@ -95,7 +95,7 @@ public sealed partial class MainView
             {
                 var patch = new ResidentEdit
                 {
-                    Name = name.Text ?? "", Trait = trait.Text ?? "", Race = (RaceKind)race.SelectedItem!, Profession = (Profession)profession.SelectedItem!,
+                    Name = name.Text ?? "", Trait = Integer(trait) == 0 ? null : new[] { "", "勤劳", "勇敢", "好奇", "温和" }[Integer(trait)], Race = (RaceKind)race.SelectedItem!, Profession = (Profession)profession.SelectedItem!,
                     CultureId = Integer(culture), SettlementId = Integer(home), Age = Number(age), Health = Number(health), Hunger = Number(hunger), SicknessTicks = Integer(sickness),
                     X = Integer(x), Y = Integer(y), ArmyId = Integer(army), Mana = Number(mana), MagicTalent = Number(talent), MagicTraining = Number(training), Inventory = ReadStock(inventory)
                 };
@@ -114,10 +114,14 @@ public sealed partial class MainView
         var panel = ModalPanel("目标、性格与需求", "目标在未来的行动中执行。目标地点、实体和聚落必须有效；自主思考仍会考虑危险与基本需求。");
         var mind = CloneMind(id);
         var goal = EnumField(panel, "当前目标", mind.Goal.Kind, GoalName, "resident-goal");
-        var reason = Field(panel, "实际采用的理由", mind.Goal.Reason, "resident-goal-reason");
+        var reason = Field(panel, "目标备注（仅记录，不参与行动评分）", mind.Goal.Reason, "resident-goal-reason");
         var x = Field(panel, "目标 X", mind.Goal.TargetX, "resident-goal-x"); var y = Field(panel, "目标 Y", mind.Goal.TargetY, "resident-goal-y");
-        var town = Field(panel, "目标聚落编号", mind.Goal.TargetSettlementId, "resident-goal-town");
-        var entity = Field(panel, "目标实体编号", mind.Goal.TargetEntityId, "resident-goal-entity");
+        x.Maximum = _engine.State.Width - 1; y.Maximum = _engine.State.Height - 1;
+        AddMapPicker(panel, x, y);
+        var town = ObjectField(panel, "目标聚落", _engine.State.Settlements.Select(t => (t.Id, t.Name)), mind.Goal.TargetSettlementId, "resident-goal-town", true);
+        var entity = ObjectField(panel, "目标居民", _engine.State.Residents.Select(p => (p.Id, p.Name)), mind.Goal.TargetEntityId, "resident-goal-entity", true);
+        town.SelectionChanged += (_, _) => { if (town.SelectedItem is EntityChoice choice && _engine.State.Settlements.FirstOrDefault(t => t.Id == choice.Id) is { } destination) { x.Value = destination.X; y.Value = destination.Y; } };
+        panel.Children.Add(Paragraph("选择聚落会同步填写目标地点；目标改变未来行动，紧急生存需求仍可打断。"));
         var duration = Field(panel, "目标保持日数", Math.Max(24, mind.Goal.ReviewTick - _engine.State.Tick), "resident-goal-duration");
         var fatigue = Field(panel, "疲劳", mind.Fatigue, "resident-fatigue"); var social = Field(panel, "社交需求", mind.SocialNeed, "resident-social-need");
         var courage = Field(panel, "勇气 0–1", mind.Personality.Courage, "resident-courage");
@@ -147,19 +151,65 @@ public sealed partial class MainView
         fact ??= new AgentFact { Id = 0, Kind = AgentFactKind.Personal, ObservedTick = _engine.State.Tick, LearnedTick = _engine.State.Tick, OriginResidentId = id, SourceResidentId = id, OriginProfession = _engine.GetResident(id)?.Profession ?? Profession.Child, X = _engine.GetResident(id)?.X ?? 0, Y = _engine.GetResident(id)?.Y ?? 0 };
         var panel = ModalPanel(adding ? "添加记忆" : "编辑记忆", "这是角色的认知记录，允许它与实际世界不同。修改将影响以后的决策与传播，不回算已经发生的战争、死亡或资源变化。");
         var kind = EnumField(panel, "记忆类型", fact.Kind, FactKindName, "memory-kind");
-        var text = Field(panel, "内容", fact.Text, "memory-text"); text.AcceptsReturn = true; text.TextWrapping = Avalonia.Media.TextWrapping.Wrap; text.MinHeight = 88;
-        var value = Field(panel, "数值", fact.Value, "memory-value"); var confidence = Field(panel, "置信度 0–1", fact.Confidence, "memory-confidence");
-        var subject = Field(panel, "主题实体编号", fact.SubjectId, "memory-subject");
+        var text = Field(panel, "可选说明（不执行文字指令）", fact.Text, "memory-text"); text.AcceptsReturn = true; text.TextWrapping = Avalonia.Media.TextWrapping.Wrap; text.MinHeight = 88;
+        var meaning = Paragraph(""); panel.Children.Add(meaning);
+        var value = Field(panel, "数值", fact.Value, "memory-value"); value.Minimum = -1_000_000_000; value.Maximum = 1_000_000_000; value.Value = (decimal)fact.Value;
+        var choice = Named(new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch }, "memory-value-choice"); panel.Children.Add(choice);
+        var addressed = ObjectField(panel, "外交声明／军令的接收国家", _engine.State.Nations.Select(n => (n.Id, n.Name)), fact.TargetNationId, "memory-addressed", true);
+        var confidence = Field(panel, "置信度 0–1", fact.Confidence, "memory-confidence");
+        var subject = ObjectField(panel, "消息涉及的对象", _engine.State.Settlements.Select(t => (t.Id, t.Name)), fact.SubjectId, "memory-subject", true);
+        void UpdateSubject()
+        {
+            var selected = (subject.SelectedItem as EntityChoice)?.Id ?? fact.SubjectId;
+            var selectedKind = (AgentFactKind)kind.SelectedItem!;
+            var entries = selectedKind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder or AgentFactKind.TradeExchange or AgentFactKind.DiplomaticNotice
+                ? _engine.State.Nations.Select(n => new EntityChoice(n.Id, n.Name))
+                : selectedKind == AgentFactKind.Personal ? _engine.State.Residents.Select(p => new EntityChoice(p.Id, p.Name))
+                : selectedKind == AgentFactKind.Danger ? _engine.State.Armies.Select(a => new EntityChoice(a.Id, NationName(a.NationId) + "军队"))
+                : _engine.State.Settlements.Select(t => new EntityChoice(t.Id, t.Name));
+            var list = new[] { new EntityChoice(0, "无 / 地点") }.Concat(entries).ToArray();
+            subject.ItemsSource = list; subject.SelectedItem = list.FirstOrDefault(i => i.Id == selected) ?? list[0];
+            IEnumerable<EntityChoice> options = selectedKind switch
+            {
+                AgentFactKind.SettlementLocation => _engine.State.Nations.Select(n => new EntityChoice(n.Id, n.Name)),
+                AgentFactKind.Culture => _engine.State.Society.Cultures.Select(c => new EntityChoice(c.Id, c.Name)),
+                AgentFactKind.Policy => Enum.GetValues<PolicyKind>().Select(p => new EntityChoice((int)p, WorldEngine.PolicyName(p))),
+                AgentFactKind.Research => Enum.GetValues<ResearchKind>().Select(r => new EntityChoice((int)r, WorldEngine.ResearchName(r))),
+                AgentFactKind.DiplomaticNotice => new[] { new EntityChoice(0, "停战声明"), new EntityChoice(1, "结盟提议"), new EntityChoice(2, "宣战声明") },
+                AgentFactKind.WarOrder or AgentFactKind.PeaceOrder => new[] { new EntityChoice(0, "仅使用地点") }.Concat(_engine.State.Settlements.Select(t => new EntityChoice(t.Id, t.Name))),
+                AgentFactKind.TradeExchange => new[] { new EntityChoice(1, "实际完成交易") },
+                _ => Array.Empty<EntityChoice>()
+            };
+            var values = options.ToArray(); choice.ItemsSource = values;
+            choice.SelectedItem = values.FirstOrDefault(v => v.Id == fact.Value) ?? values.FirstOrDefault();
+            choice.IsVisible = values.Length > 0; value.IsVisible = !choice.IsVisible;
+            addressed.IsVisible = selectedKind is AgentFactKind.DiplomaticNotice or AgentFactKind.WarOrder or AgentFactKind.PeaceOrder;
+            meaning.Text = selectedKind switch
+            {
+                AgentFactKind.FoodSupply => "相信该聚落有多少份粮食；影响采集、贸易和迁徙选择。",
+                AgentFactKind.ReliefRequest => "困苦程度 0–100；送达机构后影响救济政策与地方不满。",
+                AgentFactKind.SettlementLocation => "相信该聚落属于哪个国家；地点和消息时效影响探索与外交。",
+                AgentFactKind.Research => "相信当地掌握的研究；实际递送后可能传播该成果。",
+                AgentFactKind.Policy => "送达的政策方向；仍受当地自治与玩家覆盖约束。",
+                AgentFactKind.Culture => "接触到的文化；需要持续交流才会改变认同。",
+                AgentFactKind.DiplomaticNotice => "选择声明类型与接收国；结盟还须存在对应提议。",
+                AgentFactKind.WarOrder or AgentFactKind.PeaceOrder => "选择目标聚落与接收国；士兵依据实际收到的命令行动。",
+                AgentFactKind.Danger => "大于零表示危险；位置、来源、时效与可信度共同影响避险。",
+                _ => "记录的数值。说明文字仅作备注，不会自动执行。"
+            };
+        }
+        kind.SelectionChanged += (_, _) => UpdateSubject(); UpdateSubject();
         var x = Field(panel, "地点 X", fact.X, "memory-x"); var y = Field(panel, "地点 Y", fact.Y, "memory-y");
         var observed = Field(panel, "观察日序（0 起）", fact.ObservedTick, "memory-observed"); var learned = Field(panel, "获知日序（0 起）", fact.LearnedTick, "memory-learned");
         AddDatePreview(panel, observed, "观察时间"); AddDatePreview(panel, learned, "获知时间");
-        var origin = Field(panel, "最初观察者编号", fact.OriginResidentId, "memory-origin"); var source = Field(panel, "消息来源居民编号", fact.SourceResidentId, "memory-source");
-        var hops = Field(panel, "转述次数", fact.Hops, "memory-hops");
+        var origin = ObjectField(panel, "最初观察者", _engine.State.Residents.Concat(_engine.State.ArchivedResidents).Select(p => (p.Id, p.Name)), fact.OriginResidentId, "memory-origin", true); var source = ObjectField(panel, "消息来源", _engine.State.Residents.Concat(_engine.State.ArchivedResidents).Select(p => (p.Id, p.Name)), fact.SourceResidentId, "memory-source", true);
+        var hops = Field(panel, "转述次数", fact.Hops, "memory-hops"); hops.Maximum = 1000;
+        x.Minimum = -1; y.Minimum = -1; AddMapPicker(panel, x, y);
         panel.Children.Add(Named(Button("保存记忆", () =>
         {
             try
             {
-                fact.Kind = (AgentFactKind)kind.SelectedItem!; fact.Text = text.Text ?? ""; fact.Value = Number(value); fact.Confidence = Number(confidence); fact.SubjectId = Integer(subject);
+                fact.Kind = (AgentFactKind)kind.SelectedItem!; fact.Text = text.Text ?? ""; fact.Value = choice.IsVisible ? Integer(choice) : Number(value); fact.TargetNationId = addressed.IsVisible ? Integer(addressed) : 0; fact.Confidence = Number(confidence); fact.SubjectId = Integer(subject);
                 fact.X = Integer(x); fact.Y = Integer(y); fact.ObservedTick = Integer(observed); fact.LearnedTick = Integer(learned); fact.OriginResidentId = Integer(origin); fact.SourceResidentId = Integer(source); fact.Hops = Integer(hops);
                 if (adding) mind.Memory.Add(fact);
                 BeginEdit(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); RefreshUi(true); SetStatus("记忆已更新，世界历史保持原样");
@@ -254,9 +304,9 @@ public sealed partial class MainView
     {
         if (!int.TryParse(field.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)) throw new ArgumentException("请输入有效整数。"); return value;
     }
-    private static TextBox[] StockFields(StackPanel panel, ResourceStock stock, string prefix) =>
+    private NumericUpDown[] StockFields(StackPanel panel, ResourceStock stock, string prefix) =>
         [Field(panel, "粮食", stock.Food, prefix + "-food"), Field(panel, "木材", stock.Wood, prefix + "-wood"), Field(panel, "石材", stock.Stone, prefix + "-stone"), Field(panel, "矿产", stock.Ore, prefix + "-ore")];
-    private static ResourceStock ReadStock(TextBox[] fields) => new() { Food = Number(fields[0]), Wood = Number(fields[1]), Stone = Number(fields[2]), Ore = Number(fields[3]) };
+    private static ResourceStock ReadStock(NumericUpDown[] fields) => new() { Food = Number(fields[0]), Wood = Number(fields[1]), Stone = Number(fields[2]), Ore = Number(fields[3]) };
 }
 
 [JsonSerializable(typeof(AgentState))]

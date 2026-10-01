@@ -11,7 +11,7 @@ public sealed partial class WorldEngine
 
     private static AgentFact CopyAgentFact(AgentFact fact) => new()
     {
-        Id = fact.Id, Kind = fact.Kind, SubjectId = fact.SubjectId, X = fact.X, Y = fact.Y, Value = fact.Value,
+        Id = fact.Id, Kind = fact.Kind, SubjectId = fact.SubjectId, TargetNationId = fact.TargetNationId, X = fact.X, Y = fact.Y, Value = fact.Value,
         ObservedTick = fact.ObservedTick, LearnedTick = fact.LearnedTick,
         OriginResidentId = fact.OriginResidentId, SourceResidentId = fact.SourceResidentId,
         OriginProfession = fact.OriginProfession,
@@ -32,7 +32,7 @@ public sealed partial class WorldEngine
 
     private void RememberAgentFact(Resident person, AgentFact fact)
     {
-        var old = person.Agent.Memory.FirstOrDefault(f => f.Kind == fact.Kind && f.SubjectId == fact.SubjectId
+        var old = person.Agent.Memory.FirstOrDefault(f => f.Kind == fact.Kind && f.SubjectId == fact.SubjectId && f.TargetNationId == fact.TargetNationId
             && (fact.Kind is not AgentFactKind.Danger and not AgentFactKind.Personal || f.X == fact.X && f.Y == fact.Y));
         if (old is not null)
         {
@@ -60,7 +60,7 @@ public sealed partial class WorldEngine
             if (town.CultureId > 0)
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.Culture,
                     town.Id, town.X, town.Y, town.CultureId, $"在{town.Name}接触当地文化"));
-            foreach (var report in town.PublicKnowledge.OrderByDescending(f => f.LearnedTick).Take(6))
+            foreach (var report in town.PublicKnowledge.OrderByDescending(f => f.LearnedTick).Take(6).ToArray())
             {
                 if (report.LearnedTick >= State.Tick) continue;
                 var learned = CopyAgentFact(report);
@@ -68,7 +68,7 @@ public sealed partial class WorldEngine
                 learned.Hops = Math.Min(32, learned.Hops + 1);
                 learned.Confidence *= 0.98;
                 RememberAgentFact(person, learned);
-                if (learned.Kind is AgentFactKind.Research or AgentFactKind.Policy or AgentFactKind.Culture)
+                if (learned.Kind is AgentFactKind.Research or AgentFactKind.Policy or AgentFactKind.Culture or AgentFactKind.DiplomaticNotice)
                     ReceiveSocietyReport(town, person, learned);
             }
             if (town.Id == person.SettlementId && person.Hunger > 35 && town.Resources.Food < 12)
@@ -123,7 +123,7 @@ public sealed partial class WorldEngine
             if (neighbors.Length == 0) continue;
             var recipient = neighbors[(int)((State.Tick / 12 + sender.Id) % neighbors.Length)];
             var facts = sender.Agent.Memory.Where(f => f.LearnedTick < State.Tick && f.Confidence > 0.15 && f.Hops < 12)
-                .OrderByDescending(f => f.Kind is AgentFactKind.ReliefRequest or AgentFactKind.Research or AgentFactKind.Danger ? 1 : 0)
+                .OrderByDescending(f => f.Kind is AgentFactKind.DiplomaticNotice or AgentFactKind.WarOrder or AgentFactKind.PeaceOrder or AgentFactKind.ReliefRequest or AgentFactKind.Research or AgentFactKind.Danger ? 1 : 0)
                 .ThenByDescending(f => f.ObservedTick).Take(3).Select(CopyAgentFact).ToList();
             if (facts.Count > 0 && State.PendingMessages.Count < MaxPopulation * 2)
                 State.PendingMessages.Add(new PendingMessage { SenderId = sender.Id, RecipientId = recipient.Id, DeliverTick = State.Tick + 1, Facts = facts });
@@ -153,7 +153,7 @@ public sealed partial class WorldEngine
                     .OrderByDescending(r => r.Id == destination.RepresentativeId).ThenBy(r => r.Id).FirstOrDefault();
                 if (recipient is null) continue;
                 var facts = sender.Agent.Memory.Where(f => f.LearnedTick < State.Tick && f.Confidence > 0.25)
-                    .OrderByDescending(f => f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder or AgentFactKind.ReliefRequest or AgentFactKind.Research ? 1 : 0)
+                    .OrderByDescending(f => f.Kind is AgentFactKind.DiplomaticNotice or AgentFactKind.WarOrder or AgentFactKind.PeaceOrder or AgentFactKind.ReliefRequest or AgentFactKind.Research ? 1 : 0)
                     .ThenByDescending(f => f.ObservedTick).Take(3).Select(CopyAgentFact).ToList();
                 if (facts.Count == 0 || State.PendingMessages.Count >= MaxPopulation * 2) continue;
                 State.PendingMessages.Add(new PendingMessage { SenderId = sender.Id, RecipientId = recipient.Id,
@@ -192,6 +192,7 @@ public sealed partial class WorldEngine
             {
                 if (person.Profession == Profession.Trader)
                 {
+                    if (!State.Rules.Trade) continue;
                     var knownFood = agent.Memory.Where(f => f.Kind == AgentFactKind.FoodSupply && f.SubjectId == address.SubjectId)
                         .OrderByDescending(f => f.ObservedTick).FirstOrDefault();
                     var ownFood = agent.Memory.Where(f => f.Kind == AgentFactKind.FoodSupply && f.SubjectId == home.Id)
@@ -212,7 +213,7 @@ public sealed partial class WorldEngine
             }
             if (addresses.Length == 0)
             {
-                var heading = Directions[person.Id % Directions.Length];
+                var heading = Directions[(person.Id + (int)(State.Tick / 360)) % Directions.Length];
                 var frontier = Circle(person.X, person.Y, 6).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].FireTicks == 0)
                     .OrderByDescending(i => (i % State.Width - person.X) * heading.X + (i / State.Width - person.Y) * heading.Y)
                     .ThenByDescending(i => Distance(i % State.Width, i / State.Width, home.X, home.Y)).FirstOrDefault(-1);
@@ -231,7 +232,7 @@ public sealed partial class WorldEngine
         agent.CarriedMessages.Clear();
         if (agent.Goal.Kind != AgentGoalKind.Trade)
         {
-            agent.CarriedMessages = agent.Memory.OrderByDescending(f => f.Kind == AgentFactKind.ReliefRequest ? 1 : 0)
+            agent.CarriedMessages = agent.Memory.OrderByDescending(f => f.Kind is AgentFactKind.DiplomaticNotice or AgentFactKind.WarOrder or AgentFactKind.PeaceOrder or AgentFactKind.ReliefRequest ? 1 : 0)
                 .ThenByDescending(f => f.ObservedTick).Take(8).Select(CopyAgentFact).ToList();
             if (Distance(person.X, person.Y, home.X, home.Y) <= 1)
             {
@@ -296,17 +297,18 @@ public sealed partial class WorldEngine
             if (food > 0) AddEvent(WorldEventKind.Trade,
                 $"{person.Name}抵达{destination.Name}，交付 {food:0.0} 份粮食，携带 {payment:0.0} 份木材返乡。", destination.X, destination.Y);
         }
-        foreach (var fact in agent.CarriedMessages)
+        if (goal.Kind == AgentGoalKind.Trade && destination.NationId != person.NationId)
+        {
+            var outbound = MakeAgentFact(person, AgentFactKind.TradeExchange, person.NationId, destination.X, destination.Y, 1, "商旅实际抵达并完成粮木交换");
+            AddPublicFact(destination, outbound);
+            RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.TradeExchange, destination.NationId, destination.X, destination.Y, 1, "我与另一国家的聚落完成交易，返乡后可报告"));
+        }
+        foreach (var fact in agent.CarriedMessages.ToArray())
         {
             var delivered = CopyAgentFact(fact);
             delivered.LearnedTick = State.Tick; delivered.SourceResidentId = person.Id;
             delivered.Hops = Math.Min(32, fact.Hops + 1); delivered.Confidence *= 0.98;
-            var old = destination.PublicKnowledge.FirstOrDefault(f => f.Kind == delivered.Kind && f.SubjectId == delivered.SubjectId);
-            if (old is null || old.ObservedTick < delivered.ObservedTick)
-            {
-                if (old is not null) destination.PublicKnowledge.Remove(old);
-                destination.PublicKnowledge.Add(delivered);
-            }
+            AddPublicFact(destination, delivered);
             ReceiveSocietyReport(destination, person, delivered);
         }
         if (destination.PublicKnowledge.Count > 24)

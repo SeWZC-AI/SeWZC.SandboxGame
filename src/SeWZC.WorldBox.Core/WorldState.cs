@@ -12,7 +12,7 @@ public enum WorldEventKind { Founding, Growth, Trade, Diplomacy, War, Disaster, 
 
 public sealed partial class WorldState
 {
-    public int FormatVersion { get; set; } = 2;
+    public int FormatVersion { get; set; } = 3;
     public int Seed { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
@@ -115,6 +115,13 @@ public sealed partial class Army
 
 public sealed class DiplomaticRelation
 {
+    public long LastChangedTick { get; set; }
+    public long LastContactTick { get; set; }
+    public long LastEvaluatedTick { get; set; }
+    public int LastEventId { get; set; }
+    public int AllianceOfferNationId { get; set; }
+    public long AllianceOfferTick { get; set; }
+    public string Reason { get; set; } = "等待实际接触与递送的消息";
     public int FirstNationId { get; set; }
     public int SecondNationId { get; set; }
     public DiplomaticStatus Status { get; set; }

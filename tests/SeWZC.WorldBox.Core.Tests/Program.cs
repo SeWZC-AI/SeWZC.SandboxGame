@@ -3,6 +3,13 @@ using System.Text;
 using System.Text.Json.Nodes;
 using SeWZC.WorldBox.Core;
 
+var evolutionOption = Array.IndexOf(args, "--evolution");
+if (evolutionOption >= 0)
+{
+    EvolutionProbe.Run(evolutionOption + 1 < args.Length ? args[evolutionOption + 1] : "artifacts/evolution-probe.json");
+    return 0;
+}
+
 // A dependency-free executable suite, runnable with dotnet run --project tests/SeWZC.WorldBox.Core.Tests.
 var fixtureOption = Array.IndexOf(args, "--export-browser-fixture");
 if (fixtureOption >= 0)
@@ -41,7 +48,7 @@ var tests = new (string Name, Action Run)[]
     ("spawning on owned land joins its existing nation", SpawnOnOwnedLand),
     ("food availability changes population survival", FoodAvailability),
     ("war leads to casualties or territorial capture", War)
-}.Concat(AgentBehaviorTests.Cases).Concat(EditorAndMigrationTests.Cases).Concat(SocietyBehaviorTests.Cases()).ToArray();
+}.Concat(AgentBehaviorTests.Cases).Concat(EditorAndMigrationTests.Cases).Concat(SocietyBehaviorTests.Cases()).Concat(EvolutionTests.Cases).ToArray();
 var filterOption = Array.IndexOf(args, "--filter");
 if (filterOption >= 0 && filterOption + 1 < args.Length)
     tests = tests.Where(t => t.Name.Contains(args[filterOption + 1], StringComparison.OrdinalIgnoreCase)).ToArray();

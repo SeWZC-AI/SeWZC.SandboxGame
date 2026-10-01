@@ -11,11 +11,12 @@
 | [0003](0003-delivered-governance.md) | 制度根据收到的报告和议题权重决策 | 采用 |
 | [0004](0004-independent-identities.md) | 种族、文化、国家分别建模 | 采用 |
 | [0005](0005-forward-only-editing.md) | 编辑个人历史不重演世界过去 | 采用 |
-| [0006](0006-stable-controls.md) | 核心操作位置稳定，内容在固定区域切换 | 采用 |
+| [0006](0006-stable-controls.md) | 核心操作位置稳定，内容在固定区域切换 | 被 0011 替代 |
 | [0007](0007-presentation-clock.md) | 离散模拟与连续呈现分开 | 采用 |
 | [0008](0008-complete-save-state.md) | 存档保存完整因果状态及合法零值 | 采用 |
 | [0009](0009-alpha-and-budgets.md) | alpha 不迁移旧格式，当前记录与载荷有界 | 采用 |
 | [0010](0010-real-browser-verification.md) | 真实浏览器输入、只读测试快照与部署后验证 | 采用 |
+| [0011](0011-evolution-and-map-tools.md) | 自主文明与可收起的地图工具 | 采用 |
 
 ## 何时新增或替代
 

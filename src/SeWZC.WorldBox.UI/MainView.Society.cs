@@ -18,6 +18,11 @@ public sealed partial class MainView
         if (nation is null) { panel.Children.Add(Paragraph("这个国家已不在当前世界中。其历史仍可在编年史查询。")); return; }
         panel.Children.Add(LiveText(() => nation.Name, 18, Mint));
         panel.Children.Add(LiveText(() => $"实际国家状态\n人口 {nation.Population} · 领土 {nation.Territory}\n{StockLabel(nation.Resources)}\n国家文化：{CultureName(nation.CultureId)}\n首都：{TownName(nation.CapitalId)} · 代表：{ResidentName(nation.RepresentativeId)}"));
+        var follow = Named(new CheckBox { Content = "关注这个文明的事件", IsChecked = _followNationId == nation.Id }, "nation-follow");
+        follow.IsCheckedChanged += (_, _) => { _followNationId = follow.IsChecked == true ? nation.Id : 0; RefreshUi(); }; panel.Children.Add(follow);
+        panel.Children.Add(Text("外交关系 · 依据已收到的信息", 13, Mint));
+        LiveRows(panel, () => _engine.State.Diplomacies.Where(d => d.FirstNationId == nation.Id || d.SecondNationId == nation.Id), d => $"{d.FirstNationId}:{d.SecondNationId}",
+            d => $"{NationName(d.FirstNationId == nation.Id ? d.SecondNationId : d.FirstNationId)} · {(d.Status == DiplomaticStatus.War ? "战争" : d.Status == DiplomaticStatus.Allied ? "联盟" : "和平")} · 关系 {d.Opinion}\n{d.Reason}");
         panel.Children.Add(Button("编辑这个国家", () => ShowNationEditor(nation.Id)));
         panel.Children.Add(Named(Button("文化、制度与政策", () => ShowGovernanceEditor(nation.Id)), "nation-governance"));
         panel.Children.Add(Named(Button("编辑国家文化价值", () => ShowCultureEditor(nation.CultureId)), "nation-culture-edit"));
@@ -31,7 +36,8 @@ public sealed partial class MainView
         LiveRows(panel, () => _engine.State.Settlements.Where(t => t.NationId == nation.Id).OrderBy(t => t.Id), t => t.Id.ToString(), t =>
         {
             var policy = _engine.State.Society.Policies.FirstOrDefault(p => p.SettlementId == t.Id);
-            return $"{t.Name} #{t.Id} · {t.Population} 人\n{StockLabel(t.Resources)}\n{(policy is null ? "尚无政策" : WorldEngine.PolicyName(policy.Kind))}\n{policy?.Reason}";
+            var development = _engine.GetDevelopment(t.Id);
+            return $"{t.Name} · {t.Population} 人 · {development.Stage}\n{development.Goal} · {development.Progress:P0}\n{development.Blocker}\n{StockLabel(t.Resources)}";
         }, t => { _inspectorSettlementId = t.Id; OpenInspector("infrastructure"); });
         panel.Children.Add(Text("居民构成与文化传播", 12, Mint));
         panel.Children.Add(LiveText(() => string.Join("\n", _engine.State.Residents.Where(r => r.NationId == nation.Id).GroupBy(r => r.CultureId).Select(g => $"{CultureName(g.Key)}：{g.Count()} 人"))));
@@ -80,20 +86,6 @@ public sealed partial class MainView
         OpenModal(panel);
     }
 
-    private void BuildWorldRules(StackPanel panel)
-    {
-        panel.Children.Add(Paragraph("关闭发展路径会阻止新的相关研究与设施；已有能力与成果继续存在。存档会保存这些世界规则。"));
-        var disasters = Named(new CheckBox { Content = Text("允许自然灾害", 12), IsChecked = _engine.State.NaturalDisasters }, "rule-disasters");
-        var magic = Named(new CheckBox { Content = Text("允许新的魔法发展", 12), IsChecked = _engine.State.Society.MagicEnabled }, "rule-magic");
-        panel.Children.Add(disasters); panel.Children.Add(magic);
-        panel.Children.Add(Named(Button("应用世界规则", () => RunEdit(() => _engine.SetWorldRules(disasters.IsChecked == true, magic.IsChecked == true), "世界规则已更新")), "world-rules-apply"));
-        panel.Children.Add(Text("中魔世界 · 有代价的局部能力", 12, Mint));
-        panel.Children.Add(Paragraph("法术需要成年施法者、天赋、训练与魔力，目标必须位于附近。精灵治疗、矮人护盾、兽人战斗法术具有不同消耗；它们实际影响健康、农业或战斗。"));
-        panel.Children.Add(Named(Button("选择居民施法", ShowSpellEditor), "spell-open"));
-        panel.Children.Add(Text("已有文化", 12, Mint));
-        LiveRows(panel, () => _engine.State.Society.Cultures.OrderBy(c => c.Id), c => c.Id.ToString(), c => $"{c.Name} #{c.Id}\n合作 {c.Cooperation:P0} · 创新 {c.Innovation:P0} · 自然 {c.NatureAffinity:P0}", c => ShowCultureEditor(c.Id));
-    }
-
     private void BuildInfrastructureInspector(StackPanel panel, bool communications)
     {
         var towns = _engine.State.Settlements.OrderBy(t => t.Id).ToArray();
@@ -103,6 +95,7 @@ public sealed partial class MainView
         var picker = Named(new ComboBox { ItemsSource = towns.Select(t => $"{t.Name} · {NationName(t.NationId)}").ToArray(), SelectedIndex = selected, HorizontalAlignment = HorizontalAlignment.Stretch }, "infrastructure-town");
         picker.SelectionChanged += (_, _) => { if (picker.SelectedIndex < 0) return; _inspectorSettlementId = towns[picker.SelectedIndex].Id; InvalidateInspector(); RefreshInspector(true); }; panel.Children.Add(picker);
         panel.Children.Add(LiveText(() => $"{town.Name} #{town.Id}\n实际库存：{StockLabel(town.Resources)}\n居民 {town.Population} · 代表 {ResidentName(town.RepresentativeId)}"));
+        panel.Children.Add(LiveText(() => { var d = _engine.GetDevelopment(town.Id); return $"{d.Stage} · {d.Goal} · {d.Progress:P0}\n{d.Blocker}\n动荡 {town.Unrest:0}/100"; }, 13, Mint));
         panel.Children.Add(Named(Button("定位聚落并开始建设", () => { _map.SelectedSettlementId = town.Id; SetCategory("build"); _map.FocusTile(town.X, town.Y); _mobilePanel = false; ApplyLayout(); }), "infrastructure-build"));
         if (!communications)
         {

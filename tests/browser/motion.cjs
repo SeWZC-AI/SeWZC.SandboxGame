@@ -64,6 +64,7 @@ const distance = (first, second) => Math.hypot(first.x - second.x, first.y - sec
         const actor = route.resident;
         report.start = { tick: baseline.Tick, id: actor.Id, x: actor.X, y: actor.Y, target: route.target, routeLength: route.length };
         console.log('SCENARIO', JSON.stringify(report.start));
+        await ui.click('header-overview');
         await ui.click('inspector-residents');
         await ui.fill('resident-search', actor.Id, inspector);
         await ui.click(`resident-row-${actor.Id}`, inspector);
@@ -73,7 +74,7 @@ const distance = (first, second) => Math.hypot(first.x - second.x, first.y - sec
         await ui.fill('resident-goal-reason', 'Walk the visible route for field work', modal);
         await ui.fill('resident-goal-x', route.target.x, modal);
         await ui.fill('resident-goal-y', route.target.y, modal);
-        await ui.fill('resident-goal-entity', 0, modal);
+        await ui.selectIndex('resident-goal-entity', 0, modal);
         await ui.fill('resident-goal-duration', 240, modal);
         await ui.click('resident-goal-apply', modal);
         await ui.waitFor(state => !state.modalOpen && state.status.includes('目标与人格已更新'), 'committed resident goal');
@@ -145,7 +146,7 @@ const distance = (first, second) => Math.hypot(first.x - second.x, first.y - sec
         await page.screenshot({ path: path.join(output, 'motion-detail.png') });
         await ui.click('map-fit');
         await ui.click('header-overview');
-        await page.screenshot({ path: path.join(output, 'world-v2.png') });
+        await page.screenshot({ path: path.join(output, 'world-v3.png') });
         await diagnostics.assertHealthy('motion, selection and follow');
         report.errors = diagnostics.errors;
         report.rendererChecks = diagnostics.rendererChecks;

@@ -25,9 +25,18 @@ public sealed partial class MainView : UserControl
     private readonly Border _rail = new();
     private readonly Border _inspector = new();
     private readonly ScrollViewer _inspectorScroll = new();
+    private readonly StackPanel _inspectorNavigation = new() { Margin = new Thickness(8, 4), Spacing = 4 };
     private readonly UniformGrid _toolChoices = new() { Columns = 8, Rows = 1 };
     private readonly Border _toolBar = new();
     private readonly Border _timeStatus = new();
+    private readonly ComboBox _brushPicker = new() { Width = 100, MinHeight = 36, FontSize = 11 };
+    private readonly ComboBox _buildMode = new() { Width = 132, MinHeight = 36, FontSize = 11, ItemsSource = new[] { "直接赐予", "居民施工" }, SelectedIndex = 0 };
+    private readonly TextBlock _eventText = Text("选择一个文明，观察它的发展", 11, Mint);
+    private readonly TextBlock _placementText = Text("", 12);
+    private readonly Border _placementBar = new();
+    private bool _toolsOpen;
+    private int _focusedEventId;
+    private readonly Stack<(string Mode, int Nation, int Resident, int Town, (int X, int Y)? Tile, int Event, Vector Scroll)> _navigation = new();
     private readonly ComboBox _toolContext = new() { Width = 112, MinHeight = 36, FontSize = 10 };
     private bool _updatingToolContext;
     private int _terrainPage;
@@ -44,8 +53,8 @@ public sealed partial class MainView : UserControl
     private readonly TextBlock _date = Text("", 13);
     private readonly TextBlock _population = Text("", 13, Mint);
     private readonly TextBlock _status = Text("正在唤醒世界…", 11, Muted);
-    private readonly TextBlock _version = Text("众生纪元 · v0.2", 10, Muted);
-    private readonly TextBlock _simulationStatus = Text("● 世界正在演化", 11, Mint);
+    private readonly TextBlock _version = Text("众生纪元 · v0.3", 10, Muted);
+    private readonly TextBlock _simulationStatus = Text("世界正在演化", 11, Mint);
     private readonly Button _play;
     private TextBlock? _modalFeedback;
     private bool _modalHasPrimary;
@@ -77,11 +86,11 @@ public sealed partial class MainView : UserControl
         _map.Engine = _engine;
         _map.WorldEditing += (_, _) => BeginEdit();
         _map.WorldEdited += (_, _) => { RefreshUi(true); SetStatus("世界已更新 · 暂停中，可撤销本轮编辑"); };
-        _map.TileSelected += (x, y) => { _selectedTile = (x, y); OpenInspector("tile"); };
+        _map.TileSelected += (x, y) => { if (_mapPick is not null) FinishMapPick(x, y); else { _selectedTile = (x, y); OpenInspector("tile"); } };
         _map.ResidentSelected += id => OpenResident(id);
         _map.ToolError += message => SetStatus("工具未应用：" + message);
 
-        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Margin = new Thickness(18, 0) };
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Margin = new Thickness(8, 0) };
         var brand = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
         var logo = new Grid { Width = 28, Height = 28, ColumnDefinitions = new ColumnDefinitions("*,*"), RowDefinitions = new RowDefinitions("*,*") };
         var colors = new[] { "#B8E9BC", "#E4C889", "#558F88", "#88BBA0" };
@@ -91,50 +100,42 @@ public sealed partial class MainView : UserControl
         brandText.Children.Add(_brandName);
         brandText.Children.Add(_brandCaption);
         brand.Children.Add(brandText); header.Children.Add(brand);
-        var stats = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 22, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        var stats = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
         stats.Children.Add(_date); stats.Children.Add(_population); _headerStats = stats;
         Grid.SetColumn(stats, 1); header.Children.Add(stats);
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 7, VerticalAlignment = VerticalAlignment.Center };
         actions.Children.Add(Button("新世界", ShowNewWorld, "创建一片新的大陆"));
         actions.Children.Add(Button("存档", ShowStorage, "保存、导出或导入世界"));
-        actions.Children.Add(Button("概览", () => { _mobilePanel = !_mobilePanel; _inspectorMode = "overview"; ApplyLayout(); RefreshInspector(true); }));
+        actions.Children.Add(Button("概览", () => { if (_mobilePanel) CloseInspector(); else OpenInspector("overview"); }));
+        actions.Children.Add(Named(Button("规则", ShowRules), "header-rules"));
         Grid.SetColumn(actions, 2); header.Children.Add(actions);
 
-        _body.ColumnDefinitions = new ColumnDefinitions("76,*,340");
-        var railItems = new StackPanel { Spacing = 14, Margin = new Thickness(9, 22, 9, 10) };
-        railItems.Children.Add(Text("造 物", 10, Muted));
-        foreach (var (label, category) in new[] { ("山海", "terrain"), ("众生", "life"), ("天灾", "disaster"), ("建设", "build"), ("观察", "inspect"), ("规则", "rules") })
-            railItems.Children.Add(Button(label, () => SetCategory(category), minWidth: 54));
-        railItems.Children.Add(new Border { Height = 1, Background = Line, Margin = new Thickness(4, 3) });
-        railItems.Children.Add(Button("国界", () => { _map.ShowBorders = !_map.ShowBorders; _map.RefreshWorld(); SetStatus(_map.ShowBorders ? "已显示国界" : "已隐藏国界"); }));
-        railItems.Children.Add(Button("历史", () => { _inspectorMode = "history"; _mobilePanel = true; ApplyLayout(); RefreshInspector(true); }));
-        railItems.Children.Add(Button("撤销", RestoreCheckpoint, "恢复本轮暂停编辑前的世界"));
-        _rail.Child = railItems; _rail.Background = Ink; _rail.BorderBrush = Line; _rail.BorderThickness = new Thickness(0, 0, 1, 0);
-        _body.Children.Add(_rail);
-
+        _body.ColumnDefinitions = new ColumnDefinitions("0,*,0");
         var mapLayer = new Grid { ClipToBounds = true, Background = Brush.Parse("#122D3D") };
         mapLayer.Children.Add(_map);
-        var titleStack = new StackPanel { Spacing = 5 };
-        titleStack.Children.Add(Text("你的世界  /  WORLD 01", 10, Mint)); titleStack.Children.Add(_worldTitle); titleStack.Children.Add(_worldSubtitle);
-        var worldCard = new Border { Child = titleStack, Padding = new Thickness(17, 13), Background = Brush.Parse("#E3162834"), CornerRadius = new CornerRadius(10), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(18), IsHitTestVisible = false };
-        mapLayer.Children.Add(worldCard);
-        var camera = new StackPanel { Spacing = 5, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(18) };
-        camera.Children.Add(Button("+", () => _map.ZoomIn(), "放大地图", 38));
-        camera.Children.Add(Button("-", () => _map.ZoomOut(), "缩小地图", 38));
-        camera.Children.Add(Button("全图", () => _map.FitWorld(), "显示整个世界", 38));
+        var camera = new StackPanel { Spacing = 3, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(6) };
+        camera.Children.Add(IconButton("plus", () => _map.ZoomIn(), "放大地图", "map-zoom-in"));
+        camera.Children.Add(IconButton("minus", () => _map.ZoomOut(), "缩小地图", "map-zoom-out"));
+        camera.Children.Add(Named(Button("全图", () => _map.FitWorld(), "显示整个世界", 40), "map-fit"));
         mapLayer.Children.Add(camera);
-
-        var bottom = new StackPanel { Spacing = 10, VerticalAlignment = VerticalAlignment.Bottom, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(12, 10) };
-        var toolsPanel = new StackPanel { Spacing = 10 };
-        var categories = new UniformGrid { Columns = 6, Rows = 1 };
-        foreach (var (label, category) in new[] { ("山海", "terrain"), ("众生", "life"), ("天灾", "disaster"), ("建设", "build"), ("观察", "inspect"), ("规则", "rules") })
+        var bottom = new StackPanel { Spacing = 4, VerticalAlignment = VerticalAlignment.Bottom, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(6, 4) };
+        var toolsPanel = new StackPanel { Spacing = 4 };
+        var categories = new UniformGrid { Columns = 4, Rows = 1 };
+        foreach (var (label, category) in new[] { ("山海", "terrain"), ("众生", "life"), ("天灾", "disaster"), ("建设", "build") })
         {
             var categoryButton = Named(Button(label, () => SetCategory(category)), "tool-category-" + category);
             categoryButton.Tag = category; categoryButton.Padding = new Thickness(3, 7); categoryButton.Margin = new Thickness(2, 0);
             _categoryButtons.Add(categoryButton); categories.Children.Add(categoryButton);
         }
-        var brush = Named(new ComboBox { Width = 86, MinHeight = 36, ItemsSource = new[] { "小笔刷", "中笔刷", "大笔刷" }, SelectedIndex = 0, FontSize = 11 }, "brush-size");
-        brush.SelectionChanged += (_, _) => _map.BrushRadius = brush.SelectedIndex switch { 1 => 5, 2 => 10, _ => 2 };
+        Named(_brushPicker, "brush-size");
+        _brushPicker.SelectionChanged += (_, _) =>
+        {
+            var index = Math.Max(0, _brushPicker.SelectedIndex);
+            if (_category == "life") _map.SpawnCount = new[] { 1, 12, 36 }[index];
+            else if (_category == "disaster") _map.DisasterRadius = new[] { 2, 5, 10 }[index];
+            else _map.BrushRadius = new[] { 2, 5, 10 }[index];
+        };
+        Named(_buildMode, "build-mode"); _buildMode.SelectionChanged += (_, _) => _map.GiftBuildings = _buildMode.SelectedIndex == 0;
         toolsPanel.Children.Add(categories);
         for (var i = 0; i < 8; i++)
         {
@@ -142,7 +143,7 @@ public sealed partial class MainView : UserControl
             var swatch = new Border { Width = 22, Height = 15, CornerRadius = new CornerRadius(3), HorizontalAlignment = HorizontalAlignment.Center };
             var label = Text("—", 10); label.HorizontalAlignment = HorizontalAlignment.Center;
             var content = new StackPanel { Spacing = 3 }; content.Children.Add(swatch); content.Children.Add(label);
-            var button = Named(new Button { Content = content, HorizontalAlignment = HorizontalAlignment.Stretch, Height = 56, Padding = new Thickness(3, 5), Margin = new Thickness(2), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), HorizontalContentAlignment = HorizontalAlignment.Center }, $"tool-slot-{i}");
+            var button = Named(new Button { Content = content, HorizontalAlignment = HorizontalAlignment.Stretch, Height = 44, Padding = new Thickness(3, 3), Margin = new Thickness(2), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(6), HorizontalContentAlignment = HorizontalAlignment.Center }, $"tool-slot-{i}");
             button.Click += (_, _) => { if (_slotTools[slot] is { } tool) SelectTool(tool); };
             _toolSlots[i] = button; _toolSwatches[i] = swatch; _toolLabels[i] = label; _toolChoices.Children.Add(button);
         }
@@ -150,17 +151,33 @@ public sealed partial class MainView : UserControl
         var settings = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = 5, Height = 36 };
         Named(_toolContext, "tool-context"); _toolContext.SelectionChanged += (_, _) => OnToolContextChanged();
         var hint = new StackPanel { Spacing = 2 }; hint.Children.Add(_toolTitle); hint.Children.Add(_toolHint); settings.Children.Add(hint);
-        Grid.SetColumn(_toolContext, 1); settings.Children.Add(_toolContext); Grid.SetColumn(brush, 2); settings.Children.Add(brush); toolsPanel.Children.Add(settings);
+        Grid.SetColumn(_toolContext, 1); settings.Children.Add(_toolContext); Grid.SetColumn(_brushPicker, 2); settings.Children.Add(_brushPicker); Grid.SetColumn(_buildMode, 2); settings.Children.Add(_buildMode); toolsPanel.Children.Add(settings);
         var toolBox = _toolBar;
         toolBox.Child = toolsPanel; toolBox.Background = Brush.Parse("#F0172632"); toolBox.BorderBrush = Line; toolBox.BorderThickness = new Thickness(1);
-        toolBox.CornerRadius = new CornerRadius(12); toolBox.Padding = new Thickness(10); toolBox.Width = 650;
+        toolBox.CornerRadius = new CornerRadius(12); toolBox.Padding = new Thickness(6); toolBox.Width = 650;
         bottom.Children.Add(toolBox);
-        var timeControls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 7, HorizontalAlignment = HorizontalAlignment.Center };
-        _play = Named(Button("暂停", TogglePause, "空格：暂停或继续", 88), "time-toggle"); _play.Background = Mint; _play.Foreground = Ink; _play.Width = 88;
+        var placement = new StackPanel { Spacing = 4 };
+        _placementText.TextWrapping = TextWrapping.Wrap; placement.Children.Add(_placementText);
+        var placementActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        placementActions.Children.Add(Named(Button("确认放置", () => _map.ConfirmPlacement()), "placement-confirm"));
+        placementActions.Children.Add(Named(Button("取消", () => _map.CancelPlacement()), "placement-cancel"));
+        placement.Children.Add(placementActions);
+        _placementBar.Child = placement; _placementBar.Background = Panel; _placementBar.Padding = new Thickness(8); _placementBar.IsVisible = false;
+        bottom.Children.Add(_placementBar);
+        _map.PlacementChanged += message => { _placementText.Text = message; _placementBar.IsVisible = message.Length > 0; placementActions.IsVisible = _map.HasPendingPlacement; };
+        var eventButton = Named(new Button { Content = _eventText, Padding = new Thickness(8, 3), MinHeight = 28,
+            HorizontalAlignment = HorizontalAlignment.Stretch, Background = Panel }, "event-spotlight");
+        _eventText.TextTrimming = TextTrimming.CharacterEllipsis;
+        eventButton.Click += (_, _) => { if (_engine.State.Events.FirstOrDefault(e => e.Id == _focusedEventId) is { } entry) FocusEvent(entry); else OpenInspector("overview"); };
+        bottom.Children.Add(eventButton);
+        var timeControls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center };
+        timeControls.Children.Add(Named(Button("工具", ToggleTools, "展开或收起地图工具", 48), "tools-toggle"));
+        timeControls.Children.Add(Named(Button("漫游", SuspendTool, "停用当前工具并移动地图", 48), "tool-suspend"));
+        _play = Named(Button("暂停", TogglePause, "空格：暂停或继续", 64), "time-toggle"); _play.Background = Mint; _play.Foreground = Ink; _play.Width = 64;
         timeControls.Children.Add(_play);
         foreach (var speed in new[] { 1, 2, 5 })
         {
-            var b = Named(Button($"{speed}×", () => { _speed = speed; _map.SimulationTickDurationSeconds = .2 / speed; UpdateSpeedButtons(); }, minWidth: 42), $"time-speed-{speed}"); b.Width = 42;
+            var b = Named(Button($"{speed}倍", () => { _speed = speed; _map.SimulationTickDurationSeconds = .2 / speed; UpdateSpeedButtons(); }, minWidth: 42), $"time-speed-{speed}"); b.Width = 42; b.Padding = new Thickness(3, 7);
             _speeds.Add((speed, b)); timeControls.Children.Add(b);
         }
         _timeStatus.Child = _simulationStatus; _timeStatus.Width = 170; _timeStatus.Padding = new Thickness(10, 8); _timeStatus.Background = Brush.Parse("#E3172632"); _timeStatus.CornerRadius = new CornerRadius(7); _timeStatus.VerticalAlignment = VerticalAlignment.Center;
@@ -170,12 +187,14 @@ public sealed partial class MainView : UserControl
 
         Named(_inspectorScroll, "inspector-scroll");
         _inspectorScroll.HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled;
-        _inspector.Child = _inspectorScroll; _inspector.Background = Panel; _inspector.BorderBrush = Line; _inspector.BorderThickness = new Thickness(1, 0, 0, 0);
+        var inspectorLayout = new DockPanel(); DockPanel.SetDock(_inspectorNavigation, Dock.Top);
+        inspectorLayout.Children.Add(_inspectorNavigation); inspectorLayout.Children.Add(_inspectorScroll);
+        _inspector.Child = inspectorLayout; _inspector.Background = Panel; _inspector.BorderBrush = Line; _inspector.BorderThickness = new Thickness(1, 0, 0, 0);
         Grid.SetColumn(_inspector, 2); _body.Children.Add(_inspector);
-        var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(16, 0) };
+        var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(8, 0) };
         _status.VerticalAlignment = VerticalAlignment.Center; _status.TextTrimming = TextTrimming.CharacterEllipsis; footer.Children.Add(_status);
         _version.VerticalAlignment = VerticalAlignment.Center; Grid.SetColumn(_version, 1); footer.Children.Add(_version);
-        var shell = new Grid { RowDefinitions = new RowDefinitions("68,*,30") };
+        var shell = new Grid { RowDefinitions = new RowDefinitions("48,*,22") };
         shell.Children.Add(new Border { Child = header, BorderBrush = Line, BorderThickness = new Thickness(0, 0, 0, 1) });
         Grid.SetRow(_body, 1); shell.Children.Add(_body); Grid.SetRow(footer, 2); shell.Children.Add(footer);
         _shell = shell; shell.IsEnabled = false;
@@ -186,7 +205,7 @@ public sealed partial class MainView : UserControl
         _timer.Tick += OnTick;
         AttachedToVisualTree += async (_, _) => { await (_initialization ??= InitializeAsync()); _previousTime = _clock.Elapsed.TotalSeconds; _timer.Start(); };
         DetachedFromVisualTree += (_, _) => _timer.Stop();
-        SetCategory("inspect"); UpdateSpeedButtons(); RefreshUi(true);
+        SetCategory("terrain"); _toolsOpen = false; ApplyLayout(); UpdateSpeedButtons(); RefreshUi(true);
     }
 
     private async Task InitializeAsync()
@@ -227,7 +246,7 @@ public sealed partial class MainView : UserControl
                 if (work.Elapsed.TotalMilliseconds > 12) break;
             }
             if (count > 0) _map.RefreshWorld();
-            _simulationStatus.Text = _accumulator > .4 ? "● 设备限速 · 世界继续" : "● 世界正在演化";
+            _simulationStatus.Text = _accumulator > .4 ? "设备限速 · 世界继续" : "世界正在演化";
         }
         else _accumulator = 0;
         if (now - _lastUi > .7) { _lastUi = now; RefreshUi(); }
@@ -261,22 +280,24 @@ public sealed partial class MainView : UserControl
     private void ApplyLayout()
     {
         _isCompact = Bounds.Width < 980;
-        _brandName.Text = Bounds.Width < 600 ? "WORLDBOX" : "SeWZC. WORLDBOX";
-        _brandCaption.IsVisible = Bounds.Width >= 600;
+        _brandName.Text = Bounds.Width < 600 ? "众生纪" : "WORLDBOX";
+        _brandName.FontSize = Bounds.Width < 600 ? 11 : 15;
+        _brandCaption.IsVisible = false;
         _version.IsVisible = Bounds.Width >= 600;
         _headerStats.IsVisible = Bounds.Width >= 760;
-        _rail.IsVisible = !_isCompact;
-        _body.ColumnDefinitions = new ColumnDefinitions(_isCompact ? "0,*,0" : "76,*,340");
-        _inspector.IsVisible = !_isCompact || _mobilePanel;
+        _rail.IsVisible = false;
+        _body.ColumnDefinitions = new ColumnDefinitions(_mobilePanel && !_isCompact ? "0,*,320" : "0,*,0");
+        _inspector.IsVisible = _mobilePanel;
         Grid.SetColumn(_inspector, _isCompact ? 1 : 2);
-        _inspector.Width = _isCompact ? Math.Max(280, Bounds.Width - 24) : double.NaN;
-        _inspector.MaxHeight = _isCompact ? Math.Max(220, _body.Bounds.Height * .56) : double.PositiveInfinity;
-        _inspector.VerticalAlignment = _isCompact ? VerticalAlignment.Top : VerticalAlignment.Stretch;
-        _inspector.Margin = _isCompact ? new Thickness(12, 8, 12, 0) : new Thickness(0);
-        _inspector.HorizontalAlignment = _isCompact ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
-        _inspector.ZIndex = _isCompact ? 20 : 0;
+        _inspector.Width = _isCompact ? Math.Max(280, Bounds.Width - 12) : double.NaN;
+        _inspector.MaxHeight = _isCompact ? Math.Max(140, _body.Bounds.Height * .65) : double.PositiveInfinity;
+        _inspector.VerticalAlignment = _isCompact ? VerticalAlignment.Bottom : VerticalAlignment.Stretch;
+        _inspector.Margin = _isCompact ? new Thickness(6, 6, 6, 80) : new Thickness(0);
+        _inspector.HorizontalAlignment = HorizontalAlignment.Right;
+        _inspector.ZIndex = 20;
+        _toolBar.IsVisible = _toolsOpen;
         _toolHint.IsVisible = Bounds.Width > 600;
-        _timeStatus.IsVisible = Bounds.Width > 600;
+        _timeStatus.IsVisible = Bounds.Width > 760;
         UpdateToolBarSize(); UpdateModalBounds();
     }
 
@@ -284,9 +305,11 @@ public sealed partial class MainView : UserControl
     {
         var compact = Bounds.Width < 700;
         _toolChoices.Columns = compact ? 4 : 8; _toolChoices.Rows = compact ? 2 : 1;
-        _toolBar.Width = Math.Max(280, Math.Min(650, _map.Bounds.Width - 24));
-        _toolContext.Width = compact ? 94 : 112;
-        _toolTitle.FontSize = compact ? 10 : 13;
+        _toolBar.Width = Math.Max(280, Math.Min(650, _map.Bounds.Width - 12));
+        _placementBar.MaxWidth = Math.Max(280, Math.Min(650, _map.Bounds.Width - 12));
+        _eventText.MaxWidth = Math.Max(240, Math.Min(620, _map.Bounds.Width - 32));
+        _toolContext.Width = compact ? 108 : 132;
+        _toolTitle.FontSize = compact ? 11 : 13;
     }
 
     private void RefreshUi(bool force = false)
@@ -296,7 +319,11 @@ public sealed partial class MainView : UserControl
         _population.Text = $"{state.Population:N0} 位居民  /  {state.Nations.Count} 个国家";
         _worldSubtitle.Text = $"{state.Width} × {state.Height}  ·  种子 {state.Seed}  ·  古代纪元";
         _play.Content = _paused ? "继续" : "暂停";
-        if (_paused) _simulationStatus.Text = "● 时间已暂停";
+        if (_paused) _simulationStatus.Text = "时间已暂停";
+        var spotlight = _engine.State.Events.LastOrDefault(e => e.Importance >= EventImportance.Notable && e.Kind is not (WorldEventKind.Editor or WorldEventKind.Policy or WorldEventKind.Magic or WorldEventKind.Culture)
+            && (_followNationId == 0 || e.NationId == _followNationId || e.SecondNationId == _followNationId));
+        _focusedEventId = spotlight?.Id ?? 0;
+        _eventText.Text = spotlight is null ? "选择一个文明，关注它的发展" : $"{DateLabel(spotlight.Tick)} · {spotlight.Message}";
         RefreshInspector(force);
     }
 
@@ -354,13 +381,14 @@ public sealed partial class MainView : UserControl
     {
         var panel = ModalPanel("让一个新世界诞生", "相同的种子生成相同的山海。当前世界会暂存为本次会话的恢复点。");
         panel.Children.Add(Text("世界种子", 12, Muted));
-        var seed = Named(new TextBox { Text = Random.Shared.Next(10000, 99999).ToString(), PlaceholderText = "输入整数种子" }, "world-seed"); panel.Children.Add(seed);
+        var seed = Named(new NumericUpDown { Minimum = int.MinValue, Maximum = int.MaxValue, Increment = 1, Value = Random.Shared.Next(10000, 99999), FormatString = "0" }, "world-seed"); panel.Children.Add(seed);
         panel.Children.Add(Text("世界大小", 12, Muted));
         var size = Named(new ComboBox { ItemsSource = new[] { "128 × 128 · 小型世界", "256 × 256 · 中型世界" }, SelectedIndex = 1, HorizontalAlignment = HorizontalAlignment.Stretch }, "world-size"); panel.Children.Add(size);
         var life = Named(new CheckBox { Content = Text("播下四个种族，立即开始观察", 12), IsChecked = true }, "world-initial-life"); panel.Children.Add(life);
         var create = Button("创造世界", () =>
         {
-            if (!int.TryParse(seed.Text, out var seedValue)) { SetStatus("种子应为一个有效整数"); return; }
+            if (seed.Value is not { } seedNumber || seedNumber != decimal.Truncate(seedNumber)) { SetStatus("种子应为一个有效整数"); return; }
+            var seedValue = Integer(seed);
             var dimension = size.SelectedIndex == 0 ? 128 : 256;
             ReplaceWorld(WorldEngine.Create(seedValue, dimension, dimension, life.IsChecked == true));
             _inspectorMode = "overview"; CloseModal(); SetStatus("新世界已诞生 · 点击继续，让时间开始流动");
@@ -370,7 +398,7 @@ public sealed partial class MainView : UserControl
     {
         _checkpoint = _engine.ExportJson(); _engine = engine; _paused = true; _accumulator = 0; _selectedTile = null; _selectedNationId = 0;
         _allowAutosave = true;
-        _inspectorMode = "overview"; _selectedResidentId = 0; InvalidateInspector();
+        _inspectorMode = "overview"; _selectedResidentId = 0; _navigation.Clear(); _followNationId = 0; _eventDetailId = 0; InvalidateInspector();
         _map.Engine = engine; _map.IsSimulationPaused = true; _map.RefreshWorld(true); UpdateToolContext(); RefreshUi(true);
     }
 
@@ -393,9 +421,9 @@ public sealed partial class MainView : UserControl
         panel.Children.Add(palette);
         panel.Children.Add(Text("古代发展水平 · 影响生产效率", 12, Muted));
         var technology = Named(new ComboBox { ItemsSource = new[] { "1 · 部落", "2 · 定居", "3 · 农业", "4 · 冶炼", "5 · 城邦" }, SelectedIndex = Math.Clamp(nation.Technology - 1, 0, 4), HorizontalAlignment = HorizontalAlignment.Stretch }, "nation-technology"); panel.Children.Add(technology);
-        var fields = new List<TextBox>();
+        var fields = new List<NumericUpDown>();
         foreach (var (label, value) in new[] { ("粮食", nation.Resources.Food), ("木材", nation.Resources.Wood), ("石材", nation.Resources.Stone), ("矿产", nation.Resources.Ore) })
-        { var row = new Grid { ColumnDefinitions = new ColumnDefinitions("70,*") }; row.Children.Add(Text(label, 12, Muted)); var input = Named(new TextBox { Text = Math.Round(value).ToString(System.Globalization.CultureInfo.InvariantCulture) }, "nation-" + (label switch { "粮食" => "food", "木材" => "wood", "石材" => "stone", _ => "ore" })); Grid.SetColumn(input, 1); row.Children.Add(input); fields.Add(input); panel.Children.Add(row); }
+        { var input = Field(panel, label, Math.Round(value), "nation-" + (label switch { "粮食" => "food", "木材" => "wood", "石材" => "stone", _ => "ore" })); input.Maximum = 1_000_000; fields.Add(input); }
         var others = _engine.State.Nations.Where(n => n.Id != nationId).ToList();
         var other = Named(new ComboBox { ItemsSource = others.Select(n => n.Name).ToArray(), SelectedIndex = others.Count > 0 ? 0 : -1, HorizontalAlignment = HorizontalAlignment.Stretch }, "nation-diplomacy-target");
         var diplomacy = Named(new ComboBox { ItemsSource = new[] { "保持现有关系", "和平", "结盟", "宣战" }, SelectedIndex = 0, HorizontalAlignment = HorizontalAlignment.Stretch }, "nation-diplomacy");
@@ -404,7 +432,7 @@ public sealed partial class MainView : UserControl
         {
             var values = new double[4];
             if (string.IsNullOrWhiteSpace(name.Text) || name.Text.Any(char.IsControl)) { SetStatus("请输入不含控制字符的国家名称"); return; }
-            for (var i = 0; i < fields.Count; i++) if (!double.TryParse(fields[i].Text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out values[i]) || !double.IsFinite(values[i]) || values[i] < 0 || values[i] > 1000000) { SetStatus("资源必须是 0 到 1,000,000 之间的数值"); return; }
+            for (var i = 0; i < fields.Count; i++) { if (fields[i].Value is null) { SetStatus("请填写资源数量"); return; } values[i] = Number(fields[i]); }
             BeginEdit(); _engine.RenameNation(nationId, name.Text.Trim()); _engine.SetNationResources(nationId, values[0], values[1], values[2], values[3]);
             _engine.SetNationColor(nationId, color); _engine.SetNationTechnology(nationId, technology.SelectedIndex + 1);
             if (diplomacy.SelectedIndex > 0 && other.SelectedIndex >= 0) _engine.SetDiplomacy(nationId, others[other.SelectedIndex].Id, diplomacy.SelectedIndex switch { 2 => DiplomaticStatus.Allied, 3 => DiplomaticStatus.War, _ => DiplomaticStatus.Neutral });
@@ -414,7 +442,7 @@ public sealed partial class MainView : UserControl
         panel.Children.Add(Button("绘制这个国家的领土", () =>
         {
             CloseModal(); BeginEdit(); _map.SelectedNationId = nationId; _map.ActiveTool = "territory";
-            SetCategory("inspect"); _map.SelectedNationId = nationId; _map.ActiveTool = "territory";
+            SetCategory("terrain"); _map.SelectedNationId = nationId; _map.ActiveTool = "territory";
             _toolTitle.Text = "划定疆域"; _toolHint.Text = "绘制陆地归属，覆盖聚落会一并转移";
             _mobilePanel = false; ApplyLayout(); SetStatus("领土编辑中 · 覆盖聚落会转移其居民与库存，支持撤销");
         }));
@@ -448,9 +476,9 @@ public sealed partial class MainView : UserControl
 
     private StackPanel ModalPanel(string title, string description)
     {
-        var panel = new StackPanel { Spacing = 14, MaxWidth = 420 };
+        var panel = new StackPanel { Spacing = 8, MaxWidth = 460 };
         var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; header.Children.Add(Text(title, 21, null, true));
-        var close = Named(Button("×", CloseModal, minWidth: 30), "modal-close"); Grid.SetColumn(close, 1); header.Children.Add(close); panel.Children.Add(header);
+        var close = IconButton("close", CloseModal, "关闭窗口", "modal-close"); Grid.SetColumn(close, 1); header.Children.Add(close); panel.Children.Add(header);
         panel.Children.Add(Paragraph(description)); return panel;
     }
     private void OpenModal(Control content)
@@ -476,7 +504,7 @@ public sealed partial class MainView : UserControl
         if (!hasPrimary) { Grid.SetRow(_modalFeedback, 2); layout.Children.Add(_modalFeedback); }
         var scroll = Named(new ScrollViewer { Content = content, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled }, "modal-scroll");
         Grid.SetRow(scroll, 1); layout.Children.Add(scroll);
-        _modal.Child = new Border { Background = Panel, CornerRadius = new CornerRadius(16), BorderBrush = Line, BorderThickness = new Thickness(1), Padding = new Thickness(20), Margin = new Thickness(14), Width = Math.Min(520, Math.Max(280, Bounds.Width - 28)), Height = hasPrimary ? Math.Min(760, Math.Max(220, Bounds.Height - 28)) : double.NaN, MaxHeight = Math.Max(220, Bounds.Height - 28), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Child = layout };
+        _modal.Child = new Border { Background = Panel, CornerRadius = new CornerRadius(8), BorderBrush = Line, BorderThickness = new Thickness(1), Padding = new Thickness(12), Margin = new Thickness(14), Width = Math.Min(520, Math.Max(280, Bounds.Width - 28)), Height = hasPrimary ? Math.Min(760, Math.Max(220, Bounds.Height - 28)) : double.NaN, MaxHeight = Math.Max(220, Bounds.Height - 28), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Child = layout };
         _modalHasPrimary = hasPrimary; UpdateModalBounds();
         _modal.IsVisible = true; _map.IsSimulationPaused = true;
     }
@@ -491,13 +519,21 @@ public sealed partial class MainView : UserControl
     private void CloseModal() { _modalGeneration++; _modal.IsVisible = false; _modal.Child = null; _map.IsSimulationPaused = _paused; Focus(); }
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Key == Key.Escape) { CloseModal(); _mobilePanel = false; ApplyLayout(); e.Handled = true; }
+        if (e.Key == Key.Escape)
+        {
+            if (_mapPick is not null) FinishMapPick();
+            else if (_map.HasPendingPlacement) _map.CancelPlacement();
+            else if (_modal.IsVisible) CloseModal();
+            else if (_mobilePanel) CloseInspector();
+            else SuspendTool();
+            e.Handled = true;
+        }
         if (e.Key == Key.Space && !_modal.IsVisible && e.Source is not TextBox) { TogglePause(); e.Handled = true; }
     }
     private void SetStatus(string text) { _status.Text = text; if (_modal.IsVisible && _modalFeedback is not null) _modalFeedback.Text = text; }
     private static string FriendlyError(Exception ex) => ex.Message.Length > 160 ? ex.Message[..160] : ex.Message;
     private static TextBlock Text(string text, double size = 13, IBrush? color = null, bool bold = false) => new() { Text = text, FontSize = size, Foreground = color ?? Brush.Parse("#E9EFEB"), FontWeight = bold ? FontWeight.SemiBold : FontWeight.Normal, VerticalAlignment = VerticalAlignment.Center };
-    private static TextBlock Paragraph(string text) => new() { Text = text, FontSize = 12, Foreground = Muted, TextWrapping = TextWrapping.Wrap, LineHeight = 21 };
+    private static TextBlock Paragraph(string text) => new() { Text = text, FontSize = 12, Foreground = Muted, TextWrapping = TextWrapping.Wrap, LineHeight = 18 };
     private static Button Button(string label, Action action, string? tooltip = null, double minWidth = 0)
     {
         var button = new Button { Content = label, MinWidth = minWidth, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Stretch };
@@ -512,7 +548,7 @@ public sealed partial class MainView : UserControl
     }
     private static T Named<T>(T control, string id) where T : Control
     { control.Name = id.Replace('-', '_'); AutomationProperties.SetAutomationId(control, id); return control; }
-    private static Border Card(Control child) => new() { Child = child, Background = Ink, CornerRadius = new CornerRadius(9), Padding = new Thickness(12) };
+    private static Border Card(Control child) => new() { Child = child, Background = Ink, CornerRadius = new CornerRadius(9), Padding = new Thickness(8) };
     private static Border StatCard(string label, string value, string hint)
     {
         var stack = new StackPanel { Spacing = 6 }; stack.Children.Add(Text(label, 10, Muted)); stack.Children.Add(Text(value, 28, Mint, true)); stack.Children.Add(Text(hint, 9, Muted)); return Card(stack);

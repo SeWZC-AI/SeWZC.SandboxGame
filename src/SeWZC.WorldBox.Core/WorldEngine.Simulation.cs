@@ -16,6 +16,8 @@ public sealed partial class WorldEngine
             UpdateAgentNeedsAndActions();
             UpdateLocalCommunication();
             TickSociety();
+            TickDiplomacy();
+            TickMigrationAndSecession();
             Reindex();
             if (State.Tick % 12 == 0) GrowSettlements();
             if (State.Tick % 30 == 0) RefreshTerritoryClaims();
@@ -41,16 +43,16 @@ public sealed partial class WorldEngine
         var deaths = 0;
         foreach (var person in State.Residents)
         {
-            person.Age += 1d / 120;
+            if (State.Rules.Aging) person.Age += 1d / 120;
             if (person.Profession == Profession.Child && person.Age >= 14) person.Profession = AssignProfession();
             var maxAge = person.Race switch { RaceKind.Elf => 180, RaceKind.Dwarf => 120, RaceKind.Orc => 70, _ => 90 };
-            if (person.Age > maxAge) person.Health -= 0.5;
-            if (person.Hunger > 60) person.Health -= 0.55;
+            if (State.Rules.Aging && person.Age > maxAge) person.Health -= 0.5;
+            if (State.Rules.Hunger && person.Hunger > 60) person.Health -= 0.55;
             else if (person.SicknessTicks == 0 && person.Age <= maxAge) person.Health = Math.Min(100, person.Health + 0.15);
             var tile = State.Tiles[Index(person.X, person.Y)];
             if (tile.FireTicks > 0) person.Health -= 4;
-            if (person.SicknessTicks > 0) { person.SicknessTicks--; person.Health -= 0.5; }
-            else if (infected.Contains(Index(person.X, person.Y)) && RandomInt(100) < 3) person.SicknessTicks = 45;
+            if (person.SicknessTicks > 0) { person.SicknessTicks--; if (State.Rules.Disease) person.Health -= 0.5; }
+            else if (State.Rules.Disease && infected.Contains(Index(person.X, person.Y)) && RandomInt(100) < 3) person.SicknessTicks = 45;
             if (person.Health <= 0) { deaths++; continue; }
             if (person.SicknessTicks > 0) person.Activity = ResidentActivity.Sick;
         }
@@ -69,7 +71,7 @@ public sealed partial class WorldEngine
                 town.Level = Math.Min(5, 1 + town.Housing / 70);
             }
             var adults = citizens.Where(p => p.Age >= 18 && p.Age < (p.Race == RaceKind.Elf ? 100 : 55) && p.Hunger < 30 && p.SicknessTicks == 0).ToArray();
-            if (adults.Length >= 6 && citizens.Count < town.Housing && town.Resources.Food > citizens.Count * 0.8 && State.Residents.Count < MaxPopulation)
+            if (State.Rules.Births && adults.Length >= 6 && citizens.Count < town.Housing && town.Resources.Food > citizens.Count * 0.8 && State.Residents.Count < MaxPopulation)
             {
                 var births = Math.Min(Math.Max(1, adults.Length / 28), Math.Min(town.Housing - citizens.Count, MaxPopulation - State.Residents.Count));
                 for (var b = 0; b < births; b++)
@@ -79,7 +81,7 @@ public sealed partial class WorldEngine
                 }
                 if (State.Tick % 120 == 0) AddEvent(WorldEventKind.Growth, $"{town.Name}迎来新生儿，人口增至{citizens.Count}。", town.X, town.Y);
             }
-            if (State.Tick % 120 == 0 && citizens.Count >= 90 && town.Resources.Food >= 120 && town.Resources.Wood >= 40 && State.Settlements.Count < 256)
+            if (State.Rules.Expansion && State.Tick % 120 == 0 && citizens.Count >= 60 && town.Resources.Food >= 120 && town.Resources.Wood >= 40 && State.Settlements.Count < 256)
                 ExpandSettlement(town, citizens);
         }
     }
@@ -143,10 +145,10 @@ public sealed partial class WorldEngine
         }
         foreach (var index in _dryTiles.ToArray())
             if (--State.Tiles[index].DroughtTicks <= 0) { State.Tiles[index].DroughtTicks = 0; _dryTiles.Remove(index); }
-        if (State.NaturalDisasters && State.Tick % 600 == 0 && State.Residents.Count > 0)
+        if (State.NaturalDisasters && State.Rules.DisasterFrequency > 0 && State.Tick % (1200 / State.Rules.DisasterFrequency) == 0 && State.Residents.Count > 0)
         {
             var person = State.Residents[RandomInt(State.Residents.Count)];
-            TriggerDisaster(person.X, person.Y, (DisasterKind)RandomInt(3), 5);
+            TriggerDisaster(person.X, person.Y, (DisasterKind)RandomInt(State.Rules.Disease ? 3 : 2), 2 + State.Rules.DisasterStrength * 2);
         }
     }
 

@@ -11,7 +11,10 @@ public sealed partial class MainView
 
     private void SetCategory(string category)
     {
+        if (category is "rules" or "inspect") return;
         _category = category;
+        _toolsOpen = true; _mobilePanel = false;
+        _map.ActiveTool = "pan"; _map.CancelPlacement();
         UpdateToolContext();
         var items = ToolChoices(category);
         _tools.Clear();
@@ -20,7 +23,7 @@ public sealed partial class MainView
             var choice = i < items.Length ? items[i] : null;
             _slotTools[i] = choice?.Key;
             _toolSlots[i].IsEnabled = choice is not null;
-            _toolSlots[i].Opacity = choice is null ? .24 : 1;
+            _toolSlots[i].Opacity = 1; _toolSlots[i].IsVisible = choice is not null;
             _toolLabels[i].Text = choice?.Label ?? "—";
             _toolSwatches[i].Background = Brush.Parse(choice?.Color ?? "#2A3C46");
             ToolTip.SetTip(_toolSlots[i], choice?.Label ?? "此分组没有更多工具");
@@ -30,13 +33,20 @@ public sealed partial class MainView
         (_toolTitle.Text, _toolHint.Text) = category switch
         {
             "terrain" => ("塑造山海", "绘制地形 · 编辑时自动暂停"),
-            "life" => ("播下文明", "点击陆地，投放 12 位居民"),
+            "life" => ("播下文明", "选择人数，在陆地投放居民"),
             "disaster" => ("改变命运", "点击世界，降下灾害"),
-            "build" => ("建设与交通", "设施需要归属聚落与材料"),
+            "build" => ("建设与交通", "选择归属聚落与建造方式"),
             "rules" => ("世界与文明", "查看实际规则及发展方向"),
             _ => ("见证众生", "点击居民检查 · 拖动平移 · 滚轮缩放")
         };
-        if (items.Length > 0) SelectTool(items[0].Key);
+        _brushPicker.ItemsSource = category == "life" ? new[] { "1 位居民", "12 位居民", "36 位居民" }
+            : category == "disaster" ? new[] { "范围 2 格", "范围 5 格", "范围 10 格" } : new[] { "小笔刷", "中笔刷", "大笔刷" };
+        _brushPicker.SelectedIndex = category == "life" ? 1 : 0;
+        _brushPicker.IsVisible = category is "terrain" or "life" or "disaster";
+        _buildMode.IsVisible = category == "build";
+        _toolContext.IsVisible = category is "build" or "terrain";
+        foreach (var (_, button) in _tools) { button.BorderBrush = Brushes.Transparent; button.Background = Ink; }
+        ApplyLayout();
     }
 
     private ToolChoice[] ToolChoices(string category) => category switch
@@ -46,8 +56,7 @@ public sealed partial class MainView
         "life" => [new("Human", "人类", "#DEBC85"), new("Elf", "精灵", "#90C599"), new("Dwarf", "矮人", "#BE9785"), new("Orc", "兽人", "#A9B768")],
         "disaster" => [new("Fire", "火灾", "#F0A065"), new("Drought", "干旱", "#D8C180"), new("Plague", "疫病", "#B194C7")],
         "build" => BuildToolChoices(),
-        "rules" => [new("panel:rules", "世界规则", "#B8E9BC"), new("panel:nations", "文化制度", "#DEC18C"), new("panel:infrastructure", "建设物流", "#91B0C8"), new("panel:communication", "消息网络", "#C3A7DB")],
-        _ => [new("inspect", "检查", "#B8E9BC"), new("pan", "漫游", "#7DACBA"), new("panel:residents", "居民", "#DEBC85"), new("panel:nations", "国家", "#91B0C8"), new("panel:history", "编年史", "#DEC18C"), new("toggle:borders", "国界", "#A7C195"), new("panel:infrastructure", "运输", "#91B0C8"), new("panel:communication", "通信", "#C3A7DB")]
+        _ => []
     };
 
     private void UpdateToolContext()
@@ -79,18 +88,42 @@ public sealed partial class MainView
 
     private void SelectTool(string tool)
     {
-        if (tool.StartsWith("panel:")) { _map.ActiveTool = "inspect"; OpenInspector(tool[6..]); }
-        else if (tool == "toggle:borders") { _map.ShowBorders = !_map.ShowBorders; _map.RefreshWorld(); }
-        else
-        {
-            _map.ActiveTool = tool;
-            if (_isCompact) { _mobilePanel = false; ApplyLayout(); }
-        }
+        if (_map.ActiveTool == tool) { SuspendTool(); return; }
+        _map.ActiveTool = tool;
+        _map.CancelPlacement();
+        _mobilePanel = false;
+        _toolTitle.Text = _tools.Select(t => t.Tool).Contains(tool)
+            ? ToolChoices(_category).First(t => t.Key == tool).Label + " · 已启用" : "地图工具已启用";
         foreach (var (key, button) in _tools)
         {
             button.BorderBrush = key == tool ? Mint : Brushes.Transparent;
             button.Background = key == tool ? Brush.Parse("#2C423F") : Ink;
         }
+        ApplyLayout();
+        SetStatus("工具已启用 · 再点一次停用 · 触屏拖动 / 右键漫游");
+    }
+
+    private void ToggleTools()
+    {
+        if (_toolsOpen) { SuspendTool(); _toolsOpen = false; }
+        else { _toolsOpen = true; _mobilePanel = false; }
+        ApplyLayout();
+    }
+
+    private void SuspendTool()
+    {
+        _map.CancelPlacement(); _map.ActiveTool = "pan";
+        _toolTitle.Text = "漫游 · 点选查看";
+        foreach (var (_, button) in _tools) { button.BorderBrush = Brushes.Transparent; button.Background = Ink; }
+        SetStatus("漫游中 · 拖动地图，轻点查看对象");
+    }
+
+    private void CloseInspector() { _mobilePanel = false; ApplyLayout(); }
+
+    private void ShowRules()
+    {
+        var panel = ModalPanel("世界规则", "规则会随世界保存。关闭自主行为停止新的选择，已有项目与成果保留。");
+        BuildWorldRules(panel); OpenModal(panel);
     }
 
     private void RunEdit(Action command, string message)

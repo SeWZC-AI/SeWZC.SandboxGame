@@ -123,9 +123,12 @@ public sealed partial class WorldMapControl
         {
             if (_lastPaint is null) WorldEditing?.Invoke(this, EventArgs.Empty);
             if (isRoad)
-                Stroke(tile, (x, y) => Engine.BuildRoad(SelectedSettlementId, x, y, Math.Clamp(BrushRadius, 0, 4)));
+                Stroke(tile, (x, y) => Engine.BuildRoad(SelectedSettlementId, x, y, 0));
             else
-                Engine.BuildFacility(SelectedSettlementId, Enum.Parse<BuildingKind>(tool, true), tile.X, tile.Y);
+            {
+                if (GiftBuildings) Engine.GrantFacility(SelectedSettlementId, Enum.Parse<BuildingKind>(tool, true), tile.X, tile.Y);
+                else Engine.BuildFacility(SelectedSettlementId, Enum.Parse<BuildingKind>(tool, true), tile.X, tile.Y);
+            }
             edited = true;
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)

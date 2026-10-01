@@ -214,7 +214,7 @@ public sealed partial class WorldMapControl
 
     private bool SelectResidentAt(Point point)
     {
-        if (!ActiveTool.Equals("inspect", StringComparison.OrdinalIgnoreCase)) return false;
+        if (!IsNavigationTool) return false;
         var radius = Math.Clamp(TilePixels * _zoom * .85, 8, 17);
         var candidates = new List<(int Id, double Distance)>();
         foreach (var pair in _renderedResidentPoints)
