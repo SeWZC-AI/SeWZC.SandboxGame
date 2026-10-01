@@ -2,6 +2,30 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    private bool IsKnownHostile(Resident resident, int targetNationId)
+    {
+        var order = resident.Agent.Memory.Where(f => f.SubjectId == targetNationId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
+            .OrderByDescending(f => f.ObservedTick).ThenByDescending(f => f.Id).FirstOrDefault();
+        if (order is not null) return order.Kind == AgentFactKind.WarOrder;
+        return State.Armies.Any(a => a.Id == resident.ArmyId && a.TargetNationId == targetNationId && a.KnownDiplomacy == DiplomaticStatus.War);
+    }
+    private void PublishDiplomaticOrder(int nationId, int enemyId, DiplomaticStatus status)
+    {
+        var capital = State.Settlements.FirstOrDefault(t => t.Id == _nations[nationId].CapitalId);
+        var enemyCapital = State.Settlements.FirstOrDefault(t => t.Id == _nations[enemyId].CapitalId);
+        if (capital is null || enemyCapital is null) return;
+        var witness = State.Residents.FirstOrDefault(r => r.NationId == nationId && Distance(r.X, r.Y, capital.X, capital.Y) <= 4);
+        var fact = new AgentFact { Id = NewId(), Kind = status == DiplomaticStatus.War ? AgentFactKind.WarOrder : AgentFactKind.PeaceOrder,
+            SubjectId = enemyId, X = enemyCapital.X, Y = enemyCapital.Y, Value = enemyCapital.Id, ObservedTick = State.Tick,
+            LearnedTick = State.Tick, OriginResidentId = witness?.Id ?? 0, SourceResidentId = witness?.Id ?? 0,
+            Text = status == DiplomaticStatus.War ? "首都宣布开战，征召当地志愿者" : "首都宣布停止敌对，前线须等待消息送达" };
+        capital.PublicKnowledge.RemoveAll(f => f.SubjectId == enemyId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder);
+        capital.PublicKnowledge.Add(fact);
+        if (capital.PublicKnowledge.Count > 24) capital.PublicKnowledge.RemoveAt(0);
+        foreach (var person in State.Residents.Where(r => r.NationId == nationId && Distance(r.X, r.Y, capital.X, capital.Y) <= 4))
+            RememberAgentFact(person, fact);
+    }
+
     private void UpdateArmies()
     {
         if (State.Tick % 30 == 0)
@@ -9,20 +33,31 @@ public sealed partial class WorldEngine
             foreach (var nation in State.Nations.ToArray())
             {
                 if (State.Armies.Any(a => a.NationId == nation.Id)) continue;
-                var enemy = State.Nations.FirstOrDefault(n => n.Id != nation.Id && GetDiplomacy(nation.Id, n.Id) == DiplomaticStatus.War);
-                if (enemy is null) continue;
                 var capital = State.Settlements.FirstOrDefault(s => s.Id == nation.CapitalId);
                 if (capital is null) continue;
-                var recruits = State.Residents.Where(r => r.NationId == nation.Id && r.ArmyId == 0 && r.Age >= 16 && r.Health > 50).ToArray();
-                var count = Math.Min(50, recruits.Length / 3);
-                if (count < 4) { nation.Decision = "战争中：人口不足，无法征募新军"; continue; }
-                var provisions = Math.Min(capital.Resources.Food, count * 12);
+                var order = capital.PublicKnowledge.Where(f => f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
+                    .OrderByDescending(f => f.ObservedTick).ThenByDescending(f => f.Id).FirstOrDefault();
+                if (order is null || order.Kind != AgentFactKind.WarOrder) continue;
+                var recruits = State.Residents.Where(r => r.NationId == nation.Id && r.ArmyId == 0 && r.Age >= 16 && r.Health > 50
+                    && Distance(r.X, r.Y, capital.X, capital.Y) <= 5).ToArray();
+                var count = Math.Min(40, recruits.Length / 2);
+                if (count < 3) { nation.Decision = "当地兵员尚未集结，等待居民返回聚落"; continue; }
+                var provisions = Math.Min(capital.Resources.Food, count * 10);
                 capital.Resources.Food -= provisions;
-                var army = new Army { Id = NewId(), NationId = nation.Id, TargetNationId = enemy.Id, X = capital.X, Y = capital.Y, Soldiers = count, Supplies = provisions };
+                var army = new Army { Id = NewId(), NationId = nation.Id, TargetNationId = order.SubjectId,
+                    TargetX = order.X, TargetY = order.Y, TargetSettlementId = (int)order.Value,
+                    X = capital.X, Y = capital.Y, FromX = capital.X, FromY = capital.Y,
+                    Soldiers = count, Supplies = provisions, CommanderId = recruits[0].Id, LastOrderTick = order.ObservedTick };
                 State.Armies.Add(army);
-                foreach (var resident in recruits.Take(count)) { resident.ArmyId = army.Id; resident.Profession = Profession.Soldier; resident.X = army.X; resident.Y = army.Y; }
-                nation.Decision = $"与{enemy.Name}交战：征兵消耗劳动力与粮食";
-                AddEvent(WorldEventKind.War, $"{nation.Name}征募 {count} 名士兵，向{enemy.Name}进军。", capital.X, capital.Y);
+                foreach (var resident in recruits.Take(count))
+                {
+                    resident.ArmyId = army.Id; resident.Profession = Profession.Soldier;
+                    resident.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.March, TargetX = capital.X, TargetY = capital.Y, StartedTick = State.Tick, Reason = "听到当地征召，步行前往集结点" };
+                    RememberAgentFact(resident, order);
+                }
+                nation.Decision = "根据首都已知命令征召当地居民，军队需要实地集结";
+                var recruitmentEvent = AddEvent(WorldEventKind.War, $"{nation.Name}在首都征募 {count} 名居民，开始集结。", capital.X, capital.Y);
+                recruitmentEvent.SecondNationId = army.TargetNationId;
             }
         }
         foreach (var army in State.Armies.ToArray())
@@ -30,62 +65,98 @@ public sealed partial class WorldEngine
             if (!State.Armies.Contains(army)) continue;
             var soldiers = State.Residents.Where(r => r.ArmyId == army.Id && r.Health > 0).ToArray();
             army.Soldiers = soldiers.Length;
-            if (soldiers.Length == 0 || !_nations.ContainsKey(army.TargetNationId) || GetDiplomacy(army.NationId, army.TargetNationId) != DiplomaticStatus.War) { DisbandArmy(army); continue; }
-            army.Supplies = Math.Max(0, army.Supplies - soldiers.Length * 0.08);
-            var home = State.Settlements.Where(s => s.NationId == army.NationId && Distance(s.X, s.Y, army.X, army.Y) <= 6).OrderBy(s => Distance(s.X, s.Y, army.X, army.Y)).FirstOrDefault();
-            if (home is not null && army.Supplies < soldiers.Length * 6)
+            if (soldiers.Length == 0) { DisbandArmy(army); continue; }
+            var commander = soldiers.FirstOrDefault(r => r.Id == army.CommanderId) ?? soldiers[0];
+            army.CommanderId = commander.Id;
+            var received = soldiers.SelectMany(r => r.Agent.Memory)
+                .Where(f => f.SubjectId == army.TargetNationId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
+                .OrderByDescending(f => f.ObservedTick).ThenByDescending(f => f.Id).FirstOrDefault();
+            if (received is not null && (received.ObservedTick > army.LastOrderTick || received.Kind == AgentFactKind.PeaceOrder))
             {
-                var amount = Math.Min(home.Resources.Food * 0.1, soldiers.Length * 6 - army.Supplies);
-                home.Resources.Food -= amount; army.Supplies += amount;
+                army.LastOrderTick = received.ObservedTick;
+                army.KnownDiplomacy = received.Kind == AgentFactKind.WarOrder ? DiplomaticStatus.War : DiplomaticStatus.Neutral;
+                army.Retreating = received.Kind == AgentFactKind.PeaceOrder;
+            }
+            foreach (var soldier in soldiers)
+            {
+                if (Distance(soldier.X, soldier.Y, army.X, army.Y) <= 2 && army.Supplies >= 0.08)
+                { army.Supplies -= 0.08; soldier.Hunger = Math.Max(0, soldier.Hunger - 3); }
+                else if (soldier.Inventory.Food >= 0.05) { soldier.Inventory.Food -= 0.05; soldier.Hunger = Math.Max(0, soldier.Hunger - 3); }
+                else soldier.Hunger = Math.Min(100, soldier.Hunger + 2);
+            }
+            var depot = State.Settlements.FirstOrDefault(s => s.NationId == army.NationId && Distance(s.X, s.Y, army.X, army.Y) <= 1);
+            if (depot is not null && army.Supplies < soldiers.Length * 5)
+            {
+                var amount = Math.Min(depot.Resources.Food, soldiers.Length * 5 - army.Supplies);
+                depot.Resources.Food -= amount; army.Supplies += amount;
             }
             army.Morale = Math.Clamp(army.Morale + (army.Supplies > 0 ? 0.15 : -1.2), 0, 100);
-            if (army.Supplies == 0) foreach (var soldier in soldiers) soldier.Health -= 0.3;
-            if (army.Morale < 15) { AddEvent(WorldEventKind.War, $"{_nations[army.NationId].Name}的军队因补给耗尽而溃散。", army.X, army.Y); DisbandArmy(army); continue; }
-            var opponent = State.Armies.FirstOrDefault(a => a.Id != army.Id && GetDiplomacy(army.NationId, a.NationId) == DiplomaticStatus.War && Distance(army.X, army.Y, a.X, a.Y) <= 2);
+            if (army.Morale < 15) army.Retreating = true;
+            if (army.Gathering)
+            {
+                foreach (var soldier in soldiers) MoveAgentTowards(soldier, army.X, army.Y);
+                army.Status = "实地集结";
+                if (soldiers.Count(r => Distance(r.X, r.Y, army.X, army.Y) <= 1) >= Math.Max(2, soldiers.Length * 3 / 4)) army.Gathering = false;
+                continue;
+            }
+            if (army.Retreating)
+            {
+                var home = _settlements.GetValueOrDefault(commander.SettlementId);
+                if (home is null) { DisbandArmy(army); continue; }
+                army.Status = "返乡";
+                if (Distance(commander.X, commander.Y, home.X, home.Y) <= 1) { DisbandArmy(army); continue; }
+                MoveArmy(army, commander, soldiers, home.X, home.Y);
+                continue;
+            }
+            var opponent = State.Armies.FirstOrDefault(a => a.Id != army.Id && a.NationId == army.TargetNationId && Distance(army.X, army.Y, a.X, a.Y) <= 2);
             if (opponent is not null)
             {
                 army.Status = "交战";
-                if (State.Tick % 3 == 0) ApplyDamage(State.Residents.Where(r => r.ArmyId == opponent.Id && r.Health > 0), soldiers.Length * 5 * army.Morale / 100);
+                if (State.Tick % 3 == 0) ApplyDamage(State.Residents.Where(r => r.ArmyId == opponent.Id && r.Health > 0 && Distance(r.X, r.Y, army.X, army.Y) <= 3), soldiers.Count(r => Distance(r.X, r.Y, army.X, army.Y) <= 2) * 5 * army.Morale / 100);
                 continue;
             }
-            var target = State.Settlements.Where(s => s.NationId == army.TargetNationId).OrderBy(s => Distance(army.X, army.Y, s.X, s.Y)).FirstOrDefault();
-            if (target is null) { DisbandArmy(army); continue; }
-            if (_armyTargets.GetValueOrDefault(army.Id) != target.Id)
+            var visibleTarget = State.Settlements.FirstOrDefault(s => s.NationId == army.TargetNationId && Distance(army.X, army.Y, s.X, s.Y) <= 6);
+            if (visibleTarget is not null) { army.TargetSettlementId = visibleTarget.Id; army.TargetX = visibleTarget.X; army.TargetY = visibleTarget.Y; }
+            if (Distance(army.X, army.Y, army.TargetX, army.TargetY) <= 1)
             {
-                _armyPaths.Remove(army.Id); _armyTargets[army.Id] = target.Id;
-            }
-            if (Distance(army.X, army.Y, target.X, target.Y) <= 1)
-            {
-                army.Status = "围攻 " + target.Name;
-                if (State.Tick % 3 == 0) Siege(army, target, soldiers);
+                if (visibleTarget is null) { army.Retreating = true; army.Status = "抵达后发现目标已变化，返乡报告"; continue; }
+                army.Status = "围攻 " + visibleTarget.Name;
+                if (State.Tick % 3 == 0) Siege(army, visibleTarget, soldiers.Where(r => Distance(r.X, r.Y, army.X, army.Y) <= 2).ToArray());
                 continue;
             }
-            if (!_armyPaths.TryGetValue(army.Id, out var path) || path.Count == 0 && State.Tick % 30 == 0)
-            {
-                path = FindPath(army.X, army.Y, target.X, target.Y) ?? new Queue<int>();
-                _armyPaths[army.Id] = path;
-            }
-            if (path.Count == 0) { army.Status = "道路受阻"; continue; }
-            if (State.Tick % 2 != 0) continue;
-            var next = path.Dequeue();
-            if (!State.Tiles[next].IsWalkable) { _armyPaths.Remove(army.Id); army.Status = "重新寻路"; continue; }
-            army.X = next % State.Width; army.Y = next / State.Width; army.Status = "行军";
-            foreach (var soldier in soldiers) { soldier.X = army.X; soldier.Y = army.Y; }
+            army.Status = "按已知军令行军";
+            MoveArmy(army, commander, soldiers, army.TargetX, army.TargetY);
         }
     }
 
-    private static void ApplyDamage(IEnumerable<Resident> residents, double damage)
+    private void MoveArmy(Army army, Resident commander, Resident[] soldiers, int x, int y)
+    {
+        MoveAgentTowards(commander, x, y);
+        army.FromX = commander.FromX; army.FromY = commander.FromY;
+        army.X = commander.X; army.Y = commander.Y;
+        army.MoveStartedTick = commander.MoveStartedTick; army.MoveDurationTicks = commander.MoveDurationTicks;
+        foreach (var soldier in soldiers)
+        {
+            if (soldier.Id != commander.Id) MoveAgentTowards(soldier, commander.X, commander.Y);
+            soldier.Activity = ResidentActivity.Marching;
+            soldier.Agent.Goal.Kind = AgentGoalKind.March;
+            soldier.Agent.Goal.TargetX = x; soldier.Agent.Goal.TargetY = y;
+            soldier.Agent.Goal.Reason = army.Status;
+        }
+    }
+
+    private void ApplyDamage(IEnumerable<Resident> residents, double damage)
     {
         foreach (var resident in residents)
         {
-            var dealt = Math.Min(resident.Health, damage); resident.Health -= dealt; damage -= dealt;
+            var incoming = Math.Min(resident.Health, damage); var dealt = TryAbsorbShieldDamage(resident, incoming); resident.Health -= dealt; damage -= incoming;
             if (damage <= 0) break;
         }
     }
 
     private void Siege(Army army, Settlement target, Resident[] soldiers)
     {
-        var defenders = State.Residents.Where(r => r.SettlementId == target.Id && r.ArmyId == 0 && r.Age >= 14 && r.Health > 0).ToArray();
+        var defenders = State.Residents.Where(r => r.SettlementId == target.Id && r.ArmyId == 0 && r.Age >= 14 && r.Health > 0 && Distance(r.X, r.Y, target.X, target.Y) <= 5).ToArray();
         if (defenders.Length == 0) { CaptureSettlement(army, target); return; }
         var attack = soldiers.Length * (6 + _nations[army.NationId].Technology) * army.Morale / 100;
         var defense = defenders.Length * 1.7 * (1 + target.Level * 0.1);
@@ -102,17 +173,25 @@ public sealed partial class WorldEngine
         foreach (var index in Circle(town.X, town.Y, 15))
             if (State.Tiles[index].NationId == previous && (State.Tiles[index].SettlementId == 0 || State.Tiles[index].SettlementId == town.Id)) State.Tiles[index].NationId = army.NationId;
         ClaimTerritory(town, 8);
-        AddEvent(WorldEventKind.War, $"{_nations[army.NationId].Name}占领了{previousNation.Name}的{town.Name}。", town.X, town.Y);
+        var occupationEvent = AddEvent(WorldEventKind.War, $"{_nations[army.NationId].Name}占领了{previousNation.Name}的{town.Name}。", town.X, town.Y);
+        occupationEvent.SecondNationId = previous;
+        army.Retreating = true;
         _armyPaths.Remove(army.Id);
         Reindex(); RemoveEmptyNations();
     }
 
     private void DisbandArmy(Army army)
     {
-        foreach (var soldier in State.Residents.Where(r => r.ArmyId == army.Id))
+        var veterans = State.Residents.Where(r => r.ArmyId == army.Id).ToArray();
+        var localDepot = State.Settlements.FirstOrDefault(s => s.NationId == army.NationId && Distance(s.X, s.Y, army.X, army.Y) <= 1);
+        if (localDepot is not null) localDepot.Resources.Food += army.Supplies;
+        else if (veterans.Length > 0) foreach (var veteran in veterans) veteran.Inventory.Food += army.Supplies / veterans.Length;
+        army.Supplies = 0;
+        foreach (var soldier in veterans)
         {
             soldier.ArmyId = 0; soldier.Profession = AssignProfession();
-            if (_settlements.TryGetValue(soldier.SettlementId, out var home)) { soldier.X = home.X; soldier.Y = home.Y; }
+            if (_settlements.TryGetValue(soldier.SettlementId, out var home))
+                soldier.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, TargetSettlementId = home.Id, StartedTick = State.Tick, ReviewTick = State.Tick + 200, PlayerDirected = true, Reason = "退伍后步行返回家园" };
         }
         State.Armies.Remove(army); _armyPaths.Remove(army.Id); _armyTargets.Remove(army.Id);
     }
@@ -168,7 +247,7 @@ public sealed partial class WorldEngine
             State.Nations.Remove(nation); _nations.Remove(nation.Id);
             State.Diplomacies.RemoveAll(r => r.FirstNationId == nation.Id || r.SecondNationId == nation.Id);
             foreach (var tile in State.Tiles) if (tile.NationId == nation.Id) tile.NationId = 0;
-            foreach (var army in State.Armies.Where(a => a.NationId == nation.Id || a.TargetNationId == nation.Id).ToArray()) DisbandArmy(army);
+            foreach (var army in State.Armies.Where(a => a.NationId == nation.Id).ToArray()) DisbandArmy(army);
         }
     }
 }

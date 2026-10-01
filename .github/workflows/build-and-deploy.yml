@@ -75,6 +75,7 @@ jobs:
           curl --fail --silent "$WORLDBOX_BASE_URL" > /dev/null
           npm test --prefix tests/browser 2>&1 | tee artifacts/browser-tests/smoke.log
           npm run test:mobile --prefix tests/browser 2>&1 | tee artifacts/browser-tests/mobile-smoke.log
+          npm run test:motion --prefix tests/browser 2>&1 | tee artifacts/browser-tests/motion.log
 
       - name: Upload browser evidence
         if: always()
@@ -150,12 +151,13 @@ jobs:
       - name: Wait for the deployed page
         run: curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors --max-time 20 "$WORLDBOX_BASE_URL" --output /dev/null
 
-      - name: Test the live desktop and mobile game
+      - name: Test the live desktop, mobile and resident movement
         run: |
           set -euo pipefail
           mkdir -p artifacts/browser-tests
           npm test --prefix tests/browser 2>&1 | tee artifacts/browser-tests/smoke.log
           npm run test:mobile --prefix tests/browser 2>&1 | tee artifacts/browser-tests/mobile-smoke.log
+          npm run test:motion --prefix tests/browser 2>&1 | tee artifacts/browser-tests/motion.log
 
       - name: Upload live browser evidence
         if: always()

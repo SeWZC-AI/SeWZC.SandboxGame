@@ -12,55 +12,20 @@ public sealed partial class WorldEngine
             State.Tick++;
             Reindex();
             UpdateDisasters();
-            UpdateEconomy();
             UpdateResidents();
+            UpdateAgentNeedsAndActions();
+            UpdateLocalCommunication();
+            TickSociety();
             Reindex();
             if (State.Tick % 12 == 0) GrowSettlements();
-            if (State.Tick % 30 == 0) UpdateStrategy();
-            UpdateTrade();
+            if (State.Tick % 30 == 0) RefreshTerritoryClaims();
             UpdateArmies();
-            State.Residents.RemoveAll(r => r.Health <= 0);
+            ArchiveDeadResidents();
             Reindex();
             foreach (var settlement in State.Settlements.Where(s => _citizens[s.Id].Count == 0).ToArray()) RemoveSettlement(settlement, "居民离散，聚落成为遗址");
             RemoveEmptyNations();
+            ReconcileSocietyTopology();
             RefreshTotals();
-        }
-    }
-
-    private void UpdateEconomy()
-    {
-        foreach (var settlement in State.Settlements)
-        {
-            var people = _citizens[settlement.Id];
-            var environment = Circle(settlement.X, settlement.Y, 4).Select(i => State.Tiles[i]).ToArray();
-            var fertility = environment.Average(t => t.IsWalkable ? t.Fertility / 100d * (t.DroughtTicks > 0 ? 0.15 : 1) * (t.FireTicks > 0 ? 0 : 1) : 0);
-            var forest = environment.Count(t => t.Terrain == TerrainType.Forest && t.FireTicks == 0);
-            var minerals = environment.Count(t => t.Terrain is TerrainType.Mountain or TerrainType.Snow);
-            var tech = _nations.GetValueOrDefault(settlement.NationId)?.Technology ?? 1;
-            foreach (var person in people)
-            {
-                if (person.ArmyId != 0 || person.Age < 14) continue;
-                var productivity = (person.SicknessTicks > 0 ? 0.4 : 1) * (person.Hunger > 40 ? 0.55 : 1) * (1 + 0.08 * (tech - 1));
-                if (person.Profession == Profession.Farmer) settlement.Resources.Food += 0.22 * fertility * productivity;
-                if (person.Profession == Profession.Lumberjack) settlement.Resources.Wood += (forest > 0 ? 0.045 : 0.008) * productivity * (person.Race == RaceKind.Elf ? 1.25 : 1);
-                if (person.Profession == Profession.Miner)
-                {
-                    settlement.Resources.Stone += 0.025 * productivity * (person.Race == RaceKind.Dwarf ? 1.4 : 1);
-                    settlement.Resources.Ore += (minerals > 0 ? 0.025 : 0.003) * productivity * (person.Race == RaceKind.Dwarf ? 1.4 : 1);
-                }
-            }
-            // Small-scale gathering keeps founding villages viable; barren or burnt land cannot supply it.
-            settlement.Resources.Food += people.Count * 0.018 * fertility;
-            var requirement = people.Sum(p => p.Age < 14 ? 0.025 : p.Race == RaceKind.Orc ? 0.064 : 0.05);
-            var ratio = requirement > 0 ? Math.Min(1, settlement.Resources.Food / requirement) : 1;
-            settlement.Resources.Food = Math.Max(0, settlement.Resources.Food - requirement);
-            foreach (var person in people) person.Hunger = Math.Clamp(person.Hunger + (ratio < 0.95 ? (1 - ratio) * 2 : -3), 0, 100);
-            if (State.Tiles[Index(settlement.X, settlement.Y)].FireTicks > 0)
-            {
-                settlement.Resources.Food *= 0.96; settlement.Resources.Wood *= 0.96;
-                if (settlement.Housing > 10) settlement.Housing--;
-            }
-            CapResources(settlement.Resources);
         }
     }
 
@@ -86,24 +51,10 @@ public sealed partial class WorldEngine
             if (tile.FireTicks > 0) person.Health -= 4;
             if (person.SicknessTicks > 0) { person.SicknessTicks--; person.Health -= 0.5; }
             else if (infected.Contains(Index(person.X, person.Y)) && RandomInt(100) < 3) person.SicknessTicks = 45;
-            person.Activity = person.SicknessTicks > 0 ? ResidentActivity.Sick : person.Hunger > 40 ? ResidentActivity.Hungry : person.ArmyId != 0 ? ResidentActivity.Marching : ResidentActivity.Working;
             if (person.Health <= 0) { deaths++; continue; }
-            if (person.ArmyId != 0 || (State.Tick + person.Id) % 3 != 0) continue;
-            if (!_settlements.TryGetValue(person.SettlementId, out var settlement)) continue;
-            var direction = RandomInt(4);
-            for (var attempt = 0; attempt < 4; attempt++)
-            {
-                var (dx, dy) = Directions[(direction + attempt) % 4];
-                var xx = person.X + dx; var yy = person.Y + dy;
-                if (!Walkable(xx, yy)) continue;
-                var distance = Distance(xx, yy, settlement.X, settlement.Y);
-                if (distance > 7 && distance >= Distance(person.X, person.Y, settlement.X, settlement.Y)) continue;
-                var next = State.Tiles[Index(xx, yy)];
-                if (next.FireTicks > 0 || next.NationId != 0 && next.NationId != person.NationId && GetDiplomacy(person.NationId, next.NationId) == DiplomaticStatus.War) continue;
-                person.X = xx; person.Y = yy; break;
-            }
+            if (person.SicknessTicks > 0) person.Activity = ResidentActivity.Sick;
         }
-        State.Residents.RemoveAll(r => r.Health <= 0);
+        ArchiveDeadResidents();
         if (deaths > 0 && (deaths >= 3 || State.Tick % 12 == 0)) AddEvent(WorldEventKind.Death, $"{deaths} 位居民因饥饿、灾害、疾病或衰老逝去。");
     }
 
@@ -135,23 +86,40 @@ public sealed partial class WorldEngine
 
     private void ExpandSettlement(Settlement origin, List<Resident> citizens)
     {
-        for (var attempt = 0; attempt < 10; attempt++)
+        var pioneers = citizens.Where(p => p.ArmyId == 0 && p.Age >= 16 && p.Health >= 60
+            && p.Agent.DestinationSettlementId == 0 && Distance(p.X, p.Y, origin.X, origin.Y) <= 3)
+            .OrderByDescending(p => p.Agent.Personality.Ambition).ThenBy(p => p.Id).Take(12).ToArray();
+        if (pioneers.Length < 6 || origin.Resources.Food < 80 || origin.Resources.Wood < 20 || origin.Resources.Stone < 5) return;
+        // Founders select a site that somebody in the present party can actually see.
+        var location = Circle(origin.X, origin.Y, 9).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].FireTicks == 0
+            && State.Tiles[i].Fertility >= 25 && (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == origin.NationId)
+            && Distance(i % State.Width, i / State.Width, origin.X, origin.Y) >= 8
+            && pioneers.Any(p => Distance(p.X, p.Y, i % State.Width, i / State.Width) <= 6)
+            && State.Settlements.All(t => Distance(t.X, t.Y, i % State.Width, i / State.Width) >= 8))
+            .OrderByDescending(i => State.Tiles[i].Fertility).ThenBy(i => i).FirstOrDefault(-1);
+        if (location < 0) return;
+        var x = location % State.Width; var y = location / State.Width;
+        var town = new Settlement { Id = NewId(), Name = PlaceNames[State.Settlements.Count % PlaceNames.Length] + "镇", X = x, Y = y,
+            NationId = origin.NationId, CultureId = origin.CultureId, Resources = new ResourceStock() };
+        origin.Resources.Food -= 80; origin.Resources.Wood -= 20; origin.Resources.Stone -= 5;
+        State.Settlements.Add(town); _settlements[town.Id] = town; _citizens[town.Id] = [];
+        foreach (var pioneer in pioneers)
         {
-            var x = origin.X + RandomInt(39) - 19; var y = origin.Y + RandomInt(39) - 19;
-            if (!Walkable(x, y) || Distance(x, y, origin.X, origin.Y) < 14 || State.Tiles[Index(x, y)].NationId != 0 || State.Settlements.Any(s => Distance(x, y, s.X, s.Y) < 13)) continue;
-            if (FindPath(origin.X, origin.Y, x, y) is null) continue;
-            var town = new Settlement { Id = NewId(), Name = PlaceNames[RandomInt(PlaceNames.Length)] + "镇", X = x, Y = y, NationId = origin.NationId, Resources = new ResourceStock { Food = 80, Wood = 20, Stone = 5 } };
-            origin.Resources.Food -= 80; origin.Resources.Wood -= 20; origin.Resources.Stone = Math.Max(0, origin.Resources.Stone - 5);
-            State.Settlements.Add(town); _settlements[town.Id] = town; _citizens[town.Id] = [];
-            foreach (var migrant in citizens.Where(p => p.ArmyId == 0).Take(24).ToArray())
-            {
-                migrant.SettlementId = town.Id; migrant.X = x; migrant.Y = y;
-                citizens.Remove(migrant); _citizens[town.Id].Add(migrant);
-            }
-            State.Tiles[Index(x, y)].SettlementId = town.Id; ClaimTerritory(town, 6);
-            AddEvent(WorldEventKind.Growth, $"{_nations[origin.NationId].Name}因人口增长建立了{town.Name}。", x, y);
-            return;
+            pioneer.Inventory.Food += 80d / pioneers.Length;
+            pioneer.Inventory.Wood += 20d / pioneers.Length;
+            pioneer.Inventory.Stone += 5d / pioneers.Length;
+            pioneer.SettlementId = town.Id;
+            var address = new AgentFact { Id = NewId(), Kind = AgentFactKind.SettlementLocation, SubjectId = town.Id, X = x, Y = y,
+                Value = town.NationId, ObservedTick = State.Tick, LearnedTick = State.Tick, OriginResidentId = pioneer.Id,
+                OriginProfession = pioneer.Profession, SourceResidentId = pioneer.Id, Text = "拓荒队商定的新家园，物资必须亲自带到" };
+            RememberAgentFact(pioneer, address);
+            pioneer.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome, TargetX = x, TargetY = y, TargetSettlementId = town.Id,
+                StartedTick = State.Tick, Reason = "背负原聚落提供的粮木石，步行建立新家园", PlayerDirected = true, ReviewTick = State.Tick + 150 };
+            citizens.Remove(pioneer); _citizens[town.Id].Add(pioneer);
         }
+        State.Tiles[location].SettlementId = town.Id; ClaimTerritory(town, 4);
+        InitializeSociety();
+        AddEvent(WorldEventKind.Growth, $"{_nations[origin.NationId].Name}派出 {pioneers.Length} 名成年人，携物资前往{town.Name}；仓库等待实物抵达。", x, y);
     }
 
     private void UpdateDisasters()
@@ -182,67 +150,9 @@ public sealed partial class WorldEngine
         }
     }
 
-    private void UpdateStrategy()
+    private void RefreshTerritoryClaims()
     {
-        foreach (var nation in State.Nations)
-        {
-            var towns = State.Settlements.Where(s => s.NationId == nation.Id).ToArray();
-            var people = towns.Sum(s => _citizens[s.Id].Count);
-            var food = towns.Sum(s => s.Resources.Food);
-            nation.Decision = food < people ? "粮食不足：优先生产与寻求贸易" : people > towns.Sum(s => s.Housing) * 0.8 ? "人口增长：修建住房，寻找新聚落" : "储备充足：积累资源，发展聚落";
-            foreach (var town in towns) ClaimTerritory(town, Math.Min(17, 6 + _citizens[town.Id].Count / 15));
-            if (towns.Length > 0 && nation.Technology < 5 && towns[0].Resources.Ore > nation.Technology * 30 && towns[0].Resources.Wood > 80)
-            {
-                towns[0].Resources.Ore -= nation.Technology * 30; towns[0].Resources.Wood -= 40; nation.Technology++;
-                AddEvent(WorldEventKind.Growth, $"{nation.Name}改进了工具，技术提升至 {nation.Technology} 级。", towns[0].X, towns[0].Y);
-            }
-            if (State.Tick % 120 != 0 || people < 24 || food >= people * 0.7 || State.Diplomacies.Any(r => r.Status == DiplomaticStatus.War && (r.FirstNationId == nation.Id || r.SecondNationId == nation.Id))) continue;
-            var origin = towns.FirstOrDefault(); if (origin is null) continue;
-            var target = State.Settlements.Where(s => s.NationId != nation.Id && GetDiplomacy(nation.Id, s.NationId) == DiplomaticStatus.Neutral && Distance(origin.X, origin.Y, s.X, s.Y) <= 60).OrderBy(s => Distance(origin.X, origin.Y, s.X, s.Y)).FirstOrDefault();
-            if (target is not null && FindPath(origin.X, origin.Y, target.X, target.Y) is not null && RandomInt(100) < 30)
-            {
-                SetDiplomacy(nation.Id, target.NationId, DiplomaticStatus.War);
-                nation.Decision = "粮食危机：征兵争夺邻国土地";
-            }
-        }
-        if (State.Tick % 60 == 0) PlanTrade();
-    }
-
-    private void PlanTrade()
-    {
-        foreach (var source in State.Settlements)
-        {
-            if (source.Resources.Food < 40 || State.TradeRoutes.Any(r => r.FromSettlementId == source.Id)) continue;
-            var target = State.Settlements.Where(s => s.Id != source.Id && GetDiplomacy(source.NationId, s.NationId) != DiplomaticStatus.War && s.Resources.Food < source.Resources.Food * 0.6 && Distance(source.X, source.Y, s.X, s.Y) < 100).OrderBy(s => Distance(source.X, source.Y, s.X, s.Y)).FirstOrDefault();
-            if (target is null) continue;
-            var path = FindPath(source.X, source.Y, target.X, target.Y); if (path is null) continue;
-            var cargo = Math.Min(30, (source.Resources.Food - target.Resources.Food) * 0.15);
-            source.Resources.Food -= cargo;
-            State.TradeRoutes.Add(new TradeRoute { FromSettlementId = source.Id, ToSettlementId = target.Id, FoodCargo = cargo, TravelTicks = Math.Max(4, path.Count * 2), RemainingTicks = Math.Max(4, path.Count * 2) });
-        }
-    }
-
-    private void UpdateTrade()
-    {
-        foreach (var route in State.TradeRoutes.ToArray())
-        {
-            if (!_settlements.TryGetValue(route.FromSettlementId, out var from) || !_settlements.TryGetValue(route.ToSettlementId, out var to)) { State.TradeRoutes.Remove(route); continue; }
-            if (GetDiplomacy(from.NationId, to.NationId) == DiplomaticStatus.War) { from.Resources.Food += route.FoodCargo; State.TradeRoutes.Remove(route); continue; }
-            route.RemainingTicks--;
-            if (route.RemainingTicks > 0) continue;
-            if (FindPath(from.X, from.Y, to.X, to.Y) is null) from.Resources.Food += route.FoodCargo;
-            else
-            {
-                to.Resources.Food += route.FoodCargo;
-                var payment = Math.Min(to.Resources.Wood, route.FoodCargo * 0.4); to.Resources.Wood -= payment; from.Resources.Wood += payment;
-                if (from.NationId != to.NationId)
-                {
-                    var relation = Relation(from.NationId, to.NationId); relation.Opinion = Math.Min(100, relation.Opinion + 5);
-                    if (relation.Opinion >= 60 && relation.Status == DiplomaticStatus.Neutral) SetDiplomacy(from.NationId, to.NationId, DiplomaticStatus.Allied);
-                }
-                AddEvent(WorldEventKind.Trade, $"{from.Name}向{to.Name}运送了 {route.FoodCargo:0} 份粮食，换取木材。", to.X, to.Y);
-            }
-            State.TradeRoutes.Remove(route);
-        }
+        foreach (var town in State.Settlements)
+            ClaimTerritory(town, Math.Min(17, 6 + (_citizens.GetValueOrDefault(town.Id)?.Count ?? 0) / 15));
     }
 }

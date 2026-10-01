@@ -1,0 +1,174 @@
+const assert = require('node:assert/strict');
+
+function testUrl(baseUrl) {
+    const url = new URL(baseUrl);
+    url.searchParams.set('e2e', '1');
+    return url.href;
+}
+
+class UiDriver {
+    constructor(page, { touch = false } = {}) {
+        this.page = page;
+        this.touch = touch;
+    }
+
+    async snapshot() {
+        const result = await this.page.evaluate(() => globalThis.worldboxTest?.snapshot());
+        assert(result, 'Read-only UI inspection is unavailable; open the published app with ?e2e=1');
+        return result;
+    }
+
+    async waitFor(predicate, description, timeout = 10000) {
+        const deadline = Date.now() + timeout;
+        let latest;
+        do {
+            latest = await this.snapshot();
+            if (predicate(latest)) return latest;
+            await this.page.waitForTimeout(100);
+        } while (Date.now() < deadline);
+        throw new Error(`UI did not reach ${description}; status: ${latest?.status}`);
+    }
+
+    async ready() {
+        await this.page.waitForFunction(() => globalThis.worldboxTest?.snapshot().ready, {}, { timeout: 60000 });
+        return this.snapshot();
+    }
+
+    control(snapshot, id) {
+        const matches = snapshot.controls.filter(control => control.id === id);
+        assert.equal(matches.length, 1, `Expected one UI control named ${id}; found ${matches.length}`);
+        return matches[0];
+    }
+
+    async point(id, { scroll } = {}) {
+        for (let attempt = 0; attempt < 16; attempt++) {
+            const snapshot = await this.snapshot();
+            const control = this.control(snapshot, id);
+            if (control.visible) {
+                assert(control.enabled, `UI control is disabled: ${id}`);
+                const canvas = await this.page.locator('#out canvas.avalonia-canvas').boundingBox();
+                assert(canvas, 'Avalonia canvas has no visible bounds');
+                return { x: canvas.x + control.x + control.width / 2, y: canvas.y + control.y + control.height / 2 };
+            }
+            assert(scroll, `UI control is outside its visible clip: ${id}`);
+            const viewport = this.control(snapshot, scroll);
+            assert(viewport.visible, `Scroll viewport is hidden: ${scroll}`);
+            const canvas = await this.page.locator('#out canvas.avalonia-canvas').boundingBox();
+            assert(canvas, 'Avalonia canvas has no visible bounds');
+            const center = { x: canvas.x + viewport.x + viewport.width / 2, y: canvas.y + viewport.y + viewport.height / 2 };
+            await this.page.mouse.move(center.x, center.y);
+            await this.page.mouse.wheel(0, Math.sign(control.y - (viewport.y + viewport.height / 2)) * 250);
+            await this.page.waitForTimeout(120);
+        }
+        throw new Error(`Could not scroll ${id} into view`);
+    }
+
+    async click(id, options) {
+        const point = await this.point(id, options);
+        if (this.touch) await this.page.touchscreen.tap(point.x, point.y);
+        else await this.page.mouse.click(point.x, point.y, { delay: 80 });
+        await this.page.waitForTimeout(180);
+    }
+
+    async fill(id, value, options) {
+        await this.click(id, options);
+        await this.page.keyboard.press('Control+A');
+        // Avalonia's browser text input consumes real keypresses. insertText alone
+        // skips those events, so smoke fixtures use ordinary ASCII input.
+        await this.page.keyboard.type(String(value), { delay: 20 });
+        await this.waitFor(snapshot => this.control(snapshot, id).value === String(value), `text in ${id}`);
+    }
+
+    async selectIndex(id, index, options) {
+        await this.click(id, options);
+        await this.page.keyboard.press('Home');
+        for (let i = 0; i < index; i++) await this.page.keyboard.press('ArrowDown');
+        await this.page.keyboard.press('Enter');
+        await this.waitFor(snapshot => this.control(snapshot, id).value === String(index), `selection in ${id}`);
+    }
+
+    async tilePoint(x, y) {
+        const { map } = await this.snapshot();
+        const point = { x: map.tile0CenterX + x * map.tileSize, y: map.tile0CenterY + y * map.tileSize };
+        assert(point.x >= map.x && point.x < map.x + map.width && point.y >= map.y && point.y < map.y + map.height,
+            `Tile ${x},${y} is outside the map viewport`);
+        const canvas = await this.page.locator('#out canvas.avalonia-canvas').boundingBox();
+        assert(canvas, 'Avalonia canvas has no visible bounds');
+        return { x: canvas.x + point.x, y: canvas.y + point.y };
+    }
+
+    async clickTile(x, y) {
+        const point = await this.tilePoint(x, y);
+        if (this.touch) await this.page.touchscreen.tap(point.x, point.y);
+        else await this.page.mouse.click(point.x, point.y, { delay: 80 });
+        await this.page.waitForTimeout(180);
+    }
+
+    async paused(value = true) {
+        if ((await this.snapshot()).paused !== value) await this.click('time-toggle');
+        return this.waitFor(snapshot => snapshot.paused === value, value ? 'paused time' : 'running time');
+    }
+
+    async save() {
+        const before = await this.snapshot();
+        assert(!before.modalOpen, 'Close the current modal before saving');
+        await this.click('header-storage');
+        await this.click('storage-save', { scroll: 'modal-scroll' });
+        const completed = await this.waitFor(snapshot => !snapshot.modalOpen && !snapshot.saving, 'completed IndexedDB save', 30000);
+        assert(!completed.status?.startsWith('保存失败'), completed.status);
+        const saved = await readSavedWorld(this.page);
+        if (before.paused) assert.equal(saved.Tick, before.worldTick, 'Paused save must contain the current simulation tick');
+        return saved;
+    }
+
+    async tool(category, key) {
+        await this.click(`tool-category-${category}`);
+        const snapshot = await this.snapshot();
+        const index = snapshot.toolSlots.indexOf(key);
+        assert(index >= 0, `Tool ${key} is absent from ${category}`);
+        await this.click(`tool-slot-${index}`);
+    }
+
+    async stableToolLayout() {
+        const categories = ['terrain', 'life', 'disaster', 'build', 'inspect', 'rules'];
+        const ids = ['header-new-world', 'header-storage', 'header-overview', 'time-toggle',
+            'time-speed-1', 'time-speed-2', 'time-speed-5', ...categories.map(id => `tool-category-${id}`),
+            ...Array.from({ length: 8 }, (_, index) => `tool-slot-${index}`)];
+        const geometry = snapshot => Object.fromEntries(ids.map(id => {
+            const item = this.control(snapshot, id);
+            assert(item.visible, `Fixed UI slot must remain visible: ${id}`);
+            return [id, [item.x, item.y, item.width, item.height]];
+        }));
+        const baseline = geometry(await this.snapshot());
+        for (const category of categories) {
+            await this.click(`tool-category-${category}`);
+            // Fluent's pressed-state transform can outlast pointer-up on a busy
+            // software renderer. Wait for exact geometry, never a pixel tolerance.
+            const snapshot = await this.waitFor(snapshot => JSON.stringify(geometry(snapshot)) === JSON.stringify(baseline),
+                `settled fixed controls after ${category}`, 5000);
+            assert.equal(snapshot.category, category);
+            assert.deepEqual(geometry(snapshot), baseline, `Tool category ${category} moved a fixed control`);
+            snapshot.toolSlots.forEach((key, index) => assert.equal(this.control(snapshot, `tool-slot-${index}`).enabled, key !== null));
+        }
+        return baseline;
+    }
+}
+
+async function readSavedWorld(page) {
+    const json = await page.evaluate(() => new Promise((resolve, reject) => {
+        const open = indexedDB.open('sewzc-worldbox', 1);
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+            const database = open.result;
+            const transaction = database.transaction('worlds');
+            const request = transaction.objectStore('worlds').get('autosave');
+            transaction.oncomplete = () => { database.close(); resolve(request.result); };
+            transaction.onerror = () => { database.close(); reject(transaction.error); };
+            transaction.onabort = () => { database.close(); reject(transaction.error); };
+        };
+    }));
+    assert.equal(typeof json, 'string', 'A real save operation must populate IndexedDB');
+    return JSON.parse(json);
+}
+
+module.exports = { testUrl, UiDriver, readSavedWorld };

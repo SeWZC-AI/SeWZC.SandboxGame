@@ -17,7 +17,7 @@ namespace SeWZC.WorldBox.UI.Controls;
 /// A single map surface: cached pixel chunks, batched resident geometry, and no per-entity controls.
 /// The camera uses artwork pixels; the simulation always uses tile coordinates.
 /// </summary>
-public sealed class WorldMapControl : Control
+public sealed partial class WorldMapControl : Control
 {
     private const int TilePixels = 8;
     private const int ChunkTiles = 32;
@@ -40,6 +40,12 @@ public sealed class WorldMapControl : Control
     private readonly Dictionary<IPointer, Point> _touches = [];
     private readonly Dictionary<int, IBrush> _nationBrushes = [];
     private readonly List<(int X, int Y)> _fires = [];
+    private readonly Dictionary<int, (string Name, double Size, FormattedText Text)> _settlementLabels = [];
+    private Settlement[] _labelSettlements = [];
+    private FormattedText? _scaleLabel;
+    private int _scaleLabelTiles;
+    private static readonly IBrush ScaleBrush = Brush(0xAFDAE6D5);
+    private static readonly Pen ScalePen = new(ScaleBrush, 1);
     private readonly StreamGeometry?[] _residents = new StreamGeometry?[4];
     private StreamGeometry? _heads;
     private WorldEngine? _engine;
@@ -73,6 +79,8 @@ public sealed class WorldMapControl : Control
         {
             if (ReferenceEquals(_engine, value)) return;
             DisposeChunks();
+            ResetMotion();
+            _settlementLabels.Clear();
             _engine = value;
             _selection = null;
             _cameraReady = false;
@@ -93,6 +101,7 @@ public sealed class WorldMapControl : Control
 
     public int BrushRadius { get; set; } = 2;
     public int SelectedNationId { get; set; }
+    public int SelectedSettlementId { get; set; }
 
     public bool ShowBorders
     {
@@ -104,6 +113,7 @@ public sealed class WorldMapControl : Control
     public event EventHandler? WorldEditing;
     public event EventHandler? WorldEdited;
     public event Action<int, int>? TileSelected;
+    public event Action<string>? ToolError;
 
     private bool IsNavigationTool => ActiveTool.Equals("inspect", StringComparison.OrdinalIgnoreCase) ||
                                      ActiveTool.Equals("pan", StringComparison.OrdinalIgnoreCase);
@@ -114,11 +124,14 @@ public sealed class WorldMapControl : Control
         if (!ReferenceEquals(_cachedState, Engine.State))
         {
             DisposeChunks();
+            ResetMotion();
+            _settlementLabels.Clear();
             _cachedState = Engine.State;
             _cameraReady = false;
         }
         RebuildChangedChunks();
-        RebuildResidents();
+        _labelSettlements = Engine.State.Settlements.OrderByDescending(settlement => settlement.Population).ToArray();
+        CaptureMotionSnapshots();
         if (resetCamera || !_cameraReady) FitWorld();
         InvalidateVisual();
     }
@@ -126,6 +139,7 @@ public sealed class WorldMapControl : Control
     public void FitWorld()
     {
         if (Engine is null || Bounds.Width < 1 || Bounds.Height < 1) return;
+        _followSelectedResident = false;
         _zoom = FitZoom;
         _origin = new Point((Bounds.Width - Engine.State.Width * TilePixels * _zoom) / 2,
                             (Bounds.Height - Engine.State.Height * TilePixels * _zoom) / 2);
@@ -139,6 +153,7 @@ public sealed class WorldMapControl : Control
     public void FocusTile(int x, int y)
     {
         if (Engine is null) return;
+        _followSelectedResident = false;
         _zoom = Math.Max(_zoom, 1.4);
         _origin = new Point(Bounds.Width / 2 - (x + .5) * TilePixels * _zoom,
                             Bounds.Height / 2 - (y + .5) * TilePixels * _zoom);
@@ -166,6 +181,10 @@ public sealed class WorldMapControl : Control
         context.DrawRectangle(OceanBrush, null, new Rect(Bounds.Size));
         if (Engine is null || !_cameraReady) return;
         var state = Engine.State;
+        _renderFrameTime = PresentationTime;
+        FollowResident(_renderFrameTime);
+        if (_residentGeometryDirty || _geometryZoom != _zoom || _geometryOrigin != _origin)
+            RebuildResidents();
         using (context.PushClip(new Rect(Bounds.Size)))
         {
             using (context.PushTransform(Matrix.CreateScale(_zoom, _zoom) * Matrix.CreateTranslation(_origin.X, _origin.Y)))
@@ -176,24 +195,33 @@ public sealed class WorldMapControl : Control
                     if (chunk.Terrain is not null) context.DrawImage(chunk.Terrain, chunk.TerrainBounds);
                     if (ShowBorders && chunk.Territory is not null) context.DrawImage(chunk.Territory, chunk.Bounds);
                 }
-                DrawTrade(context, state);
                 foreach (var settlement in state.Settlements)
                     if (Visible(new Rect(settlement.X * TilePixels - 28, settlement.Y * TilePixels - 28, 56, 56)))
                         DrawSettlement(context, settlement);
+                DrawBuildings(context, state);
                 for (var race = 0; race < _residents.Length; race++)
                     if (_residents[race] is { } body) context.DrawGeometry(ResidentBrushes[race], null, body);
                 if (_zoom >= .7 && _heads is not null) context.DrawGeometry(HeadBrush, null, _heads);
+                if (_zoom >= .35)
+                {
+                    if (_cargoGeometry is not null) context.DrawGeometry(CargoBrush, null, _cargoGeometry);
+                    if (_messageGeometry is not null) context.DrawGeometry(MessageBrush, null, _messageGeometry);
+                    if (_magicGeometry is not null) context.DrawGeometry(ArcaneBrush, null, _magicGeometry);
+                }
                 DrawFires(context, state.Tick);
                 foreach (var army in state.Armies)
                 {
-                    var x = army.X * TilePixels + 4;
-                    var y = army.Y * TilePixels;
+                    var position = _armyMotion.TryGetValue(army.Id, out var motion) ? motion.Position(_renderFrameTime) : new Point(army.X, army.Y);
+                    var x = position.X * TilePixels + 4;
+                    var y = position.Y * TilePixels;
                     context.DrawRectangle(WoodBrush, null, new Rect(x, y - 10, 1.3, 11));
                     context.DrawRectangle(NationBrush(army.NationId), null, new Rect(x + 1.3, y - 10, 7, 5));
                 }
             }
             DrawLabels(context, state);
             DrawSelection(context);
+            DrawResidentSelection(context);
+            DrawResidentGoal(context);
             DrawScale(context);
         }
     }
@@ -225,7 +253,7 @@ public sealed class WorldMapControl : Control
             for (var x = Math.Max(0, cx - 1); x < Math.Min(state.Width, cx + ChunkTiles + 1); x++)
             {
                 var tile = state.Tiles[y * state.Width + x];
-                terrainHash = unchecked((terrainHash ^ ((uint)tile.Terrain + (tile.DroughtTicks > 0 ? 16u : 0u))) * 16777619);
+                terrainHash = unchecked((terrainHash ^ ((uint)tile.Terrain + (tile.DroughtTicks > 0 ? 16u : 0u) + (uint)tile.RoadLevel * 64)) * 16777619);
                 territoryHash = unchecked((territoryHash ^ (uint)tile.NationId) * 16777619);
                 containsTerritory |= tile.NationId != 0 && x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles;
                 if (x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles && tile.FireTicks > 0)
@@ -254,7 +282,10 @@ public sealed class WorldMapControl : Control
                 var canvas = new PixelCanvas((int)chunk.TerrainBounds.Width, (int)chunk.TerrainBounds.Height);
                 for (var y = Math.Max(0, cy - 1); y < Math.Min(state.Height, cy + ChunkTiles + 1); y++)
                 for (var x = Math.Max(0, cx - 1); x < Math.Min(state.Width, cx + ChunkTiles + 1); x++)
+                {
                     DrawTerrainTile(canvas, state, x, y, (x - cx) * TilePixels + left, (y - cy) * TilePixels + top);
+                    DrawRoadTile(canvas, state, x, y, (x - cx) * TilePixels + left, (y - cy) * TilePixels + top);
+                }
                 chunk.Terrain?.Dispose();
                 chunk.Terrain = MakeBitmap(canvas, opaque: true);
                 chunk.TerrainHash = terrainHash;
@@ -303,19 +334,24 @@ public sealed class WorldMapControl : Control
             TerrainType.Forest => 0x537A50FF,
             TerrainType.Mountain => 0x798575FF,
             TerrainType.Snow => 0xCBD7CAFF,
+            TerrainType.Hills => 0x92905EFF,
+            TerrainType.Wetland => 0x58887DFF,
+            TerrainType.Desert => 0xCEAE75FF,
+            TerrainType.River => 0x428E9CFF,
+            TerrainType.Tundra => 0x99A88CFF,
             _ => 0x719262FF
         };
-        if (tile.DroughtTicks > 0 && tile.Terrain is TerrainType.Grass or TerrainType.Forest or TerrainType.Sand)
+        if (tile.DroughtTicks > 0 && tile.Terrain is TerrainType.Grass or TerrainType.Forest or TerrainType.Sand or TerrainType.Hills or TerrainType.Wetland)
             color = 0xB59D62FF;
         color = PixelCanvas.Shade(color, variation);
         canvas.Rect(px, py, 8, 8, color);
         var nx = (int)((noise >> 5) % 6) + 1;
         var ny = (int)((noise >> 10) % 6) + 1;
-        if (tile.Terrain is TerrainType.DeepWater or TerrainType.Water)
+        if (tile.Terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.River)
         {
             if (noise % 7 == 0) canvas.Rect(px + nx - 1, py + ny, 3, 1, PixelCanvas.Shade(color, 11));
             bool LandAt(int tx, int ty) => tx >= 0 && tx < state.Width && ty >= 0 && ty < state.Height &&
-                state.Tiles[ty * state.Width + tx].Terrain is not TerrainType.DeepWater and not TerrainType.Water;
+                state.Tiles[ty * state.Width + tx].Terrain is not TerrainType.DeepWater and not TerrainType.Water and not TerrainType.River;
             const uint coast = 0x74A29AFF;
             if (LandAt(x, y - 1)) canvas.Rect(px, py, 8, 1, coast);
             if (LandAt(x - 1, y)) canvas.Rect(px, py, 1, 8, coast);
@@ -351,6 +387,52 @@ public sealed class WorldMapControl : Control
             canvas.Pixel(px + nx, py + ny - 1, PixelCanvas.Shade(color, 11));
             canvas.Pixel(px + nx + 1, py + ny, PixelCanvas.Shade(color, 8));
         }
+        else if (tile.Terrain == TerrainType.Hills)
+        {
+            canvas.Rect(px + 1, py + 5, 6, 2, 0x777D52FF);
+            canvas.Rect(px + 2, py + 3, 4, 2, 0xA1A170FF);
+            canvas.Rect(px + 3, py + 2, 2, 1, 0xB1AF7EFF);
+            canvas.Rect(px + 5, py + 4, 1, 2, 0x7C8155FF);
+        }
+        else if (tile.Terrain == TerrainType.Wetland)
+        {
+            canvas.Rect(px + 1, py + 4, 5, 2, 0x4B8588FF);
+            canvas.Rect(px + 2, py + 4, 3, 1, 0x72A599FF);
+            canvas.Rect(px + 5, py + 1, 1, 4, 0x9AA86AFF);
+            canvas.Rect(px + 6, py + 2, 1, 3, 0xB7B981FF);
+            canvas.Pixel(px + 4, py + 3, 0x365F50FF);
+        }
+        else if (tile.Terrain == TerrainType.Desert)
+        {
+            canvas.Rect(px + 1, py + 5, 5, 1, 0xC0A068FF);
+            canvas.Rect(px + 2, py + 4, 4, 1, 0xE2C68EFF);
+            canvas.Rect(px + 4, py + 3, 3, 1, 0xDABC83FF);
+            if (noise % 9 == 0) canvas.Rect(px + 1, py + 1, 1, 2, 0x8C9462FF);
+        }
+        else if (tile.Terrain == TerrainType.Tundra)
+        {
+            canvas.Rect(px + 1, py + 5, 3, 1, 0x82987CFF);
+            canvas.Pixel(px + 2, py + 4, 0x748D70FF);
+            canvas.Rect(px + 5, py + 2, 2, 1, 0xD0D8BFFF);
+            if (noise % 3 == 0) canvas.Rect(px + 4, py + 6, 3, 1, 0xBDCBAEFF);
+        }
+    }
+
+    private static void DrawRoadTile(PixelCanvas canvas, WorldState state, int x, int y, int px, int py)
+    {
+        var tile = state.Tiles[y * state.Width + x];
+        if (tile.RoadLevel == 0) return;
+        bool RoadAt(int tx, int ty) => tx >= 0 && ty >= 0 && tx < state.Width && ty < state.Height &&
+            state.Tiles[ty * state.Width + tx].RoadLevel > 0;
+        var road = tile.RoadLevel >= 2 ? 0xB4B29BFFu : 0xB49A6FFFu;
+        var verge = tile.RoadLevel >= 2 ? 0x858E7FFFu : 0x8A795AFFu;
+        canvas.Rect(px + 2, py + 2, 4, 4, verge);
+        canvas.Rect(px + 3, py + 3, 2, 2, road);
+        if (RoadAt(x - 1, y)) { canvas.Rect(px, py + 2, 4, 4, verge); canvas.Rect(px, py + 3, 4, 2, road); }
+        if (RoadAt(x + 1, y)) { canvas.Rect(px + 4, py + 2, 4, 4, verge); canvas.Rect(px + 4, py + 3, 4, 2, road); }
+        if (RoadAt(x, y - 1)) { canvas.Rect(px + 2, py, 4, 4, verge); canvas.Rect(px + 3, py, 2, 4, road); }
+        if (RoadAt(x, y + 1)) { canvas.Rect(px + 2, py + 4, 4, 4, verge); canvas.Rect(px + 3, py + 4, 2, 4, road); }
+        canvas.Pixel(px + 3, py + 3, PixelCanvas.Shade(road, 12));
     }
 
     private static WriteableBitmap MakeBitmap(PixelCanvas canvas, bool opaque)
@@ -369,27 +451,51 @@ public sealed class WorldMapControl : Control
     private void RebuildResidents()
     {
         if (Engine is null) return;
-        var heads = new StreamGeometry();
-        using (var headContext = heads.Open())
+        var now = _renderFrameTime;
+        _renderedResidentPoints.Clear();
+        var heads = _zoom >= .7 ? new StreamGeometry() : null;
+        using var headContext = heads?.Open();
+        var cargo = new StreamGeometry();
+        var messages = new StreamGeometry();
+        var magic = new StreamGeometry();
+        using var cargoContext = cargo.Open();
+        using var messageContext = messages.Open();
+        using var magicContext = magic.Open();
+        var contexts = new StreamGeometryContext[4];
+        for (var race = 0; race < 4; race++)
         {
-            for (var race = 0; race < 4; race++)
+            _residents[race] = new StreamGeometry();
+            contexts[race] = _residents[race]!.Open();
+        }
+        try
+        {
+            foreach (var resident in Engine.State.Residents)
             {
-                var geometry = new StreamGeometry();
-                using (var draw = geometry.Open())
-                {
-                    foreach (var resident in Engine.State.Residents)
-                    {
-                        if ((int)resident.Race != race) continue;
-                        var x = resident.X * TilePixels + 2 + resident.Id % 4;
-                        var y = resident.Y * TilePixels + 3 + (resident.Id / 4) % 3;
-                        GeometryRect(draw, x, y, resident.Profession == Profession.Soldier ? 2.6 : 1.8, 2.4);
-                        GeometryRect(headContext, x, y - 1.4, 1.8, 1.4);
-                    }
-                }
-                _residents[race] = geometry;
+                var position = _residentMotion.TryGetValue(resident.Id, out var motion) ? motion.Position(now) : new Point(resident.X, resident.Y);
+                var x = (position.X + .5) * TilePixels - .9;
+                var y = (position.Y + .5) * TilePixels;
+                _renderedResidentPoints[resident.Id] = ToScreen((position.X + .5) * TilePixels, (position.Y + .5) * TilePixels);
+                if (!Visible(new Rect(x - 2, y - 3, 6, 7))) continue;
+                var race = Math.Clamp((int)resident.Race, 0, 3);
+                GeometryRect(contexts[race], x, y, resident.Profession == Profession.Soldier ? 2.6 : 1.8, 2.4);
+                if (headContext is not null) GeometryRect(headContext, x, y - 1.4, 1.8, 1.4);
+                if (_zoom < .35) continue;
+                if (resident.Inventory.Food + resident.Inventory.Wood + resident.Inventory.Stone + resident.Inventory.Ore > 0)
+                    GeometryRect(cargoContext, x + 1.8, y + .5, 2.3, 2);
+                if (resident.Agent.CarriedMessages.Count > 0)
+                    GeometryRect(messageContext, x + 1.7, y - 2.3, 2.8, 1.6);
+                if (resident.Profession == Profession.Mage)
+                    GeometryRect(magicContext, x - .8, y - 2.5, 3.4, 1.1);
             }
         }
+        finally { foreach (var draw in contexts) draw.Dispose(); }
         _heads = heads;
+        _cargoGeometry = cargo;
+        _messageGeometry = messages;
+        _magicGeometry = magic;
+        _residentGeometryDirty = false;
+        _geometryZoom = _zoom;
+        _geometryOrigin = _origin;
     }
 
     private static void GeometryRect(StreamGeometryContext context, double x, double y, double width, double height)
@@ -406,17 +512,16 @@ public sealed class WorldMapControl : Control
         var x = settlement.X * TilePixels + 4;
         var y = settlement.Y * TilePixels + 4;
         var nationBrush = NationBrush(settlement.NationId);
-        // Cultivated strips and original tiny buildings make settlements readable before labels.
-        context.DrawRectangle(FarmBrush, null, new Rect(x - 17, y + 5, 10, 7));
-        for (var row = 0; row < 3; row++)
-            context.DrawRectangle(WoodBrush, null, new Rect(x - 16, y + 6 + row * 2, 8, .7));
-        DrawHouse(context, x - 12, y - 5, nationBrush, 1);
-        DrawHouse(context, x + 8, y + 3, RoofBrush, 1);
-        if (settlement.Population > 35) DrawHouse(context, x + 9, y - 11, nationBrush, .8);
-        if (settlement.Population > 70) DrawHouse(context, x - 9, y - 16, RoofBrush, .9);
+        // The town hall marks the settlement; farms and other facilities are rendered only
+        // from real construction entities, so decorations cannot imply nonexistent production.
+        context.DrawRectangle(WoodBrush, null, new Rect(x - 6, y + 2, 14, 3));
         DrawHouse(context, x - 3, y - 5, nationBrush, settlement.Level >= 2 ? 1.5 : 1.2);
         context.DrawRectangle(WoodBrush, null, new Rect(x + 2, y - 19, 1, 11));
         context.DrawRectangle(nationBrush, null, new Rect(x + 3, y - 19, 6, 4));
+        if (settlement.FertilityBoostTicks > 0)
+            context.DrawEllipse(null, new Pen(HealingBrush, .8), new Point(x, y), 10, 6);
+        if (settlement.ShieldTicks > 0)
+            context.DrawEllipse(null, new Pen(ArcaneBrush, 1), new Point(x, y - 5), 13, 16);
     }
 
     private static void DrawHouse(DrawingContext context, double x, double y, IBrush roof, double scale)
@@ -447,33 +552,22 @@ public sealed class WorldMapControl : Control
         }
     }
 
-    private void DrawTrade(DrawingContext context, WorldState state)
-    {
-        if (_zoom < .3 || state.TradeRoutes.Count == 0) return;
-        var settlements = state.Settlements.ToDictionary(s => s.Id);
-        var pen = new Pen(Brush(0x458FAD92), 1, dashStyle: DashStyle.Dash);
-        foreach (var route in state.TradeRoutes)
-        {
-            if (!settlements.TryGetValue(route.FromSettlementId, out var from) ||
-                !settlements.TryGetValue(route.ToSettlementId, out var to)) continue;
-            var start = new Point((from.X + .5) * TilePixels, (from.Y + .5) * TilePixels);
-            var end = new Point((to.X + .5) * TilePixels, (to.Y + .5) * TilePixels);
-            context.DrawLine(pen, start, end);
-            // This is a relationship link, not a caravan trajectory. Transport uses the
-            // simulation's validated land path; do not animate units through sea or mountains.
-        }
-    }
-
     private void DrawLabels(DrawingContext context, WorldState state)
     {
         if (_zoom < .22) return;
         // Keep tiny mobile maps legible by rejecting overlapping labels.
         var occupied = new List<Rect>();
-        foreach (var settlement in state.Settlements.OrderByDescending(s => s.Population))
+        foreach (var settlement in _labelSettlements)
         {
             var position = ToScreen((settlement.X + .5) * TilePixels, settlement.Y * TilePixels - 24);
-            var text = new FormattedText(settlement.Name, CultureInfo.CurrentCulture,
-                FlowDirection.LeftToRight, MapTypeface, _zoom > .6 ? 12 : 10, LabelBrush);
+            var size = _zoom > .6 ? 12 : 10;
+            if (!_settlementLabels.TryGetValue(settlement.Id, out var cached) || cached.Name != settlement.Name || cached.Size != size)
+            {
+                cached = (settlement.Name, size, new FormattedText(settlement.Name, CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight, MapTypeface, size, LabelBrush));
+                _settlementLabels[settlement.Id] = cached;
+            }
+            var text = cached.Text;
             var rect = new Rect(position.X - text.Width / 2 - 5, position.Y - text.Height - 3,
                 text.Width + 10, text.Height + 5);
             if (!rect.Intersects(new Rect(Bounds.Size)) || occupied.Any(other => other.Intersects(rect.Inflate(4)))) continue;
@@ -493,7 +587,18 @@ public sealed class WorldMapControl : Control
         }
         if (_hover is not { } hover || IsNavigationTool || !TryTile(hover, out var tile)) return;
         var point = ToScreen((tile.X + .5) * TilePixels, (tile.Y + .5) * TilePixels);
-        var radius = Math.Max(3, (Math.Clamp(BrushRadius, 0, 16) + .5) * TilePixels * _zoom);
+        if (ActiveTool.StartsWith("build:", StringComparison.OrdinalIgnoreCase))
+        {
+            var size = Math.Max(6, TilePixels * _zoom);
+            context.DrawRectangle(Brush(0x18FFE5AE), HoverPen,
+                new Rect(point.X - size / 2, point.Y - size / 2, size, size), 1, 1);
+            return;
+        }
+        var brushTiles = ActiveTool.StartsWith("road:", StringComparison.OrdinalIgnoreCase)
+            ? Math.Clamp(BrushRadius, 0, 4) : Math.Clamp(BrushRadius, 0, 16);
+        var toolName = ActiveTool.Contains(':') ? ActiveTool[(ActiveTool.IndexOf(':') + 1)..] : ActiveTool;
+        if (Enum.TryParse<DisasterKind>(toolName, true, out _)) brushTiles = Math.Max(2, brushTiles);
+        var radius = Math.Max(3, (brushTiles + .5) * TilePixels * _zoom);
         context.DrawEllipse(Brush(0x18FFE5AE), HoverPen, point, radius, radius);
     }
 
@@ -503,13 +608,16 @@ public sealed class WorldMapControl : Control
         var length = tiles * TilePixels * _zoom;
         var x = 18.0;
         var y = Bounds.Height - 22;
-        var pen = new Pen(Brush(0xAFDAE6D5), 1);
-        context.DrawLine(pen, new Point(x, y), new Point(x + length, y));
-        context.DrawLine(pen, new Point(x, y - 3), new Point(x, y + 3));
-        context.DrawLine(pen, new Point(x + length, y - 3), new Point(x + length, y + 3));
-        var text = new FormattedText($"{tiles} 格", CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
-            MapTypeface, 10, Brush(0xAFDAE6D5));
-        context.DrawText(text, new Point(x, y - 18));
+        context.DrawLine(ScalePen, new Point(x, y), new Point(x + length, y));
+        context.DrawLine(ScalePen, new Point(x, y - 3), new Point(x, y + 3));
+        context.DrawLine(ScalePen, new Point(x + length, y - 3), new Point(x + length, y + 3));
+        if (_scaleLabel is null || _scaleLabelTiles != tiles)
+        {
+            _scaleLabel = new FormattedText($"{tiles} 格", CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
+                MapTypeface, 10, ScaleBrush);
+            _scaleLabelTiles = tiles;
+        }
+        context.DrawText(_scaleLabel, new Point(x, y - 18));
     }
 
     private IBrush NationBrush(int nationId) => _nationBrushes.TryGetValue(nationId, out var brush) ? brush : RoofBrush;
@@ -577,6 +685,7 @@ public sealed class WorldMapControl : Control
         {
             if (_touches.Count >= 2)
             {
+                _followSelectedResident = false;
                 var old = _touches.Values.Take(2).ToArray();
                 _touches[e.Pointer] = point;
                 var next = _touches.Values.Take(2).ToArray();
@@ -590,6 +699,7 @@ public sealed class WorldMapControl : Control
             }
             else
             {
+                if (Distance(point, _pressPosition) > 5) _followSelectedResident = false;
                 _origin += point - _touches[e.Pointer];
                 _touches[e.Pointer] = point;
                 _gestureMoved |= Distance(point, _pressPosition) > 5;
@@ -601,7 +711,7 @@ public sealed class WorldMapControl : Control
         if (_dragging)
         {
             _gestureMoved |= Distance(point, _pressPosition) > 5;
-            if (_panning) _origin += point - _lastPosition;
+            if (_panning) { _followSelectedResident = false; _origin += point - _lastPosition; }
             else ApplyTool(point);
             _lastPosition = point;
             e.Handled = true;
@@ -646,7 +756,9 @@ public sealed class WorldMapControl : Control
 
     private void SelectTile(Point point)
     {
+        if (SelectResidentAt(point)) return;
         if (!TryTile(point, out var tile)) return;
+        ClearResidentSelection();
         _selection = tile;
         TileSelected?.Invoke(tile.X, tile.Y);
         InvalidateVisual();
@@ -661,6 +773,11 @@ public sealed class WorldMapControl : Control
         var prefix = tool.IndexOf(':');
         if (prefix >= 0) tool = tool[(prefix + 1)..];
         var edited = false;
+        if (TryApplyConstructionTool(tool, tile, out var constructionEdited))
+        {
+            if (constructionEdited) { RefreshWorld(); WorldEdited?.Invoke(this, EventArgs.Empty); }
+            return;
+        }
         if (tool.Equals("territory", StringComparison.OrdinalIgnoreCase))
         {
             if (!Engine.State.Nations.Any(nation => nation.Id == SelectedNationId)) return;
@@ -717,11 +834,15 @@ public sealed class WorldMapControl : Control
         DisposeChunks();
         _touches.Clear();
         _dragging = false;
+        _motionAttached = false;
+        _motionEpoch++;
+        _framePending = false;
     }
 
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
+        _motionAttached = true;
         if (Engine is not null) RefreshWorld();
     }
 
