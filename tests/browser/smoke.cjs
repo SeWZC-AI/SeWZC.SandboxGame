@@ -1,52 +1,234 @@
-const {chromium}=require('playwright');
-const fs=require('fs'); const assert=require('assert/strict');
-const path=require('path');
-const {chromiumLaunchOptions,observeBrowserErrors}=require('./browser-support.cjs');
-const dir=path.resolve(__dirname, '../../artifacts/browser-tests');
-fs.mkdirSync(dir,{recursive:true});
-const baseUrl=process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.SandboxGame/';
-(async()=>{
- const browser=await chromium.launch(chromiumLaunchOptions());
- const context=await browser.newContext({viewport:{width:1440,height:960},acceptDownloads:true});
- const page=await context.newPage(); const diagnostics=observeBrowserErrors(page); const errors=diagnostics.errors;
- const read=()=>page.evaluate(async()=>new Promise((resolve,reject)=>{const r=indexedDB.open('sewzc-worldbox',1); r.onsuccess=()=>{const d=r.result;const q=d.transaction('worlds').objectStore('worlds').get('autosave');q.onsuccess=()=>{resolve(q.result);d.close()};q.onerror=()=>reject(q.error)};r.onerror=()=>reject(r.error)}));
- // Fixed 1440×960 viewport: Avalonia draws controls on a canvas.
- // A realistic press duration lets pointer-down and pointer-up cross its event dispatcher.
- const click=async(x,y)=>{await page.mouse.click(x,y,{delay:80});await page.waitForTimeout(600)};
- const save=async()=>{await click(1345,34);await click(720,422);await page.waitForTimeout(800);const raw=await read();assert(raw,'Save did not create IndexedDB record');return JSON.parse(raw)};
- try{
- await page.goto(baseUrl,{waitUntil:'domcontentloaded'});
- await page.waitForFunction(()=>document.querySelector('canvas')?.width>0&&!document.querySelector('.loading'),{},{timeout:60000});
- await page.waitForTimeout(1200);
- await diagnostics.assertHealthy('desktop startup');
- await click(486,902); // Pause before comparing snapshots.
- const before=await save();assert.equal(before.Width,256);assert.equal(before.Nations.length,4);
- console.log('PASS published subpath loads and explicit IndexedDB save',before.Tick,before.Residents.length);
- await click(38,186); await click(740,370); // Human tool and inhabited land.
- const spawned=await save();assert.equal(spawned.Residents.length,before.Residents.length+12);assert.equal(spawned.Tick,before.Tick);
- console.log('PASS resident placement and paused simulation');
- await click(38,136); await click(350,200); // Grass on ocean.
- const painted=await save();assert.equal(painted.Tiles[35*256+45].Terrain,3);assert.notEqual(before.Tiles[35*256+45].Terrain,3);
- console.log('PASS terrain brush edits actual world state');
- await click(38,456);const undone=await save();assert.equal(undone.Residents.length,before.Residents.length);assert.equal(undone.Tiles[35*256+45].Terrain,before.Tiles[35*256+45].Terrain);
- console.log('PASS edit-batch undo restores residents and terrain');
- await click(1345,34);const downloadPromise=page.waitForEvent('download');await click(720,522);const download=await downloadPromise;const exportPath=path.join(dir,'export.json');await download.saveAs(exportPath);
- const exported=JSON.parse(fs.readFileSync(exportPath,'utf8'));assert.equal(exported.Tick,undone.Tick);assert.equal(exported.Residents.length,undone.Residents.length);
- console.log('PASS browser file export');
- exported.Seed=777;fs.writeFileSync(path.join(dir,'import.json'),JSON.stringify(exported));
- await click(1345,34);const filePromise=page.waitForEvent('filechooser');await click(720,572);const chooser=await filePromise;await chooser.setFiles(path.join(dir,'import.json'));await page.waitForTimeout(650);
- const imported=await save();assert.equal(imported.Seed,777);assert.equal(imported.Residents.length,exported.Residents.length);
- console.log('PASS validated browser file import');
- fs.writeFileSync(path.join(dir,'invalid.json'),'{"FormatVersion":999}');await click(1345,34);const invalidPromise=page.waitForEvent('filechooser');await click(720,572);await (await invalidPromise).setFiles(path.join(dir,'invalid.json'));await page.waitForTimeout(450);await page.keyboard.press('Escape');
- const preserved=await save();assert.equal(preserved.Seed,777);assert.equal(preserved.Residents.length,imported.Residents.length);
- console.log('PASS invalid import preserves current world');
- await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>document.querySelector('canvas')?.width>0&&!document.querySelector('.loading'),{},{timeout:60000});await page.waitForTimeout(600);await click(486,902);const resumed=await save();assert.equal(resumed.Seed,777);assert(resumed.Tick>=imported.Tick);
- console.log('PASS page reload restores saved world');
- await page.screenshot({path:dir+'/desktop.png'});
- await click(1280,400);await page.waitForTimeout(200);await page.screenshot({path:dir+'/nation-panel.png'});
- await diagnostics.assertHealthy('desktop after reload and interactions');
- fs.writeFileSync(path.join(dir,'desktop-renderer.json'),JSON.stringify({fallbacks:diagnostics.fallbacks,rendererChecks:diagnostics.rendererChecks,errors},null,2));
- assert.deepEqual(errors,[]);console.log('ALL DESKTOP FUNCTIONAL CHECKS PASSED');
- }catch(e){await page.screenshot({path:dir+'/failure.png'});console.error('FAILED',e);process.exitCode=1}
- await browser.close();
-})();
+const { chromium } = require('playwright');
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const { chromiumLaunchOptions, observeBrowserErrors } = require('./browser-support.cjs');
+const { UiDriver, testUrl } = require('./ui-driver.cjs');
+
+const output = process.env.WORLDBOX_ARTIFACT_DIR ? path.resolve(process.env.WORLDBOX_ARTIFACT_DIR) : path.resolve(__dirname, '../../artifacts/browser-tests');
+const baseUrl = process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.SandboxGame/';
+fs.mkdirSync(output, { recursive: true });
+const scroll = { scroll: 'inspector-scroll' };
+const modal = { scroll: 'modal-scroll' };
+const value = (object, key) => object[key] ?? 0;
+const resident = (world, id) => world.Residents.find(item => item.Id === id);
+const town = (world, id) => world.Settlements.find(item => item.Id === id);
+const stock = (world, id) => town(world, id).Resources;
+
+(async () => {
+    const browser = await chromium.launch(chromiumLaunchOptions());
+    const context = await browser.newContext({ viewport: { width: 1440, height: 960 }, acceptDownloads: true });
+    const page = await context.newPage();
+    const diagnostics = observeBrowserErrors(page);
+    const ui = new UiDriver(page);
+    const results = [];
+    const passed = text => { results.push(text); console.log('PASS', text); };
+    try {
+        // The ordinary product URL must not expose the test inspector.
+        await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(() => document.querySelector('canvas')?.width > 0 && !document.querySelector('.loading'), {}, { timeout: 60000 });
+        assert.equal(await page.evaluate(() => typeof globalThis.worldboxTest), 'undefined');
+        await diagnostics.assertHealthy('desktop normal URL');
+        await page.goto(testUrl(baseUrl), { waitUntil: 'domcontentloaded' });
+        await ui.ready();
+        await ui.paused();
+        await diagnostics.assertHealthy('desktop test URL');
+        const baseline = await ui.save();
+        assert.equal(baseline.FormatVersion, 2);
+        assert.equal(baseline.Width, 256);
+        assert.equal(baseline.Nations.length, 4);
+        const home = baseline.Settlements[0];
+        const actor = baseline.Residents[0];
+        passed('published subpath, opt-in read-only inspector, current-format IndexedDB save');
+
+        await ui.tool('life', 'Human');
+        await ui.clickTile(home.X, home.Y);
+        const spawned = await ui.save();
+        assert.equal(spawned.Residents.length, baseline.Residents.length + 12);
+        assert.equal(spawned.Tick, baseline.Tick);
+        const geometry = (await ui.snapshot()).map;
+        const toolbarY = ui.control(await ui.snapshot(), 'tool-category-terrain').y;
+        const paintIndex = baseline.Tiles.findIndex((tile, index) => {
+            const x = geometry.tile0CenterX + (index % baseline.Width) * geometry.tileSize;
+            const y = geometry.tile0CenterY + Math.floor(index / baseline.Width) * geometry.tileSize;
+            return value(tile, 'Terrain') < 2 && x > geometry.x + 80 && x < geometry.x + geometry.width - 80 && y > geometry.y + 150 && y < toolbarY - 50;
+        });
+        assert(paintIndex >= 0, 'The visible seeded map needs an ocean tile for the brush check');
+        await ui.tool('terrain', 'Grass');
+        await ui.clickTile(paintIndex % baseline.Width, Math.floor(paintIndex / baseline.Width));
+        const painted = await ui.save();
+        assert.equal(painted.Tiles[paintIndex].Terrain, 3);
+        await ui.click('world-undo');
+        const undone = await ui.save();
+        assert.deepEqual(undone, baseline, 'Batch undo must restore the complete pre-edit world');
+        passed('resident placement, real terrain painting, paused time, complete batch undo');
+
+        await ui.click('inspector-residents', scroll);
+        await ui.click(`resident-row-${actor.Id}`, scroll);
+        await ui.click('resident-edit', scroll);
+        await ui.fill('resident-name', 'Smoke resident', modal);
+        await ui.click('resident-apply');
+        await ui.click('resident-goal-edit', scroll);
+        await ui.selectIndex('resident-goal', 4, modal); // Rest.
+        await ui.fill('resident-goal-reason', 'Rest after a long journey', modal);
+        await ui.fill('resident-diligence', '0.73', modal);
+        await ui.click('resident-goal-apply');
+        await ui.click('resident-memory-add', scroll);
+        await ui.fill('memory-text', 'A traveler described the northern valley', modal);
+        await ui.fill('memory-confidence', '0.65', modal);
+        await ui.click('memory-apply');
+        await ui.click('resident-history-add', scroll);
+        await ui.fill('history-entry-text', 'Learned how to maintain the village tools', modal);
+        await ui.selectIndex('history-entry-experience', 5, modal); // Learning.
+        await ui.fill('history-entry-impact', '0.2', modal);
+        await ui.click('history-entry-apply');
+        const edited = await ui.save();
+        const editedActor = resident(edited, actor.Id);
+        assert.equal(editedActor.Name, 'Smoke resident');
+        assert.equal(editedActor.Agent.Goal.Kind, 4);
+        assert.equal(editedActor.Agent.Goal.Reason, 'Rest after a long journey');
+        assert.equal(editedActor.Agent.Goal.PlayerDirected, true);
+        assert(Math.abs(editedActor.Agent.Personality.Diligence - 0.75) < 1e-9);
+        const addedMemory = editedActor.Agent.Memory.find(item => item.Text === 'A traveler described the northern valley');
+        assert.equal(addedMemory?.Confidence, 0.65);
+        assert.equal(addedMemory.SourceResidentId, actor.Id);
+        assert.equal(addedMemory.OriginProfession, editedActor.Profession, 'A player-added first-hand memory must retain its author\'s profession');
+        assert.equal(addedMemory.ObservedTick, edited.Tick);
+        assert(editedActor.History.some(item => item.Text === 'Learned how to maintain the village tools' && item.PlayerEdited && item.Experience === 5 && item.Impact === 0.2));
+        assert.equal(edited.Tick, baseline.Tick);
+        assert.deepEqual(edited.Tiles, baseline.Tiles);
+        assert.deepEqual(edited.Settlements.map(item => item.Resources), baseline.Settlements.map(item => item.Resources));
+        await page.screenshot({ path: path.join(output, 'resident-panel.png') });
+        passed('resident identity, goal, personality, sourced memory and structured history edits without retrospective world changes');
+
+        await ui.click('inspector-nations', scroll);
+        await ui.click(`nation-row-${home.NationId}`, scroll);
+        await ui.click('nation-governance', scroll);
+        const currentCultureIndex = Number(ui.control(await ui.snapshot(), 'nation-culture').value);
+        const nextCultureIndex = (currentCultureIndex + 1) % edited.Society.Cultures.length;
+        await ui.selectIndex('nation-culture', nextCultureIndex, modal);
+        await ui.selectIndex('nation-institution', 1, modal);
+        await ui.click('nation-policy-autonomy');
+        await ui.selectIndex('nation-policy', 1, modal);
+        await ui.click('nation-governance-apply');
+        await ui.click('nation-culture-edit', scroll);
+        await ui.fill('culture-name', 'Valley scholars', modal);
+        await ui.fill('culture-innovation', '0.82', modal);
+        await ui.click('culture-apply');
+        const governed = await ui.save();
+        const institution = governed.Society.Institutions.find(item => item.NationId === home.NationId);
+        assert.equal(institution.Kind, 1);
+        assert.equal(institution.PlayerPolicy, 1);
+        assert.equal(governed.Nations.find(item => item.Id === home.NationId).CultureId, edited.Society.Cultures[nextCultureIndex].Id);
+        assert.equal(governed.Society.Cultures[nextCultureIndex].Name, 'Valley scholars');
+        assert.equal(governed.Society.Cultures[nextCultureIndex].Innovation, 0.82);
+        assert.deepEqual(governed.Residents.map(item => [item.Id, item.Race, item.CultureId]), edited.Residents.map(item => [item.Id, item.Race, item.CultureId]));
+        passed('culture values and national institution/policy edits preserve independent resident race and culture');
+
+        // Fund a real construction command through the ordinary nation editor.
+        await ui.click('nation-edit', scroll);
+        for (const resource of ['food', 'wood', 'stone', 'ore']) await ui.fill(`nation-${resource}`, '500', modal);
+        await ui.click('nation-apply');
+        const funded = await ui.save();
+        await ui.tool('rules', 'panel:infrastructure');
+        await ui.click('research-start', scroll);
+        assert.match((await ui.snapshot()).status, /学舍|学院/);
+        const blockedResearch = await ui.save();
+        assert.deepEqual(blockedResearch.Society.Research, funded.Society.Research);
+        assert.deepEqual(stock(blockedResearch, home.Id), stock(funded, home.Id));
+        await ui.click('building-open', scroll);
+        await ui.selectIndex('building-kind', 2, modal); // Academy.
+        const buildIndex = funded.Tiles.findIndex((tile, index) => {
+            const x = index % funded.Width; const y = Math.floor(index / funded.Width);
+            return ![0, 1, 5, 10].includes(value(tile, 'Terrain')) && Math.abs(x - home.X) + Math.abs(y - home.Y) <= 4 &&
+                (!tile.NationId || tile.NationId === home.NationId) && !funded.Society.Buildings.some(item => item.X === x && item.Y === y);
+        });
+        assert(buildIndex >= 0);
+        await ui.fill('building-x', buildIndex % funded.Width, modal);
+        await ui.fill('building-y', Math.floor(buildIndex / funded.Width), modal);
+        await ui.click('building-apply');
+        await ui.tool('build', 'road:Road');
+        await ui.clickTile(home.X, home.Y);
+        const constructed = await ui.save();
+        assert.equal(constructed.Society.Buildings.length, funded.Society.Buildings.length + 1);
+        const academy = constructed.Society.Buildings.find(item => item.Kind === 2 && item.SettlementId === home.Id);
+        assert(academy && value(academy, 'ConstructionProgress') < academy.ConstructionRequired);
+        const roads = constructed.Tiles.filter((tile, index) => value(tile, 'RoadLevel') > value(funded.Tiles[index], 'RoadLevel')).length;
+        assert(roads > 0);
+        assert.equal(stock(constructed, home.Id).Food, stock(funded, home.Id).Food - 20);
+        assert.equal(stock(constructed, home.Id).Wood, stock(funded, home.Id).Wood - 30 - roads * 0.5);
+        assert.equal(stock(constructed, home.Id).Stone, stock(funded, home.Id).Stone - 15 - roads);
+        await ui.tool('rules', 'panel:rules');
+        await ui.click('rule-magic', scroll);
+        await ui.click('world-rules-apply', scroll);
+        const noNewMagic = await ui.save();
+        assert.equal(noNewMagic.Society.MagicEnabled, false);
+        assert.deepEqual(noNewMagic.Society.Buildings, constructed.Society.Buildings);
+        passed('research facility requirement, construction and roads consume actual resources, magic development switch preserves facilities');
+
+        await ui.click('inspector-history', scroll);
+        const rowIds = snapshot => snapshot.controls.filter(item => item.id.startsWith('history-row-')).map(item => Number(item.id.slice(12)));
+        assert.deepEqual(rowIds(await ui.snapshot()), noNewMagic.Events.filter(item => value(item, 'Importance') >= 2).reverse().slice(0, 100).map(item => item.Id));
+        await ui.selectIndex('history-importance', 2, scroll);
+        await ui.selectIndex('history-nation', 1, scroll);
+        const filteredNationId = noNewMagic.Nations[0].Id;
+        assert.deepEqual(rowIds(await ui.snapshot()), noNewMagic.Events.filter(item => item.NationId === filteredNationId || item.SecondNationId === filteredNationId).reverse().slice(0, 100).map(item => item.Id));
+        await ui.fill('history-search', 'no-event-with-this-text', scroll);
+        assert.deepEqual(rowIds(await ui.snapshot()), []);
+        assert.deepEqual(await ui.save(), noNewMagic, 'Inspecting and filtering must not mutate the world');
+        passed('history importance/nation/text filters match real event records and remain read-only');
+
+        await ui.click('header-storage');
+        const downloaded = page.waitForEvent('download');
+        await ui.click('storage-export', modal);
+        const exportPath = path.join(output, 'export.json');
+        await (await downloaded).saveAs(exportPath);
+        const exported = JSON.parse(fs.readFileSync(exportPath, 'utf8'));
+        assert.deepEqual(exported, noNewMagic);
+        exported.Seed = 777;
+        const importPath = path.join(output, 'import.json');
+        fs.writeFileSync(importPath, JSON.stringify(exported));
+        const importFile = async file => {
+            await ui.click('header-storage');
+            const chooser = page.waitForEvent('filechooser');
+            await ui.click('storage-import', modal);
+            await (await chooser).setFiles(file);
+        };
+        await importFile(importPath);
+        await ui.waitFor(snapshot => !snapshot.modalOpen && snapshot.status.startsWith('导入成功'), 'valid file import', 30000);
+        const imported = await ui.save();
+        assert.deepEqual(imported, exported, 'Current-format JSON must round-trip all fields, including explicit zero values');
+        for (const invalidVersion of [1, 999]) {
+            const invalidPath = path.join(output, `invalid-${invalidVersion}.json`);
+            fs.writeFileSync(invalidPath, JSON.stringify({ ...exported, FormatVersion: invalidVersion }));
+            await importFile(invalidPath);
+            await ui.waitFor(snapshot => snapshot.status.startsWith('导入失败'), 'version rejection', 30000);
+            await ui.click('modal-close');
+            assert.deepEqual(await ui.save(), imported, 'Rejected import must preserve the whole current world');
+        }
+        passed('real download/export and file-picker import, complete v2 round-trip, rejection of old and unknown formats');
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await ui.ready();
+        await ui.paused();
+        const resumed = await ui.save();
+        assert.equal(resumed.Seed, 777);
+        assert(resumed.Tick >= imported.Tick);
+        assert.equal(resident(resumed, actor.Id).Name, 'Smoke resident');
+        assert.equal(resumed.Society.Cultures[nextCultureIndex].Name, 'Valley scholars');
+        assert.equal(resumed.Society.MagicEnabled, false);
+        const fixedControls = await ui.stableToolLayout();
+        await ui.tool('inspect', 'inspect');
+        await page.screenshot({ path: path.join(output, 'desktop.png') });
+        await diagnostics.assertHealthy('desktop after reload and interactions');
+        passed('reload restores the edited world; all six categories preserve header, time and eight tool-slot bounds');
+        fs.writeFileSync(path.join(output, 'desktop-results.json'), JSON.stringify({ url: baseUrl, viewport: { width: 1440, height: 960 }, results, fixedControls,
+            savedTick: imported.Tick, resumedTick: resumed.Tick, fallbacks: diagnostics.fallbacks, rendererChecks: diagnostics.rendererChecks, errors: diagnostics.errors }, null, 2));
+        console.log('ALL DESKTOP FUNCTIONAL CHECKS PASSED');
+    } catch (error) {
+        await page.screenshot({ path: path.join(output, 'failure.png') }).catch(() => {});
+        fs.writeFileSync(path.join(output, 'failure-ui.json'), JSON.stringify(await ui.snapshot().catch(() => null), null, 2));
+        throw error;
+    } finally {
+        await browser.close();
+    }
+})().catch(error => { console.error(error); process.exitCode = 1; });

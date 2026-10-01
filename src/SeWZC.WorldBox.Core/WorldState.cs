@@ -2,17 +2,17 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-public enum TerrainType { DeepWater, Water, Sand, Grass, Forest, Mountain, Snow }
+public enum TerrainType { DeepWater = 0, Water = 1, Sand = 2, Grass = 3, Forest = 4, Mountain = 5, Snow = 6, Hills = 7, Wetland = 8, Desert = 9, River = 10, Tundra = 11 }
 public enum RaceKind { Human, Elf, Dwarf, Orc }
-public enum Profession { Child, Farmer, Lumberjack, Miner, Soldier, Builder }
-public enum ResidentActivity { Wandering, Working, Hungry, Marching, Sick }
+public enum Profession { Child, Farmer, Lumberjack, Miner, Soldier, Builder, Trader, Messenger, Representative, Scholar, Mage }
+public enum ResidentActivity { Wandering, Working, Hungry, Marching, Sick, Eating, Resting, Talking, Delivering, Studying, Casting, Fleeing }
 public enum DisasterKind { Fire, Drought, Plague }
 public enum DiplomaticStatus { Neutral, Allied, War }
-public enum WorldEventKind { Founding, Growth, Trade, Diplomacy, War, Disaster, Death, Editor }
+public enum WorldEventKind { Founding, Growth, Trade, Diplomacy, War, Disaster, Death, Editor, Personal, Communication, Culture, Policy, Research, Construction, Magic }
 
-public sealed class WorldState
+public sealed partial class WorldState
 {
-    public int FormatVersion { get; set; } = 1;
+    public int FormatVersion { get; set; } = 2;
     public int Seed { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
@@ -33,7 +33,7 @@ public sealed class WorldState
     [JsonIgnore] public int Population => Residents.Count;
 }
 
-public sealed class Tile
+public sealed partial class Tile
 {
     public TerrainType Terrain { get; set; }
     public byte Elevation { get; set; }
@@ -42,10 +42,10 @@ public sealed class Tile
     public int SettlementId { get; set; }
     public int FireTicks { get; set; }
     public int DroughtTicks { get; set; }
-    [JsonIgnore] public bool IsWalkable => Terrain is not TerrainType.DeepWater and not TerrainType.Water and not TerrainType.Mountain;
+    [JsonIgnore] public bool IsWalkable => Terrain is not TerrainType.DeepWater and not TerrainType.Water and not TerrainType.Mountain and not TerrainType.River;
 }
 
-public sealed class Resident
+public sealed partial class Resident
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
@@ -72,7 +72,7 @@ public sealed class ResourceStock
     public double Ore { get; set; }
 }
 
-public sealed class Settlement
+public sealed partial class Settlement
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
@@ -85,7 +85,7 @@ public sealed class Settlement
     public int Level { get; set; } = 1;
 }
 
-public sealed class Nation
+public sealed partial class Nation
 {
     public int Id { get; set; }
     public string Name { get; set; } = "";
@@ -100,7 +100,7 @@ public sealed class Nation
     public ResourceStock Resources { get; set; } = new();
 }
 
-public sealed class Army
+public sealed partial class Army
 {
     public int Id { get; set; }
     public int NationId { get; set; }
@@ -130,7 +130,7 @@ public sealed class TradeRoute
     public double FoodCargo { get; set; }
 }
 
-public sealed class WorldEvent
+public sealed partial class WorldEvent
 {
     public long Tick { get; set; }
     public WorldEventKind Kind { get; set; }

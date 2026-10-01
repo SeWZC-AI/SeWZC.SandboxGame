@@ -11,13 +11,14 @@ public sealed partial class WorldEngine
         {
             var tile = State.Tiles[index];
             tile.Terrain = terrain;
-            tile.Fertility = (byte)(terrain == TerrainType.Grass ? 90 : terrain == TerrainType.Forest ? 75 : terrain == TerrainType.Sand ? 20 : 5);
+            tile.Fertility = TerrainRules.Fertility(terrain);
+            tile.ResourceAmount = 100;
             tile.Elevation = (byte)(terrain switch { TerrainType.DeepWater => 10, TerrainType.Water => 50, TerrainType.Sand => 75, TerrainType.Mountain => 210, TerrainType.Snow => 240, _ => 110 });
-            if (!tile.IsWalkable) { tile.NationId = 0; tile.FireTicks = 0; _burningTiles.Remove(index); }
+            if (!tile.IsWalkable) { tile.NationId = 0; tile.FireTicks = 0; tile.RoadLevel = 0; _burningTiles.Remove(index); }
         }
         _armyPaths.Clear();
         RelocateInvalidEntities();
-        Reindex(); RefreshTotals();
+        Reindex(); InitializeSociety(); RefreshTotals();
     }
 
     public void SpawnResidents(int x, int y, RaceKind race, int count = 12)
@@ -51,19 +52,21 @@ public sealed partial class WorldEngine
             if (position >= 0) { person.X = position % State.Width; person.Y = position / State.Width; }
             State.Residents.Add(person); _citizens[settlement.Id].Add(person);
         }
+        InitializeSociety();
+        foreach (var person in _citizens[settlement.Id]) InitializeAgent(person);
         RefreshTotals();
     }
 
     private Resident NewResident(Settlement settlement, RaceKind race, double age)
     {
         var id = NewId();
-        return new Resident { Id = id, Name = $"{RaceNames[(int)race]}·{id}", Race = race, X = settlement.X, Y = settlement.Y, Age = age, NationId = settlement.NationId, SettlementId = settlement.Id, Profession = age < 14 ? Profession.Child : AssignProfession(), Trait = new[] { "勤劳", "勇敢", "好奇", "坚韧", "温和" }[RandomInt(5)] };
+        return new Resident { Id = id, Name = $"{RaceNames[(int)race]}·{id}", Race = race, X = settlement.X, Y = settlement.Y, FromX = settlement.X, FromY = settlement.Y, Age = age, CultureId = settlement.CultureId, NationId = settlement.NationId, SettlementId = settlement.Id, Profession = age < 14 ? Profession.Child : AssignProfession(), MagicTalent = (race == RaceKind.Elf ? 45 : race == RaceKind.Dwarf ? 23 : race == RaceKind.Orc ? 28 : 32) + (unchecked((uint)id * 2654435761u ^ (uint)State.Seed) % 36), Trait = new[] { "勤劳", "勇敢", "好奇", "坚韧", "温和" }[RandomInt(5)] };
     }
 
     private Profession AssignProfession()
     {
-        var roll = RandomInt(10);
-        return roll < 5 ? Profession.Farmer : roll < 7 ? Profession.Lumberjack : roll < 9 ? Profession.Miner : Profession.Builder;
+        var roll = RandomInt(100);
+        return roll < 45 ? Profession.Farmer : roll < 63 ? Profession.Lumberjack : roll < 78 ? Profession.Miner : roll < 85 ? Profession.Builder : roll < 90 ? Profession.Trader : roll < 94 ? Profession.Messenger : roll < 97 ? Profession.Scholar : roll < 99 ? Profession.Mage : Profession.Representative;
     }
 
     public void TriggerDisaster(int x, int y, DisasterKind kind, int radius = 5)
@@ -110,9 +113,10 @@ public sealed partial class WorldEngine
         if (!Enum.IsDefined(status)) throw new ArgumentOutOfRangeException(nameof(status));
         var relation = Relation(first, second);
         relation.Status = status; relation.Opinion = status == DiplomaticStatus.War ? -80 : status == DiplomaticStatus.Allied ? 80 : 0;
-        if (status != DiplomaticStatus.War)
-            foreach (var army in State.Armies.Where(a => (a.NationId == first && a.TargetNationId == second) || (a.NationId == second && a.TargetNationId == first)).ToArray()) DisbandArmy(army);
-        AddEvent(status == DiplomaticStatus.War ? WorldEventKind.War : WorldEventKind.Diplomacy, $"{_nations[first].Name}与{_nations[second].Name}{(status == DiplomaticStatus.War ? "开战" : status == DiplomaticStatus.Allied ? "结盟" : "恢复中立关系")}。");
+        PublishDiplomaticOrder(first, second, status);
+        PublishDiplomaticOrder(second, first, status);
+        var diplomaticEvent = AddEvent(status == DiplomaticStatus.War ? WorldEventKind.War : WorldEventKind.Diplomacy, $"{_nations[first].Name}与{_nations[second].Name}{(status == DiplomaticStatus.War ? "开战" : status == DiplomaticStatus.Allied ? "结盟" : "恢复中立关系")}。");
+        diplomaticEvent.NationId = first; diplomaticEvent.SecondNationId = second;
     }
 
     public DiplomaticStatus GetDiplomacy(int first, int second) => first == second ? DiplomaticStatus.Allied : State.Diplomacies.FirstOrDefault(r => r.FirstNationId == first && r.SecondNationId == second || r.FirstNationId == second && r.SecondNationId == first)?.Status ?? DiplomaticStatus.Neutral;
@@ -147,10 +151,6 @@ public sealed partial class WorldEngine
                 settlement.X = position % State.Width; settlement.Y = position / State.Width;
                 State.Tiles[position].SettlementId = settlement.Id;
                 ClaimTerritory(settlement, 6);
-                foreach (var resident in State.Residents.Where(r => r.SettlementId == settlement.Id && r.ArmyId == 0 && Distance(r.X, r.Y, settlement.X, settlement.Y) > 7))
-                {
-                    resident.X = settlement.X; resident.Y = settlement.Y;
-                }
                 AddEvent(WorldEventKind.Editor, $"地形改变，{settlement.Name}迁往可居住的土地。", settlement.X, settlement.Y);
             }
             else RemoveSettlement(settlement, "家园被地形变化摧毁");
@@ -162,7 +162,7 @@ public sealed partial class WorldEngine
             if (position >= 0) { resident.X = position % State.Width; resident.Y = position / State.Width; resident.Health -= 15; }
             else resident.Health = 0;
         }
-        State.Residents.RemoveAll(r => r.Health <= 0);
+        ArchiveDeadResidents();
         foreach (var army in State.Armies.ToArray())
         {
             if (Walkable(army.X, army.Y)) continue;

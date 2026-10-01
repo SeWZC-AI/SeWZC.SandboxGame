@@ -1,0 +1,756 @@
+namespace SeWZC.WorldBox.Core;
+
+public sealed partial class WorldEngine
+{
+    public const int MaxBuildings = 1_536;
+
+    /// <summary>Idempotent defaults for current worlds and new towns.</summary>
+    public void InitializeSociety()
+    {
+        if (State.Society.Cultures.Count == 0)
+            State.Society.Cultures.AddRange([
+                new() { Id = 1, Name = "河谷互助", Cooperation = 0.85, Innovation = 0.45, NatureAffinity = 0.65 },
+                new() { Id = 2, Name = "山地工艺", Cooperation = 0.55, Innovation = 0.85, NatureAffinity = 0.3 },
+                new() { Id = 3, Name = "林地共生", Cooperation = 0.65, Innovation = 0.5, NatureAffinity = 0.95 },
+                new() { Id = 4, Name = "远行求知", Cooperation = 0.4, Innovation = 0.95, NatureAffinity = 0.45 }
+            ]);
+        foreach (var nation in State.Nations)
+        {
+            var capital = State.Settlements.FirstOrDefault(s => s.Id == nation.CapitalId);
+            if (!State.Society.Cultures.Any(c => c.Id == nation.CultureId))
+                nation.CultureId = capital is null ? State.Society.Cultures[0].Id : InitialCulture(capital.X, capital.Y);
+            if (!State.Society.Institutions.Any(i => i.NationId == nation.Id))
+                State.Society.Institutions.Add(new NationInstitution { NationId = nation.Id });
+        }
+        foreach (var town in State.Settlements)
+        {
+            if (!State.Society.Cultures.Any(c => c.Id == town.CultureId))
+                town.CultureId = State.Nations.FirstOrDefault(n => n.Id == town.NationId)?.CultureId ?? State.Society.Cultures[0].Id;
+            if (!State.Society.Policies.Any(p => p.SettlementId == town.Id))
+            {
+                var manual = State.Society.Institutions.FirstOrDefault(i => i.NationId == town.NationId)?.PlayerPolicy;
+                State.Society.Policies.Add(new LocalPolicy { SettlementId = town.Id, Kind = manual ?? PolicyKind.Balanced, PlayerOverride = manual.HasValue });
+            }
+            if (State.Society.Research.Any(r => r.SettlementId == town.Id)) continue;
+            State.Society.Research.Add(new SettlementResearch { SettlementId = town.Id });
+            // Founding households bring a field and a workshop; later facilities must be constructed.
+            AddFoundingFacility(town, BuildingKind.Farm);
+            AddFoundingFacility(town, BuildingKind.Workshop);
+        }
+        foreach (var resident in State.Residents)
+        {
+            if (State.Society.Cultures.Any(c => c.Id == resident.CultureId)) continue;
+            resident.CultureId = State.Settlements.FirstOrDefault(s => s.Id == resident.SettlementId)?.CultureId ?? State.Society.Cultures[0].Id;
+            var baseTalent = resident.Race switch { RaceKind.Elf => 45, RaceKind.Dwarf => 23, RaceKind.Orc => 28, _ => 32 };
+            resident.MagicTalent = baseTalent + (unchecked((uint)resident.Id * 2654435761u ^ (uint)State.Seed) % 36);
+        }
+        ReconcileSocietyTopology();
+        RefreshLocalRepresentatives();
+    }
+
+    private int InitialCulture(int x, int y)
+    {
+        var preferred = State.Tiles[Index(x, y)].Terrain switch
+        { TerrainType.Forest => 3, TerrainType.Hills or TerrainType.Snow or TerrainType.Tundra => 2, TerrainType.Desert or TerrainType.Sand => 4, _ => 1 };
+        return State.Society.Cultures.Any(c => c.Id == preferred) ? preferred : State.Society.Cultures[0].Id;
+    }
+
+    private void AddFoundingFacility(Settlement town, BuildingKind kind)
+    {
+        if (State.Society.Buildings.Count >= MaxBuildings) return;
+        var position = Circle(town.X, town.Y, 3).Where(i => State.Tiles[i].IsWalkable
+            && (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == town.NationId)
+            && !State.Society.Buildings.Any(b => b.X == i % State.Width && b.Y == i / State.Width))
+            .OrderBy(i => Distance(i % State.Width, i / State.Width, town.X, town.Y)).FirstOrDefault(-1);
+        if (position >= 0) State.Society.Buildings.Add(new Building { Id = NewId(), SettlementId = town.Id, Kind = kind,
+            X = position % State.Width, Y = position / State.Width, ConstructionProgress = 30, ConstructionRequired = 30 });
+    }
+
+    public static ResourceStock GetBuildingCost(BuildingKind kind) => kind switch
+    {
+        BuildingKind.Farm => new() { Wood = 12, Stone = 3 },
+        BuildingKind.Workshop => new() { Wood = 18, Stone = 10 },
+        BuildingKind.Academy => new() { Food = 20, Wood = 30, Stone = 15 },
+        BuildingKind.Waystation => new() { Wood = 20, Stone = 15 },
+        BuildingKind.SignalTower => new() { Wood = 30, Stone = 40, Ore = 10 },
+        BuildingKind.ArcaneSanctum => new() { Food = 15, Wood = 20, Stone = 25, Ore = 12 },
+        BuildingKind.Infirmary => new() { Food = 10, Wood = 25, Stone = 10 },
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
+
+    public static ResourceStock GetResearchCost(ResearchKind kind) => kind switch
+    {
+        ResearchKind.Agriculture => new() { Food = 20, Wood = 15 },
+        ResearchKind.Logistics => new() { Food = 20, Wood = 20, Stone = 10 },
+        ResearchKind.SignalNetwork => new() { Food = 25, Wood = 30, Stone = 20, Ore = 10 },
+        ResearchKind.ArcaneArts => new() { Food = 25, Wood = 15, Ore = 8 },
+        _ => throw new ArgumentOutOfRangeException(nameof(kind))
+    };
+
+    public int BuildFacility(int settlementId, BuildingKind kind, int x, int y)
+    {
+        if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
+        var town = RequireTown(settlementId);
+        if (!Walkable(x, y) || Distance(x, y, town.X, town.Y) > 8) throw new ArgumentException("设施须建在距聚落不超过 8 格的可通行土地。");
+        var tile = State.Tiles[Index(x, y)];
+        if (tile.NationId != 0 && tile.NationId != town.NationId) throw new InvalidOperationException("不能在别国领土建造设施。");
+        if (State.Society.Buildings.Count >= MaxBuildings) throw new InvalidOperationException("设施数量已达上限。");
+        if (State.Society.Buildings.Any(b => b.X == x && b.Y == y)) throw new InvalidOperationException("该位置已有设施。");
+        if (kind == BuildingKind.Waystation && !HasResearch(settlementId, ResearchKind.Logistics)) throw new InvalidOperationException("当地尚未掌握驿路运输。");
+        if (kind == BuildingKind.SignalTower && !HasResearch(settlementId, ResearchKind.SignalNetwork)) throw new InvalidOperationException("当地尚未掌握信号网络。");
+        if (kind == BuildingKind.ArcaneSanctum && (!State.Society.MagicEnabled || !HasResearch(settlementId, ResearchKind.ArcaneArts))) throw new InvalidOperationException("需开放魔法发展并在当地掌握奥术基础。");
+        Spend(town.Resources, GetBuildingCost(kind));
+        var building = new Building { Id = NewId(), SettlementId = settlementId, Kind = kind, X = x, Y = y,
+            ConstructionRequired = kind is BuildingKind.SignalTower or BuildingKind.ArcaneSanctum ? 60 : 30, WorkSlots = kind == BuildingKind.Farm ? 5 : 3 };
+        State.Society.Buildings.Add(building);
+        tile.NationId = town.NationId;
+        AddEvent(WorldEventKind.Construction, $"{town.Name}备好材料，开始修建{BuildingName(kind)}；居民必须到场施工。", x, y);
+        RefreshTotals();
+        return building.Id;
+    }
+
+    public void BuildRoad(int settlementId, int x, int y, int radius = 1)
+    {
+        var town = RequireTown(settlementId);
+        if (!InBounds(x, y) || Distance(x, y, town.X, town.Y) > 24) throw new ArgumentException("道路须位于聚落周边 24 格内。");
+        if (radius is < 0 or > 4) throw new ArgumentOutOfRangeException(nameof(radius), "道路笔刷半径须在 0 到 4 之间。");
+        var tiles = Circle(x, y, radius).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].RoadLevel == 0
+            && (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == town.NationId)).ToArray();
+        if (tiles.Length == 0) throw new InvalidOperationException("笔刷内没有可修建道路的土地。");
+        Spend(town.Resources, new ResourceStock { Wood = tiles.Length * 0.5, Stone = tiles.Length });
+        foreach (var index in tiles) State.Tiles[index].RoadLevel = 1;
+        RefreshTotals();
+    }
+
+    public void StartResearch(int settlementId, ResearchKind kind)
+    {
+        if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
+        var town = RequireTown(settlementId);
+        var research = State.Society.Research.First(r => r.SettlementId == settlementId);
+        if (research.Completed.Contains(kind)) throw new InvalidOperationException("当地已经掌握这项知识。");
+        if (research.ActiveProject.HasValue) throw new InvalidOperationException("当地已有正在进行的研究。");
+        if (!State.Society.Buildings.Any(b => b.SettlementId == settlementId && b.Kind == BuildingKind.Academy && b.IsCompleted)) throw new InvalidOperationException("研究需要已建成的学舍与实际到场的研究人员。");
+        if (kind == ResearchKind.SignalNetwork && !HasResearch(settlementId, ResearchKind.Logistics)) throw new InvalidOperationException("信号网络需要先掌握驿路运输。");
+        if (kind == ResearchKind.ArcaneArts && !State.Society.MagicEnabled) throw new InvalidOperationException("世界规则已关闭新的魔法发展。");
+        Spend(town.Resources, GetResearchCost(kind));
+        research.ActiveProject = kind; research.Progress = 0;
+        research.RequiredProgress = kind is ResearchKind.SignalNetwork or ResearchKind.ArcaneArts ? 100 : 60;
+        AddEvent(WorldEventKind.Research, $"{town.Name}投入材料，开始研究{ResearchName(kind)}。", town.X, town.Y);
+        RefreshTotals();
+    }
+
+    public bool HasResearch(int settlementId, ResearchKind kind) => State.Society.Research.FirstOrDefault(r => r.SettlementId == settlementId)?.Completed.Contains(kind) == true;
+    public int GetLocalTechnologyLevel(int settlementId) => 1 + (State.Society.Research.FirstOrDefault(r => r.SettlementId == settlementId)?.Completed.Count ?? 0);
+
+    public void GrantReceivedResearch(int settlementId, ResearchKind kind)
+    {
+        if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
+        var town = RequireTown(settlementId);
+        var research = State.Society.Research.First(r => r.SettlementId == settlementId);
+        if (research.Completed.Contains(kind)) return;
+        research.Completed.Add(kind); research.Completed.Sort();
+        if (research.ActiveProject == kind) { research.ActiveProject = null; research.Progress = 0; research.RequiredProgress = 0; }
+        if (_nations.TryGetValue(town.NationId, out var nation)) nation.Technology = Math.Max(nation.Technology, GetLocalTechnologyLevel(town.Id));
+        AddEvent(WorldEventKind.Research, $"{town.Name}掌握了{ResearchName(kind)}；知识可由当地居民和信使继续传授。", town.X, town.Y);
+    }
+
+    public bool TryGetLocalWorkTarget(Resident resident, out int x, out int y)
+    {
+        var building = State.Society.Buildings.Where(b => b.SettlementId == resident.SettlementId && b.Health > 0
+            && Distance(resident.X, resident.Y, b.X, b.Y) <= 8 && BuildingHasWork(b, resident))
+            .OrderBy(b => WorkPriority(b, resident)).ThenBy(b => Distance(resident.X, resident.Y, b.X, b.Y)).ThenBy(b => b.Id).FirstOrDefault();
+        x = building?.X ?? resident.X; y = building?.Y ?? resident.Y;
+        return building is not null;
+    }
+
+    private int WorkPriority(Building building, Resident resident)
+    {
+        if (!building.IsCompleted) return 0;
+        if (building.Kind is BuildingKind.Waystation or BuildingKind.SignalTower) return building.LastWorkedTick < State.Tick - 6 ? 1 : 5;
+        if (resident.Agent.Goal.Kind == AgentGoalKind.TrainMagic && building.Kind == BuildingKind.ArcaneSanctum) return 1;
+        if (resident.Agent.Goal.Kind == AgentGoalKind.Study && building.Kind == BuildingKind.Academy) return 1;
+        if (building.Kind == BuildingKind.Academy && resident.Agent.Personality.Ambition > 0.55) return 2;
+        if (building.Kind == BuildingKind.ArcaneSanctum && resident.MagicTalent >= 45) return 2;
+        if (resident.Profession == Profession.Farmer && building.Kind == BuildingKind.Farm) return 2;
+        if (resident.Profession is Profession.Miner or Profession.Lumberjack && building.Kind == BuildingKind.Workshop) return 2;
+        return 3;
+    }
+
+    private bool BuildingHasWork(Building building, Resident resident)
+    {
+        if (resident.Age < 14 || resident.ArmyId != 0 || resident.Health <= 0) return false;
+        if (building.LastWorkedTick == State.Tick && building.Workers.Count >= building.WorkSlots && !building.Workers.Contains(resident.Id)) return false;
+        if (!building.IsCompleted) return true;
+        return building.Kind switch
+        {
+            BuildingKind.Academy => State.Society.Research.Any(r => r.SettlementId == building.SettlementId && r.ActiveProject.HasValue),
+            BuildingKind.ArcaneSanctum => State.Society.MagicEnabled && resident.MagicTalent >= 25 && resident.MagicTraining < 100,
+            BuildingKind.Infirmary => State.Residents.Any(r => r.SettlementId == building.SettlementId && Distance(r.X, r.Y, building.X, building.Y) <= 3 && (r.Health < 99 || r.SicknessTicks > 0)),
+            _ => true
+        };
+    }
+
+    public bool TryWorkAtBuilding(Resident resident)
+    {
+        var building = State.Society.Buildings.Where(b => b.SettlementId == resident.SettlementId && b.Health > 0
+            && Distance(resident.X, resident.Y, b.X, b.Y) <= 1 && BuildingHasWork(b, resident))
+            .OrderBy(b => WorkPriority(b, resident)).ThenBy(b => b.Id).FirstOrDefault();
+        if (building is null || !_settlements.TryGetValue(building.SettlementId, out var town)) return false;
+        if (building.IsCompleted && building.Kind is BuildingKind.Waystation or BuildingKind.SignalTower && town.Resources.Food < 0.01) return false;
+        if (building.IsCompleted && building.Kind == BuildingKind.ArcaneSanctum && (!State.Society.MagicEnabled || town.Resources.Food < 0.03)) return false;
+        if (building.LastWorkedTick != State.Tick) { building.Workers.Clear(); building.LastWorkedTick = State.Tick; }
+        if (building.Workers.Contains(resident.Id)) return false;
+        building.Workers.Add(resident.Id);
+        var effort = Math.Clamp((0.6 + resident.Agent.Personality.Diligence * 0.6) * (resident.SicknessTicks > 0 ? 0.45 : 1), 0.1, 1.2);
+        if (!building.IsCompleted)
+        {
+            building.ConstructionProgress = Math.Min(building.ConstructionRequired, building.ConstructionProgress + effort);
+            if (building.IsCompleted) AddEvent(WorldEventKind.Construction, $"{town.Name}的{BuildingName(building.Kind)}竣工。", building.X, building.Y);
+            return true;
+        }
+        var culture = GetCulture(resident.CultureId);
+        switch (building.Kind)
+        {
+            case BuildingKind.Farm:
+                var tile = State.Tiles[Index(building.X, building.Y)];
+                var fertility = tile.Fertility / 100d * (tile.DroughtTicks > 0 ? 0.18 : 1) * (tile.FireTicks > 0 ? 0 : 1);
+                var harvest = 0.5 * effort * fertility * (1 + culture.NatureAffinity * 0.2) * (HasResearch(town.Id, ResearchKind.Agriculture) ? 1.35 : 1)
+                    * (town.FertilityBoostTicks > 0 ? 1.35 : 1) * GetPolicyProductionMultiplier(town.Id);
+                resident.Inventory.Food = Math.Min(1_000_000, resident.Inventory.Food + harvest);
+                return harvest > 0;
+            case BuildingKind.Workshop:
+                var source = Circle(building.X, building.Y, 1).Where(i => State.Tiles[i].ResourceAmount > 0).OrderByDescending(i =>
+                    resident.Profession == Profession.Miner ? TerrainRules.For(State.Tiles[i].Terrain).StoneYield : TerrainRules.For(State.Tiles[i].Terrain).WoodYield).FirstOrDefault(-1);
+                if (source < 0) return false;
+                var sourceTile = State.Tiles[source]; var yields = TerrainRules.For(sourceTile.Terrain);
+                var amount = Math.Min(sourceTile.ResourceAmount, effort * 0.2);
+                sourceTile.ResourceAmount -= amount;
+                if (resident.Profession == Profession.Miner) { resident.Inventory.Stone += amount * yields.StoneYield; resident.Inventory.Ore += amount * yields.OreYield; }
+                else resident.Inventory.Wood += amount * yields.WoodYield;
+                CapResources(resident.Inventory); return true;
+            case BuildingKind.Academy:
+                var research = State.Society.Research.First(r => r.SettlementId == town.Id);
+                if (!research.ActiveProject.HasValue) return false;
+                research.Progress += effort * (0.75 + culture.Innovation * 0.5) * (GetLocalPolicy(town.Id) == PolicyKind.Scholarship ? 1.35 : 1);
+                if (research.Progress >= 8 && resident.Profession == Profession.Builder && State.Residents.Count(r => r.SettlementId == town.Id && r.Profession == Profession.Scholar) < 2)
+                    resident.Profession = Profession.Scholar;
+                if (research.Progress >= research.RequiredProgress)
+                {
+                    var completed = research.ActiveProject.Value;
+                    GrantReceivedResearch(town.Id, completed);
+                    var fact = new AgentFact { Id = NewId(), Kind = AgentFactKind.Research, SubjectId = town.Id, X = town.X, Y = town.Y, Value = (int)completed,
+                        ObservedTick = State.Tick, LearnedTick = State.Tick, OriginResidentId = resident.Id, OriginProfession = resident.Profession, SourceResidentId = resident.Id,
+                        Text = $"{town.Name}已完成{ResearchName(completed)}研究" };
+                    AddPublicFact(town, fact);
+                    AddResidentFact(resident, fact);
+                }
+                return true;
+            case BuildingKind.ArcaneSanctum:
+                if (!State.Society.MagicEnabled || town.Resources.Food < 0.03) return false;
+                town.Resources.Food -= 0.03;
+                resident.MagicTraining = Math.Min(100, resident.MagicTraining + effort * (0.05 + resident.MagicTalent / 500) * TerrainRules.For(State.Tiles[Index(resident.X, resident.Y)].Terrain).ManaRate);
+                if (resident.MagicTraining >= 8 && resident.Profession is Profession.Builder or Profession.Scholar && State.Residents.Count(r => r.SettlementId == town.Id && r.Profession == Profession.Mage) < 2)
+                    resident.Profession = Profession.Mage;
+                resident.Mana = Math.Min(100, resident.Mana + 0.15 * effort); return true;
+            case BuildingKind.Infirmary:
+                if (town.Resources.Food < 0.05) return false;
+                var patient = State.Residents.Where(r => r.SettlementId == town.Id && Distance(r.X, r.Y, building.X, building.Y) <= 3 && (r.Health < 99 || r.SicknessTicks > 0))
+                    .OrderBy(r => r.Health).ThenBy(r => r.Id).FirstOrDefault();
+                if (patient is null) return false;
+                town.Resources.Food -= 0.05; patient.Health = Math.Min(100, patient.Health + 0.45 * effort);
+                patient.SicknessTicks = Math.Max(0, patient.SicknessTicks - 1); return true;
+            case BuildingKind.Waystation:
+            case BuildingKind.SignalTower:
+                if (town.Resources.Food < 0.01) return false;
+                town.Resources.Food -= 0.01; return true;
+            default: return false;
+        }
+    }
+
+    public double GetTerrainMoveCost(int x, int y)
+    {
+        if (!InBounds(x, y)) return double.PositiveInfinity;
+        var tile = State.Tiles[Index(x, y)]; var cost = TerrainRules.MovementCost(tile.Terrain);
+        if (!double.IsFinite(cost)) return cost;
+        return tile.RoadLevel > 0 ? Math.Max(0.65, cost * 0.55) : cost;
+    }
+
+    public double MessageTravelMultiplier(int x, int y, int nationId)
+    {
+        if (!InBounds(x, y)) return 0;
+        var speed = 1 / GetTerrainMoveCost(x, y);
+        if (State.Society.Buildings.Any(b => b.Kind == BuildingKind.Waystation && IsFacilityOperating(b)
+            && _settlements.TryGetValue(b.SettlementId, out var town) && town.NationId == nationId && Distance(x, y, b.X, b.Y) <= 3)) speed *= 1.25;
+        return speed;
+    }
+
+    public bool CanRelayInformation(int fromSettlementId, int toSettlementId, out int travelTicks)
+    {
+        travelTicks = 0;
+        if (!_settlements.TryGetValue(fromSettlementId, out var from) || !_settlements.TryGetValue(toSettlementId, out var to) || from.NationId != to.NationId) return false;
+        var towers = State.Society.Buildings.Where(b => b.Kind == BuildingKind.SignalTower && IsFacilityOperating(b)
+            && HasResearch(b.SettlementId, ResearchKind.SignalNetwork) && _settlements.TryGetValue(b.SettlementId, out var town) && town.NationId == from.NationId).OrderBy(b => b.Id).ToArray();
+        var queue = new Queue<(Building Tower, int Hops)>(); var visited = new HashSet<int>();
+        foreach (var tower in towers.Where(t => Distance(t.X, t.Y, from.X, from.Y) <= 12 && ClearSignalLine(t.X, t.Y, from.X, from.Y)))
+        { queue.Enqueue((tower, 1)); visited.Add(tower.Id); }
+        while (queue.TryDequeue(out var node))
+        {
+            if (Distance(node.Tower.X, node.Tower.Y, to.X, to.Y) <= 12 && ClearSignalLine(node.Tower.X, node.Tower.Y, to.X, to.Y)) { travelTicks = node.Hops * 2; return true; }
+            foreach (var tower in towers)
+                if (!visited.Contains(tower.Id) && Distance(tower.X, tower.Y, node.Tower.X, node.Tower.Y) <= 24 && ClearSignalLine(tower.X, tower.Y, node.Tower.X, node.Tower.Y))
+                { visited.Add(tower.Id); queue.Enqueue((tower, node.Hops + 1)); }
+        }
+        return false;
+    }
+
+    private bool IsFacilityOperating(Building building) => building.IsCompleted && building.Health >= 20 && State.Tiles[Index(building.X, building.Y)].IsWalkable
+        && State.Tiles[Index(building.X, building.Y)].FireTicks == 0 && building.LastWorkedTick >= State.Tick - 12
+        && State.Residents.Any(r => building.Workers.Contains(r.Id) && r.SettlementId == building.SettlementId && r.Health > 0 && Distance(r.X, r.Y, building.X, building.Y) <= 1);
+    private bool ClearSignalLine(int x0, int y0, int x1, int y1)
+    {
+        var steps = Math.Max(Math.Abs(x1 - x0), Math.Abs(y1 - y0));
+        for (var i = 1; i < steps; i++)
+        {
+            var x = x0 + (int)Math.Round((x1 - x0) * i / (double)steps); var y = y0 + (int)Math.Round((y1 - y0) * i / (double)steps);
+            if (State.Tiles[Index(x, y)].Terrain == TerrainType.Mountain) return false;
+        }
+        return true;
+    }
+
+    public void SetInstitution(int nationId, InstitutionKind kind)
+    {
+        if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
+        _ = RequireNation(nationId);
+        State.Society.Institutions.First(i => i.NationId == nationId).Kind = kind;
+    }
+
+    public void SetPolicy(int nationId, PolicyKind policy)
+    {
+        if (!Enum.IsDefined(policy)) throw new ArgumentOutOfRangeException(nameof(policy));
+        var nation = RequireNation(nationId);
+        State.Society.Institutions.First(i => i.NationId == nationId).PlayerPolicy = policy;
+        foreach (var town in State.Settlements.Where(s => s.NationId == nationId))
+        {
+            var local = State.Society.Policies.First(p => p.SettlementId == town.Id);
+            local.Kind = policy; local.PlayerOverride = true; local.DecidedTick = State.Tick; local.Reason = "玩家直接设定；恢复自治前保持此政策";
+        }
+        AddEvent(WorldEventKind.Editor, $"{nation.Name}的政策由玩家调整为{PolicyName(policy)}。");
+    }
+
+    public void SetPolicyAutonomy(int nationId)
+    {
+        _ = RequireNation(nationId);
+        State.Society.Institutions.First(i => i.NationId == nationId).PlayerPolicy = null;
+        foreach (var town in State.Settlements.Where(s => s.NationId == nationId)) State.Society.Policies.First(p => p.SettlementId == town.Id).PlayerOverride = false;
+    }
+
+    public PolicyKind GetLocalPolicy(int settlementId) => State.Society.Policies.FirstOrDefault(p => p.SettlementId == settlementId)?.Kind ?? PolicyKind.Balanced;
+    public double GetPolicyProductionMultiplier(int settlementId) => GetLocalPolicy(settlementId) == PolicyKind.FoodSecurity ? 1.25 : 1;
+
+    public void ApplyReceivedPolicy(int settlementId, PolicyKind policy)
+    {
+        if (!Enum.IsDefined(policy)) return;
+        _ = RequireTown(settlementId);
+        var local = State.Society.Policies.First(p => p.SettlementId == settlementId);
+        if (local.PlayerOverride) return;
+        local.Kind = policy; local.DecidedTick = State.Tick; local.Reason = "代表已收到递送的政策指令";
+    }
+
+    private void ReceiveSocietyReport(Settlement target, Resident carrier, AgentFact fact)
+    {
+        if (Distance(carrier.X, carrier.Y, target.X, target.Y) > 2 || fact.ObservedTick > State.Tick || fact.Confidence is < 0 or > 1 || !double.IsFinite(fact.Value)) return;
+        if (fact.Confidence >= 0.5 && fact.Kind == AgentFactKind.Research && fact.Value is >= 0 and <= 3 && fact.Value == Math.Truncate(fact.Value)) GrantReceivedResearch(target.Id, (ResearchKind)(int)fact.Value);
+        if (fact.Confidence >= 0.5 && fact.Kind == AgentFactKind.Policy && State.Tick - fact.ObservedTick <= 240 && fact.Value is >= 0 and <= 4 && fact.Value == Math.Truncate(fact.Value))
+        {
+            var policy = State.Society.Policies.First(p => p.SettlementId == target.Id);
+            if (fact.ObservedTick >= policy.EvidenceObservedTick)
+            {
+                ApplyReceivedPolicy(target.Id, (PolicyKind)(int)fact.Value);
+                if (!policy.PlayerOverride) { policy.EvidenceFactId = fact.Id; policy.EvidenceObservedTick = fact.ObservedTick; }
+            }
+        }
+        if (fact.Confidence >= 0.5 && fact.Kind == AgentFactKind.Culture && fact.Value is > 0 and <= 100_000 && fact.Value == Math.Truncate(fact.Value)) ObserveCulture(carrier, (int)fact.Value);
+        if (fact.Kind is not (AgentFactKind.FoodSupply or AgentFactKind.ReliefRequest or AgentFactKind.Danger or AgentFactKind.Research or AgentFactKind.Personal)) return;
+        if (State.Society.Reports.Any(r => r.RecipientSettlementId == target.Id && r.FactId == fact.Id)) return;
+        State.Society.Reports.Add(new InstitutionReport { RecipientSettlementId = target.Id, FactId = fact.Id, OriginResidentId = fact.OriginResidentId,
+            RepresentativeId = carrier.Id, ReportedProfession = fact.OriginProfession, Topic = fact.Kind, SubjectId = fact.SubjectId, Value = fact.Value,
+            Confidence = fact.Confidence, ObservedTick = fact.ObservedTick, ReceivedTick = State.Tick });
+        if (State.Society.Reports.Count > 2_048) State.Society.Reports.RemoveRange(0, State.Society.Reports.Count - 2_048);
+    }
+
+    private void DecideLocalPolicy(Settlement town)
+    {
+        var institution = State.Society.Institutions.First(i => i.NationId == town.NationId);
+        var local = State.Society.Policies.First(p => p.SettlementId == town.Id);
+        if (institution.PlayerPolicy.HasValue) { local.Kind = institution.PlayerPolicy.Value; local.PlayerOverride = true; return; }
+        if (local.PlayerOverride) return;
+        var reports = State.Society.Reports.Where(r => r.RecipientSettlementId == town.Id && r.ObservedTick <= State.Tick)
+            .GroupBy(r => (r.OriginResidentId, r.Topic)).Select(g => g.OrderByDescending(r => r.ObservedTick).ThenByDescending(r => r.ReceivedTick).First()).ToArray();
+        if (reports.Length == 0) return;
+        var scores = new double[5]; var evidence = new InstitutionReport?[5]; var largest = new double[5];
+        foreach (var report in reports)
+        {
+            var policy = report.Topic switch { AgentFactKind.FoodSupply or AgentFactKind.ReliefRequest => PolicyKind.FoodSecurity, AgentFactKind.Danger => PolicyKind.Defense, AgentFactKind.Research => PolicyKind.Scholarship, _ => PolicyKind.PublicHealth };
+            var urgency = report.Topic == AgentFactKind.FoodSupply ? 100 - Math.Clamp(report.Value, 0, 100) : report.Topic == AgentFactKind.Research ? 40 : Math.Clamp(report.Value, 0, 100);
+            var relevance = policy == PolicyKind.FoodSecurity && report.ReportedProfession == Profession.Farmer ? 2 : policy == PolicyKind.Defense && report.ReportedProfession == Profession.Soldier ? 2 : policy == PolicyKind.Scholarship && report.ReportedProfession is Profession.Builder or Profession.Miner ? 1.8 : 1;
+            var authority = institution.Kind switch
+            {
+                InstitutionKind.Monarchy => report.RepresentativeId == State.Nations.First(n => n.Id == town.NationId).RepresentativeId ? 5 : report.ReportedProfession == Profession.Soldier ? 2.5 : 0.6,
+                InstitutionKind.GuildCouncil => report.ReportedProfession is Profession.Miner or Profession.Lumberjack or Profession.Builder ? 2.8 : 0.8,
+                _ => 1 + GetCulture(town.CultureId).Cooperation * 0.35
+            };
+            var score = urgency * report.Confidence * relevance * authority / (1 + (State.Tick - report.ObservedTick) / 180d);
+            scores[(int)policy] += score;
+            if (score > largest[(int)policy]) { largest[(int)policy] = score; evidence[(int)policy] = report; }
+        }
+        var choice = Enumerable.Range(1, 4).OrderByDescending(i => scores[i]).ThenBy(i => i).First();
+        var strongest = evidence[choice];
+        if (scores[choice] < 5 || strongest is null) return;
+        var changed = local.Kind != (PolicyKind)choice;
+        local.Kind = (PolicyKind)choice; local.DecidedTick = State.Tick; local.EvidenceFactId = strongest.FactId; local.EvidenceObservedTick = strongest.ObservedTick;
+        local.Reason = $"依据代表 {strongest.RepresentativeId} 送达的议题（观察于 {strongest.ObservedTick}，接收于 {strongest.ReceivedTick}），制度与职业相关权重合计 {scores[choice]:0.0}，采用{PolicyName(local.Kind)}";
+        institution.LastDecision = local.Reason; institution.LastDecisionTick = State.Tick;
+        if (town.Id == State.Nations.First(n => n.Id == town.NationId).CapitalId) State.Nations.First(n => n.Id == town.NationId).Decision = local.Reason;
+        if (changed)
+        {
+            AddEvent(WorldEventKind.Policy, $"{town.Name}议事决定采用{PolicyName(local.Kind)}。", town.X, town.Y);
+            AddPublicFact(town, new AgentFact { Id = NewId(), Kind = AgentFactKind.Policy, SubjectId = town.Id, X = town.X, Y = town.Y,
+                Value = (int)local.Kind, ObservedTick = State.Tick, LearnedTick = State.Tick, OriginResidentId = town.RepresentativeId,
+                OriginProfession = Profession.Representative, SourceResidentId = town.RepresentativeId, Text = local.Reason });
+        }
+    }
+
+    public void RenameCulture(int cultureId, string name)
+    {
+        var culture = RequireCulture(cultureId); name = (name ?? "").Trim();
+        if (name.Length is < 1 or > 40 || name.Any(char.IsControl)) throw new ArgumentException("文化名称须为 1–40 个可见字符。", nameof(name));
+        culture.Name = name;
+    }
+
+    public void SetCultureValues(int cultureId, double cooperation, double innovation, double natureAffinity)
+    {
+        var culture = RequireCulture(cultureId);
+        if (new[] { cooperation, innovation, natureAffinity }.Any(v => !double.IsFinite(v) || v is < 0 or > 1)) throw new ArgumentOutOfRangeException(nameof(cooperation), "文化参数须在 0 到 1 之间。");
+        culture.Cooperation = cooperation; culture.Innovation = innovation; culture.NatureAffinity = natureAffinity;
+    }
+
+    public void SetNationCulture(int nationId, int cultureId) { _ = RequireCulture(cultureId); RequireNation(nationId).CultureId = cultureId; }
+    public void SetResidentCulture(int residentId, int cultureId)
+    {
+        _ = RequireCulture(cultureId); var resident = State.Residents.FirstOrDefault(r => r.Id == residentId) ?? throw new ArgumentException("居民不存在。");
+        resident.CultureId = cultureId;
+    }
+
+    public void ExchangeCulture(Resident first, Resident second)
+    {
+        if (Distance(first.X, first.Y, second.X, second.Y) > 2 || first.CultureId == second.CultureId) return;
+        var firstCulture = first.CultureId; ObserveCulture(first, second.CultureId); ObserveCulture(second, firstCulture);
+    }
+
+    private void ObserveCulture(Resident resident, int cultureId)
+    {
+        if (resident.CultureId == cultureId || !State.Society.Cultures.Any(c => c.Id == cultureId)) return;
+        var contact = State.Society.CulturalContacts.FirstOrDefault(c => c.ResidentId == resident.Id && c.CultureId == cultureId);
+        if (contact is null) { contact = new CulturalContact { ResidentId = resident.Id, CultureId = cultureId, LastContactTick = -12 }; State.Society.CulturalContacts.Add(contact); }
+        if (State.Tick - contact.LastContactTick < 12) return;
+        contact.LastContactTick = State.Tick; contact.Exposure += 0.5 + resident.Agent.Personality.Sociability;
+        if (contact.Exposure < 10) return;
+        var previous = GetCulture(resident.CultureId).Name; resident.CultureId = cultureId; contact.Exposure = 0;
+        resident.History.Add(new ResidentHistoryEntry { Tick = State.Tick, Text = $"长期当面交流后，由{previous}转向{GetCulture(cultureId).Name}文化；种族与国籍未改变。" });
+        if (resident.History.Count > 24) resident.History.RemoveAt(0);
+        var cultureEvent = AddEvent(WorldEventKind.Culture, $"{resident.Name}经长期交流转向{GetCulture(cultureId).Name}文化。", resident.X, resident.Y);
+        cultureEvent.ResidentId = resident.Id; cultureEvent.NationId = resident.NationId;
+    }
+
+    public bool TryCastSpell(int casterId, SpellKind spell, int x, int y)
+    {
+        try { CastSpell(casterId, spell, x, y); return true; }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { return false; }
+    }
+
+    public void CastSpell(int casterId, SpellKind spell, int x, int y)
+    {
+        if (!Enum.IsDefined(spell)) throw new ArgumentOutOfRangeException(nameof(spell));
+        var caster = State.Residents.FirstOrDefault(r => r.Id == casterId) ?? throw new ArgumentException("施法居民不存在。");
+        if (!InBounds(x, y) || Distance(caster.X, caster.Y, x, y) > 4) throw new InvalidOperationException("目标须位于施法者 4 格以内。");
+        if (caster.Health <= 0 || caster.Age < 14 || caster.MagicTalent < 25 || caster.MagicTraining < 8) throw new InvalidOperationException("需要成年、魔法天赋至少 25 且完成至少 8 点奥术训练。");
+        var cost = spell switch { SpellKind.Heal => 16d, SpellKind.HarvestBlessing => 25d, SpellKind.Shield => 22d, _ => 20d };
+        cost *= caster.Race == RaceKind.Elf && spell == SpellKind.Heal || caster.Race == RaceKind.Dwarf && spell == SpellKind.Shield || caster.Race == RaceKind.Orc && spell == SpellKind.Ember ? 0.85 : 1;
+        if (caster.Mana < cost) throw new InvalidOperationException($"法力不足：需要 {cost:0.#}，当前 {caster.Mana:0.#}。");
+        Resident? recipient = null; Settlement? town = null;
+        switch (spell)
+        {
+            case SpellKind.Heal:
+                recipient = State.Residents.Where(r => r.NationId == caster.NationId && Distance(r.X, r.Y, x, y) <= 1 && (r.Health < 100 || r.SicknessTicks > 0)).OrderBy(r => r.Health).ThenBy(r => r.Id).FirstOrDefault();
+                if (recipient is null) throw new InvalidOperationException("目标附近没有需要治疗的本国居民。");
+                break;
+            case SpellKind.HarvestBlessing:
+            case SpellKind.Shield:
+                town = State.Settlements.Where(s => s.NationId == caster.NationId && Distance(s.X, s.Y, x, y) <= 3).OrderBy(s => Distance(s.X, s.Y, x, y)).FirstOrDefault();
+                if (town is null) throw new InvalidOperationException("目标附近没有可施加结界或丰饶祝福的本国聚落。");
+                break;
+            case SpellKind.Ember:
+                recipient = State.Residents.Where(r => r.NationId != caster.NationId && Distance(r.X, r.Y, x, y) <= 1 && IsKnownHostile(caster, r.NationId)).OrderBy(r => r.Id).FirstOrDefault();
+                if (recipient is null) throw new InvalidOperationException("目标附近没有正在交战的敌方居民。");
+                break;
+        }
+        caster.Mana -= cost;
+        var power = 0.7 + caster.MagicTalent / 150 + caster.MagicTraining / 250;
+        if (spell == SpellKind.Heal) { recipient!.Health = Math.Min(100, recipient.Health + 22 * power); recipient.SicknessTicks = Math.Max(0, recipient.SicknessTicks - 15); }
+        if (spell == SpellKind.HarvestBlessing) town!.FertilityBoostTicks = Math.Max(town.FertilityBoostTicks, (int)(50 * power));
+        if (spell == SpellKind.Shield) town!.ShieldTicks = Math.Max(town.ShieldTicks, (int)(40 * power));
+        if (spell == SpellKind.Ember) recipient!.Health = Math.Max(0, recipient.Health - TryAbsorbShieldDamage(recipient, 18 * power));
+        var detail = spell switch { SpellKind.Heal => "治疗", SpellKind.HarvestBlessing => "丰饶祝福", SpellKind.Shield => "守护结界", _ => "战斗火花" };
+        caster.Agent.Decisions.Add(new AgentDecision { Tick = State.Tick, Goal = spell == SpellKind.Ember ? AgentGoalKind.Flee : AgentGoalKind.Work,
+            Reason = $"在 {x},{y} 施放{detail}，消耗 {cost:0.#} 法力；天赋和训练决定效果" });
+        if (caster.Agent.Decisions.Count > 6) caster.Agent.Decisions.RemoveAt(0);
+        var magicEvent = AddEvent(WorldEventKind.Magic, $"{caster.Name}施放{detail}，消耗 {cost:0.#} 法力。", x, y);
+        magicEvent.ResidentId = caster.Id; magicEvent.NationId = caster.NationId;
+    }
+
+    /// <returns>Damage remaining after a real local shield; does not change unrelated victims.</returns>
+    public double TryAbsorbShieldDamage(Resident resident, double damage)
+    {
+        var nearbyTown = State.Settlements.FirstOrDefault(s => s.NationId == resident.NationId && Distance(s.X, s.Y, resident.X, resident.Y) <= 5);
+        if (nearbyTown is null) return damage;
+        if (GetLocalPolicy(nearbyTown.Id) == PolicyKind.Defense) damage *= 0.88;
+        return nearbyTown.ShieldTicks > 0 ? damage * 0.6 : damage;
+    }
+
+    public void ReconcileSocietyTopology()
+    {
+        var townIds = State.Settlements.Select(s => s.Id).ToHashSet(); var nationIds = State.Nations.Select(n => n.Id).ToHashSet();
+        State.Society.Buildings.RemoveAll(b => !townIds.Contains(b.SettlementId) || !Walkable(b.X, b.Y) || b.Health <= 0);
+        State.Society.Research.RemoveAll(r => !townIds.Contains(r.SettlementId));
+        State.Society.Policies.RemoveAll(p => !townIds.Contains(p.SettlementId));
+        State.Society.Institutions.RemoveAll(i => !nationIds.Contains(i.NationId));
+        State.Society.Reports.RemoveAll(r => !townIds.Contains(r.RecipientSettlementId));
+        var people = State.Residents.Select(r => r.Id).ToHashSet();
+        State.Society.CulturalContacts.RemoveAll(c => !people.Contains(c.ResidentId));
+        foreach (var building in State.Society.Buildings) building.Workers.RemoveAll(id => !people.Contains(id));
+    }
+
+    public void TickSociety()
+    {
+        if (State.Tick % 30 == 0) RefreshLocalRepresentatives();
+        var townIds = State.Settlements.Select(s => s.Id).ToHashSet(); var nationIds = State.Nations.Select(n => n.Id).ToHashSet();
+        State.Society.Research.RemoveAll(r => !townIds.Contains(r.SettlementId));
+        State.Society.Policies.RemoveAll(p => !townIds.Contains(p.SettlementId));
+        State.Society.Institutions.RemoveAll(i => !nationIds.Contains(i.NationId));
+        State.Society.Reports.RemoveAll(r => !townIds.Contains(r.RecipientSettlementId) || State.Tick - r.ReceivedTick > 1_440);
+        var liveResidents = State.Residents.Select(r => r.Id).ToHashSet();
+        State.Society.CulturalContacts.RemoveAll(c => !liveResidents.Contains(c.ResidentId));
+        foreach (var building in State.Society.Buildings)
+        {
+            if (!InBounds(building.X, building.Y) || !townIds.Contains(building.SettlementId)) { building.Health = 0; continue; }
+            var tile = State.Tiles[Index(building.X, building.Y)];
+            if (!tile.IsWalkable) building.Health = 0;
+            else if (tile.FireTicks > 0) building.Health = Math.Max(0, building.Health - 1.5);
+            building.Workers.RemoveAll(id => !liveResidents.Contains(id));
+        }
+        State.Society.Buildings.RemoveAll(b => b.Health <= 0);
+        foreach (var town in State.Settlements)
+        {
+            if (town.FertilityBoostTicks > 0) town.FertilityBoostTicks--;
+            if (town.ShieldTicks > 0) town.ShieldTicks--;
+            if (State.Tick % 30 == 0) DecideLocalPolicy(town);
+            if ((State.Tick + town.Id) % 60 == 0) PlanLocalDevelopment(town);
+            if (GetLocalPolicy(town.Id) == PolicyKind.PublicHealth && town.Resources.Food >= 0.02)
+            {
+                var patient = _citizens.GetValueOrDefault(town.Id)?.Where(r => Distance(r.X, r.Y, town.X, town.Y) <= 2 && r.Health < 99).OrderBy(r => r.Health).FirstOrDefault();
+                if (patient is not null) { town.Resources.Food -= 0.02; patient.Health = Math.Min(100, patient.Health + 0.15); }
+            }
+        }
+        foreach (var person in State.Residents)
+        {
+            if (!InBounds(person.X, person.Y) || person.Health <= 0) continue;
+            person.Mana = Math.Min(100, person.Mana + 0.025 * TerrainRules.For(State.Tiles[Index(person.X, person.Y)].Terrain).ManaRate * (0.5 + person.MagicTalent / 100));
+            if (person.MagicTalent >= 25 && person.MagicTraining >= 8 && (State.Tick + person.Id) % 12 == 0) TryAutomaticMagic(person);
+        }
+        // Spread regeneration work across the map using a persisted clock, never wall time.
+        const int batch = 128;
+        for (var offset = 0; offset < Math.Min(batch, State.Tiles.Length); offset++)
+        {
+            var tile = State.Tiles[(int)((State.Tick * batch + offset) % State.Tiles.Length)];
+            if (!tile.IsWalkable || tile.FireTicks > 0) continue;
+            var yields = TerrainRules.For(tile.Terrain);
+            var renewal = (yields.FoodYield + yields.WoodYield) * (tile.DroughtTicks > 0 ? 0.2 : 1);
+            tile.ResourceAmount = Math.Min(100, tile.ResourceAmount + renewal * 2);
+        }
+    }
+
+    private void TryAutomaticMagic(Resident person)
+    {
+        if (person.Agent.Goal.Kind is AgentGoalKind.DeliverMessage or AgentGoalKind.Trade || person.Agent.Goal.PlayerDirected) return;
+        var patient = State.Residents.Where(r => r.NationId == person.NationId && r.Health < 60 && Distance(person.X, person.Y, r.X, r.Y) <= 3).OrderBy(r => r.Health).ThenBy(r => r.Id).FirstOrDefault();
+        if (patient is not null && (person.Agent.Personality.Sociability >= 0.3 || patient.Id == person.Id) && TryCastSpell(person.Id, SpellKind.Heal, patient.X, patient.Y)) return;
+        if (person.ArmyId != 0 && person.Agent.Personality.Courage >= 0.35)
+        {
+            var enemy = State.Residents.FirstOrDefault(r => r.NationId != person.NationId && r.Health > 0 && Distance(person.X, person.Y, r.X, r.Y) <= 3 && IsKnownHostile(person, r.NationId));
+            if (enemy is not null && TryCastSpell(person.Id, SpellKind.Ember, enemy.X, enemy.Y)) return;
+        }
+        if (!_settlements.TryGetValue(person.SettlementId, out var town) || Distance(person.X, person.Y, town.X, town.Y) > 4) return;
+        if (GetLocalPolicy(town.Id) == PolicyKind.Defense && town.ShieldTicks < 6 && TryCastSpell(person.Id, SpellKind.Shield, town.X, town.Y)) return;
+        if ((person.Profession is Profession.Farmer or Profession.Mage || GetCulture(person.CultureId).NatureAffinity >= 0.6)
+            && town.FertilityBoostTicks < 6 && (person.Hunger > 30 || GetLocalPolicy(town.Id) == PolicyKind.FoodSecurity))
+            TryCastSpell(person.Id, SpellKind.HarvestBlessing, town.X, town.Y);
+    }
+
+    private void RefreshLocalRepresentatives()
+    {
+        foreach (var town in State.Settlements)
+        {
+            if (State.Residents.Any(r => r.Id == town.RepresentativeId && r.SettlementId == town.Id && r.Health > 0 && r.Profession == Profession.Representative)) continue;
+            var representative = State.Residents.Where(r => r.SettlementId == town.Id && r.Age >= 16 && r.Health > 0 && r.ArmyId == 0
+                && r.Agent.DestinationSettlementId == 0 && Distance(r.X, r.Y, town.X, town.Y) <= 3)
+                .OrderByDescending(r => r.Profession == Profession.Representative).ThenByDescending(r => r.Agent.Personality.Sociability)
+                .ThenBy(r => r.Id).FirstOrDefault();
+            town.RepresentativeId = representative?.Id ?? 0;
+            if (representative is not null)
+            {
+                representative.Profession = Profession.Representative;
+                representative.Agent.JobChangedTick = State.Tick;
+            }
+        }
+        foreach (var nation in State.Nations)
+            nation.RepresentativeId = State.Settlements.FirstOrDefault(s => s.Id == nation.CapitalId)?.RepresentativeId ?? 0;
+    }
+
+    private void PlanLocalDevelopment(Settlement town)
+    {
+        var localPeople = State.Residents.Where(r => r.SettlementId == town.Id && r.Age >= 16 && r.Health > 50 && r.ArmyId == 0
+            && Distance(r.X, r.Y, town.X, town.Y) <= 6 && r.Agent.DestinationSettlementId == 0).ToArray();
+        var buildings = State.Society.Buildings.Where(b => b.SettlementId == town.Id).ToArray();
+        var project = State.Society.Research.First(r => r.SettlementId == town.Id);
+        if (localPeople.Length < 4) return;
+        var hasConstruction = buildings.Any(b => !b.IsCompleted);
+        var needsScholar = project.ActiveProject.HasValue;
+        var needsMage = State.Society.MagicEnabled && buildings.Any(b => b.Kind == BuildingKind.ArcaneSanctum && b.IsCompleted);
+        // A nearby citizen can accept an actual vacant job. Keep agriculture and mission workers intact.
+        var targetJob = hasConstruction ? Profession.Builder : needsScholar ? Profession.Scholar : needsMage ? Profession.Mage : Profession.Builder;
+        var skilledCount = localPeople.Count(r => r.Profession == targetJob);
+        var available = localPeople.Where(r => r.Profession is Profession.Builder or Profession.Farmer or Profession.Lumberjack or Profession.Miner
+            && State.Tick - r.Agent.JobChangedTick >= 120 && (r.Profession != Profession.Farmer || localPeople.Count(p => p.Profession == Profession.Farmer) >= 4)
+            && (targetJob != Profession.Mage || r.MagicTalent >= 35));
+        if (skilledCount == 0 && (hasConstruction || needsScholar || needsMage))
+        {
+            var recruit = available.OrderByDescending(r => targetJob == Profession.Mage ? r.MagicTalent / 100 + r.Agent.Personality.Ambition : r.Agent.Personality.Diligence + r.Agent.Personality.Ambition)
+                .ThenBy(r => r.Id).FirstOrDefault();
+            if (recruit is not null)
+            {
+                recruit.Profession = targetJob; recruit.Agent.JobChangedTick = State.Tick; recruit.Agent.NextThinkTick = State.Tick;
+                recruit.History.Add(new ResidentHistoryEntry { Tick = State.Tick, Text = $"当地{(hasConstruction ? "施工" : needsScholar ? "研究" : "奥术研习")}缺少人员，结合个人勤奋、志向与天赋转任{targetJob}。" });
+                if (recruit.History.Count > 24) recruit.History.RemoveAt(0);
+            }
+        }
+        if (town.Resources.Food < 40 || hasConstruction) return;
+        bool CanAfford(ResourceStock cost) => town.Resources.Food >= cost.Food + 25 && town.Resources.Wood >= cost.Wood
+            && town.Resources.Stone >= cost.Stone && town.Resources.Ore >= cost.Ore;
+        void PlanBuilding(BuildingKind kind)
+        {
+            if (buildings.Any(b => b.Kind == kind) || !CanAfford(GetBuildingCost(kind)) || State.Society.Buildings.Count >= MaxBuildings) return;
+            var position = Circle(town.X, town.Y, 5).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].FireTicks == 0
+                && (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == town.NationId)
+                && !State.Society.Buildings.Any(b => b.X == i % State.Width && b.Y == i / State.Width))
+                .OrderBy(i => Distance(town.X, town.Y, i % State.Width, i / State.Width)).ThenBy(i => i).FirstOrDefault(-1);
+            if (position >= 0) BuildFacility(town.Id, kind, position % State.Width, position / State.Width);
+        }
+        if (!buildings.Any(b => b.Kind == BuildingKind.Academy)) { PlanBuilding(BuildingKind.Academy); return; }
+        if (GetLocalPolicy(town.Id) == PolicyKind.PublicHealth && !buildings.Any(b => b.Kind == BuildingKind.Infirmary)) { PlanBuilding(BuildingKind.Infirmary); return; }
+        if (HasResearch(town.Id, ResearchKind.ArcaneArts) && State.Society.MagicEnabled && !buildings.Any(b => b.Kind == BuildingKind.ArcaneSanctum)) { PlanBuilding(BuildingKind.ArcaneSanctum); return; }
+        if (HasResearch(town.Id, ResearchKind.Logistics) && !buildings.Any(b => b.Kind == BuildingKind.Waystation)) { PlanBuilding(BuildingKind.Waystation); return; }
+        if (HasResearch(town.Id, ResearchKind.SignalNetwork) && !buildings.Any(b => b.Kind == BuildingKind.SignalTower)) { PlanBuilding(BuildingKind.SignalTower); return; }
+        if (project.ActiveProject.HasValue || !buildings.Any(b => b.Kind == BuildingKind.Academy && b.IsCompleted)) return;
+        var order = State.Society.MagicEnabled && localPeople.Any(r => r.MagicTalent >= 55)
+            ? new[] { ResearchKind.Agriculture, ResearchKind.ArcaneArts, ResearchKind.Logistics, ResearchKind.SignalNetwork }
+            : new[] { ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.SignalNetwork };
+        foreach (var kind in order)
+        {
+            if (HasResearch(town.Id, kind)) continue;
+            if (CanAfford(GetResearchCost(kind))) StartResearch(town.Id, kind);
+            return;
+        }
+    }
+
+    private static void ValidateSocietyState(WorldState state)
+    {
+        static void Need(bool condition, string message) { if (!condition) throw new ArgumentException("无效存档：" + message); }
+        static bool Range(double value, double max) => double.IsFinite(value) && value >= 0 && value <= max;
+        static bool Text(string? value, int max = 1000) => value is not null && value.Length <= max && !value.Any(c => char.IsControl(c) && c != '\n');
+        var society = state.Society;
+        Need(society is not null, "缺少社会状态。");
+        Need(society!.Cultures is { Count: > 0 and <= 64 } && society.Buildings is not null && society.Buildings.Count <= MaxBuildings
+            && society.Research is not null && society.Research.Count <= 256 && society.Policies is not null && society.Policies.Count <= 256
+            && society.Institutions is not null && society.Institutions.Count <= 64 && society.Reports is not null && society.Reports.Count <= 2_048
+            && society.CulturalContacts is not null && society.CulturalContacts.Count <= MaxPopulation * 64, "社会记录数量或集合无效。");
+        var cultureIds = new HashSet<int>();
+        foreach (var culture in society.Cultures!) Need(culture is not null && culture.Id is > 0 and <= 100_000 && cultureIds.Add(culture.Id)
+            && Text(culture.Name, 40) && culture.Name.Length > 0 && Range(culture.Cooperation, 1) && Range(culture.Innovation, 1) && Range(culture.NatureAffinity, 1), "文化定义无效。");
+        var towns = state.Settlements.ToDictionary(s => s.Id); var nations = state.Nations.Select(n => n.Id).ToHashSet(); var residents = state.Residents.Select(r => r.Id).ToHashSet();
+        foreach (var person in state.Residents) Need(cultureIds.Contains(person.CultureId), "居民文化引用无效。");
+        foreach (var town in state.Settlements) Need(cultureIds.Contains(town.CultureId), "聚落文化引用无效。");
+        foreach (var nation in state.Nations) Need(cultureIds.Contains(nation.CultureId), "国家文化引用无效。");
+        var buildingIds = new HashSet<int>(); var occupied = new HashSet<(int, int)>();
+        var entityIds = state.Residents.Select(r => r.Id).Concat(state.Nations.Select(n => n.Id)).Concat(state.Settlements.Select(s => s.Id)).Concat(state.Armies.Select(a => a.Id)).ToHashSet();
+        foreach (var building in society.Buildings!)
+            Need(building is not null && building.Id > 0 && building.Id < state.NextId && buildingIds.Add(building.Id) && !entityIds.Contains(building.Id)
+                && towns.ContainsKey(building.SettlementId) && Enum.IsDefined(building.Kind) && building.X >= 0 && building.Y >= 0 && building.X < state.Width && building.Y < state.Height
+                && occupied.Add((building.X, building.Y)) && Range(building.Health, 100) && Range(building.ConstructionProgress, 10_000)
+                && building.ConstructionRequired > 0 && building.ConstructionRequired <= 10_000 && building.ConstructionProgress <= building.ConstructionRequired
+                && building.WorkSlots is > 0 and <= 20 && building.Workers is not null && building.Workers.Count <= building.WorkSlots
+                && building.Workers.Distinct().Count() == building.Workers.Count && building.Workers.All(residents.Contains)
+                && building.LastWorkedTick >= -100 && building.LastWorkedTick <= state.Tick, "设施状态或引用无效。");
+        var researchTowns = new HashSet<int>();
+        foreach (var research in society.Research!)
+            Need(research is not null && towns.ContainsKey(research.SettlementId) && researchTowns.Add(research.SettlementId)
+                && (research.ActiveProject is null || Enum.IsDefined(research.ActiveProject.Value)) && Range(research.Progress, 10_000) && Range(research.RequiredProgress, 10_000)
+                && research.Completed is not null && research.Completed.Count <= 4 && research.Completed.All(r => Enum.IsDefined(r))
+                && research.Completed.Distinct().Count() == research.Completed.Count && (!research.ActiveProject.HasValue || !research.Completed.Contains(research.ActiveProject.Value))
+                && (!research.ActiveProject.HasValue || research.RequiredProgress > 0 && research.Progress < research.RequiredProgress), "研究状态无效。");
+        Need(researchTowns.Count == towns.Count, "聚落研究状态缺失。");
+        var policyTowns = new HashSet<int>();
+        foreach (var policy in society.Policies!) Need(policy is not null && towns.ContainsKey(policy.SettlementId) && policyTowns.Add(policy.SettlementId)
+            && Enum.IsDefined(policy.Kind) && policy.DecidedTick >= 0 && policy.DecidedTick <= state.Tick && policy.EvidenceObservedTick >= 0 && policy.EvidenceObservedTick <= state.Tick
+            && Text(policy.Reason), "政策状态无效。");
+        Need(policyTowns.Count == towns.Count, "聚落政策状态缺失。");
+        var institutionNations = new HashSet<int>();
+        foreach (var institution in society.Institutions!) Need(institution is not null && nations.Contains(institution.NationId) && institutionNations.Add(institution.NationId)
+            && Enum.IsDefined(institution.Kind) && (!institution.PlayerPolicy.HasValue || Enum.IsDefined(institution.PlayerPolicy.Value))
+            && institution.LastDecisionTick >= 0 && institution.LastDecisionTick <= state.Tick && Text(institution.LastDecision), "制度状态无效。");
+        Need(institutionNations.Count == nations.Count, "国家制度状态缺失。");
+        var reports = new HashSet<(int, int)>();
+        foreach (var report in society.Reports!) Need(report is not null && towns.ContainsKey(report.RecipientSettlementId) && report.FactId > 0 && report.FactId < state.NextId
+            && reports.Add((report.RecipientSettlementId, report.FactId)) && Enum.IsDefined(report.Topic) && Enum.IsDefined(report.ReportedProfession)
+            && double.IsFinite(report.Value) && Math.Abs(report.Value) <= 1_000_000_000 && Range(report.Confidence, 1)
+            && report.ObservedTick >= 0 && report.ObservedTick <= report.ReceivedTick && report.ReceivedTick <= state.Tick, "机构报告无效。");
+        var contacts = new HashSet<(int, int)>();
+        foreach (var contact in society.CulturalContacts!) Need(contact is not null && residents.Contains(contact.ResidentId) && cultureIds.Contains(contact.CultureId)
+            && contacts.Add((contact.ResidentId, contact.CultureId)) && Range(contact.Exposure, 20) && contact.LastContactTick >= -12 && contact.LastContactTick <= state.Tick, "文化交流状态无效。");
+    }
+
+    private void AddPublicFact(Settlement town, AgentFact fact)
+    {
+        if (town.PublicKnowledge.Any(f => f.Id == fact.Id)) return;
+        town.PublicKnowledge.Add(fact);
+        if (town.PublicKnowledge.Count > 24) town.PublicKnowledge.RemoveAt(0);
+    }
+    private static void AddResidentFact(Resident resident, AgentFact fact)
+    {
+        if (resident.Agent.Memory.Any(f => f.Id == fact.Id)) return;
+        resident.Agent.Memory.Add(fact);
+        if (resident.Agent.Memory.Count > 16) resident.Agent.Memory.RemoveAt(0);
+    }
+    private static void Spend(ResourceStock stock, ResourceStock cost)
+    {
+        if (stock.Food < cost.Food || stock.Wood < cost.Wood || stock.Stone < cost.Stone || stock.Ore < cost.Ore)
+            throw new InvalidOperationException($"当地材料不足；需要粮食 {cost.Food:0.#}、木材 {cost.Wood:0.#}、石材 {cost.Stone:0.#}、矿产 {cost.Ore:0.#}。");
+        stock.Food -= cost.Food; stock.Wood -= cost.Wood; stock.Stone -= cost.Stone; stock.Ore -= cost.Ore;
+    }
+    private Settlement RequireTown(int id) => _settlements.TryGetValue(id, out var town) ? town : throw new ArgumentException("聚落不存在。");
+    private Nation RequireNation(int id) => _nations.TryGetValue(id, out var nation) ? nation : throw new ArgumentException("国家不存在。");
+    private CultureDefinition RequireCulture(int id) => State.Society.Cultures.FirstOrDefault(c => c.Id == id) ?? throw new ArgumentException("文化不存在。");
+    private CultureDefinition GetCulture(int id) => State.Society.Cultures.FirstOrDefault(c => c.Id == id) ?? State.Society.Cultures[0];
+    public static string BuildingName(BuildingKind kind) => kind switch { BuildingKind.Farm => "农田", BuildingKind.Workshop => "工坊", BuildingKind.Academy => "学舍", BuildingKind.Waystation => "驿站", BuildingKind.SignalTower => "信号塔", BuildingKind.ArcaneSanctum => "奥术研习所", BuildingKind.Infirmary => "医馆", _ => kind.ToString() };
+    public static string ResearchName(ResearchKind kind) => kind switch { ResearchKind.Agriculture => "农业改良", ResearchKind.Logistics => "驿路运输", ResearchKind.SignalNetwork => "信号网络", ResearchKind.ArcaneArts => "奥术基础", _ => kind.ToString() };
+    public static string PolicyName(PolicyKind kind) => kind switch { PolicyKind.FoodSecurity => "粮食保障", PolicyKind.Defense => "防务优先", PolicyKind.Scholarship => "求知兴学", PolicyKind.PublicHealth => "公共医疗", _ => "均衡发展" };
+}

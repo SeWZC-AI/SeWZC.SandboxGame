@@ -3,7 +3,11 @@
   "private": true,
   "scripts": {
     "test": "node smoke.cjs",
-    "test:mobile": "node mobile-smoke.cjs"
+    "test:mobile": "node mobile-smoke.cjs",
+    "test:motion": "node motion.cjs",
+    "test:stress": "node stress.cjs"
   },
-  "devDependencies": { "playwright": "1.57.0" }
+  "devDependencies": {
+    "playwright": "1.57.0"
+  }
 }

@@ -47,6 +47,8 @@ public sealed partial class WorldEngine
             }
             engine.AddEvent(WorldEventKind.Founding, "四个种族抵达这片大陆。河流、粮食与山脉将塑造他们的命运。");
         }
+        engine.InitializeSociety();
+        foreach (var resident in state.Residents) engine.InitializeAgent(resident);
         return engine;
     }
 
@@ -73,10 +75,38 @@ public sealed partial class WorldEngine
     private bool Walkable(int x, int y) => InBounds(x, y) && State.Tiles[Index(x, y)].IsWalkable;
     private static int Distance(int ax, int ay, int bx, int by) => Math.Abs(ax - bx) + Math.Abs(ay - by);
     private int NewId() => State.NextId++;
-    private void AddEvent(WorldEventKind kind, string message, int x = -1, int y = -1)
+    private WorldEvent AddEvent(WorldEventKind kind, string message, int x = -1, int y = -1)
     {
-        State.Events.Add(new WorldEvent { Tick = State.Tick, Kind = kind, Message = message, X = x, Y = y });
-        if (State.Events.Count > 160) State.Events.RemoveRange(0, State.Events.Count - 160);
+        var importance = kind switch
+        {
+            WorldEventKind.Founding => EventImportance.Historic,
+            WorldEventKind.War or WorldEventKind.Disaster => EventImportance.Major,
+            WorldEventKind.Trade or WorldEventKind.Personal or WorldEventKind.Communication => EventImportance.Routine,
+            _ => EventImportance.Notable
+        };
+        var entry = new WorldEvent { Id = NewId(), Tick = State.Tick, Kind = kind, Message = message, X = x, Y = y, Importance = importance };
+        if (InBounds(x, y)) entry.NationId = State.Tiles[Index(x, y)]?.NationId ?? 0;
+        State.Events.Add(entry);
+        while (State.Events.Count > 400)
+        {
+            var expendable = State.Events.FindIndex(e => e.Importance == EventImportance.Routine);
+            if (expendable < 0) expendable = State.Events.FindIndex(e => e.Importance == EventImportance.Notable);
+            State.Events.RemoveAt(Math.Max(0, expendable));
+        }
+        return entry;
+    }
+
+    private void ArchiveDeadResidents()
+    {
+        foreach (var resident in State.Residents.Where(r => r.Health <= 0).ToArray())
+        {
+            resident.Health = 0;
+            resident.History.Add(new ResidentHistoryEntry { Tick = State.Tick, Importance = EventImportance.Major, Text = "生命结束，留下的经历仍保存在人物档案中。" });
+            if (resident.History.Count > 24) resident.History.RemoveAt(0);
+            State.ArchivedResidents.Add(resident);
+            State.Residents.Remove(resident);
+        }
+        while (State.ArchivedResidents.Count > 256) State.ArchivedResidents.RemoveAt(0);
     }
 
     private int FindWalkable(int x, int y, int radius)
@@ -110,8 +140,11 @@ public sealed partial class WorldEngine
             var fine = Noise(x / 7.0, y / 7.0, 71);
             var elevation = 0.75 - radial * 0.58 + (broad - 0.5) * 0.48 + (fine - 0.5) * 0.10;
             var moisture = Noise(x / 15.0, y / 15.0, 311);
-            var terrain = elevation < 0.20 ? TerrainType.DeepWater : elevation < 0.27 ? TerrainType.Water : elevation < 0.31 ? TerrainType.Sand : elevation > 0.76 ? TerrainType.Snow : elevation > 0.66 ? TerrainType.Mountain : moisture > 0.54 ? TerrainType.Forest : TerrainType.Grass;
-            State.Tiles[Index(x, y)] = new Tile { Terrain = terrain, Elevation = (byte)Math.Clamp(elevation * 255, 0, 255), Fertility = (byte)(terrain == TerrainType.Grass ? 65 + moisture * 35 : terrain == TerrainType.Forest ? 70 : terrain == TerrainType.Sand ? 20 : 5) };
+            var terrain = elevation < 0.20 ? TerrainType.DeepWater : elevation < 0.27 ? TerrainType.Water : elevation < 0.31 ? TerrainType.Sand : elevation > 0.76 ? TerrainType.Snow : elevation > 0.66 ? TerrainType.Mountain : elevation > 0.57 ? TerrainType.Hills : Math.Abs(ny) > 0.64 ? TerrainType.Tundra : moisture < 0.29 ? TerrainType.Desert : moisture > 0.72 && elevation < 0.43 ? TerrainType.Wetland : moisture > 0.54 ? TerrainType.Forest : TerrainType.Grass;
+            if (elevation is > 0.30 and < 0.61 && Math.Abs(nx - 0.22 * Math.Sin(ny * 7 + State.Seed * 0.003)) < 0.014)
+                terrain = TerrainType.River;
+            State.Tiles[Index(x, y)] = new Tile { Terrain = terrain, Elevation = (byte)Math.Clamp(elevation * 255, 0, 255), Fertility = TerrainRules.Fertility(terrain), ResourceAmount = terrain is TerrainType.Desert or TerrainType.Sand ? 55 : terrain == TerrainType.Wetland ? 150 : 100 };
+
         }
     }
 

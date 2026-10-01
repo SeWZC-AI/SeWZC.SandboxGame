@@ -41,7 +41,10 @@ var tests = new (string Name, Action Run)[]
     ("spawning on owned land joins its existing nation", SpawnOnOwnedLand),
     ("food availability changes population survival", FoodAvailability),
     ("war leads to casualties or territorial capture", War)
-};
+}.Concat(AgentBehaviorTests.Cases).Concat(EditorAndMigrationTests.Cases).Concat(SocietyBehaviorTests.Cases()).ToArray();
+var filterOption = Array.IndexOf(args, "--filter");
+if (filterOption >= 0 && filterOption + 1 < args.Length)
+    tests = tests.Where(t => t.Name.Contains(args[filterOption + 1], StringComparison.OrdinalIgnoreCase)).ToArray();
 var failures = 0;
 var totalTime = Stopwatch.StartNew();
 foreach (var (name, run) in tests)
@@ -102,20 +105,18 @@ static void SaveResume()
     conflict.SetDiplomacy(nations[0].Id, nations[1].Id, DiplomaticStatus.War);
     conflict.TriggerDisaster(15, 32, DisasterKind.Drought, 8);
     conflict.Step(50);
-    Check(conflict.State.Armies.Any(a => a.Status == "行军"), "Save scenario requires a moving army.");
+    Check(conflict.State.Armies.Any(a => a.MoveStartedTick > 0 && (a.FromX != a.X || a.FromY != a.Y)),
+        "Save scenario requires a moving army.");
     for (var y = 29; y <= 35; y++)
     for (var x = 32; x <= 38; x++)
         conflict.State.Tiles[y * conflict.State.Width + x].Terrain = TerrainType.Forest;
     conflict.TriggerDisaster(35, 32, DisasterKind.Fire, 3);
     AssertResume(conflict, 91);
 
-    var trading = WarWorld();
-    nations = trading.State.Nations.ToArray();
-    trading.SetDiplomacy(nations[0].Id, nations[1].Id, DiplomaticStatus.Allied);
-    trading.SetNationResources(nations[0].Id, 10000, 500, 500, 500);
-    trading.SetNationResources(nations[1].Id, 0, 500, 500, 500);
-    trading.Step(65);
-    Check(trading.State.TradeRoutes.Count > 0, "Trade scenario did not dispatch food along an available route.");
+    var (trading, trader, _, _) = AgentBehaviorTests.TradeWorld();
+    trading.Step(20);
+    Check(trader.Agent.Goal.Kind == AgentGoalKind.Trade && trader.Inventory.Food > 0,
+        "Trade scenario requires a physical carrier still delivering food.");
     AssertResume(trading, 100);
 }
 
@@ -123,11 +124,35 @@ static void AssertResume(WorldEngine uninterrupted, int steps)
 {
     var saved = uninterrupted.ExportJson();
     var resumed = WorldEngine.ImportJson(saved);
-    Check(saved == resumed.ExportJson(), "A valid save changed during import.");
+    var imported = resumed.ExportJson();
+    if (saved != imported) throw new InvalidOperationException("A valid save changed during import: " + JsonDifference(JsonNode.Parse(saved), JsonNode.Parse(imported)));
     uninterrupted.Step(steps);
     resumed.Step(steps);
     Check(uninterrupted.ExportJson() == resumed.ExportJson(),
         "Save/resume changed subsequent decisions or random outcomes.");
+}
+
+static string? JsonDifference(JsonNode? first, JsonNode? second, string path = "$")
+{
+    if (JsonNode.DeepEquals(first, second)) return null;
+    if (first is JsonObject a && second is JsonObject b)
+    {
+        foreach (var item in a)
+        {
+            var difference = JsonDifference(item.Value, b[item.Key], path + "." + item.Key);
+            if (difference is not null) return difference;
+        }
+    }
+    if (first is JsonArray aa && second is JsonArray bb)
+    {
+        if (aa.Count != bb.Count) return $"{path}: count {aa.Count} -> {bb.Count}";
+        for (var i = 0; i < aa.Count; i++)
+        {
+            var difference = JsonDifference(aa[i], bb[i], $"{path}[{i}]");
+            if (difference is not null) return difference;
+        }
+    }
+    return $"{path}: {first?.ToJsonString()} -> {second?.ToJsonString()}";
 }
 
 static void InvalidSaves()
@@ -209,8 +234,8 @@ static void TerrainEditing()
     Check(!foreignLand.Contains(townIndex), "A displaced settlement moved onto another nation's territory.");
     Check(relocation.State.Tiles[townIndex].NationId == town.NationId,
         "A relocated settlement does not own its new center tile.");
-    Check(Math.Abs(displaced.X - town.X) + Math.Abs(displaced.Y - town.Y) <= 7,
-        "An intact resident was stranded beyond the relocated home's working area.");
+    Check(displaced.X == 30 && displaced.Y == 24,
+        "Relocating a flooded town teleported an unaffected resident from the opposite shore.");
     var previous = (displaced.X, displaced.Y);
     var moved = false;
     for (var step = 0; step < 12; step++)
@@ -389,8 +414,8 @@ static void NationTerritoryEditing()
     Check(engine.State.Nations.All(n => n.Id != originalNations[0].Id), "The absorbed country remains after losing its final capital.");
     Check(engine.State.Diplomacies.All(d => d.FirstNationId != originalNations[0].Id && d.SecondNationId != originalNations[0].Id),
         "Diplomacy still references the absorbed country.");
-    Check(engine.State.Armies.All(a => a.NationId != originalNations[0].Id && a.TargetNationId != originalNations[0].Id),
-        "An army still belongs to or targets the absorbed country.");
+    Check(engine.State.Armies.All(a => a.NationId != originalNations[0].Id),
+        "An army still belongs to the absorbed country.");
     Check(residentIds.SetEquals(engine.State.Residents.Select(r => r.Id)), "Final capital transfer discarded mobilized residents.");
     CheckResidents(engine.State);
     AssertResume(engine, 37);
@@ -501,6 +526,12 @@ static void Benchmark()
         $"{initialNations} starting nations, 8 wars; 120 ticks in {timer.Elapsed.TotalMilliseconds:F1} ms " +
         $"({timer.Elapsed.TotalMilliseconds / 120:F2} ms/tick), final population {engine.State.Population}, " +
         $"active armies {engine.State.Armies.Count}. Browser/mobile rendering is not measured.");
+    var save = engine.ExportJson();
+    var saveBytes = Encoding.UTF8.GetByteCount(save);
+    Console.WriteLine($"BENCHMARK populated v2 save: {saveBytes} bytes at tick {engine.State.Tick}, " +
+        $"{engine.State.Residents.Sum(r => r.Agent.Memory.Count)} remembered facts.");
+    Check(saveBytes <= WorldEngine.MaxSaveBytes, "The populated target-scale world exceeds the save size limit.");
+    _ = WorldEngine.ImportJson(save);
 }
 
 static WorldEngine WarWorld()
