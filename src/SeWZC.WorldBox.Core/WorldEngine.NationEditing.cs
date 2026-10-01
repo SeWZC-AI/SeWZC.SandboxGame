@@ -27,7 +27,7 @@ public sealed partial class WorldEngine
             if (State.Tiles[index].IsWalkable) State.Tiles[index].NationId = nationId;
         foreach (var town in State.Settlements.Where(s => s.NationId != nationId && indexes.Contains(Index(s.X, s.Y))).ToArray()) TransferSettlementOwnership(town, nationId);
         _armyPaths.Clear(); _armyTargets.Clear();
-        Reindex(); RemoveEmptyNations(); RefreshTotals();
+        Reindex(); RemoveEmptyNations(); InitializeSociety(); RefreshTotals();
         AddEvent(WorldEventKind.Editor, $"{nation.Name}的领土边界已调整，圈内聚落随领土转属。", x, y);
     }
 
@@ -51,7 +51,7 @@ public sealed partial class WorldEngine
         }
         State.Tiles[Index(town.X, town.Y)].NationId = nation.Id;
         _armyPaths.Clear(); _armyTargets.Clear();
-        Reindex(); RefreshTotals();
+        Reindex(); InitializeSociety(); RefreshTotals();
         AddEvent(WorldEventKind.Editor, $"{town.Name}从{parent.Name}独立，成立{nation.Name}。", town.X, town.Y);
         return nation.Id;
     }
