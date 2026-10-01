@@ -103,6 +103,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      page_url: ${{ steps.deployment.outputs.page_url }}
     permissions:
       pages: write
       id-token: write
@@ -121,3 +123,44 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+  verify-live:
+    name: Verify deployed game
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      WORLDBOX_BASE_URL: ${{ needs.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: tests/browser/package-lock.json
+
+      - name: Install browser checks
+        run: npm ci --prefix tests/browser
+
+      - name: Install Chromium
+        working-directory: tests/browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for the deployed page
+        run: curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors --max-time 20 "$WORLDBOX_BASE_URL" --output /dev/null
+
+      - name: Test the live desktop and mobile game
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/browser-tests
+          npm test --prefix tests/browser 2>&1 | tee artifacts/browser-tests/smoke.log
+          npm run test:mobile --prefix tests/browser 2>&1 | tee artifacts/browser-tests/mobile-smoke.log
+
+      - name: Upload live browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: worldbox-live-browser-tests
+          path: artifacts/browser-tests
+          if-no-files-found: ignore
