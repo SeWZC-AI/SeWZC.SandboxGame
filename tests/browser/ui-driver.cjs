@@ -76,6 +76,7 @@ class UiDriver {
         // Avalonia's browser text input consumes real keypresses. insertText alone
         // skips those events, so smoke fixtures use ordinary ASCII input.
         await this.page.keyboard.type(String(value), { delay: 20 });
+        await this.page.keyboard.press("Tab");
         await this.waitFor(snapshot => this.control(snapshot, id).value === String(value), `text in ${id}`);
     }
 
@@ -122,6 +123,7 @@ class UiDriver {
     }
 
     async tool(category, key) {
+        if (!(await this.snapshot()).toolsOpen) await this.click("tools-toggle");
         await this.click(`tool-category-${category}`);
         const snapshot = await this.snapshot();
         const index = snapshot.toolSlots.indexOf(key);
@@ -130,28 +132,36 @@ class UiDriver {
     }
 
     async stableToolLayout() {
-        const categories = ['terrain', 'life', 'disaster', 'build', 'inspect', 'rules'];
-        const ids = ['header-new-world', 'header-storage', 'header-overview', 'time-toggle',
-            'time-speed-1', 'time-speed-2', 'time-speed-5', ...categories.map(id => `tool-category-${id}`),
-            ...Array.from({ length: 8 }, (_, index) => `tool-slot-${index}`)];
+        if (!(await this.snapshot()).toolsOpen) await this.click('tools-toggle');
+        const categories = ['terrain', 'life', 'disaster', 'build'];
+        const ids = ['header-new-world', 'header-storage', 'header-overview', 'header-rules', 'time-toggle',
+            'time-speed-1', 'time-speed-2', 'time-speed-5', 'tools-toggle', 'tool-suspend'];
         const geometry = snapshot => Object.fromEntries(ids.map(id => {
             const item = this.control(snapshot, id);
-            assert(item.visible, `Fixed UI slot must remain visible: ${id}`);
+            assert(item.visible, `Core control must remain visible: ${id}`);
             return [id, [item.x, item.y, item.width, item.height]];
         }));
         const baseline = geometry(await this.snapshot());
         for (const category of categories) {
             await this.click(`tool-category-${category}`);
-            // Fluent's pressed-state transform can outlast pointer-up on a busy
-            // software renderer. Wait for exact geometry, never a pixel tolerance.
             const snapshot = await this.waitFor(snapshot => JSON.stringify(geometry(snapshot)) === JSON.stringify(baseline),
-                `settled fixed controls after ${category}`, 5000);
+                `settled controls after ${category}`, 5000);
             assert.equal(snapshot.category, category);
-            assert.deepEqual(geometry(snapshot), baseline, `Tool category ${category} moved a fixed control`);
-            snapshot.toolSlots.forEach((key, index) => assert.equal(this.control(snapshot, `tool-slot-${index}`).enabled, key !== null));
+            assert.equal(snapshot.modalOpen, false, 'A tool category must not open a window');
+            assert.equal(snapshot.inspectorOpen, false, 'A tool category must not open details');
+            assert.equal(snapshot.activeTool, 'pan', 'A category must not activate its first tool');
+            snapshot.toolSlots.forEach((key, index) => {
+                const slot = this.control(snapshot, `tool-slot-${index}`);
+                assert.equal(slot.enabled, key !== null);
+                assert.equal(slot.visible, key !== null);
+            });
         }
+        await this.click('tools-toggle');
+        const hidden = await this.snapshot();
+        assert(!hidden.toolsOpen && hidden.activeTool === 'pan', 'Hiding tools must restore navigation');
         return baseline;
     }
+
 }
 
 async function readSavedWorld(page) {

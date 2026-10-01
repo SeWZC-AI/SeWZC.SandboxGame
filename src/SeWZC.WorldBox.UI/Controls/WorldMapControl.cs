@@ -93,7 +93,7 @@ public sealed partial class WorldMapControl : Control
         get => _activeTool;
         set
         {
-            _activeTool = value ?? "inspect";
+            CancelPlacement(); _activeTool = value ?? "inspect";
             Cursor = new Cursor(IsNavigationTool ? StandardCursorType.Arrow : StandardCursorType.Cross);
             InvalidateVisual();
         }
@@ -199,6 +199,7 @@ public sealed partial class WorldMapControl : Control
                     if (Visible(new Rect(settlement.X * TilePixels - 28, settlement.Y * TilePixels - 28, 56, 56)))
                         DrawSettlement(context, settlement);
                 DrawBuildings(context, state);
+                DrawMapOverlay(context, state);
                 for (var race = 0; race < _residents.Length; race++)
                     if (_residents[race] is { } body) context.DrawGeometry(ResidentBrushes[race], null, body);
                 if (_zoom >= .7 && _heads is not null) context.DrawGeometry(HeadBrush, null, _heads);
@@ -585,21 +586,25 @@ public sealed partial class WorldMapControl : Control
             var size = Math.Max(7, TilePixels * _zoom + 2);
             context.DrawRectangle(null, SelectionPen, new Rect(center.X - size / 2, center.Y - size / 2, size, size), 2, 2);
         }
-        if (_hover is not { } hover || IsNavigationTool || !TryTile(hover, out var tile)) return;
+        var hover = _pendingPlacement is { } pending ? GetTileScreenPosition(pending.X, pending.Y) : _hover;
+        if (hover is not { } position || IsNavigationTool || !TryTile(position, out var tile)) return;
+        var valid = PlacementError(tile.X, tile.Y) is null;
+        var previewPen = new Pen(Brush(valid ? 0xFFB8E9BCu : 0xFFF08060u), 2);
+        var previewFill = Brush(valid ? 0x448CDDABu : 0x55F08060u);
         var point = ToScreen((tile.X + .5) * TilePixels, (tile.Y + .5) * TilePixels);
         if (ActiveTool.StartsWith("build:", StringComparison.OrdinalIgnoreCase))
         {
             var size = Math.Max(6, TilePixels * _zoom);
-            context.DrawRectangle(Brush(0x18FFE5AE), HoverPen,
+            context.DrawRectangle(previewFill, previewPen,
                 new Rect(point.X - size / 2, point.Y - size / 2, size, size), 1, 1);
             return;
         }
         var brushTiles = ActiveTool.StartsWith("road:", StringComparison.OrdinalIgnoreCase)
-            ? Math.Clamp(BrushRadius, 0, 4) : Math.Clamp(BrushRadius, 0, 16);
+            ? 0 : Math.Clamp(BrushRadius, 0, 16);
         var toolName = ActiveTool.Contains(':') ? ActiveTool[(ActiveTool.IndexOf(':') + 1)..] : ActiveTool;
-        if (Enum.TryParse<DisasterKind>(toolName, true, out _)) brushTiles = Math.Max(2, brushTiles);
+        if (Enum.TryParse<DisasterKind>(toolName, true, out _)) brushTiles = DisasterRadius;
         var radius = Math.Max(3, (brushTiles + .5) * TilePixels * _zoom);
-        context.DrawEllipse(Brush(0x18FFE5AE), HoverPen, point, radius, radius);
+        context.DrawEllipse(previewFill, previewPen, point, radius, radius);
     }
 
     private void DrawScale(DrawingContext context)
@@ -681,6 +686,7 @@ public sealed partial class WorldMapControl : Control
         base.OnPointerMoved(e);
         var point = e.GetPosition(this);
         _hover = point;
+        if (!HasPendingPlacement) PreviewPlacement(point);
         if (e.Pointer.Type == PointerType.Touch && _touches.ContainsKey(e.Pointer))
         {
             if (_touches.Count >= 2)
@@ -727,7 +733,11 @@ public sealed partial class WorldMapControl : Control
         {
             // A capture-lost/canceled touch can deliver a late release. Only a still-active,
             // single-finger tap may apply a tool; a pinch remains navigation until all fingers lift.
-            if (_touches.ContainsKey(e.Pointer) && !_gestureMoved && !_pinching) ApplyTool(point);
+            if (_touches.ContainsKey(e.Pointer) && !_gestureMoved && !_pinching)
+            {
+                if (IsNavigationTool || Enum.TryParse<TerrainType>(ActiveTool, out _) || ActiveTool == "territory" || ActiveTool.StartsWith("road:")) ApplyTool(point);
+                else PreviewPlacement(point, true);
+            }
             _touches.Remove(e.Pointer);
             if (_touches.Count == 0) _pinching = false;
         }
@@ -751,12 +761,13 @@ public sealed partial class WorldMapControl : Control
     {
         base.OnPointerExited(e);
         _hover = null;
+        if (!HasPendingPlacement) SetPlacementMessage("");
         InvalidateVisual();
     }
 
     private void SelectTile(Point point)
     {
-        if (SelectResidentAt(point)) return;
+        if (!PickingLocation && SelectResidentAt(point)) return;
         if (!TryTile(point, out var tile)) return;
         ClearResidentSelection();
         _selection = tile;
@@ -769,6 +780,8 @@ public sealed partial class WorldMapControl : Control
         if (Engine is null || !TryTile(point, out var tile)) return;
         if (IsNavigationTool) { SelectTile(point); return; }
         if (_lastPaint == tile) return;
+        if (PlacementError(tile.X, tile.Y) is { } placementError)
+        { SetPlacementMessage("无法放置：" + placementError); ToolError?.Invoke(placementError); return; }
         var tool = ActiveTool;
         var prefix = tool.IndexOf(':');
         if (prefix >= 0) tool = tool[(prefix + 1)..];
@@ -797,7 +810,7 @@ public sealed partial class WorldMapControl : Control
             if (_lastPaint is null)
             {
                 WorldEditing?.Invoke(this, EventArgs.Empty);
-                Engine.SpawnResidents(tile.X, tile.Y, race, 12);
+                Engine.SpawnResidents(tile.X, tile.Y, race, SpawnCount);
                 edited = true;
             }
         }
@@ -806,7 +819,7 @@ public sealed partial class WorldMapControl : Control
             if (_lastPaint is null)
             {
                 WorldEditing?.Invoke(this, EventArgs.Empty);
-                Engine.TriggerDisaster(tile.X, tile.Y, disaster, Math.Max(2, BrushRadius));
+                Engine.TriggerDisaster(tile.X, tile.Y, disaster, DisasterRadius);
                 edited = true;
             }
         }

@@ -15,17 +15,35 @@ public sealed partial class MainView
     private int _historyImportance, _historyNationId;
     private WorldEventKind? _historyKind;
     private string _historySearch = "";
+    private int _followNationId;
+    private int _eventDetailId;
 
     private void InvalidateInspector() => _inspectorKey = null;
-    private void OpenInspector(string mode)
+    private void RememberLocation()
     {
-        _inspectorMode = mode; _mobilePanel = true; ApplyLayout(); RefreshInspector(true);
+        if (_mobilePanel) _navigation.Push((_inspectorMode, _selectedNationId, _selectedResidentId, _inspectorSettlementId, _selectedTile, _eventDetailId, _inspectorScroll.Offset));
+        if (_navigation.Count > 32) _navigation.Clear();
+    }
+    private void OpenInspector(string mode, bool remember = true)
+    {
+        if (mode == "rules") { ShowRules(); return; }
+        if (remember) RememberLocation();
+        _inspectorMode = mode; _mobilePanel = true; _toolsOpen = false; SuspendTool();
+        ApplyLayout(); RefreshInspector(true);
+    }
+    private void GoBack()
+    {
+        if (!_navigation.TryPop(out var view)) { CloseInspector(); return; }
+        _selectedNationId = view.Nation; _selectedResidentId = view.Resident;
+        _inspectorSettlementId = view.Town; _selectedTile = view.Tile; _eventDetailId = view.Event;
+        OpenInspector(view.Mode, false);
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => _inspectorScroll.Offset = view.Scroll, Avalonia.Threading.DispatcherPriority.Loaded);
     }
     private void OpenResident(int id)
     {
-        _selectedResidentId = id; _map.SelectResident(id); OpenInspector("resident");
+        RememberLocation(); _selectedResidentId = id; _map.SelectResident(id); OpenInspector("resident", false);
     }
-    private void OpenNation(int id) { _selectedNationId = id; OpenInspector("nation"); }
+    private void OpenNation(int id) { RememberLocation(); _selectedNationId = id; OpenInspector("nation", false); }
 
     private void RefreshInspector(bool force = false)
     {
@@ -33,19 +51,20 @@ public sealed partial class MainView
         _refreshingInspector = true;
         try
         {
-            var key = $"{_inspectorMode}:{_selectedNationId}:{_selectedResidentId}:{_selectedTile}";
+            var key = $"{_inspectorMode}:{_selectedNationId}:{_selectedResidentId}:{_selectedTile}:{_eventDetailId}:{_inspectorSettlementId}";
             if (_inspectorKey != key)
             {
                 _inspectorKey = key; _inspectorUpdates.Clear();
-                var content = new StackPanel { Margin = new Thickness(16), Spacing = 12 };
-                var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+                var content = new StackPanel { Margin = new Thickness(8), Spacing = 6 };
+                var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto") };
                 header.Children.Add(Text(_inspectorMode switch
                 {
-                    "resident" => "居民档案", "residents" => "大地上的居民", "nation" => "国家与文明", "nations" => "文明国家",
+                    "event" => "事件与后果", "resident" => "居民档案", "residents" => "大地上的居民", "nation" => "国家与文明", "nations" => "文明国家",
                     "history" => "世界编年史", "tile" => "此处的故事", "rules" => "世界规则", "infrastructure" => "建设与运输", "communication" => "消息与通信", _ => "世界概览"
                 }, 17, null, true));
-                var close = Named(Button("×", () => { _mobilePanel = false; if (!_isCompact) _inspectorMode = "overview"; ApplyLayout(); RefreshInspector(true); }), "inspector-close");
-                close.Width = 32; close.Padding = new Thickness(3); Grid.SetColumn(close, 1); header.Children.Add(close); content.Children.Add(header);
+                var back = IconButton("back", GoBack, "返回上一处", "inspector-back"); Grid.SetColumn(back, 1); header.Children.Add(back);
+                var close = IconButton("close", CloseInspector, "关闭详情，返回地图", "inspector-close");
+                Grid.SetColumn(close, 2); header.Children.Add(close); _inspectorNavigation.Children.Clear(); _inspectorNavigation.Children.Add(header);
                 var navigation = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*,*"), ColumnSpacing = 4 };
                 var entries = new[] { ("世界", "overview"), ("居民", "residents"), ("国家", "nations"), ("日志", "history") };
                 for (var i = 0; i < entries.Length; i++)
@@ -53,9 +72,10 @@ public sealed partial class MainView
                     var entry = entries[i]; var button = Named(Button(entry.Item1, () => OpenInspector(entry.Item2)), "inspector-" + entry.Item2);
                     button.Padding = new Thickness(4, 6); button.FontSize = 11; Grid.SetColumn(button, i); navigation.Children.Add(button);
                 }
-                content.Children.Add(navigation);
+                _inspectorNavigation.Children.Add(navigation);
                 switch (_inspectorMode)
                 {
+                    case "event": BuildEventInspector(content); break;
                     case "resident": BuildResidentInspector(content); break;
                     case "residents": BuildResidentList(content); break;
                     case "nation": BuildNationInspector(content); break;
@@ -131,13 +151,17 @@ public sealed partial class MainView
     {
         panel.Children.Add(LiveText(() => $"{_engine.State.Population:N0} 位居民 · {_engine.State.Nations.Count} 个国家", 19, Mint));
         panel.Children.Add(LiveText(() => $"{DateLabel(_engine.State.Tick)}\n{_engine.State.Settlements.Count} 处聚落 · 种子 {_engine.State.Seed}"));
-        panel.Children.Add(Paragraph("居民按需求、个性和自己获知的消息作出选择。世界事实与居民认知可能并不同步。"));
+        panel.Children.Add(Paragraph("点选文明查看当前打算与阻碍；关注后，地图事件条优先显示它的变化。"));
+        var borders = Named(new CheckBox { Content = "显示国界", IsChecked = _map.ShowBorders }, "map-borders");
+        borders.IsCheckedChanged += (_, _) => { _map.ShowBorders = borders.IsChecked == true; _map.RefreshWorld(); }; panel.Children.Add(borders);
+        var overlay = Named(new ComboBox { ItemsSource = new[] { "地图图层：无", "粮食压力：红色短缺 / 绿色充足", "运输：标记正在实地递送的居民", "通信：运作设施与实际连通聚落" }, SelectedIndex = _map.Overlay, HorizontalAlignment = HorizontalAlignment.Stretch }, "map-overlay");
+        overlay.SelectionChanged += (_, _) => { _map.Overlay = Math.Max(0, overlay.SelectedIndex); _map.RefreshWorld(); }; panel.Children.Add(overlay);
         panel.Children.Add(Text("文明国家", 12, Mint));
         LiveRows(panel, () => _engine.State.Nations.OrderBy(n => n.Id).Take(16), n => n.Id.ToString(), n => $"{n.Name}\n{n.Population} 人 · {n.Territory} 格领土", n => OpenNation(n.Id));
         panel.Children.Add(Button("世界规则与魔法", () => OpenInspector("rules")));
-        panel.Children.Add(Button("建设、运输与通信", () => OpenInspector("infrastructure")));
+        panel.Children.Add(Named(Button("聚落发展与运输", () => OpenInspector("infrastructure")), "overview-infrastructure"));
         panel.Children.Add(Text("近期重要事件", 12, Mint));
-        LiveRows(panel, () => _engine.State.Events.Where(e => e.Importance >= EventImportance.Major).Reverse().Take(5), e => e.Id.ToString(), EventLabel, FocusEvent);
+        LiveRows(panel, () => _engine.State.Events.Where(e => e.Importance >= EventImportance.Notable && e.Kind != WorldEventKind.Editor && e.Kind != WorldEventKind.Policy).Reverse().Take(5), e => e.Id.ToString(), EventLabel, FocusEvent);
         panel.Children.Add(Button("展开编年史", () => OpenInspector("history")));
     }
     private void BuildNationList(StackPanel panel)
@@ -168,9 +192,20 @@ public sealed partial class MainView
     private string EventLabel(WorldEvent item) => $"{ImportanceName(item.Importance)} · {DateLabel(item.Tick)}\n{NationName(item.NationId)}{(item.ResidentId > 0 ? " · " + ResidentName(item.ResidentId) : "")}\n{item.Message}{(item.X >= 0 ? $"\n定位 {item.X}, {item.Y}" : "")}";
     private void FocusEvent(WorldEvent item)
     {
-        if (item.X >= 0) { _map.FocusTile(item.X, item.Y); if (_isCompact) { _mobilePanel = false; ApplyLayout(); } }
-        else if (item.ResidentId > 0) { _map.FocusResident(item.ResidentId); }
-        else SetStatus("这条事件没有地图位置。");
+        RememberLocation(); _eventDetailId = item.Id; OpenInspector("event", false);
+    }
+    private void BuildEventInspector(StackPanel panel)
+    {
+        var item = _engine.State.Events.FirstOrDefault(e => e.Id == _eventDetailId);
+        if (item is null) { panel.Children.Add(Paragraph("这条事件已不在保留的历史中。")); return; }
+        panel.Children.Add(Paragraph(EventLabel(item)));
+        if (item.CauseEventId > 0 && _engine.State.Events.FirstOrDefault(e => e.Id == item.CauseEventId) is { } cause)
+            panel.Children.Add(Button("前因：" + cause.Message, () => FocusEvent(cause)));
+        foreach (var next in _engine.State.Events.Where(e => e.CauseEventId == item.Id))
+            panel.Children.Add(Button("后续：" + next.Message, () => FocusEvent(next)));
+        if (item.NationId > 0 && _engine.State.Nations.Any(n => n.Id == item.NationId)) panel.Children.Add(Button("查看 " + NationName(item.NationId), () => OpenNation(item.NationId)));
+        if (item.ResidentId > 0) panel.Children.Add(Button("查看 " + ResidentName(item.ResidentId), () => OpenResident(item.ResidentId)));
+        panel.Children.Add(Named(Button("定位事件", () => { if (item.X >= 0) _map.FocusTile(item.X, item.Y); else if (item.ResidentId > 0) _map.FocusResident(item.ResidentId); CloseInspector(); }), "event-locate"));
     }
     private void BuildHistoryInspector(StackPanel panel)
     {
@@ -192,7 +227,7 @@ public sealed partial class MainView
     private static string ImportanceName(EventImportance value) => value switch { EventImportance.Routine => "普通", EventImportance.Notable => "重要日常", EventImportance.Major => "重大", _ => "历史转折" };
     private static string GoalName(AgentGoalKind value) => value switch
     {
-        AgentGoalKind.Idle => "观察与等待", AgentGoalKind.Eat => "寻找食物", AgentGoalKind.Gather => "采集资源", AgentGoalKind.Work => "生产劳动", AgentGoalKind.Rest => "休息恢复", AgentGoalKind.Flee => "逃离危险", AgentGoalKind.Socialize => "交流消息", AgentGoalKind.DeliverMessage => "传递消息", AgentGoalKind.Trade => "运输货物", AgentGoalKind.Petition => "表达诉求", AgentGoalKind.Study => "学习研究", AgentGoalKind.TrainMagic => "魔法训练", AgentGoalKind.March => "执行军令", _ => "返回家园"
+        AgentGoalKind.Idle => "观察与等待", AgentGoalKind.Eat => "寻找食物", AgentGoalKind.Gather => "采集资源", AgentGoalKind.Work => "生产劳动", AgentGoalKind.Rest => "休息恢复", AgentGoalKind.Flee => "逃离危险", AgentGoalKind.Socialize => "交流消息", AgentGoalKind.DeliverMessage => "传递消息", AgentGoalKind.Trade => "运输货物", AgentGoalKind.Petition => "表达诉求", AgentGoalKind.Study => "学习研究", AgentGoalKind.TrainMagic => "魔法训练", AgentGoalKind.March => "执行军令", AgentGoalKind.Migrate => "迁往新家园", _ => "返回家园"
     };
     private static string EventKindName(WorldEventKind value) => value switch
     {

@@ -113,10 +113,12 @@ public sealed partial class WorldEngine
         if (!Enum.IsDefined(status)) throw new ArgumentOutOfRangeException(nameof(status));
         var relation = Relation(first, second);
         relation.Status = status; relation.Opinion = status == DiplomaticStatus.War ? -80 : status == DiplomaticStatus.Allied ? 80 : 0;
+        relation.LastChangedTick = State.Tick; relation.Reason = "玩家直接调整外交关系"; relation.AllianceOfferNationId = 0;
         PublishDiplomaticOrder(first, second, status);
         PublishDiplomaticOrder(second, first, status);
         var diplomaticEvent = AddEvent(status == DiplomaticStatus.War ? WorldEventKind.War : WorldEventKind.Diplomacy, $"{_nations[first].Name}与{_nations[second].Name}{(status == DiplomaticStatus.War ? "开战" : status == DiplomaticStatus.Allied ? "结盟" : "恢复中立关系")}。");
         diplomaticEvent.NationId = first; diplomaticEvent.SecondNationId = second;
+        relation.LastEventId = diplomaticEvent.Id;
     }
 
     public DiplomaticStatus GetDiplomacy(int first, int second) => first == second ? DiplomaticStatus.Allied : State.Diplomacies.FirstOrDefault(r => r.FirstNationId == first && r.SecondNationId == second || r.FirstNationId == second && r.SecondNationId == first)?.Status ?? DiplomaticStatus.Neutral;

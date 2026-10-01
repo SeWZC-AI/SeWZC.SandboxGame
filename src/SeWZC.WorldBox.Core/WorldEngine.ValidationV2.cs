@@ -15,6 +15,7 @@ public sealed partial class WorldEngine
     private static void ValidateFactV2(AgentFact? fact, long tick, int width, int height)
     {
         CheckV2(fact is not null, "记忆不能为空。");
+        CheckV2(fact!.TargetNationId is >= 0 and < 2_000_000_000, "外交消息目标无效。");
         CheckV2(fact!.Id is >= 0 and < 2_000_000_000 && Enum.IsDefined(fact.Kind) && Enum.IsDefined(fact.OriginProfession) && fact.SubjectId is >= 0 and < 2_000_000_000 && fact.OriginResidentId is >= 0 and < 2_000_000_000 && fact.SourceResidentId is >= 0 and < 2_000_000_000, "记忆编号或类型无效。");
         CheckV2(Coordinates(fact.X, fact.Y, width, height) || fact.X == -1 && fact.Y == -1, "记忆位置超出地图。");
         CheckV2(Number(fact.Value, -1_000_000_000, 1_000_000_000) && Number(fact.Confidence, 0, 1) && fact.Hops is >= 0 and <= 1000, "记忆数值无效。");
