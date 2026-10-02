@@ -18,7 +18,7 @@
 
 ## 完成任务
 
-- 按改动范围验证。核心测试是可执行程序，使用 `dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release`，不能用 `dotnet test` 代替。
+- 按改动范围验证。Release 构建后用 `python3 scripts/run-fast-tests.py` 执行单元与 Headless UI 检查。测试作者应通过聚焦行为和控制夹具规模，让快速检查合计不超过 10 秒；运行入口只报告耗时，不设置硬超时或按耗时判失败。核心可执行测试默认仅单元；行为改动另跑 `--suite integration`，长程／随机回归用 `--suite long`，全部用 `--suite all`，不能用 `dotnet test` 代替。
 - 行为或架构变化时同步更新对应文档；测试结果注明实际提交、环境和限制，不沿用旧构建的成功结论。
 - 多人或多 agent 修改时先分配文件责任；共享工作区的构建、发布和性能测量由一个协调者串行执行。
 - 有明确用户新决定时更新现行约定；被替代的设计决定保留并互链，不把旧文档变成阻止新需求的理由。

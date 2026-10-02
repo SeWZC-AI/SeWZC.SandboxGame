@@ -172,6 +172,7 @@ internal static class SocietyRegressionTests
         Check(engine.TryAbsorbShieldDamage(victim, 10) == 10, "Protection extended beyond the actual local radius.");
     }
 
+    [UnitTest]
     private static void FractionalMaterials()
     {
         var engine = Flat(); var town = engine.State.Settlements.Single();
