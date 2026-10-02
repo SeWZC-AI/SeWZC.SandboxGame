@@ -114,10 +114,11 @@ public sealed partial class WorldEngine
         var relation = Relation(first, second);
         relation.Status = status; relation.Opinion = status == DiplomaticStatus.War ? -80 : status == DiplomaticStatus.Allied ? 80 : 0;
         relation.LastChangedTick = State.Tick; relation.Reason = "玩家直接调整外交关系"; relation.AllianceOfferNationId = 0;
-        PublishDiplomaticOrder(first, second, status);
-        PublishDiplomaticOrder(second, first, status);
         var diplomaticEvent = AddEvent(status == DiplomaticStatus.War ? WorldEventKind.War : WorldEventKind.Diplomacy, $"{_nations[first].Name}与{_nations[second].Name}{(status == DiplomaticStatus.War ? "开战" : status == DiplomaticStatus.Allied ? "结盟" : "恢复中立关系")}。");
-        diplomaticEvent.NationId = first; diplomaticEvent.SecondNationId = second;
+        diplomaticEvent.NationId = first; diplomaticEvent.SecondNationId = second; diplomaticEvent.Action = EventAction.Declaration;
+        diplomaticEvent.CauseEventId = relation.LastEventId;
+        PublishDiplomaticOrder(first, second, status, eventId: diplomaticEvent.Id);
+        PublishDiplomaticOrder(second, first, status, eventId: diplomaticEvent.Id, objective: WarObjective.DefendHomeland);
         relation.LastEventId = diplomaticEvent.Id;
     }
 
