@@ -24,16 +24,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install pinned .NET SDK
-        uses: actions/setup-dotnet@v4
+      - name: Install Node.js for cloud and browser setup
+        uses: actions/setup-node@v4
         with:
-          global-json-file: global.json
+          node-version: "22"
 
-      - name: Install WebAssembly workload
-        run: dotnet workload install wasm-tools
-
-      - name: Restore
-        run: dotnet restore
+      - name: Prepare the cloud development environment
+        run: bash scripts/setup-cloud-environment.sh
 
       - name: Build
         run: dotnet build -c Release --no-restore
@@ -43,20 +40,6 @@ jobs:
 
       - name: Publish and check static site
         run: bash scripts/publish-browser.sh
-
-      - name: Install Node.js for browser checks
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: tests/browser/package-lock.json
-
-      - name: Install browser test dependencies
-        run: npm ci --prefix tests/browser
-
-      - name: Install Chromium
-        working-directory: tests/browser
-        run: npx playwright install --with-deps chromium
 
       - name: Test published site under its GitHub Pages path
         env:

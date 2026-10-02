@@ -51,6 +51,8 @@
 
 ## 开发环境
 
+云开发环境的运行时、初始化脚本、网络与身份设置见 [云环境配置](docs/cloud-environment.md)。初始化脚本与 CI 共用；平台设置需要在云环境配置页面应用。
+
 - .NET SDK **10.0.401**，版本由 `global.json` 固定。
 - Avalonia **12.1.3**，版本由 `Directory.Build.props` 固定。
 - WebAssembly 工作负载 `wasm-tools`。
