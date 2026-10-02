@@ -28,6 +28,7 @@ public sealed partial class WorldEngine
             RemoveEmptyNations();
             ReconcileSocietyTopology();
             RefreshTotals();
+            ObserveProjects();
         }
     }
 

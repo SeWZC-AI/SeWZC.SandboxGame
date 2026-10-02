@@ -22,7 +22,7 @@ public sealed partial class WorldEngine
 
     private static AgentFact CopyAgentFact(AgentFact fact) => new()
     {
-        Id = fact.Id, Kind = fact.Kind, SubjectId = fact.SubjectId, TargetNationId = fact.TargetNationId, X = fact.X, Y = fact.Y, Value = fact.Value,
+        Id = fact.Id, EventId = fact.EventId, CampaignEventId = fact.CampaignEventId, WarObjective = fact.WarObjective, Kind = fact.Kind, SubjectId = fact.SubjectId, TargetNationId = fact.TargetNationId, X = fact.X, Y = fact.Y, Value = fact.Value,
         ObservedTick = fact.ObservedTick, LearnedTick = fact.LearnedTick,
         OriginResidentId = fact.OriginResidentId, SourceResidentId = fact.SourceResidentId,
         OriginProfession = fact.OriginProfession,
@@ -242,8 +242,8 @@ public sealed partial class WorldEngine
     private static bool MessageFactPrecedes(AgentFact candidate, AgentFact current, bool relay)
     {
         static bool Priority(AgentFact fact, bool relay) => relay
-            ? fact.Kind is AgentFactKind.DiplomaticNotice or AgentFactKind.WarOrder or AgentFactKind.PeaceOrder or AgentFactKind.ReliefRequest or AgentFactKind.Research
-            : fact.Kind is AgentFactKind.DiplomaticNotice or AgentFactKind.WarOrder or AgentFactKind.PeaceOrder or AgentFactKind.ReliefRequest or AgentFactKind.Research or AgentFactKind.Danger;
+            ? fact.Kind is AgentFactKind.WarReport or AgentFactKind.DiplomaticNotice or AgentFactKind.WarOrder or AgentFactKind.PeaceOrder or AgentFactKind.ReliefRequest or AgentFactKind.Research
+            : fact.Kind is AgentFactKind.WarReport or AgentFactKind.DiplomaticNotice or AgentFactKind.WarOrder or AgentFactKind.PeaceOrder or AgentFactKind.ReliefRequest or AgentFactKind.Research or AgentFactKind.Danger;
         var candidatePriority = Priority(candidate, relay); var currentPriority = Priority(current, relay);
         return candidatePriority != currentPriority ? candidatePriority : candidate.ObservedTick > current.ObservedTick;
     }
@@ -327,7 +327,7 @@ public sealed partial class WorldEngine
         agent.CarriedMessages.Clear();
         if (agent.Goal.Kind != AgentGoalKind.Trade)
         {
-            agent.CarriedMessages = agent.Memory.OrderByDescending(f => f.Kind is AgentFactKind.DiplomaticNotice or AgentFactKind.WarOrder or AgentFactKind.PeaceOrder or AgentFactKind.ReliefRequest ? 1 : 0)
+            agent.CarriedMessages = agent.Memory.OrderByDescending(f => f.Kind is AgentFactKind.WarReport or AgentFactKind.DiplomaticNotice or AgentFactKind.WarOrder or AgentFactKind.PeaceOrder or AgentFactKind.ReliefRequest ? 1 : 0)
                 .ThenByDescending(f => f.ObservedTick).Take(8).Select(CopyAgentFact).ToList();
             if (Distance(person.X, person.Y, home.X, home.Y) <= 1)
             {
@@ -382,6 +382,7 @@ public sealed partial class WorldEngine
         }
         goal.WorkTicks++;
         if (goal.WorkTicks < 3) { person.Activity = ResidentActivity.Talking; return; }
+        WorldEvent? tradeEvent = null;
         if (goal.Kind == AgentGoalKind.Trade)
         {
             var reserve = 1.2 + Distance(destination.X, destination.Y, home.X, home.Y) * 0.11;
@@ -389,14 +390,17 @@ public sealed partial class WorldEngine
             person.Inventory.Food -= food; destination.Resources.Food += food;
             var payment = Math.Min(destination.Resources.Wood, food * 0.4);
             destination.Resources.Wood -= payment; person.Inventory.Wood += payment;
-            if (food > 0) AddEvent(WorldEventKind.Trade,
-                $"{person.Name}抵达{destination.Name}，交付 {food:0.0} 份粮食，携带 {payment:0.0} 份木材返乡。", destination.X, destination.Y);
+            if (food > 0) tradeEvent = AddEvent(WorldEventKind.Trade,
+                $"{person.Name}抵达{destination.Name}，交付 {food:0.0} 份粮食，携带 {payment:0.0} 份木材返乡。", destination.X, destination.Y, EventAction.Delivery, destination.Id, person.Id);
+            if (tradeEvent is not null) { tradeEvent.SecondNationId = person.NationId; tradeEvent.SecondSettlementId = home.Id; }
         }
-        if (goal.Kind == AgentGoalKind.Trade && destination.NationId != person.NationId)
+        if (tradeEvent is not null && destination.NationId != person.NationId)
         {
             var outbound = MakeAgentFact(person, AgentFactKind.TradeExchange, person.NationId, destination.X, destination.Y, 1, "商旅实际抵达并完成粮木交换");
+            outbound.EventId = tradeEvent.Id;
             AddPublicFact(destination, outbound);
-            RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.TradeExchange, destination.NationId, destination.X, destination.Y, 1, "我与另一国家的聚落完成交易，返乡后可报告"));
+            var inbound = MakeAgentFact(person, AgentFactKind.TradeExchange, destination.NationId, destination.X, destination.Y, 1, "我与另一国家的聚落完成交易，返乡后可报告");
+            inbound.EventId = tradeEvent.Id; RememberAgentFact(person, inbound);
         }
         foreach (var fact in agent.CarriedMessages.ToArray())
         {

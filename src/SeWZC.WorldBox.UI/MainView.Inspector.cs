@@ -15,7 +15,6 @@ public sealed partial class MainView
     private int _historyImportance, _historyNationId;
     private WorldEventKind? _historyKind;
     private string _historySearch = "";
-    private int _followNationId;
     private int _eventDetailId;
 
     private void InvalidateInspector() => _inspectorKey = null;
@@ -59,7 +58,7 @@ public sealed partial class MainView
                 var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto") };
                 header.Children.Add(Text(_inspectorMode switch
                 {
-                    "event" => "事件与后果", "resident" => "居民档案", "residents" => "大地上的居民", "nation" => "国家与文明", "nations" => "文明国家",
+                    "watched" => "我的关注", "story" => "人物故事", "event" => "事件与后果", "resident" => "居民档案", "residents" => "大地上的居民", "nation" => "国家与文明", "nations" => "文明国家",
                     "history" => "世界编年史", "tile" => "此处的故事", "rules" => "世界规则", "infrastructure" => "建设与运输", "communication" => "消息与通信", _ => "世界概览"
                 }, 17, null, true));
                 var back = IconButton("back", GoBack, "返回上一处", "inspector-back"); Grid.SetColumn(back, 1); header.Children.Add(back);
@@ -75,6 +74,8 @@ public sealed partial class MainView
                 _inspectorNavigation.Children.Add(navigation);
                 switch (_inspectorMode)
                 {
+                    case "watched": BuildWatchedInspector(content); break;
+                    case "story": BuildStoryInspector(content); break;
                     case "event": BuildEventInspector(content); break;
                     case "resident": BuildResidentInspector(content); break;
                     case "residents": BuildResidentList(content); break;
@@ -121,11 +122,12 @@ public sealed partial class MainView
                         if (item is Resident resident) Named(button, $"resident-row-{resident.Id}");
                         if (item is Nation nation) Named(button, $"nation-row-{nation.Id}");
                         if (item is WorldEvent worldEvent) Named(button, $"history-row-{worldEvent.Id}");
+                        if (item is EventGroup group) Named(button, $"history-row-{group.Latest.Id}");
                         button.Tag = item; button.Click += (_, _) => { if (button.Tag is T selected) action(selected); }; control = button;
                     }
                     row = (control, text); rows[id] = row; list.Children.Add(control);
                 }
-                row.Text.Text = label(item); if (row.Row is Button b) b.Tag = item;
+                row.Text.Text = label(item); if (row.Row is Button b) { b.Tag = item; if (item is EventGroup group) Avalonia.Automation.AutomationProperties.SetAutomationId(b, $"history-row-{group.Latest.Id}"); }
             }
             foreach (var obsolete in rows.Keys.Where(id => !keys.Contains(id)).ToArray())
             { list.Children.Remove(rows[obsolete].Row); rows.Remove(obsolete); }
@@ -151,7 +153,8 @@ public sealed partial class MainView
     {
         panel.Children.Add(LiveText(() => $"{_engine.State.Population:N0} 位居民 · {_engine.State.Nations.Count} 个国家", 19, Mint));
         panel.Children.Add(LiveText(() => $"{DateLabel(_engine.State.Tick)}\n{_engine.State.Settlements.Count} 处聚落 · 种子 {_engine.State.Seed}"));
-        panel.Children.Add(Paragraph("点选文明查看当前打算与阻碍；关注后，地图事件条优先显示它的变化。"));
+        panel.Children.Add(Paragraph("关注国家、聚落或居民，持续追踪它们的发展与转折。"));
+        panel.Children.Add(Named(Button("我的关注", () => OpenInspector("watched")), "overview-watched"));
         var borders = Named(new CheckBox { Content = "显示国界", IsChecked = _map.ShowBorders }, "map-borders");
         borders.IsCheckedChanged += (_, _) => { _map.ShowBorders = borders.IsChecked == true; _map.RefreshWorld(); }; panel.Children.Add(borders);
         var overlay = Named(new ComboBox { ItemsSource = new[] { "地图图层：无", "粮食压力：红色短缺 / 绿色充足", "运输：标记正在实地递送的居民", "通信：运作设施与实际连通聚落" }, SelectedIndex = _map.Overlay, HorizontalAlignment = HorizontalAlignment.Stretch }, "map-overlay");
@@ -161,7 +164,7 @@ public sealed partial class MainView
         panel.Children.Add(Button("世界规则与魔法", () => OpenInspector("rules")));
         panel.Children.Add(Named(Button("聚落发展与运输", () => OpenInspector("infrastructure")), "overview-infrastructure"));
         panel.Children.Add(Text("近期重要事件", 12, Mint));
-        LiveRows(panel, () => _engine.State.Events.Where(e => e.Importance >= EventImportance.Notable && e.Kind != WorldEventKind.Editor && e.Kind != WorldEventKind.Policy).Reverse().Take(5), e => e.Id.ToString(), EventLabel, FocusEvent);
+        LiveRows(panel, () => WorldStories.Group(_engine.State.Events.Where(e => e.Importance >= EventImportance.Notable && e.Kind != WorldEventKind.Editor && e.Kind != WorldEventKind.Policy)).Take(5), GroupKey, GroupLabel, g => FocusEvent(g.Latest));
         panel.Children.Add(Button("展开编年史", () => OpenInspector("history")));
     }
     private void BuildNationList(StackPanel panel)
@@ -199,16 +202,31 @@ public sealed partial class MainView
         var item = _engine.State.Events.FirstOrDefault(e => e.Id == _eventDetailId);
         if (item is null) { panel.Children.Add(Paragraph("这条事件已不在保留的历史中。")); return; }
         panel.Children.Add(Paragraph(EventLabel(item)));
-        if (item.CauseEventId > 0 && _engine.State.Events.FirstOrDefault(e => e.Id == item.CauseEventId) is { } cause)
-            panel.Children.Add(Button("前因：" + cause.Message, () => FocusEvent(cause)));
-        foreach (var next in _engine.State.Events.Where(e => e.CauseEventId == item.Id))
-            panel.Children.Add(Button("后续：" + next.Message, () => FocusEvent(next)));
+        foreach (var causeId in WorldStories.Causes(item))
+        {
+            var cause = _engine.State.Events.FirstOrDefault(e => e.Id == causeId);
+            if (cause is not null) panel.Children.Add(Named(Button("前因：" + cause.Message, () => FocusEvent(cause)), $"event-cause-{cause.Id}"));
+            else panel.Children.Add(Paragraph($"前因 #{causeId} 已超出历史保留范围。"));
+        }
+        if (item.EvidenceFactId > 0) panel.Children.Add(Paragraph(EvidenceLabel(item.EvidenceFactId) + "\n关联不意味着其他居民已经获知。"));
+        LiveRows(panel, () => _engine.State.Events.Where(e => WorldStories.Causes(e).Contains(item.Id)), e => e.Id.ToString(), e => "已发生的后续：" + EventLabel(e), FocusEvent);
+        var group = WorldStories.Group(_engine.State.Events).FirstOrDefault(g => g.Count > 1 && g.Entries.Any(e => e.Id == item.Id));
+        if (group is not null)
+        {
+            panel.Children.Add(Text($"同类记录 {group.Count} 次 · 各次事件保留独立结果", 13, Mint));
+            foreach (var member in group.Entries)
+                panel.Children.Add(Named(Button(EventLabel(member), () => FocusEvent(member)), $"event-member-{member.Id}"));
+        }
+        if (item.SettlementId > 0 && _engine.State.Settlements.Any(t => t.Id == item.SettlementId))
+            panel.Children.Add(Button("查看 " + TownName(item.SettlementId), () => OpenWatched(new(ObservedObjectKind.Settlement, item.SettlementId))));
         if (item.NationId > 0 && _engine.State.Nations.Any(n => n.Id == item.NationId)) panel.Children.Add(Button("查看 " + NationName(item.NationId), () => OpenNation(item.NationId)));
         if (item.ResidentId > 0) panel.Children.Add(Button("查看 " + ResidentName(item.ResidentId), () => OpenResident(item.ResidentId)));
         panel.Children.Add(Named(Button("定位事件", () => { if (item.X >= 0) _map.FocusTile(item.X, item.Y); else if (item.ResidentId > 0) _map.FocusResident(item.ResidentId); CloseInspector(); }), "event-locate"));
     }
     private void BuildHistoryInspector(StackPanel panel)
     {
+        var watched = Named(new CheckBox { Content = Text("仅看关注对象", 12), IsChecked = _historyWatchedOnly }, "history-watched");
+        watched.IsCheckedChanged += (_, _) => { _historyWatchedOnly = watched.IsChecked == true; RefreshInspector(); }; panel.Children.Add(watched);
         var importance = Named(new ComboBox { ItemsSource = new[] { "重大事件（默认）", "普通与重要日常", "全部事件" }, SelectedIndex = _historyImportance, HorizontalAlignment = HorizontalAlignment.Stretch }, "history-importance");
         importance.SelectionChanged += (_, _) => { _historyImportance = importance.SelectedIndex; RefreshInspector(); }; panel.Children.Add(importance);
         var countries = new[] { (Id: 0, Name: "所有国家") }.Concat(_engine.State.Nations.Select(n => (n.Id, n.Name))).Concat(_engine.State.Events.SelectMany(e => new[] { e.NationId, e.SecondNationId }).Where(id => id > 0 && !_engine.State.Nations.Any(n => n.Id == id)).Distinct().Select(id => (Id: id, Name: NationName(id)))).ToList();
@@ -219,9 +237,9 @@ public sealed partial class MainView
         kind.SelectionChanged += (_, _) => { _historyKind = kind.SelectedIndex > 0 ? kinds[kind.SelectedIndex - 1] : null; RefreshInspector(); }; panel.Children.Add(kind);
         var search = Named(new TextBox { Text = _historySearch, PlaceholderText = "搜索事件内容" }, "history-search");
         search.TextChanged += (_, _) => { _historySearch = search.Text ?? ""; RefreshInspector(); }; panel.Children.Add(search);
-        IEnumerable<WorldEvent> Filter() => _engine.State.Events.Where(e => (_historyImportance == 2 || (_historyImportance == 0 ? e.Importance >= EventImportance.Major : e.Importance < EventImportance.Major)) && (_historyNationId == 0 || (e.NationId == _historyNationId || e.SecondNationId == _historyNationId)) && (!_historyKind.HasValue || e.Kind == _historyKind) && e.Message.Contains(_historySearch, StringComparison.OrdinalIgnoreCase)).Reverse().Take(100);
+        IEnumerable<WorldEvent> Filter() => _engine.State.Events.Where(e => (!_historyWatchedOnly || IsWatched(e)) && (_historyImportance == 2 || (_historyImportance == 0 ? e.Importance >= EventImportance.Major : e.Importance < EventImportance.Major)) && (_historyNationId == 0 || (e.NationId == _historyNationId || e.SecondNationId == _historyNationId)) && (!_historyKind.HasValue || e.Kind == _historyKind) && e.Message.Contains(_historySearch, StringComparison.OrdinalIgnoreCase)).Reverse();
         panel.Children.Add(LiveText(() => $"符合筛选：{Filter().Count()} 条 · 点击有坐标的记录定位"));
-        LiveRows(panel, Filter, e => e.Id.ToString(), EventLabel, FocusEvent);
+        LiveRows(panel, () => WorldStories.Group(Filter()).Take(100), GroupKey, GroupLabel, g => FocusEvent(g.Latest));
     }
 
     private static string ImportanceName(EventImportance value) => value switch { EventImportance.Routine => "普通", EventImportance.Notable => "重要日常", EventImportance.Major => "重大", _ => "历史转折" };

@@ -17,6 +17,8 @@ public sealed partial class MainView
         Resident Current() => _engine.GetResident(id) ?? resident;
         panel.Children.Add(LiveText(() => $"{Current().Name}  #{id}", 18, Mint));
         panel.Children.Add(LiveText(() => $"{RaceName(Current().Race)} · {Current().Age:F1} 岁 · {ProfessionName(Current().Profession)}\n{NationName(Current().NationId)} / {TownName(Current().SettlementId)}\n文化：{CultureName(Current().CultureId)}"));
+        panel.Children.Add(WatchControl(ObservedObjectKind.Resident, id, "resident-watch"));
+        panel.Children.Add(Named(Button("人物故事与重要转折", () => OpenInspector("story")), "resident-story"));
         var actions = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = 5 };
         var locate = Named(Button("定位", () => { _map.FocusResident(id); if (_isCompact) { _mobilePanel = false; ApplyLayout(); } }), "resident-locate"); actions.Children.Add(locate);
         var follow = Named(new CheckBox { Content = Text("跟随", 12), IsChecked = _map.FollowSelectedResident }, "resident-follow");
@@ -61,7 +63,7 @@ public sealed partial class MainView
     }
 
     private string FactLabel(AgentFact fact) => $"{FactKindName(fact.Kind)} · 置信度 {fact.Confidence:P0}\n{fact.Text}\n观察 {DateLabel(fact.ObservedTick)} · 获知 {DateLabel(fact.LearnedTick)}\n消息年龄 {Math.Max(0, _engine.State.Tick - fact.ObservedTick)} 日 · 经过 {fact.Hops} 次转述\n来源 {ResidentName(fact.SourceResidentId)} · 地点 {fact.X},{fact.Y} · 值 {fact.Value:F1}";
-    private static string FactKindName(AgentFactKind kind) => kind switch { AgentFactKind.FoodSupply => "粮食供给", AgentFactKind.Danger => "危险", AgentFactKind.SettlementLocation => "聚落位置", AgentFactKind.ReliefRequest => "救济请求", AgentFactKind.Policy => "政策", AgentFactKind.WarOrder => "战争命令", AgentFactKind.PeaceOrder => "和平命令", AgentFactKind.Culture => "文化", AgentFactKind.Research => "研究", AgentFactKind.TradeExchange => "贸易往来", AgentFactKind.DiplomaticNotice => "外交声明", _ => "个人记忆" };
+    private static string FactKindName(AgentFactKind kind) => kind switch { AgentFactKind.FoodSupply => "粮食供给", AgentFactKind.Danger => "危险", AgentFactKind.SettlementLocation => "聚落位置", AgentFactKind.ReliefRequest => "救济请求", AgentFactKind.Policy => "政策", AgentFactKind.WarOrder => "战争命令", AgentFactKind.PeaceOrder => "和平命令", AgentFactKind.Culture => "文化", AgentFactKind.Research => "研究", AgentFactKind.TradeExchange => "贸易往来", AgentFactKind.DiplomaticNotice => "外交声明", AgentFactKind.WarReport => "前线战报", _ => "个人记忆" };
 
     private void ShowResidentEditor(int id)
     {
