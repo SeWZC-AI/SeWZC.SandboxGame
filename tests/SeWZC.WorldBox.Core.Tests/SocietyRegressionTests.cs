@@ -105,7 +105,7 @@ internal static class SocietyRegressionTests
             engine.SetPolicy(east.NationId, PolicyKind.Defense);
             engine.State.Tick = 359;
             DeliverContact(engine, west, east); DeliverContact(engine, east, west);
-            var relation = engine.State.Diplomacies.Single(); relation.Opinion = -54;
+            var relation = engine.State.Diplomacies.Single(); relation.FirstOpinion = relation.SecondOpinion = relation.Opinion = -54;
             engine.Step();
             Check(relation.Status == DiplomaticStatus.War && relation.Opinion == -58,
                 "A capital's diplomatic assessment was skipped or counted twice because of founding order.");
@@ -117,10 +117,13 @@ internal static class SocietyRegressionTests
             west = peace.State.Settlements.Single(t => t.X == 14); east = peace.State.Settlements.Single(t => t.X == 36);
             peace.State.Tick = 359; east.Resources.Food = 1;
             DeliverContact(peace, west, east); DeliverContact(peace, east, west);
-            relation = peace.State.Diplomacies.Single(); relation.Status = DiplomaticStatus.War; relation.Opinion = -100;
+            relation = peace.State.Diplomacies.Single(); relation.Status = DiplomaticStatus.War;
+            relation.FirstOpinion = relation.SecondOpinion = relation.Opinion = -100;
             var events = peace.State.Events.Count;
             peace.Step();
-            Check(relation.Status == DiplomaticStatus.Neutral && relation.Opinion == 0,
+            Check(relation.Status == DiplomaticStatus.Neutral && relation.Opinion == -48
+                && (relation.FirstNationId == east.NationId ? relation.FirstOpinion : relation.SecondOpinion) == 0
+                && (relation.FirstNationId == west.NationId ? relation.FirstOpinion : relation.SecondOpinion) == -96,
                 "The later capital could not end a war in response to its own exhausted supplies.");
             Check(peace.State.Events.Skip(events).Count(e => e.Kind is WorldEventKind.War or WorldEventKind.Diplomacy) == 1,
                 "Diplomacy applied more than one transition to the pair in one tick.");
@@ -134,7 +137,7 @@ internal static class SocietyRegressionTests
         var west = engine.State.Settlements[0]; var east = engine.State.Settlements[1];
         engine.State.Tick = 359;
         DeliverContact(engine, west, east); DeliverContact(engine, east, west);
-        var relation = engine.State.Diplomacies.Single(); relation.Opinion = 48;
+        var relation = engine.State.Diplomacies.Single(); relation.FirstOpinion = relation.SecondOpinion = relation.Opinion = 48;
         var resumed = WorldEngine.ImportJson(engine.ExportJson());
         engine.Step(); resumed.Step();
         Check(relation.Opinion == 52 && relation.AllianceOfferNationId == 0,

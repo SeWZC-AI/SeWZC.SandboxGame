@@ -112,18 +112,56 @@ public sealed partial class MainView
     {
         var resident = _engine.GetResident(id); if (resident is null) return;
         _paused = true; _map.IsSimulationPaused = true;
-        var panel = ModalPanel("目标、性格与需求", "目标在未来的行动中执行。目标地点、实体和聚落必须有效；自主思考仍会考虑危险与基本需求。");
+        var panel = ModalPanel("目标、性格与需求", "目标在未来的行动中执行。只修改人格或需求会保留原目标；历史记录中的对象可以保留，自主思考仍会考虑危险与基本需求。");
         var mind = CloneMind(id);
+        var originalGoal = mind.Goal;
         var goal = EnumField(panel, "当前目标", mind.Goal.Kind, GoalName, "resident-goal");
         var reason = Field(panel, "目标备注（仅记录，不参与行动评分）", mind.Goal.Reason, "resident-goal-reason");
         var x = Field(panel, "目标 X", mind.Goal.TargetX, "resident-goal-x"); var y = Field(panel, "目标 Y", mind.Goal.TargetY, "resident-goal-y");
         x.Maximum = _engine.State.Width - 1; y.Maximum = _engine.State.Height - 1;
         AddMapPicker(panel, x, y);
-        var town = ObjectField(panel, "目标聚落", _engine.State.Settlements.Select(t => (t.Id, t.Name)), mind.Goal.TargetSettlementId, "resident-goal-town", true);
-        var entity = ObjectField(panel, "目标居民", _engine.State.Residents.Select(p => (p.Id, p.Name)), mind.Goal.TargetEntityId, "resident-goal-entity", true);
+        var town = ObjectField(panel, "目标聚落", _engine.State.Settlements.Select(t => (t.Id, t.Name)), mind.Goal.TargetSettlementId, "resident-goal-town", true, true);
+        var entityLabel = Text("目标对象", 12, Muted); panel.Children.Add(entityLabel);
+        var entity = Named(new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 36 }, "resident-goal-entity");
+        panel.Children.Add(entity);
+        var updatingEntities = false;
+        void UpdateEntities()
+        {
+            var kind = (AgentGoalKind)goal.SelectedItem!;
+            var facilities = kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic;
+            entityLabel.Text = facilities ? "目标设施（本聚落）" : "目标居民";
+            var choices = new List<EntityChoice> { new(0, "无 / 按目标地点行动") };
+            if (facilities)
+                choices.AddRange(_engine.State.Society.Buildings.Where(building => building.SettlementId == resident.SettlementId
+                    && (kind == AgentGoalKind.Work || kind == AgentGoalKind.Study && building.Kind == BuildingKind.Academy
+                        || kind == AgentGoalKind.TrainMagic && building.Kind == BuildingKind.ArcaneSanctum))
+                    .Select(building => new EntityChoice(building.Id, $"{WorldEngine.BuildingName(building.Kind)} #{building.Id} · {building.X},{building.Y}")));
+            else choices.AddRange(_engine.State.Residents.Select(person => new EntityChoice(person.Id, person.Name)));
+            if (kind == originalGoal.Kind && choices.All(choice => choice.Id != originalGoal.TargetEntityId))
+                choices.Add(new(originalGoal.TargetEntityId, $"保留原目标 #{originalGoal.TargetEntityId}（历史引用）"));
+            var selected = entity.SelectedItem is EntityChoice prior ? prior.Id : originalGoal.TargetEntityId;
+            updatingEntities = true;
+            entity.ItemsSource = choices;
+            entity.SelectedItem = choices.FirstOrDefault(choice => choice.Id == selected) ?? choices[0];
+            updatingEntities = false;
+        }
+        UpdateEntities();
+        goal.SelectionChanged += (_, _) => UpdateEntities();
+        entity.SelectionChanged += (_, _) =>
+        {
+            if (updatingEntities || entity.SelectedItem is not EntityChoice choice) return;
+            if ((AgentGoalKind)goal.SelectedItem! is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic)
+            {
+                if (_engine.State.Society.Buildings.FirstOrDefault(item => item.Id == choice.Id) is { } building)
+                { x.Value = building.X; y.Value = building.Y; }
+            }
+            else if (_engine.State.Residents.FirstOrDefault(person => person.Id == choice.Id) is { } target)
+            { x.Value = target.X; y.Value = target.Y; }
+        };
         town.SelectionChanged += (_, _) => { if (town.SelectedItem is EntityChoice choice && _engine.State.Settlements.FirstOrDefault(t => t.Id == choice.Id) is { } destination) { x.Value = destination.X; y.Value = destination.Y; } };
         panel.Children.Add(Paragraph("选择聚落会同步填写目标地点；目标改变未来行动，紧急生存需求仍可打断。"));
-        var duration = Field(panel, "目标保持日数", Math.Max(24, mind.Goal.ReviewTick - _engine.State.Tick), "resident-goal-duration");
+        var initialDuration = Math.Max(24, mind.Goal.ReviewTick - _engine.State.Tick);
+        var duration = Field(panel, "目标保持日数", initialDuration, "resident-goal-duration");
         var fatigue = Field(panel, "疲劳", mind.Fatigue, "resident-fatigue"); var social = Field(panel, "社交需求", mind.SocialNeed, "resident-social-need");
         var courage = Field(panel, "勇气 0–1", mind.Personality.Courage, "resident-courage");
         var diligence = Field(panel, "勤勉 0–1", mind.Personality.Diligence, "resident-diligence");
@@ -133,8 +171,15 @@ public sealed partial class MainView
         {
             try
             {
-                mind.Goal.Kind = (AgentGoalKind)goal.SelectedItem!; mind.Goal.Reason = reason.Text ?? ""; mind.Goal.TargetX = Integer(x); mind.Goal.TargetY = Integer(y);
-                mind.Goal.TargetSettlementId = Integer(town); mind.Goal.TargetEntityId = Integer(entity); mind.Goal.PlayerDirected = true; mind.Goal.StartedTick = _engine.State.Tick; mind.Goal.ReviewTick = _engine.State.Tick + Integer(duration);
+                var kind = (AgentGoalKind)goal.SelectedItem!;
+                var targetX = Integer(x); var targetY = Integer(y); var targetTown = Integer(town); var targetEntity = Integer(entity);
+                var keepDays = Integer(duration); var goalReason = reason.Text ?? "";
+                var goalChanged = kind != originalGoal.Kind || targetX != originalGoal.TargetX || targetY != originalGoal.TargetY
+                    || targetTown != originalGoal.TargetSettlementId || targetEntity != originalGoal.TargetEntityId
+                    || goalReason != originalGoal.Reason || keepDays != initialDuration;
+                mind.Goal = goalChanged ? new AgentGoal { Kind = kind, TargetX = targetX, TargetY = targetY,
+                    TargetSettlementId = targetTown, TargetEntityId = targetEntity, Reason = goalReason,
+                    PlayerDirected = true, StartedTick = _engine.State.Tick, ReviewTick = _engine.State.Tick + keepDays } : originalGoal;
                 mind.Fatigue = Number(fatigue); mind.SocialNeed = Number(social); mind.Personality.Courage = Number(courage); mind.Personality.Diligence = Number(diligence); mind.Personality.Sociability = Number(sociability); mind.Personality.Ambition = Number(ambition);
                 BeginEdit(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); RefreshUi(true); SetStatus("目标与人格已更新，将影响接下来的行动");
             }

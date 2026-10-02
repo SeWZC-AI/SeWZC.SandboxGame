@@ -38,7 +38,11 @@ public sealed partial class WorldEngine
             settlement = new Settlement { Id = NewId(), Name = PlaceNames[State.Nations.Count % PlaceNames.Length] + "村", X = x, Y = y, NationId = nation.Id, Resources = new ResourceStock { Food = count * 4, Wood = 25, Stone = 12 } };
             nation.CapitalId = settlement.Id;
             foreach (var other in State.Nations)
-                State.Diplomacies.Add(new DiplomaticRelation { FirstNationId = other.Id, SecondNationId = nation.Id, Opinion = RandomInt(41) - 10 });
+            {
+                var opinion = RandomInt(41) - 10;
+                State.Diplomacies.Add(new DiplomaticRelation { FirstNationId = other.Id, SecondNationId = nation.Id,
+                    Opinion = opinion, FirstOpinion = opinion, SecondOpinion = opinion });
+            }
             State.Nations.Add(nation); State.Settlements.Add(settlement);
             _nations[nation.Id] = nation; _settlements[settlement.Id] = settlement; _citizens[settlement.Id] = [];
             State.Tiles[Index(x, y)].SettlementId = settlement.Id;
@@ -120,7 +124,8 @@ public sealed partial class WorldEngine
         if (first == second || !_nations.ContainsKey(first) || !_nations.ContainsKey(second)) throw new ArgumentException("请选择两个不同且存在的国家。");
         if (!Enum.IsDefined(status)) throw new ArgumentOutOfRangeException(nameof(status));
         var relation = Relation(first, second);
-        relation.Status = status; relation.Opinion = status == DiplomaticStatus.War ? -80 : status == DiplomaticStatus.Allied ? 80 : 0;
+        relation.Status = status;
+        relation.FirstOpinion = relation.SecondOpinion = relation.Opinion = status == DiplomaticStatus.War ? -80 : status == DiplomaticStatus.Allied ? 80 : 0;
         relation.LastChangedTick = State.Tick; relation.Reason = "玩家直接调整外交关系"; relation.AllianceOfferNationId = 0;
         PublishDiplomaticOrder(first, second, status);
         PublishDiplomaticOrder(second, first, status);
