@@ -6,7 +6,6 @@
 
 | 要做的事 | 先读 | 然后定位 |
 | --- | --- | --- |
-| 设置云开发环境与初始化依赖 | [云环境配置](cloud-environment.md) | 固定 SDK、网络与身份、CI 共用初始化脚本 |
 | 运行游戏、了解操作或发布 | [项目 README](../README.md) | [验证记录](verification.md) 中的复现命令 |
 | 新增或调整产品行为 | [产品约定](product.md) | [设计决策索引](decisions/README.md)、相关代码与测试 |
 | 修改模拟、存档或界面 | [开发约定](development.md) | [架构说明](architecture.md)、对应设计决策 |

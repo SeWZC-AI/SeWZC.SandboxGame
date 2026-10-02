@@ -1,5 +1,4 @@
 # .NET / IDE
-.dotnet/
 **/bin/
 **/obj/
 **/node_modules/
