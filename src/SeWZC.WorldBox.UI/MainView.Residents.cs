@@ -66,6 +66,7 @@ public sealed partial class MainView
     private void ShowResidentEditor(int id)
     {
         var resident = _engine.GetResident(id); if (resident is null) return;
+        var archived = _engine.State.ArchivedResidents.Any(person => person.Id == id);
         _paused = true; _map.IsSimulationPaused = true; RefreshUi();
         var panel = ModalPanel("编辑居民档案", "变更先统一校验，再应用到暂停中的世界。姓名与属性可编辑；编号、当前动作、移动插值由模拟维护。归属通过居住聚落确定。");
         var identity = new StackPanel { Spacing = 10 }; var condition = new StackPanel { Spacing = 10 }; var belonging = new StackPanel { Spacing = 10 }; var magic = new StackPanel { Spacing = 10 }; var possessions = new StackPanel { Spacing = 10 };
@@ -75,15 +76,15 @@ public sealed partial class MainView
         var trait = ObjectField(identity, "性格预设（选择后同步调整对应倾向）", new[] { (0, "保持当前性格"), (1, "勤劳"), (2, "勇敢"), (3, "好奇"), (4, "温和") }, 0, "resident-trait");
         var race = EnumField(identity, "种族", resident.Race, RaceName, "resident-race");
         var profession = EnumField(identity, "职业", resident.Profession, ProfessionName, "resident-profession");
-        var culture = ObjectField(belonging, "文化", _engine.State.Society.Cultures.Select(c => (c.Id, c.Name)), resident.CultureId, "resident-culture", false);
-        var home = ObjectField(belonging, "居住聚落", _engine.State.Settlements.Select(t => (t.Id, t.Name)), resident.SettlementId, "resident-settlement", false);
+        var culture = ObjectField(belonging, "文化", _engine.State.Society.Cultures.Select(c => (c.Id, c.Name)), resident.CultureId, "resident-culture", historical: archived);
+        var home = ObjectField(belonging, "居住聚落", _engine.State.Settlements.Select(t => (t.Id, t.Name)), resident.SettlementId, "resident-settlement", historical: archived);
         belonging.Children.Add(Paragraph("迁居会同步调整国家归属；文化认同保留你的选择。"));
         var age = Field(condition, "年龄", resident.Age, "resident-age");
         var health = Field(condition, "生命 0–100", resident.Health, "resident-health");
         var hunger = Field(condition, "饥饿 0–100", resident.Hunger, "resident-hunger");
         var sickness = Field(condition, "疫病剩余日数", resident.SicknessTicks, "resident-sickness");
         var x = Field(belonging, "位置 X", resident.X, "resident-x"); var y = Field(belonging, "位置 Y", resident.Y, "resident-y");
-        var army = ObjectField(belonging, "军队", _engine.State.Armies.Where(a => a.NationId == resident.NationId).Select(a => (a.Id, NationName(a.NationId) + " · " + a.Status)), resident.ArmyId, "resident-army", true);
+        var army = ObjectField(belonging, "军队", _engine.State.Armies.Where(a => a.NationId == resident.NationId).Select(a => (a.Id, NationName(a.NationId) + " · " + a.Status)), resident.ArmyId, "resident-army", true, archived);
         var mana = Field(magic, "魔力", resident.Mana, "resident-mana");
         var talent = Field(magic, "魔法天赋", resident.MagicTalent, "resident-magic-talent");
         var training = Field(magic, "魔法训练", resident.MagicTraining, "resident-magic-training");
@@ -96,8 +97,8 @@ public sealed partial class MainView
                 var patch = new ResidentEdit
                 {
                     Name = name.Text ?? "", Trait = Integer(trait) == 0 ? null : new[] { "", "勤劳", "勇敢", "好奇", "温和" }[Integer(trait)], Race = (RaceKind)race.SelectedItem!, Profession = (Profession)profession.SelectedItem!,
-                    CultureId = Integer(culture), SettlementId = Integer(home), Age = Number(age), Health = Number(health), Hunger = Number(hunger), SicknessTicks = Integer(sickness),
-                    X = Integer(x), Y = Integer(y), ArmyId = Integer(army), Mana = Number(mana), MagicTalent = Number(talent), MagicTraining = Number(training), Inventory = ReadStock(inventory)
+                    CultureId = Integer(culture), SettlementId = Integer(home) == resident.SettlementId ? null : Integer(home), Age = Number(age), Health = Number(health), Hunger = Number(hunger), SicknessTicks = Integer(sickness),
+                    X = Integer(x), Y = Integer(y), ArmyId = Integer(army) == resident.ArmyId ? null : Integer(army), Mana = Number(mana), MagicTalent = Number(talent), MagicTraining = Number(training), Inventory = ReadStock(inventory)
                 };
                 BeginEdit(); _engine.EditResident(id, patch); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("居民档案已更新 · 可撤销");
             }

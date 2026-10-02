@@ -129,6 +129,15 @@ const stock = (world, id) => town(world, id).Resources;
         assert.deepEqual(governed.Residents.map(item => [item.Id, item.Race, item.CultureId]), edited.Residents.map(item => [item.Id, item.Race, item.CultureId]));
         passed('culture values and national institution/policy edits preserve independent resident race and culture');
 
+        await ui.click('nation-edit', scroll);
+        await ui.fill('nation-name', 'Name-only nation', modal);
+        await ui.click('nation-apply');
+        const renamed = await ui.save();
+        assert.equal(renamed.Nations.find(item => item.Id === home.NationId).Name, 'Name-only nation');
+        assert.deepEqual(renamed.Settlements.map(item => item.Resources), governed.Settlements.map(item => item.Resources),
+            'A name-only nation edit must preserve every exact local resource amount');
+        passed('nation identity edit preserves untouched local resource stocks');
+
         // Fund a real construction command through the ordinary nation editor.
         await ui.click('nation-edit', scroll);
         for (const resource of ['food', 'wood', 'stone', 'ore']) await ui.fill(`nation-${resource}`, '500', modal);

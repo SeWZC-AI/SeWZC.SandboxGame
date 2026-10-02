@@ -362,7 +362,7 @@ public sealed partial class WorldEngine
         }
         else
         {
-            if (tile.Terrain is not TerrainType.Hills and not TerrainType.Snow)
+            if (tile.ResourceAmount <= 0 || tile.Terrain is not TerrainType.Hills and not TerrainType.Snow)
                 tile = Directions.Select(d => (X: person.X + d.X, Y: person.Y + d.Y))
                     .Where(p => InBounds(p.X, p.Y)).Select(p => State.Tiles[Index(p.X, p.Y)])
                     .FirstOrDefault(t => t.Terrain == TerrainType.Mountain && t.ResourceAmount > 0) ?? tile;

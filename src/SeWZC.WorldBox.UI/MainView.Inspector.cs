@@ -51,6 +51,11 @@ public sealed partial class MainView
         _refreshingInspector = true;
         try
         {
+            // A town can disappear during simulation. Resolve the selection before computing
+            // the key so only a changed selection rebuilds controls and their live callbacks.
+            if (_inspectorMode is "infrastructure" or "communication" &&
+                !_engine.State.Settlements.Any(town => town.Id == _inspectorSettlementId))
+                _inspectorSettlementId = _engine.State.Settlements.OrderBy(town => town.Id).FirstOrDefault()?.Id ?? 0;
             var key = $"{_inspectorMode}:{_selectedNationId}:{_selectedResidentId}:{_selectedTile}:{_eventDetailId}:{_inspectorSettlementId}";
             if (_inspectorKey != key)
             {

@@ -68,7 +68,8 @@ public sealed partial class WorldEngine
             if (soldiers.Length == 0) { DisbandArmy(army); continue; }
             var commander = soldiers.FirstOrDefault(r => r.Id == army.CommanderId) ?? soldiers[0];
             army.CommanderId = commander.Id;
-            var received = soldiers.SelectMany(r => r.Agent.Memory)
+            // Orders carried by separated soldiers must reach the commander through local communication.
+            var received = commander.Agent.Memory
                 .Where(f => (f.TargetNationId == 0 || f.TargetNationId == army.NationId) && f.SubjectId == army.TargetNationId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
                 .OrderByDescending(f => f.ObservedTick).ThenByDescending(f => f.Id).FirstOrDefault();
             if (received is not null && (received.ObservedTick > army.LastOrderTick || received.Kind == AgentFactKind.PeaceOrder))

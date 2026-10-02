@@ -268,6 +268,7 @@ public sealed partial class MainView : UserControl
     private void RestoreCheckpoint()
     {
         if (_checkpoint is null) { SetStatus("暂无可撤销的编辑。开始绘制时会保存恢复点，继续模拟后清除。"); return; }
+        CancelMapPick();
         _engine = WorldEngine.ImportJson(_checkpoint); _checkpoint = null; _paused = true;
         _selectedTile = null; _selectedNationId = 0; _selectedResidentId = 0; _inspectorMode = "overview"; InvalidateInspector();
         _map.Engine = _engine; _map.IsSimulationPaused = true; _map.RefreshWorld(); UpdateToolContext(); RefreshUi(true); SetStatus("已恢复到本轮编辑之前");
@@ -396,6 +397,7 @@ public sealed partial class MainView : UserControl
     }
     private void ReplaceWorld(WorldEngine engine)
     {
+        CancelMapPick();
         _checkpoint = _engine.ExportJson(); _engine = engine; _paused = true; _accumulator = 0; _selectedTile = null; _selectedNationId = 0;
         _allowAutosave = true;
         _inspectorMode = "overview"; _selectedResidentId = 0; _navigation.Clear(); _followNationId = 0; _eventDetailId = 0; InvalidateInspector();
@@ -423,16 +425,23 @@ public sealed partial class MainView : UserControl
         var technology = Named(new ComboBox { ItemsSource = new[] { "1 · 部落", "2 · 定居", "3 · 农业", "4 · 冶炼", "5 · 城邦" }, SelectedIndex = Math.Clamp(nation.Technology - 1, 0, 4), HorizontalAlignment = HorizontalAlignment.Stretch }, "nation-technology"); panel.Children.Add(technology);
         var fields = new List<NumericUpDown>();
         foreach (var (label, value) in new[] { ("粮食", nation.Resources.Food), ("木材", nation.Resources.Wood), ("石材", nation.Resources.Stone), ("矿产", nation.Resources.Ore) })
-        { var input = Field(panel, label, Math.Round(value), "nation-" + (label switch { "粮食" => "food", "木材" => "wood", "石材" => "stone", _ => "ore" })); input.Maximum = 1_000_000; fields.Add(input); }
+        { var input = Field(panel, label, value, "nation-" + (label switch { "粮食" => "food", "木材" => "wood", "石材" => "stone", _ => "ore" }), Math.Max(1_000_000, value)); fields.Add(input); }
         var others = _engine.State.Nations.Where(n => n.Id != nationId).ToList();
         var other = Named(new ComboBox { ItemsSource = others.Select(n => n.Name).ToArray(), SelectedIndex = others.Count > 0 ? 0 : -1, HorizontalAlignment = HorizontalAlignment.Stretch }, "nation-diplomacy-target");
         var diplomacy = Named(new ComboBox { ItemsSource = new[] { "保持现有关系", "和平", "结盟", "宣战" }, SelectedIndex = 0, HorizontalAlignment = HorizontalAlignment.Stretch }, "nation-diplomacy");
         if (others.Count > 0) { panel.Children.Add(Text("与另一个国家的关系", 12, Muted)); panel.Children.Add(other); panel.Children.Add(diplomacy); }
         panel.Children.Add(Button("应用变更", () =>
         {
-            var values = new double[4];
+            var values = new double?[4];
             if (string.IsNullOrWhiteSpace(name.Text) || name.Text.Any(char.IsControl)) { SetStatus("请输入不含控制字符的国家名称"); return; }
-            for (var i = 0; i < fields.Count; i++) { if (fields[i].Value is null) { SetStatus("请填写资源数量"); return; } values[i] = Number(fields[i]); }
+            for (var i = 0; i < fields.Count; i++)
+            {
+                if (fields[i].Value is null) { SetStatus("请填写资源数量"); return; }
+                var value = Number(fields[i]);
+                if (value == (double)fields[i].Tag!) continue;
+                if (value is < 0 or > 1_000_000) { SetStatus("修改后的资源须在 0 到 1,000,000 之间"); return; }
+                values[i] = value;
+            }
             BeginEdit(); _engine.RenameNation(nationId, name.Text.Trim()); _engine.SetNationResources(nationId, values[0], values[1], values[2], values[3]);
             _engine.SetNationColor(nationId, color); _engine.SetNationTechnology(nationId, technology.SelectedIndex + 1);
             if (diplomacy.SelectedIndex > 0 && other.SelectedIndex >= 0) _engine.SetDiplomacy(nationId, others[other.SelectedIndex].Id, diplomacy.SelectedIndex switch { 2 => DiplomaticStatus.Allied, 3 => DiplomaticStatus.War, _ => DiplomaticStatus.Neutral });
@@ -483,6 +492,7 @@ public sealed partial class MainView : UserControl
     }
     private void OpenModal(Control content)
     {
+        CancelMapPick();
         _modalGeneration++;
         var hasPrimary = false;
         _modalFeedback = Paragraph(""); _modalFeedback.Foreground = Brush.Parse("#E7BD87");
@@ -516,7 +526,7 @@ public sealed partial class MainView : UserControl
         dialog.MaxHeight = available;
         dialog.Height = _modalHasPrimary ? Math.Min(760, available) : double.NaN;
     }
-    private void CloseModal() { _modalGeneration++; _modal.IsVisible = false; _modal.Child = null; _map.IsSimulationPaused = _paused; Focus(); }
+    private void CloseModal() { CancelMapPick(); _modalGeneration++; _modal.IsVisible = false; _modal.Child = null; _map.IsSimulationPaused = _paused; Focus(); }
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)

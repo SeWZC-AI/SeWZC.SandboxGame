@@ -517,10 +517,14 @@ public sealed partial class WorldEngine
     /// <returns>Damage remaining after a real local shield; does not change unrelated victims.</returns>
     public double TryAbsorbShieldDamage(Resident resident, double damage)
     {
-        var nearbyTown = State.Settlements.FirstOrDefault(s => s.NationId == resident.NationId && Distance(s.X, s.Y, resident.X, resident.Y) <= 5);
-        if (nearbyTown is null) return damage;
-        if (GetLocalPolicy(nearbyTown.Id) == PolicyKind.Defense) damage *= 0.88;
-        return nearbyTown.ShieldTicks > 0 ? damage * 0.6 : damage;
+        var multiplier = 1d;
+        foreach (var town in State.Settlements)
+        {
+            if (town.NationId != resident.NationId || Distance(town.X, town.Y, resident.X, resident.Y) > 5) continue;
+            var protection = (GetLocalPolicy(town.Id) == PolicyKind.Defense ? 0.88 : 1) * (town.ShieldTicks > 0 ? 0.6 : 1);
+            multiplier = Math.Min(multiplier, protection);
+        }
+        return damage * multiplier;
     }
 
     public void ReconcileSocietyTopology()
@@ -644,7 +648,8 @@ public sealed partial class WorldEngine
             if (recruit.History.Count > 24) recruit.History.RemoveAt(0);
         }
         if (buildings.Any(b => !b.IsCompleted)) { Recruit(Profession.Builder); return; }
-        if (project.ActiveProject.HasValue) { Recruit(Profession.Scholar); return; }
+        if (project.ActiveProject.HasValue && buildings.Any(b => b.Kind == BuildingKind.Academy && b.IsCompleted))
+        { Recruit(Profession.Scholar); return; }
         if (State.Society.MagicEnabled && buildings.Any(b => b.Kind == BuildingKind.ArcaneSanctum && b.IsCompleted)) Recruit(Profession.Mage);
         var lowFood = town.Resources.Food < Math.Max(25, town.Population);
         if (lowFood) Recruit(Profession.Farmer);
@@ -745,7 +750,8 @@ public sealed partial class WorldEngine
     {
         var buildings = State.Society.Buildings.Where(b => b.SettlementId == town.Id).ToArray();
         var project = State.Society.Research.First(r => r.SettlementId == town.Id);
-        if (town.Resources.Food < Math.Max(25, town.Population) || buildings.Any(b => !b.IsCompleted) || project.ActiveProject.HasValue) return new();
+        if (town.Resources.Food < Math.Max(25, town.Population) || buildings.Any(b => !b.IsCompleted)
+            || project.ActiveProject.HasValue && buildings.Any(b => b.Kind == BuildingKind.Academy && b.IsCompleted)) return new();
         var plans = PendingLocalDevelopment(town, buildings, project)
             .Where(p => p.Facility.HasValue ? State.Rules.Construction : State.Rules.Research).ToArray();
         // Reserve wood and stone for the next project the local planner can pursue; optional ore
@@ -830,9 +836,10 @@ public sealed partial class WorldEngine
     }
     private static void Spend(ResourceStock stock, ResourceStock cost)
     {
-        if (stock.Food < cost.Food || stock.Wood < cost.Wood || stock.Stone < cost.Stone || stock.Ore < cost.Ore)
+        if (MissingResources(stock, cost) is not null)
             throw new InvalidOperationException($"当地材料不足；需要粮食 {cost.Food:0.#}、木材 {cost.Wood:0.#}、石材 {cost.Stone:0.#}、矿产 {cost.Ore:0.#}。");
-        stock.Food -= cost.Food; stock.Wood -= cost.Wood; stock.Stone -= cost.Stone; stock.Ore -= cost.Ore;
+        stock.Food = Math.Max(0, stock.Food - cost.Food); stock.Wood = Math.Max(0, stock.Wood - cost.Wood);
+        stock.Stone = Math.Max(0, stock.Stone - cost.Stone); stock.Ore = Math.Max(0, stock.Ore - cost.Ore);
     }
     private Settlement RequireTown(int id) => _settlements.TryGetValue(id, out var town) ? town : throw new ArgumentException("聚落不存在。");
     private Nation RequireNation(int id) => _nations.TryGetValue(id, out var nation) ? nation : throw new ArgumentException("国家不存在。");

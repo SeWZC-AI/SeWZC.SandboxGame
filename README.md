@@ -64,9 +64,12 @@ dotnet workload install wasm-tools
 dotnet restore
 dotnet build -c Release
 dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release
+dotnet run --project tests/SeWZC.WorldBox.UI.Tests -c Release
 ```
 
 核心测试采用可执行测试程序，失败时返回非零退出码；请运行上面的 `dotnet run`，而非以 `dotnet test` 代替。
+
+共享界面回归同样是可执行程序，使用 Avalonia Headless 验证实际控件与事件处理，包括聚落消亡、国家编辑和切换世界。它不替代发布后的浏览器检查。
 
 启动浏览器开发版：
 
