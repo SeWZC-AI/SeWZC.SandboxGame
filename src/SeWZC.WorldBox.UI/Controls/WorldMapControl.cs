@@ -78,6 +78,9 @@ public sealed partial class WorldMapControl : Control
         set
         {
             if (ReferenceEquals(_engine, value)) return;
+            CancelPlacement();
+            _touches.Clear(); _dragging = false; _pinching = false; _lastPaint = null;
+            PickingLocation = false; SelectedNationId = 0; SelectedSettlementId = 0;
             DisposeChunks();
             ResetMotion();
             _settlementLabels.Clear();

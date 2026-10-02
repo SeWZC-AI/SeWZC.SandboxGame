@@ -112,13 +112,32 @@ const summary = world => ({ population: world.Residents.length, tick: world.Tick
         await ui.click('tool-suspend');
         await ui.click('map-fit');
         await page.screenshot({ path: path.join(output, 'mobile.png') });
+
+        // Keep an unconfirmed touch preview while replacing the world through its real dialog.
+        await ui.tool('life', 'Human');
+        await ui.clickTile(home.X, home.Y);
+        assert((await ui.snapshot()).pendingPlacement, 'Touch preview must be pending before world replacement');
+        await ui.click('header-new-world');
+        await ui.selectIndex('world-size', 0, { scroll: 'modal-scroll' });
+        await ui.click('world-create-apply');
+        const replaced = await ui.snapshot();
+        assert(!replaced.pendingPlacement, 'A new world must discard the previous world\'s placement');
+        assert(!ui.control(replaced, 'placement-confirm').visible, 'The old confirmation action must disappear');
+        const small = await ui.save();
+        assert.equal(small.Width, 128);
+        await ui.click('header-storage');
+        await ui.click('storage-undo', { scroll: 'modal-scroll' });
+        assert(!(await ui.snapshot()).pendingPlacement, 'Undo must also clear pending placement');
+        assert.deepEqual(await ui.save(), edited, 'World replacement undo must restore the complete previous world');
+        console.log('PASS mobile world replacement clears pending touch placement and preserves undo');
+
         await diagnostics.assertHealthy('mobile after interactions');
         fs.writeFileSync(path.join(output, 'mobile-results.json'), JSON.stringify({
             url: baseUrl, viewport: { width: 390, height: 844 }, chromiumViewportEmulation: true,
             baseline: summary(before), spawned: summary(spawned), paused: summary(paused),
             dragUnchanged: true, pinchUnchanged: true, cameraMoved: true, pinchZoomed: true,
             gestureMaps: { before: snapshot.map, dragged: draggedMap, pinched: pinchedMap }, residentEdit: true, dialogRotation: true,
-            fixedControls, errors: diagnostics.errors, fallbacks: diagnostics.fallbacks, rendererChecks: diagnostics.rendererChecks
+            fixedControls, replacementClearsPlacement: true, errors: diagnostics.errors, fallbacks: diagnostics.fallbacks, rendererChecks: diagnostics.rendererChecks
         }, null, 2));
         console.log('ALL MOBILE FUNCTIONAL CHECKS PASSED');
     } catch (error) {

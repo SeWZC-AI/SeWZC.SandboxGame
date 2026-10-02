@@ -96,13 +96,21 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Editor, $"{previous}更名为{name}。");
     }
 
-    public void SetNationResources(int nationId, double food, double wood, double stone, double ore)
+    public void SetNationResources(int nationId, double? food = null, double? wood = null, double? stone = null, double? ore = null)
     {
         if (!_nations.ContainsKey(nationId)) throw new ArgumentException("国家不存在。", nameof(nationId));
-        if (new[] { food, wood, stone, ore }.Any(v => !double.IsFinite(v) || v < 0 || v > 1_000_000)) throw new ArgumentOutOfRangeException(nameof(food), "资源须在 0 到 1,000,000 之间。");
+        var amounts = new[] { food, wood, stone, ore };
+        if (amounts.Any(v => v.HasValue && (!double.IsFinite(v.Value) || v.Value < 0 || v.Value > 1_000_000))) throw new ArgumentOutOfRangeException(nameof(food), "资源须在 0 到 1,000,000 之间。");
+        if (amounts.All(v => !v.HasValue)) return;
         var towns = State.Settlements.Where(s => s.NationId == nationId).ToArray();
         if (towns.Length == 0) return;
-        foreach (var town in towns) town.Resources = new ResourceStock { Food = food / towns.Length, Wood = wood / towns.Length, Stone = stone / towns.Length, Ore = ore / towns.Length };
+        foreach (var town in towns)
+        {
+            if (food is { } f) town.Resources.Food = f / towns.Length;
+            if (wood is { } w) town.Resources.Wood = w / towns.Length;
+            if (stone is { } s) town.Resources.Stone = s / towns.Length;
+            if (ore is { } o) town.Resources.Ore = o / towns.Length;
+        }
         RefreshTotals();
         AddEvent(WorldEventKind.Editor, $"{_nations[nationId].Name}的资源储备已调整。");
     }
