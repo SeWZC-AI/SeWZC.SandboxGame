@@ -192,8 +192,14 @@ public sealed partial class MainView
         Tile Tile() => _engine.State.Tiles[point.Y * _engine.State.Width + point.X];
         panel.Children.Add(LiveText(() => $"{TerrainName(Tile().Terrain)} · {point.X}, {point.Y}", 16, Mint));
         panel.Children.Add(LiveText(() => $"实际地格状态\n肥沃度 {Tile().Fertility} · 资源 {Tile().ResourceAmount:F0}\n道路 {Tile().RoadLevel} 级 · {(Tile().IsWalkable ? "可通行" : "不可通行")}\n归属：{NationName(Tile().NationId)}\n火灾 {Tile().FireTicks} 日 · 干旱 {Tile().DroughtTicks} 日"));
-        panel.Children.Add(Text("附近居民 · 点击打开完整档案", 12, Mint));
-        LiveRows(panel, () => _engine.State.Residents.Where(r => Math.Abs(r.X - point.X) <= 6 && Math.Abs(r.Y - point.Y) <= 6).OrderBy(r => r.Id).Take(16), r => r.Id.ToString(), r => $"{r.Name} · {ProfessionName(r.Profession)}\n{GoalName(r.Agent.Goal.Kind)} · {r.Agent.Goal.Reason}", r => OpenResident(r.Id));
+        panel.Children.Add(Named(Button("编辑此地资源与道路", () => ShowTileEditor(point.X, point.Y)), "tile-edit"));
+        panel.Children.Add(LiveText(() =>
+        {
+            var buildings = _engine.State.Society.Buildings.Where(b => b.X == point.X && b.Y == point.Y);
+            return string.Join("\n", buildings.Select(b => $"{WorldEngine.BuildingName(b.Kind)} · 生命 {b.Health:0}%\n施工 {b.ConstructionProgress:0}/{b.ConstructionRequired:0} · 工人 {b.Workers.Count}/{b.WorkSlots}\n最近工作：{DateLabel(b.LastWorkedTick)}"));
+        }));
+        var nearby = FoldSection(panel, "附近居民 · 点击查看", "tile-residents", true);
+        LiveRows(nearby, () => _engine.State.Residents.Where(r => Math.Abs(r.X - point.X) <= 6 && Math.Abs(r.Y - point.Y) <= 6).OrderBy(r => r.Id).Take(16), r => r.Id.ToString(), r => $"{r.Name} · {ProfessionName(r.Profession)}\n{GoalName(r.Agent.Goal.Kind)} · {r.Agent.Goal.Reason}", r => OpenResident(r.Id));
         panel.Children.Add(Button("查看建筑与道路", () => OpenInspector("infrastructure")));
     }
 

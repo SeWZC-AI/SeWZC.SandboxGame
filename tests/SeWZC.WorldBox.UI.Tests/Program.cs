@@ -14,6 +14,11 @@ AppBuilder.Configure<TestApp>().UseHeadless(new AvaloniaHeadlessPlatformOptions(
 
 var tests = new (string Name, Action Test)[]
 {
+    ("Paused goal edits refresh the selected resident route immediately", GoalRouteRefresh),
+    ("Empty rule numbers stay in the form without changing world state", EmptyRuleNumber),
+    ("Resident detail folds survive refresh and keep targets accessible", FoldedDetails),
+    ("Close zoom and route presentation preserve world state", CloseZoom),
+    ("Tile form edits resources and rejects invalid road input atomically", TileForm),
     ("Infrastructure refresh recovers when its town disappears", () => TownDisappears("infrastructure", false)),
     ("Closed communication inspector recovers when its town disappears", () => TownDisappears("communication", true)),
     ("Nation rename preserves exact local stocks", () => RenamePreservesStocks(false)),
@@ -42,6 +47,74 @@ foreach (var (name, test) in tests)
 }
 Console.WriteLine($"{tests.Length - failures}/{tests.Length} UI checks passed");
 return failures == 0 ? 0 : 1;
+
+static void GoalRouteRefresh()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var resident = engine.State.Residents[0];
+    var map = Map(view);
+    Call(view, "OpenResident", resident.Id); Call(view, "ShowGoalEditor", resident.Id);
+    Control<ComboBox>(view, "resident-goal").SelectedItem = AgentGoalKind.Work;
+    Control<ComboBox>(view, "resident-goal-entity").SelectedIndex = 0;
+    Control<NumericUpDown>(view, "resident-goal-x").Value = 35;
+    Control<NumericUpDown>(view, "resident-goal-y").Value = 32;
+    Click(view, "resident-goal-apply");
+    Assert(Field<IReadOnlyList<RoutePoint>>(map, "_selectedRoute").Count > 1, "Paused edit left the cached route empty");
+    Assert(engine.State.Tick == 0, "Refreshing the preview advanced simulation");
+}
+
+static void EmptyRuleNumber()
+{
+    var engine = TwoTownWorld(); var view = View(engine);
+    Call(view, "ShowRules");
+    var before = engine.ExportJson();
+    Control<NumericUpDown>(view, "rule-gathering-rate").Value = null;
+    Click(view, "world-rules-apply");
+    Assert(engine.ExportJson() == before && Field<Border>(view, "_modal").IsVisible, "Empty input changed world or closed the form");
+}
+
+static void FoldedDetails()
+{
+    var engine = TwoTownWorld(); var view = View(engine);
+    Call(view, "OpenResident", engine.State.Residents[0].Id);
+    var fold = Control<Expander>(view, "resident-cognition");
+    Assert(!fold.IsExpanded && !Control<Expander>(view, "resident-history").IsExpanded, "Secondary lists should start folded");
+    fold.IsExpanded = true; Call(view, "RefreshUi", true);
+    Assert(ReferenceEquals(fold, Control<Expander>(view, "resident-cognition")) && fold.IsExpanded, "Timed refresh rebuilt or collapsed content");
+    Call(view, "OpenInspector", "overview", true);
+    Call(view, "OpenResident", engine.State.Residents[0].Id);
+    Assert(Control<Expander>(view, "resident-cognition").IsExpanded, "Navigation lost fold preference");
+    Assert(Control<Button>(view, "resident-goal-edit").IsEnabled, "Goal actions unavailable");
+}
+
+static void CloseZoom()
+{
+    var engine = TwoTownWorld(); var map = Map(View(engine));
+    var before = engine.ExportJson();
+    map.SelectResident(engine.State.Residents[0].Id);
+    for (var i = 0; i < 30; i++) map.ZoomIn();
+    var size = map.GetTileScreenPosition(1, 0).X - map.GetTileScreenPosition(0, 0).X;
+    Assert(Math.Abs(size - 24 * 8) < .001, "Close zoom should reach 24x");
+    map.RefreshWorld();
+    Assert(engine.ExportJson() == before, "Observation changed simulation");
+}
+
+static void TileForm()
+{
+    var engine = TwoTownWorld(); var view = View(engine);
+    Call(view, "ShowTileEditor", 32, 32);
+    Control<NumericUpDown>(view, "tile-resources").Value = 12.5m;
+    Control<NumericUpDown>(view, "tile-fertility").Value = 0;
+    Control<NumericUpDown>(view, "tile-road").Value = 3;
+    Click(view, "tile-apply");
+    var tile = engine.State.Tiles[32 * 128 + 32];
+    Assert(tile.ResourceAmount == 12.5 && tile.Fertility == 0 && tile.RoadLevel == 3, "Tile form did not commit values");
+    Call(view, "ShowTileEditor", 32, 32);
+    var before = engine.ExportJson();
+    Control<NumericUpDown>(view, "tile-resources").Value = 50;
+    Control<NumericUpDown>(view, "tile-road").Value = 1.5m;
+    Click(view, "tile-apply");
+    Assert(engine.ExportJson() == before && Field<Border>(view, "_modal").IsVisible, "Invalid form applied partially or closed");
+}
 
 static void TownDisappears(string mode, bool closeInspector)
 {

@@ -103,10 +103,12 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.fill('resident-goal-reason', 'Rest after a long journey', modal);
         await ui.fill('resident-diligence', '0.73', modal);
         await ui.click('resident-goal-apply');
+        await ui.click('resident-cognition', scroll);
         await ui.click('resident-memory-add', scroll);
         await ui.fill('memory-text', 'A traveler described the northern valley', modal);
         await ui.fill('memory-confidence', '0.65', modal);
         await ui.click('memory-apply');
+        await ui.click('resident-history', scroll);
         await ui.click('resident-history-add', scroll);
         await ui.fill('history-entry-text', 'Learned how to maintain the village tools', modal);
         await ui.selectIndex('history-entry-experience', 5, modal); // Learning.

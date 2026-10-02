@@ -6,7 +6,7 @@ public enum TerrainType { DeepWater = 0, Water = 1, Sand = 2, Grass = 3, Forest 
 public enum RaceKind { Human, Elf, Dwarf, Orc }
 public enum Profession { Child, Farmer, Lumberjack, Miner, Soldier, Builder, Trader, Messenger, Representative, Scholar, Mage }
 public enum ResidentActivity { Wandering, Working, Hungry, Marching, Sick, Eating, Resting, Talking, Delivering, Studying, Casting, Fleeing }
-public enum DisasterKind { Fire, Drought, Plague }
+public enum DisasterKind { Fire, Drought, Plague, Meteor }
 public enum DiplomaticStatus { Neutral, Allied, War }
 public enum WorldEventKind { Founding, Growth, Trade, Diplomacy, War, Disaster, Death, Editor, Personal, Communication, Culture, Policy, Research, Construction, Magic }
 

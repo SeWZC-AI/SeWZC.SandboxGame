@@ -78,6 +78,7 @@ const distance = (first, second) => Math.hypot(first.x - second.x, first.y - sec
         await ui.fill('resident-goal-duration', 240, modal);
         await ui.click('resident-goal-apply', modal);
         await ui.waitFor(state => !state.modalOpen && state.status.includes('目标与人格已更新'), 'committed resident goal');
+        await ui.waitFor(state => state.renderedRouteSegmentCount > 0, 'drawn current-goal route');
         await ui.paused(false);
 
         const normal = await sampleRendering(page, 2400);
@@ -144,6 +145,8 @@ const distance = (first, second) => Math.hypot(first.x - second.x, first.y - sec
         report.final = { tick: final.Tick, residentId: actor.Id, x: finalActor.X, y: finalActor.Y,
             fromX: finalActor.FromX, fromY: finalActor.FromY, moveDurationTicks: finalActor.MoveDurationTicks };
         await page.screenshot({ path: path.join(output, 'motion-detail.png') });
+        for (let i = 0; i < 6; i++) await ui.click('map-zoom-in');
+        await page.screenshot({ path: path.join(output, 'resident-closeup.png') });
         await ui.click('map-fit');
         await ui.click('header-overview');
         await page.screenshot({ path: path.join(output, 'world-v3.png') });
