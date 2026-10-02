@@ -13,6 +13,8 @@ if (evolutionOption >= 0)
 // A dependency-free executable suite, runnable with dotnet run --project tests/SeWZC.WorldBox.Core.Tests.
 if (args.Contains("--profile-simulation"))
     return SimulationPerformance.Run(args, CreateBenchmarkWorld);
+var developmentOption = Array.IndexOf(args, "--simulate-development");
+if (developmentOption >= 0) return DevelopmentDiagnostics.Run(args[(developmentOption + 1)..]);
 
 var fixtureOption = Array.IndexOf(args, "--export-browser-fixture");
 if (fixtureOption >= 0)

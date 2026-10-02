@@ -65,7 +65,10 @@ public sealed partial class WorldEngine
         foreach (var town in State.Settlements.ToArray())
         {
             var citizens = _citizens[town.Id];
-            if (citizens.Count > town.Housing * 0.75 && town.Resources.Wood >= 25 && town.Resources.Stone >= 8)
+            // Housing and the local planner share a material budget; growth must leave the next
+            // school, research or facility able to start when its physical deliveries arrive.
+            var developmentReserve = LocalDevelopmentReserve(town);
+            if (citizens.Count > town.Housing * 0.75 && town.Resources.Wood >= 25 + developmentReserve.Wood && town.Resources.Stone >= 8 + developmentReserve.Stone)
             {
                 town.Resources.Wood -= 25; town.Resources.Stone -= 8; town.Housing += 20;
                 town.Level = Math.Min(5, 1 + town.Housing / 70);

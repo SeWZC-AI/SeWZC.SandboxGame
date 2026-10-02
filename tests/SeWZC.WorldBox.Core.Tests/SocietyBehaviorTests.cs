@@ -10,7 +10,10 @@ internal static class SocietyBehaviorTests
         ("culture changes independently of race and nationality through physical contact", CulturalExchange),
         ("magic uses trained talent and mana for actual local effects", MagicEffects),
         ("roads and operated connected signal towers affect physical communication", TransportNetwork),
-        ("default societies build and research autonomously with deterministic saves", AutonomousDevelopment)
+        ("default societies build and research autonomously with deterministic saves", AutonomousDevelopment),
+        ("large default world develops beyond founding facilities", LargeDefaultDevelopment),
+        ("nearby work follows its selected facility and requires productive resources", SelectedFacilityWork),
+        ("housing leaves materials for development and optional shortages do not block ready projects", DevelopmentBudget)
     ];
 
     private static WorldEngine FlatWorld(int population = 24)
@@ -191,5 +194,78 @@ internal static class SocietyBehaviorTests
         Check(engine.State.Society.Buildings.Count > foundingBuildings && engine.State.Society.Buildings.Any(b => b.Kind == BuildingKind.Academy && b.IsCompleted),
             "Default inhabitants never autonomously funded and physically constructed a school.");
         Check(engine.State.Society.Research.Any(r => r.Completed.Count > 0), "Default institutions required player research clicks to discover anything.");
+    }
+
+    private static void LargeDefaultDevelopment()
+    {
+        var engine = WorldEngine.Create(73921, 256, 256);
+        engine.State.NaturalDisasters = false;
+        engine.Step(1200);
+        Check(engine.State.Society.Buildings.Any(b => b.Kind == BuildingKind.Academy && b.IsCompleted),
+            "The application's default world still has no completed school after ten simulated years.");
+        Check(engine.State.Society.Research.Any(r => r.Completed.Contains(ResearchKind.Agriculture)),
+            "The application's default world never completes its first local research project.");
+        Check(engine.State.Society.Research.Any(r => r.Completed.Contains(ResearchKind.Logistics)),
+            "An unaffordable optional project blocked every settlement's basic transport research.");
+        var resumed = WorldEngine.ImportJson(engine.ExportJson());
+        engine.Step(120); resumed.Step(120);
+        Check(engine.ExportJson() == resumed.ExportJson(), "Large-world development diverged after saving and resuming.");
+    }
+
+    private static void SelectedFacilityWork()
+    {
+        var engine = FlatWorld();
+        var town = engine.State.Settlements.Single();
+        var workshop = engine.State.Society.Buildings.Single(b => b.Kind == BuildingKind.Workshop);
+        var worker = engine.State.Residents.Last();
+        Place(worker, workshop.X, workshop.Y);
+        worker.Profession = Profession.Builder;
+        // Equal priority used to send this worker to the adjacent farm instead of the selected workshop.
+        worker.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Work, TargetX = workshop.X, TargetY = workshop.Y,
+            TargetEntityId = workshop.Id, StartedTick = engine.State.Tick, ReviewTick = engine.State.Tick + 100 };
+        var before = worker.Inventory.Wood;
+        Check(engine.TryWorkAtBuilding(worker) && worker.Inventory.Wood > before,
+            "Working at the selected workshop produced food at a different facility instead of wood.");
+        worker.Profession = Profession.Lumberjack;
+        foreach (var tile in engine.State.Tiles) tile.Terrain = TerrainType.Desert;
+        var resources = engine.State.Tiles.Sum(t => t.ResourceAmount);
+        engine.State.Tick++;
+        Check(!engine.TryWorkAtBuilding(worker) && engine.State.Tiles.Sum(t => t.ResourceAmount) == resources,
+            "A workshop consumed terrain resources and claimed work despite having no usable wood source.");
+    }
+
+    private static void DevelopmentBudget()
+    {
+        var engine = FlatWorld(36);
+        var town = engine.State.Settlements.Single();
+        engine.SetNationResources(town.NationId, 500, 50, 20, 0);
+        foreach (var resident in engine.State.Residents)
+        {
+            Place(resident, town.X, town.Y);
+            resident.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = town.X, TargetY = town.Y,
+                StartedTick = engine.State.Tick, ReviewTick = 100, PlayerDirected = true };
+        }
+        var housing = town.Housing;
+        engine.Step(12);
+        Check(town.Housing == housing && town.Resources.Wood >= 30 && town.Resources.Stone >= 15,
+            "Housing spent materials needed to build the town's first school.");
+        engine.State.Tick += (60 - (engine.State.Tick + town.Id) % 60) % 60;
+        engine.TickSociety();
+        var academy = engine.State.Society.Buildings.Single(b => b.Kind == BuildingKind.Academy);
+        Work(engine, engine.State.Residents.First(r => r.Age >= 16 && r.Id != town.RepresentativeId), academy);
+        engine.GrantReceivedResearch(town.Id, ResearchKind.Agriculture);
+        foreach (var resident in engine.State.Residents) resident.MagicTalent = 60;
+        engine.SetNationResources(town.NationId, 500, 100, 20, 0);
+        engine.State.Tick += (60 - (engine.State.Tick + town.Id) % 60) % 60;
+        engine.TickSociety();
+        Check(engine.State.Society.Research.Single().ActiveProject == ResearchKind.Logistics,
+            "Lacking ore for optional magic prevented funded transport research from starting.");
+        engine.GrantReceivedResearch(town.Id, ResearchKind.Logistics);
+        engine.GrantReceivedResearch(town.Id, ResearchKind.ArcaneArts);
+        engine.SetNationResources(town.NationId, 500, 100, 15, 0);
+        engine.State.Tick += 60;
+        engine.TickSociety();
+        Check(engine.State.Society.Buildings.Any(b => b.Kind == BuildingKind.Waystation),
+            "An unaffordable arcane sanctum prevented the town from building its funded waystation.");
     }
 }

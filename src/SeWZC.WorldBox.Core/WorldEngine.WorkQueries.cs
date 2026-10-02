@@ -48,7 +48,7 @@ public sealed partial class WorldEngine
     private List<Resident>? ResidentsForLocalWork(int settlementId) => _localWorkQueriesActive
         ? _localWorkResidents.GetValueOrDefault(settlementId) : State.Residents;
 
-    private Building? FindLocalWorkBuilding(Resident resident, int range, bool preferNearest)
+    private Building? FindLocalWorkBuilding(Resident resident, int range, bool preferNearest, bool followTarget = false)
     {
         var buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(resident.SettlementId) : State.Society.Buildings;
@@ -58,6 +58,7 @@ public sealed partial class WorldEngine
         var bestDistance = 0;
         foreach (var building in buildings)
         {
+            if (followTarget && resident.Agent.Goal.TargetEntityId != 0 && resident.Agent.Goal.TargetEntityId != building.Id) continue;
             if (building.SettlementId != resident.SettlementId || building.Health <= 0) continue;
             var distance = Distance(resident.X, resident.Y, building.X, building.Y);
             if (distance > range || !BuildingHasWork(building, resident)) continue;

@@ -181,12 +181,12 @@ public sealed partial class WorldEngine
                 37 + personality.Diligence * 12, person.Profession == Profession.Lumberjack ? "看见可采木材，前往伐木" : "看见矿石露头，前往开采"));
         }
         if (person.Age >= 14 && person.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner or Profession.Builder or Profession.Scholar or Profession.Mage
-            && TryGetLocalWorkTarget(person, out var workX, out var workY))
+            && FindLocalWorkTarget(person) is { } work)
         {
             var kind = person.Profession == Profession.Scholar ? AgentGoalKind.Study : person.Profession == Profession.Mage ? AgentGoalKind.TrainMagic : AgentGoalKind.Work;
-            choices.Add(new(kind, workX, workY, 42 + personality.Diligence * 12
+            choices.Add(new(kind, work.X, work.Y, 42 + personality.Diligence * 12
                 + (person.Profession == Profession.Farmer && foodFact is { Value: < 12 } ? 18 * AgentFactReliability(foodFact) : 0),
-                kind == AgentGoalKind.Study ? "附近有可参与的研究设施，前往学习" : kind == AgentGoalKind.TrainMagic ? "附近有可训练的魔法设施" : "附近有实际施工或生产工作"));
+                kind == AgentGoalKind.Study ? "附近有可参与的研究设施，前往学习" : kind == AgentGoalKind.TrainMagic ? "附近有可训练的魔法设施" : "附近有实际施工或生产工作", EntityId: work.Id));
         }
         if (agent.SocialNeed > 35)
             choices.Add(new(AgentGoalKind.Socialize, home.X, home.Y,
