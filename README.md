@@ -66,9 +66,12 @@ dotnet workload install wasm-tools
 dotnet restore
 dotnet build -c Release
 dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release
+dotnet run --project tests/SeWZC.WorldBox.UI.Tests -c Release
 ```
 
 核心测试采用可执行测试程序，失败时返回非零退出码；请运行上面的 `dotnet run`，而非以 `dotnet test` 代替。
+
+共享界面回归同样是可执行程序，使用 Avalonia Headless 验证实际控件与事件处理，包括聚落消亡、国家编辑和切换世界。它不替代发布后的浏览器检查。
 
 启动浏览器开发版：
 
@@ -116,7 +119,7 @@ python3 -m http.server 8080 --directory artifacts/site
 
 桌面自动存档位于系统本地应用数据目录下的 `SeWZC/WorldBox/autosave.json`，导入和导出通过系统文件选择器完成。
 
-切换后台时暂停世界，返回后继续；不会按离线时间补算发展。保存采用带格式版本的数据，并记录模拟时间及随机数状态。**Alpha 阶段不承诺存档或接口向后兼容**：版本更新可能拒绝旧世界，此时需新建世界；不提供旧格式迁移。本轮格式升级为 **4**，旧格式 3 及更早世界需新建，当前格式的保存、导入导出与恢复仍需通过验证。
+切换后台时暂停世界，返回后继续；不会按离线时间补算发展。保存采用带格式版本的数据，并记录模拟时间及随机数状态。**Alpha 阶段不承诺存档或接口向后兼容**：版本更新可能拒绝旧世界，此时需新建世界；不提供旧格式迁移。本轮格式升级为 **5**，旧格式 4 及更早世界需新建，当前格式的保存、导入导出与恢复仍需通过验证。
 
 浏览器当前验证记录见 [验证记录](docs/verification.md)。已跑通约 2,000 居民的短时浏览器压力场景；真实 Android / iOS 设备、Firefox / Safari、复杂地形和大规模人口长时间运行仍需继续验证。
 

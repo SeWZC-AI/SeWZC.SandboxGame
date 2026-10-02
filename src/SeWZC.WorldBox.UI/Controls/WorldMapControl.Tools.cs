@@ -39,6 +39,7 @@ public sealed partial class WorldMapControl
     private string? PlacementError(int x, int y)
     {
         if (Engine is null) return "世界尚未就绪";
+        if (x < 0 || y < 0 || x >= Engine.State.Width || y >= Engine.State.Height) return "请选择世界范围内的地点";
         if (ActiveTool.StartsWith("build:") && Enum.TryParse<BuildingKind>(ActiveTool[6..], out var kind))
             return Engine.FacilityPlacementError(SelectedSettlementId, kind, x, y, GiftBuildings);
         if (ActiveTool.StartsWith("road:")) return Engine.RoadPlacementError(SelectedSettlementId, x, y, 0);

@@ -68,6 +68,7 @@ public sealed partial class MainView
     private void ShowResidentEditor(int id)
     {
         var resident = _engine.GetResident(id); if (resident is null) return;
+        var archived = _engine.State.ArchivedResidents.Any(person => person.Id == id);
         _paused = true; _map.IsSimulationPaused = true; RefreshUi();
         var panel = ModalPanel("编辑居民档案", "变更先统一校验，再应用到暂停中的世界。姓名与属性可编辑；编号、当前动作、移动插值由模拟维护。归属通过居住聚落确定。");
         var identity = new StackPanel { Spacing = 10 }; var condition = new StackPanel { Spacing = 10 }; var belonging = new StackPanel { Spacing = 10 }; var magic = new StackPanel { Spacing = 10 }; var possessions = new StackPanel { Spacing = 10 };
@@ -77,15 +78,15 @@ public sealed partial class MainView
         var trait = ObjectField(identity, "性格预设（选择后同步调整对应倾向）", new[] { (0, "保持当前性格"), (1, "勤劳"), (2, "勇敢"), (3, "好奇"), (4, "温和") }, 0, "resident-trait");
         var race = EnumField(identity, "种族", resident.Race, RaceName, "resident-race");
         var profession = EnumField(identity, "职业", resident.Profession, ProfessionName, "resident-profession");
-        var culture = ObjectField(belonging, "文化", _engine.State.Society.Cultures.Select(c => (c.Id, c.Name)), resident.CultureId, "resident-culture", false);
-        var home = ObjectField(belonging, "居住聚落", _engine.State.Settlements.Select(t => (t.Id, t.Name)), resident.SettlementId, "resident-settlement", false);
+        var culture = ObjectField(belonging, "文化", _engine.State.Society.Cultures.Select(c => (c.Id, c.Name)), resident.CultureId, "resident-culture", historical: archived);
+        var home = ObjectField(belonging, "居住聚落", _engine.State.Settlements.Select(t => (t.Id, t.Name)), resident.SettlementId, "resident-settlement", historical: archived);
         belonging.Children.Add(Paragraph("迁居会同步调整国家归属；文化认同保留你的选择。"));
         var age = Field(condition, "年龄", resident.Age, "resident-age");
         var health = Field(condition, "生命 0–100", resident.Health, "resident-health");
         var hunger = Field(condition, "饥饿 0–100", resident.Hunger, "resident-hunger");
         var sickness = Field(condition, "疫病剩余日数", resident.SicknessTicks, "resident-sickness");
         var x = Field(belonging, "位置 X", resident.X, "resident-x"); var y = Field(belonging, "位置 Y", resident.Y, "resident-y");
-        var army = ObjectField(belonging, "军队", _engine.State.Armies.Where(a => a.NationId == resident.NationId).Select(a => (a.Id, NationName(a.NationId) + " · " + a.Status)), resident.ArmyId, "resident-army", true);
+        var army = ObjectField(belonging, "军队", _engine.State.Armies.Where(a => a.NationId == resident.NationId).Select(a => (a.Id, NationName(a.NationId) + " · " + a.Status)), resident.ArmyId, "resident-army", true, archived);
         var mana = Field(magic, "魔力", resident.Mana, "resident-mana");
         var talent = Field(magic, "魔法天赋", resident.MagicTalent, "resident-magic-talent");
         var training = Field(magic, "魔法训练", resident.MagicTraining, "resident-magic-training");
@@ -98,8 +99,8 @@ public sealed partial class MainView
                 var patch = new ResidentEdit
                 {
                     Name = name.Text ?? "", Trait = Integer(trait) == 0 ? null : new[] { "", "勤劳", "勇敢", "好奇", "温和" }[Integer(trait)], Race = (RaceKind)race.SelectedItem!, Profession = (Profession)profession.SelectedItem!,
-                    CultureId = Integer(culture), SettlementId = Integer(home), Age = Number(age), Health = Number(health), Hunger = Number(hunger), SicknessTicks = Integer(sickness),
-                    X = Integer(x), Y = Integer(y), ArmyId = Integer(army), Mana = Number(mana), MagicTalent = Number(talent), MagicTraining = Number(training), Inventory = ReadStock(inventory)
+                    CultureId = Integer(culture), SettlementId = Integer(home) == resident.SettlementId ? null : Integer(home), Age = Number(age), Health = Number(health), Hunger = Number(hunger), SicknessTicks = Integer(sickness),
+                    X = Integer(x), Y = Integer(y), ArmyId = Integer(army) == resident.ArmyId ? null : Integer(army), Mana = Number(mana), MagicTalent = Number(talent), MagicTraining = Number(training), Inventory = ReadStock(inventory)
                 };
                 BeginEdit(); _engine.EditResident(id, patch); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("居民档案已更新 · 可撤销");
             }
@@ -113,18 +114,56 @@ public sealed partial class MainView
     {
         var resident = _engine.GetResident(id); if (resident is null) return;
         _paused = true; _map.IsSimulationPaused = true;
-        var panel = ModalPanel("目标、性格与需求", "目标在未来的行动中执行。目标地点、实体和聚落必须有效；自主思考仍会考虑危险与基本需求。");
+        var panel = ModalPanel("目标、性格与需求", "目标在未来的行动中执行。只修改人格或需求会保留原目标；历史记录中的对象可以保留，自主思考仍会考虑危险与基本需求。");
         var mind = CloneMind(id);
+        var originalGoal = mind.Goal;
         var goal = EnumField(panel, "当前目标", mind.Goal.Kind, GoalName, "resident-goal");
         var reason = Field(panel, "目标备注（仅记录，不参与行动评分）", mind.Goal.Reason, "resident-goal-reason");
         var x = Field(panel, "目标 X", mind.Goal.TargetX, "resident-goal-x"); var y = Field(panel, "目标 Y", mind.Goal.TargetY, "resident-goal-y");
         x.Maximum = _engine.State.Width - 1; y.Maximum = _engine.State.Height - 1;
         AddMapPicker(panel, x, y);
-        var town = ObjectField(panel, "目标聚落", _engine.State.Settlements.Select(t => (t.Id, t.Name)), mind.Goal.TargetSettlementId, "resident-goal-town", true);
-        var entity = ObjectField(panel, "目标居民", _engine.State.Residents.Select(p => (p.Id, p.Name)), mind.Goal.TargetEntityId, "resident-goal-entity", true);
+        var town = ObjectField(panel, "目标聚落", _engine.State.Settlements.Select(t => (t.Id, t.Name)), mind.Goal.TargetSettlementId, "resident-goal-town", true, true);
+        var entityLabel = Text("目标对象", 12, Muted); panel.Children.Add(entityLabel);
+        var entity = Named(new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 36 }, "resident-goal-entity");
+        panel.Children.Add(entity);
+        var updatingEntities = false;
+        void UpdateEntities()
+        {
+            var kind = (AgentGoalKind)goal.SelectedItem!;
+            var facilities = kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic;
+            entityLabel.Text = facilities ? "目标设施（本聚落）" : "目标居民";
+            var choices = new List<EntityChoice> { new(0, "无 / 按目标地点行动") };
+            if (facilities)
+                choices.AddRange(_engine.State.Society.Buildings.Where(building => building.SettlementId == resident.SettlementId
+                    && (kind == AgentGoalKind.Work || kind == AgentGoalKind.Study && building.Kind == BuildingKind.Academy
+                        || kind == AgentGoalKind.TrainMagic && building.Kind == BuildingKind.ArcaneSanctum))
+                    .Select(building => new EntityChoice(building.Id, $"{WorldEngine.BuildingName(building.Kind)} #{building.Id} · {building.X},{building.Y}")));
+            else choices.AddRange(_engine.State.Residents.Select(person => new EntityChoice(person.Id, person.Name)));
+            if (kind == originalGoal.Kind && choices.All(choice => choice.Id != originalGoal.TargetEntityId))
+                choices.Add(new(originalGoal.TargetEntityId, $"保留原目标 #{originalGoal.TargetEntityId}（历史引用）"));
+            var selected = entity.SelectedItem is EntityChoice prior ? prior.Id : originalGoal.TargetEntityId;
+            updatingEntities = true;
+            entity.ItemsSource = choices;
+            entity.SelectedItem = choices.FirstOrDefault(choice => choice.Id == selected) ?? choices[0];
+            updatingEntities = false;
+        }
+        UpdateEntities();
+        goal.SelectionChanged += (_, _) => UpdateEntities();
+        entity.SelectionChanged += (_, _) =>
+        {
+            if (updatingEntities || entity.SelectedItem is not EntityChoice choice) return;
+            if ((AgentGoalKind)goal.SelectedItem! is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic)
+            {
+                if (_engine.State.Society.Buildings.FirstOrDefault(item => item.Id == choice.Id) is { } building)
+                { x.Value = building.X; y.Value = building.Y; }
+            }
+            else if (_engine.State.Residents.FirstOrDefault(person => person.Id == choice.Id) is { } target)
+            { x.Value = target.X; y.Value = target.Y; }
+        };
         town.SelectionChanged += (_, _) => { if (town.SelectedItem is EntityChoice choice && _engine.State.Settlements.FirstOrDefault(t => t.Id == choice.Id) is { } destination) { x.Value = destination.X; y.Value = destination.Y; } };
         panel.Children.Add(Paragraph("选择聚落会同步填写目标地点；目标改变未来行动，紧急生存需求仍可打断。"));
-        var duration = Field(panel, "目标保持日数", Math.Max(24, mind.Goal.ReviewTick - _engine.State.Tick), "resident-goal-duration");
+        var initialDuration = Math.Max(24, mind.Goal.ReviewTick - _engine.State.Tick);
+        var duration = Field(panel, "目标保持日数", initialDuration, "resident-goal-duration");
         var fatigue = Field(panel, "疲劳", mind.Fatigue, "resident-fatigue"); var social = Field(panel, "社交需求", mind.SocialNeed, "resident-social-need");
         var courage = Field(panel, "勇气 0–1", mind.Personality.Courage, "resident-courage");
         var diligence = Field(panel, "勤勉 0–1", mind.Personality.Diligence, "resident-diligence");
@@ -134,8 +173,15 @@ public sealed partial class MainView
         {
             try
             {
-                mind.Goal.Kind = (AgentGoalKind)goal.SelectedItem!; mind.Goal.Reason = reason.Text ?? ""; mind.Goal.TargetX = Integer(x); mind.Goal.TargetY = Integer(y);
-                mind.Goal.TargetSettlementId = Integer(town); mind.Goal.TargetEntityId = Integer(entity); mind.Goal.PlayerDirected = true; mind.Goal.StartedTick = _engine.State.Tick; mind.Goal.ReviewTick = _engine.State.Tick + Integer(duration);
+                var kind = (AgentGoalKind)goal.SelectedItem!;
+                var targetX = Integer(x); var targetY = Integer(y); var targetTown = Integer(town); var targetEntity = Integer(entity);
+                var keepDays = Integer(duration); var goalReason = reason.Text ?? "";
+                var goalChanged = kind != originalGoal.Kind || targetX != originalGoal.TargetX || targetY != originalGoal.TargetY
+                    || targetTown != originalGoal.TargetSettlementId || targetEntity != originalGoal.TargetEntityId
+                    || goalReason != originalGoal.Reason || keepDays != initialDuration;
+                mind.Goal = goalChanged ? new AgentGoal { Kind = kind, TargetX = targetX, TargetY = targetY,
+                    TargetSettlementId = targetTown, TargetEntityId = targetEntity, Reason = goalReason,
+                    PlayerDirected = true, StartedTick = _engine.State.Tick, ReviewTick = _engine.State.Tick + keepDays } : originalGoal;
                 mind.Fatigue = Number(fatigue); mind.SocialNeed = Number(social); mind.Personality.Courage = Number(courage); mind.Personality.Diligence = Number(diligence); mind.Personality.Sociability = Number(sociability); mind.Personality.Ambition = Number(ambition);
                 BeginEdit(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); RefreshUi(true); SetStatus("目标与人格已更新，将影响接下来的行动");
             }
