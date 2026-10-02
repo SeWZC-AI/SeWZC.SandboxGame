@@ -165,10 +165,14 @@ public sealed partial class WorldEngine
         PublishDiplomaticOrder(town.NationId, fact.SubjectId, status, fact.X, fact.Y, fact.ObservedTick);
     }
 
+    private sealed record DiplomaticAssessment(Nation Nation, Nation Other, Settlement Capital,
+        AgentFact Contact, DiplomaticRelation Relation, double Food, int Change, string Reason);
+
     private void TickDiplomacy()
     {
         if (State.Tick % 60 != 0) return;
-        foreach (var nation in State.Nations.OrderBy(n => n.Id).ToArray())
+        var assessments = new List<DiplomaticAssessment>();
+        foreach (var nation in State.Nations)
         {
             if (!_settlements.TryGetValue(nation.CapitalId, out var capital)) continue;
             var contacts = capital.PublicKnowledge.Where(f => f.Kind == AgentFactKind.SettlementLocation && f.LearnedTick < State.Tick
@@ -180,37 +184,58 @@ public sealed partial class WorldEngine
                 if (!_nations.TryGetValue(otherId, out var other)) continue;
                 var relation = Relation(nation.Id, otherId);
                 if (relation.LastEvaluatedTick == State.Tick) continue;
-                relation.LastEvaluatedTick = State.Tick;
-                relation.LastContactTick = Math.Max(relation.LastContactTick, contact.ObservedTick);
                 var ownFood = capital.Resources.Food;
                 var cooperation = GetCulture(capital.CultureId).Cooperation;
                 var trade = capital.PublicKnowledge.Any(f => f.Kind == AgentFactKind.TradeExchange && f.SubjectId == otherId && State.Tick - f.ObservedTick <= 360);
                 var nearby = Distance(capital.X, capital.Y, contact.X, contact.Y) <= 28;
                 var pressure = nearby && (ownFood < capital.Population || GetLocalPolicy(capital.Id) == PolicyKind.Defense);
                 var change = trade ? 10 : pressure ? -(3 + State.Rules.Conflict * 3) : cooperation >= .55 ? 4 : State.Rules.Conflict >= 2 && nearby ? -5 : 1;
-                relation.Opinion = Math.Clamp(relation.Opinion + change, -100, 100);
-                relation.Reason = trade ? "收到实际贸易交付的报告，往来改善关系" : pressure ? "收到邻近聚落的消息，本地粮食或防务压力加剧竞争" : "依据已经送达的聚落消息与当地合作倾向评估关系";
-                if (State.Tick - relation.LastChangedTick < 360) continue;
-                if (relation.Status == DiplomaticStatus.War)
-                {
-                    if (State.Rules.Peace && (State.Tick - relation.LastChangedTick >= 720 || ownFood < Math.Max(10, capital.Population * .5)))
-                        ChangeAutonomousDiplomacy(nation, other, relation, contact, DiplomaticStatus.Neutral, "战事持续或本地补给不足，宣布停战并休养");
-                }
-                else if (State.Rules.Wars && State.Rules.Conflict > 0 && relation.Opinion <= -55 && ownFood > 20 && capital.Population >= 18)
-                    ChangeAutonomousDiplomacy(nation, other, relation, contact, DiplomaticStatus.War, relation.Reason);
-                else if (State.Rules.Alliances && relation.Status == DiplomaticStatus.Neutral && relation.Opinion >= 55
-                    && (relation.AllianceOfferNationId == 0 || State.Tick - relation.AllianceOfferTick > 600))
-                {
-                    relation.AllianceOfferNationId = nation.Id; relation.AllianceOfferTick = State.Tick;
-                    relation.Reason = "友好往来促成结盟提议，等待实际送达与回应";
-                    AddPublicFact(capital, new AgentFact { Id = NewId(), Kind = AgentFactKind.DiplomaticNotice, SubjectId = nation.Id,
-                        TargetNationId = other.Id, Value = (int)DiplomaticStatus.Allied, X = capital.X, Y = capital.Y,
-                        ObservedTick = State.Tick, LearnedTick = State.Tick, OriginResidentId = capital.RepresentativeId,
-                        SourceResidentId = capital.RepresentativeId, OriginProfession = Profession.Representative, Text = "友好往来促成结盟提议，请对方议事回应" });
-                    var proposal = AddEvent(WorldEventKind.Diplomacy, $"{nation.Name}向{other.Name}提出结盟，等待消息实际送达。", capital.X, capital.Y);
-                    proposal.SecondNationId = other.Id; proposal.CauseEventId = relation.LastEventId; relation.LastEventId = proposal.Id;
-                }
+                var reason = trade ? "收到实际贸易交付的报告，往来改善关系" : pressure ? "收到邻近聚落的消息，本地粮食或防务压力加剧竞争" : "依据已经送达的聚落消息与当地合作倾向评估关系";
+                assessments.Add(new(nation, other, capital, contact, relation, ownFood, change, reason));
             }
+        }
+        // Gather both sides before changing any relation. Average their contributions so mutual
+        // contact does not double the rate, and use geography rather than founding ID for ties.
+        foreach (var group in assessments.OrderBy(a => a.Capital.X).ThenBy(a => a.Capital.Y)
+            .ThenBy(a => _settlements[a.Other.CapitalId].X).ThenBy(a => _settlements[a.Other.CapitalId].Y).GroupBy(a => a.Relation))
+        {
+            var sides = group.ToArray(); var relation = group.Key;
+            relation.LastEvaluatedTick = State.Tick;
+            relation.LastContactTick = Math.Max(relation.LastContactTick, sides.Max(a => a.Contact.ObservedTick));
+            var change = (int)Math.Round(sides.Average(a => a.Change), MidpointRounding.AwayFromZero);
+            relation.Opinion = Math.Clamp(relation.Opinion + change, -100, 100);
+            relation.Reason = sides.Length == 1 ? sides[0].Reason : "双方分别依据已送达的接触、贸易消息及当地粮食和政策评估，关系变化取平均";
+            if (State.Tick - relation.LastChangedTick < 360) continue;
+            // Resolve at most one action: either side can end an existing war; otherwise a war
+            // declaration takes precedence over an alliance offer. No same-tick reversal follows.
+            if (relation.Status == DiplomaticStatus.War)
+            {
+                var peacemaker = sides.Where(a => State.Rules.Peace && (State.Tick - relation.LastChangedTick >= 720
+                    || a.Food < Math.Max(10, a.Capital.Population * .5))).OrderBy(a => a.Food / Math.Max(10, a.Capital.Population * .5)).FirstOrDefault();
+                if (peacemaker is not null)
+                    ChangeAutonomousDiplomacy(peacemaker.Nation, peacemaker.Other, relation, peacemaker.Contact,
+                        DiplomaticStatus.Neutral, "战事持续或本地补给不足，宣布停战并休养");
+                continue;
+            }
+            var declarer = sides.Where(a => State.Rules.Wars && State.Rules.Conflict > 0 && relation.Opinion <= -55
+                && a.Food > 20 && a.Capital.Population >= 18).OrderBy(a => a.Change).FirstOrDefault();
+            if (declarer is not null)
+            {
+                ChangeAutonomousDiplomacy(declarer.Nation, declarer.Other, relation, declarer.Contact, DiplomaticStatus.War, declarer.Reason);
+                continue;
+            }
+            if (!State.Rules.Alliances || relation.Status != DiplomaticStatus.Neutral || relation.Opinion < 55
+                || relation.AllianceOfferNationId != 0 && State.Tick - relation.AllianceOfferTick <= 600) continue;
+            var proposer = sides.OrderByDescending(a => a.Change).First();
+            var nation = proposer.Nation; var other = proposer.Other; var capital = proposer.Capital;
+            relation.AllianceOfferNationId = nation.Id; relation.AllianceOfferTick = State.Tick;
+            relation.Reason = "友好往来促成结盟提议，等待实际送达与回应";
+            AddPublicFact(capital, new AgentFact { Id = NewId(), Kind = AgentFactKind.DiplomaticNotice, SubjectId = nation.Id,
+                TargetNationId = other.Id, Value = (int)DiplomaticStatus.Allied, X = capital.X, Y = capital.Y,
+                ObservedTick = State.Tick, LearnedTick = State.Tick, OriginResidentId = capital.RepresentativeId,
+                SourceResidentId = capital.RepresentativeId, OriginProfession = Profession.Representative, Text = "友好往来促成结盟提议，请对方议事回应" });
+            var proposal = AddEvent(WorldEventKind.Diplomacy, $"{nation.Name}向{other.Name}提出结盟，等待消息实际送达。", capital.X, capital.Y);
+            proposal.SecondNationId = other.Id; proposal.CauseEventId = relation.LastEventId; relation.LastEventId = proposal.Id;
         }
     }
 
