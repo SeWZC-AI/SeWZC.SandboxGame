@@ -156,3 +156,17 @@ Failed to create render target for mode 2 : HTMLCanvasElement.getContext returne
 - 存档仍依赖本设备与当前站点的存储；需持续检查配额耗尽、多标签页及浏览器关闭等情形。
 - 远端 GitHub Pages 由 `alpha` 分支的工作流发布；本记录中的本地子路径验证不替代远端验收，实际部署结果以对应 Actions 运行和 `github-pages` 环境为准。首次部署需要 Pages 使用 GitHub Actions，并允许 `alpha` 分支进入该环境。
 - 已实现的是文化、制度、研究、通信、建设与魔法的基础闭环；完整历史演化、宗教、未来科技树、复杂战术、海战与多人联机仍不在当前范围。自主外交宣战尚未实现。
+
+## 2026-10-02 复选框中文字体调查
+
+截图中的新版世界规则来自 `alpha` 的 `77acd5a`，与当前工作分支基线 `959761c` 的界面不同。使用隔离的 alpha 源码发布产物，在 Chromium 390×844 视口复现了相同的复选框条纹方块；标题、分组和说明仍正常。
+
+根因是字体样式的类型匹配：Fluent 的复选框内容呈现器启用 `RecognizesAccessKey`，字符串标签因此生成 `AccessText`。它继承 `TextBlock`，但 `Selector="TextBlock"` 只匹配该具体样式类型，不覆盖 `AccessText`。标签继承了 Fluent 的 Inter 字体，浏览器没有可用的中文回退。打包的 Noto 字体包含这些汉字，资源和字符串本身没有损坏。
+
+修复将 `App.axaml` 中的字体选择器改为 `:is(TextBlock)`，使中文字体同时覆盖 `TextBlock` 的子类；前景色继续使用原来的具体类型规则，让模板文字保留自己的状态颜色。当前工作分支仍用显式 `TextBlock` 构造复选框标签，因此将同一处修改应用到隔离的 alpha 源码，验证截图中的实际失效路径。
+
+alpha 修复后的裁剪发布和静态资源检查通过。Chromium 桌面 1440×960、手机尺寸 390×844（均为 `deviceScaleFactor=1`）分别在普通 WebGL 和强制软件渲染下打开世界规则，检查真实点击切换“衰老”开关、暂停时 tick 保持不变、浏览器无非预期错误。人工核对勾选和未勾选截图，中文标签均恢复；软件路径也检查了实际画布像素。修复前后的截图、只读 UI 快照及复现脚本保存在本地 `artifacts/font-investigation/`。
+
+工作分支基线 `959761c` 加本次字体样式修改，也重新通过 `bash scripts/publish-browser.sh`、`node tests/browser/smoke.cjs` 和 `node tests/browser/mobile-smoke.cjs`。桌面与触屏脚本打开本地仓库子路径，覆盖编辑、真实存储、导入导出、布局及触屏手势。环境为 Debian 13、.NET SDK 10.0.401、Chromium 151.0.7922.173；现有 Node 检查使用 Playwright 1.57.0，字体截图复现使用 Python Playwright 1.62.0。
+
+这些证据来自提交和部署前的本地发布产物；公网部署与验收以字体修复提交对应的 Actions 运行记录为准。手机尺寸仿真不代表 Android / iOS 真机验收。额外尝试 `deviceScaleFactor=2` 时，未修改的 alpha 中顶部“规则”控件被 UI 快照判为不可见，测试未能进入对话框，因而没有完成高 DPI 字体验收。
