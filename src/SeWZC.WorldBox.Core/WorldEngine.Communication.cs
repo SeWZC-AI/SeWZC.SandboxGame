@@ -299,6 +299,7 @@ public sealed partial class WorldEngine
                 if (person.Profession == Profession.Trader)
                 {
                     if (!State.Rules.Trade) continue;
+                    if (IsKnownHostile(person, (int)address.Value)) continue;
                     var knownFood = LatestAgentFact(agent.Memory, AgentFactKind.FoodSupply, address.SubjectId);
                     var ownFood = LatestAgentFact(agent.Memory, AgentFactKind.FoodSupply, home.Id);
                     if (ownFood is null || ownFood.Value < 50 || AgentFactReliability(ownFood) < 0.25
@@ -357,6 +358,13 @@ public sealed partial class WorldEngine
             FinishAgentMission(person, address is null ? "缺少可靠目的地地址，暂缓递送" : "长时间未能到达，暂缓递送并返乡补给");
             return;
         }
+        // A distant declaration is not knowledge. Only an order actually received by this
+        // merchant can stop a journey towards the nation in its remembered address.
+        if (goal.Kind == AgentGoalKind.Trade && IsKnownHostile(person, (int)address.Value))
+        {
+            FinishAgentMission(person, "已获知目的地国家敌对，停止交易并携带现有物资返乡");
+            return;
+        }
         if (goal.Kind == AgentGoalKind.Trade && agent.CarriedMessages.Count == 0)
         {
             if (Distance(person.X, person.Y, home.X, home.Y) > 1)
@@ -366,7 +374,10 @@ public sealed partial class WorldEngine
                 return;
             }
             var distance = Distance(home.X, home.Y, address.X, address.Y);
-            var cargo = Math.Min(home.Resources.Food, Math.Max(0, Math.Min(40, 8 + distance * 0.22) - person.Inventory.Food));
+            // Recheck the warehouse on arrival: earlier surplus reports may be stale, and
+            // earlier merchants may already have loaded. Keep a modest local food reserve.
+            var surplus = Math.Max(0, home.Resources.Food - Math.Max(12, home.Population));
+            var cargo = Math.Min(surplus, Math.Max(0, Math.Min(40, 8 + distance * 0.22) - person.Inventory.Food));
             if (cargo <= 1)
             {
                 FinishAgentMission(person, "抵达粮仓后发现没有可装运余粮，取消交易");
@@ -389,19 +400,34 @@ public sealed partial class WorldEngine
             FinishAgentMission(person, "抵达记忆中的地址，却未见原聚落");
             return;
         }
+        // Ownership can have changed en route; its current identity is visible only here.
+        if (goal.Kind == AgentGoalKind.Trade && IsKnownHostile(person, destination.NationId))
+        {
+            FinishAgentMission(person, "抵达后发现聚落属于已知敌对国家，保留货物返乡");
+            return;
+        }
         goal.WorkTicks++;
         if (goal.WorkTicks < 3) { person.Activity = ResidentActivity.Talking; return; }
         WorldEvent? tradeEvent = null;
+        var completionReason = goal.Kind == AgentGoalKind.Petition ? "意见已当面交给聚落代表" : "已实际抵达目的地并递送所携消息";
         if (goal.Kind == AgentGoalKind.Trade)
         {
+            const double woodPerFood = 0.4;
             var reserve = 1.2 + Distance(destination.X, destination.Y, home.X, home.Y) * 0.11;
-            var food = Math.Max(0, person.Inventory.Food - reserve);
+            var availableFood = Math.Max(0, person.Inventory.Food - reserve);
+            var food = Math.Min(availableFood, Math.Min(destination.Resources.Wood / woodPerFood,
+                Math.Min(Math.Max(0, 1_000_000 - destination.Resources.Food), Math.Max(0, 1_000_000 - person.Inventory.Wood) / woodPerFood)));
+            var payment = food * woodPerFood;
             person.Inventory.Food -= food; destination.Resources.Food += food;
-            var payment = Math.Min(destination.Resources.Wood, food * 0.4);
-            destination.Resources.Wood -= payment; person.Inventory.Wood += payment;
+            destination.Resources.Wood = Math.Max(0, destination.Resources.Wood - payment); person.Inventory.Wood += payment;
             if (food > 0) tradeEvent = AddEvent(WorldEventKind.Trade,
                 $"{person.Name}抵达{destination.Name}，交付 {food:0.0} 份粮食，携带 {payment:0.0} 份木材返乡。", destination.X, destination.Y, EventAction.Delivery, destination.Id, person.Id);
             if (tradeEvent is not null) { tradeEvent.SecondNationId = person.NationId; tradeEvent.SecondSettlementId = home.Id; }
+            completionReason = food > 0
+                ? $"实际交换 {food:0.0} 份粮食与 {payment:0.0} 份木材，携带所得木材及剩余粮食返乡"
+                : availableFood <= 0 ? "剩余粮食需作返程口粮，没有可交换货物，返乡补给"
+                : destination.Resources.Wood <= 0 ? "当地没有可支付的木材，保留货物返乡"
+                : "当地粮仓或随身木材已达容量上限，保留货物返乡";
         }
         if (tradeEvent is not null && destination.NationId != person.NationId)
         {
@@ -422,7 +448,7 @@ public sealed partial class WorldEngine
         if (destination.PublicKnowledge.Count > 24)
             destination.PublicKnowledge = destination.PublicKnowledge.OrderByDescending(f => f.LearnedTick).Take(24).ToList();
         ObserveAgentEnvironment(person);
-        FinishAgentMission(person, goal.Kind == AgentGoalKind.Petition ? "意见已当面交给聚落代表" : "已实际抵达目的地并递送所携消息");
+        FinishAgentMission(person, completionReason);
     }
 
     private void FinishAgentMission(Resident person, string reason)
