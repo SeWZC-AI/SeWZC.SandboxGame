@@ -20,7 +20,7 @@
 
 1. 在仓库 **Settings → General → Default branch** 将默认分支设为 `main`。
 2. 在 **Settings → Environments → github-pages** 核对部署分支策略：若使用选定分支规则，将 `alpha` 改为 `main`；若仅允许受保护分支，确保 `main` 受保护并允许部署。Pages 的 Source 保持 GitHub Actions。
-3. 将开发／云环境的仓库检出分支改为 `main`，不再固定 `alpha`；按 [云环境配置](cloud-environment.md) 设置运行时、初始化脚本、网络和身份。已有工作区需同步上游分支与远端 HEAD。
+3. 将开发／云环境的仓库检出分支改为 `main`，不再固定 `alpha`；已有工作区需同步上游分支与远端 HEAD。
 4. 确认 `main` 包含全部原 `alpha` 提交、默认分支和环境设置已迁移后，删除远端 `alpha`。本地保存未提交工作后执行 `git fetch origin --prune`、`git switch main`、`git branch --set-upstream-to=origin/main main` 和 `git remote set-head origin -a`；新工作区可用 `git switch --track origin/main` 创建本地分支。确认本地 `alpha` 已完全合入后，用 `git branch -d alpha` 清理。
 
 工作流指定的部署分支与仓库默认分支、GitHub 部署环境策略、开发环境检出分支是独立设置。修改工作流不会自动修改后三者；报告迁移结果时需分别核对。
