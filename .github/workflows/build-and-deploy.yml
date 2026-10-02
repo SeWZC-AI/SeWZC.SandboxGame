@@ -93,14 +93,14 @@ jobs:
           include-hidden-files: true
 
       - name: Prepare GitHub Pages artifact
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/alpha'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3
         with:
           path: artifacts/site
 
   deploy:
-    name: Deploy alpha to GitHub Pages
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/alpha'
+    name: Deploy main to GitHub Pages
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -118,7 +118,7 @@ jobs:
     steps:
       - name: Check Pages configuration
         # Pages uses GitHub Actions as its source; the github-pages environment
-        # must permit alpha deployments even when alpha is not the default branch.
+        # must permit main deployments after migrating from the alpha branch.
         uses: actions/configure-pages@v5
 
       - name: Deploy

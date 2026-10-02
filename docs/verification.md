@@ -196,7 +196,7 @@ Failed to create render target for mode 2 : HTMLCanvasElement.getContext returne
 - Chromium 的手机尺寸模拟不能替代移动 Safari / Chrome 真机验证；Firefox 与 Safari 仍需检查。
 - 原生人口基准不包含渲染开销；浏览器短时压力运行不等于帧率、首次下载时间、复杂地形或长期稳定性验收。
 - 存档仍依赖本设备与当前站点的存储；需持续检查配额耗尽、多标签页及浏览器关闭等情形。
-- 远端 GitHub Pages 由 `alpha` 分支的工作流发布；本记录中的本地子路径验证不替代远端验收，实际部署结果以对应 Actions 运行和 `github-pages` 环境为准。首次部署需要 Pages 使用 GitHub Actions，并允许 `alpha` 分支进入该环境。
+- 远端 GitHub Pages 由 `main` 分支的工作流发布；本记录中的本地子路径验证不替代远端验收，实际部署结果以对应 Actions 运行和 `github-pages` 环境为准。首次部署需要 Pages 使用 GitHub Actions，并允许 `main` 分支进入该环境。
 - 已实现的是文化、制度、研究、通信、建设与魔法的基础闭环；完整历史演化、宗教、未来科技树、复杂战术、海战与多人联机仍不在当前范围。自主外交宣战尚未实现。
 
 ## 2026-10-02 复选框中文字体调查
