@@ -9,7 +9,10 @@ internal static class PersistenceRegressionTests
         ("identity text rejects tabs atomically while personal prose preserves them", IdentityText),
         ("conflicting memory revisions are rejected before allocating identifiers", MemoryRevisions),
         ("archived goals never start missions or consume living supplies", ArchivedMissions),
-        ("archived histories remain editable after army and terrain changes", ArchivedReferences)
+        ("archived histories remain editable after army and terrain changes", ArchivedReferences),
+        ("directional diplomacy and remembered order identifiers preserve nonzero and zero values", DirectionalStateRoundTrip),
+        ("directional diplomacy and order snapshots reject invalid or missing fields", InvalidDirectionalState),
+        ("format four rejects legacy format and simulation versions", RejectLegacyVersions)
     ];
 
     private static void MaximumAge()
@@ -138,6 +141,126 @@ internal static class PersistenceRegressionTests
         Require(archived.Name == "Remembered soldier" && archived.ArmyId == army.Id && archived.History.Count == 1,
             "Editing an archive rewrote historical affiliation or discarded its history.");
         AssertRoundTrip(engine);
+    }
+
+    private static void DirectionalStateRoundTrip()
+    {
+        var engine = CreateMilitaryWorld();
+        var relation = engine.State.Diplomacies.Single();
+        Require(relation.FirstOpinion == -80 && relation.SecondOpinion == -80 && relation.Opinion == -80,
+            "An explicit diplomatic command did not initialize both directional opinions.");
+        Require(engine.State.Armies.All(a => a.LastOrderFactId > 0 && a.LastOrderFactId < engine.State.NextId),
+            "Normal army recruitment did not preserve the order's fact identifier.");
+        foreach (var (first, second, aggregate) in new[] { (-40, 71, 16), (-71, 40, -16), (100, -100, 0) })
+        {
+            relation.FirstOpinion = first; relation.SecondOpinion = second; relation.Opinion = aggregate;
+            var restored = AssertRoundTrip(engine);
+            var restoredRelation = restored.State.Diplomacies.Single();
+            Require(restoredRelation.FirstOpinion == first && restoredRelation.SecondOpinion == second && restoredRelation.Opinion == aggregate,
+                "Saving flattened asymmetric opinions or changed a rounded aggregate.");
+            Require(restored.State.Armies.Select(a => a.LastOrderFactId).SequenceEqual(engine.State.Armies.Select(a => a.LastOrderFactId)),
+                "Saving changed the army's remembered order identity.");
+        }
+        // Memory has bounded retention; an army must retain its ordering marker after the fact expires.
+        var rememberedId = engine.State.Armies[0].LastOrderFactId;
+        foreach (var resident in engine.State.Residents.Concat(engine.State.ArchivedResidents))
+        {
+            resident.Agent.Memory.RemoveAll(f => f.Id == rememberedId);
+            resident.Agent.CarriedMessages.RemoveAll(f => f.Id == rememberedId);
+        }
+        foreach (var town in engine.State.Settlements) town.PublicKnowledge.RemoveAll(f => f.Id == rememberedId);
+        foreach (var message in engine.State.PendingMessages) message.Facts.RemoveAll(f => f.Id == rememberedId);
+        Require(AssertRoundTrip(engine).State.Armies[0].LastOrderFactId == rememberedId,
+            "An expired fact invalidated the army's persistent order marker.");
+
+        relation.FirstOpinion = 0; relation.SecondOpinion = 0; relation.Opinion = 0;
+        foreach (var army in engine.State.Armies) army.LastOrderFactId = 0;
+        var saved = JsonNode.Parse(engine.ExportJson())!;
+        Require(saved["FormatVersion"]!.GetValue<int>() == 4 && saved["SimulationVersion"]!.GetValue<int>() == 4,
+            "New worlds did not explicitly save both current version fields.");
+        Require(saved["Diplomacies"]![0]!["FirstOpinion"]?.GetValue<int>() == 0
+            && saved["Diplomacies"]![0]!["SecondOpinion"]?.GetValue<int>() == 0
+            && saved["Armies"]!.AsArray().All(a => a!["LastOrderFactId"]?.GetValue<int>() == 0),
+            "A required field with a legal zero value was omitted from the save.");
+        var zeroRestored = AssertRoundTrip(engine);
+        Require(zeroRestored.State.Diplomacies.Single().FirstOpinion == 0 && zeroRestored.State.Diplomacies.Single().SecondOpinion == 0
+            && zeroRestored.State.Armies.All(a => a.LastOrderFactId == 0), "Legal zero values did not survive loading.");
+    }
+
+    private static void InvalidDirectionalState()
+    {
+        var engine = CreateMilitaryWorld();
+        foreach (var property in new[] { "FirstOpinion", "SecondOpinion", "Opinion" })
+        foreach (var value in new[] { -101, 101 })
+            RejectInvalidSave(engine, json => json["Diplomacies"]![0]![property] = value,
+                $"Out-of-range {property}={value} was accepted.");
+        RejectInvalidSave(engine, json => json["Diplomacies"]![0]!["Opinion"] = -79,
+            "An aggregate opinion inconsistent with its directions was accepted.");
+        foreach (var (first, second) in new[] { (100, -99), (-100, 99) })
+            RejectInvalidSave(engine, json =>
+            {
+                json["Diplomacies"]![0]!["FirstOpinion"] = first;
+                json["Diplomacies"]![0]!["SecondOpinion"] = second;
+                json["Diplomacies"]![0]!["Opinion"] = 0;
+            }, "A half-point aggregate used a rounding rule inconsistent with simulation.");
+        foreach (var value in new[] { -1, engine.State.NextId, int.MaxValue })
+            RejectInvalidSave(engine, json => json["Armies"]![0]!["LastOrderFactId"] = value,
+                $"Invalid remembered order identifier {value} was accepted.");
+        foreach (var property in new[] { "FirstOpinion", "SecondOpinion" })
+            RejectInvalidSave(engine, json => json["Diplomacies"]![0]!.AsObject().Remove(property),
+                $"Missing required directional field {property} silently defaulted.");
+        RejectInvalidSave(engine, json => json["Armies"]![0]!.AsObject().Remove("LastOrderFactId"),
+            "A missing required order identifier silently defaulted to its zero sentinel.");
+        foreach (var property in new[] { "FormatVersion", "SimulationVersion" })
+            RejectInvalidSave(engine, json => json.AsObject().Remove(property),
+                $"Missing required version field {property} silently adopted the current version.");
+    }
+
+    private static void RejectLegacyVersions()
+    {
+        var engine = CreateMilitaryWorld();
+        foreach (var (format, simulation) in new[] { (3, 4), (4, 3), (3, 3) })
+            RejectInvalidSave(engine, json =>
+            {
+                json["FormatVersion"] = format;
+                json["SimulationVersion"] = simulation;
+            }, $"Legacy format/simulation versions {format}/{simulation} were accepted.");
+    }
+
+    private static WorldEngine CreateMilitaryWorld()
+    {
+        var engine = CreateWorld(14);
+        engine.SpawnResidents(44, 32, RaceKind.Elf, 14);
+        engine.ConfigureWorld(new WorldRules
+        {
+            Births = false, Aging = false, Hunger = false, Disease = false, Construction = false, Research = false,
+            Expansion = false, Trade = false, Wars = false, Alliances = false, Peace = false, Migration = false, Secession = false
+        }, false, false);
+        foreach (var resident in engine.State.Residents)
+        {
+            var home = engine.State.Settlements.First(t => t.Id == resident.SettlementId);
+            resident.X = resident.FromX = home.X; resident.Y = resident.FromY = home.Y;
+            resident.Age = 24; resident.Health = 100; resident.MagicTraining = 0;
+            resident.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = home.X, TargetY = home.Y,
+                ReviewTick = 1000, PlayerDirected = true };
+        }
+        var nations = engine.State.Nations.ToArray();
+        engine.SetDiplomacy(nations[0].Id, nations[1].Id, DiplomaticStatus.War);
+        engine.Step(30);
+        Require(engine.State.Armies.Count == 2, "The persistence fixture did not recruit both armies through normal commands.");
+        return engine;
+    }
+
+    private static void RejectInvalidSave(WorldEngine engine, Action<JsonNode> change, string reason)
+    {
+        var before = engine.ExportJson();
+        var candidate = JsonNode.Parse(before)!;
+        change(candidate);
+        var rejected = false;
+        try { WorldEngine.ImportJson(candidate.ToJsonString()); }
+        catch (ArgumentException) { rejected = true; }
+        Require(rejected, reason);
+        Require(engine.ExportJson() == before, "Rejected import modified the existing world.");
     }
 
     private static WorldEngine CreateWorld(int population = 3)

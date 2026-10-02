@@ -96,7 +96,7 @@ internal static class EvolutionTests
         Check(engine.State.Diplomacies.All(d => d.Status == DiplomaticStatus.Neutral), "Nations declared war without delivered information");
         var a = engine.State.Settlements[0]; var b = engine.State.Settlements[1];
         a.PublicKnowledge.Add(Fact(engine, AgentFactKind.SettlementLocation, b.Id, b.X, b.Y, b.NationId, a.RepresentativeId));
-        var relation = engine.State.Diplomacies.Single(); relation.Opinion = -70;
+        var relation = engine.State.Diplomacies.Single(); relation.FirstOpinion = relation.SecondOpinion = relation.Opinion = -70;
         a.Resources.Food = 80;
         engine.Step(60);
         Check(relation.Status == DiplomaticStatus.War && relation.Reason.Length > 0, "Delivered contact and hostility did not create autonomous war");
@@ -115,7 +115,8 @@ internal static class EvolutionTests
         b.PublicKnowledge.Add(Fact(engine, AgentFactKind.SettlementLocation, a.Id, a.X, a.Y, a.NationId, b.RepresentativeId));
         var foreignOrder = Fact(engine, AgentFactKind.WarOrder, a.NationId, a.X, a.Y, a.Id, b.RepresentativeId);
         foreignOrder.TargetNationId = b.NationId; a.PublicKnowledge.Add(foreignOrder);
-        engine.State.Diplomacies.Single().Opinion = 80;
+        var initialRelation = engine.State.Diplomacies.Single();
+        initialRelation.FirstOpinion = initialRelation.SecondOpinion = initialRelation.Opinion = 80;
         engine.Step(420);
         Check(engine.State.Armies.Count == 0, "Foreign orders recruited a self-targeting army");
         var relation = engine.State.Diplomacies.Single();

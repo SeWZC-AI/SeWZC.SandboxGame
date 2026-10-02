@@ -47,7 +47,8 @@ public sealed partial class WorldEngine
                 var army = new Army { Id = NewId(), NationId = nation.Id, TargetNationId = order.SubjectId,
                     TargetX = order.X, TargetY = order.Y, TargetSettlementId = (int)order.Value,
                     X = capital.X, Y = capital.Y, FromX = capital.X, FromY = capital.Y,
-                    Soldiers = count, Supplies = provisions, CommanderId = recruits[0].Id, LastOrderTick = order.ObservedTick };
+                    Soldiers = count, Supplies = provisions, CommanderId = recruits[0].Id,
+                    LastOrderTick = order.ObservedTick, LastOrderFactId = order.Id };
                 State.Armies.Add(army);
                 foreach (var resident in recruits.Take(count))
                 {
@@ -72,9 +73,11 @@ public sealed partial class WorldEngine
             var received = commander.Agent.Memory
                 .Where(f => (f.TargetNationId == 0 || f.TargetNationId == army.NationId) && f.SubjectId == army.TargetNationId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
                 .OrderByDescending(f => f.ObservedTick).ThenByDescending(f => f.Id).FirstOrDefault();
-            if (received is not null && (received.ObservedTick > army.LastOrderTick || received.Kind == AgentFactKind.PeaceOrder))
+            if (received is not null && (received.ObservedTick > army.LastOrderTick ||
+                received.ObservedTick == army.LastOrderTick && received.Id > army.LastOrderFactId))
             {
                 army.LastOrderTick = received.ObservedTick;
+                army.LastOrderFactId = received.Id;
                 army.KnownDiplomacy = received.Kind == AgentFactKind.WarOrder ? DiplomaticStatus.War : DiplomaticStatus.Neutral;
                 army.Retreating = received.Kind == AgentFactKind.PeaceOrder;
             }
