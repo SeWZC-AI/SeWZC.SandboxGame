@@ -60,7 +60,8 @@ public sealed partial class WorldEngine
                 var army = new Army { Id = NewId(), CampaignEventId = order.CampaignEventId, Objective = order.WarObjective, InitialSoldiers = count, StartedTick = State.Tick, NationId = nation.Id, TargetNationId = order.SubjectId,
                     TargetX = order.X, TargetY = order.Y, TargetSettlementId = (int)order.Value,
                     X = capital.X, Y = capital.Y, FromX = capital.X, FromY = capital.Y,
-                    Soldiers = count, Supplies = provisions, CommanderId = recruits[0].Id, LastOrderTick = order.ObservedTick };
+                    Soldiers = count, Supplies = provisions, CommanderId = recruits[0].Id,
+                    LastOrderTick = order.ObservedTick, LastOrderFactId = order.Id };
                 State.Armies.Add(army);
                 foreach (var resident in recruits.Take(count))
                 {
@@ -83,14 +84,30 @@ public sealed partial class WorldEngine
             if (soldiers.Length == 0) { DisbandArmy(army); continue; }
             var commander = soldiers.FirstOrDefault(r => r.Id == army.CommanderId) ?? soldiers[0];
             army.CommanderId = commander.Id;
-            var received = soldiers.SelectMany(r => r.Agent.Memory)
+            // Orders carried by separated soldiers must reach the commander through local communication.
+            var received = commander.Agent.Memory
                 .Where(f => (f.TargetNationId == 0 || f.TargetNationId == army.NationId) && f.SubjectId == army.TargetNationId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
                 .OrderByDescending(f => f.ObservedTick).ThenByDescending(f => f.Id).FirstOrDefault();
-            if (received is not null && (received.ObservedTick >= army.LastOrderTick))
+            if (received is not null && (received.ObservedTick > army.LastOrderTick ||
+                received.ObservedTick == army.LastOrderTick && received.Id > army.LastOrderFactId))
             {
                 army.LastOrderTick = received.ObservedTick;
+                army.LastOrderFactId = received.Id;
                 army.KnownDiplomacy = received.Kind == AgentFactKind.WarOrder ? DiplomaticStatus.War : DiplomaticStatus.Neutral;
                 if (received.Kind == AgentFactKind.PeaceOrder) EndCampaign(army, WarOutcome.OrdersReceived, soldiers, received.EventId);
+                else if (army.Outcome is WarOutcome.None or WarOutcome.OrdersReceived)
+                {
+                    // A genuinely newer delivered order can supersede a ceasefire. It cannot
+                    // cancel retreat caused by losses, exhaustion, supplies or a completed objective.
+                    army.Outcome = WarOutcome.None; army.Retreating = false;
+                    if (received.CampaignEventId > 0 && received.CampaignEventId != army.CampaignEventId)
+                    {
+                        army.CampaignEventId = received.CampaignEventId; army.LastEventId = received.EventId;
+                        army.Objective = received.WarObjective; army.TargetSettlementId = (int)received.Value;
+                        army.TargetX = received.X; army.TargetY = received.Y;
+                        army.BattleRecorded = false;
+                    }
+                }
             }
             foreach (var soldier in soldiers)
             {

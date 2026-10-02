@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SeWZC.WorldBox.Core;
 
 public enum EventImportance { Routine, Notable, Major, Historic }
@@ -7,7 +9,8 @@ public enum PersonalExperienceKind { Neutral, Hardship, Achievement, Kindness, B
 
 public sealed partial class WorldState
 {
-    public int SimulationVersion { get; set; } = 4;
+    [JsonRequired]
+    public int SimulationVersion { get; set; } = 5;
     public SocietyState Society { get; set; } = new();
     public List<PendingMessage> PendingMessages { get; set; } = [];
     public List<Resident> ArchivedResidents { get; set; } = [];
@@ -55,6 +58,8 @@ public sealed partial class Army
     public int CommanderId { get; set; }
     public DiplomaticStatus KnownDiplomacy { get; set; } = DiplomaticStatus.War;
     public long LastOrderTick { get; set; }
+    [JsonRequired]
+    public int LastOrderFactId { get; set; }
     public int FromX { get; set; }
     public int FromY { get; set; }
     public long MoveStartedTick { get; set; }

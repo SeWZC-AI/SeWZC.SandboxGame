@@ -38,7 +38,11 @@ public sealed partial class WorldEngine
             settlement = new Settlement { Id = NewId(), Name = PlaceNames[State.Nations.Count % PlaceNames.Length] + "村", X = x, Y = y, NationId = nation.Id, Resources = new ResourceStock { Food = count * 4, Wood = 25, Stone = 12 } };
             nation.CapitalId = settlement.Id;
             foreach (var other in State.Nations)
-                State.Diplomacies.Add(new DiplomaticRelation { FirstNationId = other.Id, SecondNationId = nation.Id, Opinion = RandomInt(41) - 10 });
+            {
+                var opinion = RandomInt(41) - 10;
+                State.Diplomacies.Add(new DiplomaticRelation { FirstNationId = other.Id, SecondNationId = nation.Id,
+                    Opinion = opinion, FirstOpinion = opinion, SecondOpinion = opinion });
+            }
             State.Nations.Add(nation); State.Settlements.Add(settlement);
             _nations[nation.Id] = nation; _settlements[settlement.Id] = settlement; _citizens[settlement.Id] = [];
             State.Tiles[Index(x, y)].SettlementId = settlement.Id;
@@ -96,13 +100,21 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Editor, $"{previous}更名为{name}。");
     }
 
-    public void SetNationResources(int nationId, double food, double wood, double stone, double ore)
+    public void SetNationResources(int nationId, double? food = null, double? wood = null, double? stone = null, double? ore = null)
     {
         if (!_nations.ContainsKey(nationId)) throw new ArgumentException("国家不存在。", nameof(nationId));
-        if (new[] { food, wood, stone, ore }.Any(v => !double.IsFinite(v) || v < 0 || v > 1_000_000)) throw new ArgumentOutOfRangeException(nameof(food), "资源须在 0 到 1,000,000 之间。");
+        var amounts = new[] { food, wood, stone, ore };
+        if (amounts.Any(v => v.HasValue && (!double.IsFinite(v.Value) || v.Value < 0 || v.Value > 1_000_000))) throw new ArgumentOutOfRangeException(nameof(food), "资源须在 0 到 1,000,000 之间。");
+        if (amounts.All(v => !v.HasValue)) return;
         var towns = State.Settlements.Where(s => s.NationId == nationId).ToArray();
         if (towns.Length == 0) return;
-        foreach (var town in towns) town.Resources = new ResourceStock { Food = food / towns.Length, Wood = wood / towns.Length, Stone = stone / towns.Length, Ore = ore / towns.Length };
+        foreach (var town in towns)
+        {
+            if (food is { } f) town.Resources.Food = f / towns.Length;
+            if (wood is { } w) town.Resources.Wood = w / towns.Length;
+            if (stone is { } s) town.Resources.Stone = s / towns.Length;
+            if (ore is { } o) town.Resources.Ore = o / towns.Length;
+        }
         RefreshTotals();
         AddEvent(WorldEventKind.Editor, $"{_nations[nationId].Name}的资源储备已调整。");
     }
@@ -112,7 +124,8 @@ public sealed partial class WorldEngine
         if (first == second || !_nations.ContainsKey(first) || !_nations.ContainsKey(second)) throw new ArgumentException("请选择两个不同且存在的国家。");
         if (!Enum.IsDefined(status)) throw new ArgumentOutOfRangeException(nameof(status));
         var relation = Relation(first, second);
-        relation.Status = status; relation.Opinion = status == DiplomaticStatus.War ? -80 : status == DiplomaticStatus.Allied ? 80 : 0;
+        relation.Status = status;
+        relation.FirstOpinion = relation.SecondOpinion = relation.Opinion = status == DiplomaticStatus.War ? -80 : status == DiplomaticStatus.Allied ? 80 : 0;
         relation.LastChangedTick = State.Tick; relation.Reason = "玩家直接调整外交关系"; relation.AllianceOfferNationId = 0;
         var diplomaticEvent = AddEvent(status == DiplomaticStatus.War ? WorldEventKind.War : WorldEventKind.Diplomacy, $"{_nations[first].Name}与{_nations[second].Name}{(status == DiplomaticStatus.War ? "开战" : status == DiplomaticStatus.Allied ? "结盟" : "恢复中立关系")}。");
         diplomaticEvent.NationId = first; diplomaticEvent.SecondNationId = second; diplomaticEvent.Action = EventAction.Declaration;

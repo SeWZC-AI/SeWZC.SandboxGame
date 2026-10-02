@@ -32,13 +32,13 @@ public sealed partial class WorldEngine
         bool PositionValid(int x, int y) => x >= 0 && y >= 0 && x < state.Width && y < state.Height;
         bool WalkablePosition(int x, int y) => PositionValid(x, y) && state.Tiles[y * state.Width + x].IsWalkable;
 
-        Require(state.FormatVersion == 4, "不支持该存档版本。");
+        Require(state.FormatVersion == 5, "不支持该存档版本。");
         Require(state.Width is >= 32 and <= 256 && state.Height is >= 32 and <= 256, "地图尺寸超出范围。");
         Require(state.Tick is >= 0 and <= 120_000_000 && state.RandomState != 0 && state.NextId is > 0 and < 2_000_000_000, "时间或随机数状态无效。");
         Require(state.Tiles is not null && state.Tiles.Length == state.Width * state.Height, "地图地格数量不匹配。");
         Require(state.Residents is not null && state.Residents.Count <= MaxPopulation && state.Settlements is not null && state.Settlements.Count <= 256 && state.Nations is not null && state.Nations.Count <= 64, "实体数量超出范围。");
         Require(state.Armies is not null && state.Armies.Count <= 64 && state.Diplomacies is not null && state.Diplomacies.Count <= 2016 && state.TradeRoutes is not null && state.TradeRoutes.Count <= 256 && state.Events is not null && state.Events.Count <= 400, "世界记录数量超出范围。");
-        Require(state.SimulationVersion == 4 && state.PendingMessages is not null && state.PendingMessages.Count <= MaxPopulation * 2 && state.ArchivedResidents is not null && state.ArchivedResidents.Count <= 256 && state.Society is not null, "认知或社会记录无效。");
+        Require(state.SimulationVersion == 5 && state.PendingMessages is not null && state.PendingMessages.Count <= MaxPopulation * 2 && state.ArchivedResidents is not null && state.ArchivedResidents.Count <= 256 && state.Society is not null, "认知或社会记录无效。");
         var ids = new HashSet<int>();
         bool IdValid(int id) => id > 0 && id < state.NextId && ids.Add(id);
         foreach (var nation in state.Nations!) Require(nation is not null && IdValid(nation.Id) && TextValid(nation.Name, 40) && nation.Name.Length > 0 && Enum.IsDefined(nation.FoundingRace) && nation.Technology is >= 1 and <= 5 && TextValid(nation.Decision, 240) && StockValid(nation.Resources), "国家数据无效。");
@@ -63,9 +63,15 @@ public sealed partial class WorldEngine
             Require(nations.ContainsKey(resident.NationId) && towns.TryGetValue(resident.SettlementId, out var home) && home.NationId == resident.NationId && WalkablePosition(resident.X, resident.Y), "居民归属或位置无效。");
             Require(resident.ArmyId == 0 || armies.TryGetValue(resident.ArmyId, out var army) && army.NationId == resident.NationId, "居民军队引用无效。");
         }
-        foreach (var army in state.Armies) Require(Enum.IsDefined(army.KnownDiplomacy) && army.LastOrderTick >= 0 && army.LastOrderTick <= state.Tick && PositionValid(army.TargetX, army.TargetY) && army.MoveDurationTicks is >= 1 and <= 100 && nations.ContainsKey(army.NationId) && army.TargetNationId > 0 && army.NationId != army.TargetNationId && WalkablePosition(army.X, army.Y), "军队国家或位置引用无效。");
+        foreach (var army in state.Armies) Require(Enum.IsDefined(army.KnownDiplomacy) && army.LastOrderTick >= 0 && army.LastOrderTick <= state.Tick
+            && army.LastOrderFactId >= 0 && army.LastOrderFactId < state.NextId
+            && PositionValid(army.TargetX, army.TargetY) && army.MoveDurationTicks is >= 1 and <= 100 && nations.ContainsKey(army.NationId) && army.TargetNationId > 0 && army.NationId != army.TargetNationId && WalkablePosition(army.X, army.Y), "军队国家、位置或军令记录无效。");
         var pairs = new HashSet<(int, int)>();
-        foreach (var relation in state.Diplomacies!) Require(relation is not null && nations.ContainsKey(relation.FirstNationId) && nations.ContainsKey(relation.SecondNationId) && relation.FirstNationId != relation.SecondNationId && Enum.IsDefined(relation.Status) && relation.Opinion is >= -100 and <= 100 && pairs.Add((Math.Min(relation.FirstNationId, relation.SecondNationId), Math.Max(relation.FirstNationId, relation.SecondNationId))), "外交关系无效或重复。");
+        foreach (var relation in state.Diplomacies!) Require(relation is not null && nations.ContainsKey(relation.FirstNationId) && nations.ContainsKey(relation.SecondNationId)
+            && relation.FirstNationId != relation.SecondNationId && Enum.IsDefined(relation.Status)
+            && relation.FirstOpinion is >= -100 and <= 100 && relation.SecondOpinion is >= -100 and <= 100
+            && relation.Opinion == (int)Math.Round((relation.FirstOpinion + relation.SecondOpinion) / 2d, MidpointRounding.AwayFromZero)
+            && pairs.Add((Math.Min(relation.FirstNationId, relation.SecondNationId), Math.Max(relation.FirstNationId, relation.SecondNationId))), "外交关系无效或重复。");
         foreach (var route in state.TradeRoutes!) Require(route is not null && towns.ContainsKey(route.FromSettlementId) && towns.ContainsKey(route.ToSettlementId) && route.FromSettlementId != route.ToSettlementId && route.TravelTicks is > 0 and <= 200_000 && route.RemainingTicks > 0 && route.RemainingTicks <= route.TravelTicks && FiniteRange(route.FoodCargo, 1_000_000), "贸易路线无效。");
         foreach (var entry in state.Events!) Require(entry is not null && Enum.IsDefined(entry.Kind) && Enum.IsDefined(entry.Importance) && entry.Tick >= 0 && entry.Tick <= state.Tick && TextValid(entry.Message, 1000) && (entry.X == -1 && entry.Y == -1 || PositionValid(entry.X, entry.Y)), "历史记录无效。");
         foreach (var archived in state.ArchivedResidents!)

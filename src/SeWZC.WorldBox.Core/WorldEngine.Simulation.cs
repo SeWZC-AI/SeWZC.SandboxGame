@@ -44,7 +44,7 @@ public sealed partial class WorldEngine
         var deaths = 0;
         foreach (var person in State.Residents)
         {
-            if (State.Rules.Aging) person.Age += 1d / 120;
+            if (State.Rules.Aging) person.Age = Math.Min(1000, person.Age + 1d / 120);
             if (person.Profession == Profession.Child && person.Age >= 14) person.Profession = AssignProfession();
             var maxAge = person.Race switch { RaceKind.Elf => 180, RaceKind.Dwarf => 120, RaceKind.Orc => 70, _ => 90 };
             if (State.Rules.Aging && person.Age > maxAge) person.Health -= 0.5;

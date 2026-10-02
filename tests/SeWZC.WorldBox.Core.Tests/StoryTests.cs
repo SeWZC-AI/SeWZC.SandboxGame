@@ -8,6 +8,7 @@ internal static class StoryTests
         ("campaign reports travel home before institutions react and resume deterministically", ReportsTravel),
         ("five controlled limited wars reach recovery without repeated conquest over 6000 ticks", LongCampaigns),
         ("old orders cannot remobilize returned armies and recovery blocks new attacks", Recovery),
+        ("new military orders cannot cancel a retreat caused by actual supply loss", SupplyRetreat),
         ("limited occupation does not silently retarget a changed destination", ChangedTarget),
         ("defensive orders protect home instead of invading the declarer's capital", Defense),
         ("project estimates use sustained observed work and stop after inactivity or rate changes", Estimates),
@@ -97,6 +98,30 @@ internal static class StoryTests
         engine.SetDiplomacy(nation.Id, engine.State.Nations[1].Id, DiplomaticStatus.War);
         engine.Step(30);
         Check(nation.Military.LastMobilizedOrderId == mobilized, "Recovery allowed a new offensive muster");
+    }
+
+    private static void SupplyRetreat()
+    {
+        var engine = Flat(); var army = Muster(engine);
+        army.X = army.FromX = 27; army.Y = army.FromY = 24; army.Supplies = 0; army.Gathering = false;
+        foreach (var soldier in engine.State.Residents.Where(r => r.ArmyId == army.Id))
+        { soldier.X = soldier.FromX = 27; soldier.Y = soldier.FromY = 24; soldier.Hunger = 50; soldier.Inventory.Food = 0; }
+        engine.State.Rules.Hunger = true; engine.Step();
+        Check(army.Outcome == WarOutcome.SupplyShortage, "Fixture did not produce a real supply retreat");
+        var campaign = army.CampaignEventId;
+        var commander = engine.State.Residents.Single(r => r.Id == army.CommanderId);
+        var order = new AgentFact { Id = engine.State.NextId++, Kind = AgentFactKind.WarOrder,
+            SubjectId = army.TargetNationId, TargetNationId = army.NationId, X = army.TargetX, Y = army.TargetY,
+            ObservedTick = engine.State.Tick, LearnedTick = engine.State.Tick, OriginResidentId = commander.Id,
+            SourceResidentId = commander.Id };
+        commander.Agent.Memory.Add(order);
+        engine.Step();
+        Check(army.LastOrderFactId == order.Id && army.KnownDiplomacy == DiplomaticStatus.War,
+            "The new order was not remembered in the command cursor");
+        Check(army.Retreating && army.Outcome == WarOutcome.SupplyShortage && army.CampaignEventId == campaign,
+            "A newer war order erased the physical reason for retreat");
+        var resumed = WorldEngine.ImportJson(engine.ExportJson()); engine.Step(10); resumed.Step(10);
+        Check(engine.ExportJson() == resumed.ExportJson(), "Retreat with a superseding order did not resume deterministically");
     }
 
     private static void ChangedTarget()
