@@ -86,9 +86,12 @@
 ```bash
 dotnet build -c Release
 dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build
+dotnet run --project tests/SeWZC.WorldBox.UI.Tests -c Release --no-build
 ```
 
 `dotnet test` 不能替代它；桌面构建也不能替代经过裁剪的 WASM 发布。测试失败返回非零退出码，先定位失败行为，不为过关删除约束或扩大误差。
+
+`SeWZC.WorldBox.UI.Tests` 使用 Avalonia Headless 运行共享界面的状态与控件事件回归，纳入解决方案和 CI。它适合精确复现对象消亡、编辑未变字段、世界切换等边界；真实浏览器仍负责验证裁剪发布、渲染、触屏与存储。
 
 浏览器验证尤其注意：
 

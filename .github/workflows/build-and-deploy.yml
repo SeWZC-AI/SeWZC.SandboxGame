@@ -41,6 +41,9 @@ jobs:
       - name: Test simulation
         run: dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build
 
+      - name: Test shared UI regressions
+        run: dotnet run --project tests/SeWZC.WorldBox.UI.Tests -c Release --no-build
+
       - name: Publish and check static site
         run: bash scripts/publish-browser.sh
 

@@ -9,6 +9,7 @@ public sealed partial class WorldEngine
         if (!valid) throw new ArgumentException("无效角色或存档：" + reason);
     }
     private static bool BoundedText(string? value, int length) => value is not null && value.Length <= length && !value.Any(c => char.IsControl(c) && c is not '\n' and not '\t');
+    private static bool IdentityText(string? value, int length) => BoundedText(value, length) && !value!.Contains('\t');
     private static bool Number(double value, double min, double max) => double.IsFinite(value) && value >= min && value <= max;
     private static bool Coordinates(int x, int y, int width, int height) => x >= 0 && y >= 0 && x < width && y < height;
 
@@ -25,7 +26,7 @@ public sealed partial class WorldEngine
 
     private static void ValidateResidentV2(Resident person, long tick, int width, int height)
     {
-        CheckV2(BoundedText(person.Name, 80) && person.Name.Length > 0 && BoundedText(person.Trait, 80) && Enum.IsDefined(person.Race) && Enum.IsDefined(person.Profession) && Enum.IsDefined(person.Activity), "身份信息无效。");
+        CheckV2(IdentityText(person.Name, 80) && person.Name.Length > 0 && IdentityText(person.Trait, 80) && Enum.IsDefined(person.Race) && Enum.IsDefined(person.Profession) && Enum.IsDefined(person.Activity), "身份信息无效。");
         CheckV2(Number(person.Age, 0, 1000) && Number(person.Health, 0, 100) && Number(person.Hunger, 0, 100) && Number(person.Mana, 0, 1000) && Number(person.MagicTalent, 0, 100) && Number(person.MagicTraining, 0, 100) && person.SicknessTicks is >= 0 and <= 10_000, "生命或魔法数值无效。");
         CheckV2(Coordinates(person.X, person.Y, width, height) && Coordinates(person.FromX, person.FromY, width, height) && person.MoveStartedTick >= 0 && person.MoveStartedTick <= tick && person.MoveDurationTicks is >= 1 and <= 100, "移动位置或时间无效。");
         CheckV2(person.Inventory is not null && Number(person.Inventory.Food, 0, 1_000_000) && Number(person.Inventory.Wood, 0, 1_000_000) && Number(person.Inventory.Stone, 0, 1_000_000) && Number(person.Inventory.Ore, 0, 1_000_000), "背包数值无效。");

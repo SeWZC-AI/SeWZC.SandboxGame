@@ -29,6 +29,12 @@ public sealed partial class MainView
         _mapPick = null; _map.PickingLocation = false; _map.ActiveTool = "pan";
         _modal.IsVisible = true;
     }
+
+    private void CancelMapPick()
+    {
+        if (_mapPick is null) return;
+        _mapPick = null; _map.PickingLocation = false; _map.ActiveTool = "pan";
+    }
     private static Button IconButton(string icon, Action action, string label, string id)
     {
         var path = icon switch
@@ -50,11 +56,12 @@ public sealed partial class MainView
         public override string ToString() => Label;
     }
 
-    private static ComboBox ObjectField(StackPanel panel, string label, IEnumerable<(int Id, string Name)> values, int selected, string id, bool optional = false)
+    private static ComboBox ObjectField(StackPanel panel, string label, IEnumerable<(int Id, string Name)> values, int selected, string id, bool optional = false, bool historical = false)
     {
         panel.Children.Add(Text(label, 12, Muted));
         var entries = values.Select(v => new EntityChoice(v.Id, v.Name)).ToList();
         if (optional) entries.Insert(0, new(0, "无"));
+        if (historical && entries.All(entry => entry.Id != selected)) entries.Add(new(selected, $"历史记录 #{selected}（已不存在）"));
         var picker = Named(new ComboBox { ItemsSource = entries, SelectedItem = entries.FirstOrDefault(e => e.Id == selected),
             HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 36 }, id);
         panel.Children.Add(picker); return picker;
@@ -62,17 +69,17 @@ public sealed partial class MainView
 
     private static int Integer(ComboBox field) => (field.SelectedItem as EntityChoice)?.Id ?? throw new ArgumentException("请选择有效的对象。");
 
-    private NumericUpDown Field(StackPanel panel, string label, double value, string id)
+    private NumericUpDown Field(StackPanel panel, string label, double value, string id, double? maximumOverride = null)
     {
         panel.Children.Add(Text(label, 12, Muted));
         var ratio = label.EndsWith("0–1") || label.Contains("0 至 1");
         var impact = label.Contains("−1");
         var integer = label.Contains("日") || label.Contains("次数") || label.Contains("编号") || label.EndsWith(" X") || label.EndsWith(" Y");
-        var maximum = ratio || impact ? 1 : label.Contains("0–100") || label is "疲劳" or "社交需求" or "魔法天赋" or "魔法训练" ? 100
+        var maximum = maximumOverride ?? (ratio || impact ? 1 : label.Contains("0–100") || label is "疲劳" or "社交需求" or "魔法天赋" or "魔法训练" ? 100
             : label is "年龄" or "魔力" ? 1000 : label.StartsWith("疫病") ? 10000
             : label.EndsWith(" X") ? _engine.State.Width - 1 : label.EndsWith(" Y") ? _engine.State.Height - 1
-            : label.Contains("保持日数") ? 100_000 : label.Contains("日序") ? _engine.State.Tick : 1_000_000;
-        var box = Named(new NumericUpDown { Minimum = impact ? -1 : 0, Maximum = maximum, Increment = ratio || impact ? .05m : integer ? 1 : .1m,
+            : label.Contains("保持日数") ? 100_000 : label.Contains("日序") ? _engine.State.Tick : 1_000_000);
+        var box = Named(new NumericUpDown { Minimum = impact ? -1 : 0, Maximum = (decimal)maximum, Increment = ratio || impact ? .05m : integer ? 1 : .1m,
             Value = (decimal)value, Tag = value, FormatString = integer ? "0" : "0.##", NumberFormat = CultureInfo.InvariantCulture.NumberFormat,
             HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 36 }, id);
         panel.Children.Add(box); return box;

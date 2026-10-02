@@ -12,7 +12,7 @@ public enum WorldEventKind { Founding, Growth, Trade, Diplomacy, War, Disaster, 
 
 public sealed partial class WorldState
 {
-    public int FormatVersion { get; set; } = 4;
+    [JsonRequired] public int FormatVersion { get; set; } = 5;
     public int Seed { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
@@ -125,6 +125,8 @@ public sealed class DiplomaticRelation
     public int FirstNationId { get; set; }
     public int SecondNationId { get; set; }
     public DiplomaticStatus Status { get; set; }
+    [JsonRequired] public int FirstOpinion { get; set; }
+    [JsonRequired] public int SecondOpinion { get; set; }
     public int Opinion { get; set; }
 }
 

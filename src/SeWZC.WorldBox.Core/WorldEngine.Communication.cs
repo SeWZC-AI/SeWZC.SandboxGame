@@ -49,7 +49,16 @@ public sealed partial class WorldEngine
             var old = memory[i];
             if (old.Kind != fact.Kind || old.SubjectId != fact.SubjectId || old.TargetNationId != fact.TargetNationId
                 || (fact.Kind is AgentFactKind.Danger or AgentFactKind.Personal) && (old.X != fact.X || old.Y != fact.Y)) continue;
-            if (old.ObservedTick > fact.ObservedTick || old.ObservedTick == fact.ObservedTick && old.Confidence >= fact.Confidence) return;
+            if (old.ObservedTick > fact.ObservedTick) return;
+            if (old.ObservedTick == fact.ObservedTick)
+            {
+                // Distinct orders issued on the same day still have an authoritative order.
+                // A relayed newer command must replace an older command of the same kind,
+                // even when the older copy was heard directly with greater confidence.
+                if (fact.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder && old.Id != fact.Id)
+                { if (old.Id > fact.Id) return; }
+                else if (old.Confidence >= fact.Confidence) return;
+            }
             memory.RemoveAt(i);
             break;
         }

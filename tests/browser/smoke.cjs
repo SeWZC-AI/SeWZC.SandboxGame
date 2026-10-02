@@ -33,13 +33,41 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.ready();
         await ui.paused();
         await diagnostics.assertHealthy('desktop test URL');
+        const initialTick = (await ui.snapshot()).worldTick;
+        await ui.paused(false);
+        await ui.waitFor(snapshot => snapshot.worldTick >= initialTick + 4, 'ordinary residents choosing work');
+        await ui.paused();
         const baseline = await ui.save();
-        assert.equal(baseline.FormatVersion, 4);
+        assert.equal(baseline.FormatVersion, 5);
         assert.equal(baseline.Width, 256);
         assert.equal(baseline.Nations.length, 4);
         const home = baseline.Settlements[0];
         const actor = baseline.Residents[0];
         passed('published subpath, opt-in read-only inspector, current-format IndexedDB save');
+
+        const worker = baseline.Residents.slice(0, 60).find(person => person.Agent.Goal.Kind === 3
+            && baseline.Society.Buildings.some(building => building.Id === person.Agent.Goal.TargetEntityId));
+        assert(worker, 'Normal simulation must produce an inspectable resident targeting actual building work');
+        await ui.click('header-overview');
+        await ui.click('inspector-residents', scroll);
+        await ui.click(`resident-row-${worker.Id}`, scroll);
+        await ui.click('resident-goal-edit', scroll);
+        assert(Number(ui.control(await ui.snapshot(), 'resident-goal-entity').value) > 0,
+            'The automatic building target must be selected in the goal editor');
+        await ui.fill('resident-courage', '0.42', modal);
+        await ui.click('resident-goal-apply');
+        const personalityEdit = await ui.save();
+        const editedWorker = resident(personalityEdit, worker.Id);
+        assert.equal(editedWorker.Agent.Personality.Courage, 0.42);
+        assert.deepEqual(editedWorker.Agent.Goal, worker.Agent.Goal,
+            'Editing only personality must preserve the automatic target, deadline and work progress');
+        assert.deepEqual(editedWorker.Inventory, worker.Inventory);
+        assert.deepEqual(editedWorker.Agent.CarriedMessages, worker.Agent.CarriedMessages);
+        assert.deepEqual(personalityEdit.Settlements.map(item => item.Resources), baseline.Settlements.map(item => item.Resources));
+        await ui.click('header-storage');
+        await ui.click('storage-undo', modal);
+        assert.deepEqual(await ui.save(), baseline, 'Personality edit undo must restore the complete prior world');
+        passed('real personality editing preserves an automatically selected building goal and actual supplies');
 
         await ui.tool('life', 'Human');
         await ui.clickTile(home.X, home.Y);
@@ -129,6 +157,15 @@ const stock = (world, id) => town(world, id).Resources;
         assert.deepEqual(governed.Residents.map(item => [item.Id, item.Race, item.CultureId]), edited.Residents.map(item => [item.Id, item.Race, item.CultureId]));
         passed('culture values and national institution/policy edits preserve independent resident race and culture');
 
+        await ui.click('nation-edit', scroll);
+        await ui.fill('nation-name', 'Name-only nation', modal);
+        await ui.click('nation-apply');
+        const renamed = await ui.save();
+        assert.equal(renamed.Nations.find(item => item.Id === home.NationId).Name, 'Name-only nation');
+        assert.deepEqual(renamed.Settlements.map(item => item.Resources), governed.Settlements.map(item => item.Resources),
+            'A name-only nation edit must preserve every exact local resource amount');
+        passed('nation identity edit preserves untouched local resource stocks');
+
         // Fund a real construction command through the ordinary nation editor.
         await ui.click('nation-edit', scroll);
         for (const resource of ['food', 'wood', 'stone', 'ore']) await ui.fill(`nation-${resource}`, '500', modal);
@@ -204,7 +241,7 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.waitFor(snapshot => !snapshot.modalOpen && snapshot.status.startsWith('导入成功'), 'valid file import', 30000);
         const imported = await ui.save();
         assert.deepEqual(imported, exported, 'Current-format JSON must round-trip all fields, including explicit zero values');
-        for (const invalidVersion of [1, 2, 3, 999]) {
+        for (const invalidVersion of [1, 2, 3, 4, 999]) {
             const invalidPath = path.join(output, `invalid-${invalidVersion}.json`);
             fs.writeFileSync(invalidPath, JSON.stringify({ ...exported, FormatVersion: invalidVersion }));
             await importFile(invalidPath);
@@ -212,7 +249,7 @@ const stock = (world, id) => town(world, id).Resources;
             await ui.click('modal-close');
             assert.deepEqual(await ui.save(), imported, 'Rejected import must preserve the whole current world');
         }
-        passed('real download/export and file-picker import, complete v4 round-trip, rejection of old and unknown formats');
+        passed('real download/export and file-picker import, complete current-format round-trip, rejection of old and unknown formats');
         await page.reload({ waitUntil: 'domcontentloaded' });
         await ui.ready();
         await ui.paused();

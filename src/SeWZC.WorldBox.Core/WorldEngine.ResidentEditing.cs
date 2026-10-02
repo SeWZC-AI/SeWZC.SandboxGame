@@ -36,11 +36,13 @@ public sealed partial class WorldEngine
     {
         ArgumentNullException.ThrowIfNull(patch);
         var original = RequireResident(id);
+        var liveIndex = State.Residents.IndexOf(original);
+        var isLive = liveIndex >= 0;
         var candidate = JsonSerializer.Deserialize(JsonSerializer.Serialize(original, WorldJsonContext.Default.Resident), WorldJsonContext.Default.Resident)!;
         if (patch.Name is not null) candidate.Name = patch.Name.Trim();
         if (patch.Race is { } race) candidate.Race = race;
         if (patch.CultureId is { } culture) candidate.CultureId = culture;
-        if (patch.SettlementId is { } townId)
+        if (patch.SettlementId is { } townId && (isLive || townId != original.SettlementId))
         {
             if (!_settlements.TryGetValue(townId, out var town)) throw new ArgumentException("目标聚落不存在。");
             candidate.SettlementId = townId; candidate.NationId = town.NationId;
@@ -73,9 +75,12 @@ public sealed partial class WorldEngine
         if (patch.History is not null) candidate.History = JsonSerializer.Deserialize(JsonSerializer.Serialize(patch.History, WorldJsonContext.Default.ListResidentHistoryEntry), WorldJsonContext.Default.ListResidentHistoryEntry)!;
         ValidateResidentV2(candidate, State.Tick, State.Width, State.Height);
         ValidateStoryReferences(candidate, State.NextId);
-        if (!Walkable(candidate.X, candidate.Y)) throw new ArgumentException("居民必须位于可通行地格。");
-        if (candidate.ArmyId != 0 && !State.Armies.Any(a => a.Id == candidate.ArmyId && a.NationId == candidate.NationId)) throw new ArgumentException("军队不存在或与居民所属国家不一致。");
-        if (candidate.CultureId != 0 && !State.Society.Cultures.Any(c => c.Id == candidate.CultureId)) throw new ArgumentException("文化不存在。");
+        if (isLive)
+        {
+            if (!Walkable(candidate.X, candidate.Y)) throw new ArgumentException("居民必须位于可通行地格。");
+            if (candidate.ArmyId != 0 && !State.Armies.Any(a => a.Id == candidate.ArmyId && a.NationId == candidate.NationId)) throw new ArgumentException("军队不存在或与居民所属国家不一致。");
+            if (candidate.CultureId != 0 && !State.Society.Cultures.Any(c => c.Id == candidate.CultureId)) throw new ArgumentException("文化不存在。");
+        }
         if (patch.History is not null)
         {
             static double Impact(IEnumerable<ResidentHistoryEntry> entries, PersonalExperienceKind kind) => entries.Where(h => h.Experience == kind).Sum(h => h.Impact);
@@ -103,7 +108,7 @@ public sealed partial class WorldEngine
             candidate.FromX = candidate.X; candidate.FromY = candidate.Y;
             candidate.MoveStartedTick = State.Tick; candidate.MoveDurationTicks = 1;
         }
-        var startMission = patch.Agent is not null && candidate.Agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage or AgentGoalKind.Petition
+        var startMission = isLive && patch.Agent is not null && candidate.Agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage or AgentGoalKind.Petition
             && (original.Agent.Goal.Kind != candidate.Agent.Goal.Kind || original.Agent.DestinationSettlementId != candidate.Agent.Goal.TargetSettlementId);
         if (startMission)
         {
@@ -131,11 +136,20 @@ public sealed partial class WorldEngine
         // Edits create new immutable information snapshots. Propagated copies keep their old identities.
         if (patch.Agent is not null)
         {
-            var revisions = new Dictionary<int, int>();
-            foreach (var fact in candidate.Agent.Memory.Concat(candidate.Agent.CarriedMessages))
+            ValidateResidentV2(candidate, State.Tick, State.Width, State.Height);
+            var changedFacts = candidate.Agent.Memory.Concat(candidate.Agent.CarriedMessages)
+                .Where(fact => !original.Agent.Memory.Concat(original.Agent.CarriedMessages)
+                    .Any(prior => fact.Id > 0 && prior.Id == fact.Id && SameFactSnapshot(prior, fact))).ToArray();
+            var revisedSnapshots = new Dictionary<int, AgentFact>();
+            foreach (var fact in changedFacts.Where(fact => fact.Id > 0))
             {
-                var prior = original.Agent.Memory.Concat(original.Agent.CarriedMessages).FirstOrDefault(f => f.Id == fact.Id && fact.Id > 0);
-                if (prior is not null && SameFactSnapshot(prior, fact)) continue;
+                if (revisedSnapshots.TryGetValue(fact.Id, out var prior) && !SameFactSnapshot(prior, fact))
+                    throw new ArgumentException("相同记忆编号不能包含不同的修订内容。");
+                revisedSnapshots[fact.Id] = fact;
+            }
+            var revisions = new Dictionary<int, int>();
+            foreach (var fact in changedFacts)
+            {
                 var oldId = fact.Id;
                 if (oldId > 0 && revisions.TryGetValue(oldId, out var assigned)) fact.Id = assigned;
                 else
@@ -149,11 +163,13 @@ public sealed partial class WorldEngine
             foreach (var decision in candidate.Agent.Decisions)
                 if (revisions.TryGetValue(decision.EvidenceFactId, out var revised)) decision.EvidenceFactId = revised;
         }
-        var liveIndex = State.Residents.IndexOf(original);
-        if (liveIndex >= 0) State.Residents[liveIndex] = candidate;
+        if (isLive) State.Residents[liveIndex] = candidate;
         else State.ArchivedResidents[State.ArchivedResidents.IndexOf(original)] = candidate;
-        if (startMission && _settlements.TryGetValue(candidate.SettlementId, out var missionHome)) BeginAgentMission(candidate, missionHome);
-        Reindex(); InitializeSociety(); RefreshTotals();
+        if (isLive)
+        {
+            if (startMission && _settlements.TryGetValue(candidate.SettlementId, out var missionHome)) BeginAgentMission(candidate, missionHome);
+            Reindex(); InitializeSociety(); RefreshTotals();
+        }
         var editEvent = AddEvent(WorldEventKind.Editor, $"{candidate.Name}的角色记录已修订；过去的世界结果保持原样。", candidate.X, candidate.Y);
         editEvent.ResidentId = candidate.Id;
         editEvent.NationId = candidate.NationId;
