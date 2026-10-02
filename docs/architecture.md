@@ -86,9 +86,9 @@ flowchart TD
 
 浏览器项目使用 `Microsoft.NET.Sdk.WebAssembly`，发布后的 `wwwroot` 是完整静态站点。脚本把它复制到 `artifacts/site`，增加 `.nojekyll` 并检查引用与 WebAssembly 载荷。入口、脚本与样式采用相对 URL，使根目录和 `/SeWZC.SandboxGame/` 等项目子路径均可使用。
 
-GitHub Actions 固定 SDK，安装 `wasm-tools`，构建桌面与浏览器项目，运行核心验证程序，再发布静态文件。随后使用 Node.js 22 和固定版本 Playwright，在本地 HTTP 服务的 `/SeWZC.SandboxGame/` 子路径运行 Chromium 桌面、触屏与运动检查。桌面及触屏检查使用只读语义控件快照定位实际控件，再派发真实鼠标、键盘或触摸事件，并从真实 IndexedDB／导出文件核对结果。快照仅在 `?e2e=1` 时启用，不提供编辑或推进世界的测试命令。截图、存档样本与日志作为构建产物保留；所有分支和 PR 都执行验证，只有 `alpha` 分支的推送或手动运行通过后才由独立部署任务使用最小 Pages 权限发布。该条件不依赖仓库默认分支。
+GitHub Actions 固定 SDK，安装 `wasm-tools`，构建桌面与浏览器项目，运行核心验证程序，再发布静态文件。随后使用 Node.js 22 和固定版本 Playwright，在本地 HTTP 服务的 `/SeWZC.SandboxGame/` 子路径运行 Chromium 桌面、触屏与运动检查。桌面及触屏检查使用只读语义控件快照定位实际控件，再派发真实鼠标、键盘或触摸事件，并从真实 IndexedDB／导出文件核对结果。快照仅在 `?e2e=1` 时启用，不提供编辑或推进世界的测试命令。截图、存档样本与日志作为构建产物保留；所有分支和 PR 都执行验证，只有 `main` 分支的推送或手动运行通过后才由独立部署任务使用最小 Pages 权限发布。该条件不依赖仓库默认分支。
 
-首次部署前，仓库所有者需要把 Pages 的 Source 配置为 GitHub Actions，并确保 `github-pages` 环境的分支策略允许 `alpha`。部署任务先通过 `actions/configure-pages` 检查站点配置，再用 `actions/deploy-pages` 发布已验证的静态产物，不写入 `gh-pages` 分支。部署后用实际站点 URL 重跑同样三套浏览器检查并保留证据。
+首次部署前，仓库所有者需要把 Pages 的 Source 配置为 GitHub Actions，并确保 `github-pages` 环境的分支策略允许 `main`。部署任务先通过 `actions/configure-pages` 检查站点配置，再用 `actions/deploy-pages` 发布已验证的静态产物，不写入 `gh-pages` 分支。部署后用实际站点 URL 重跑同样三套浏览器检查并保留证据。
 
 静态检查可以发现缺失资源、错误根路径和未替换的指纹占位符，不能替代实际浏览器启动与交互检查。发布流程不添加不必要的服务器、认证或网络依赖。
 

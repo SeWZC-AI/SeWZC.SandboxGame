@@ -2,7 +2,9 @@
 
 用 **C# / Avalonia** 构建的 2D 上帝沙盒，属于 `SeWZC.SandboxGame` 项目。玩家创造地形、放置人类 / 精灵 / 矮人 / 兽人，观察聚落、资源、国家和冲突，并通过编辑器与灾害干预世界。
 
-当前版本是古代文明的早期可运行原型。浏览器入口使用 .NET WebAssembly，可作为纯静态文件部署到 **GitHub Pages**；桌面入口与浏览器共用模拟核心和 Avalonia 界面。无需游戏服务器。
+当前版本为 **0.0.1-alpha.1**（由 `Directory.Build.props` 统一设置），是古代文明的早期可运行原型。浏览器入口使用 .NET WebAssembly，可作为纯静态文件部署到 **GitHub Pages**；桌面入口与浏览器共用模拟核心和 Avalonia 界面。无需游戏服务器。
+
+`main` 是主分支和 Pages 发布分支；alpha 表示产品阶段，仍不承诺旧存档或内部接口兼容。分支与环境迁移步骤见 [开发约定](docs/development.md#主分支与环境迁移)。
 
 开发与 AI 接续工作请从 [文档索引](docs/README.md) 开始；其中分别记录 [产品约定](docs/product.md)、[开发约定](docs/development.md) 和 [设计原因](docs/decisions/README.md)。
 
@@ -82,11 +84,11 @@ Linux 桌面版需要图形会话以及 Avalonia 所需的系统图形库。无�
 
 ## 发布到 GitHub Pages
 
-仓库中的 [GitHub Actions 工作流](.github/workflows/build-and-deploy.yml) 会构建、运行模拟测试、发布 WebAssembly 文件，并在 Chromium 中实际打开仓库子路径运行桌面、触屏和连续运动三套检查。所有分支与 PR 都执行验证；只有 `alpha` 分支的推送或该分支的手动运行会进入部署任务。部署目标独立于仓库默认分支。部署后再以实际 Pages URL 运行同样三套检查。浏览器检查的截图、存档样本与日志上传为 `worldbox-browser-tests` 构建产物。
+仓库中的 [GitHub Actions 工作流](.github/workflows/build-and-deploy.yml) 会构建、运行模拟测试、发布 WebAssembly 文件，并在 Chromium 中实际打开仓库子路径运行桌面、触屏和连续运动三套检查。所有分支与 PR 都执行验证；只有 `main` 分支的推送或该分支的手动运行会进入部署任务。部署后再以实际 Pages URL 运行同样三套检查。浏览器检查的截图、存档样本与日志上传为 `worldbox-browser-tests` 构建产物。
 
 1. 在 GitHub 仓库的 **Settings → Pages → Build and deployment** 中，将 **Source** 设置为 **GitHub Actions**。
-2. 如果 **Settings → Environments → github-pages** 设置了部署分支限制，确保允许 `alpha`，而不是只允许默认分支。
-3. 将代码推送到 `alpha`，构建及测试通过后自动部署。工作流已存在于默认分支时，也可在 **Actions → Build, test and deploy WorldBox** 中选择 `alpha` 手动运行。
+2. 如果 **Settings → Environments → github-pages** 设置了部署分支限制，确保允许 `main`；从 `alpha` 迁移时，删除旧的 `alpha` 部署分支规则并添加 `main`。
+3. 将代码推送到 `main`，构建及测试通过后自动部署。工作流已存在于默认分支时，也可在 **Actions → Build, test and deploy WorldBox** 中选择 `main` 手动运行。
 4. 部署完成后，从工作流的 `github-pages` 环境打开页面。该仓库的标准地址形式为 `https://SeWZC-AI.github.io/SeWZC.SandboxGame/`；仓库设置和实际部署结果决定最终地址。
 
 首次部署需先完成仓库 Pages 设置。工作流使用 `configure-pages` 检查配置，部署任务仅申请 `pages: write` 与 `id-token: write` 权限；不需要另建 `gh-pages` 分支或在仓库中保存个人访问令牌。

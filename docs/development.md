@@ -12,6 +12,19 @@
 
 小型、可逆的文案或布局修改不需要机械增加测试。修复跨状态边界的缺陷时，优先增加能复现真实失败的回归场景，避免逐行复制实现算法的测试。
 
+## 主分支与环境迁移
+
+`main` 是唯一长期主分支及 Pages 发布分支；alpha 是当前产品阶段，应用版本由 [Directory.Build.props](../Directory.Build.props) 统一设置，仍不提供旧存档或内部接口兼容。切换分支不代表进入稳定阶段。
+
+从 `alpha` 迁移时，先将其全部提交保留在 `main`，再完成以下仓库与环境设置：
+
+1. 在仓库 **Settings → General → Default branch** 将默认分支设为 `main`。
+2. 在 **Settings → Environments → github-pages** 核对部署分支策略：若使用选定分支规则，将 `alpha` 改为 `main`；若仅允许受保护分支，确保 `main` 受保护并允许部署。Pages 的 Source 保持 GitHub Actions。
+3. 将开发／云环境的仓库检出分支改为 `main`，不再固定 `alpha`；已有工作区需同步上游分支与远端 HEAD。
+4. 确认 `main` 包含全部原 `alpha` 提交、默认分支和环境设置已迁移后，删除远端 `alpha`。本地保存未提交工作后执行 `git fetch origin --prune`、`git switch main`、`git branch --set-upstream-to=origin/main main` 和 `git remote set-head origin -a`；新工作区可用 `git switch --track origin/main` 创建本地分支。确认本地 `alpha` 已完全合入后，用 `git branch -d alpha` 清理。
+
+工作流指定的部署分支与仓库默认分支、GitHub 部署环境策略、开发环境检出分支是独立设置。修改工作流不会自动修改后三者；报告迁移结果时需分别核对。
+
 ## 代码定位与责任
 
 下表中的文件名相对于对应目录；同一 `partial` 类按机制分文件，新代码尽量进入已有责任范围。
@@ -92,7 +105,7 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build
 
 性能测量不与其他浏览器压力任务争抢资源，功能验证与测量结论分别记录。存档大小测量实际写入的 UTF-8 内容，不能把解析后重新序列化的体积冒充真实载荷。
 
-当前工作流对所有分支与 PR 验证，只有 `alpha` 非 PR 运行会部署，并在部署后执行公网检查。推送授权沿用当前任务与会话约定；本指南不增加新的授权，也不要求重复确认已有授权。已部署与已通过公网验收是两个状态，报告时分别说明。
+当前工作流对所有分支与 PR 验证，只有 `main` 非 PR 运行会部署，并在部署后执行公网检查。推送授权沿用当前任务与会话约定；本指南不增加新的授权，也不要求重复确认已有授权。已部署与已通过公网验收是两个状态，报告时分别说明。
 
 ## 文档随行为一起维护
 
