@@ -2,8 +2,23 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private sealed record GoalChoice(AgentGoalKind Kind, int X, int Y, double Score, string Reason,
+    private readonly record struct GoalChoice(AgentGoalKind Kind, int X, int Y, double Score, string Reason,
         AgentFact? Evidence = null, int SettlementId = 0, int EntityId = 0);
+    private readonly List<GoalChoice> _goalChoices = [];
+    private static readonly (int X, int Y, int Distance)[] VisibleResourceOffsets = CreateVisibleResourceOffsets();
+    // Four-direction search at depth six visits at most 1 + 2 * 6 * 7 cells.
+    private readonly (int Index, int First, int Depth)[] _localMoveQueue = new (int, int, int)[85];
+    private int[] _localMoveVisited = [];
+    private int _localMoveSearch;
+
+    private static (int X, int Y, int Distance)[] CreateVisibleResourceOffsets()
+    {
+        var offsets = new List<(int X, int Y, int Distance)>();
+        for (var y = -6; y <= 6; y++)
+        for (var x = -6; x <= 6; x++)
+            if (x * x + y * y <= 36) offsets.Add((x, y, Math.Abs(x) + Math.Abs(y)));
+        return offsets.OrderBy(offset => offset.Distance).ThenBy(offset => offset.Y).ThenBy(offset => offset.X).ToArray();
+    }
 
     private void InitializeAgent(Resident person)
     {
@@ -35,39 +50,47 @@ public sealed partial class WorldEngine
 
     private void UpdateAgentNeedsAndActions()
     {
-        foreach (var person in State.Residents)
+        try
         {
-            InitializeAgent(person);
-            if (person.Health <= 0 || !_settlements.TryGetValue(person.SettlementId, out var home)) continue;
-            person.Agent.SocialNeed = Math.Min(100, person.Agent.SocialNeed + 0.11);
-            // Soldiers consume their army's physical provisions in the military system.
-            if (person.ArmyId != 0)
+            BeginLocalWorkQueries();
+            foreach (var person in State.Residents)
             {
-                if ((State.Tick + person.Id) % 8 == 0) ObserveAgentEnvironment(person);
-                continue;
-            }
-            var consumption = !State.Rules.Hunger ? 0 : person.Age < 14 ? 0.025 : person.Race == RaceKind.Orc ? 0.064 : 0.05;
-            var meal = Math.Min(consumption, person.Inventory.Food);
-            person.Inventory.Food -= meal;
-            person.Hunger = Math.Clamp(person.Hunger + (meal >= consumption - 0.000001 ? -3 : 2 * (1 - meal / consumption)), 0, 100);
-            if (Distance(person.X, person.Y, home.X, home.Y) <= 1)
-            {
-                TransferPersonalProduction(person, home);
-                if ((State.Tick + person.Id) % 12 == 0) DeliverLocalDiscoveries(person, home);
-                if (person.Inventory.Food < 0.3)
+                InitializeAgent(person);
+                if (person.Health <= 0 || !_settlements.TryGetValue(person.SettlementId, out var home)) continue;
+                person.Agent.SocialNeed = Math.Min(100, person.Agent.SocialNeed + 0.11);
+                // Soldiers consume their army's physical provisions in the military system.
+                if (person.ArmyId != 0)
                 {
-                    var ration = Math.Min(home.Resources.Food, TravelReserve(person) - person.Inventory.Food);
-                    home.Resources.Food -= ration; person.Inventory.Food += ration;
+                    if ((State.Tick + person.Id) % 8 == 0) ObserveAgentEnvironment(person);
+                    continue;
                 }
+                var consumption = !State.Rules.Hunger ? 0 : person.Age < 14 ? 0.025 : person.Race == RaceKind.Orc ? 0.064 : 0.05;
+                var meal = Math.Min(consumption, person.Inventory.Food);
+                person.Inventory.Food -= meal;
+                person.Hunger = Math.Clamp(person.Hunger + (meal >= consumption - 0.000001 ? -3 : 2 * (1 - meal / consumption)), 0, 100);
+                if (Distance(person.X, person.Y, home.X, home.Y) <= 1)
+                {
+                    TransferPersonalProduction(person, home);
+                    if ((State.Tick + person.Id) % 12 == 0) DeliverLocalDiscoveries(person, home);
+                    if (person.Inventory.Food < 0.3)
+                    {
+                        var ration = Math.Min(home.Resources.Food, TravelReserve(person) - person.Inventory.Food);
+                        home.Resources.Food -= ration; person.Inventory.Food += ration;
+                    }
+                }
+                var danger = State.Tiles[Index(person.X, person.Y)].FireTicks > 0;
+                if ((State.Tick + person.Id) % 8 == 0 || person.Agent.Memory.Count < 2 || danger)
+                    ObserveAgentEnvironment(person);
+                var directed = person.Agent.Goal.PlayerDirected && State.Tick < person.Agent.Goal.ReviewTick;
+                var emergency = danger || person.Hunger > 85 && person.Inventory.Food < 0.05;
+                if ((!directed && (State.Tick >= person.Agent.NextThinkTick || person.Agent.Goal.Kind == AgentGoalKind.Idle)) || emergency)
+                    ChooseAgentGoal(person, home, emergency && directed);
+                ActOnAgentGoal(person, home);
             }
-            var danger = State.Tiles[Index(person.X, person.Y)].FireTicks > 0;
-            if ((State.Tick + person.Id) % 8 == 0 || person.Agent.Memory.Count < 2 || danger)
-                ObserveAgentEnvironment(person);
-            var directed = person.Agent.Goal.PlayerDirected && State.Tick < person.Agent.Goal.ReviewTick;
-            var emergency = danger || person.Hunger > 85 && person.Inventory.Food < 0.05;
-            if ((!directed && (State.Tick >= person.Agent.NextThinkTick || person.Agent.Goal.Kind == AgentGoalKind.Idle)) || emergency)
-                ChooseAgentGoal(person, home, emergency && directed);
-            ActOnAgentGoal(person, home);
+        }
+        finally
+        {
+            EndLocalWorkQueries();
         }
     }
 
@@ -94,12 +117,14 @@ public sealed partial class WorldEngine
     {
         var agent = person.Agent;
         var personality = agent.Personality;
-        var choices = new List<GoalChoice>();
-        var foodFact = agent.Memory.Where(f => f.Kind == AgentFactKind.FoodSupply && f.SubjectId == home.Id)
-            .OrderByDescending(f => f.ObservedTick).FirstOrDefault();
-        var dangerFact = agent.Memory.Where(f => f.Kind == AgentFactKind.Danger && f.Value > 0
-                && AgentFactReliability(f) > 0.25 && State.Tick - f.ObservedTick < 24 && Distance(person.X, person.Y, f.X, f.Y) <= 5)
-            .OrderByDescending(f => f.ObservedTick).FirstOrDefault();
+        var choices = _goalChoices;
+        choices.Clear();
+        var foodFact = LatestAgentFact(agent.Memory, AgentFactKind.FoodSupply, home.Id);
+        AgentFact? dangerFact = null;
+        foreach (var fact in agent.Memory)
+            if (fact.Kind == AgentFactKind.Danger && fact.Value > 0 && AgentFactReliability(fact) > 0.25
+                && State.Tick - fact.ObservedTick < 24 && Distance(person.X, person.Y, fact.X, fact.Y) <= 5
+                && (dangerFact is null || fact.ObservedTick > dangerFact.ObservedTick)) dangerFact = fact;
         if (dangerFact is not null || State.Tiles[Index(person.X, person.Y)].FireTicks > 0)
         {
             var safe = Circle(person.X, person.Y, 5).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].FireTicks == 0)
@@ -168,7 +193,13 @@ public sealed partial class WorldEngine
                 agent.SocialNeed * (0.6 + personality.Sociability * 0.5), "社交需求较高，去聚落与人交流", null, home.Id));
         AddAgentMissionChoices(person, home, choices);
         choices.Add(new(AgentGoalKind.ReturnHome, home.X, home.Y, 5, "当前看不到合适资源，回到已知家园", null, home.Id));
-        var selected = choices.OrderByDescending(c => c.Score).ThenBy(c => c.Kind).First();
+        var selected = choices[0];
+        for (var i = 1; i < choices.Count; i++)
+        {
+            var candidate = choices[i];
+            var comparison = candidate.Score.CompareTo(selected.Score);
+            if (comparison > 0 || comparison == 0 && (int)candidate.Kind < (int)selected.Kind) selected = candidate;
+        }
         var previous = agent.Goal;
         var continuingMission = previous.Kind == selected.Kind && previous.TargetSettlementId == selected.SettlementId
             && selected.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage or AgentGoalKind.Petition;
@@ -207,14 +238,20 @@ public sealed partial class WorldEngine
     private int FindVisibleResourceSite(Resident person, Profession profession)
     {
         var best = -1; var bestScore = double.NegativeInfinity;
-        foreach (var index in Circle(person.X, person.Y, 6))
+        foreach (var offset in VisibleResourceOffsets)
         {
+            // Valid fertility is at most 100 and ResourceSiteYield is at most 1.
+            // Keep equal-score candidates: the original row order chose the lowest tile index.
+            if (8 - offset.Distance < bestScore) break;
+            var x = person.X + offset.X; var y = person.Y + offset.Y;
+            if (!InBounds(x, y)) continue;
+            var index = Index(x, y);
             var tile = State.Tiles[index];
             if (!tile.IsWalkable || tile.FireTicks > 0) continue;
             var productivity = ResourceSiteYield(index, profession);
             if (productivity <= 0) continue;
-            var score = productivity * 8 - Distance(person.X, person.Y, index % State.Width, index / State.Width);
-            if (score <= bestScore) continue;
+            var score = productivity * 8 - offset.Distance;
+            if (score < bestScore || score == bestScore && index >= best) continue;
             bestScore = score; best = index;
         }
         return best;
@@ -359,11 +396,15 @@ public sealed partial class WorldEngine
         {
             // A bounded local search can walk around visible obstacles without revealing remote terrain.
             var start = Index(person.X, person.Y);
-            var queue = new Queue<(int Index, int First, int Depth)>();
-            var seen = new HashSet<int> { start };
-            queue.Enqueue((start, -1, 0));
-            while (queue.TryDequeue(out var current))
+            if (_localMoveVisited.Length != State.Tiles.Length) _localMoveVisited = new int[State.Tiles.Length];
+            if (_localMoveSearch == int.MaxValue) { Array.Clear(_localMoveVisited); _localMoveSearch = 0; }
+            var search = ++_localMoveSearch;
+            _localMoveVisited[start] = search;
+            var head = 0; var tail = 1;
+            _localMoveQueue[0] = (start, -1, 0);
+            while (head < tail)
             {
+                var current = _localMoveQueue[head++];
                 if (current.Depth >= 6) continue;
                 foreach (var (dx, dy) in Directions)
                 {
@@ -371,11 +412,12 @@ public sealed partial class WorldEngine
                     if (!Walkable(x, y) || State.Tiles[Index(x, y)].FireTicks > 0) continue;
                     var index = Index(x, y);
                     if (current.First < 0 && index == previous) continue;
-                    if (!seen.Add(index)) continue;
+                    if (_localMoveVisited[index] == search) continue;
+                    _localMoveVisited[index] = search;
                     var first = current.First < 0 ? index : current.First;
                     var distance = Distance(x, y, targetX, targetY);
                     if (distance < bestDistance) { bestDistance = distance; bestStep = first; }
-                    queue.Enqueue((index, first, current.Depth + 1));
+                    _localMoveQueue[tail++] = (index, first, current.Depth + 1);
                 }
             }
         }
@@ -383,15 +425,18 @@ public sealed partial class WorldEngine
         {
             // When the visible horizon cannot yet improve distance, follow an obstacle edge instead
             // of oscillating between the last two cells or standing still across a small lake.
-            var alternatives = Directions.Select(d => (X: person.X + d.X, Y: person.Y + d.Y, DX: d.X, DY: d.Y))
-                .Where(p => Walkable(p.X, p.Y) && State.Tiles[Index(p.X, p.Y)].FireTicks == 0).ToArray();
-            var forward = alternatives.Where(p => Index(p.X, p.Y) != previous).ToArray();
-            if (forward.Length == 0) forward = alternatives;
-            if (forward.Length > 0)
+            var bestAny = -1; var bestForward = -1;
+            var bestAnyScore = int.MinValue; var bestForwardScore = int.MinValue;
+            foreach (var (dx, dy) in Directions)
             {
-                var next = forward.OrderByDescending(p => p.DX * (targetX - person.X) + p.DY * (targetY - person.Y)).First();
-                bestStep = Index(next.X, next.Y);
+                var x = person.X + dx; var y = person.Y + dy;
+                if (!Walkable(x, y) || State.Tiles[Index(x, y)].FireTicks > 0) continue;
+                var index = Index(x, y);
+                var score = dx * (targetX - person.X) + dy * (targetY - person.Y);
+                if (score > bestAnyScore) { bestAny = index; bestAnyScore = score; }
+                if (index != previous && score > bestForwardScore) { bestForward = index; bestForwardScore = score; }
             }
+            bestStep = bestForward >= 0 ? bestForward : bestAny;
         }
         if (bestStep < 0) return false;
         var xNext = bestStep % State.Width; var yNext = bestStep / State.Width;
@@ -408,8 +453,19 @@ public sealed partial class WorldEngine
     {
         if (!_settlements.TryGetValue(person.SettlementId, out var home)) return 1;
         if (Distance(person.X, person.Y, home.X, home.Y) <= 3) return GetPolicyProductionMultiplier(home.Id);
-        var instruction = person.Agent.Memory.Where(f => f.Kind == AgentFactKind.Policy && f.SubjectId == home.Id
-            && AgentFactReliability(f) >= 0.5).OrderByDescending(f => f.ObservedTick).FirstOrDefault();
+        AgentFact? instruction = null;
+        foreach (var fact in person.Agent.Memory)
+            if (fact.Kind == AgentFactKind.Policy && fact.SubjectId == home.Id && AgentFactReliability(fact) >= 0.5
+                && (instruction is null || fact.ObservedTick > instruction.ObservedTick)) instruction = fact;
         return instruction?.Value == (int)PolicyKind.FoodSecurity ? 1.25 : 1;
+    }
+
+    private static AgentFact? LatestAgentFact(List<AgentFact> memory, AgentFactKind kind, int subjectId)
+    {
+        AgentFact? latest = null;
+        foreach (var fact in memory)
+            if (fact.Kind == kind && fact.SubjectId == subjectId
+                && (latest is null || fact.ObservedTick > latest.ObservedTick)) latest = fact;
+        return latest;
     }
 }

@@ -276,6 +276,7 @@ public sealed partial class WorldEngine
         }
         var old = person.SettlementId;
         person.SettlementId = town.Id; person.NationId = town.NationId;
+        UpdateLocalWorkMembership(person, old);
         person.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome, TargetX = town.X, TargetY = town.Y,
             TargetSettlementId = town.Id, StartedTick = State.Tick, Reason = "实地抵达后确认新家园可以接纳" };
         RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.SettlementLocation, town.Id, town.X, town.Y, town.NationId, "步行抵达的新家园"));
