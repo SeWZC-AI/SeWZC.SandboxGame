@@ -49,6 +49,7 @@ internal static class EvolutionTests
         var old = JsonNode.Parse(before)!; old["FormatVersion"] = 2;
         try { WorldEngine.ImportJson(old.ToJsonString()); throw new InvalidOperationException("Old format accepted"); } catch (ArgumentException) { }
     }
+    [UnitTest]
     private static void Placement()
     {
         var engine = Flat(); var town = engine.State.Settlements[0]; town.Resources = new();
@@ -151,6 +152,7 @@ internal static class EvolutionTests
         Check(person.SettlementId == b.Id && person.NationId == b.NationId, "Migrant did not join the physically reached settlement");
         _ = WorldEngine.ImportJson(engine.ExportJson());
     }
+    [UnitTest]
     private static void Traits()
     {
         var engine = Flat(); var id = engine.State.Residents[0].Id;

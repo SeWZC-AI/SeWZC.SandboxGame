@@ -107,6 +107,7 @@ internal static class SocietyBehaviorTests
         Check(engine.State.Society.Policies.Single().EvidenceFactId == danger.Id, "Policy explanation cited evidence from a different winning issue.");
     }
 
+    [UnitTest]
     private static void CulturalExchange()
     {
         var engine = FlatWorld(); var first = engine.State.Residents[1]; var second = engine.State.Residents[2];
@@ -196,6 +197,7 @@ internal static class SocietyBehaviorTests
         Check(engine.State.Society.Research.Any(r => r.Completed.Count > 0), "Default institutions required player research clicks to discover anything.");
     }
 
+    [LongRunningTest]
     private static void LargeDefaultDevelopment()
     {
         var engine = WorldEngine.Create(73921, 256, 256);
@@ -212,6 +214,7 @@ internal static class SocietyBehaviorTests
         Check(engine.ExportJson() == resumed.ExportJson(), "Large-world development diverged after saving and resuming.");
     }
 
+    [UnitTest]
     private static void SelectedFacilityWork()
     {
         var engine = FlatWorld();

@@ -23,6 +23,7 @@ internal static class PresentationWorldTests
     }
     private static object? Invoke(WorldEngine engine, string name, params object[] args) =>
         typeof(WorldEngine).GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(engine, args);
+    [UnitTest]
     private static void Logging()
     {
         var engine = World(); var resident = engine.State.Residents[0];
@@ -50,6 +51,7 @@ internal static class PresentationWorldTests
         Check(restored.ExportJson() == saved, "Meteor state failed roundtrip");
         engine.Step(20); restored.Step(20); Check(engine.ExportJson() == restored.ExportJson(), "Meteor continuation diverged");
     }
+    [UnitTest]
     private static void Route()
     {
         var engine = World(); var person = engine.State.Residents[0];
@@ -67,6 +69,7 @@ internal static class PresentationWorldTests
             Check(person.X == expected.X && person.Y == expected.Y, "Actual movement differs from preview");
         }
     }
+    [UnitTest]
     private static void Names()
     {
         var engine = World(); var second = World();
@@ -94,6 +97,7 @@ internal static class PresentationWorldTests
         engine.Step(40);
         Check(engine.State.Tiles[40 * 64 + 40].ResourceAmount == 5000, "Regeneration erased player-supplied resources");
     }
+    [UnitTest]
     private static void Construction()
     {
         var engine = World(); var town = engine.State.Settlements[0];

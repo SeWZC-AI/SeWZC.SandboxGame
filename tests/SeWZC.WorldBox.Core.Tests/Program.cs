@@ -58,8 +58,27 @@ var tests = new (string Name, Action Run)[]
     .Concat(DiplomacyKnowledgeTests.Cases).Concat(StoryTests.Cases).Concat(PresentationWorldTests.Cases)
     .Concat(TradeRegressionTests.Cases).ToArray();
 var filterOption = Array.IndexOf(args, "--filter");
-if (filterOption >= 0 && filterOption + 1 < args.Length)
+var suiteOption = Array.IndexOf(args, "--suite");
+var suite = suiteOption < 0 ? "unit" : args.ElementAtOrDefault(suiteOption + 1);
+if (suite is not ("unit" or "integration" or "long" or "all") ||
+    (filterOption >= 0 && (filterOption + 1 >= args.Length || args[filterOption + 1].StartsWith("--"))))
+{
+    Console.Error.WriteLine("Usage: [--suite unit|integration|long|all] [--filter <name>] [--list]");
+    return 2;
+}
+tests = tests.Where(t => suite == "all" || suite == Scope(t.Run)).ToArray();
+if (filterOption >= 0)
     tests = tests.Where(t => t.Name.Contains(args[filterOption + 1], StringComparison.OrdinalIgnoreCase)).ToArray();
+if (tests.Length == 0)
+{
+    Console.Error.WriteLine("No tests matched the requested suite/filter.");
+    return 2;
+}
+if (args.Contains("--list"))
+{
+    foreach (var test in tests) Console.WriteLine($"{Scope(test.Run)}: {test.Name}");
+    return 0;
+}
 var failures = 0;
 var totalTime = Stopwatch.StartNew();
 foreach (var (name, run) in tests)
@@ -77,9 +96,12 @@ foreach (var (name, run) in tests)
         Console.Error.WriteLine(ex.StackTrace);
     }
 }
-Console.WriteLine($"{tests.Length - failures}/{tests.Length} passed in {totalTime.Elapsed.TotalSeconds:F2} s");
+Console.WriteLine($"{tests.Length - failures}/{tests.Length} {suite} checks passed in {totalTime.Elapsed.TotalSeconds:F2} s");
 if (failures == 0 && args.Contains("--benchmark")) Benchmark();
 return failures == 0 ? 0 : 1;
+
+static string Scope(Action test) => test.Method.IsDefined(typeof(LongRunningTestAttribute), false) ? "long"
+    : test.Method.IsDefined(typeof(UnitTestAttribute), false) ? "unit" : "integration";
 
 static void Generation()
 {
@@ -263,6 +285,7 @@ static void TerrainEditing()
     AssertResume(relocation, 12);
 }
 
+[LongRunningTest]
 static void MixedEditSaveRoundTrips()
 {
     foreach (var seed in new[] { 2101, 9917 })
@@ -354,6 +377,7 @@ static void Disasters()
         "Plague does not affect infected residents' health.");
 }
 
+[UnitTest]
 static void NationEditing()
 {
     var engine = FlatWorld();

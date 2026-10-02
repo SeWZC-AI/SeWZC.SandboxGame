@@ -1,5 +1,19 @@
 # 构建与验证记录
 
+## 2026-10-02 — 构建与测试分层提速
+
+基线为同步后的 `main` 提交 `58ce3fc80565c5a8ed405b6661505493cc3ab8ec`，下述结果来自该提交加本次 CI／测试入口修改的工作区。环境：Debian 13 x64、.NET SDK 10.0.401、Node.js 24.19.0、系统 Chromium 151.0.7922.173；CI 仍固定 Node.js 22。本地日志与源码摘要保存在忽略目录 `artifacts/ci-speed-verification/`。
+
+- 原核心全量 82 项检查单次耗时 11.33 秒。其中混合编辑随机回归 4.05 秒、五种子长程战争 1.55 秒、大世界发展 0.93 秒；这三项现归入 `long`，原有规模与断言保留。
+- 最终快速入口通过 **11/11 核心单元 + 20/20 Headless UI 检查，合计 6.05 秒**（含两个进程启动）。10 秒是测试作者负责的设计目标，运行入口只报告耗时，不设硬超时或按耗时判失败；编译、还原和其他套件另计。
+- 套件清单与原 82 项逐项比对一致：11 单元、68 集成、3 长程，无丢失或重复；非法套件、缺失参数、筛选零项均返回失败。
+- 普通集成 **68/68** 通过（9.25 秒），长程回归 **3/3** 通过（12.49 秒）。不同进程有独立启动及 JIT 开销，加上环境波动，分套件计时不能与原单进程全量计时直接相加比较。
+- 原生项目筛选构建通过，0 警告、0 错误；其覆盖整个解决方案中除单独发布的 Browser 外所有项目。`publish-browser.sh --no-restore` 成功生成裁剪后的 WASM 并通过静态检查。未知脚本参数会在清理产物之前被拒绝。
+- 新上线冒烟在本地 `/SeWZC.SandboxGame/` 子路径通过，耗时 **13.06 秒**：匹配提交标记、渲染、实际模拟推进、128×128 独立种子世界保存及刷新恢复。`actionlint 1.7.7`、Shell／Python／JavaScript 语法检查及 `git diff --check` 通过。
+- 同一产物串行通过五套完整 Chromium 验收：桌面 107.45 秒、触屏 28.01 秒、运动 30.46 秒、故事 53.42 秒、特效 30.13 秒，无非预期页面／控制台错误。CI 将在独立 runner 并行执行这五套，部署后只重复较短的上线冒烟。
+
+这些是本机单次功能验收，不能直接换算为截图中 GitHub runner 的加速比例。尚未推送或部署本次改动，缓存命中、五个独立 runner 的并行总耗时及公网冒烟耗时，需由下一次 Actions 运行确认；并行化会增加 runner 初始化和 artifact 下载次数。
+
 ## 2026-10-02：商贸库存与已知敌对关系闭环
 
 对应 `58ce3fc80565c5a8ed405b6661505493cc3ab8ec` 加本次工作区修改，未创建新提交或部署。生产源码 SHA-256 为 `9a208dffccdef240bcb4f6370414ca9728242e778578a12dad22bf0a31141ea0`；Core 为 `a83329fb0b49ec4a451699019e34a9a5b9407d0fa8608e6e29510dadfe03a102`，计算方法同下节。环境为 Debian 13 / Linux x64、.NET SDK 10.0.401 / 运行时 10.0.12、Avalonia 12.1.3。
@@ -18,6 +32,7 @@
 | 9876 | 107 | 120 | 220 | 2 | 12 |
 
 构建、核心／UI 日志、演化 JSON 和源码摘要位于忽略目录 `artifacts/trade-verification/`。本轮没有改动存档结构，仍为格式 5。五个默认场景未形成实际征募，不能证明长期战争平衡；核心套件中原有五个受控战争场景仍通过。没有与同一基线做成对平衡测量，不把以上统计解释为本次贸易修复带来的提升，也不将原生模拟结果当作浏览器帧率或主观趣味结论。
+
 
 ## 2026-10-02：地貌反馈、事件动画与近景观察
 
@@ -216,8 +231,10 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- \
 
 ```bash
 dotnet build -c Release
-dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build
-dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --benchmark
+python3 scripts/run-fast-tests.py
+dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --suite integration
+dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --suite long
+dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --suite all --benchmark
 bash scripts/publish-browser.sh
 ```
 
@@ -255,6 +272,7 @@ npm run test:mobile --prefix tests/browser
 npm run test:motion --prefix tests/browser
 npm run test:stories --prefix tests/browser
 npm run test:effects --prefix tests/browser
+npm run test:deploy --prefix tests/browser
 ```
 
 默认地址为 `http://127.0.0.1:8080/SeWZC.SandboxGame/`。可通过以下环境变量覆盖：
@@ -265,6 +283,7 @@ npm run test:effects --prefix tests/browser
 | `CHROMIUM_EXECUTABLE` | 使用已有 Chromium 的可执行文件路径；未设置时使用 Playwright 安装的版本 |
 | `WORLDBOX_ARTIFACT_DIR` | 浏览器脚本的证据输出目录；同时验证不同渲染方式时用于分开文件 |
 | `WORLDBOX_TEST_DISABLE_WEBGL` | 仅在值为 `1` 时为测试浏览器禁用 WebGL，用于复现软件渲染回退；默认不禁用，不改变应用渲染优先顺序 |
+| `WORLDBOX_EXPECTED_REVISION` | 上线冒烟要求的完整 Git SHA；CI 必填并等待当前版本的 HTML 生效，本地可选 |
 
 例如使用本机已有的 Chromium：
 
@@ -273,7 +292,7 @@ WORLDBOX_BASE_URL=http://127.0.0.1:8080/SeWZC.SandboxGame/ \
 CHROMIUM_EXECUTABLE=/usr/bin/chromium npm test --prefix tests/browser
 ```
 
-检查在独立浏览器上下文中运行，使用示例世界，不操作日常浏览器中的存档。截图、导出及导入样本写入 `artifacts/browser-tests`；CI 额外保存 HTTP 与测试日志，并在成功或失败时上传 `worldbox-browser-tests`。
+检查在独立浏览器上下文中运行，不操作日常浏览器中的存档。截图、导出及导入样本写入 `artifacts/browser-tests`；CI 五个独立 runner 分别上传 `worldbox-browser-tests-<suite>`，公网冒烟上传 `worldbox-live-browser-tests`。`test:deploy` 仅检查当前版本、启动、推进及小世界存档刷新恢复；完整五套功能验收在部署前保留。单机复现仍串行执行，避免运动和特效采样相互竞争。
 
 Avalonia 使用画布呈现界面。测试以 `?e2e=1` 显式启用只读 UI 快照，读取语义控件 ID、实际位置、可见性和有限界面状态，再派发真实鼠标／键盘／触摸事件；默认 URL 不公开该快照，桥不提供修改或推进世界的命令。桌面为 1440×960，触屏模拟为 390×844，并检查 844×390 旋转；按钮按下与松开间隔 80 ms。世界断言来自真实 IndexedDB 存档或下载文件，不以截图替代数据检查。固定槽位测试等待按压动画结束后，精确比较所有分类下的实际按钮矩形，不使用像素容差掩盖持续位移。
 

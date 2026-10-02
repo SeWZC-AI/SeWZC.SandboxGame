@@ -6,10 +6,22 @@ worldbox_dotnet="${WORLDBOX_DOTNET:-dotnet}"
 worldbox_publish="$PWD/artifacts/browser"
 worldbox_site="$PWD/artifacts/site"
 
+# CI has already restored the solution. Standalone local publishing still restores.
+worldbox_restore_args=()
+if [[ "${1:-}" == "--no-restore" ]]; then
+  worldbox_restore_args+=(--no-restore)
+  shift
+fi
+if (( $# > 0 )); then
+  echo "Usage: $0 [--no-restore]" >&2
+  exit 2
+fi
+
 # Clear only this script's output folders so stale assets cannot conceal a bad publish.
 rm -rf "$worldbox_publish" "$worldbox_site"
 "$worldbox_dotnet" publish src/SeWZC.WorldBox.Browser/SeWZC.WorldBox.Browser.csproj \
   -c Release -o "$worldbox_publish" \
+  "${worldbox_restore_args[@]}" \
   -p:WasmEnableThreads=false -p:RunAOTCompilation=false
 
 # Microsoft.NET.Sdk.WebAssembly emits the deployable static tree here.
@@ -23,5 +35,20 @@ cp -a "$worldbox_publish/wwwroot/." "$worldbox_site/"
 mkdir -p "$worldbox_site/licenses"
 cp src/SeWZC.WorldBox.UI/Assets/Fonts/LICENSE.txt "$worldbox_site/licenses/NotoSansSC.txt"
 touch "$worldbox_site/.nojekyll"
+# Tie the served HTML to this artifact so live checks cannot pass on an older site.
+python3 - "$worldbox_site/index.html" "${GITHUB_SHA:-$(git rev-parse HEAD)}" <<'PY'
+from pathlib import Path
+import re
+import sys
+
+index = Path(sys.argv[1])
+revision = sys.argv[2]
+if not re.fullmatch(r"[0-9a-f]{40}", revision):
+    raise SystemExit("Expected a full Git commit SHA for the published revision")
+html = index.read_text(encoding="utf-8")
+if "</head>" not in html:
+    raise SystemExit("Missing HTML head for published revision")
+index.write_text(html.replace("</head>", f'<meta name="worldbox-revision" content="{revision}">\n</head>', 1), encoding="utf-8")
+PY
 python3 scripts/check-static-site.py "$worldbox_site"
 echo "Static site is ready: $worldbox_site"

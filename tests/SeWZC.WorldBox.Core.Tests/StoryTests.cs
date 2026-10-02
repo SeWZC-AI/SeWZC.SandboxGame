@@ -65,6 +65,7 @@ internal static class StoryTests
         Check(engine.GetDiplomacy(nation.Id, engine.State.Nations[1].Id) == DiplomaticStatus.Neutral, "Delivered retreat report did not initiate ceasefire");
     }
 
+    [LongRunningTest]
     private static void LongCampaigns()
     {
         foreach (var seed in new[] { 73921, 42, 223, 17, 9876 })
@@ -185,6 +186,7 @@ internal static class StoryTests
         _ = WorldEngine.ImportJson(engine.ExportJson());
     }
 
+    [UnitTest]
     private static void Groups()
     {
         var entries = Enumerable.Range(1, 4).Select(i => new WorldEvent { Id = i, Tick = i * 10, Kind = WorldEventKind.Trade,

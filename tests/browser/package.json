@@ -2,6 +2,7 @@
   "name": "sewzc-worldbox-browser-tests",
   "private": true,
   "scripts": {
+    "test:deploy": "node deploy-smoke.cjs",
     "test": "node smoke.cjs",
     "test:mobile": "node mobile-smoke.cjs",
     "test:motion": "node motion.cjs",
