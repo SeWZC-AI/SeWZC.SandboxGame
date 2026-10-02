@@ -176,6 +176,8 @@ public sealed partial class WorldEngine
             nation.Population += settlement.Population;
             nation.Resources.Food += settlement.Resources.Food; nation.Resources.Wood += settlement.Resources.Wood;
             nation.Resources.Stone += settlement.Resources.Stone; nation.Resources.Ore += settlement.Resources.Ore;
+            nation.Resources.Alloy += settlement.Resources.Alloy; nation.Resources.EnergyCells += settlement.Resources.EnergyCells;
+            nation.Resources.Crystals += settlement.Resources.Crystals;
         }
         foreach (var tile in State.Tiles)
             if (_nations.TryGetValue(tile.NationId, out var nation)) nation.Territory++;

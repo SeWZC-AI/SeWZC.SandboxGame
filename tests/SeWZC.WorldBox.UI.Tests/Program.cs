@@ -14,6 +14,8 @@ AppBuilder.Configure<TestApp>().UseHeadless(new AvaloniaHeadlessPlatformOptions(
 
 var tests = new (string Name, Action Test)[]
 {
+    ("Advanced research choices show separate prerequisites and commit only valid projects", AdvancedResearchUi),
+    ("Advanced resource editors preserve untouched stocks and gifted factories expose requirements", AdvancedResourcesUi),
     ("Paused goal edits refresh the selected resident route immediately", GoalRouteRefresh),
     ("Empty rule numbers stay in the form without changing world state", EmptyRuleNumber),
     ("Resident detail folds survive refresh and keep targets accessible", FoldedDetails),
@@ -47,6 +49,42 @@ foreach (var (name, test) in tests)
 }
 Console.WriteLine($"{tests.Length - failures}/{tests.Length} UI checks passed");
 return failures == 0 ? 0 : 1;
+
+static void AdvancedResearchUi()
+{
+    var engine = TwoTownWorld(); var town = engine.State.Settlements[0];
+    engine.SetNationResources(town.NationId, 1000, 1000, 1000, 1000, 100, 100, 100);
+    engine.GrantFacility(town.Id, BuildingKind.Academy, town.X + 2, town.Y + 2);
+    var view = View(engine); Call(view, "OpenInspector", "infrastructure", true);
+    var before = engine.ExportJson();
+    Control<ComboBox>(view, "research-kind").SelectedItem = ResearchKind.Electrification;
+    Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("动力工厂") == true), "Research choice has no concrete unlock description");
+    Click(view, "research-start");
+    Assert(engine.ExportJson() == before, "Missing prerequisites allowed research or consumed resources");
+    engine.GrantReceivedResearch(town.Id, ResearchKind.Industry);
+    engine.GrantReceivedResearch(town.Id, ResearchKind.SignalNetwork);
+    Click(view, "research-start");
+    Assert(engine.State.Society.Research.Single(r => r.SettlementId == town.Id).ActiveProject == ResearchKind.Electrification,
+        "Valid advanced research did not start through the ordinary UI");
+}
+
+static void AdvancedResourcesUi()
+{
+    var engine = TwoTownWorld(); var town = engine.State.Settlements[0]; var resident = engine.State.Residents[0];
+    engine.SetNationResources(town.NationId, alloy: 20.25, energyCells: 5.5, crystals: 7.75);
+    var stocks = engine.State.Settlements.Select(t => (t.Resources.Alloy, t.Resources.EnergyCells, t.Resources.Crystals)).ToArray();
+    var view = View(engine); Call(view, "ShowNationEditor", town.NationId);
+    Control<TextBox>(view, "nation-name").Text = "保留双线物资";
+    Click(view, "nation-apply");
+    Assert(stocks.SequenceEqual(engine.State.Settlements.Select(t => (t.Resources.Alloy, t.Resources.EnergyCells, t.Resources.Crystals))), "Rename changed advanced resource distribution");
+    Call(view, "ShowBuildingEditor", town.Id);
+    Control<ComboBox>(view, "building-kind").SelectedItem = BuildingKind.Fabricator;
+    Control<NumericUpDown>(view, "building-x").Value = town.X + 2; Control<NumericUpDown>(view, "building-y").Value = town.Y + 2;
+    Control<CheckBox>(view, "building-gift").IsChecked = true;
+    Click(view, "building-apply");
+    var factory = engine.State.Society.Buildings.Single(b => b.Kind == BuildingKind.Fabricator);
+    Assert(factory.IsCompleted && engine.GetProductionStatus(factory.Id).Contains("知识"), "Gift bypassed operating prerequisites");
+}
 
 static void GoalRouteRefresh()
 {

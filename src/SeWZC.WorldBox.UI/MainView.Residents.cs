@@ -359,8 +359,13 @@ public sealed partial class MainView
         if (!int.TryParse(field.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value)) throw new ArgumentException("请输入有效整数。"); return value;
     }
     private NumericUpDown[] StockFields(StackPanel panel, ResourceStock stock, string prefix) =>
-        [Field(panel, "粮食", stock.Food, prefix + "-food"), Field(panel, "木材", stock.Wood, prefix + "-wood"), Field(panel, "石材", stock.Stone, prefix + "-stone"), Field(panel, "矿产", stock.Ore, prefix + "-ore")];
-    private static ResourceStock ReadStock(NumericUpDown[] fields) => new() { Food = Number(fields[0]), Wood = Number(fields[1]), Stone = Number(fields[2]), Ore = Number(fields[3]) };
+        AdvancementRules.Resources.Select(kind => Field(panel, ResourceStock.Name(kind), stock.Get(kind), prefix + "-" + kind.ToString().ToLowerInvariant())).ToArray();
+    private static ResourceStock ReadStock(NumericUpDown[] fields)
+    {
+        var stock = new ResourceStock();
+        for (var i = 0; i < fields.Length; i++) stock.Set(AdvancementRules.Resources[i], Number(fields[i]));
+        return stock;
+    }
 }
 
 [JsonSerializable(typeof(AgentState))]
