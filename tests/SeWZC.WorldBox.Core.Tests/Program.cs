@@ -11,6 +11,9 @@ if (evolutionOption >= 0)
 }
 
 // A dependency-free executable suite, runnable with dotnet run --project tests/SeWZC.WorldBox.Core.Tests.
+if (args.Contains("--profile-simulation"))
+    return SimulationPerformance.Run(args, CreateBenchmarkWorld);
+
 var fixtureOption = Array.IndexOf(args, "--export-browser-fixture");
 if (fixtureOption >= 0)
 {
@@ -48,7 +51,7 @@ var tests = new (string Name, Action Run)[]
     ("spawning on owned land joins its existing nation", SpawnOnOwnedLand),
     ("food availability changes population survival", FoodAvailability),
     ("war leads to casualties or territorial capture", War)
-}.Concat(AgentBehaviorTests.Cases).Concat(EditorAndMigrationTests.Cases).Concat(SocietyBehaviorTests.Cases()).Concat(EvolutionTests.Cases).ToArray();
+}.Concat(AgentBehaviorTests.Cases).Concat(EditorAndMigrationTests.Cases).Concat(SocietyBehaviorTests.Cases()).Concat(EvolutionTests.Cases).Concat(WorkQueryTests.Cases).ToArray();
 var filterOption = Array.IndexOf(args, "--filter");
 if (filterOption >= 0 && filterOption + 1 < args.Length)
     tests = tests.Where(t => t.Name.Contains(args[filterOption + 1], StringComparison.OrdinalIgnoreCase)).ToArray();
@@ -501,7 +504,7 @@ static WorldEngine FlatWorld()
     return engine;
 }
 
-static WorldEngine CreateBenchmarkWorld()
+static WorldEngine CreateBenchmarkWorld(int population = 2000, bool wars = true)
 {
     var engine = WorldEngine.Create(451, 256, 256, false);
     engine.State.NaturalDisasters = false;
@@ -512,10 +515,19 @@ static WorldEngine CreateBenchmarkWorld()
     }
     for (var row = 0; row < 4; row++)
     for (var column = 0; column < 4; column++)
-        engine.SpawnResidents(32 + column * 64, 32 + row * 64, (RaceKind)((row + column) % 4), 125);
+    {
+        var townIndex = row * 4 + column;
+        var remaining = population / 16 + (townIndex < population % 16 ? 1 : 0);
+        while (remaining > 0)
+        {
+            var count = Math.Min(200, remaining);
+            engine.SpawnResidents(32 + column * 64, 32 + row * 64, (RaceKind)((row + column) % 4), count);
+            remaining -= count;
+        }
+    }
     var nationIds = engine.State.Nations.Select(n => n.Id).ToArray();
     foreach (var id in nationIds) engine.SetNationResources(id, 100000, 10000, 10000, 10000);
-    for (var i = 0; i < nationIds.Length; i += 2)
+    for (var i = 0; wars && i < nationIds.Length; i += 2)
         engine.SetDiplomacy(nationIds[i], nationIds[i + 1], DiplomaticStatus.War);
     return engine;
 }
