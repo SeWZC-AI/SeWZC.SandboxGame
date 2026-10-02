@@ -116,10 +116,10 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Editor, $"{previous}更名为{name}。");
     }
 
-    public void SetNationResources(int nationId, double? food = null, double? wood = null, double? stone = null, double? ore = null)
+    public void SetNationResources(int nationId, double? food = null, double? wood = null, double? stone = null, double? ore = null, double? alloy = null, double? energyCells = null, double? crystals = null)
     {
         if (!_nations.ContainsKey(nationId)) throw new ArgumentException("国家不存在。", nameof(nationId));
-        var amounts = new[] { food, wood, stone, ore };
+        var amounts = new[] { food, wood, stone, ore, alloy, energyCells, crystals };
         if (amounts.Any(v => v.HasValue && (!double.IsFinite(v.Value) || v.Value < 0 || v.Value > 1_000_000))) throw new ArgumentOutOfRangeException(nameof(food), "资源须在 0 到 1,000,000 之间。");
         if (amounts.All(v => !v.HasValue)) return;
         var towns = State.Settlements.Where(s => s.NationId == nationId).ToArray();
@@ -130,6 +130,9 @@ public sealed partial class WorldEngine
             if (wood is { } w) town.Resources.Wood = w / towns.Length;
             if (stone is { } s) town.Resources.Stone = s / towns.Length;
             if (ore is { } o) town.Resources.Ore = o / towns.Length;
+            if (alloy is { } a) town.Resources.Alloy = a / towns.Length;
+            if (energyCells is { } e) town.Resources.EnergyCells = e / towns.Length;
+            if (crystals is { } c) town.Resources.Crystals = c / towns.Length;
         }
         RefreshTotals();
         AddEvent(WorldEventKind.Editor, $"{_nations[nationId].Name}的资源储备已调整。");

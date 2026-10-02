@@ -86,6 +86,30 @@ public sealed partial class WorldMapControl
                     Box(HealingBrush, -1, -1, 3, 1);
                     Box(HealingBrush, 0, -2, 1, 3);
                     break;
+                case BuildingKind.Foundry:
+                case BuildingKind.PowerPlant:
+                case BuildingKind.Fabricator:
+                    Box(StoneBrush, -5, -5, 10, 9);
+                    Box(AcademyBrush, -5, -7, 10, 2);
+                    Box(StoneBrush, 2, -13, 2, 6);
+                    Box(building.Kind == BuildingKind.Foundry ? CargoBrush : AcademyBrush, -3, -3, 3, 3);
+                    if (building.Kind == BuildingKind.Fabricator) Box(MessageBrush, 1, -3, 2, 3);
+                    break;
+                case BuildingKind.AutomatedFarm:
+                    Box(StoneBrush, -5, -4, 10, 8);
+                    Box(FarmBrush, -4, -3, 8, 6);
+                    Box(AcademyBrush, -5, -6, 10, 2);
+                    for (var row = 0; row < 3; row++) Box(ProgressBrush, -3, -3 + row * 2.5, 6, 1);
+                    break;
+                case BuildingKind.Crystallizer:
+                case BuildingKind.RunicGarden:
+                case BuildingKind.AetherForge:
+                    Box(StoneBrush, -4, 0, 8, 4);
+                    Box(building.Kind == BuildingKind.RunicGarden ? FarmBrush : ArcaneBrush, -4, -5, 8, 5);
+                    Box(ArcaneBrush, -2, -10, 4, 7);
+                    Box(MessageBrush, -1, -8, 2, 3);
+                    if (building.Kind == BuildingKind.AetherForge) { Box(ArcaneBrush, -5, -7, 2, 7); Box(ArcaneBrush, 3, -7, 2, 7); }
+                    break;
             }
         }
     }

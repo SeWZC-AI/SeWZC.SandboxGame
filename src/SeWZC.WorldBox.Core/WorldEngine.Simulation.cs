@@ -36,6 +36,8 @@ public sealed partial class WorldEngine
     {
         stock.Food = Math.Clamp(stock.Food, 0, 1_000_000); stock.Wood = Math.Clamp(stock.Wood, 0, 1_000_000);
         stock.Stone = Math.Clamp(stock.Stone, 0, 1_000_000); stock.Ore = Math.Clamp(stock.Ore, 0, 1_000_000);
+        stock.Alloy = Math.Clamp(stock.Alloy, 0, 1_000_000); stock.EnergyCells = Math.Clamp(stock.EnergyCells, 0, 1_000_000);
+        stock.Crystals = Math.Clamp(stock.Crystals, 0, 1_000_000);
     }
 
     private void UpdateResidents()

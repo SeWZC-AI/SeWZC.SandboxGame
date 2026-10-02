@@ -77,6 +77,7 @@ public sealed partial class WorldEngine
         var research = State.Society.Research.First(r => r.SettlementId == town.Id);
         var construction = State.Society.Buildings.FirstOrDefault(b => b.SettlementId == town.Id && !b.IsCompleted);
         var stage = research.Completed.Count >= 3 ? "区域网络" : research.Completed.Count > 0 ? "专业分工" : town.Resources.Food >= town.Population * 2 ? "积累余粮" : "建立家园";
+        if (research.Completed.Any(k => AdvancementRules.For(k) is not null)) stage = GetAdvancementStage(town.Id);
         if (construction is not null)
             return new(stage, "修建" + BuildingName(construction.Kind), State.Tick - construction.LastWorkedTick > 12 ? "等待工人实际到场；可查看居民任务" : "工人正在现场施工", construction.ConstructionProgress / construction.ConstructionRequired);
         if (research.ActiveProject is { } project)
@@ -99,19 +100,21 @@ public sealed partial class WorldEngine
         if (tile.NationId != 0 && tile.NationId != town.NationId) return "此处属于其他国家";
         if (State.Society.Buildings.Count >= MaxBuildings) return "世界建筑数量已达上限";
         if (State.Society.Buildings.Any(b => b.X == x && b.Y == y)) return "此处已有建筑";
-        if (kind == BuildingKind.ArcaneSanctum && !State.Society.MagicEnabled) return "规则已关闭新的魔法发展";
+        if ((kind == BuildingKind.ArcaneSanctum || AdvancementRules.For(kind)?.Magic == true) && !State.Society.MagicEnabled) return "规则已关闭新的魔法发展";
         if (gift) return null;
         if (kind == BuildingKind.Waystation && !HasResearch(settlementId, ResearchKind.Logistics)) return "当地尚未掌握驿路运输";
         if (kind == BuildingKind.SignalTower && !HasResearch(settlementId, ResearchKind.SignalNetwork)) return "当地尚未掌握信号网络";
         if (kind == BuildingKind.ArcaneSanctum && !HasResearch(settlementId, ResearchKind.ArcaneArts)) return "当地尚未掌握奥术基础";
+        if (AdvancementRules.For(kind) is { } advancement && (!HasResearch(settlementId, advancement.Research)
+            || advancement.Prerequisites.Any(p => !HasResearch(settlementId, p)))) return "当地尚未掌握" + ResearchName(advancement.Research) + "及其前置";
         return MissingResources(town.Resources, GetBuildingCost(kind));
     }
 
     public static string? MissingResources(ResourceStock stock, ResourceStock cost)
     {
         var missing = new List<string>();
-        foreach (var (name, have, need) in new[] { ("粮食", stock.Food, cost.Food), ("木材", stock.Wood, cost.Wood), ("石材", stock.Stone, cost.Stone), ("矿石", stock.Ore, cost.Ore) })
-            if (have + .000001 < need) missing.Add($"{name}缺 {need - have:0.#}");
+        foreach (var kind in AdvancementRules.Resources)
+            if (stock.Get(kind) + .000001 < cost.Get(kind)) missing.Add($"{ResourceStock.Name(kind)}缺 {cost.Get(kind) - stock.Get(kind):0.#}");
         return missing.Count == 0 ? null : string.Join(" · ", missing);
     }
 

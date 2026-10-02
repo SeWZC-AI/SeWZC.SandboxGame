@@ -109,6 +109,9 @@ public sealed partial class WorldEngine
         home.Resources.Wood += person.Inventory.Wood; person.Inventory.Wood = 0;
         home.Resources.Stone += person.Inventory.Stone; person.Inventory.Stone = 0;
         home.Resources.Ore += person.Inventory.Ore; person.Inventory.Ore = 0;
+        home.Resources.Alloy += person.Inventory.Alloy; person.Inventory.Alloy = 0;
+        home.Resources.EnergyCells += person.Inventory.EnergyCells; person.Inventory.EnergyCells = 0;
+        home.Resources.Crystals += person.Inventory.Crystals; person.Inventory.Crystals = 0;
         if (person.Agent.Goal.Kind == AgentGoalKind.ReturnHome && person.Agent.DestinationSettlementId == 0)
             person.Agent.MissionOriginSettlementId = 0;
     }
@@ -136,6 +139,11 @@ public sealed partial class WorldEngine
         }
         if (agent.Goal.Kind == AgentGoalKind.Migrate && choices.Count == 0 && State.Tick - agent.Goal.StartedTick < 360)
         { agent.NextThinkTick = State.Tick + 6; return; }
+        if (agent.Goal.Kind == AgentGoalKind.Work && choices.Count == 0 && person.Hunger < 65 && agent.Fatigue < 60
+            && State.Society.Buildings.FirstOrDefault(b => b.Id == agent.Goal.TargetEntityId && b.SettlementId == home.Id) is { } factory
+            && AdvancementRules.For(factory.Kind) is { } recipe && CanProduce(factory, person, recipe)
+            && MissingResources(person.Inventory, recipe.Input) is null)
+        { agent.NextThinkTick = State.Tick + 6; return; }
         var activeMission = agent.DestinationSettlementId != 0 && State.Tick - agent.MissionStartedTick < 360
             && agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage or AgentGoalKind.Petition;
         if (activeMission && choices.Count == 0 && !(person.Hunger > 85 && person.Inventory.Food < 0.05))
@@ -153,7 +161,8 @@ public sealed partial class WorldEngine
         if (person.Inventory.Food < 0.3 && (foodFact is null || foodFact.Value > 0 || AgentFactReliability(foodFact) < 0.5))
             choices.Add(new(AgentGoalKind.Eat, home.X, home.Y, 48 + person.Hunger,
                 foodFact is null ? "随身口粮不足，返回家园查看粮仓" : $"口粮不足；上次获知家乡有 {foodFact.Value:0.0} 份粮食", foodFact, home.Id));
-        if (person.Inventory.Food >= Math.Max(4, TravelReserve(person) + 1) || person.Inventory.Wood + person.Inventory.Stone + person.Inventory.Ore >= 3)
+        if (person.Inventory.Food >= Math.Max(4, TravelReserve(person) + 1) || person.Inventory.Wood + person.Inventory.Stone + person.Inventory.Ore >= 3
+            || person.Inventory.Alloy + person.Inventory.EnergyCells + person.Inventory.Crystals > 0)
             choices.Add(new(AgentGoalKind.ReturnHome, home.X, home.Y, 75 + personality.Diligence * 12,
                 "背包已有产物，亲自运回家园入库", null, home.Id));
         if (agent.MissionOriginSettlementId != 0 && agent.DestinationSettlementId == 0
@@ -183,7 +192,7 @@ public sealed partial class WorldEngine
         if (person.Age >= 14 && person.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner or Profession.Builder or Profession.Scholar or Profession.Mage
             && FindLocalWorkTarget(person) is { } work)
         {
-            var kind = person.Profession == Profession.Scholar ? AgentGoalKind.Study : person.Profession == Profession.Mage ? AgentGoalKind.TrainMagic : AgentGoalKind.Work;
+            var kind = AdvancementRules.For(work.Kind) is not null ? AgentGoalKind.Work : person.Profession == Profession.Scholar ? AgentGoalKind.Study : person.Profession == Profession.Mage ? AgentGoalKind.TrainMagic : AgentGoalKind.Work;
             choices.Add(new(kind, work.X, work.Y, 42 + personality.Diligence * 12
                 + (person.Profession == Profession.Farmer && foodFact is { Value: < 12 } ? 18 * AgentFactReliability(foodFact) : 0),
                 kind == AgentGoalKind.Study ? "附近有可参与的研究设施，前往学习" : kind == AgentGoalKind.TrainMagic ? "附近有可训练的魔法设施" : "附近有实际施工或生产工作", EntityId: work.Id));
@@ -286,6 +295,7 @@ public sealed partial class WorldEngine
             ActOnAgentMission(person, home);
             return;
         }
+        if (ActOnProduction(person, home)) return;
         var interactionRange = goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest or AgentGoalKind.ReturnHome or AgentGoalKind.Socialize ? 1 : 0;
         if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > interactionRange)
         {

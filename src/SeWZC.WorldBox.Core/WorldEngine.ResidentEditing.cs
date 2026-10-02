@@ -52,7 +52,7 @@ public sealed partial class WorldEngine
         if (patch.Y is { } y) candidate.Y = y;
         if (patch.ArmyId is { } army) candidate.ArmyId = army;
         if (patch.SicknessTicks is { } sickness) candidate.SicknessTicks = sickness;
-        if (patch.Inventory is { } stock) candidate.Inventory = new ResourceStock { Food = stock.Food, Wood = stock.Wood, Stone = stock.Stone, Ore = stock.Ore };
+        if (patch.Inventory is { } stock) candidate.Inventory = stock.Copy();
         if (patch.Profession is { } profession) candidate.Profession = profession;
         if (patch.Age is { } age) candidate.Age = age;
         if (patch.Health is { } health) candidate.Health = health;

@@ -35,6 +35,7 @@
 | 有限战争、战报与故事观察 | Core 中 `WorldEngine.Campaigns.cs`、`WorldEngine.Stories.cs`、`WorldState.Stories.cs`；UI 中 `MainView.Stories.cs` | `StoryTests.cs`、`tests/browser/stories.cjs` |
 | 世界规则、发展与自主外交 | Core 中 `WorldEngine.Evolution.cs` | `EvolutionTests.cs`、`--evolution` 长程探查 |
 | 目标、知识与通信 | Core 中 `WorldEngine.Agents.cs`、`WorldEngine.Communication.cs` | [AgentBehaviorTests.cs](../tests/SeWZC.WorldBox.Core.Tests/AgentBehaviorTests.cs) |
+| 时代路线、配方与加工运输 | Core 中 `AdvancementRules.cs`、`WorldEngine.Advancement.cs`；UI 中 `MainView.Society.cs` | `AdvancementTests.cs`、`tests/browser/advancement.cjs` |
 | 制度、文化、研究、建设与魔法 | Core 中 `WorldEngine.Society.cs`、`SocietyRules.cs` | [SocietyBehaviorTests.cs](../tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs) |
 | 角色编辑、存档校验 | Core 中 `WorldEngine.ResidentEditing.cs`、`WorldEngine.ValidationV2.cs`、`WorldEngine.Persistence.cs`、`WorldJsonContext.cs` | [EditorAndMigrationTests.cs](../tests/SeWZC.WorldBox.Core.Tests/EditorAndMigrationTests.cs)、`Program.cs`；文件名不表示支持旧存档迁移 |
 | 界面、工具与表单 | [UI](../src/SeWZC.WorldBox.UI/) 中 `MainView*.cs` | [smoke.cjs](../tests/browser/smoke.cjs)、[mobile-smoke.cjs](../tests/browser/mobile-smoke.cjs) |
@@ -95,7 +96,7 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 
 核心测试方法用 `[UnitTest]` 标记聚焦且有界的命令／查询／规则检查；未标记的方法归入 `integration`，避免新增长程场景无意挤入快速套件。`[LongRunningTest]` 标记混合编辑随机回归、五种子 6,000 tick 战争、大世界发展。CLI 默认 `unit`，另支持 `--suite integration|long|all`、`--list` 和 `--filter <名称片段>`；筛选零项视为错误。不得仅为达到耗时目标把普通单元标成集成，应先缩小夹具或直接构造前置状态。
 
-日常 CI 执行快速、普通集成和五套浏览器检查；长程回归保留原种子、步数与断言，通过 Actions 手动输入 `full_regression=true` 或本地 `--suite long` 运行。涉及战争长程恢复、自主发展或随机编辑存档的修改必须补跑对应长程回归。全部核心检查使用 `--suite all`。
+日常 CI 执行快速、普通集成和六套浏览器检查；长程回归保留原种子、步数与断言，通过 Actions 手动输入 `full_regression=true` 或本地 `--suite long` 运行。涉及战争长程恢复、自主发展或随机编辑存档的修改必须补跑对应长程回归。全部核心检查使用 `--suite all`。
 
 `SeWZC.WorldBox.UI.Tests` 使用 Avalonia Headless 运行共享界面的状态与控件事件回归，纳入解决方案和 CI。它适合精确复现对象消亡、编辑未变字段、世界切换等边界；真实浏览器仍负责验证裁剪发布、渲染、触屏与存储。
 
@@ -117,7 +118,7 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 
 当前工作流自动验证 `main` 推送与 PR，其他分支可手动运行，避免功能分支 push／PR 双跑。CI 的 `scripts/ci-build.slnf` 只构建桌面与测试依赖，浏览器在 `publish` 阶段构建；新增项目时同步维护该筛选文件。CI 发布传 `--no-restore`，本地独立发布仍自动还原。
 
-五套浏览器检查下载同一静态产物，在五个独立 runner 并行执行；部署依赖全部检查成功。只有 `main` 非 PR 运行会部署，公网仅运行 `deploy-smoke.cjs`，校验 HTML 提交标记、渲染、模拟推进、存档和刷新恢复，不重复整套功能回归。静态产物的提交标记由发布脚本生成，CI 使用 `GITHUB_SHA`。推送授权沿用当前任务与会话约定；本指南不增加新的授权，也不要求重复确认已有授权。已部署与已通过公网验收是两个状态，报告时分别说明。
+六套浏览器检查下载同一静态产物，在六个独立 runner 并行执行；部署依赖全部检查成功。只有 `main` 非 PR 运行会部署，公网仅运行 `deploy-smoke.cjs`，校验 HTML 提交标记、渲染、模拟推进、存档和刷新恢复，不重复整套功能回归。静态产物的提交标记由发布脚本生成，CI 使用 `GITHUB_SHA`。推送授权沿用当前任务与会话约定；本指南不增加新的授权，也不要求重复确认已有授权。已部署与已通过公网验收是两个状态，报告时分别说明。
 
 ## 文档随行为一起维护
 

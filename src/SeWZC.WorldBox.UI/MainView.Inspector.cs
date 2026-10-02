@@ -152,7 +152,7 @@ public sealed partial class MainView
     private string ResidentName(int id) => _engine.GetResident(id)?.Name ?? (id == 0 ? "未指定" : $"居民 #{id}");
     private string TownName(int id) => _engine.State.Settlements.FirstOrDefault(t => t.Id == id)?.Name ?? (id == 0 ? "无" : $"聚落 #{id}");
     private static string DateLabel(long tick) => tick < 0 ? "尚无记录" : $"第 {1 + tick / 120} 年 · {1 + tick % 120} 日";
-    private static string StockLabel(ResourceStock stock) => $"粮 {stock.Food:F0} · 木 {stock.Wood:F0} · 石 {stock.Stone:F0} · 矿 {stock.Ore:F0}";
+    private static string StockLabel(ResourceStock stock) => $"粮 {stock.Food:F0} · 木 {stock.Wood:F0} · 石 {stock.Stone:F0} · 矿 {stock.Ore:F0}\n合金 {stock.Alloy:F1} · 动力单元 {stock.EnergyCells:F1} · 魔晶 {stock.Crystals:F1}";
 
     private void BuildOverview(StackPanel panel)
     {

@@ -12,7 +12,7 @@ public enum WorldEventKind { Founding, Growth, Trade, Diplomacy, War, Disaster, 
 
 public sealed partial class WorldState
 {
-    [JsonRequired] public int FormatVersion { get; set; } = 5;
+    [JsonRequired] public int FormatVersion { get; set; } = 6;
     public int Seed { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
@@ -64,7 +64,7 @@ public sealed partial class Resident
     public string Trait { get; set; } = "勤劳";
 }
 
-public sealed class ResourceStock
+public sealed partial class ResourceStock
 {
     public double Food { get; set; }
     public double Wood { get; set; }

@@ -18,6 +18,7 @@
 | [0010](0010-real-browser-verification.md) | 真实浏览器输入、只读测试快照与部署后验证 | 采用 |
 | [0011](0011-evolution-and-map-tools.md) | 自主文明与可收起的地图工具 | 采用 |
 | [0012](0012-campaigns-and-stories.md) | 有限战争、实际战报与只读故事观察 | 采用 |
+| [0013](0013-independent-advancement.md) | 科技与魔法并行发展，保持各自的生产基础 | 采用 |
 
 ## 何时新增或替代
 
