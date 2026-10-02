@@ -4,8 +4,11 @@
              RequestedThemeVariant="Dark">
   <Application.Styles>
     <FluentTheme />
-    <Style Selector="TextBlock">
+    <!-- String content in CheckBox uses AccessText, a TextBlock subclass. -->
+    <Style Selector=":is(TextBlock)">
       <Setter Property="FontFamily" Value="avares://SeWZC.WorldBox.UI/Assets/Fonts/NotoSansSC.otf#Noto Sans CJK SC" />
+    </Style>
+    <Style Selector="TextBlock">
       <Setter Property="Foreground" Value="#E9EFEB" />
     </Style>
     <Style Selector="Button">
