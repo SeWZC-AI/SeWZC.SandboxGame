@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.Json;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -20,6 +21,11 @@ var tests = new (string Name, Action Test)[]
     ("Editing one national resource preserves other local stocks", EditOneResource),
     ("Partial national resource commands validate atomically", ResourceValidation),
     ("Archived identity edits retain historical home and army", ArchivedIdentity),
+    ("Personality edits preserve automatic building work targets", AutomaticWorkGoal),
+    ("Study and magic goals select facilities of the appropriate kind", ResearchAndMagicGoals),
+    ("Personality edits preserve goals whose historical targets disappeared", HistoricalGoals),
+    ("Personality edits preserve active delivery tasks and supplies", ActiveMissionGoal),
+    ("Invalid goal edits leave the complete world unchanged", InvalidGoalEdit),
     ("Replacing and undoing a world cancel pending touch placement", ReplaceWorldPlacement),
     ("Out-of-bounds placement cannot mutate a world", PlacementBounds),
     ("Abandoned map picker cannot reopen an empty modal", MapPickerLifecycle)
@@ -137,6 +143,142 @@ static void ArchivedIdentity()
     Assert(edited.Name == "Remembered resident", "Historical identity edit must succeed without a living home or army");
     Assert(edited.SettlementId == homeId && edited.ArmyId == 123456, "Name-only edits must retain historical references");
     Assert(!Field<Border>(view, "_modal").IsVisible, "Successful archive edit must close the form");
+}
+
+static void AutomaticWorkGoal()
+{
+    var (engine, id, building) = WorkingWorld(Profession.Farmer);
+    Assert(engine.GetResident(id)!.Agent.Goal.Kind == AgentGoalKind.Work, "The farmer must autonomously choose building work");
+    EditPersonalityOnly(engine, id, building.Id);
+}
+
+static void ResearchAndMagicGoals()
+{
+    foreach (var profession in new[] { Profession.Scholar, Profession.Mage })
+    {
+        var (engine, id, building) = WorkingWorld(profession);
+        var kind = profession == Profession.Scholar ? AgentGoalKind.Study : AgentGoalKind.TrainMagic;
+        Assert(engine.GetResident(id)!.Agent.Goal.Kind == kind, "Specialists must autonomously target the expected work kind");
+        var view = EditPersonalityOnly(engine, id, building.Id);
+        Click(view, "resident-goal-edit");
+        var choices = Control<ComboBox>(view, "resident-goal-entity").ItemsSource!.Cast<object>().Select(ChoiceId).Where(value => value != 0).ToArray();
+        Assert(choices.Length > 0 && choices.All(value => engine.State.Society.Buildings.Any(b => b.Id == value
+            && b.Kind == (kind == AgentGoalKind.Study ? BuildingKind.Academy : BuildingKind.ArcaneSanctum))),
+            "The goal picker offered residents or an inappropriate facility type");
+        var before = engine.ExportJson();
+        Control<ComboBox>(view, "resident-goal").SelectedItem = AgentGoalKind.Work;
+        Assert(engine.ExportJson() == before, "Changing the form's goal type must not start a task before application");
+        Assert(Control<ComboBox>(view, "resident-goal-entity").ItemsSource!.Cast<object>().Select(ChoiceId)
+            .Any(value => engine.State.Society.Buildings.Any(b => b.Id == value && b.Kind == BuildingKind.Farm)),
+            "Switching to work did not rebuild the facility choices");
+        Call(view, "CloseModal");
+    }
+}
+
+static void HistoricalGoals()
+{
+    var (engine, id, building) = WorkingWorld(Profession.Farmer);
+    var home = engine.State.Settlements.Single();
+    var returning = engine.State.Residents.First(person => person.Id != id);
+    var mind = JsonSerializer.Deserialize<AgentState>(engine.ExportResidentMind(returning.Id))!;
+    mind.Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome, TargetSettlementId = home.Id,
+        TargetX = home.X, TargetY = home.Y, StartedTick = engine.State.Tick, ReviewTick = engine.State.Tick + 20 };
+    engine.EditResident(returning.Id, new ResidentEdit { Agent = mind });
+    engine.SpawnResidents(44, 32, RaceKind.Elf, 2);
+    foreach (var resident in engine.State.Residents.Where(person => person.SettlementId == home.Id).ToArray())
+        engine.EditResident(resident.Id, new ResidentEdit { Age = 91, Health = .1 });
+    engine.Tick();
+    Assert(engine.State.Settlements.All(town => town.Id != home.Id)
+        && engine.State.Society.Buildings.All(item => item.Id != building.Id), "The historical targets must disappear normally with their empty town");
+    Assert(engine.State.ArchivedResidents.Any(person => person.Id == id)
+        && engine.State.ArchivedResidents.Any(person => person.Id == returning.Id), "The fixture must retain both deceased residents");
+    EditPersonalityOnly(engine, id, building.Id);
+    var view = EditPersonalityOnly(engine, returning.Id, 0);
+    Click(view, "resident-goal-edit");
+    Assert(ChoiceId(Control<ComboBox>(view, "resident-goal-town").SelectedItem!) == home.Id,
+        "The extinct target town was replaced with a living town or cleared");
+    Call(view, "CloseModal");
+}
+
+static void ActiveMissionGoal()
+{
+    var engine = TwoTownWorld();
+    var courier = engine.State.Residents[0];
+    var home = engine.State.Settlements.First(town => town.Id == courier.SettlementId);
+    var target = engine.State.Settlements.First(town => town.Id != home.Id);
+    var mind = JsonSerializer.Deserialize<AgentState>(engine.ExportResidentMind(courier.Id))!;
+    mind.Goal = new AgentGoal { Kind = AgentGoalKind.DeliverMessage, TargetSettlementId = target.Id,
+        TargetX = target.X, TargetY = target.Y, ReviewTick = 100, PlayerDirected = true };
+    engine.EditResident(courier.Id, new ResidentEdit { X = home.X, Y = home.Y, Agent = mind });
+    engine.Tick();
+    Assert(engine.GetResident(courier.Id)!.Agent.DestinationSettlementId == target.Id, "The courier must have an actual active task");
+    EditPersonalityOnly(engine, courier.Id, 0);
+}
+
+static void InvalidGoalEdit()
+{
+    var (engine, id, _) = WorkingWorld(Profession.Farmer);
+    var view = View(engine);
+    Call(view, "OpenResident", id);
+    Click(view, "resident-goal-edit");
+    var before = engine.ExportJson();
+    Control<TextBox>(view, "resident-goal-reason").Text = new string('x', 401);
+    Control<NumericUpDown>(view, "resident-courage").Value = .01m;
+    Click(view, "resident-goal-apply");
+    Assert(Field<Border>(view, "_modal").IsVisible && engine.ExportJson() == before,
+        "An invalid goal reason partially committed its accompanying personality edit");
+}
+
+static MainView EditPersonalityOnly(WorldEngine engine, int id, int targetEntity)
+{
+    var person = engine.GetResident(id)!;
+    var beforeGoal = JsonSerializer.Serialize(person.Agent.Goal);
+    var beforeMission = MissionSnapshot(person);
+    var beforeStocks = Stocks(engine);
+    var view = View(engine);
+    Call(view, "OpenResident", id);
+    Click(view, "resident-goal-edit");
+    Assert(ChoiceId(Control<ComboBox>(view, "resident-goal-entity").SelectedItem!) == targetEntity,
+        "The current facility or historical reference is not selected in the real goal form");
+    Control<NumericUpDown>(view, "resident-courage").Value = .01m;
+    Click(view, "resident-goal-apply");
+    person = engine.GetResident(id)!;
+    Assert(person.Agent.Personality.Courage == .01 && !Field<Border>(view, "_modal").IsVisible,
+        "The real goal form failed to apply a personality-only edit");
+    Assert(JsonSerializer.Serialize(person.Agent.Goal) == beforeGoal,
+        "A personality-only edit rewrote the goal's reference, progress, deadline or player-directed flag");
+    Assert(MissionSnapshot(person) == beforeMission && Stocks(engine).SequenceEqual(beforeStocks),
+        "A personality-only edit restarted a mission or altered carried goods, messages or town supplies");
+    var saved = engine.ExportJson();
+    Assert(WorldEngine.ImportJson(saved).ExportJson() == saved, "The edited goal or historical reference failed its exact save roundtrip");
+    return view;
+}
+
+static string MissionSnapshot(Resident person) => JsonSerializer.Serialize(new { person.Inventory,
+    person.Agent.DestinationSettlementId, person.Agent.MissionOriginSettlementId, person.Agent.MissionStartedTick,
+    person.Agent.MissionRetryTick, person.Agent.CarriedMessages });
+static int ChoiceId(object choice) => (int)choice.GetType().GetProperty("Id")!.GetValue(choice)!;
+
+static (WorldEngine Engine, int ResidentId, Building Target) WorkingWorld(Profession profession)
+{
+    var engine = WorldEngine.Create(77, 64, 64, false);
+    foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 80; }
+    engine.State.NaturalDisasters = false;
+    engine.SpawnResidents(16, 32, RaceKind.Human, 3);
+    var home = engine.State.Settlements.Single();
+    engine.SetNationResources(home.NationId, 1000, 1000, 1000, 1000);
+    if (profession == Profession.Scholar)
+    {
+        engine.GrantFacility(home.Id, BuildingKind.Academy, home.X + 2, home.Y);
+        engine.StartResearch(home.Id, ResearchKind.Agriculture);
+    }
+    if (profession == Profession.Mage) engine.GrantFacility(home.Id, BuildingKind.ArcaneSanctum, home.X + 2, home.Y);
+    var id = engine.State.Residents[0].Id;
+    engine.EditResident(id, new ResidentEdit { Profession = profession, X = home.X, Y = home.Y,
+        Inventory = new ResourceStock { Food = 1 }, MagicTalent = 50 });
+    engine.Tick();
+    var target = engine.State.Society.Buildings.Single(building => building.Id == engine.GetResident(id)!.Agent.Goal.TargetEntityId);
+    return (engine, id, target);
 }
 
 static void ReplaceWorldPlacement()

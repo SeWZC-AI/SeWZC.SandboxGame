@@ -54,7 +54,8 @@ var tests = new (string Name, Action Run)[]
     ("food availability changes population survival", FoodAvailability),
     ("war leads to casualties or territorial capture", War)
 }.Concat(AgentBehaviorTests.Cases).Concat(EditorAndMigrationTests.Cases).Concat(SocietyBehaviorTests.Cases()).Concat(EvolutionTests.Cases).Concat(WorkQueryTests.Cases)
-    .Concat(PersistenceRegressionTests.Cases).Concat(SocietyRegressionTests.Cases).Concat(AgentRegressionTests.Cases).ToArray();
+    .Concat(PersistenceRegressionTests.Cases).Concat(SocietyRegressionTests.Cases).Concat(AgentRegressionTests.Cases)
+    .Concat(DiplomacyKnowledgeTests.Cases).ToArray();
 var filterOption = Array.IndexOf(args, "--filter");
 if (filterOption >= 0 && filterOption + 1 < args.Length)
     tests = tests.Where(t => t.Name.Contains(args[filterOption + 1], StringComparison.OrdinalIgnoreCase)).ToArray();
