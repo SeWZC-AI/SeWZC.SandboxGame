@@ -4,6 +4,10 @@ public enum WorldPreset { Flourishing, LivingWorld, Turbulent }
 
 public sealed record WorldRules
 {
+    public bool ResourceRegeneration { get; set; } = true;
+    public bool FireSpread { get; set; } = true;
+    public double GatheringRate { get; set; } = 1;
+    public double CombatDamageRate { get; set; } = 1;
     public bool Births { get; set; } = true;
     public bool Aging { get; set; } = true;
     public bool Hunger { get; set; } = true;
@@ -51,7 +55,8 @@ public sealed partial class WorldEngine
 {
     private static void ValidateWorldRules(WorldRules? rules)
     {
-        if (rules is null || rules.Conflict is < 0 or > 3 || rules.DisasterFrequency is < 0 or > 3
+        if (rules is null || !double.IsFinite(rules.GatheringRate) || rules.GatheringRate is < .25 or > 3
+            || !double.IsFinite(rules.CombatDamageRate) || rules.CombatDamageRate is < .25 or > 3 || rules.Conflict is < 0 or > 3 || rules.DisasterFrequency is < 0 or > 3
             || rules.DisasterStrength is < 1 or > 3 || !double.IsFinite(rules.DevelopmentRate)
             || rules.DevelopmentRate is < .5 or > 3 || !double.IsFinite(rules.MagicRate) || rules.MagicRate is < .5 or > 3)
             throw new ArgumentException("世界规则数值超出范围。");

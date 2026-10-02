@@ -15,7 +15,6 @@ public sealed partial class WorldEngine
     private static readonly (int X, int Y)[] Directions = [(1, 0), (0, 1), (-1, 0), (0, -1)];
     private static readonly uint[] NationColors = [0xFFE7AD62, 0xFF63CCA7, 0xFF8C9DEB, 0xFFE27A7C, 0xFFDFC16E, 0xFFB593DB, 0xFF74BBDC, 0xFFD294C8];
     private static readonly string[] RaceNames = ["人类", "精灵", "矮人", "兽人"];
-    private static readonly string[] PlaceNames = ["晨曦", "银叶", "铁峰", "赤牙", "河湾", "星湖", "霜原", "长风", "白桦", "暮光", "青岚", "金穗"];
 
     private WorldEngine(WorldState state)
     {

@@ -129,11 +129,14 @@ public sealed partial class WorldMapControl : Control
             DisposeChunks();
             ResetMotion();
             _settlementLabels.Clear();
+            _effects.Clear(); _seenVisualSequence = Engine.VisualSequence;
             _cachedState = Engine.State;
             _cameraReady = false;
         }
         RebuildChangedChunks();
         _labelSettlements = Engine.State.Settlements.OrderByDescending(settlement => settlement.Population).ToArray();
+        CaptureEffects();
+        CaptureSelectedRoute();
         CaptureMotionSnapshots();
         if (resetCamera || !_cameraReady) FitWorld();
         InvalidateVisual();
@@ -185,6 +188,7 @@ public sealed partial class WorldMapControl : Control
         if (Engine is null || !_cameraReady) return;
         var state = Engine.State;
         _renderFrameTime = PresentationTime;
+        RenderedEffectCount = 0; RenderedRouteSegmentCount = 0;
         FollowResident(_renderFrameTime);
         if (_residentGeometryDirty || _geometryZoom != _zoom || _geometryOrigin != _origin)
             RebuildResidents();
@@ -198,21 +202,24 @@ public sealed partial class WorldMapControl : Control
                     if (chunk.Terrain is not null) context.DrawImage(chunk.Terrain, chunk.TerrainBounds);
                     if (ShowBorders && chunk.Territory is not null) context.DrawImage(chunk.Territory, chunk.Bounds);
                 }
+                DrawTerrainDetails(context, state);
                 foreach (var settlement in state.Settlements)
                     if (Visible(new Rect(settlement.X * TilePixels - 28, settlement.Y * TilePixels - 28, 56, 56)))
                         DrawSettlement(context, settlement);
                 DrawBuildings(context, state);
                 DrawMapOverlay(context, state);
-                for (var race = 0; race < _residents.Length; race++)
+                for (var race = 0; _zoom < 3 && race < _residents.Length; race++)
                     if (_residents[race] is { } body) context.DrawGeometry(ResidentBrushes[race], null, body);
-                if (_zoom >= .7 && _heads is not null) context.DrawGeometry(HeadBrush, null, _heads);
+                if (_zoom >= .7 && _zoom < 3 && _heads is not null) context.DrawGeometry(HeadBrush, null, _heads);
                 if (_zoom >= .35)
                 {
                     if (_cargoGeometry is not null) context.DrawGeometry(CargoBrush, null, _cargoGeometry);
                     if (_messageGeometry is not null) context.DrawGeometry(MessageBrush, null, _messageGeometry);
                     if (_magicGeometry is not null) context.DrawGeometry(ArcaneBrush, null, _magicGeometry);
                 }
-                DrawFires(context, state.Tick);
+                DrawCloseDetails(context, state);
+                DrawFires(context, _renderFrameTime);
+                DrawEffects(context);
                 foreach (var army in state.Armies)
                 {
                     var position = _armyMotion.TryGetValue(army.Id, out var motion) ? motion.Position(_renderFrameTime) : new Point(army.X, army.Y);
@@ -257,7 +264,7 @@ public sealed partial class WorldMapControl : Control
             for (var x = Math.Max(0, cx - 1); x < Math.Min(state.Width, cx + ChunkTiles + 1); x++)
             {
                 var tile = state.Tiles[y * state.Width + x];
-                terrainHash = unchecked((terrainHash ^ ((uint)tile.Terrain + (tile.DroughtTicks > 0 ? 16u : 0u) + (uint)tile.RoadLevel * 64)) * 16777619);
+                terrainHash = unchecked((terrainHash ^ ((uint)tile.Terrain + (tile.DroughtTicks > 0 ? 16u : 0u) + (uint)tile.RoadLevel * 64 + (uint)Math.Clamp((int)(tile.ResourceAmount / 25), 0, 4) * 256)) * 16777619);
                 territoryHash = unchecked((territoryHash ^ (uint)tile.NationId) * 16777619);
                 containsTerritory |= tile.NationId != 0 && x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles;
                 if (x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles && tile.FireTicks > 0)
@@ -364,9 +371,21 @@ public sealed partial class WorldMapControl : Control
             return;
         }
         canvas.Rect(px + nx, py + ny, noise % 2 == 0 ? 2 : 1, 1, PixelCanvas.Shade(color, -10));
-        if (tile.Terrain == TerrainType.Forest)
+        if (tile.Terrain == TerrainType.Forest && tile.ResourceAmount < 25)
+        {
+            canvas.Rect(px + 3, py + 4, 2, 3, 0x755A3DFF);
+            canvas.Rect(px + 2, py + 4, 4, 1, 0xC3A174FF);
+        }
+        else if (tile.Terrain == TerrainType.Forest)
         {
             var shift = (int)(noise % 2);
+            if (noise % 3 == 0)
+            {
+                canvas.Rect(px + 3, py + 4, 1, 4, 0x705D42FF);
+                canvas.Rect(px + 1, py + 2, 6, 3, 0x426C46FF);
+                canvas.Rect(px + 2, py + 1, 4, 2, 0x689254FF);
+                return;
+            }
             canvas.Rect(px + 2 + shift, py + 6, 4, 1, 0x3F6344FF);
             canvas.Rect(px + 3 + shift, py + 5, 1, 2, 0x755A3DFF);
             canvas.Rect(px + 1 + shift, py + 3, 5, 3, 0x345F43FF);
@@ -542,17 +561,25 @@ public sealed partial class WorldMapControl : Control
 
     private static readonly IBrush FlameOuter = Brush(0xFFF0793D);
     private static readonly IBrush FlameInner = Brush(0xFFFFD575);
-    private void DrawFires(DrawingContext context, long tick)
+    private void DrawFires(DrawingContext context, double time)
     {
         foreach (var (tx, ty) in _fires)
         {
-            var x = tx * TilePixels;
-            var y = ty * TilePixels;
-            if (!Visible(new Rect(x, y - 4, 8, 12))) continue;
-            var offset = (tx + ty + tick) % 3;
-            context.DrawRectangle(FlameOuter, null, new Rect(x + 1, y + 1 - offset, 5, 6));
-            context.DrawRectangle(FlameOuter, null, new Rect(x + 3, y - 2 - offset, 2, 8));
-            context.DrawRectangle(FlameInner, null, new Rect(x + 2, y + 3, 3, 4));
+            var x = tx * TilePixels + 4;
+            var y = ty * TilePixels + 6;
+            if (!Visible(new Rect(x - 5, y - 16, 12, 22))) continue;
+            RenderedEffectCount++; RenderedEffectTime = time;
+            var phase = time * 8 + tx * 1.7 + ty;
+            var sway = Math.Sin(phase) * 1.2;
+            using (context.PushOpacity(.18)) context.DrawEllipse(FlameOuter, null, new Point(x, y - 2), 7, 8);
+            Triangle(context, FlameOuter, new(x - 3, y), new(x + 3, y), new(x + sway, y - 9 - Math.Sin(phase * .7) * 2));
+            Triangle(context, FlameInner, new(x - 1.7, y), new(x + 1.8, y), new(x - sway * .4, y - 5));
+            for (var i = 0; i < 2; i++)
+            {
+                var rise = (time * 5 + i * 5 + tx % 3) % 10;
+                using (context.PushOpacity((1 - rise / 10) * .4))
+                    context.DrawEllipse(StoneBrush, null, new Point(x + Math.Sin(phase * .2 + i) * 2, y - 8 - rise), 1.4 + rise * .12, 1.2);
+            }
         }
     }
 
@@ -644,7 +671,7 @@ public sealed partial class WorldMapControl : Control
     private void ZoomAt(Point focus, double zoom)
     {
         if (Engine is null) return;
-        var next = Math.Clamp(zoom, FitZoom * .55, 7);
+        var next = Math.Clamp(zoom, FitZoom * .55, 24);
         var factor = next / _zoom;
         _origin = new Point(focus.X - (focus.X - _origin.X) * factor, focus.Y - (focus.Y - _origin.Y) * factor);
         _zoom = next;

@@ -1,5 +1,19 @@
 # 构建与验证记录
 
+## 2026-10-02：地貌反馈、事件动画与近景观察
+
+对应 `420deeb` 基线上的本轮工作区修改。最终生产源码 SHA-256 为 `c56d7b85df0049cd3877e2a641fcb6b0b8eefac2bbfa4d62f485184ca3595083`；Core 为 `64a241352bf9e24e65016a8ddec6c978f452ac005c1d156385749d51517567ab`。计算方法：对 Git 跟踪及未忽略新增的对应路径按字典序排列，依次连接 UTF-8 相对路径、零字节、文件内容、零字节后取 SHA-256，排除 bin/obj。环境为 Linux x64、.NET SDK 10.0.401、Avalonia 12.1.3、Playwright 1.57.0、Chromium 151.0.7922.173。
+
+- Release 解决方案构建成功，0 警告、0 错误；可执行核心测试 **82/82** 通过，Avalonia Headless 界面测试 **20/20** 通过。
+- 新增回归覆盖实际采伐耗尽、森林施工竣工、陨石地格与实体损伤、保存续演、种子命名与去重、实际导航与预览逐步一致、只读观察、规则/地格原子校验、合法零值和超额资源保护。
+- 界面回归覆盖 24 倍缩放、折叠状态保持、地格表单及非法输入、规则数值留空保护，以及暂停编辑目标后地图立即刷新路径。
+- 裁剪 WASM 发布与静态资源检查通过。最终产物在 `/SeWZC.SandboxGame/` 子路径串行通过 `motion.cjs`、`stories.cjs`、`smoke.cjs`、`mobile-smoke.cjs`、`effects.cjs` 五套 Chromium 浏览器检查。无非预期页面/控制台错误或渲染回退诊断。
+- 新的浏览器场景用实际鼠标、键盘操作验证地格资源/道路编辑、生态规则持久化、陨石清除资源和道路、24 倍缩放前后完整世界不变；在没有居民的世界观测实际绘制的火焰时间于同一 tick 内变化，并验证暂停冻结。运动场景也验证实际绘制的目标路径，保留职业近景截图。
+
+证据保存在忽略目录 `artifacts/visual-upgrade-verification/`（构建、核心/UI、发布与五套浏览器日志、源码清单），截图、样本与 JSON 报告在 `artifacts/browser-tests/`。运行命令见下方复现章节；新增 `npm run test:effects --prefix tests/browser` 已加入本地子路径与部署后 CI 检查。
+
+本轮只验证本地发布产物，未推送或部署公网。触屏使用 Chromium 尺寸/触控模拟，未验证真实手机、Firefox/Safari、软件回退或大规模长期动画性能；瞬时动画通知不保存，持续灾害按真实地格恢复。玩法与呈现边界见 [产品约定](product.md#近景观察与自由编辑2026-10-02)。
+
 ## 2026-10-02：main 整合与格式 5
 
 本节对应功能提交 `84f25f3` 与远端 `31366b4` 的合并工作区，保留远端四个审查修复提交。两条开发线各自使用了格式 4，整合后格式与模拟版本统一为 **5**，明确拒绝格式 4 及更早存档。军令仍须实际送达指挥官且按观察时间／编号排序；新宣战令可替代停战令，不能取消缺粮、损耗或任务完成导致的撤退。外交评估保留双方独立态度，并遵守军事恢复期。
@@ -221,6 +235,7 @@ npm test --prefix tests/browser
 npm run test:mobile --prefix tests/browser
 npm run test:motion --prefix tests/browser
 npm run test:stories --prefix tests/browser
+npm run test:effects --prefix tests/browser
 ```
 
 默认地址为 `http://127.0.0.1:8080/SeWZC.SandboxGame/`。可通过以下环境变量覆盖：
@@ -229,7 +244,7 @@ npm run test:stories --prefix tests/browser
 | --- | --- |
 | `WORLDBOX_BASE_URL` | 已运行站点的完整地址，包含项目子路径及结尾 `/` |
 | `CHROMIUM_EXECUTABLE` | 使用已有 Chromium 的可执行文件路径；未设置时使用 Playwright 安装的版本 |
-| `WORLDBOX_ARTIFACT_DIR` | 桌面／触屏／运动脚本的证据输出目录；同时验证不同渲染方式时用于分开文件 |
+| `WORLDBOX_ARTIFACT_DIR` | 浏览器脚本的证据输出目录；同时验证不同渲染方式时用于分开文件 |
 | `WORLDBOX_TEST_DISABLE_WEBGL` | 仅在值为 `1` 时为测试浏览器禁用 WebGL，用于复现软件渲染回退；默认不禁用，不改变应用渲染优先顺序 |
 
 例如使用本机已有的 Chromium：

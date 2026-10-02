@@ -105,7 +105,7 @@ public sealed partial class WorldEngine
             .OrderByDescending(i => State.Tiles[i].Fertility).ThenBy(i => i).FirstOrDefault(-1);
         if (location < 0) return;
         var x = location % State.Width; var y = location / State.Width;
-        var town = new Settlement { Id = NewId(), Name = PlaceNames[State.Settlements.Count % PlaceNames.Length] + "镇", X = x, Y = y,
+        var town = new Settlement { Id = NewId(), Name = NewPlaceName("镇"), X = x, Y = y,
             NationId = origin.NationId, CultureId = origin.CultureId, Resources = new ResourceStock() };
         origin.Resources.Food -= 80; origin.Resources.Wood -= 20; origin.Resources.Stone -= 5;
         State.Settlements.Add(town); _settlements[town.Id] = town; _citizens[town.Id] = [];
@@ -141,7 +141,7 @@ public sealed partial class WorldEngine
                 tile.Fertility = (byte)Math.Max(5, tile.Fertility - 25); _burningTiles.Remove(index);
                 continue;
             }
-            if (State.Tick % 3 != 0 || RandomInt(100) >= 22) continue;
+            if (!State.Rules.FireSpread || State.Tick % 3 != 0 || RandomInt(100) >= 22) continue;
             var (dx, dy) = Directions[RandomInt(4)]; var x = index % State.Width + dx; var y = index / State.Width + dy;
             if (!InBounds(x, y)) continue;
             var neighborIndex = Index(x, y); var neighbor = State.Tiles[neighborIndex];

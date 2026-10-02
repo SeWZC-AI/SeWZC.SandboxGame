@@ -34,8 +34,8 @@ public sealed partial class WorldEngine
         if (settlement is null)
         {
             if (State.Nations.Count >= 64 || State.Settlements.Count >= 256) return;
-            var nation = new Nation { Id = NewId(), FoundingRace = race, Name = PlaceNames[State.Nations.Count % PlaceNames.Length] + "王国", ColorArgb = NationColors[State.Nations.Count % NationColors.Length] };
-            settlement = new Settlement { Id = NewId(), Name = PlaceNames[State.Nations.Count % PlaceNames.Length] + "村", X = x, Y = y, NationId = nation.Id, Resources = new ResourceStock { Food = count * 4, Wood = 25, Stone = 12 } };
+            var nation = new Nation { Id = NewId(), FoundingRace = race, Name = NewPlaceName("王国"), ColorArgb = NationColors[State.Nations.Count % NationColors.Length] };
+            settlement = new Settlement { Id = NewId(), Name = NewPlaceName("村"), X = x, Y = y, NationId = nation.Id, Resources = new ResourceStock { Food = count * 4, Wood = 25, Stone = 12 } };
             nation.CapitalId = settlement.Id;
             foreach (var other in State.Nations)
             {
@@ -64,7 +64,7 @@ public sealed partial class WorldEngine
     private Resident NewResident(Settlement settlement, RaceKind race, double age)
     {
         var id = NewId();
-        return new Resident { Id = id, Name = $"{RaceNames[(int)race]}·{id}", Race = race, X = settlement.X, Y = settlement.Y, FromX = settlement.X, FromY = settlement.Y, Age = age, CultureId = settlement.CultureId, NationId = settlement.NationId, SettlementId = settlement.Id, Profession = age < 14 ? Profession.Child : AssignProfession(), MagicTalent = (race == RaceKind.Elf ? 45 : race == RaceKind.Dwarf ? 23 : race == RaceKind.Orc ? 28 : 32) + (unchecked((uint)id * 2654435761u ^ (uint)State.Seed) % 36), Trait = new[] { "勤劳", "勇敢", "好奇", "坚韧", "温和" }[RandomInt(5)] };
+        return new Resident { Id = id, Name = NewResidentName(id, race), Race = race, X = settlement.X, Y = settlement.Y, FromX = settlement.X, FromY = settlement.Y, Age = age, CultureId = settlement.CultureId, NationId = settlement.NationId, SettlementId = settlement.Id, Profession = age < 14 ? Profession.Child : AssignProfession(), MagicTalent = (race == RaceKind.Elf ? 45 : race == RaceKind.Dwarf ? 23 : race == RaceKind.Orc ? 28 : 32) + (unchecked((uint)id * 2654435761u ^ (uint)State.Seed) % 36), Trait = new[] { "勤劳", "勇敢", "好奇", "坚韧", "温和" }[RandomInt(5)] };
     }
 
     private Profession AssignProfession()
@@ -84,10 +84,26 @@ public sealed partial class WorldEngine
             if (kind == DisasterKind.Fire && tile.IsWalkable) { tile.FireTicks = 16 + RandomInt(16); _burningTiles.Add(index); }
             if (kind == DisasterKind.Drought && tile.IsWalkable) { tile.DroughtTicks = 150; _dryTiles.Add(index); }
         }
+        if (kind == DisasterKind.Meteor)
+        {
+            foreach (var index in Circle(x, y, radius))
+            {
+                var tile = State.Tiles[index];
+                if (!tile.IsWalkable) continue;
+                tile.Terrain = TerrainType.Sand; tile.Fertility = 5; tile.ResourceAmount = 0; tile.RoadLevel = 0;
+                tile.FireTicks = 12; _burningTiles.Add(index);
+            }
+            foreach (var resident in State.Residents.Where(r => Distance(r.X, r.Y, x, y) <= radius))
+                resident.Health = Math.Max(0, resident.Health - 65);
+            foreach (var building in State.Society.Buildings.Where(b => Distance(b.X, b.Y, x, y) <= radius))
+                building.Health = Math.Max(0, building.Health - 80);
+        }
+        EmitVisual(kind switch { DisasterKind.Fire => WorldVisualKind.Fire, DisasterKind.Drought => WorldVisualKind.Drought,
+            DisasterKind.Plague => WorldVisualKind.Plague, _ => WorldVisualKind.Meteor }, x, y, radius);
         if (kind == DisasterKind.Plague)
             foreach (var resident in State.Residents)
                 if (Distance(resident.X, resident.Y, x, y) <= radius * 1.4) resident.SicknessTicks = 45 + RandomInt(40);
-        var label = kind == DisasterKind.Fire ? "火灾吞噬草木，威胁附近居民" : kind == DisasterKind.Drought ? "旱灾来临，农田减产，粮食储备将经受考验" : "疫病扩散，患病居民的健康与生产力下降";
+        var label = kind == DisasterKind.Fire ? "火灾吞噬草木，威胁附近居民" : kind == DisasterKind.Drought ? "旱灾来临，农田减产，粮食储备将经受考验" : kind == DisasterKind.Plague ? "疫病扩散，患病居民的健康与生产力下降" : "陨石撞击大地，摧毁植被与道路，重创居民和建筑";
         AddEvent(WorldEventKind.Disaster, label + "。", x, y);
     }
 

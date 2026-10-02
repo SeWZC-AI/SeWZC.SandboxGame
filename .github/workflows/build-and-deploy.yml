@@ -80,6 +80,7 @@ jobs:
           npm run test:mobile --prefix tests/browser 2>&1 | tee artifacts/browser-tests/mobile-smoke.log
           npm run test:motion --prefix tests/browser 2>&1 | tee artifacts/browser-tests/motion.log
           npm run test:stories --prefix tests/browser 2>&1 | tee artifacts/browser-tests/stories.log
+          npm run test:effects --prefix tests/browser 2>&1 | tee artifacts/browser-tests/effects.log
 
       - name: Upload browser evidence
         if: always()
@@ -163,6 +164,7 @@ jobs:
           npm run test:mobile --prefix tests/browser 2>&1 | tee artifacts/browser-tests/mobile-smoke.log
           npm run test:motion --prefix tests/browser 2>&1 | tee artifacts/browser-tests/motion.log
           npm run test:stories --prefix tests/browser 2>&1 | tee artifacts/browser-tests/stories.log
+          npm run test:effects --prefix tests/browser 2>&1 | tee artifacts/browser-tests/effects.log
 
       - name: Upload live browser evidence
         if: always()

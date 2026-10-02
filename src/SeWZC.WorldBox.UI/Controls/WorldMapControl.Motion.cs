@@ -94,6 +94,7 @@ public sealed partial class WorldMapControl
     {
         if (!_residentMotion.ContainsKey(residentId)) { ClearResidentSelection(); return; }
         SelectedResidentId = residentId;
+        CaptureSelectedRoute();
         _selection = null;
         FollowSelectedResident = follow;
         InvalidateVisual();
@@ -187,7 +188,7 @@ public sealed partial class WorldMapControl
         if (!_motionAttached || _framePending || IsSimulationPaused) return;
         var now = PresentationTime;
         if (!_residentMotion.Values.Any(track => track.IsMoving(now)) &&
-            !_armyMotion.Values.Any(track => track.IsMoving(now))) return;
+            !_armyMotion.Values.Any(track => track.IsMoving(now)) && !HasAnimatedEffects(now)) return;
         if (TopLevel.GetTopLevel(this) is not { } topLevel) return;
         _framePending = true;
         var epoch = _motionEpoch;

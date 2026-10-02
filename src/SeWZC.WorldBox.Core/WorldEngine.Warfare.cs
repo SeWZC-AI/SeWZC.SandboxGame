@@ -200,8 +200,10 @@ public sealed partial class WorldEngine
 
     private void ApplyDamage(IEnumerable<Resident> residents, double damage)
     {
+        damage *= State.Rules.CombatDamageRate;
         foreach (var resident in residents)
         {
+            EmitVisual(WorldVisualKind.Battle, resident.X, resident.Y);
             var incoming = Math.Min(resident.Health, damage); var dealt = TryAbsorbShieldDamage(resident, incoming); resident.Health -= dealt; damage -= incoming;
             if (damage <= 0) break;
         }

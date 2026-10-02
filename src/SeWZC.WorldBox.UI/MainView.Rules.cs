@@ -46,6 +46,13 @@ public sealed partial class MainView
         var conflict = Select("竞争与动荡强度", ["和平倾向", "低 · 留出恢复时间", "标准", "高"], draft.Conflict, "rule-conflict");
         var rates = new[] { .5, 1d, 2d, 3d };
         var development = Select("建设与研究速率（不改变世界时间）", ["缓慢 0.5 倍", "标准 1 倍", "快速 2 倍", "迅速 3 倍"], Array.IndexOf(rates, draft.DevelopmentRate), "rule-development-rate");
+        panel.Children.Add(Text("生态与劳动", 14, Mint));
+        Toggle("自然资源再生", "关闭后地格资源不再自然恢复；已经伐尽的森林仍为空地", "rule-regeneration", r => r.ResourceRegeneration, (r, v) => r.ResourceRegeneration = v);
+        Toggle("火势蔓延", "关闭后现有火焰继续燃烧，但不会引燃邻近森林", "rule-fire-spread", r => r.FireSpread, (r, v) => r.FireSpread = v);
+        var gathering = Field(panel, "采集速率 0.25–3", draft.GatheringRate, "rule-gathering-rate", 3);
+        gathering.Minimum = .25m; gathering.Increment = .25m;
+        var combat = Field(panel, "战斗伤害倍率 0.25–3", draft.CombatDamageRate, "rule-combat-rate", 3);
+        combat.Minimum = .25m; combat.Increment = .25m;
         panel.Children.Add(Text("环境与魔法", 14, Mint));
         panel.Children.Add(disasters);
         var frequency = Select("自然灾害频率", ["关闭", "低", "标准", "高"], draft.DisasterFrequency, "rule-disaster-frequency");
@@ -62,14 +69,16 @@ public sealed partial class MainView
             strength.SelectedIndex = draft.DisasterStrength - 1; development.SelectedIndex = Array.IndexOf(rates, draft.DevelopmentRate);
             magicRate.SelectedIndex = Array.IndexOf(rates, draft.MagicRate);
             disasters.IsChecked = draft.DisasterFrequency > 0;
+            gathering.Value = (decimal)draft.GatheringRate; combat.Value = (decimal)draft.CombatDamageRate;
         };
-        panel.Children.Add(Named(Button("应用世界规则", () =>
+        panel.Children.Add(Named(Button("应用世界规则", () => RunEdit(() =>
         {
             foreach (var entry in switches) entry.Set(draft, entry.Box.IsChecked == true);
+            draft.GatheringRate = Number(gathering); draft.CombatDamageRate = Number(combat);
             draft.Conflict = Math.Max(0, conflict.SelectedIndex); draft.DisasterFrequency = Math.Max(0, frequency.SelectedIndex);
             draft.DisasterStrength = Math.Max(0, strength.SelectedIndex) + 1;
             draft.DevelopmentRate = rates[Math.Max(0, development.SelectedIndex)]; draft.MagicRate = rates[Math.Max(0, magicRate.SelectedIndex)];
-            RunEdit(() => { _engine.ConfigureWorld(draft, disasters.IsChecked == true, magic.IsChecked == true); CloseModal(); }, "世界规则已应用并随存档保存 · 点击继续观察");
-        }), "world-rules-apply"));
+            _engine.ConfigureWorld(draft, disasters.IsChecked == true, magic.IsChecked == true); CloseModal();
+        }, "世界规则已应用并随存档保存 · 点击继续观察")), "world-rules-apply"));
     }
 }

@@ -33,8 +33,9 @@ public sealed partial class MainView
         Grid.SetColumn(follow, 1); actions.Children.Add(follow);
         var edit = Named(Button("编辑", () => ShowResidentEditor(id)), "resident-edit"); Grid.SetColumn(edit, 2); actions.Children.Add(edit); panel.Children.Add(actions);
         panel.Children.Add(LiveText(() => _engine.State.ArchivedResidents.Any(r => r.Id == id) ? "此人已离世：档案修改不会使其复生。" : ""));
-        panel.Children.Add(Text("实际状态 · 世界当前事实", 12, Mint));
-        panel.Children.Add(LiveText(() =>
+        panel.Children.Add(LiveText(() => $"生命 {Current().Health:0}% · 饥饿 {Current().Hunger:0}% · {ActivityName(Current().Activity)}"));
+        var body = FoldSection(panel, "身体、库存与魔法", "resident-body");
+        body.Children.Add(LiveText(() =>
         {
             var r = Current();
             return $"位置 {r.X}, {r.Y} · {ActivityName(r.Activity)}\n生命 {r.Health:F1} · 饥饿 {r.Hunger:F1} · 疫病 {r.SicknessTicks} 日\n疲劳 {r.Agent.Fatigue:F1} · 社交需求 {r.Agent.SocialNeed:F1}\n特质：{r.Trait}\n随身库存：{StockLabel(r.Inventory)}\n魔力 {r.Mana:F1} · 天赋 {r.MagicTalent:F1} · 训练 {r.MagicTraining:F1}\n军队 {(r.ArmyId == 0 ? "无" : r.ArmyId.ToString())} · 家园 {TownName(r.SettlementId)}";
@@ -45,19 +46,24 @@ public sealed partial class MainView
             var goal = Current().Agent.Goal;
             return $"{GoalName(goal.Kind)} → {goal.TargetX}, {goal.TargetY}\n{goal.Reason}\n开始：{DateLabel(goal.StartedTick)} · {(goal.PlayerDirected ? "玩家指定" : "自主选择")}\n下次考虑：{DateLabel(Current().Agent.NextThinkTick)}";
         }));
+        var route = Named(new CheckBox { Content = "显示后续行动轨迹", IsChecked = _map.ShowResidentRoute }, "resident-route");
+        route.IsCheckedChanged += (_, _) => { _map.ShowResidentRoute = route.IsChecked == true; _map.InvalidateVisual(); };
+        panel.Children.Add(route);
+        panel.Children.Add(Paragraph("虚线预览当前目标下最多 24 格的移动；遇险、改目标或地形改变会重新规划。军队成员由军令统一调动。"));
         panel.Children.Add(Named(Button("编辑目标与人格", () => ShowGoalEditor(id)), "resident-goal-edit"));
-        panel.Children.Add(Text("性格倾向", 12, Mint));
-        panel.Children.Add(LiveText(() => { var p = Current().Agent.Personality; return $"勇气 {p.Courage:P0} · 勤勉 {p.Diligence:P0}\n社交 {p.Sociability:P0} · 抱负 {p.Ambition:P0}"; }));
-        panel.Children.Add(Text("已知消息与记忆 · 可能过时或有误", 12, Mint));
-        panel.Children.Add(Paragraph("下面是居民知道的内容，不等同于全世界的即时状态。改动只影响今后的认知与决策，不会重写已经发生的世界事件。"));
-        LiveRows(panel, () => Current().Agent.Memory.OrderByDescending(f => f.LearnedTick).Take(40), fact => fact.Id.ToString(), fact => FactLabel(fact), fact => ShowMemoryEditor(id, fact.Id));
-        panel.Children.Add(Named(Button("添加一条记忆", () => ShowMemoryEditor(id, null)), "resident-memory-add"));
-        panel.Children.Add(LiveText(() => $"携带消息 {Current().Agent.CarriedMessages.Count} 条 · 目的地 {TownName(Current().Agent.DestinationSettlementId)}"));
-        panel.Children.Add(Text("真实决策记录", 12, Mint));
-        LiveRows(panel, () => Current().Agent.Decisions.AsEnumerable().Reverse().Take(20), d => $"{d.Tick}:{d.Goal}:{d.EvidenceFactId}", d => $"{DateLabel(d.Tick)} · {GoalName(d.Goal)}\n{d.Reason}\n评估 {d.Score:F2} · 依据记忆 #{d.EvidenceFactId}\n消息观察时间 {DateLabel(d.KnowledgeObservedTick)} · 来源 {ResidentName(d.SourceResidentId)}");
-        panel.Children.Add(Text("个人履历", 12, Mint));
-        LiveRows(panel, () => Current().History.Select((entry, index) => (entry, index)).Reverse().Take(40), item => item.index.ToString(), item => $"{ImportanceName(item.entry.Importance)} · {DateLabel(item.entry.Tick)}\n{item.entry.Text}\n经历类型 {ExperienceName(item.entry.Experience)} · 心理影响 {item.entry.Impact:+0.00;-0.00;0}{(item.entry.PlayerEdited ? " · 玩家编辑" : "")}", item => ShowHistoryEntryEditor(id, item.index));
-        panel.Children.Add(Named(Button("添加个人经历", () => ShowHistoryEntryEditor(id, null)), "resident-history-add"));
+        var secondary = FoldSection(panel, "性格、记忆与消息", "resident-cognition");
+        secondary.Children.Add(Text("性格倾向", 12, Mint));
+        secondary.Children.Add(LiveText(() => { var p = Current().Agent.Personality; return $"勇气 {p.Courage:P0} · 勤勉 {p.Diligence:P0}\n社交 {p.Sociability:P0} · 抱负 {p.Ambition:P0}"; }));
+        secondary.Children.Add(Text("已知消息与记忆 · 可能过时或有误", 12, Mint));
+        secondary.Children.Add(Paragraph("下面是居民知道的内容，不等同于全世界的即时状态。改动只影响今后的认知与决策，不会重写已经发生的世界事件。"));
+        secondary.Children.Add(Named(Button("添加一条记忆", () => ShowMemoryEditor(id, null)), "resident-memory-add"));
+        LiveRows(secondary, () => Current().Agent.Memory.OrderByDescending(f => f.LearnedTick).Take(40), fact => fact.Id.ToString(), fact => FactLabel(fact), fact => ShowMemoryEditor(id, fact.Id));
+        secondary.Children.Add(LiveText(() => $"携带消息 {Current().Agent.CarriedMessages.Count} 条 · 目的地 {TownName(Current().Agent.DestinationSettlementId)}"));
+        secondary = FoldSection(panel, "决策记录", "resident-decisions");
+        LiveRows(secondary, () => Current().Agent.Decisions.AsEnumerable().Reverse().Take(20), d => $"{d.Tick}:{d.Goal}:{d.EvidenceFactId}", d => $"{DateLabel(d.Tick)} · {GoalName(d.Goal)}\n{d.Reason}\n评估 {d.Score:F2} · 依据记忆 #{d.EvidenceFactId}\n消息观察时间 {DateLabel(d.KnowledgeObservedTick)} · 来源 {ResidentName(d.SourceResidentId)}");
+        secondary = FoldSection(panel, "个人履历", "resident-history");
+        secondary.Children.Add(Named(Button("添加个人经历", () => ShowHistoryEntryEditor(id, null)), "resident-history-add"));
+        LiveRows(secondary, () => Current().History.Select((entry, index) => (entry, index)).Reverse().Take(40), item => item.index.ToString(), item => $"{ImportanceName(item.entry.Importance)} · {DateLabel(item.entry.Tick)}\n{item.entry.Text}\n经历类型 {ExperienceName(item.entry.Experience)} · 心理影响 {item.entry.Impact:+0.00;-0.00;0}{(item.entry.PlayerEdited ? " · 玩家编辑" : "")}", item => ShowHistoryEntryEditor(id, item.index));
 
 
     }
@@ -183,7 +189,7 @@ public sealed partial class MainView
                     TargetSettlementId = targetTown, TargetEntityId = targetEntity, Reason = goalReason,
                     PlayerDirected = true, StartedTick = _engine.State.Tick, ReviewTick = _engine.State.Tick + keepDays } : originalGoal;
                 mind.Fatigue = Number(fatigue); mind.SocialNeed = Number(social); mind.Personality.Courage = Number(courage); mind.Personality.Diligence = Number(diligence); mind.Personality.Sociability = Number(sociability); mind.Personality.Ambition = Number(ambition);
-                BeginEdit(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); RefreshUi(true); SetStatus("目标与人格已更新，将影响接下来的行动");
+                BeginEdit(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("目标与人格已更新，将影响接下来的行动");
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { SetStatus("未应用变更：" + FriendlyError(ex)); }
         }), "resident-goal-apply"));
@@ -260,13 +266,13 @@ public sealed partial class MainView
                 fact.Kind = (AgentFactKind)kind.SelectedItem!; fact.Text = text.Text ?? ""; fact.Value = choice.IsVisible ? Integer(choice) : Number(value); fact.TargetNationId = addressed.IsVisible ? Integer(addressed) : 0; fact.Confidence = Number(confidence); fact.SubjectId = Integer(subject);
                 fact.X = Integer(x); fact.Y = Integer(y); fact.ObservedTick = Integer(observed); fact.LearnedTick = Integer(learned); fact.OriginResidentId = Integer(origin); fact.SourceResidentId = Integer(source); fact.Hops = Integer(hops);
                 if (adding) mind.Memory.Add(fact);
-                BeginEdit(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); RefreshUi(true); SetStatus("记忆已更新，世界历史保持原样");
+                BeginEdit(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("记忆已更新，世界历史保持原样");
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { if (adding) mind.Memory.Remove(fact); SetStatus("未应用变更：" + FriendlyError(ex)); }
         }), "memory-apply"));
         if (!adding) panel.Children.Add(Named(Button("删除这条记忆", () =>
         {
-            try { mind.Memory.Remove(fact); BeginEdit(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); RefreshUi(true); SetStatus("这条记忆已移除"); }
+            try { mind.Memory.Remove(fact); BeginEdit(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("这条记忆已移除"); }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { SetStatus(FriendlyError(ex)); }
         }), "memory-delete"));
         OpenModal(panel);

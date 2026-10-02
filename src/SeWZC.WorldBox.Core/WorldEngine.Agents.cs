@@ -349,7 +349,7 @@ public sealed partial class WorldEngine
             return;
         }
         var productivity = (person.SicknessTicks > 0 ? 0.4 : 1) * (person.Hunger > 60 ? 0.55 : 1)
-            * (0.75 + person.Agent.Personality.Diligence * 0.5);
+            * (0.75 + person.Agent.Personality.Diligence * 0.5) * State.Rules.GatheringRate;
         if (profession == Profession.Farmer)
         {
             var amount = Math.Min(tile.ResourceAmount, 0.7 * ResourceSiteYield(index, profession) * productivity * AgentFoodPolicyMultiplier(person));
@@ -359,6 +359,7 @@ public sealed partial class WorldEngine
         {
             var amount = Math.Min(tile.ResourceAmount, 0.28 * productivity * (person.Race == RaceKind.Elf ? 1.2 : 1));
             tile.ResourceAmount -= amount; person.Inventory.Wood += amount;
+            FinishLogging(tile, person.X, person.Y);
         }
         else
         {
@@ -378,6 +379,20 @@ public sealed partial class WorldEngine
     {
         if (!InBounds(targetX, targetY) || person.X == targetX && person.Y == targetY) return false;
         if (State.Tick - person.MoveStartedTick < person.MoveDurationTicks) return false;
+        var bestStep = SelectAgentStep(person, targetX, targetY);
+        if (bestStep < 0) return false;
+        var xNext = bestStep % State.Width; var yNext = bestStep / State.Width;
+        var speed = person.Agent.DestinationSettlementId == 0 ? 1 / GetTerrainMoveCost(xNext, yNext)
+            : MessageTravelMultiplier(xNext, yNext, person.NationId);
+        var duration = Math.Clamp((int)Math.Round(2 / Math.Max(0.1, speed)), 1, 8);
+        person.FromX = person.X; person.FromY = person.Y;
+        person.X = bestStep % State.Width; person.Y = bestStep / State.Width;
+        person.MoveStartedTick = State.Tick; person.MoveDurationTicks = duration;
+        return true;
+    }
+
+    private int SelectAgentStep(Resident person, int targetX, int targetY)
+    {
         var startDistance = Distance(person.X, person.Y, targetX, targetY);
         var bestStep = -1;
         var bestDistance = startDistance;
@@ -438,15 +453,7 @@ public sealed partial class WorldEngine
             }
             bestStep = bestForward >= 0 ? bestForward : bestAny;
         }
-        if (bestStep < 0) return false;
-        var xNext = bestStep % State.Width; var yNext = bestStep / State.Width;
-        var speed = person.Agent.DestinationSettlementId == 0 ? 1 / GetTerrainMoveCost(xNext, yNext)
-            : MessageTravelMultiplier(xNext, yNext, person.NationId);
-        var duration = Math.Clamp((int)Math.Round(2 / Math.Max(0.1, speed)), 1, 8);
-        person.FromX = person.X; person.FromY = person.Y;
-        person.X = bestStep % State.Width; person.Y = bestStep / State.Width;
-        person.MoveStartedTick = State.Tick; person.MoveDurationTicks = duration;
-        return true;
+        return bestStep;
     }
 
     private double AgentFoodPolicyMultiplier(Resident person)
