@@ -87,7 +87,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [smoke, mobile-smoke, motion, stories, effects]
+        suite: [smoke, mobile-smoke, motion, stories, effects, advancement]
     steps:
       - uses: actions/checkout@v4
 
