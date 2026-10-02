@@ -1,0 +1,12 @@
+{
+  "solution": {
+    "path": "../SeWZC.SandboxGame.slnx",
+    "projects": [
+      "src/SeWZC.WorldBox.Core/SeWZC.WorldBox.Core.csproj",
+      "src/SeWZC.WorldBox.UI/SeWZC.WorldBox.UI.csproj",
+      "src/SeWZC.WorldBox.Desktop/SeWZC.WorldBox.Desktop.csproj",
+      "tests/SeWZC.WorldBox.Core.Tests/SeWZC.WorldBox.Core.Tests.csproj",
+      "tests/SeWZC.WorldBox.UI.Tests/SeWZC.WorldBox.UI.Tests.csproj"
+    ]
+  }
+}
