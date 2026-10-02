@@ -98,8 +98,19 @@ public sealed partial class WorldMapControl
         var goal = resident.Agent.Goal;
         if (goal.TargetX < 0 || goal.TargetY < 0 || goal.TargetX >= Engine.State.Width || goal.TargetY >= Engine.State.Height) return;
         var point = GetTileScreenPosition(goal.TargetX, goal.TargetY);
-        // A destination marker is honest about the actual goal. It deliberately does not
-        // invent a straight route through impassable terrain when the path is not exposed.
+        if (ShowResidentRoute && _selectedRoute.Count > 1)
+        {
+            var routePen = new Pen(HealingBrush, 1.8, dashStyle: DashStyle.Dash);
+            var previous = TryGetResidentScreenPosition(id, out var drawn) ? drawn : GetTileScreenPosition(resident.X, resident.Y);
+            foreach (var step in _selectedRoute.Skip(1))
+            {
+                var next = GetTileScreenPosition(step.X, step.Y);
+                context.DrawLine(routePen, previous, next);
+                RenderedRouteSegmentCount++;
+                context.DrawEllipse(HealingBrush, null, next, 2, 2);
+                previous = next;
+            }
+        }
         var size = Math.Max(5, _zoom * TilePixels * .65);
         var pen = new Pen(Brush(0xB9B9DDC4), 1, dashStyle: DashStyle.Dash);
         context.DrawRectangle(null, pen, new Rect(point.X - size, point.Y - size, size * 2, size * 2), 2, 2);

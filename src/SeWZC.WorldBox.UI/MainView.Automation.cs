@@ -41,6 +41,7 @@ public sealed partial class MainView
                     TextBox input => input.Text,
                     ComboBox combo => combo.SelectedIndex.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     CheckBox check => check.IsChecked?.ToString(),
+                    Expander expander => expander.IsExpanded.ToString(),
                     TextBlock text => text.Text,
                     Button { Content: string label } => label,
                     Button button => string.Join(" ", button.GetVisualDescendants().OfType<TextBlock>()
@@ -59,6 +60,7 @@ public sealed partial class MainView
         var snapshot = new UiAutomationSnapshot
         {
             Ready = _ready, Paused = _paused, Saving = _saving, Speed = _speed, ActiveTool = _map.ActiveTool,
+            RenderedEffectCount = _map.RenderedEffectCount, RenderedEffectTime = _map.RenderedEffectTime, RenderedRouteSegmentCount = _map.RenderedRouteSegmentCount,
             WorldTick = _engine.State.Tick, SelectedResidentPoint = residentPoint,
             Category = _category, Inspector = _inspectorMode, Status = _status.Text,
             SelectedResidentId = _selectedResidentId, SelectedNationId = _selectedNationId,
@@ -79,6 +81,9 @@ public sealed partial class MainView
 
 internal sealed class UiAutomationSnapshot
 {
+    public int RenderedEffectCount { get; init; }
+    public double RenderedEffectTime { get; init; }
+    public int RenderedRouteSegmentCount { get; init; }
     public bool ToolsOpen { get; init; }
     public bool InspectorOpen { get; init; }
     public bool PendingPlacement { get; init; }

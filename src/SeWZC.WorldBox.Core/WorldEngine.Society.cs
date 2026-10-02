@@ -99,7 +99,12 @@ public sealed partial class WorldEngine
         var building = new Building { Id = NewId(), SettlementId = settlementId, Kind = kind, X = x, Y = y,
             ConstructionRequired = kind is BuildingKind.SignalTower or BuildingKind.ArcaneSanctum ? 60 : 30, WorkSlots = kind == BuildingKind.Farm ? 5 : 3 };
         State.Society.Buildings.Add(building);
-        if (gift) building.ConstructionProgress = building.ConstructionRequired;
+        if (gift)
+        {
+            building.ConstructionProgress = building.ConstructionRequired;
+            if (tile.Terrain == TerrainType.Forest) { tile.Terrain = TerrainType.Grass; tile.ResourceAmount = 0; }
+            EmitVisual(WorldVisualKind.Construction, x, y);
+        }
         tile.NationId = town.NationId;
         var projectEvent = AddEvent(WorldEventKind.Construction, gift ? $"玩家向{town.Name}赐予{BuildingName(kind)}；实际运营仍需人员与当地条件。" : $"{town.Name}备好材料，开始修建{BuildingName(kind)}；居民必须到场施工。", x, y, gift ? EventAction.Gifted : EventAction.Started, town.Id);
         building.Observation.StartEventId = projectEvent.Id;
@@ -217,6 +222,9 @@ public sealed partial class WorldEngine
             building.ConstructionProgress = Math.Min(building.ConstructionRequired, building.ConstructionProgress + effort * State.Rules.DevelopmentRate);
             if (building.IsCompleted)
             {
+                var ground = State.Tiles[Index(building.X, building.Y)];
+                if (ground.Terrain == TerrainType.Forest) { ground.Terrain = TerrainType.Grass; ground.ResourceAmount = 0; }
+                EmitVisual(WorldVisualKind.Construction, building.X, building.Y);
                 var complete = AddEvent(WorldEventKind.Construction, $"{town.Name}的{BuildingName(building.Kind)}竣工。", building.X, building.Y,
                     EventAction.Completed, town.Id, causeEventId: building.Observation.StartEventId);
                 foreach (var person in State.Residents.Where(r => building.Observation.Contributors.Contains(r.Id)))
@@ -238,10 +246,14 @@ public sealed partial class WorldEngine
                 var source = FindWorkshopResource(building, resident.Profession);
                 if (source < 0) return false;
                 var sourceTile = State.Tiles[source]; var yields = TerrainRules.For(sourceTile.Terrain);
-                var amount = Math.Min(sourceTile.ResourceAmount, effort * 0.2);
+                var amount = Math.Min(sourceTile.ResourceAmount, effort * 0.2 * State.Rules.GatheringRate);
                 sourceTile.ResourceAmount -= amount;
                 if (resident.Profession == Profession.Miner) { resident.Inventory.Stone += amount * yields.StoneYield; resident.Inventory.Ore += amount * yields.OreYield; }
-                else resident.Inventory.Wood += amount * yields.WoodYield;
+                else
+                {
+                    resident.Inventory.Wood += amount * yields.WoodYield;
+                    FinishLogging(sourceTile, source % State.Width, source / State.Width);
+                }
                 CapResources(resident.Inventory); return true;
             case BuildingKind.Academy:
                 var research = State.Society.Research.First(r => r.SettlementId == town.Id);
@@ -528,6 +540,8 @@ public sealed partial class WorldEngine
         if (spell == SpellKind.HarvestBlessing) town!.FertilityBoostTicks = Math.Max(town.FertilityBoostTicks, (int)(50 * power));
         if (spell == SpellKind.Shield) town!.ShieldTicks = Math.Max(town.ShieldTicks, (int)(40 * power));
         if (spell == SpellKind.Ember) recipient!.Health = Math.Max(0, recipient.Health - TryAbsorbShieldDamage(recipient, 18 * power));
+        EmitVisual(spell switch { SpellKind.Heal => WorldVisualKind.Heal, SpellKind.HarvestBlessing => WorldVisualKind.Harvest,
+            SpellKind.Shield => WorldVisualKind.Shield, _ => WorldVisualKind.Ember }, x, y, 2, caster.X, caster.Y);
         var detail = spell switch { SpellKind.Heal => "治疗", SpellKind.HarvestBlessing => "丰饶祝福", SpellKind.Shield => "守护结界", _ => "战斗火花" };
         caster.Agent.Decisions.Add(new AgentDecision { Tick = State.Tick, Goal = spell == SpellKind.Ember ? AgentGoalKind.Flee : AgentGoalKind.Work,
             Reason = $"在 {x},{y} 施放{detail}，消耗 {cost:0.#} 法力；天赋和训练决定效果" });
@@ -604,10 +618,10 @@ public sealed partial class WorldEngine
         for (var offset = 0; offset < Math.Min(batch, State.Tiles.Length); offset++)
         {
             var tile = State.Tiles[(int)((State.Tick * batch + offset) % State.Tiles.Length)];
-            if (!tile.IsWalkable || tile.FireTicks > 0) continue;
+            if (!State.Rules.ResourceRegeneration || !tile.IsWalkable || tile.FireTicks > 0) continue;
             var yields = TerrainRules.For(tile.Terrain);
             var renewal = (yields.FoodYield + yields.WoodYield) * (tile.DroughtTicks > 0 ? 0.2 : 1);
-            tile.ResourceAmount = Math.Min(100, tile.ResourceAmount + renewal * 2);
+            if (tile.ResourceAmount < 100) tile.ResourceAmount = Math.Min(100, tile.ResourceAmount + renewal * 2);
         }
     }
 
