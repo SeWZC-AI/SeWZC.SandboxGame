@@ -152,9 +152,7 @@ public sealed partial class WorldEngine
 
     public bool TryGetLocalWorkTarget(Resident resident, out int x, out int y)
     {
-        var building = State.Society.Buildings.Where(b => b.SettlementId == resident.SettlementId && b.Health > 0
-            && Distance(resident.X, resident.Y, b.X, b.Y) <= 8 && BuildingHasWork(b, resident))
-            .OrderBy(b => WorkPriority(b, resident)).ThenBy(b => Distance(resident.X, resident.Y, b.X, b.Y)).ThenBy(b => b.Id).FirstOrDefault();
+        var building = FindLocalWorkBuilding(resident, 8, preferNearest: true);
         x = building?.X ?? resident.X; y = building?.Y ?? resident.Y;
         return building is not null;
     }
@@ -181,16 +179,14 @@ public sealed partial class WorldEngine
         {
             BuildingKind.Academy => State.Society.Research.Any(r => r.SettlementId == building.SettlementId && r.ActiveProject.HasValue),
             BuildingKind.ArcaneSanctum => State.Society.MagicEnabled && resident.MagicTalent >= 25 && resident.MagicTraining < 100,
-            BuildingKind.Infirmary => State.Residents.Any(r => r.SettlementId == building.SettlementId && Distance(r.X, r.Y, building.X, building.Y) <= 3 && (r.Health < 99 || r.SicknessTicks > 0)),
+            BuildingKind.Infirmary => FindLocalWorkPatient(building, firstOnly: true) is not null,
             _ => true
         };
     }
 
     public bool TryWorkAtBuilding(Resident resident)
     {
-        var building = State.Society.Buildings.Where(b => b.SettlementId == resident.SettlementId && b.Health > 0
-            && Distance(resident.X, resident.Y, b.X, b.Y) <= 1 && BuildingHasWork(b, resident))
-            .OrderBy(b => WorkPriority(b, resident)).ThenBy(b => b.Id).FirstOrDefault();
+        var building = FindLocalWorkBuilding(resident, 1, preferNearest: false);
         if (building is null || !_settlements.TryGetValue(building.SettlementId, out var town)) return false;
         if (building.IsCompleted && building.Kind is BuildingKind.Waystation or BuildingKind.SignalTower && town.Resources.Food < 0.01) return false;
         if (building.IsCompleted && building.Kind == BuildingKind.ArcaneSanctum && (!State.Society.MagicEnabled || town.Resources.Food < 0.03)) return false;
@@ -228,7 +224,7 @@ public sealed partial class WorldEngine
                 var research = State.Society.Research.First(r => r.SettlementId == town.Id);
                 if (!research.ActiveProject.HasValue) return false;
                 research.Progress += effort * State.Rules.DevelopmentRate * (0.75 + culture.Innovation * 0.5) * (GetLocalPolicy(town.Id) == PolicyKind.Scholarship ? 1.35 : 1);
-                if (research.Progress >= 8 && resident.Profession == Profession.Builder && State.Residents.Count(r => r.SettlementId == town.Id && r.Profession == Profession.Scholar) < 2)
+                if (research.Progress >= 8 && resident.Profession == Profession.Builder && !HasTwoLocalWorkers(town.Id, Profession.Scholar))
                     resident.Profession = Profession.Scholar;
                 if (research.Progress >= research.RequiredProgress)
                 {
@@ -245,13 +241,12 @@ public sealed partial class WorldEngine
                 if (!State.Society.MagicEnabled || town.Resources.Food < 0.03) return false;
                 town.Resources.Food -= 0.03;
                 resident.MagicTraining = Math.Min(100, resident.MagicTraining + effort * State.Rules.MagicRate * (0.05 + resident.MagicTalent / 500) * TerrainRules.For(State.Tiles[Index(resident.X, resident.Y)].Terrain).ManaRate);
-                if (resident.MagicTraining >= 8 && resident.Profession is Profession.Builder or Profession.Scholar && State.Residents.Count(r => r.SettlementId == town.Id && r.Profession == Profession.Mage) < 2)
+                if (resident.MagicTraining >= 8 && resident.Profession is Profession.Builder or Profession.Scholar && !HasTwoLocalWorkers(town.Id, Profession.Mage))
                     resident.Profession = Profession.Mage;
                 resident.Mana = Math.Min(100, resident.Mana + 0.15 * effort); return true;
             case BuildingKind.Infirmary:
                 if (town.Resources.Food < 0.05) return false;
-                var patient = State.Residents.Where(r => r.SettlementId == town.Id && Distance(r.X, r.Y, building.X, building.Y) <= 3 && (r.Health < 99 || r.SicknessTicks > 0))
-                    .OrderBy(r => r.Health).ThenBy(r => r.Id).FirstOrDefault();
+                var patient = FindLocalWorkPatient(building);
                 if (patient is null) return false;
                 town.Resources.Food -= 0.05; patient.Health = Math.Min(100, patient.Health + 0.45 * effort);
                 patient.SicknessTicks = Math.Max(0, patient.SicknessTicks - 1); return true;
