@@ -320,10 +320,11 @@ public sealed partial class MainView : UserControl
         _worldSubtitle.Text = $"{state.Width} × {state.Height}  ·  种子 {state.Seed}  ·  古代纪元";
         _play.Content = _paused ? "继续" : "暂停";
         if (_paused) _simulationStatus.Text = "时间已暂停";
-        var spotlight = _engine.State.Events.LastOrDefault(e => e.Importance >= EventImportance.Notable && e.Kind is not (WorldEventKind.Editor or WorldEventKind.Policy or WorldEventKind.Magic or WorldEventKind.Culture)
-            && (_followNationId == 0 || e.NationId == _followNationId || e.SecondNationId == _followNationId));
-        _focusedEventId = spotlight?.Id ?? 0;
-        _eventText.Text = spotlight is null ? "选择一个文明，关注它的发展" : $"{DateLabel(spotlight.Tick)} · {spotlight.Message}";
+        var candidates = _engine.State.Events.Where(e => e.Importance >= EventImportance.Notable && e.Kind is not (WorldEventKind.Editor or WorldEventKind.Policy or WorldEventKind.Magic or WorldEventKind.Culture));
+        var spotlight = WorldStories.Group(candidates).OrderByDescending(g => _watched.Count > 0 && g.Entries.Any(IsWatched))
+            .ThenByDescending(g => g.Latest.Tick).ThenByDescending(g => g.Latest.Id).FirstOrDefault();
+        _focusedEventId = spotlight?.Latest.Id ?? 0;
+        _eventText.Text = spotlight is null ? "选择国家、聚落或居民，关注它的故事" : $"{DateLabel(spotlight.Latest.Tick)} · {spotlight.Latest.Message}" + (spotlight.Count > 1 ? $"（同类 {spotlight.Count} 次）" : "");
         RefreshInspector(force);
     }
 
@@ -398,7 +399,7 @@ public sealed partial class MainView : UserControl
     {
         _checkpoint = _engine.ExportJson(); _engine = engine; _paused = true; _accumulator = 0; _selectedTile = null; _selectedNationId = 0;
         _allowAutosave = true;
-        _inspectorMode = "overview"; _selectedResidentId = 0; _navigation.Clear(); _followNationId = 0; _eventDetailId = 0; InvalidateInspector();
+        _inspectorMode = "overview"; _selectedResidentId = 0; _navigation.Clear(); _watched.Clear(); _historyWatchedOnly = false; _eventDetailId = 0; InvalidateInspector();
         _map.Engine = engine; _map.IsSimulationPaused = true; _map.RefreshWorld(true); UpdateToolContext(); RefreshUi(true);
     }
 

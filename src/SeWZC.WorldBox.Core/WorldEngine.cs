@@ -80,7 +80,7 @@ public sealed partial class WorldEngine
     private bool Walkable(int x, int y) => InBounds(x, y) && State.Tiles[Index(x, y)].IsWalkable;
     private static int Distance(int ax, int ay, int bx, int by) => Math.Abs(ax - bx) + Math.Abs(ay - by);
     private int NewId() => State.NextId++;
-    private WorldEvent AddEvent(WorldEventKind kind, string message, int x = -1, int y = -1)
+    private WorldEvent AddEvent(WorldEventKind kind, string message, int x = -1, int y = -1, EventAction action = EventAction.General, int settlementId = 0, int residentId = 0, int causeEventId = 0, int evidenceFactId = 0)
     {
         var importance = kind switch
         {
@@ -89,7 +89,7 @@ public sealed partial class WorldEngine
             WorldEventKind.Trade or WorldEventKind.Personal or WorldEventKind.Communication => EventImportance.Routine,
             _ => EventImportance.Notable
         };
-        var entry = new WorldEvent { Id = NewId(), Tick = State.Tick, Kind = kind, Message = message, X = x, Y = y, Importance = importance };
+        var entry = new WorldEvent { Id = NewId(), Tick = State.Tick, Kind = kind, Message = message, X = x, Y = y, Importance = importance, Action = action, SettlementId = settlementId, ResidentId = residentId, CauseEventId = causeEventId, EvidenceFactId = evidenceFactId };
         if (InBounds(x, y)) entry.NationId = State.Tiles[Index(x, y)]?.NationId ?? 0;
         State.Events.Add(entry);
         while (State.Events.Count > 400)
@@ -106,7 +106,7 @@ public sealed partial class WorldEngine
         foreach (var resident in State.Residents.Where(r => r.Health <= 0).ToArray())
         {
             resident.Health = 0;
-            resident.History.Add(new ResidentHistoryEntry { Tick = State.Tick, Importance = EventImportance.Major, Text = "生命结束，留下的经历仍保存在人物档案中。" });
+            RecordLife(resident, "生命结束，留下的经历仍保存在人物档案中。", importance: EventImportance.Major);
             if (resident.History.Count > 24) resident.History.RemoveAt(0);
             State.ArchivedResidents.Add(resident);
             State.Residents.Remove(resident);

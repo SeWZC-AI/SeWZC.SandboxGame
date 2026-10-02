@@ -34,7 +34,7 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.paused();
         await diagnostics.assertHealthy('desktop test URL');
         const baseline = await ui.save();
-        assert.equal(baseline.FormatVersion, 3);
+        assert.equal(baseline.FormatVersion, 4);
         assert.equal(baseline.Width, 256);
         assert.equal(baseline.Nations.length, 4);
         const home = baseline.Settlements[0];
@@ -204,7 +204,7 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.waitFor(snapshot => !snapshot.modalOpen && snapshot.status.startsWith('导入成功'), 'valid file import', 30000);
         const imported = await ui.save();
         assert.deepEqual(imported, exported, 'Current-format JSON must round-trip all fields, including explicit zero values');
-        for (const invalidVersion of [1, 2, 999]) {
+        for (const invalidVersion of [1, 2, 3, 999]) {
             const invalidPath = path.join(output, `invalid-${invalidVersion}.json`);
             fs.writeFileSync(invalidPath, JSON.stringify({ ...exported, FormatVersion: invalidVersion }));
             await importFile(invalidPath);
@@ -212,7 +212,7 @@ const stock = (world, id) => town(world, id).Resources;
             await ui.click('modal-close');
             assert.deepEqual(await ui.save(), imported, 'Rejected import must preserve the whole current world');
         }
-        passed('real download/export and file-picker import, complete v3 round-trip, rejection of old and unknown formats');
+        passed('real download/export and file-picker import, complete v4 round-trip, rejection of old and unknown formats');
         await page.reload({ waitUntil: 'domcontentloaded' });
         await ui.ready();
         await ui.paused();

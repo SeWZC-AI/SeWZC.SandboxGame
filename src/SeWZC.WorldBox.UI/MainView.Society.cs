@@ -18,8 +18,8 @@ public sealed partial class MainView
         if (nation is null) { panel.Children.Add(Paragraph("这个国家已不在当前世界中。其历史仍可在编年史查询。")); return; }
         panel.Children.Add(LiveText(() => nation.Name, 18, Mint));
         panel.Children.Add(LiveText(() => $"实际国家状态\n人口 {nation.Population} · 领土 {nation.Territory}\n{StockLabel(nation.Resources)}\n国家文化：{CultureName(nation.CultureId)}\n首都：{TownName(nation.CapitalId)} · 代表：{ResidentName(nation.RepresentativeId)}"));
-        var follow = Named(new CheckBox { Content = "关注这个文明的事件", IsChecked = _followNationId == nation.Id }, "nation-follow");
-        follow.IsCheckedChanged += (_, _) => { _followNationId = follow.IsChecked == true ? nation.Id : 0; RefreshUi(); }; panel.Children.Add(follow);
+        panel.Children.Add(WatchControl(ObservedObjectKind.Nation, nation.Id, "nation-follow"));
+        BuildMilitarySummary(panel, nation);
         panel.Children.Add(Text("外交关系 · 依据已收到的信息", 13, Mint));
         LiveRows(panel, () => _engine.State.Diplomacies.Where(d => d.FirstNationId == nation.Id || d.SecondNationId == nation.Id), d => $"{d.FirstNationId}:{d.SecondNationId}",
             d => $"{NationName(d.FirstNationId == nation.Id ? d.SecondNationId : d.FirstNationId)} · {(d.Status == DiplomaticStatus.War ? "战争" : d.Status == DiplomaticStatus.Allied ? "联盟" : "和平")} · 关系 {d.Opinion}\n{d.Reason}");
@@ -37,7 +37,7 @@ public sealed partial class MainView
         {
             var policy = _engine.State.Society.Policies.FirstOrDefault(p => p.SettlementId == t.Id);
             var development = _engine.GetDevelopment(t.Id);
-            return $"{t.Name} · {t.Population} 人 · {development.Stage}\n{development.Goal} · {development.Progress:P0}\n{development.Blocker}\n{StockLabel(t.Resources)}";
+            return $"{t.Name} · {t.Population} 人 · {development.Stage}\n{development.Goal} · {development.Progress:P0}\n{development.Blocker}\n{_engine.GetDevelopmentEstimate(t.Id).Explanation}\n{StockLabel(t.Resources)}";
         }, t => { _inspectorSettlementId = t.Id; OpenInspector("infrastructure"); });
         panel.Children.Add(Text("居民构成与文化传播", 12, Mint));
         panel.Children.Add(LiveText(() => string.Join("\n", _engine.State.Residents.Where(r => r.NationId == nation.Id).GroupBy(r => r.CultureId).Select(g => $"{CultureName(g.Key)}：{g.Count()} 人"))));
@@ -94,8 +94,10 @@ public sealed partial class MainView
         var town = towns[selected]; _inspectorSettlementId = town.Id;
         var picker = Named(new ComboBox { ItemsSource = towns.Select(t => $"{t.Name} · {NationName(t.NationId)}").ToArray(), SelectedIndex = selected, HorizontalAlignment = HorizontalAlignment.Stretch }, "infrastructure-town");
         picker.SelectionChanged += (_, _) => { if (picker.SelectedIndex < 0) return; _inspectorSettlementId = towns[picker.SelectedIndex].Id; InvalidateInspector(); RefreshInspector(true); }; panel.Children.Add(picker);
+        panel.Children.Add(WatchControl(ObservedObjectKind.Settlement, town.Id, "settlement-watch"));
         panel.Children.Add(LiveText(() => $"{town.Name} #{town.Id}\n实际库存：{StockLabel(town.Resources)}\n居民 {town.Population} · 代表 {ResidentName(town.RepresentativeId)}"));
         panel.Children.Add(LiveText(() => { var d = _engine.GetDevelopment(town.Id); return $"{d.Stage} · {d.Goal} · {d.Progress:P0}\n{d.Blocker}\n动荡 {town.Unrest:0}/100"; }, 13, Mint));
+        panel.Children.Add(Named(LiveText(() => _engine.GetDevelopmentEstimate(town.Id).Explanation), "development-estimate"));
         panel.Children.Add(Named(Button("定位聚落并开始建设", () => { _map.SelectedSettlementId = town.Id; SetCategory("build"); _map.FocusTile(town.X, town.Y); _mobilePanel = false; ApplyLayout(); }), "infrastructure-build"));
         if (!communications)
         {
@@ -103,7 +105,7 @@ public sealed partial class MainView
             panel.Children.Add(LiveText(() =>
             {
                 var research = _engine.State.Society.Research.FirstOrDefault(r => r.SettlementId == town.Id);
-                return research is null ? "尚无研究记录" : $"已掌握：{string.Join("、", research.Completed.Select(WorldEngine.ResearchName))}\n{(research.ActiveProject is { } project ? $"正在研究 {WorldEngine.ResearchName(project)} · {research.Progress:F1}/{research.RequiredProgress:F0}" : "暂无研究项目")}";
+                return research is null ? "尚无研究记录" : $"已掌握：{string.Join("、", research.Completed.Select(WorldEngine.ResearchName))}\n{(research.ActiveProject is { } project ? $"正在研究 {WorldEngine.ResearchName(project)} · {research.Progress:F1}/{research.RequiredProgress:F0}\n{_engine.GetCompletionEstimate(research.Observation, research.Progress, research.RequiredProgress).Explanation}" : "暂无研究项目")}";
             }));
             var researchPicker = EnumField(panel, "选择研究", ResearchKind.Agriculture, WorldEngine.ResearchName, "research-kind");
             var cost = Paragraph(StockLabel(WorldEngine.GetResearchCost(ResearchKind.Agriculture))); panel.Children.Add(cost);
@@ -111,7 +113,7 @@ public sealed partial class MainView
             panel.Children.Add(Named(Button("投入研究", () => RunEdit(() => _engine.StartResearch(town.Id, (ResearchKind)researchPicker.SelectedItem!), "研究已立项，需居民到学舍工作后推进")), "research-start"));
             panel.Children.Add(Paragraph("研究需要已建成学舍与到场人员。信号网络先需要驿路运输；新奥术研究受世界魔法规则限制。"));
             panel.Children.Add(Text("设施 · 施工与工作人员", 12, Mint));
-            LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.SettlementId == town.Id).OrderBy(b => b.Id), b => b.Id.ToString(), b => $"{WorldEngine.BuildingName(b.Kind)} #{b.Id} · {b.X},{b.Y}\n{(b.IsCompleted ? "已建成" : $"施工 {b.ConstructionProgress:F1}/{b.ConstructionRequired:F0}")} · 健康 {b.Health:F0}\n工作岗位 {b.Workers.Count}/{b.WorkSlots} · 最近工作 {DateLabel(b.LastWorkedTick)}", b => _map.FocusTile(b.X, b.Y));
+            LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.SettlementId == town.Id).OrderBy(b => b.Id), b => b.Id.ToString(), b => $"{WorldEngine.BuildingName(b.Kind)} #{b.Id} · {b.X},{b.Y}\n{(b.IsCompleted ? "已建成" : $"施工 {b.ConstructionProgress:F1}/{b.ConstructionRequired:F0}")} · 健康 {b.Health:F0}\n{(b.IsCompleted ? "" : _engine.GetCompletionEstimate(b.Observation, b.ConstructionProgress, b.ConstructionRequired).Explanation + "\n")}工作岗位 {b.Workers.Count}/{b.WorkSlots} · 最近工作 {DateLabel(b.LastWorkedTick)}", b => _map.FocusTile(b.X, b.Y));
             panel.Children.Add(Named(Button("查看设施成本与建造", () => ShowBuildingEditor(town.Id)), "building-open"));
         }
         panel.Children.Add(Text("实体运输与传信", 12, Mint));

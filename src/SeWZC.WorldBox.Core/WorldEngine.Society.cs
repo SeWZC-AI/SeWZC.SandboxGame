@@ -101,7 +101,9 @@ public sealed partial class WorldEngine
         State.Society.Buildings.Add(building);
         if (gift) building.ConstructionProgress = building.ConstructionRequired;
         tile.NationId = town.NationId;
-        AddEvent(WorldEventKind.Construction, gift ? $"玩家向{town.Name}赐予{BuildingName(kind)}；实际运营仍需人员与当地条件。" : $"{town.Name}备好材料，开始修建{BuildingName(kind)}；居民必须到场施工。", x, y);
+        var projectEvent = AddEvent(WorldEventKind.Construction, gift ? $"玩家向{town.Name}赐予{BuildingName(kind)}；实际运营仍需人员与当地条件。" : $"{town.Name}备好材料，开始修建{BuildingName(kind)}；居民必须到场施工。", x, y, gift ? EventAction.Gifted : EventAction.Started, town.Id);
+        building.Observation.StartEventId = projectEvent.Id;
+        ObserveProject(building.Observation, building.ConstructionProgress);
         RefreshTotals();
         return building.Id;
     }
@@ -132,23 +134,34 @@ public sealed partial class WorldEngine
         Spend(town.Resources, GetResearchCost(kind));
         research.ActiveProject = kind; research.Progress = 0;
         research.RequiredProgress = kind is ResearchKind.SignalNetwork or ResearchKind.ArcaneArts ? 100 : 60;
-        AddEvent(WorldEventKind.Research, $"{town.Name}投入材料，开始研究{ResearchName(kind)}。", town.X, town.Y);
+        var start = AddEvent(WorldEventKind.Research, $"{town.Name}投入材料，开始研究{ResearchName(kind)}。", town.X, town.Y, EventAction.Started, town.Id);
+        research.Observation = new ProjectObservation { StartEventId = start.Id, DevelopmentRate = State.Rules.DevelopmentRate };
+        ObserveProject(research.Observation, 0);
         RefreshTotals();
     }
 
     public bool HasResearch(int settlementId, ResearchKind kind) => State.Society.Research.FirstOrDefault(r => r.SettlementId == settlementId)?.Completed.Contains(kind) == true;
     public int GetLocalTechnologyLevel(int settlementId) => 1 + (State.Society.Research.FirstOrDefault(r => r.SettlementId == settlementId)?.Completed.Count ?? 0);
 
-    public void GrantReceivedResearch(int settlementId, ResearchKind kind)
+    public void GrantReceivedResearch(int settlementId, ResearchKind kind, int causeEventId = 0, int evidenceFactId = 0)
     {
         if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
         var town = RequireTown(settlementId);
         var research = State.Society.Research.First(r => r.SettlementId == settlementId);
         if (research.Completed.Contains(kind)) return;
         research.Completed.Add(kind); research.Completed.Sort();
-        if (research.ActiveProject == kind) { research.ActiveProject = null; research.Progress = 0; research.RequiredProgress = 0; }
         if (_nations.TryGetValue(town.NationId, out var nation)) nation.Technology = Math.Max(nation.Technology, GetLocalTechnologyLevel(town.Id));
-        AddEvent(WorldEventKind.Research, $"{town.Name}掌握了{ResearchName(kind)}；知识可由当地居民和信使继续传授。", town.X, town.Y);
+        var entry = AddEvent(WorldEventKind.Research, $"{town.Name}掌握了{ResearchName(kind)}；知识可由当地居民和信使继续传授。", town.X, town.Y,
+            EventAction.Completed, town.Id, causeEventId: causeEventId, evidenceFactId: evidenceFactId);
+        research.LastCompletionEventId = entry.Id;
+        if (research.ActiveProject == kind)
+        {
+            if (research.Observation.StartEventId > 0 && research.Observation.StartEventId != causeEventId)
+                entry.AdditionalCauseEventIds.Add(research.Observation.StartEventId);
+            foreach (var person in State.Residents.Where(r => research.Observation.Contributors.Contains(r.Id)))
+                RecordLife(person, $"参与{town.Name}的{ResearchName(kind)}研究，现已掌握成果。", entry, PersonalExperienceKind.Learning);
+            research.ActiveProject = null; research.Progress = 0; research.RequiredProgress = 0; research.Observation = new();
+        }
     }
 
     public bool TryGetLocalWorkTarget(Resident resident, out int x, out int y)
@@ -200,8 +213,15 @@ public sealed partial class WorldEngine
         var effort = Math.Clamp((0.6 + resident.Agent.Personality.Diligence * 0.6) * (resident.SicknessTicks > 0 ? 0.45 : 1), 0.1, 1.2);
         if (!building.IsCompleted)
         {
+            if (building.Observation.Contributors.Count < 32 && !building.Observation.Contributors.Contains(resident.Id)) building.Observation.Contributors.Add(resident.Id);
             building.ConstructionProgress = Math.Min(building.ConstructionRequired, building.ConstructionProgress + effort * State.Rules.DevelopmentRate);
-            if (building.IsCompleted) AddEvent(WorldEventKind.Construction, $"{town.Name}的{BuildingName(building.Kind)}竣工。", building.X, building.Y);
+            if (building.IsCompleted)
+            {
+                var complete = AddEvent(WorldEventKind.Construction, $"{town.Name}的{BuildingName(building.Kind)}竣工。", building.X, building.Y,
+                    EventAction.Completed, town.Id, causeEventId: building.Observation.StartEventId);
+                foreach (var person in State.Residents.Where(r => building.Observation.Contributors.Contains(r.Id)))
+                    RecordLife(person, $"参与施工的{BuildingName(building.Kind)}竣工。", complete, PersonalExperienceKind.Achievement);
+            }
             return true;
         }
         var culture = GetCulture(resident.CultureId);
@@ -226,14 +246,15 @@ public sealed partial class WorldEngine
             case BuildingKind.Academy:
                 var research = State.Society.Research.First(r => r.SettlementId == town.Id);
                 if (!research.ActiveProject.HasValue) return false;
+                if (research.Observation.Contributors.Count < 32 && !research.Observation.Contributors.Contains(resident.Id)) research.Observation.Contributors.Add(resident.Id);
                 research.Progress += effort * State.Rules.DevelopmentRate * (0.75 + culture.Innovation * 0.5) * (GetLocalPolicy(town.Id) == PolicyKind.Scholarship ? 1.35 : 1);
                 if (research.Progress >= 8 && resident.Profession == Profession.Builder && !HasTwoLocalWorkers(town.Id, Profession.Scholar))
                     resident.Profession = Profession.Scholar;
                 if (research.Progress >= research.RequiredProgress)
                 {
                     var completed = research.ActiveProject.Value;
-                    GrantReceivedResearch(town.Id, completed);
-                    var fact = new AgentFact { Id = NewId(), Kind = AgentFactKind.Research, SubjectId = town.Id, X = town.X, Y = town.Y, Value = (int)completed,
+                    GrantReceivedResearch(town.Id, completed, research.Observation.StartEventId);
+                    var fact = new AgentFact { Id = NewId(), EventId = research.LastCompletionEventId, Kind = AgentFactKind.Research, SubjectId = town.Id, X = town.X, Y = town.Y, Value = (int)completed,
                         ObservedTick = State.Tick, LearnedTick = State.Tick, OriginResidentId = resident.Id, OriginProfession = resident.Profession, SourceResidentId = resident.Id,
                         Text = $"{town.Name}已完成{ResearchName(completed)}研究" };
                     AddPublicFact(town, fact);
@@ -362,7 +383,8 @@ public sealed partial class WorldEngine
     {
         if (Distance(carrier.X, carrier.Y, target.X, target.Y) > 2 || fact.ObservedTick > State.Tick || fact.Confidence is < 0 or > 1 || !double.IsFinite(fact.Value)) return;
         ReceiveDiplomaticNotice(target, fact);
-        if (fact.Confidence >= 0.5 && fact.Kind == AgentFactKind.Research && fact.Value is >= 0 and <= 3 && fact.Value == Math.Truncate(fact.Value)) GrantReceivedResearch(target.Id, (ResearchKind)(int)fact.Value);
+        ReceiveWarReport(target, fact);
+        if (fact.Confidence >= 0.5 && fact.Kind == AgentFactKind.Research && fact.Value is >= 0 and <= 3 && fact.Value == Math.Truncate(fact.Value)) GrantReceivedResearch(target.Id, (ResearchKind)(int)fact.Value, fact.EventId, fact.Id);
         if (fact.Confidence >= 0.5 && fact.Kind == AgentFactKind.Policy && State.Tick - fact.ObservedTick <= 240 && fact.Value is >= 0 and <= 4 && fact.Value == Math.Truncate(fact.Value))
         {
             var policy = State.Society.Policies.First(p => p.SettlementId == target.Id);
@@ -375,7 +397,7 @@ public sealed partial class WorldEngine
         if (fact.Confidence >= 0.5 && fact.Kind == AgentFactKind.Culture && fact.Value is > 0 and <= 100_000 && fact.Value == Math.Truncate(fact.Value)) ObserveCulture(carrier, (int)fact.Value);
         if (fact.Kind is not (AgentFactKind.FoodSupply or AgentFactKind.ReliefRequest or AgentFactKind.Danger or AgentFactKind.Research or AgentFactKind.Personal)) return;
         if (State.Society.Reports.Any(r => r.RecipientSettlementId == target.Id && r.FactId == fact.Id)) return;
-        State.Society.Reports.Add(new InstitutionReport { RecipientSettlementId = target.Id, FactId = fact.Id, OriginResidentId = fact.OriginResidentId,
+        State.Society.Reports.Add(new InstitutionReport { EventId = fact.EventId, RecipientSettlementId = target.Id, FactId = fact.Id, OriginResidentId = fact.OriginResidentId,
             RepresentativeId = carrier.Id, ReportedProfession = fact.OriginProfession, Topic = fact.Kind, SubjectId = fact.SubjectId, Value = fact.Value,
             Confidence = fact.Confidence, ObservedTick = fact.ObservedTick, ReceivedTick = State.Tick });
         if (State.Society.Reports.Count > 2_048) State.Society.Reports.RemoveRange(0, State.Society.Reports.Count - 2_048);
@@ -416,8 +438,8 @@ public sealed partial class WorldEngine
         if (town.Id == State.Nations.First(n => n.Id == town.NationId).CapitalId) State.Nations.First(n => n.Id == town.NationId).Decision = local.Reason;
         if (changed)
         {
-            AddEvent(WorldEventKind.Policy, $"{town.Name}议事决定采用{PolicyName(local.Kind)}。", town.X, town.Y);
-            AddPublicFact(town, new AgentFact { Id = NewId(), Kind = AgentFactKind.Policy, SubjectId = town.Id, X = town.X, Y = town.Y,
+            var policyEvent = AddEvent(WorldEventKind.Policy, $"{town.Name}议事决定采用{PolicyName(local.Kind)}。", town.X, town.Y, EventAction.Policy, town.Id, causeEventId: strongest.EventId, evidenceFactId: strongest.FactId);
+            AddPublicFact(town, new AgentFact { Id = NewId(), EventId = policyEvent.Id, Kind = AgentFactKind.Policy, SubjectId = town.Id, X = town.X, Y = town.Y,
                 Value = (int)local.Kind, ObservedTick = State.Tick, LearnedTick = State.Tick, OriginResidentId = town.RepresentativeId,
                 OriginProfession = Profession.Representative, SourceResidentId = town.RepresentativeId, Text = local.Reason });
         }
@@ -462,7 +484,7 @@ public sealed partial class WorldEngine
         // A new identity requires fresh sustained contact before another conversion.
         foreach (var exposure in State.Society.CulturalContacts.Where(c => c.ResidentId == resident.Id))
         { exposure.Exposure = 0; exposure.LastContactTick = State.Tick; }
-        resident.History.Add(new ResidentHistoryEntry { Tick = State.Tick, Text = $"长期当面交流后，由{previous}转向{GetCulture(cultureId).Name}文化；种族与国籍未改变。" });
+        RecordLife(resident, $"长期当面交流后，由{previous}转向{GetCulture(cultureId).Name}文化；种族与国籍未改变。");
         if (resident.History.Count > 24) resident.History.RemoveAt(0);
         var cultureEvent = AddEvent(WorldEventKind.Culture, $"{resident.Name}经长期交流转向{GetCulture(cultureId).Name}文化。", resident.X, resident.Y);
         cultureEvent.ResidentId = resident.Id; cultureEvent.NationId = resident.NationId;
@@ -640,7 +662,7 @@ public sealed partial class WorldEngine
                 .OrderByDescending(r => r.Agent.Personality.Diligence).ThenBy(r => r.Id).FirstOrDefault();
             if (recruit is null) return;
             recruit.Profession = job; recruit.Agent.JobChangedTick = State.Tick; recruit.Agent.NextThinkTick = State.Tick;
-            recruit.History.Add(new ResidentHistoryEntry { Tick = State.Tick, Text = $"因家园发展需要，接受新的{job}岗位。" });
+            RecordLife(recruit, $"因家园发展需要，接受新的{job}岗位。");
             if (recruit.History.Count > 24) recruit.History.RemoveAt(0);
         }
         if (buildings.Any(b => !b.IsCompleted)) { Recruit(Profession.Builder); return; }

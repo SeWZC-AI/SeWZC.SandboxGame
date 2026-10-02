@@ -5,7 +5,8 @@
     "test": "node smoke.cjs",
     "test:mobile": "node mobile-smoke.cjs",
     "test:motion": "node motion.cjs",
-    "test:stress": "node stress.cjs"
+    "test:stress": "node stress.cjs",
+    "test:stories": "node stories.cjs"
   },
   "devDependencies": {
     "playwright": "1.57.0"

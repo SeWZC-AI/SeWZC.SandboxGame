@@ -32,6 +32,7 @@
 | 修改内容 | 主要入口 | 相关验证 |
 | --- | --- | --- |
 | 世界数据、版本和基本编辑 | [Core](../src/SeWZC.WorldBox.Core/) 中 `WorldState*.cs`、`WorldEngine.Commands.cs`、`WorldEngine.NationEditing.cs` | [Program.cs](../tests/SeWZC.WorldBox.Core.Tests/Program.cs) |
+| 有限战争、战报与故事观察 | Core 中 `WorldEngine.Campaigns.cs`、`WorldEngine.Stories.cs`、`WorldState.Stories.cs`；UI 中 `MainView.Stories.cs` | `StoryTests.cs`、`tests/browser/stories.cjs` |
 | 世界规则、发展与自主外交 | Core 中 `WorldEngine.Evolution.cs` | `EvolutionTests.cs`、`--evolution` 长程探查 |
 | 目标、知识与通信 | Core 中 `WorldEngine.Agents.cs`、`WorldEngine.Communication.cs` | [AgentBehaviorTests.cs](../tests/SeWZC.WorldBox.Core.Tests/AgentBehaviorTests.cs) |
 | 制度、文化、研究、建设与魔法 | Core 中 `WorldEngine.Society.cs`、`SocietyRules.cs` | [SocietyBehaviorTests.cs](../tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs) |

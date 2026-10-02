@@ -72,6 +72,7 @@ public sealed partial class WorldEngine
         if (patch.Agent is not null) candidate.Agent = JsonSerializer.Deserialize(JsonSerializer.Serialize(patch.Agent, WorldJsonContext.Default.AgentState), WorldJsonContext.Default.AgentState)!;
         if (patch.History is not null) candidate.History = JsonSerializer.Deserialize(JsonSerializer.Serialize(patch.History, WorldJsonContext.Default.ListResidentHistoryEntry), WorldJsonContext.Default.ListResidentHistoryEntry)!;
         ValidateResidentV2(candidate, State.Tick, State.Width, State.Height);
+        ValidateStoryReferences(candidate, State.NextId);
         if (!Walkable(candidate.X, candidate.Y)) throw new ArgumentException("居民必须位于可通行地格。");
         if (candidate.ArmyId != 0 && !State.Armies.Any(a => a.Id == candidate.ArmyId && a.NationId == candidate.NationId)) throw new ArgumentException("军队不存在或与居民所属国家不一致。");
         if (candidate.CultureId != 0 && !State.Society.Cultures.Any(c => c.Id == candidate.CultureId)) throw new ArgumentException("文化不存在。");
@@ -159,6 +160,7 @@ public sealed partial class WorldEngine
     }
 
     private static bool SameFactSnapshot(AgentFact first, AgentFact second) => first.Kind == second.Kind
+        && first.EventId == second.EventId && first.CampaignEventId == second.CampaignEventId && first.WarObjective == second.WarObjective
         && first.TargetNationId == second.TargetNationId && first.SubjectId == second.SubjectId && first.X == second.X && first.Y == second.Y
         && first.Value == second.Value && first.ObservedTick == second.ObservedTick
         && first.OriginResidentId == second.OriginResidentId && first.OriginProfession == second.OriginProfession

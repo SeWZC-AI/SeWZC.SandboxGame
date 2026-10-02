@@ -31,6 +31,7 @@ public sealed class CultureDefinition
 
 public sealed class Building
 {
+    public ProjectObservation Observation { get; set; } = new();
     public int Id { get; set; }
     public int SettlementId { get; set; }
     public BuildingKind Kind { get; set; }
@@ -47,6 +48,8 @@ public sealed class Building
 
 public sealed class SettlementResearch
 {
+    public ProjectObservation Observation { get; set; } = new();
+    public int LastCompletionEventId { get; set; }
     public int SettlementId { get; set; }
     public ResearchKind? ActiveProject { get; set; }
     public double Progress { get; set; }
@@ -76,6 +79,7 @@ public sealed class NationInstitution
 
 public sealed class InstitutionReport
 {
+    public int EventId { get; set; }
     public int RecipientSettlementId { get; set; }
     public int FactId { get; set; }
     public int OriginResidentId { get; set; }

@@ -17,6 +17,7 @@
 | [0009](0009-alpha-and-budgets.md) | alpha 不迁移旧格式，当前记录与载荷有界 | 采用 |
 | [0010](0010-real-browser-verification.md) | 真实浏览器输入、只读测试快照与部署后验证 | 采用 |
 | [0011](0011-evolution-and-map-tools.md) | 自主文明与可收起的地图工具 | 采用 |
+| [0012](0012-campaigns-and-stories.md) | 有限战争、实际战报与只读故事观察 | 采用 |
 
 ## 何时新增或替代
 

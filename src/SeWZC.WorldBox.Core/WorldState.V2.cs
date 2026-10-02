@@ -2,12 +2,12 @@ namespace SeWZC.WorldBox.Core;
 
 public enum EventImportance { Routine, Notable, Major, Historic }
 public enum AgentGoalKind { Idle, Eat, Gather, Work, Rest, Flee, Socialize, DeliverMessage, Trade, Petition, Study, TrainMagic, March, ReturnHome, Migrate }
-public enum AgentFactKind { FoodSupply, Danger, SettlementLocation, ReliefRequest, Policy, WarOrder, PeaceOrder, Culture, Research, Personal, TradeExchange, DiplomaticNotice }
+public enum AgentFactKind { FoodSupply, Danger, SettlementLocation, ReliefRequest, Policy, WarOrder, PeaceOrder, Culture, Research, Personal, TradeExchange, DiplomaticNotice, WarReport }
 public enum PersonalExperienceKind { Neutral, Hardship, Achievement, Kindness, Betrayal, Learning }
 
 public sealed partial class WorldState
 {
-    public int SimulationVersion { get; set; } = 3;
+    public int SimulationVersion { get; set; } = 4;
     public SocietyState Society { get; set; } = new();
     public List<PendingMessage> PendingMessages { get; set; } = [];
     public List<Resident> ArchivedResidents { get; set; } = [];
@@ -105,6 +105,8 @@ public sealed class AgentState
 
 public sealed class AgentGoal
 {
+    public int EvidenceFactId { get; set; }
+    public int CauseEventId { get; set; }
     public AgentGoalKind Kind { get; set; }
     public int TargetX { get; set; }
     public int TargetY { get; set; }
@@ -119,6 +121,9 @@ public sealed class AgentGoal
 
 public sealed class AgentFact
 {
+    public int EventId { get; set; }
+    public int CampaignEventId { get; set; }
+    public WarObjective WarObjective { get; set; }
     public int TargetNationId { get; set; }
     public int Id { get; set; }
     public AgentFactKind Kind { get; set; }
@@ -169,6 +174,10 @@ public sealed class CivicOpinion
 
 public sealed class ResidentHistoryEntry
 {
+    public int EventId { get; set; }
+    public int SettlementId { get; set; }
+    public int NationId { get; set; }
+    public int EvidenceFactId { get; set; }
     public long Tick { get; set; }
     public EventImportance Importance { get; set; } = EventImportance.Notable;
     public string Text { get; set; } = "";
