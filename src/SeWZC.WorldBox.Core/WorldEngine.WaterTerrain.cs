@@ -4,6 +4,7 @@ public sealed partial class WorldEngine
 {
     public static bool IsWaterTerrain(TerrainType terrain) => terrain is TerrainType.Water or TerrainType.DeepWater or TerrainType.River or TerrainType.Lake;
     public static bool IsFreshWater(Tile tile) => tile.Terrain is TerrainType.River or TerrainType.Lake;
+    public static bool IsWaterSource(Tile tile) => IsFreshWater(tile) || tile.Terrain == TerrainType.Wetland;
 
     private void GenerateLakesAndWater()
     {

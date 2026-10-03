@@ -72,6 +72,7 @@ public sealed partial class WorldEngine
         };
         effects.Add(new("建筑提供的加成", effect, source, Active: active));
         effects.Add(new("岗位容量", $"最多 {building.WorkSlots} 名到场工作人员", source, Active: IsBuildingOperational(building)));
+        effects.Add(new("建筑耐火", $"可燃性 {BuildingFlammability(building):0.00} / 1；火中每日生命 -{1.5 * BuildingFlammability(building):0.00}，升级降低可燃性", source));
         if (building.Level < 3) effects.Add(new("下一级", $"等级 {building.Level + 1}，岗位增加 1" + (building.Kind is BuildingKind.Waystation or BuildingKind.SignalTower ? "；提升运输速度／信号覆盖" : $"；适用效率倍率 ×{1 + building.Level * .25:0.00}"), "升级完工后", Active: false));
         if (_settlements.TryGetValue(building.SettlementId, out var town))
         {
@@ -87,6 +88,7 @@ public sealed partial class WorldEngine
     {
         var effects = new List<EffectInfo>(); if (!InBounds(x, y)) return effects;
         var tile = State.Tiles[Index(x, y)];
+        effects.Add(new("地形可燃性", $"{TerrainFlammability(tile):0.00} / 1；受植被、剩余资源、供水与干旱影响", "当地地形；建筑可燃性另计"));
         if (tile.FireTicks > 0) effects.Add(new("燃烧", "停止生产与取水，居民每日灼伤 4", "当地火灾", tile.FireTicks));
         if (tile.DroughtTicks > 0) effects.Add(new("干旱", "野外食物产出 ×0.15   农场粮食 ×0.18   天然供水 ×0.20", "当地干旱", tile.DroughtTicks));
         if (tile.RoadLevel > 0 || tile.Improvement != LandImprovement.None)

@@ -53,12 +53,18 @@ public sealed partial class WorldEngine
             if (person.Profession == Profession.Child && person.Age >= 14) person.Profession = AssignProfession();
             var maxAge = Lifespan(person.Race);
             if (State.Rules.Aging && person.Age > maxAge) DamageResident(person, .5, DeathCause.OldAge);
-            if (State.Rules.Hunger && person.Hunger > 80) DamageResident(person, .30, DeathCause.Starvation);
-            else if (person.Health > 0 && person.SicknessTicks == 0 && person.Age <= maxAge && (!State.Rules.Thirst || person.Thirst <= 95)) person.Health = Math.Min(100, person.Health + 0.15);
+            if ((!State.Rules.Hunger || person.Hunger <= 80) && person.Health > 0 && person.SicknessTicks == 0 && person.Age <= maxAge && (!State.Rules.Thirst || person.Thirst <= 95)) person.Health = Math.Min(100, person.Health + 0.15);
             var tile = State.Tiles[Index(person.X, person.Y)];
             if (tile.FireTicks > 0) DamageResident(person, 4, DeathCause.Fire);
-            if (person.SicknessTicks > 0) { person.SicknessTicks--; if (State.Rules.Disease) DamageResident(person, .5, DeathCause.Disease); }
-            else if (State.Rules.Disease && infected.Contains(Index(person.X, person.Y)) && RandomInt(100) < 3) person.SicknessTicks = 45;
+            if (person.SicknessTicks > 0)
+            {
+                person.SicknessTicks--; if (State.Rules.Disease) DamageResident(person, .2, DeathCause.Disease);
+                if (person.SicknessTicks == 0) person.DiseaseImmuneUntilTick = State.Tick + 180;
+            }
+            else if (State.Rules.Disease && person.DiseaseImmuneUntilTick <= State.Tick && (State.Tick + person.Id) % 6 == 0
+                && (infected.Contains(Index(person.X, person.Y)) || Directions.Any(d => InBounds(person.X + d.X, person.Y + d.Y)
+                    && infected.Contains(Index(person.X + d.X, person.Y + d.Y)))) && RandomInt(100) < 6)
+                person.SicknessTicks = 72 + RandomInt(25);
             if (person.Health <= 0) continue;
             if (person.SicknessTicks > 0) person.Activity = ResidentActivity.Sick;
         }
@@ -142,15 +148,14 @@ public sealed partial class WorldEngine
             tile.FireTicks--;
             if (tile.FireTicks == 0)
             {
-                if (tile.Terrain == TerrainType.Forest) tile.Terrain = TerrainType.Grass;
-                tile.Fertility = (byte)Math.Max(5, tile.Fertility - 25); _burningTiles.Remove(index);
+                EndFire(index, true);
                 continue;
             }
-            if (!State.Rules.FireSpread || State.Tick % 3 != 0 || RandomInt(100) >= 22) continue;
+            if (!State.Rules.FireSpread || State.Tick % 8 != 0) continue;
             var (dx, dy) = Directions[RandomInt(4)]; var x = index % State.Width + dx; var y = index / State.Width + dy;
             if (!InBounds(x, y)) continue;
-            var neighborIndex = Index(x, y); var neighbor = State.Tiles[neighborIndex];
-            if (neighbor.FireTicks == 0 && neighbor.Terrain == TerrainType.Forest) { neighbor.FireTicks = 18; _burningTiles.Add(neighborIndex); }
+            var neighborIndex = Index(x, y);
+            if (State.Tiles[neighborIndex].FireTicks == 0 && RandomInt(1000) < GetTileFlammability(x, y) * 120) Ignite(neighborIndex);
         }
         foreach (var index in _dryTiles.ToArray())
             if (--State.Tiles[index].DroughtTicks <= 0) { State.Tiles[index].DroughtTicks = 0; _dryTiles.Remove(index); }

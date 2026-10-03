@@ -58,19 +58,19 @@ public sealed partial class WorldEngine
         int IndexFor(int x, int y) => y * state.Width + x;
         bool WalkablePosition(int x, int y) => PositionValid(x, y) && state.Tiles[y * state.Width + x].IsWalkable;
 
-        Require(state.FormatVersion == 9, "不支持该存档版本。");
+        Require(state.FormatVersion == 10, "不支持该存档版本。");
         Require(state.Width is >= 32 and <= 256 && state.Height is >= 32 and <= 256, "地图尺寸超出范围。");
         Require(state.Tick is >= 0 and <= 120_000_000 && state.RandomState != 0 && state.NextId is > 0 and < 2_000_000_000, "时间或随机数状态无效。");
         Require(state.Tiles is not null && state.Tiles.Length == state.Width * state.Height, "地图地格数量不匹配。");
         Require(state.Residents is not null && state.Residents.Count <= MaxPopulation && state.Settlements is not null && state.Settlements.Count <= 256 && state.Nations is not null && state.Nations.Count <= 64, "实体数量超出范围。");
         Require(state.Armies is not null && state.Armies.Count <= 64 && state.Diplomacies is not null && state.Diplomacies.Count <= 2016 && state.TradeRoutes is not null && state.TradeRoutes.Count <= 256 && state.Events is not null && state.Events.Count <= 400, "世界记录数量超出范围。");
-        Require(state.SimulationVersion == 9 && state.PendingMessages is not null && state.PendingMessages.Count <= MaxPopulation * 2 && state.ArchivedResidents is not null && state.ArchivedResidents.Count <= 256 && state.Society is not null, "认知或社会记录无效。");
+        Require(state.SimulationVersion == 10 && state.PendingMessages is not null && state.PendingMessages.Count <= MaxPopulation * 2 && state.ArchivedResidents is not null && state.ArchivedResidents.Count <= 256 && state.Society is not null, "认知或社会记录无效。");
         var ids = new HashSet<int>();
         bool IdValid(int id) => id > 0 && id < state.NextId && ids.Add(id);
         foreach (var nation in state.Nations!) Require(nation is not null && IdValid(nation.Id) && TextValid(nation.Name, 40) && nation.Name.Length > 0 && Enum.IsDefined(nation.FoundingRace) && Enum.IsDefined(nation.DevelopmentFocus) && nation.Technology is >= 1 and <= 5 && TextValid(nation.Decision, 240) && StockValid(nation.Resources), "国家数据无效。");
         foreach (var town in state.Settlements!) Require(town is not null && IdValid(town.Id) && TextValid(town.Name, 80) && PositionValid(town.X, town.Y) && town.Housing is >= 0 and <= 20_000 && town.Level is >= 1 and <= 5 && town.MaxClaimRadius is >= 1 and <= 17 && StockValid(town.Resources), "聚落数据无效。");
         foreach (var army in state.Armies!) Require(army is not null && IdValid(army.Id) && PositionValid(army.X, army.Y) && army.Soldiers is >= 0 and <= MaxPopulation && FiniteRange(army.Morale, 100) && FiniteRange(army.Supplies, 1_000_000) && FiniteRange(army.WaterSupplies, 1_000_000) && TextValid(army.Status), "军队数据无效。");
-        foreach (var resident in state.Residents!) Require(resident is not null && IdValid(resident.Id) && TextValid(resident.Name, 80) && TextValid(resident.Trait, 80) && PositionValid(resident.X, resident.Y) && Enum.IsDefined(resident.Race) && Enum.IsDefined(resident.Profession) && Enum.IsDefined(resident.Activity) && FiniteRange(resident.Age, 1000) && FiniteRange(resident.Health, 100) && FiniteRange(resident.Hunger, 100) && resident.SicknessTicks is >= 0 and <= 10_000, "居民数据无效。");
+        foreach (var resident in state.Residents!) Require(resident is not null && IdValid(resident.Id) && TextValid(resident.Name, 80) && TextValid(resident.Trait, 80) && PositionValid(resident.X, resident.Y) && Enum.IsDefined(resident.Race) && Enum.IsDefined(resident.Profession) && Enum.IsDefined(resident.Activity) && FiniteRange(resident.Age, 1000) && FiniteRange(resident.Health, 100) && FiniteRange(resident.Hunger, 100) && resident.SicknessTicks is >= 0 and <= 10_000 && resident.DiseaseImmuneUntilTick >= 0 && resident.DiseaseImmuneUntilTick <= state.Tick + 180, "居民数据无效。");
         var nations = state.Nations!.ToDictionary(n => n.Id);
         var towns = state.Settlements!.ToDictionary(s => s.Id);
         var armies = state.Armies!.ToDictionary(a => a.Id);
@@ -79,6 +79,7 @@ public sealed partial class WorldEngine
             var tile = state.Tiles[i];
             Require(tile is not null && Enum.IsDefined(tile.Terrain) && tile.Fertility <= 100 && tile.RoadLevel <= 3 && FiniteRange(tile.ResourceAmount, 1_000_000) && tile.FireTicks is >= 0 and <= 10_000 && tile.DroughtTicks is >= 0 and <= 10_000, "地格数据无效。");
             Require(FiniteRange(tile!.NaturalWaterYield, 4) && tile.WaterDrawTick >= 0 && tile.WaterDrawTick <= state.Tick
+                && tile.FireSuppressionTick >= 0 && tile.FireSuppressionTick <= state.Tick && tile.FireSuppressed is >= 0 and <= 2
                 && FiniteRange(tile.WaterDrawn, 4) && Enum.IsDefined(tile.BridgeDirection)
                 && (tile.Improvement == LandImprovement.Bridge ? tile.BridgeLevel is >= 1 and <= 3 : tile.BridgeLevel == 0), "地块供水或桥梁方向状态无效。");
             for (var plant = 0; plant < 4; plant++) Require(FiniteRange(tile.Plants.Get((PlantKind)plant), 1), "植物覆盖无效。");

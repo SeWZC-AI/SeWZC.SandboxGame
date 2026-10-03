@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-public enum ResidentTaskIcon { Explore, Log, Mine, Gather, Farm, Build, Upgrade, Research, Magic, Heal, Pickup, Deliver, Message, Trade, Claim, Water, Hunt, Fish, Rest, Eat, Talk, Flee, March, Smelt, Power, Craft, Ship, Plane, Crystal, Runic, Aether }
+public enum ResidentTaskIcon { Explore, Log, Mine, Gather, Farm, Build, Upgrade, Research, Magic, Heal, Pickup, Deliver, Message, Trade, Claim, Water, Hunt, Fish, Rest, Eat, Talk, Flee, March, Smelt, Power, Craft, Ship, Plane, Crystal, Runic, Aether, Extinguish }
 
 public sealed partial class WorldEngine
 {
@@ -14,6 +14,7 @@ public sealed partial class WorldEngine
         return goal.Kind switch
         {
             AgentGoalKind.ClaimLand => ResidentTaskIcon.Claim,
+            AgentGoalKind.ExtinguishFire => ResidentTaskIcon.Extinguish,
             AgentGoalKind.FetchWater => ResidentTaskIcon.Water,
             AgentGoalKind.Hunt => ResidentTaskIcon.Hunt,
             AgentGoalKind.Fish => ResidentTaskIcon.Fish,
@@ -54,7 +55,7 @@ public sealed partial class WorldEngine
         ResidentTaskIcon.Log => "伐木", ResidentTaskIcon.Mine => "采矿", ResidentTaskIcon.Gather => "采食物", ResidentTaskIcon.Farm => "农场耕作",
         ResidentTaskIcon.Build => "建筑施工", ResidentTaskIcon.Upgrade => "升级或改造", ResidentTaskIcon.Research => "研究", ResidentTaskIcon.Magic => "魔法训练",
         ResidentTaskIcon.Heal => "治疗", ResidentTaskIcon.Pickup => "返仓取原料", ResidentTaskIcon.Deliver => "运回物资", ResidentTaskIcon.Message => "递送消息",
-        ResidentTaskIcon.Trade => "贸易", ResidentTaskIcon.Claim => "占领地块", ResidentTaskIcon.Water => "打水或寻水", ResidentTaskIcon.Hunt => "狩猎",
+        ResidentTaskIcon.Trade => "贸易", ResidentTaskIcon.Claim => "占领地块", ResidentTaskIcon.Extinguish => "用水扑救火灾", ResidentTaskIcon.Water => "打水或寻水", ResidentTaskIcon.Hunt => "狩猎",
         ResidentTaskIcon.Fish => "捕鱼", ResidentTaskIcon.Rest => "休息", ResidentTaskIcon.Eat => "领取口粮", ResidentTaskIcon.Talk => "交谈",
         ResidentTaskIcon.Flee => "避险", ResidentTaskIcon.March => "行军", ResidentTaskIcon.Smelt => "冶炼合金",
         ResidentTaskIcon.Power => "制造动力单元", ResidentTaskIcon.Craft => "精密制造", ResidentTaskIcon.Ship => "造船",

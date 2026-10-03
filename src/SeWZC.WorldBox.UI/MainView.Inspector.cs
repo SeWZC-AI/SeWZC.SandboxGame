@@ -267,7 +267,7 @@ public sealed partial class MainView
         panel.Children.Add(Named(Button("编辑此地资源与道路", () => ShowTileEditor(point.X, point.Y)), "tile-edit"));
         LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.X == point.X && b.Y == point.Y), b => b.Id.ToString(),
             b => BuildingLabel(b) + "\n" + BuildingTask(b), OpenBuilding);
-        panel.Children.Add(Named(LiveText(() => $"肥沃度 {Tile().Fertility:0.0} / 100\n天然供水 {Tile().NaturalWaterYield:0.0000} / 日\n今日可取水 {_engine.AvailableWater(point.X, point.Y):0.0000}\n占领聚落：{TownName(Tile().ClaimedSettlementId)}"), "tile-water"));
+        panel.Children.Add(Named(LiveText(() => $"肥沃度 {Tile().Fertility:0.0} / 100\n每日供水 {WorldEngine.DailyWaterYield(Tile()):0.0000} / 日\n今日可取水 {_engine.AvailableWater(point.X, point.Y):0.0000}\n占领聚落：{TownName(Tile().ClaimedSettlementId)}"), "tile-water"));
         var effects = FoldSection(panel, "地块加成与减益", "tile-effects");
         effects.Children.Add(LiveText(() => EffectLabel(_engine.GetTileEffects(point.X, point.Y))));
         var local = FoldSection(panel, "归属与周围环境", "tile-context");
@@ -332,7 +332,7 @@ public sealed partial class MainView
     private static string ImportanceName(EventImportance value) => value switch { EventImportance.Routine => "普通", EventImportance.Notable => "重要日常", EventImportance.Major => "重大", _ => "历史转折" };
     private static string GoalName(AgentGoalKind value) => value switch
     {
-        AgentGoalKind.ClaimLand => "占领地块", AgentGoalKind.FetchWater => "打水或寻找水源", AgentGoalKind.Hunt => "狩猎", AgentGoalKind.Fish => "捕鱼", AgentGoalKind.Explore => "实地探索", AgentGoalKind.Idle => "重新选择任务", AgentGoalKind.Eat => "寻找食物", AgentGoalKind.Gather => "采集资源", AgentGoalKind.Work => "生产劳动", AgentGoalKind.Rest => "休息恢复", AgentGoalKind.Flee => "逃离危险", AgentGoalKind.Socialize => "交流消息", AgentGoalKind.DeliverMessage => "传递消息", AgentGoalKind.Trade => "运输货物", AgentGoalKind.Petition => "表达诉求", AgentGoalKind.Study => "学习研究", AgentGoalKind.TrainMagic => "魔法训练", AgentGoalKind.March => "执行军令", AgentGoalKind.Migrate => "迁往新家园", _ => "返回家园"
+        AgentGoalKind.ExtinguishFire => "用水扑救火灾", AgentGoalKind.ClaimLand => "占领地块", AgentGoalKind.FetchWater => "打水或寻找水源", AgentGoalKind.Hunt => "狩猎", AgentGoalKind.Fish => "捕鱼", AgentGoalKind.Explore => "实地探索", AgentGoalKind.Idle => "重新选择任务", AgentGoalKind.Eat => "寻找食物", AgentGoalKind.Gather => "采集资源", AgentGoalKind.Work => "生产劳动", AgentGoalKind.Rest => "休息恢复", AgentGoalKind.Flee => "逃离危险", AgentGoalKind.Socialize => "交流消息", AgentGoalKind.DeliverMessage => "传递消息", AgentGoalKind.Trade => "运输货物", AgentGoalKind.Petition => "表达诉求", AgentGoalKind.Study => "学习研究", AgentGoalKind.TrainMagic => "魔法训练", AgentGoalKind.March => "执行军令", AgentGoalKind.Migrate => "迁往新家园", _ => "返回家园"
     };
     private static string EventKindName(WorldEventKind value) => value switch
     {
