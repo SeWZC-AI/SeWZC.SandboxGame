@@ -114,6 +114,7 @@ public sealed partial class WorldMapControl : Control
 
     /// <summary>Raised once before a tool stroke, allowing the shell to pause and capture an undo snapshot.</summary>
     public event EventHandler? WorldEditing;
+    public event EventHandler? WorldMutationStarting;
     public event EventHandler? WorldEdited;
     public event Action<int, int>? TileSelected;
     public event Action<string>? ToolError;
@@ -304,7 +305,9 @@ public sealed partial class WorldMapControl : Control
             {
                 TerrainTilesScanned++;
                 var tile = state.Tiles[y * state.Width + x];
-                terrainHash = unchecked((terrainHash ^ ((uint)tile.Terrain + (tile.DroughtTicks > 0 ? 16u : 0u) + (uint)tile.RoadLevel * 64 + (uint)Math.Clamp((int)(tile.ResourceAmount / 25), 0, 4) * 256 + (uint)tile.Elevation * 2048)) * 16777619);
+                // Resources change this image only when a forest becomes a stump.
+                // Animal and plant quantities belong to the separate ecology layer.
+                terrainHash = unchecked((terrainHash ^ ((uint)tile.Terrain + (tile.DroughtTicks > 0 ? 16u : 0u) + (uint)tile.RoadLevel * 64 + (tile.Terrain == TerrainType.Forest && tile.ResourceAmount < 25 ? 256u : 0u) + (uint)tile.Elevation * 2048)) * 16777619);
                 territoryHash = unchecked((territoryHash ^ (uint)tile.NationId) * 16777619);
                 containsTerritory |= tile.NationId != 0 && x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles;
                 if (x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles && tile.FireTicks > 0)
@@ -897,6 +900,9 @@ public sealed partial class WorldMapControl : Control
         var prefix = tool.IndexOf(':');
         if (prefix >= 0) tool = tool[(prefix + 1)..];
         var edited = false;
+        // Every stroke point cancels a pending save, including a continuing
+        // stroke for which WorldEditing has already established an undo point.
+        WorldMutationStarting?.Invoke(this, EventArgs.Empty);
         if (TryApplyConstructionTool(tool, tile, out var constructionEdited))
         {
             if (constructionEdited) { RefreshWorld(); WorldEdited?.Invoke(this, EventArgs.Empty); }

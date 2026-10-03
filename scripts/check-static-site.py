@@ -77,7 +77,7 @@ def check_site(site):
 
     # App-owned modules should resolve relative to their own URL, including under
     # /SeWZC.SandboxGame/. Runtime modules are checked by the SDK's publish pipeline.
-    imports = re.compile(r"(?:from\s*|import\s*\(\s*|import\s*)['\"]([^'\"]+)['\"]")
+    imports = re.compile(r"(?:from\s*|import\s*\(\s*|import\s*|import\.meta\.resolve\s*\(\s*)['\"]([^'\"]+)['\"]")
     for module in site.glob("*.js"):
         for reference in imports.findall(module.read_text(encoding="utf-8")):
             if reference.startswith((".", "/")):

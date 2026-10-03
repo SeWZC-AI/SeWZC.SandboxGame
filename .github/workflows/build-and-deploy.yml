@@ -66,6 +66,15 @@ jobs:
       - name: Publish and check static site
         run: bash scripts/publish-browser.sh --no-restore
 
+      - name: Prepare large save fixture
+        run: dotnet tests/SeWZC.WorldBox.Core.Tests/bin/Release/net10.0/SeWZC.WorldBox.Core.Tests.dll --export-browser-fixture artifacts/save-fixture/world.worldbox.json
+
+      - name: Upload save fixture
+        uses: actions/upload-artifact@v4
+        with:
+          name: worldbox-save-fixture
+          path: artifacts/save-fixture
+
       - name: Upload static site for browser checks and review
         uses: actions/upload-artifact@v4
         with:
@@ -87,7 +96,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [smoke, mobile-smoke, motion, stories, effects, advancement, land, details]
+        suite: [smoke, mobile-smoke, motion, stories, effects, advancement, land, details, saving]
     steps:
       - uses: actions/checkout@v4
 
@@ -95,6 +104,12 @@ jobs:
         with:
           name: worldbox-static-site
           path: artifacts/browser-preview/SeWZC.SandboxGame
+
+      - uses: actions/download-artifact@v4
+        if: matrix.suite == 'saving'
+        with:
+          name: worldbox-save-fixture
+          path: artifacts/save-fixture
 
       - uses: actions/setup-node@v4
         with:
@@ -125,7 +140,11 @@ jobs:
             sleep 1
           done
           curl --fail --silent "$WORLDBOX_BASE_URL" > /dev/null
-          node "tests/browser/$BROWSER_SUITE.cjs" 2>&1 | tee "artifacts/browser-tests/$BROWSER_SUITE.log"
+          worldbox_suite_args=()
+          if [[ "$BROWSER_SUITE" == saving ]]; then
+            worldbox_suite_args+=(artifacts/save-fixture/world.worldbox.json)
+          fi
+          node "tests/browser/$BROWSER_SUITE.cjs" "${worldbox_suite_args[@]}" 2>&1 | tee "artifacts/browser-tests/$BROWSER_SUITE.log"
 
       - name: Upload browser evidence
         if: always()

@@ -9,6 +9,31 @@ public sealed partial class WorldEngine
 
     public string ExportJson() => JsonSerializer.Serialize(State, WorldJsonContext.Default.WorldState);
 
+    private static readonly WorldJsonContext StreamingJson = new(new JsonSerializerOptions(WorldJsonContext.Default.Options)
+        { DefaultBufferSize = 64 * 1024 });
+
+    /// <summary>Serialize in bounded buffers. The caller suspends stepping and
+    /// cancels this capture before editing or replacing the world.</summary>
+    public async Task<string> ExportJsonAsync(Func<CancellationToken, ValueTask> yield, CancellationToken cancellationToken = default)
+    {
+        using var stream = new YieldingSaveStream(yield);
+        await JsonSerializer.SerializeAsync(stream, State, StreamingJson.WorldState, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        return Encoding.UTF8.GetString(stream.GetBuffer(), 0, checked((int)stream.Length));
+    }
+
+    private sealed class YieldingSaveStream(Func<CancellationToken, ValueTask> yield) : MemoryStream
+    {
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (Length + buffer.Length > MaxSaveBytes) throw new ArgumentException("存档超过 32 MiB。");
+            Write(buffer.Span);
+            await yield(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+    }
+
     public static WorldEngine ImportJson(string json)
     {
         if (string.IsNullOrWhiteSpace(json) || json.Length > MaxSaveBytes || Encoding.UTF8.GetByteCount(json) > MaxSaveBytes)

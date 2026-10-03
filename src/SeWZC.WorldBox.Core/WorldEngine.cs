@@ -12,6 +12,7 @@ public sealed partial class WorldEngine
     private readonly Dictionary<int, int> _armyTargets = [];
     private readonly HashSet<int> _burningTiles = [];
     private readonly HashSet<int> _dryTiles = [];
+    private readonly TerritoryCounts _territoryCounts = new();
     private static readonly (int X, int Y)[] Directions = [(1, 0), (0, 1), (-1, 0), (0, -1)];
     private static readonly uint[] NationColors = [0xFFE7AD62, 0xFF63CCA7, 0xFF8C9DEB, 0xFFE27A7C, 0xFFDFC16E, 0xFFB593DB, 0xFF74BBDC, 0xFFD294C8];
     private static readonly string[] RaceNames = ["人类", "精灵", "矮人", "兽人"];
@@ -177,7 +178,8 @@ public sealed partial class WorldEngine
 
     private void RefreshTotals()
     {
-        foreach (var nation in State.Nations) { nation.Population = 0; nation.Territory = 0; nation.Resources = new ResourceStock(); }
+        _territoryCounts.Bind(State.Tiles);
+        foreach (var nation in State.Nations) { nation.Population = 0; nation.Territory = _territoryCounts.Get(nation.Id); nation.Resources = new ResourceStock(); }
         foreach (var settlement in State.Settlements)
         {
             settlement.Population = _citizens.GetValueOrDefault(settlement.Id)?.Count ?? 0;
@@ -190,7 +192,5 @@ public sealed partial class WorldEngine
             nation.Resources.Crystals += settlement.Resources.Crystals;
             foreach (var kind in MineralAndVehicleResources) nation.Resources.Set(kind, nation.Resources.Get(kind) + settlement.Resources.Get(kind));
         }
-        foreach (var tile in State.Tiles)
-            if (_nations.TryGetValue(tile.NationId, out var nation)) nation.Territory++;
     }
 }

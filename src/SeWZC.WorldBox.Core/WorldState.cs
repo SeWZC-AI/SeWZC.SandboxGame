@@ -38,7 +38,18 @@ public sealed partial class Tile
     public TerrainType Terrain { get; set; }
     public byte Elevation { get; set; }
     public byte Fertility { get; set; }
-    public int NationId { get; set; }
+    private int _nationId;
+    [JsonIgnore] internal TerritoryCounts? TerritoryCounts { get; set; }
+    public int NationId
+    {
+        get => _nationId;
+        set
+        {
+            if (_nationId == value) return;
+            TerritoryCounts?.Change(_nationId, value);
+            _nationId = value;
+        }
+    }
     public int SettlementId { get; set; }
     public int FireTicks { get; set; }
     public int DroughtTicks { get; set; }
