@@ -100,7 +100,7 @@ Linux 桌面版需要图形会话以及 Avalonia 所需的系统图形库。无�
 
 ## 发布到 GitHub Pages
 
-仓库中的 [GitHub Actions 工作流](.github/workflows/build-and-deploy.yml) 在 `main` 推送、PR 和手动运行时验证，避免功能分支推送与 PR 重复执行。它缓存 NuGet 包，先构建桌面与测试项目，再一次性发布浏览器项目；八套完整 Chromium 验收（桌面、触屏、连续运动、故事、特效、双线时代发展、地块与运输、紧凑详情和软键盘输入）使用同一发布产物，在独立 runner 上并行运行。全部成功后，只有 `main` 的非 PR 运行进入部署。
+仓库中的 [GitHub Actions 工作流](.github/workflows/build-and-deploy.yml) 在 `main` 推送、PR 和手动运行时验证，避免功能分支推送与 PR 重复执行。它缓存 NuGet 包，先构建桌面与测试项目，再一次性发布浏览器项目；九套完整 Chromium 验收（桌面、触屏、连续运动、故事、特效、双线时代发展、地块与运输、紧凑详情和软键盘输入、可响应保存与后台存储）使用同一发布产物，在独立 runner 上并行运行。全部成功后，只有 `main` 的非 PR 运行进入部署。
 
 部署后执行较短的上线检查：确认当前提交的 HTML 已生效、应用渲染与模拟可用、IndexedDB 保存和刷新恢复成功。完整功能验收不重复执行。证据分别上传为 `worldbox-browser-tests-<suite>` 和 `worldbox-live-browser-tests`。并行验收缩短等待时间，但会增加 runner 初始化和 artifact 下载次数。
 
@@ -111,7 +111,7 @@ Linux 桌面版需要图形会话以及 Avalonia 所需的系统图形库。无�
 
 首次部署需先完成仓库 Pages 设置。工作流使用 `configure-pages` 检查配置，部署任务仅申请 `pages: write` 与 `id-token: write` 权限；不需要另建 `gh-pages` 分支或在仓库中保存个人访问令牌。
 
-无需额外服务器、API 密钥或自定义 COOP / COEP 响应头。浏览器项目关闭 WebAssembly 多线程与 AOT；入口和自有资源使用相对路径，支持项目子路径。发布输出包含 `.nojekyll`，避免 `_framework` 被静态处理忽略。请访问以 `/` 结尾的项目地址。
+无需额外服务器、API 密钥或自定义 COOP / COEP 响应头。浏览器项目关闭 WebAssembly 多线程与 AOT；保存的 IndexedDB 写入使用普通 JavaScript Worker，不支持时使用原存储路径；入口和自有资源使用相对路径，支持项目子路径。发布输出包含 `.nojekyll`，避免 `_framework` 被静态处理忽略。请访问以 `/` 结尾的项目地址。
 
 本地生成与检查相同的静态产物：
 

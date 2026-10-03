@@ -75,9 +75,16 @@ method(ui + 'MainView.cs', '    private void OnTick(object? sender, EventArgs e)
 method(ui + 'MainView.cs', '    private void RefreshUi(bool force = false)', 'UI.RefreshUi', '_engine.State.Tick')
 path = destination / ui / 'MainView.cs'
 text = path.read_text()
-text = replace_once(text, '            await App.Storage.SaveAsync(_engine.ExportJson());',
-    f'            string probeJson;\n            using ({scope("Save.Serialize", "_engine.State.Tick")}) probeJson = _engine.ExportJson();\n'
-    f'            using ({scope("Save.Storage", "_engine.State.Tick")}) await App.Storage.SaveAsync(probeJson);', 'SaveAsync')
+if '            await App.Storage.SaveAsync(_engine.ExportJson());' in text:
+    text = replace_once(text, '            await App.Storage.SaveAsync(_engine.ExportJson());',
+        f'            string probeJson;\n            using ({scope("Save.Serialize", "_engine.State.Tick")}) probeJson = _engine.ExportJson();\n'
+        f'            using ({scope("Save.Storage", "_engine.State.Tick")}) await App.Storage.SaveAsync(probeJson);', 'SaveAsync')
+else:
+    # This inclusive elapsed scope contains cooperative waits, not just CPU work.
+    text = replace_once(text, '            var json = await _engine.ExportJsonAsync(YieldDuringSave, capture.Token);',
+        f'            string json;\n            using ({scope("Save.Serialize", "_engine.State.Tick")}) json = await _engine.ExportJsonAsync(YieldDuringSave, capture.Token);', 'async save capture')
+    text = replace_once(text, '            await App.Storage.SaveAsync(json);',
+        f'            using ({scope("Save.Storage", "_engine.State.Tick")}) await App.Storage.SaveAsync(json);', 'save storage')
 path.write_text(text)
 for file, signature, name in [
     ('WorldMapControl.cs', '    public void RefreshWorld(bool resetCamera = false)', 'Map.RefreshWorld'),
@@ -105,7 +112,12 @@ text = replace_once(text, '            if (!chunk.TerritoryCached || chunk.Terri
 text = replace_once(text, '        var colors = new Dictionary<int, uint>();',
     '        var exactResources = SeWZC.WorldBox.Core.BrowserStageProbe.ExactResourceHash;\n        var colors = new Dictionary<int, uint>();', 'resource experiment flag')
 original = '(uint)Math.Clamp((int)(tile.ResourceAmount / 25), 0, 4) * 256'
-text = replace_once(text, original, '(exactResources ? (tile.Terrain == TerrainType.Forest && tile.ResourceAmount < 25 ? 256u : 0u) : ' + original + ')', 'terrain resource hash')
+exact = '(tile.Terrain == TerrainType.Forest && tile.ResourceAmount < 25 ? 256u : 0u)'
+default_exact = original not in text
+if default_exact:
+    text = replace_once(text, exact, '(exactResources ? ' + exact + ' : ' + original + ')', 'fixed terrain resource hash')
+else:
+    text = replace_once(text, original, '(exactResources ? ' + exact + ' : ' + original + ')', 'terrain resource hash')
 path.write_text(text)
 
 probe = '''using System.Diagnostics;
@@ -114,7 +126,7 @@ using System.Text.Json.Serialization;
 namespace SeWZC.WorldBox.Core;
 public static class BrowserStageProbe
 {
-    public static bool ExactResourceHash;
+    public static bool ExactResourceHash = DEFAULT_EXACT;
     private static readonly Sample[] Buffer = new Sample[100000];
     private static int Count, Overflow;
     private static long Epoch = Stopwatch.GetTimestamp();
@@ -144,7 +156,7 @@ public static class BrowserStageProbe
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
 [JsonSerializable(typeof(BrowserStageProbe.Report))]
 internal partial class ProbeJsonContext : JsonSerializerContext { }
-'''.replace('NAMES', ', '.join('"' + name + '"' for name in names))
+'''.replace('NAMES', ', '.join('"' + name + '"' for name in names)).replace('DEFAULT_EXACT', str(default_exact).lower())
 (destination / core / 'BrowserStageProbe.cs').write_text(probe)
 path = destination / 'src/SeWZC.WorldBox.Browser/BrowserTestBridge.cs'
 text = replace_once(path.read_text(), '    [JSExport]\n    public static string ReadSnapshot()',

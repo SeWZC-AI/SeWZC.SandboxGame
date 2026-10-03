@@ -5,6 +5,9 @@ const AUTOSAVE_KEY = "autosave";
 const MAX_FILE_BYTES = 32 * 1024 * 1024;
 let databasePromise;
 let pickerPending = false;
+let saveWorker;
+let nextSaveRequest = 0;
+const saveRequests = new Map();
 
 function checkSize(text) {
     if (typeof text !== "string") throw new Error("存档内容不是文本。");
@@ -50,7 +53,38 @@ function openDatabase() {
     return databasePromise;
 }
 
-export async function save(json) {
+// IndexedDB encoding and structured cloning of a large save belong off the
+// rendering thread. This ordinary worker needs no WASM threads or special headers.
+export function save(json) {
+    if (typeof json !== "string") return Promise.reject(new Error("存档内容不是文本。"));
+    if (typeof Worker !== "function") return writeSave(json);
+    if (!saveWorker) {
+        try { saveWorker = new Worker(import.meta.resolve("./storage-worker.js"), { type: "module" }); }
+        catch { return writeSave(json); }
+        saveWorker.onmessage = ({ data }) => {
+            const request = saveRequests.get(data.id);
+            if (!request) return;
+            saveRequests.delete(data.id);
+            if (data.ok) request.resolve();
+            else request.reject(new Error(data.error || "保存世界失败。"));
+        };
+        saveWorker.onerror = () => {
+            for (const request of saveRequests.values()) request.reject(new Error("后台存储启动失败，请尝试导出世界。"));
+            saveRequests.clear(); saveWorker.terminate(); saveWorker = undefined;
+        };
+    }
+    return new Promise((resolve, reject) => {
+        const id = ++nextSaveRequest;
+        saveRequests.set(id, { resolve, reject });
+        // Worker modules have no document import map. Pass this already-resolved
+        // module URL so the shared writer also works with fingerprinted assets.
+        try { saveWorker.postMessage({ id, json, moduleUrl: import.meta.url }); }
+        catch (error) { saveRequests.delete(id); reject(error); }
+    });
+}
+
+// Shared by the worker and the fallback for browsers without worker support.
+export async function writeSave(json) {
     checkSize(json);
     const database = await openDatabase();
     await new Promise((resolve, reject) => {

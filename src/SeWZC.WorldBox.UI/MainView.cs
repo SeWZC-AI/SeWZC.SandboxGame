@@ -63,9 +63,12 @@ public sealed partial class MainView : UserControl
     private readonly List<(string Tool, Button Button)> _tools = [];
     private readonly List<(int Speed, Button Button)> _speeds = [];
     private double _previousTime, _accumulator, _lastUi, _lastSave;
+    private double _lastStepMilliseconds, _lastMapRefreshMilliseconds;
     private bool _paused, _ready, _saving, _wasBackground, _mobilePanel;
     private bool _allowAutosave = true;
     private readonly SemaphoreSlim _saveGate = new(1, 1);
+    private CancellationTokenSource? _saveCapture;
+    private long _lastSaveYield;
     private Task? _initialization;
     private Control? _shell;
     private int _speed = 1, _selectedNationId, _selectedResidentId;
@@ -87,6 +90,7 @@ public sealed partial class MainView : UserControl
         Focusable = true;
         _map.Engine = _engine;
         _map.WorldEditing += (_, _) => BeginEdit();
+        _map.WorldMutationStarting += (_, _) => _saveCapture?.Cancel();
         _map.WorldEdited += (_, _) => { RefreshUi(true); SetStatus("世界已更新并暂停，可撤销本轮编辑"); };
         _map.TileSelected += (x, y) => { if (_mapPick is not null) FinishMapPick(x, y); else SelectMapObject("tile", x: x, y: y); };
         _map.ResidentSelected += id => SelectMapObject("resident", id);
@@ -238,7 +242,7 @@ public sealed partial class MainView : UserControl
         var elapsed = Math.Clamp(now - _previousTime, 0, .25); _previousTime = now;
         if (!_ready) return;
         var hidden = App.Storage?.IsBackground == true;
-        _map.IsSimulationPaused = hidden || _paused || _modal.IsVisible;
+        _map.IsSimulationPaused = hidden || _paused || _modal.IsVisible || _saveCapture is not null;
         _map.SimulationTickDurationSeconds = .2 / _speed;
         if (hidden)
         {
@@ -247,17 +251,27 @@ public sealed partial class MainView : UserControl
             return;
         }
         _wasBackground = false;
-        if (!_paused && !_modal.IsVisible)
+        if (!_paused && !_modal.IsVisible && _saveCapture is null)
         {
             _accumulator = Math.Min(.8, _accumulator + elapsed * _speed);
-            var work = Stopwatch.StartNew(); var count = 0;
+            var work = Stopwatch.GetTimestamp(); var count = 0;
             while (_accumulator >= .2 && count < 4)
             {
+                // Reserve the preceding map cost before adding another atomic
+                // step. An expensive first step still progresses the world.
+                if (count > 0 && Stopwatch.GetElapsedTime(work).TotalMilliseconds
+                    + _lastStepMilliseconds + _lastMapRefreshMilliseconds > 12) break;
+                var stepStarted = Stopwatch.GetTimestamp();
                 _engine.Step(); _accumulator -= .2; count++;
-                if (work.Elapsed.TotalMilliseconds > 12) break;
+                _lastStepMilliseconds = Stopwatch.GetElapsedTime(stepStarted).TotalMilliseconds;
+                if (Stopwatch.GetElapsedTime(work).TotalMilliseconds + _lastMapRefreshMilliseconds > 12) break;
             }
             if (count > 0)
-            { _map.SimulationTickFraction = Math.Clamp(_accumulator / .2, 0, .999999); _map.RefreshWorld(); }
+            {
+                _map.SimulationTickFraction = Math.Clamp(_accumulator / .2, 0, .999999);
+                var mapStarted = Stopwatch.GetTimestamp(); _map.RefreshWorld();
+                _lastMapRefreshMilliseconds = Stopwatch.GetElapsedTime(mapStarted).TotalMilliseconds;
+            }
             _simulationStatus.Text = _accumulator > .4 ? "设备限速，世界继续演化" : "世界正在演化";
         }
         if (now - _lastUi > .7) { _lastUi = now; RefreshUi(); }
@@ -272,6 +286,7 @@ public sealed partial class MainView : UserControl
     }
     private void BeginEdit()
     {
+        _saveCapture?.Cancel();
         _paused = true; _map.IsSimulationPaused = true;
         _checkpoint ??= _engine.ExportJson();
         RefreshUi();
@@ -279,6 +294,7 @@ public sealed partial class MainView : UserControl
     private void RestoreCheckpoint()
     {
         if (_checkpoint is null) { SetStatus("暂无可撤销的编辑。开始绘制时会保存恢复点，继续模拟后清除。"); return; }
+        _saveCapture?.Cancel();
         CancelMapPick();
         _engine = WorldEngine.ImportJson(_checkpoint); _checkpoint = null; _paused = true;
         ClearMapSelection(); _selectedTile = null; _selectedNationId = 0; _selectedResidentId = 0; _inspectorMode = "overview"; InvalidateInspector();
@@ -286,6 +302,9 @@ public sealed partial class MainView : UserControl
     }
     private void UpdateSpeedButtons()
     {
+        // Five-speed days are 40 ms apart. A 50 ms timer that is rescheduled
+        // after each callback cannot service them when one step uses its budget.
+        _timer.Interval = TimeSpan.FromMilliseconds(Math.Max(16, 50d / _speed));
         foreach (var (speed, button) in _speeds) { button.Background = speed == _speed ? Brush.Parse("#355347") : Panel; button.Foreground = speed == _speed ? Mint : Brushes.White; }
     }
 
@@ -394,15 +413,39 @@ public sealed partial class MainView : UserControl
         if (App.Storage is null || !_ready || !manual && (_saving || !_allowAutosave)) return;
         await _saveGate.WaitAsync();
         _saving = true;
+        using var capture = new CancellationTokenSource();
         try
         {
             var year = _engine.State.Year;
-            await App.Storage.SaveAsync(_engine.ExportJson());
+            _saveCapture = capture; _lastSaveYield = Stopwatch.GetTimestamp();
+            _map.IsSimulationPaused = true;
+            _simulationStatus.Text = "正在保存，模拟短暂停留";
+            var json = await _engine.ExportJsonAsync(YieldDuringSave, capture.Token);
+            capture.Token.ThrowIfCancellationRequested();
+            FinishSaveCapture(capture);
+            await App.Storage.SaveAsync(json);
             if (manual) { _allowAutosave = true; SetStatus("世界已保存到本机"); }
             else SetStatus($"已自动保存（第 {year} 年，{DateTime.Now:HH:mm}）");
         }
+        catch (Exception) when (capture.IsCancellationRequested)
+        { _lastSave = _clock.Elapsed.TotalSeconds - 25; }
         catch (Exception ex) { SetStatus($"保存失败：{FriendlyError(ex)}。请尝试导出文件。"); }
-        finally { _saving = false; _saveGate.Release(); }
+        finally { FinishSaveCapture(capture); _saving = false; _saveGate.Release(); }
+    }
+
+    private async ValueTask YieldDuringSave(CancellationToken cancellationToken)
+    {
+        if (App.Storage?.IsBackground == true || Stopwatch.GetElapsedTime(_lastSaveYield).TotalMilliseconds < 8) return;
+        await Task.Delay(1, cancellationToken);
+        _lastSaveYield = Stopwatch.GetTimestamp();
+    }
+
+    private void FinishSaveCapture(CancellationTokenSource capture)
+    {
+        if (!ReferenceEquals(_saveCapture, capture)) return;
+        _saveCapture = null; _previousTime = _clock.Elapsed.TotalSeconds;
+        _map.IsSimulationPaused = _paused || _modal.IsVisible || App.Storage?.IsBackground == true;
+        _simulationStatus.Text = "世界正在演化";
     }
 
     private void ShowNewWorld()
@@ -424,8 +467,10 @@ public sealed partial class MainView : UserControl
     }
     private void ReplaceWorld(WorldEngine engine)
     {
+        _saveCapture?.Cancel();
         CancelMapPick();
         ClearMapSelection(); _checkpoint = _engine.ExportJson(); _engine = engine; _paused = true; _accumulator = 0; _selectedTile = null; _selectedNationId = 0;
+        _lastStepMilliseconds = _lastMapRefreshMilliseconds = 0;
         _allowAutosave = true;
         _inspectorMode = "overview"; _selectedResidentId = 0; _navigation.Clear(); _watched.Clear(); _historyWatchedOnly = false; _eventDetailId = 0; InvalidateInspector();
         _map.Engine = engine; _map.IsSimulationPaused = true; _map.RefreshWorld(true); UpdateToolContext(); RefreshUi(true);
