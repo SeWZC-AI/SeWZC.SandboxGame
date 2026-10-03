@@ -40,7 +40,8 @@ public sealed partial class MainView
     }
     private void OpenResident(int id)
     {
-        RememberLocation(); _selectedResidentId = id; _map.SelectResident(id); OpenInspector("resident", false);
+        RememberLocation(); _selectedResidentId = id; _mapSelectionKind = "resident"; _selectedBuildingId = 0; _selectedTile = null;
+        _map.SelectResident(id); OpenInspector("resident", false);
     }
     private void OpenNation(int id) { RememberLocation(); _selectedNationId = id; OpenInspector("nation", false); }
 
@@ -59,16 +60,18 @@ public sealed partial class MainView
             if (_inspectorKey != key)
             {
                 _inspectorKey = key; _inspectorUpdates.Clear();
-                var content = new StackPanel { Margin = new Thickness(8), Spacing = 6 };
-                var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto") };
+                var content = new StackPanel { Margin = new Thickness(6), Spacing = 4 };
+                var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto") };
                 header.Children.Add(Text(_inspectorMode switch
                 {
                     "watched" => "我的关注", "story" => "人物故事", "event" => "事件与后果", "resident" => "居民档案", "residents" => "大地上的居民", "nation" => "国家与文明", "nations" => "文明国家",
                     "history" => "世界编年史", "tile" => "此处的故事", "rules" => "世界规则", "infrastructure" => "建设与运输", "communication" => "消息与通信", _ => "世界概览"
                 }, 17, null, true));
                 var back = IconButton("back", GoBack, "返回上一处", "inspector-back"); Grid.SetColumn(back, 1); header.Children.Add(back);
+                var expand = Named(Button(_expandedInspector ? "收起" : "展开", () => { _expandedInspector = !_expandedInspector; InvalidateInspector(); ApplyLayout(); RefreshInspector(); }), "inspector-expand");
+                expand.IsVisible = _isCompact; Grid.SetColumn(expand, 2); header.Children.Add(expand);
                 var close = IconButton("close", CloseInspector, "关闭详情，返回地图", "inspector-close");
-                Grid.SetColumn(close, 2); header.Children.Add(close); _inspectorNavigation.Children.Clear(); _inspectorNavigation.Children.Add(header);
+                Grid.SetColumn(close, 3); header.Children.Add(close); _inspectorNavigation.Children.Clear(); _inspectorNavigation.Children.Add(header);
                 var navigation = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*,*"), ColumnSpacing = 4 };
                 var entries = new[] { ("世界", "overview"), ("居民", "residents"), ("国家", "nations"), ("日志", "history") };
                 for (var i = 0; i < entries.Length; i++)
@@ -123,7 +126,7 @@ public sealed partial class MainView
                     if (action is null) control = Card(text);
                     else
                     {
-                        var button = new Button { Content = text, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(10), Background = Ink, CornerRadius = new CornerRadius(7) };
+                        var button = new Button { Content = text, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(6), Background = Ink, CornerRadius = new CornerRadius(7) };
                         if (item is Resident resident) Named(button, $"resident-row-{resident.Id}");
                         if (item is Nation nation) Named(button, $"nation-row-{nation.Id}");
                         if (item is WorldEvent worldEvent) Named(button, $"history-row-{worldEvent.Id}");
@@ -152,7 +155,7 @@ public sealed partial class MainView
     private string ResidentName(int id) => _engine.GetResident(id)?.Name ?? (id == 0 ? "未指定" : $"居民 #{id}");
     private string TownName(int id) => _engine.State.Settlements.FirstOrDefault(t => t.Id == id)?.Name ?? (id == 0 ? "无" : $"聚落 #{id}");
     private static string DateLabel(long tick) => tick < 0 ? "尚无记录" : $"第 {1 + tick / 120} 年 · {1 + tick % 120} 日";
-    private static string StockLabel(ResourceStock stock) => $"粮 {stock.Food:F0} · 木 {stock.Wood:F0} · 石 {stock.Stone:F0} · 矿 {stock.Ore:F0}\n合金 {stock.Alloy:F1} · 动力单元 {stock.EnergyCells:F1} · 魔晶 {stock.Crystals:F1}";
+    private static string StockLabel(ResourceStock stock) => AdvancementRules.Stock(stock) is { Length: > 0 } text ? text : "暂无库存";
 
     private void BuildOverview(StackPanel panel)
     {
@@ -191,12 +194,14 @@ public sealed partial class MainView
         if (_selectedTile is not { } point || point.X < 0 || point.Y < 0 || point.X >= _engine.State.Width || point.Y >= _engine.State.Height) { panel.Children.Add(Paragraph("请先在地图上选择一处位置。")); return; }
         Tile Tile() => _engine.State.Tiles[point.Y * _engine.State.Width + point.X];
         panel.Children.Add(LiveText(() => $"{TerrainName(Tile().Terrain)} · {point.X}, {point.Y}", 16, Mint));
-        panel.Children.Add(LiveText(() => $"实际地格状态\n肥沃度 {Tile().Fertility} · 资源 {Tile().ResourceAmount:F0}\n道路 {Tile().RoadLevel} 级 · {(Tile().IsWalkable ? "可通行" : "不可通行")}\n归属：{NationName(Tile().NationId)}\n火灾 {Tile().FireTicks} 日 · 干旱 {Tile().DroughtTicks} 日"));
+        panel.Children.Add(LiveText(() => $"归属：{NationName(Tile().NationId)} · 道路 {Tile().RoadLevel} 级\n火灾 {Tile().FireTicks} 日 · 干旱 {Tile().DroughtTicks} 日"));
+        panel.Children.Add(LiveText(() => _engine.GetTileProductionSummary(point.X, point.Y)));
+        panel.Children.Add(Named(Button("安排居民改造此地", () => ShowLandProject(point.X, point.Y)), "tile-improve"));
         panel.Children.Add(Named(Button("编辑此地资源与道路", () => ShowTileEditor(point.X, point.Y)), "tile-edit"));
         panel.Children.Add(LiveText(() =>
         {
             var buildings = _engine.State.Society.Buildings.Where(b => b.X == point.X && b.Y == point.Y);
-            return string.Join("\n", buildings.Select(b => $"{WorldEngine.BuildingName(b.Kind)} · 生命 {b.Health:0}%\n施工 {b.ConstructionProgress:0}/{b.ConstructionRequired:0} · 工人 {b.Workers.Count}/{b.WorkSlots}\n最近工作：{DateLabel(b.LastWorkedTick)}"));
+            return string.Join("\n", buildings.Select(b => $"{WorldEngine.BuildingName(b.Kind)} · 生命 {b.Health:0}%\n施工 {b.ConstructionProgress:0}/{b.ConstructionRequired:0} · 工人 {b.Workers.Count}/{b.WorkSlots}\n最近工作：{DateLabel(b.LastWorkedTick)}\n{_engine.GetProductionStatus(b.Id)}"));
         }));
         var nearby = FoldSection(panel, "附近居民 · 点击查看", "tile-residents", true);
         LiveRows(nearby, () => _engine.State.Residents.Where(r => Math.Abs(r.X - point.X) <= 6 && Math.Abs(r.Y - point.Y) <= 6).OrderBy(r => r.Id).Take(16), r => r.Id.ToString(), r => $"{r.Name} · {ProfessionName(r.Profession)}\n{GoalName(r.Agent.Goal.Kind)} · {r.Agent.Goal.Reason}", r => OpenResident(r.Id));

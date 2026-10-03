@@ -45,6 +45,21 @@ public sealed partial class WorldMapControl
             }
             switch (building.Kind)
             {
+                case BuildingKind.Bridge:
+                    Box(WoodBrush, -4, -4, 8, 8);
+                    for (var row = 0; row < 4; row++) Box(StoneBrush, -4, -4 + row * 2, 8, .5);
+                    break;
+                case BuildingKind.MountainPass:
+                    Box(StoneBrush, -4, -2, 8, 4); Box(WoodBrush, -4, -2, 8, .5); Box(WoodBrush, -4, 1.5, 8, .5);
+                    break;
+                case BuildingKind.Dock:
+                    DrawHouse(context, x - 3, y - 3, AcademyBrush, 1);
+                    Box(WoodBrush, -5, 2, 10, 3); Box(MessageBrush, 3, -7, .6, 9);
+                    break;
+                case BuildingKind.Airfield:
+                    Box(StoneBrush, -5, -4, 10, 8); Box(WoodBrush, -4, 1, 8, 2);
+                    Box(AcademyBrush, -4, -5, 6, 4); Box(MessageBrush, 1, -2, 3, .6);
+                    break;
                 case BuildingKind.Farm:
                     Box(WoodBrush, -4, -4, 8, 8);
                     Box(FarmBrush, -3, -3, 6, 6);

@@ -77,7 +77,7 @@ public sealed partial class WorldEngine
         ValidateStoryReferences(candidate, State.NextId);
         if (isLive)
         {
-            if (!Walkable(candidate.X, candidate.Y)) throw new ArgumentException("居民必须位于可通行地格。");
+            if (!InBounds(candidate.X, candidate.Y) || !CanTraverse(State.Tiles[Index(candidate.X, candidate.Y)], candidate.TravelMode)) throw new ArgumentException("居民必须位于可通行地格。");
             if (candidate.ArmyId != 0 && !State.Armies.Any(a => a.Id == candidate.ArmyId && a.NationId == candidate.NationId)) throw new ArgumentException("军队不存在或与居民所属国家不一致。");
             if (candidate.CultureId != 0 && !State.Society.Cultures.Any(c => c.Id == candidate.CultureId)) throw new ArgumentException("文化不存在。");
         }

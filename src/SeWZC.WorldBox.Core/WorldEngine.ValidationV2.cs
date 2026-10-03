@@ -29,7 +29,9 @@ public sealed partial class WorldEngine
         CheckV2(IdentityText(person.Name, 80) && person.Name.Length > 0 && IdentityText(person.Trait, 80) && Enum.IsDefined(person.Race) && Enum.IsDefined(person.Profession) && Enum.IsDefined(person.Activity), "身份信息无效。");
         CheckV2(Number(person.Age, 0, 1000) && Number(person.Health, 0, 100) && Number(person.Hunger, 0, 100) && Number(person.Mana, 0, 1000) && Number(person.MagicTalent, 0, 100) && Number(person.MagicTraining, 0, 100) && person.SicknessTicks is >= 0 and <= 10_000, "生命或魔法数值无效。");
         CheckV2(Coordinates(person.X, person.Y, width, height) && Coordinates(person.FromX, person.FromY, width, height) && person.MoveStartedTick >= 0 && person.MoveStartedTick <= tick && person.MoveDurationTicks is >= 1 and <= 100, "移动位置或时间无效。");
-        CheckV2(person.Inventory is not null && Number(person.Inventory.Food, 0, 1_000_000) && Number(person.Inventory.Wood, 0, 1_000_000) && Number(person.Inventory.Stone, 0, 1_000_000) && Number(person.Inventory.Ore, 0, 1_000_000) && Number(person.Inventory.Alloy, 0, 1_000_000) && Number(person.Inventory.EnergyCells, 0, 1_000_000) && Number(person.Inventory.Crystals, 0, 1_000_000), "背包数值无效。");
+        CheckV2(person.Inventory is not null && AdvancementRules.Resources.All(kind => Number(person.Inventory.Get(kind), 0, 1_000_000)), "背包数值无效。");
+        CheckV2(Enum.IsDefined(person.TravelMode) && (person.TravelMode != TravelMode.Aircraft || person.Inventory.Aircraft >= 1)
+            && (person.TravelMode != TravelMode.Boat || person.Inventory.Boats >= 1), "运输工具状态无效。");
         var agent = person.Agent;
         CheckV2(agent is not null && agent.Personality is not null && agent.Goal is not null && agent.Memory is not null && agent.Memory.Count <= 16 && agent.Decisions is not null && agent.Decisions.Count <= 6 && agent.CarriedMessages is not null && agent.CarriedMessages.Count <= 8, "心智结构或容量无效。");
         var personality = agent!.Personality;

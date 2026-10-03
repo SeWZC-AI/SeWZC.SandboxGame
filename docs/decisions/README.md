@@ -19,6 +19,7 @@
 | [0011](0011-evolution-and-map-tools.md) | 自主文明与可收起的地图工具 | 采用 |
 | [0012](0012-campaigns-and-stories.md) | 有限战争、实际战报与只读故事观察 | 采用 |
 | [0013](0013-independent-advancement.md) | 科技与魔法并行发展，保持各自的生产基础 | 采用 |
+| [0014](0014-land-and-transport.md) | 地块改造、阶段资源与基础载具运输 | 采用 |
 
 ## 何时新增或替代
 

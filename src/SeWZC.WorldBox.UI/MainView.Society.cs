@@ -121,7 +121,7 @@ public sealed partial class MainView
         LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.SettlementId == town.Id && AdvancementRules.For(b.Kind) is not null).OrderBy(b => b.Id),
             b => b.Id.ToString(), b => WorldEngine.BuildingName(b.Kind) + "\n" + WorldEngine.ProductionRecipe(b.Kind) + "\n" + _engine.GetProductionStatus(b.Id), b => _map.FocusTile(b.X, b.Y));
         panel.Children.Add(Text("实体运输与传信", 12, Mint));
-        LiveRows(panel, () => _engine.State.Residents.Where(r => (r.SettlementId == town.Id || r.Agent.DestinationSettlementId == town.Id) && (r.Agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage || r.Profession is Profession.Trader or Profession.Messenger)).OrderBy(r => r.Id).Take(30), r => r.Id.ToString(), r => $"{r.Name} · {GoalName(r.Agent.Goal.Kind)}\n{r.X},{r.Y} → {TownName(r.Agent.DestinationSettlementId)}\n携带：{StockLabel(r.Inventory)} · 消息 {r.Agent.CarriedMessages.Count} 条\n{r.Agent.Goal.Reason}", r => OpenResident(r.Id));
+        LiveRows(panel, () => _engine.State.Residents.Where(r => (r.SettlementId == town.Id || r.Agent.DestinationSettlementId == town.Id) && (r.Agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage || r.Profession is Profession.Trader or Profession.Messenger)).OrderBy(r => r.Id).Take(30), r => r.Id.ToString(), r => $"{r.Name} · {WorldEngine.TravelModeName(r.TravelMode)} · {GoalName(r.Agent.Goal.Kind)}\n{r.X},{r.Y} → {TownName(r.Agent.DestinationSettlementId)}\n携带：{StockLabel(r.Inventory)} · 消息 {r.Agent.CarriedMessages.Count} 条\n{r.Agent.Goal.Reason}", r => OpenResident(r.Id));
         panel.Children.Add(Text("通信覆盖与连通 · 当前实际状态", 12, Mint));
         panel.Children.Add(Paragraph("同国在运作的信号塔通过视线连通；聚落接入距离 12 格，塔间 24 格，山脉阻挡。设施需要工作人员、足够健康且未着火。道路与驿站改变实际信使行程。"));
         LiveRows(panel, () => _engine.State.Settlements.Where(t => t.NationId == town.NationId && t.Id != town.Id).OrderBy(t => t.Id), t => t.Id.ToString(), t => _engine.CanRelayInformation(town.Id, t.Id, out var ticks) ? $"{town.Name} ↔ {t.Name}\n信号连通 · 预计 {ticks} 日" : $"{town.Name} ↔ {t.Name}\n信号未连通 · 依赖居民实际携带消息", t => _map.FocusTile(t.X, t.Y));
@@ -141,11 +141,11 @@ public sealed partial class MainView
     private void ShowBuildingEditor(int townId)
     {
         var town = _engine.State.Settlements.FirstOrDefault(t => t.Id == townId); if (town is null) return;
-        var panel = ModalPanel("建造设施", "设施必须位于聚落 8 格内的可通行土地。材料从该聚落库存扣除，居民实际到场施工。道路可在聚落 24 格内绘制。");
+        var panel = ModalPanel("建造设施", "普通设施位于聚落 8 格内；桥梁、山路可在 24 格内逐段施工，船坞码头须邻水。材料从聚落扣除，居民到场施工。");
         var type = EnumField(panel, "设施类型", BuildingKind.Farm, WorldEngine.BuildingName, "building-kind");
         var cost = Paragraph("材料：" + StockLabel(WorldEngine.GetBuildingCost(BuildingKind.Farm))); panel.Children.Add(cost);
         type.SelectionChanged += (_, _) => { if (type.SelectedItem is BuildingKind kind) cost.Text = "材料：" + StockLabel(WorldEngine.GetBuildingCost(kind)) + "\n" + (AdvancementRules.For(kind) is { } a ? "运营需要：" + WorldEngine.ResearchName(a.Research) + "及其前置\n" : "") + WorldEngine.ProductionRecipe(kind); };
-        panel.Children.Add(Paragraph($"{town.Name}库存：{StockLabel(town.Resources)}\n驿站需要驿路运输；信号塔需要信号网络；奥术研习所需要奥术基础及开放魔法发展。"));
+        panel.Children.Add(Paragraph($"{town.Name}库存：{StockLabel(town.Resources)}\n驿站需要驿路运输；无线信号塔需要电气化与信号网络；奥术研习所需要奥术基础及开放魔法发展。"));
         var x = Field(panel, "目标 X", _selectedTile?.X ?? town.X + 1, "building-x"); var y = Field(panel, "目标 Y", _selectedTile?.Y ?? town.Y, "building-y");
         var gift = Named(new CheckBox { Content = Text("直接赐予完工设施（运营知识与原料仍需具备）", 12), IsChecked = false }, "building-gift");
         panel.Children.Add(gift);

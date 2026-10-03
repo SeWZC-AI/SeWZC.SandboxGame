@@ -93,15 +93,20 @@ public sealed partial class WorldEngine
     {
         if (!Enum.IsDefined(kind)) return "未知的建筑类型";
         if (!_settlements.TryGetValue(settlementId, out var town)) return "先选择归属聚落";
-        if (!Walkable(x, y)) return "需要可通行的陆地";
-        if (Distance(x, y, town.X, town.Y) > 8) return "距归属聚落超过 8 格";
+        if (!InBounds(x, y) || !BuildingTerrainValid(kind, State.Tiles[Index(x, y)])) return kind == BuildingKind.Bridge ? "桥梁需要河流或浅水" : kind == BuildingKind.MountainPass ? "山路需要山地" : "需要可通行的陆地";
+        var range = kind is BuildingKind.Bridge or BuildingKind.MountainPass ? 24 : 8;
+        if (Distance(x, y, town.X, town.Y) > range) return $"距归属聚落超过 {range} 格";
+        if (kind is BuildingKind.Bridge or BuildingKind.MountainPass && !Directions.Any(d => Walkable(x + d.X, y + d.Y))) return "需要相邻的可通行施工位置，逐段向前建设";
+        if (kind == BuildingKind.Dock && !Directions.Any(d => InBounds(x + d.X, y + d.Y) && State.Tiles[Index(x + d.X, y + d.Y)].Terrain is TerrainType.Water or TerrainType.River or TerrainType.DeepWater)) return "船坞码头需要紧邻水岸";
         var tile = State.Tiles[Index(x, y)];
         if (tile.FireTicks > 0) return "此处正在燃烧";
         if (tile.NationId != 0 && tile.NationId != town.NationId) return "此处属于其他国家";
         if (State.Society.Buildings.Count >= MaxBuildings) return "世界建筑数量已达上限";
         if (State.Society.Buildings.Any(b => b.X == x && b.Y == y)) return "此处已有建筑";
         if ((kind == BuildingKind.ArcaneSanctum || AdvancementRules.For(kind)?.Magic == true) && !State.Society.MagicEnabled) return "规则已关闭新的魔法发展";
+        if (kind == BuildingKind.SignalTower && (!HasResearch(settlementId, ResearchKind.Electrification) || !HasResearch(settlementId, ResearchKind.SignalNetwork))) return "无线信号塔需要电气化与信号网络";
         if (gift) return null;
+        if (kind is BuildingKind.Bridge or BuildingKind.MountainPass && !HasResearch(settlementId, ResearchKind.Logistics)) return "需要先掌握驿路运输";
         if (kind == BuildingKind.Waystation && !HasResearch(settlementId, ResearchKind.Logistics)) return "当地尚未掌握驿路运输";
         if (kind == BuildingKind.SignalTower && !HasResearch(settlementId, ResearchKind.SignalNetwork)) return "当地尚未掌握信号网络";
         if (kind == BuildingKind.ArcaneSanctum && !HasResearch(settlementId, ResearchKind.ArcaneArts)) return "当地尚未掌握奥术基础";
@@ -121,7 +126,7 @@ public sealed partial class WorldEngine
     public int GrantFacility(int settlementId, BuildingKind kind, int x, int y) => PlaceFacility(settlementId, kind, x, y, true);
 
     public bool IsBuildingOperational(Building building) => IsFacilityOperating(building)
-        && (building.Kind != BuildingKind.SignalTower || HasResearch(building.SettlementId, ResearchKind.SignalNetwork));
+        && (building.Kind != BuildingKind.SignalTower || HasResearch(building.SettlementId, ResearchKind.SignalNetwork) && HasResearch(building.SettlementId, ResearchKind.Electrification));
 
     public string? RoadPlacementError(int settlementId, int x, int y, int radius = 0)
     {

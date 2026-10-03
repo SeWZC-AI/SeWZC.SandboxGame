@@ -172,7 +172,7 @@ internal static class AgentBehaviorTests
         Require(home.Resources.Wood == 0, "Remote production appeared directly in the village warehouse.");
         person.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y,
             TargetSettlementId = home.Id, StartedTick = engine.State.Tick, ReviewTick = 1000, PlayerDirected = true };
-        for (var step = 0; step < 100 && Distance(person, home) > 1; step++)
+        for (var step = 0; step < 100 && (Distance(person, home) > 1 || engine.State.Tick - person.MoveStartedTick < person.MoveDurationTicks); step++)
         {
             Require(home.Resources.Wood == 0, "Wood arrived before its carrier.");
             engine.Tick();

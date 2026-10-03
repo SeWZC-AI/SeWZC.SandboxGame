@@ -14,6 +14,7 @@ AppBuilder.Configure<TestApp>().UseHeadless(new AvaloniaHeadlessPlatformOptions(
 
 var tests = new (string Name, Action Test)[]
 {
+    ("Map objects select quietly and details require the explicit view button", QuietSelection),
     ("Advanced research choices show separate prerequisites and commit only valid projects", AdvancedResearchUi),
     ("Advanced resource editors preserve untouched stocks and gifted factories expose requirements", AdvancedResourcesUi),
     ("Paused goal edits refresh the selected resident route immediately", GoalRouteRefresh),
@@ -49,6 +50,27 @@ foreach (var (name, test) in tests)
 }
 Console.WriteLine($"{tests.Length - failures}/{tests.Length} UI checks passed");
 return failures == 0 ? 0 : 1;
+
+static void QuietSelection()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var resident = engine.State.Residents[0];
+    var before = engine.ExportJson();
+    Call(view, "ToggleTools");
+    Call(view, "SelectMapObject", "resident", resident.Id, 0, 0);
+    Assert(!Field<bool>(view, "_mobilePanel") && !Field<Border>(view, "_modal").IsVisible, "Selection opened a panel");
+    Assert(Control<Border>(view, "selection-summary").IsVisible, "Selection has no summary");
+    Assert(!Field<bool>(view, "_toolsOpen"), "Open tools hid the new map selection summary");
+    Click(view, "selection-view");
+    Assert(Field<bool>(view, "_mobilePanel") && Field<string>(view, "_inspectorMode") == "resident", "Explicit view did not open resident details");
+    var building = engine.State.Society.Buildings[0];
+    Call(view, "SelectMapObject", "building", building.Id, building.X, building.Y);
+    Assert(!Field<bool>(view, "_mobilePanel"), "Building selection opened details");
+    Click(view, "selection-view");
+    Assert(Field<string>(view, "_inspectorMode") == "tile", "Building details did not open");
+    Call(view, "SelectMapObject", "tile", 0, 1, 1);
+    Assert(!Field<bool>(view, "_mobilePanel") && engine.ExportJson() == before, "Ground selection changed the world or opened details");
+    Click(view, "selection-clear"); Assert(!Control<Border>(view, "selection-summary").IsVisible, "Selection did not clear");
+}
 
 static void AdvancedResearchUi()
 {
@@ -463,7 +485,7 @@ static WorldEngine TwoTownWorld(bool largeTotal = false)
 
 static (double Food, double Wood, double Stone, double Ore)[] Stocks(WorldEngine engine) => engine.State.Settlements
     .Select(town => (town.Resources.Food, town.Resources.Wood, town.Resources.Stone, town.Resources.Ore)).ToArray();
-static MainView View(WorldEngine engine) { var view = new MainView(); Call(view, "ReplaceWorld", engine); return view; }
+static MainView View(WorldEngine engine) { var view = new MainView(engine); Call(view, "ReplaceWorld", engine); return view; }
 static WorldMapControl Map(MainView view) { var map = Field<WorldMapControl>(view, "_map"); map.Measure(new Size(800, 800)); map.Arrange(new Rect(0, 0, 800, 800)); return map; }
 static void Preview(WorldMapControl map, int x, int y) { map.ActiveTool = "Human"; Call(map, "PreviewPlacement", map.GetTileScreenPosition(x, y), true); Assert(map.HasPendingPlacement, "Fixture must create a touch preview"); }
 static object? Call(object target, string name, params object?[] args) => target.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(target, args);

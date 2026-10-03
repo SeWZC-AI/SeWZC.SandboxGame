@@ -84,7 +84,7 @@ public sealed partial class MainView
         else if (_category == "build" && _toolContext.SelectedIndex >= 0 && _toolContext.SelectedIndex < _constructionTowns.Length) _map.SelectedSettlementId = _constructionTowns[_toolContext.SelectedIndex];
     }
     private ToolChoice[] BuildToolChoices() =>
-    [new("build:Farm", "农场", "#ADBB75"), new("build:Workshop", "工坊", "#CEB294"), new("build:Academy", "学院", "#91B0C8"), new("build:Waystation", "驿站", "#CEAB76"), new("build:SignalTower", "信号塔", "#99AAC8"), new("build:ArcaneSanctum", "秘法所", "#B598D1"), new("build:Infirmary", "医馆", "#91C7B1"), new("road:Road", "道路", "#B0A28B")];
+    [new("build:Farm", "农场", "#ADBB75"), new("build:Workshop", "工坊", "#CEB294"), new("build:Academy", "学院", "#91B0C8"), new("build:Waystation", "驿站", "#CEAB76"), new("build:Bridge", "桥梁", "#99AAC8"), new("build:MountainPass", "山路", "#B598D1"), new("build:Dock", "船坞码头", "#91C7B1"), new("road:Road", "道路", "#B0A28B")];
 
     private void SelectTool(string tool)
     {

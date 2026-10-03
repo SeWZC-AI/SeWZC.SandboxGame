@@ -32,6 +32,11 @@ public sealed partial class WorldMapControl
     private bool _followSelectedResident;
     private double _simulationTickDurationSeconds = .2;
     private double _renderFrameTime;
+    private double _renderMotionTime;
+    private double _simulationAnchorTick, _simulationAnchorTime;
+    public double SimulationTickFraction { get; set; }
+    private double MotionTime => _simulationAnchorTick + Math.Min(1 - (_simulationAnchorTick - Math.Floor(_simulationAnchorTick)),
+        Math.Max(0, PresentationTime - _simulationAnchorTime) / SimulationTickDurationSeconds);
 
     public bool IsSimulationPaused
     {
@@ -56,16 +61,19 @@ public sealed partial class WorldMapControl
             if (!double.IsFinite(value)) return;
             var next = Math.Clamp(value, .016, 1.5);
             if (Math.Abs(next - _simulationTickDurationSeconds) < .000001) return;
-            var ratio = next / _simulationTickDurationSeconds;
-            var now = PresentationTime;
-            foreach (var motion in _residentMotion.Values) motion.RescaleRemaining(now, ratio);
-            foreach (var motion in _armyMotion.Values) motion.RescaleRemaining(now, ratio);
+            _simulationAnchorTick = MotionTime;
+            _simulationAnchorTime = PresentationTime;
             _simulationTickDurationSeconds = next;
             RequestMotionFrame();
         }
     }
     public int? SelectedResidentId { get; private set; }
     public event Action<int>? ResidentSelected;
+    public int? SelectedBuildingId { get; private set; }
+    public event Action<int>? BuildingSelected;
+
+    public void ClearMapSelection()
+    { ClearResidentSelection(); SelectedBuildingId = null; _selection = null; InvalidateVisual(); }
 
     public bool FollowSelectedResident
     {
@@ -93,7 +101,7 @@ public sealed partial class WorldMapControl
     public void SelectResident(int residentId, bool follow = false)
     {
         if (!_residentMotion.ContainsKey(residentId)) { ClearResidentSelection(); return; }
-        SelectedResidentId = residentId;
+        SelectedResidentId = residentId; SelectedBuildingId = null;
         CaptureSelectedRoute();
         _selection = null;
         FollowSelectedResident = follow;
@@ -104,7 +112,7 @@ public sealed partial class WorldMapControl
     {
         if (!_residentMotion.TryGetValue(residentId, out var motion)) return;
         SelectResident(residentId, FollowSelectedResident);
-        var position = motion.Position(PresentationTime);
+        var position = motion.Position(MotionTime);
         _zoom = Math.Max(_zoom, 2.4);
         _origin = new Point(Bounds.Width / 2 - (position.X + .5) * TilePixels * _zoom,
                             Bounds.Height / 2 - (position.Y + .5) * TilePixels * _zoom);
@@ -124,13 +132,13 @@ public sealed partial class WorldMapControl
         _residentMotion.Clear();
         _armyMotion.Clear();
         _renderedResidentPoints.Clear();
-        _snapshotTick = -1;
+        _snapshotTick = -1; SimulationTickFraction = 0;
         _lastResidentClick = null;
         _residentClickCycle = 0;
         _motionEpoch++;
         _framePending = false;
         _residentGeometryDirty = true;
-        ClearResidentSelection();
+        ClearMapSelection();
     }
 
     private void CaptureMotionSnapshots()
@@ -141,6 +149,8 @@ public sealed partial class WorldMapControl
         var elapsedTicks = Math.Max(0, state.Tick - _snapshotTick);
         var reset = _snapshotTick < 0 || state.Tick < _snapshotTick;
         var sameTick = state.Tick == _snapshotTick;
+        if (!sameTick || reset)
+        { _simulationAnchorTick = state.Tick + Math.Clamp(SimulationTickFraction, 0, .999999); _simulationAnchorTime = now; }
         _motionRevision++;
         foreach (var resident in state.Residents)
             Capture(_residentMotion, resident.Id, resident.X, resident.Y,
@@ -167,9 +177,8 @@ public sealed partial class WorldMapControl
             // contain several real steps, but only bounded adjacent movement is interpolated.
             var teleport = displacement > Math.Max(2, Math.Min(6, elapsedTicks * 2));
             var remainingTicks = Math.Max(0, Math.Max(1, moveDurationTicks) - (state.Tick - moveStartedTick));
-            var duration = remainingTicks * SimulationTickDurationSeconds;
             var committedStep = Math.Abs(x - fromX) + Math.Abs(y - fromY) == 1;
-            track.Update(target, now, duration, reset || editedPosition || teleport ||
+            track.Update(new Point(fromX, fromY), target, moveStartedTick, moveDurationTicks, reset || editedPosition || teleport ||
                 displacement > 0 && (!committedStep || remainingTicks == 0));
             track.SeenRevision = _motionRevision;
         }
@@ -186,9 +195,9 @@ public sealed partial class WorldMapControl
     private void RequestMotionFrame()
     {
         if (!_motionAttached || _framePending || IsSimulationPaused) return;
-        var now = PresentationTime;
+        var now = MotionTime;
         if (!_residentMotion.Values.Any(track => track.IsMoving(now)) &&
-            !_armyMotion.Values.Any(track => track.IsMoving(now)) && !HasAnimatedEffects(now)) return;
+            !_armyMotion.Values.Any(track => track.IsMoving(now)) && !HasAnimatedEffects(PresentationTime)) return;
         if (TopLevel.GetTopLevel(this) is not { } topLevel) return;
         _framePending = true;
         var epoch = _motionEpoch;
@@ -208,34 +217,48 @@ public sealed partial class WorldMapControl
     {
         if (!_followSelectedResident || SelectedResidentId is not { } id ||
             !_residentMotion.TryGetValue(id, out var motion) || !_cameraReady) return;
-        var position = motion.Position(frameTime ?? PresentationTime);
+        var position = motion.Position(frameTime ?? MotionTime);
         _origin = new Point(Bounds.Width / 2 - (position.X + .5) * TilePixels * _zoom,
                             Bounds.Height / 2 - (position.Y + .5) * TilePixels * _zoom);
     }
 
-    private bool SelectResidentAt(Point point)
+    private bool SelectObjectAt(Point point)
     {
-        if (!IsNavigationTool) return false;
-        var radius = Math.Clamp(TilePixels * _zoom * .85, 8, 17);
-        var candidates = new List<(int Id, double Distance)>();
+        if (!IsNavigationTool || Engine is null || !TryTile(point, out var tile)) return false;
+        var radius = Math.Clamp(TilePixels * _zoom * .65, 7, 17);
+        var candidates = new List<(int Kind, int Id, double Distance)>();
         foreach (var pair in _renderedResidentPoints)
         {
             var distance = Distance(point, pair.Value);
-            if (distance <= radius) candidates.Add((pair.Key, distance));
+            if (distance <= radius) candidates.Add((0, pair.Key, distance));
         }
-        if (candidates.Count == 0) { _lastResidentClick = null; return false; }
-        candidates.Sort((a, b) =>
-        {
-            var distance = a.Distance.CompareTo(b.Distance);
-            return Math.Abs(a.Distance - b.Distance) < .01 ? a.Id.CompareTo(b.Id) : distance;
-        });
+        foreach (var building in Engine.State.Society.Buildings)
+            if (building.X == tile.X && building.Y == tile.Y)
+                candidates.Add((1, building.Id, Distance(point, GetTileScreenPosition(building.X, building.Y))));
+        candidates.Sort((a, b) => a.Kind != b.Kind ? a.Kind.CompareTo(b.Kind)
+            : Math.Abs(a.Distance - b.Distance) > .01 ? a.Distance.CompareTo(b.Distance) : a.Id.CompareTo(b.Id));
+        candidates.Add((2, 0, 0)); // The ground remains selectable even below residents and buildings.
         if (_lastResidentClick is { } previous && Distance(previous, point) <= 4) _residentClickCycle++;
         else _residentClickCycle = 0;
         _lastResidentClick = point;
-        var selected = candidates[_residentClickCycle % candidates.Count].Id;
-        SelectResident(selected, FollowSelectedResident);
-        ResidentSelected?.Invoke(selected);
+        var selected = candidates[_residentClickCycle % candidates.Count];
+        if (selected.Kind == 0)
+        { SelectResident(selected.Id, FollowSelectedResident); ResidentSelected?.Invoke(selected.Id); }
+        else
+        {
+            ClearResidentSelection(); _selection = tile;
+            SelectedBuildingId = selected.Kind == 1 ? selected.Id : null;
+            if (selected.Kind == 1) BuildingSelected?.Invoke(selected.Id);
+            else TileSelected?.Invoke(tile.X, tile.Y);
+        }
+        InvalidateVisual();
         return true;
+    }
+
+    private Point ResidentMapPosition(int id, int x, int y)
+    {
+        var position = _residentMotion.TryGetValue(id, out var motion) ? motion.Position(_renderMotionTime) : new Point(x, y);
+        return new Point((position.X + .5) * TilePixels, (position.Y + .5) * TilePixels);
     }
 
     private void DrawResidentSelection(DrawingContext context)

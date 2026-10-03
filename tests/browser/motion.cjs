@@ -89,6 +89,15 @@ const distance = (first, second) => Math.hypot(first.x - second.x, first.y - sec
                 ? [{ prior, next: sample }] : [];
         });
         assert(intermediate.length > 0, 'Actual rendered geometry must move between simulation ticks');
+        // An early visual arrival followed by waiting used to leave whole 200 ms windows still.
+        // Sample the actual canvas geometry throughout a long, uninterrupted walking goal.
+        for (let i = 0; i < normal.length; i++) {
+            const first = normal[i];
+            if (first.at - normal[0].at < 300) continue;
+            const next = normal.slice(i + 1).find(s => s.at - first.at >= 200);
+            if (next) assert(first.point && next.point && distance(first.point, next.point) > .03,
+                'The movement animation arrived early and waited before the next committed step');
+        }
         report.normalSpeed = { samples: normal.length, tickFrom: normal[0].tick, tickTo: normal.at(-1).tick,
             sameTickPositionChanges: intermediate.length, example: intermediate[0] };
         console.log('PASS actual rendered positions change within the same simulation tick');
@@ -122,10 +131,11 @@ const distance = (first, second) => Math.hypot(first.x - second.x, first.y - sec
         const canvas = await page.locator('#out canvas.avalonia-canvas').boundingBox();
         assert(canvas && selected.selectedResidentPoint);
         await page.mouse.click(canvas.x + selected.selectedResidentPoint.x, canvas.y + selected.selectedResidentPoint.y, { delay: 70 });
-        const clicked = await ui.waitFor(state => state.inspector === 'resident' && state.selectedResidentId > 0, 'resident map selection');
+        const clicked = await ui.waitFor(state => !state.inspectorOpen && state.selectedResidentId > 0, 'resident map selection');
         report.pointSelection = { id: clicked.selectedResidentId, point: clicked.selectedResidentPoint };
         assert.equal(clicked.selectedResidentId, actor.Id, 'The clicked walking resident must remain selected');
 
+        await ui.click('selection-view');
         await ui.click('resident-follow', inspector);
         await ui.paused(false);
         const following = await sampleRendering(page, 1200, 30);

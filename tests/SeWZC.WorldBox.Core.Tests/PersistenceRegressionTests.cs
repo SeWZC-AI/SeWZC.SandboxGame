@@ -176,7 +176,7 @@ internal static class PersistenceRegressionTests
         relation.FirstOpinion = 0; relation.SecondOpinion = 0; relation.Opinion = 0;
         foreach (var army in engine.State.Armies) army.LastOrderFactId = 0;
         var saved = JsonNode.Parse(engine.ExportJson())!;
-        Require(saved["FormatVersion"]!.GetValue<int>() == 6 && saved["SimulationVersion"]!.GetValue<int>() == 6,
+        Require(saved["FormatVersion"]!.GetValue<int>() == 7 && saved["SimulationVersion"]!.GetValue<int>() == 7,
             "New worlds did not explicitly save both current version fields.");
         Require(saved["Diplomacies"]![0]!["FirstOpinion"]?.GetValue<int>() == 0
             && saved["Diplomacies"]![0]!["SecondOpinion"]?.GetValue<int>() == 0
@@ -219,7 +219,7 @@ internal static class PersistenceRegressionTests
     private static void RejectLegacyVersions()
     {
         var engine = CreateMilitaryWorld();
-        foreach (var (format, simulation) in new[] { (3, 5), (5, 3), (3, 3), (4, 5), (5, 4), (4, 4), (5, 6), (6, 5), (5, 5) })
+        foreach (var (format, simulation) in new[] { (3, 5), (5, 3), (3, 3), (4, 5), (5, 4), (4, 4), (5, 6), (6, 5), (5, 5), (6, 6), (6, 7), (7, 6) })
             RejectInvalidSave(engine, json =>
             {
                 json["FormatVersion"] = format;

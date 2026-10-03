@@ -3,9 +3,9 @@ using System.Text.Json.Serialization;
 namespace SeWZC.WorldBox.Core;
 
 public enum BuildingKind { Farm, Workshop, Academy, Waystation, SignalTower, ArcaneSanctum, Infirmary,
-    Foundry, PowerPlant, AutomatedFarm, Fabricator, Crystallizer, RunicGarden, AetherForge }
+    Foundry, PowerPlant, AutomatedFarm, Fabricator, Crystallizer, RunicGarden, AetherForge, MountainPass, Bridge, Dock, Airfield }
 public enum ResearchKind { Agriculture, Logistics, SignalNetwork, ArcaneArts,
-    Industry, Electrification, Automation, AdvancedComputing, Crystalcraft, RunicEngineering, AetherMastery }
+    Industry, Electrification, Automation, AdvancedComputing, Crystalcraft, RunicEngineering, AetherMastery, Aviation }
 public enum InstitutionKind { Council, Monarchy, GuildCouncil }
 public enum PolicyKind { Balanced, FoodSecurity, Defense, Scholarship, PublicHealth }
 public enum SpellKind { Heal, HarvestBlessing, Shield, Ember }

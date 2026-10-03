@@ -19,7 +19,7 @@ public sealed partial class MainView : UserControl
     private static readonly IBrush Line = Brush.Parse("#2A3C46");
     private static readonly IBrush Muted = Brush.Parse("#8FA8AE");
     private static readonly IBrush Mint = Brush.Parse("#B8E9BC");
-    private WorldEngine _engine = WorldEngine.Create(73921, 256, 256, true);
+    private WorldEngine _engine;
     private readonly WorldMapControl _map = new();
     private readonly Grid _body = new();
     private readonly Border _rail = new();
@@ -79,15 +79,19 @@ public sealed partial class MainView : UserControl
     private readonly TextBlock _brandName = Text("SeWZC. WORLDBOX", 15, null, true);
     private readonly TextBlock _brandCaption = Text("众生与山海  /  ANCIENT WORLDS", 9, Muted);
 
-    public MainView()
+    public MainView() : this(null) { }
+
+    public MainView(WorldEngine? engine)
     {
+        _engine = engine ?? WorldEngine.Create(73921, 256, 256, true);
         Background = Ink;
         Focusable = true;
         _map.Engine = _engine;
         _map.WorldEditing += (_, _) => BeginEdit();
         _map.WorldEdited += (_, _) => { RefreshUi(true); SetStatus("世界已更新 · 暂停中，可撤销本轮编辑"); };
-        _map.TileSelected += (x, y) => { if (_mapPick is not null) FinishMapPick(x, y); else { _selectedTile = (x, y); OpenInspector("tile"); } };
-        _map.ResidentSelected += id => OpenResident(id);
+        _map.TileSelected += (x, y) => { if (_mapPick is not null) FinishMapPick(x, y); else SelectMapObject("tile", x: x, y: y); };
+        _map.ResidentSelected += id => SelectMapObject("resident", id);
+        _map.BuildingSelected += id => { var b = _engine.State.Society.Buildings.First(building => building.Id == id); SelectMapObject("building", id, b.X, b.Y); };
         _map.ToolError += message => SetStatus("工具未应用：" + message);
 
         var header = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Margin = new Thickness(8, 0) };
@@ -169,6 +173,7 @@ public sealed partial class MainView : UserControl
             HorizontalAlignment = HorizontalAlignment.Stretch, Background = Panel }, "event-spotlight");
         _eventText.TextTrimming = TextTrimming.CharacterEllipsis;
         eventButton.Click += (_, _) => { if (_engine.State.Events.FirstOrDefault(e => e.Id == _focusedEventId) is { } entry) FocusEvent(entry); else OpenInspector("overview"); };
+        bottom.Children.Add(BuildSelectionBar());
         bottom.Children.Add(eventButton);
         var timeControls = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center };
         timeControls.Children.Add(Named(Button("工具", ToggleTools, "展开或收起地图工具", 48), "tools-toggle"));
@@ -185,6 +190,7 @@ public sealed partial class MainView : UserControl
         bottom.Children.Add(timeControls); mapLayer.Children.Add(bottom);
         Grid.SetColumn(mapLayer, 1); _body.Children.Add(mapLayer);
 
+        Named(_inspector, "inspector-panel");
         Named(_inspectorScroll, "inspector-scroll");
         _inspectorScroll.HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled;
         var inspectorLayout = new DockPanel(); DockPanel.SetDock(_inspectorNavigation, Dock.Top);
@@ -245,10 +251,10 @@ public sealed partial class MainView : UserControl
                 _engine.Step(); _accumulator -= .2; count++;
                 if (work.Elapsed.TotalMilliseconds > 12) break;
             }
-            if (count > 0) _map.RefreshWorld();
+            if (count > 0)
+            { _map.SimulationTickFraction = Math.Clamp(_accumulator / .2, 0, .999999); _map.RefreshWorld(); }
             _simulationStatus.Text = _accumulator > .4 ? "设备限速 · 世界继续" : "世界正在演化";
         }
-        else _accumulator = 0;
         if (now - _lastUi > .7) { _lastUi = now; RefreshUi(); }
         if (now - _lastSave > 30 && !_saving && !_modal.IsVisible) { _lastSave = now; _ = SaveAsync(false); }
     }
@@ -257,7 +263,7 @@ public sealed partial class MainView : UserControl
     {
         _paused = !_paused;
         if (!_paused) _checkpoint = null;
-        _accumulator = 0; _map.IsSimulationPaused = _paused || _modal.IsVisible; RefreshUi(true);
+        _map.IsSimulationPaused = _paused || _modal.IsVisible; RefreshUi(true);
     }
     private void BeginEdit()
     {
@@ -270,7 +276,7 @@ public sealed partial class MainView : UserControl
         if (_checkpoint is null) { SetStatus("暂无可撤销的编辑。开始绘制时会保存恢复点，继续模拟后清除。"); return; }
         CancelMapPick();
         _engine = WorldEngine.ImportJson(_checkpoint); _checkpoint = null; _paused = true;
-        _selectedTile = null; _selectedNationId = 0; _selectedResidentId = 0; _inspectorMode = "overview"; InvalidateInspector();
+        ClearMapSelection(); _selectedTile = null; _selectedNationId = 0; _selectedResidentId = 0; _inspectorMode = "overview"; InvalidateInspector();
         _map.Engine = _engine; _map.IsSimulationPaused = true; _map.RefreshWorld(); UpdateToolContext(); RefreshUi(true); SetStatus("已恢复到本轮编辑之前");
     }
     private void UpdateSpeedButtons()
@@ -291,7 +297,7 @@ public sealed partial class MainView : UserControl
         _inspector.IsVisible = _mobilePanel;
         Grid.SetColumn(_inspector, _isCompact ? 1 : 2);
         _inspector.Width = _isCompact ? Math.Max(280, Bounds.Width - 12) : double.NaN;
-        _inspector.MaxHeight = _isCompact ? Math.Max(140, _body.Bounds.Height * .65) : double.PositiveInfinity;
+        _inspector.MaxHeight = _isCompact ? Math.Max(140, Math.Min(430, _body.Bounds.Height * (_expandedInspector ? .84 : .44))) : double.PositiveInfinity;
         _inspector.VerticalAlignment = _isCompact ? VerticalAlignment.Bottom : VerticalAlignment.Stretch;
         _inspector.Margin = _isCompact ? new Thickness(6, 6, 6, 80) : new Thickness(0);
         _inspector.HorizontalAlignment = HorizontalAlignment.Right;
@@ -299,7 +305,7 @@ public sealed partial class MainView : UserControl
         _toolBar.IsVisible = _toolsOpen;
         _toolHint.IsVisible = Bounds.Width > 600;
         _timeStatus.IsVisible = Bounds.Width > 760;
-        UpdateToolBarSize(); UpdateModalBounds();
+        UpdateToolBarSize(); UpdateModalBounds(); RefreshSelectionSummary();
     }
 
     private void UpdateToolBarSize()
@@ -307,6 +313,7 @@ public sealed partial class MainView : UserControl
         var compact = Bounds.Width < 700;
         _toolChoices.Columns = compact ? 4 : 8; _toolChoices.Rows = compact ? 2 : 1;
         _toolBar.Width = Math.Max(280, Math.Min(650, _map.Bounds.Width - 12));
+        _selectionBar.Width = Math.Max(260, Math.Min(480, _map.Bounds.Width - 12));
         _placementBar.MaxWidth = Math.Max(280, Math.Min(650, _map.Bounds.Width - 12));
         _eventText.MaxWidth = Math.Max(240, Math.Min(620, _map.Bounds.Width - 32));
         _toolContext.Width = compact ? 108 : 132;
@@ -318,7 +325,7 @@ public sealed partial class MainView : UserControl
         var state = _engine.State;
         _date.Text = $"第 {state.Year} 年 · {state.Day} 日";
         _population.Text = $"{state.Population:N0} 位居民  /  {state.Nations.Count} 个国家";
-        _worldSubtitle.Text = $"{state.Width} × {state.Height}  ·  种子 {state.Seed}  ·  古代纪元";
+        _worldSubtitle.Text = $"{state.Width} × {state.Height}  ·  种子 {state.Seed}  ·  文明演化";
         _play.Content = _paused ? "继续" : "暂停";
         if (_paused) _simulationStatus.Text = "时间已暂停";
         var candidates = _engine.State.Events.Where(e => e.Importance >= EventImportance.Notable && e.Kind is not (WorldEventKind.Editor or WorldEventKind.Policy or WorldEventKind.Magic or WorldEventKind.Culture));
@@ -326,7 +333,8 @@ public sealed partial class MainView : UserControl
             .ThenByDescending(g => g.Latest.Tick).ThenByDescending(g => g.Latest.Id).FirstOrDefault();
         _focusedEventId = spotlight?.Latest.Id ?? 0;
         _eventText.Text = spotlight is null ? "选择国家、聚落或居民，关注它的故事" : $"{DateLabel(spotlight.Latest.Tick)} · {spotlight.Latest.Message}" + (spotlight.Count > 1 ? $"（同类 {spotlight.Count} 次）" : "");
-        RefreshInspector(force);
+        if (_mobilePanel || force) RefreshInspector(force);
+        RefreshSelectionSummary();
     }
 
     private void ShowStorage()
@@ -399,7 +407,7 @@ public sealed partial class MainView : UserControl
     private void ReplaceWorld(WorldEngine engine)
     {
         CancelMapPick();
-        _checkpoint = _engine.ExportJson(); _engine = engine; _paused = true; _accumulator = 0; _selectedTile = null; _selectedNationId = 0;
+        ClearMapSelection(); _checkpoint = _engine.ExportJson(); _engine = engine; _paused = true; _accumulator = 0; _selectedTile = null; _selectedNationId = 0;
         _allowAutosave = true;
         _inspectorMode = "overview"; _selectedResidentId = 0; _navigation.Clear(); _watched.Clear(); _historyWatchedOnly = false; _eventDetailId = 0; InvalidateInspector();
         _map.Engine = engine; _map.IsSimulationPaused = true; _map.RefreshWorld(true); UpdateToolContext(); RefreshUi(true);
@@ -443,7 +451,7 @@ public sealed partial class MainView : UserControl
                 if (value is < 0 or > 1_000_000) { SetStatus("修改后的资源须在 0 到 1,000,000 之间"); return; }
                 values[i] = value;
             }
-            BeginEdit(); _engine.RenameNation(nationId, name.Text.Trim()); _engine.SetNationResources(nationId, values[0], values[1], values[2], values[3], values[4], values[5], values[6]);
+            BeginEdit(); _engine.RenameNation(nationId, name.Text.Trim()); _engine.SetNationResources(nationId, values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9], values[10], values[11]);
             _engine.SetNationColor(nationId, color); _engine.SetNationTechnology(nationId, technology.SelectedIndex + 1);
             if (diplomacy.SelectedIndex > 0 && other.SelectedIndex >= 0) _engine.SetDiplomacy(nationId, others[other.SelectedIndex].Id, diplomacy.SelectedIndex switch { 2 => DiplomaticStatus.Allied, 3 => DiplomaticStatus.War, _ => DiplomaticStatus.Neutral });
             CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("国家已更新");
@@ -486,8 +494,8 @@ public sealed partial class MainView : UserControl
 
     private StackPanel ModalPanel(string title, string description)
     {
-        var panel = new StackPanel { Spacing = 8, MaxWidth = 460 };
-        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; header.Children.Add(Text(title, 21, null, true));
+        var panel = new StackPanel { Spacing = 5, MaxWidth = 460 };
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") }; header.Children.Add(Text(title, 17, null, true));
         var close = IconButton("close", CloseModal, "关闭窗口", "modal-close"); Grid.SetColumn(close, 1); header.Children.Add(close); panel.Children.Add(header);
         panel.Children.Add(Paragraph(description)); return panel;
     }
@@ -497,7 +505,7 @@ public sealed partial class MainView : UserControl
         _modalGeneration++;
         var hasPrimary = false;
         _modalFeedback = Paragraph(""); _modalFeedback.Foreground = Brush.Parse("#E7BD87");
-        var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), RowSpacing = 12 };
+        var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), RowSpacing = 6 };
         if (content is StackPanel panel && panel.Children.Count > 0)
         {
             var header = panel.Children[0]; panel.Children.RemoveAt(0); layout.Children.Add(header);
@@ -522,10 +530,11 @@ public sealed partial class MainView : UserControl
     private void UpdateModalBounds()
     {
         if (_modal.Child is not Border dialog) return;
-        var available = Math.Max(180, Bounds.Height - 28);
+        var available = Math.Max(180, Bounds.Height - (_isCompact ? 64 : 28));
         dialog.Width = Math.Min(520, Math.Max(260, Bounds.Width - 28));
         dialog.MaxHeight = available;
-        dialog.Height = _modalHasPrimary ? Math.Min(760, available) : double.NaN;
+        dialog.Height = _modalHasPrimary ? Math.Min(_isCompact ? 560 : 700, available * .9) : double.NaN;
+        dialog.Padding = new Thickness(_isCompact ? 8 : 12);
     }
     private void CloseModal() { CancelMapPick(); _modalGeneration++; _modal.IsVisible = false; _modal.Child = null; _map.IsSimulationPaused = _paused; Focus(); }
     private void OnKeyDown(object? sender, KeyEventArgs e)

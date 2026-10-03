@@ -12,7 +12,7 @@ public enum WorldEventKind { Founding, Growth, Trade, Diplomacy, War, Disaster, 
 
 public sealed partial class WorldState
 {
-    [JsonRequired] public int FormatVersion { get; set; } = 6;
+    [JsonRequired] public int FormatVersion { get; set; } = 7;
     public int Seed { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
@@ -42,7 +42,9 @@ public sealed partial class Tile
     public int SettlementId { get; set; }
     public int FireTicks { get; set; }
     public int DroughtTicks { get; set; }
-    [JsonIgnore] public bool IsWalkable => Terrain is not TerrainType.DeepWater and not TerrainType.Water and not TerrainType.Mountain and not TerrainType.River;
+    [JsonIgnore] public bool IsWalkable => (Terrain == TerrainType.Mountain ? Improvement == LandImprovement.MountainPass
+        : Terrain is TerrainType.Water or TerrainType.River ? Improvement == LandImprovement.Bridge
+        : Terrain != TerrainType.DeepWater);
 }
 
 public sealed partial class Resident

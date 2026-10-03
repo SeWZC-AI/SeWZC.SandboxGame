@@ -14,6 +14,10 @@ public sealed partial class WorldMapControl
     public bool PickingLocation { get; set; }
     public bool HasPendingPlacement => _pendingPlacement.HasValue;
     public int Overlay { get; set; }
+    private bool _relayOverlayDirty = true;
+    private readonly System.Collections.Generic.List<(Point From, Point To)> _relayOverlay = [];
+    private static readonly Pen CargoOverlayPen = new(CargoBrush, 1.5);
+    private static readonly Pen RelayOverlayPen = new(MessageBrush, 1);
     public event Action<string>? PlacementChanged;
 
     public void CancelPlacement()
@@ -82,17 +86,23 @@ public sealed partial class WorldMapControl
         else if (Overlay == 2)
         {
             foreach (var resident in state.Residents.Where(r => r.Agent.DestinationSettlementId != 0))
-                context.DrawEllipse(null, new Pen(CargoBrush, 1.5), new Point((resident.X + .5) * TilePixels, (resident.Y + .5) * TilePixels), 6, 6);
+                context.DrawEllipse(null, CargoOverlayPen, ResidentMapPosition(resident.Id, resident.X, resident.Y), 6, 6);
         }
         else if (Overlay == 3)
         {
-            for (var i = 0; i < state.Settlements.Count; i++)
-                for (var j = i + 1; j < state.Settlements.Count; j++)
-                {
-                    var a = state.Settlements[i]; var b = state.Settlements[j];
-                    if (Engine!.CanRelayInformation(a.Id, b.Id, out _))
-                        context.DrawLine(new Pen(MessageBrush, 1), new Point((a.X + .5) * TilePixels, (a.Y + .5) * TilePixels), new Point((b.X + .5) * TilePixels, (b.Y + .5) * TilePixels));
-                }
+            if (_relayOverlayDirty)
+            {
+                _relayOverlay.Clear();
+                for (var i = 0; i < state.Settlements.Count; i++)
+                    for (var j = i + 1; j < state.Settlements.Count; j++)
+                    {
+                        var a = state.Settlements[i]; var b = state.Settlements[j];
+                        if (Engine!.CanRelayInformation(a.Id, b.Id, out _))
+                            _relayOverlay.Add((new Point((a.X + .5) * TilePixels, (a.Y + .5) * TilePixels), new Point((b.X + .5) * TilePixels, (b.Y + .5) * TilePixels)));
+                    }
+                _relayOverlayDirty = false;
+            }
+            foreach (var link in _relayOverlay) context.DrawLine(RelayOverlayPen, link.From, link.To);
             foreach (var building in state.Society.Buildings.Where(b => b.Kind == BuildingKind.SignalTower && b.IsCompleted))
             {
                 var operational = Engine!.IsBuildingOperational(building);

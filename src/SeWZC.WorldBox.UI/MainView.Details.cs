@@ -9,7 +9,7 @@ public sealed partial class MainView
     private readonly Dictionary<string, bool> _expandedDetails = [];
     private StackPanel FoldSection(StackPanel parent, string title, string id, bool expanded = false)
     {
-        var content = new StackPanel { Spacing = 7, Margin = new Thickness(0, 6) };
+        var content = new StackPanel { Spacing = 4, Margin = new Thickness(0, 3) };
         var fold = Named(new Expander { Header = Text(title, 13, Mint), Content = content,
             IsExpanded = _expandedDetails.GetValueOrDefault(id, expanded), HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch }, id);

@@ -22,11 +22,12 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
             const errors = observeBrowserErrors(page);
             try {
                 await page.goto(testUrl(baseUrl)); await ui.ready(); await ui.paused();
-                const world = await ui.save(); assert.equal(world.FormatVersion, 6);
+                const world = await ui.save(); assert.equal(world.FormatVersion, 7);
                 const town = world.Settlements[0];
-                Object.assign(town.Resources, { Food: 1000, Wood: 1000, Stone: 1000, Ore: 1000, Alloy: 100, EnergyCells: 100, Crystals: 100 });
+                Object.assign(town.Resources, { Food: 1000, Wood: 1000, Stone: 1000, Ore: 1000, Alloy: 100, EnergyCells: 100, Crystals: 100,
+                    Coal: 30, Oil: 20, RareEarth: 10, Boats: 2, Aircraft: 1 });
                 const research = world.Society.Research.find(r => r.SettlementId === town.Id);
-                research.Completed = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+                research.Completed = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
                 research.ActiveProject = null; research.Progress = 0; research.RequiredProgress = 0;
                 for (let y = town.Y - 6; y <= town.Y + 6; y++) for (let x = town.X - 6; x <= town.X + 6; x++) {
                     if (x < 0 || y < 0 || x >= world.Width || y >= world.Height) continue;
@@ -55,6 +56,7 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
                 assert(saved.Society.Buildings.some(b => b.Kind === 10 && b.X === at[0].x && b.Y === at[0].y && b.ProductionBatches === 0));
                 const stock = saved.Settlements.find(t => t.Id === town.Id).Resources;
                 assert.equal(stock.Alloy, 100); assert.equal(stock.EnergyCells, 100); assert.equal(stock.Crystals, 100);
+                assert.deepEqual([stock.Coal, stock.Oil, stock.RareEarth, stock.Boats, stock.Aircraft], [30, 20, 10, 2, 1]);
                 await ui.click('building-open', inspector);
                 await ui.selectIndex('building-kind', 13, modal); // AetherForge, no industrial fuel required.
                 await ui.fill('building-x', at[1].x, modal); await ui.fill('building-y', at[1].y, modal);
@@ -71,7 +73,7 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
                 await ui.waitFor(s => !s.modalOpen && s.paused, 'loaded paused world', 30000);
                 assert.equal(digest(await ui.save()), digest(saved), 'Advanced stocks, research and facilities changed after restore');
                 await errors.assertHealthy(`advancement ${label}`);
-                console.log(`PASS advancement ${label}: independent routes, real gift/construction, resources and format-6 restore`);
+                console.log(`PASS advancement ${label}: independent routes, real gift/construction, resources and format-7 restore`);
             } catch (error) {
                 await page.screenshot({ path: path.join(output, `advancement-${label}-failure.png`) });
                 fs.writeFileSync(path.join(output, `advancement-${label}-failure.json`), JSON.stringify(await ui.snapshot(), null, 2));
