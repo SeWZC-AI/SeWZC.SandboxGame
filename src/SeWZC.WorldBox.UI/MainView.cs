@@ -127,7 +127,7 @@ public sealed partial class MainView : UserControl
         foreach (var (label, category) in new[] { ("山海", "terrain"), ("众生", "life"), ("天灾", "disaster"), ("建设", "build") })
         {
             var categoryButton = Named(Button(label, () => SetCategory(category)), "tool-category-" + category);
-            categoryButton.Tag = category; categoryButton.Padding = new Thickness(3, 7); categoryButton.Margin = new Thickness(2, 0);
+            categoryButton.Tag = category; categoryButton.Padding = new Thickness(3, 3); categoryButton.Margin = new Thickness(2, 0);
             _categoryButtons.Add(categoryButton); categories.Children.Add(categoryButton);
         }
         Named(_brushPicker, "brush-size");
@@ -187,7 +187,7 @@ public sealed partial class MainView : UserControl
         timeControls.Children.Add(_play);
         foreach (var speed in new[] { 1, 2, 5 })
         {
-            var b = Named(Button($"{speed}倍", () => { _speed = speed; _map.SimulationTickDurationSeconds = .2 / speed; UpdateSpeedButtons(); }, minWidth: 42), $"time-speed-{speed}"); b.Width = 42; b.Padding = new Thickness(3, 7);
+            var b = Named(Button($"{speed}倍", () => { _speed = speed; _map.SimulationTickDurationSeconds = .2 / speed; UpdateSpeedButtons(); }, minWidth: 42), $"time-speed-{speed}"); b.Width = 42; b.Padding = new Thickness(3, 3);
             _speeds.Add((speed, b)); timeControls.Children.Add(b);
         }
         _timeStatus.Child = _simulationStatus; _timeStatus.Width = 170; _timeStatus.Padding = new Thickness(10, 8); _timeStatus.Background = Brush.Parse("#E3172632"); _timeStatus.CornerRadius = new CornerRadius(7); _timeStatus.VerticalAlignment = VerticalAlignment.Center;
@@ -579,7 +579,9 @@ public sealed partial class MainView : UserControl
     private static TextBlock Paragraph(string text) => new() { Text = DisplayFormat.Text(text), FontSize = 12, Foreground = Muted, TextWrapping = TextWrapping.Wrap, LineHeight = 16 };
     private static Button Button(string label, Action action, string? tooltip = null, double minWidth = 0)
     {
-        var button = new Button { Content = label, MinWidth = minWidth, FontSize = 12, Padding = new Thickness(8, 4), HorizontalAlignment = HorizontalAlignment.Left };
+        var button = new Button { Content = label, MinWidth = minWidth, MinHeight = 30, FontSize = 12,
+            Padding = new Thickness(8, 3), Margin = new Thickness(2, 0), HorizontalAlignment = HorizontalAlignment.Left,
+            HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center };
         button.Click += (_, _) => action(); if (tooltip is not null) ToolTip.SetTip(button, tooltip);
         var id = label switch
         {

@@ -134,10 +134,11 @@ public sealed partial class WorldMapControl : Control
             _cameraReady = false;
         }
         if (resetCamera || !_cameraReady) FitWorld();
-        _chunkRefreshTick = -1; _ecologyDirty = true; _visibleResidentTick = -1;
+        _chunkRefreshTick = -1; _ecologyDirty = true; _visibleResidentTick = -1; _sceneBuildingsDirty = true;
         RebuildChangedChunks();
         _labelSettlements = Engine.State.Settlements.OrderByDescending(settlement => settlement.Population).ToArray();
         _relayOverlayDirty = true;
+        CaptureArchitecture(Engine.State);
         CaptureEffects();
         CaptureSelectedRoute();
         CaptureMotionSnapshots();
@@ -205,23 +206,23 @@ public sealed partial class WorldMapControl : Control
                     if (chunk.Terrain is not null) context.DrawImage(chunk.Terrain, chunk.TerrainBounds);
                     if (ShowBorders && chunk.Territory is not null) context.DrawImage(chunk.Territory, chunk.Bounds);
                 }
-                DrawTerrainDetails(context, state);
                 DrawEcology(context, state);
                 foreach (var settlement in state.Settlements)
                     if (Visible(new Rect(settlement.X * TilePixels - 28, settlement.Y * TilePixels - 28, 56, 56)))
                         DrawSettlement(context, settlement);
-                DrawBuildings(context, state);
+                if (_zoom < 3) DrawBuildings(context, state);
                 DrawMapOverlay(context, state);
                 for (var race = 0; _zoom < 3 && race < _residents.Length; race++)
                     if (_residents[race] is { } body) context.DrawGeometry(ResidentBrushes[race], null, body);
                 if (_zoom >= .7 && _zoom < 3 && _heads is not null) context.DrawGeometry(HeadBrush, null, _heads);
-                if (_zoom >= .35)
+                if (_zoom >= .35 && _zoom < 3)
                 {
                     if (_cargoGeometry is not null) context.DrawGeometry(CargoBrush, null, _cargoGeometry);
                     if (_messageGeometry is not null) context.DrawGeometry(MessageBrush, null, _messageGeometry);
                     if (_magicGeometry is not null) context.DrawGeometry(ArcaneBrush, null, _magicGeometry);
                 }
-                DrawCloseDetails(context, state);
+                if (_zoom >= 3) DrawNearScene(context, state);
+                DrawTownEffects(context, state);
                 DrawVehicles(context, state);
                 DrawFires(context, _renderFrameTime);
                 DrawEffects(context);
@@ -303,7 +304,7 @@ public sealed partial class WorldMapControl : Control
             {
                 TerrainTilesScanned++;
                 var tile = state.Tiles[y * state.Width + x];
-                terrainHash = unchecked((terrainHash ^ ((uint)tile.Terrain + (tile.DroughtTicks > 0 ? 16u : 0u) + (uint)tile.RoadLevel * 64 + (uint)Math.Clamp((int)(tile.ResourceAmount / 25), 0, 4) * 256)) * 16777619);
+                terrainHash = unchecked((terrainHash ^ ((uint)tile.Terrain + (tile.DroughtTicks > 0 ? 16u : 0u) + (uint)tile.RoadLevel * 64 + (uint)Math.Clamp((int)(tile.ResourceAmount / 25), 0, 4) * 256 + (uint)tile.Elevation * 2048)) * 16777619);
                 territoryHash = unchecked((territoryHash ^ (uint)tile.NationId) * 16777619);
                 containsTerritory |= tile.NationId != 0 && x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles;
                 if (x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles && tile.FireTicks > 0)
@@ -374,7 +375,7 @@ public sealed partial class WorldMapControl : Control
     {
         var tile = state.Tiles[y * state.Width + x];
         var noise = PixelCanvas.Noise(x, y, state.Seed);
-        var variation = (int)(noise % 11) - 5;
+        var variation = (int)(PixelCanvas.Noise(x / 4, y / 4, state.Seed) % 7) - 3 + (int)(noise % 3) - 1;
         uint color = tile.Terrain switch
         {
             TerrainType.DeepWater => 0x184254FF,
@@ -407,6 +408,33 @@ public sealed partial class WorldMapControl : Control
             if (LandAt(x - 1, y)) canvas.Rect(px, py, 1, 8, coast);
             if (LandAt(x, y + 1)) canvas.Rect(px, py + 7, 8, 1, coast);
             if (LandAt(x + 1, y)) canvas.Rect(px + 7, py, 1, 8, coast);
+            // Round outside banks; connected water shares an uninterrupted centre.
+            if (LandAt(x, y - 1) && LandAt(x - 1, y)) canvas.Rect(px, py, 2, 2, coast);
+            if (LandAt(x, y - 1) && LandAt(x + 1, y)) canvas.Rect(px + 6, py, 2, 2, coast);
+            if (LandAt(x, y + 1) && LandAt(x - 1, y)) canvas.Rect(px, py + 6, 2, 2, coast);
+            if (LandAt(x, y + 1) && LandAt(x + 1, y)) canvas.Rect(px + 6, py + 6, 2, 2, coast);
+            if (tile.Terrain == TerrainType.River)
+            {
+                var horizontal = !LandAt(x - 1, y) || !LandAt(x + 1, y);
+                canvas.Line(px + 2, py + 3, px + (horizontal ? 6 : 2), py + (horizontal ? 3 : 6), PixelCanvas.Shade(color, 16));
+            }
+            return;
+        }
+        if (tile.Terrain is TerrainType.Mountain or TerrainType.Hills)
+        {
+            bool RidgeAt(int tx, int ty) => tx >= 0 && tx < state.Width && ty >= 0 && ty < state.Height
+                && state.Tiles[ty * state.Width + tx].Terrain is TerrainType.Mountain or TerrainType.Hills;
+            var light = tile.Terrain == TerrainType.Mountain ? 0xB2BEADFFu : 0xADB17BFFu;
+            var dark = tile.Terrain == TerrainType.Mountain ? 0x596D67FFu : 0x7F875CFFu;
+            // The same edge height on neighbouring tiles joins ridges across cells and chunks.
+            canvas.Rect(px, py + 5, 8, 3, PixelCanvas.Shade(color, -8));
+            canvas.Line(px + 4, py + 2, px + 6, py + 6, dark, 2);
+            canvas.Line(px + 4, py + 2, px + 2, py + 6, light, 2);
+            if (RidgeAt(x - 1, y)) canvas.Line(px, py + 4, px + 4, py + 2, light);
+            if (RidgeAt(x + 1, y)) canvas.Line(px + 4, py + 2, px + 7, py + 4, light);
+            if (RidgeAt(x, y - 1)) canvas.Line(px + 4, py, px + 4, py + 2, light);
+            if (RidgeAt(x, y + 1)) canvas.Line(px + 4, py + 2, px + 4, py + 7, dark);
+            if (tile.Elevation > 210) canvas.Rect(px + 3, py + 1, 3, 2, 0xDEE5D5FF);
             return;
         }
         canvas.Rect(px + nx, py + ny, noise % 2 == 0 ? 2 : 1, 1, PixelCanvas.Shade(color, -10));
@@ -432,7 +460,7 @@ public sealed partial class WorldMapControl : Control
             canvas.Rect(px + 3 + shift, py, 1, 3, 0x58865AFF);
             canvas.Rect(px + 2 + shift, py + 2, 1, 2, 0x659160FF);
         }
-        else if (tile.Terrain is TerrainType.Mountain or TerrainType.Snow)
+        else if (tile.Terrain == TerrainType.Snow)
         {
             var light = tile.Terrain == TerrainType.Snow ? 0xE6EAD8FF : 0xA0AA92FF;
             var dark = tile.Terrain == TerrainType.Snow ? 0xA6B9AEFF : 0x586D67FF;
@@ -620,6 +648,7 @@ public sealed partial class WorldMapControl : Control
 
     private void DrawLabels(DrawingContext context, WorldState state)
     {
+        RenderedBuildingLabelCount = 0;
         if (_zoom < .22) return;
         // Keep tiny mobile maps legible by rejecting overlapping labels.
         var occupied = new List<Rect>();
@@ -641,7 +670,24 @@ public sealed partial class WorldMapControl : Control
             context.DrawRectangle(LabelShadow, null, rect, 3, 3);
             context.DrawText(text, new Point(rect.X + 5, rect.Y + 2));
         }
+        if (!ShowBuildingNames || _zoom < 5) return;
+        foreach (var building in state.Society.Buildings)
+        {
+            var position = ToScreen((building.X + .5) * TilePixels, BuildingBounds(building).Top);
+            if (position.X < -40 || position.X > Bounds.Width + 40 || position.Y < -20 || position.Y > Bounds.Height) continue;
+            if (!_buildingLabelText.TryGetValue(building.Kind, out var text))
+            {
+                text = new FormattedText(WorldEngine.BuildingName(building.Kind), CultureInfo.CurrentCulture, FlowDirection.LeftToRight, MapTypeface, 10, LabelBrush);
+                _buildingLabelText[building.Kind] = text;
+            }
+            var rect = new Rect(position.X - text.Width / 2 - 3, position.Y - text.Height - 2, text.Width + 6, text.Height + 3);
+            if (building.Id != SelectedBuildingId && (RenderedBuildingLabelCount >= 40 || occupied.Any(other => other.Intersects(rect.Inflate(2))))) continue;
+            occupied.Add(rect); context.DrawRectangle(LabelShadow, null, rect, 2, 2);
+            context.DrawText(text, new Point(rect.X + 3, rect.Y + 1)); RenderedBuildingLabelCount++;
+        }
     }
+
+    private readonly Dictionary<BuildingKind, FormattedText> _buildingLabelText = [];
 
     private void DrawSelection(DrawingContext context)
     {

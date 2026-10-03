@@ -8,10 +8,13 @@ namespace SeWZC.WorldBox.UI.Controls;
 public sealed partial class WorldMapControl
 {
     public bool ShowWildlife { get; set; } = true;
+    public bool ShowPlants { get; set; } = true;
+    public bool ShowBuildingNames { get; set; } = true;
+    public int RenderedPlantCount { get; private set; }
+    public int RenderedBuildingLabelCount { get; private set; }
     public ResourceVisibility ResourceVisibility { get; set; } = ResourceVisibility.Researched;
     public HashSet<ResourceKind> VisibleResources { get; } = [ResourceKind.Coal, ResourceKind.Oil, ResourceKind.RareEarth];
     public int RenderedWildlifeCount { get; private set; }
-    private static readonly IBrush AnimalBrush = Brush(0xFFF3DBAA);
     private static readonly IBrush WaterAnimalBrush = Brush(0xFFBFE9F0);
     private static readonly IBrush CoalMarkerBrush = Brush(0xFF263547);
     private static readonly IBrush OilMarkerBrush = Brush(0xFF368BE8);
@@ -22,37 +25,69 @@ public sealed partial class WorldMapControl
     private readonly Dictionary<WildlifeKind, WriteableBitmap> _animalIcons = [];
     private readonly List<(WriteableBitmap Icon, Rect Bounds)> _wildlifeDraws = [];
     private readonly List<(IBrush Brush, Point Point)> _depositDraws = [];
+    private readonly Dictionary<PlantKind, WriteableBitmap> _plantIcons = [];
+    private readonly List<(WriteableBitmap Icon, Rect Bounds)> _plantDraws = [];
+    private readonly List<(Point Start, Point End)> _waterStreams = [];
+    public IImage AnimalPreview(WildlifeKind kind) => AnimalIcon(kind);
+    public IImage PlantPreview(PlantKind kind) => PlantIcon(kind);
+
+    private WriteableBitmap PlantIcon(PlantKind kind)
+    {
+        if (_plantIcons.TryGetValue(kind, out var cached)) return cached;
+        var c = new PixelCanvas(20, 20); const uint leaf = 0x92BF78FF, dark = 0x426B47FF, wood = 0xC2A474FF;
+        switch (kind)
+        {
+            case PlantKind.Trees:
+                c.Rect(9, 10, 3, 9, wood); c.Rect(3, 5, 14, 7, dark); c.Rect(5, 2, 10, 8, leaf); c.Rect(8, 1, 4, 4, 0xBDD691FF); break;
+            case PlantKind.Shrubs:
+                c.Rect(3, 9, 14, 8, dark); c.Rect(5, 6, 10, 8, leaf); c.Rect(4, 10, 2, 2, 0xD39A80FF); c.Rect(13, 7, 2, 2, 0xD39A80FF); break;
+            case PlantKind.Grass:
+                c.Line(10, 18, 8, 3, leaf, 2); c.Line(9, 17, 2, 8, leaf, 2); c.Line(10, 18, 17, 5, leaf, 2); c.Line(10, 18, 15, 14, dark, 2); break;
+            case PlantKind.Reeds:
+                for (var x = 4; x < 18; x += 5) { c.Line(x, 18, x - 1, 4, leaf); c.Rect(x - 2, 2, 3, 7, wood); } break;
+            case PlantKind.Crops:
+                c.Line(10, 18, 10, 2, wood, 2); for (var y = 4; y < 13; y += 3) { c.Line(6, y - 1, 10, y + 2, 0xE6CC77FF, 2); c.Line(10, y + 2, 14, y - 1, 0xE6CC77FF, 2); } break;
+        }
+        cached = MakeBitmap(c, opaque: false); _plantIcons[kind] = cached; return cached;
+    }
+    private static readonly Pen WaterFlowPen = new(WaterAnimalBrush, .12);
     private static readonly Pen DepositPen = new(MessageBrush, .15);
 
     private WriteableBitmap AnimalIcon(WildlifeKind kind)
     {
         if (_animalIcons.TryGetValue(kind, out var icon)) return icon;
         var canvas = new PixelCanvas(32, 32);
-        var color = kind is WildlifeKind.Fish or WildlifeKind.Waterfowl ? 0xBFE9F0FFu : 0xF3DBAAFFu;
+        var color = kind switch
+        {
+            WildlifeKind.Fish => 0x86CEDBFFu, WildlifeKind.Waterfowl => 0xE2EBDBFFu, WildlifeKind.Wolf => 0xB1B9BAFFu,
+            WildlifeKind.Boar => 0xA8805FFFu, WildlifeKind.Goat => 0xD9D1B5FFu, WildlifeKind.Deer => 0xDCB578FFu, _ => 0xEBDABDFFu
+        };
         void Box(double x, double y, double w, double h) => canvas.Rect((int)((x + 4) * 4), (int)((y + 4) * 4), Math.Max(1, (int)(w * 4)), Math.Max(1, (int)(h * 4)), color);
         Box(-2.5, -1.1, 4, 1.9); Box(1, -2, 1.5, 1.5);
         if (kind == WildlifeKind.Fish) { Box(-3.5, -1.7, 1, 3); Box(-.7, -2, 1, 1); }
-        else if (kind == WildlifeKind.Waterfowl) { Box(2, -1.8, 1.5, .5); Box(-1, -2, 1.8, .7); }
+        else if (kind == WildlifeKind.Waterfowl) { Box(-1, -2, 1.8, .7); color = 0xE1B952FF; Box(2, -1.8, 1.5, .5); }
         else
         {
             Box(-2, .7, .7, 1.2); Box(.5, .7, .7, 1.2);
             if (kind == WildlifeKind.Rabbit) { Box(1.1, -4, .5, 2); Box(2, -3.6, .5, 1.6); }
-            else if (kind is WildlifeKind.Deer or WildlifeKind.Goat) { Box(.8, -3.5, .4, 1.5); Box(2, -3.5, .4, 1.5); Box(.2, -3.4, 2.8, .4); }
+            else if (kind == WildlifeKind.Deer) { Box(.8, -3.5, .4, 1.5); Box(2, -3.5, .4, 1.5); Box(.2, -3.4, 2.8, .4); Box(.1, -4, .4, 1); Box(2.6, -4, .4, 1); }
+            else if (kind == WildlifeKind.Goat) { color = 0x877565FF; Box(1, -3.6, .4, 1.5); Box(2, -3.6, .4, 1.5); Box(.8, -3.6, 1.5, .4); color = 0xEAE1CCFF; Box(1.5, -.6, .6, 1.2); }
             else if (kind == WildlifeKind.Wolf) { Box(1, -3, .6, 1); Box(-3.5, -1.3, 1.2, .5); }
             else if (kind == WildlifeKind.Boar) { Box(2.2, -1.2, 1, .6); Box(-3.2, -.7, .8, .4); }
         }
+        color = 0x354139FF; Box(1.8, -1.7, .3, .3);
         icon = MakeBitmap(canvas, opaque: false); _animalIcons[kind] = icon; return icon;
     }
 
     private void DrawEcology(DrawingContext context, WorldState state)
     {
-        RenderedWildlifeCount = 0;
+        RenderedWildlifeCount = 0; RenderedPlantCount = 0;
         if (_zoom < 3) return;
         var viewport = VisibleTiles(state);
         if (_ecologyDirty || viewport != _ecologyViewport)
         {
             _ecologyDirty = false; _ecologyViewport = viewport;
-            _wildlifeDraws.Clear(); _depositDraws.Clear();
+            _wildlifeDraws.Clear(); _depositDraws.Clear(); _plantDraws.Clear(); _waterStreams.Clear();
             for (var y = viewport.Top; y <= viewport.Bottom; y++)
                 for (var x = viewport.Left; x <= viewport.Right; x++)
                 {
@@ -60,12 +95,45 @@ public sealed partial class WorldMapControl
                     if (tile.Deposit is { } resource && VisibleResources.Contains(resource) && Engine!.IsDepositVisible(tile, ResourceVisibility))
                         _depositDraws.Add((resource == ResourceKind.Coal ? CoalMarkerBrush : resource == ResourceKind.Oil ? OilMarkerBrush : RareMarkerBrush,
                             new Point((x + .8) * TilePixels, (y + .2) * TilePixels)));
-                    if (!ShowWildlife || tile.Wildlife == WildlifeKind.None || tile.WildlifePopulation < .25) continue;
-                    var scale = .25 + .75 * Math.Clamp(tile.WildlifePopulation / Math.Max(1, WorldEngine.WildlifeCapacity(tile, tile.Wildlife)), 0, 1);
-                    var cx = (x + .5) * TilePixels; var cy = (y + .75) * TilePixels;
-                    _wildlifeDraws.Add((AnimalIcon(tile.Wildlife), new Rect(cx - 4 * scale, cy - 4 * scale, 8 * scale, 8 * scale)));
+                    if (ShowPlants)
+                    {
+                        var slot = 0;
+                        foreach (var (kind, cover) in PlantResources.At(tile))
+                        {
+                            var size = 2.8 * (.25 + .75 * cover);
+                            _plantDraws.Add((PlantIcon(kind), new Rect((x + .23 + slot * .34) * TilePixels - size / 2, (y + .22) * TilePixels - size / 2, size, size)));
+                            slot++;
+                        }
+                    }
+                    if (ShowWildlife)
+                    {
+                        var slot = 0;
+                        for (var species = 1; species <= (int)WildlifeKind.Fish; species++)
+                        {
+                            var kind = (WildlifeKind)species; var population = tile.AnimalPopulation(kind);
+                            if (population < .25) continue;
+                            var scale = .25 + .75 * Math.Clamp(population / Math.Max(1, WorldEngine.WildlifeCapacity(tile, kind)), 0, 1);
+                            var size = 2.8 * scale;
+                            var cx = (x + .25 + slot % 3 * .28) * TilePixels; var cy = (y + .76 - slot / 3 * .3) * TilePixels;
+                            _wildlifeDraws.Add((AnimalIcon(kind), new Rect(cx - size / 2, cy - size / 2, size, size)));
+                            slot++;
+                        }
+                    }
+                    if (tile.Terrain == TerrainType.River && _waterStreams.Count < 120)
+                    {
+                        var vertical = y + 1 < state.Height && state.Tiles[(y + 1) * state.Width + x].Terrain == TerrainType.River;
+                        _waterStreams.Add((new Point((x + .3) * TilePixels, (y + .3) * TilePixels), new Point((x + (vertical ? .3 : .8)) * TilePixels, (y + (vertical ? .8 : .3)) * TilePixels)));
+                    }
                 }
         }
+        foreach (var (start, end) in _waterStreams)
+        {
+            var phase = (_renderFrameTime * .35 + start.X * .1 + start.Y * .05) % 1;
+            var point = start + (end - start) * phase;
+            context.DrawLine(WaterFlowPen, point, point + (end - start) * .2);
+        }
+        foreach (var (icon, bounds) in _plantDraws) context.DrawImage(icon, bounds);
+        RenderedPlantCount = _plantDraws.Count;
         foreach (var (brush, point) in _depositDraws) context.DrawEllipse(brush, DepositPen, point, .8, .8);
         foreach (var (icon, bounds) in _wildlifeDraws) context.DrawImage(icon, bounds);
         RenderedWildlifeCount = _wildlifeDraws.Count;

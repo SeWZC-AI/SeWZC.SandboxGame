@@ -30,13 +30,15 @@ public sealed partial class MainView
         Building? Current() => _engine.State.Society.Buildings.FirstOrDefault(b => b.Id == id);
         if (Current() is not { } building) { panel.Children.Add(Paragraph("建筑已毁坏或被移除，可在建筑与道路列表查看其他设施。")); return; }
         panel.Children.Add(LiveText(() => Current() is { } b ? BuildingLabel(b) : "建筑已不存在", 18, Mint));
+        panel.Children.Add(Named(LiveText(() => Current() is { } b ? $"建筑生命 {b.Health:0.#} / 100" +
+            (b.Health <= 0 ? "   已损毁" : b.Health < 50 ? "   低于 50，暂停工作" : b.Health < 100 ? "   有损伤，仍可工作" : "   结构完好") : "建筑已不存在"), "building-health"));
         panel.Children.Add(Paragraph(WorldEngine.BuildingDescription(building.Kind)));
         panel.Children.Add(LiveText(() => Current() is not { } b ? "建筑已不存在" :
             !b.IsCompleted ? $"施工：{b.ConstructionProgress:0.0} / {b.ConstructionRequired:0}\n" + _engine.GetProductionStatus(b.Id)
             : _engine.GetProductionStatus(b.Id)));
         var condition = FoldSection(panel, "建筑状态与工作记录", "building-condition");
         condition.Children.Add(LiveText(() => Current() is not { } b ? "建筑已不存在" :
-            $"聚落：{TownName(b.SettlementId)}   生命 {b.Health:0} / 100\n最近工作：{DateLabel(b.LastWorkedTick)}   累计加工 {b.ProductionBatches} 批"));
+            $"聚落：{TownName(b.SettlementId)}\n最近工作：{DateLabel(b.LastWorkedTick)}   累计加工 {b.ProductionBatches} 批"));
         var actions = new WrapPanel { Orientation = Orientation.Horizontal };
         panel.Children.Add(actions);
         actions.Children.Add(Named(Button("定位建筑", () => { if (Current() is { } b) _map.FocusTile(b.X, b.Y); CloseInspector(); }), "building-locate"));

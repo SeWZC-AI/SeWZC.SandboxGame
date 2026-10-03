@@ -19,6 +19,8 @@ var tests = new (string Name, Action Test)[]
     ("Resident search remains attached and excludes archived people by default", ResidentSearch),
     ("Close terrain refresh scans visible chunks without modifying the world", VisibleTerrain),
     ("Paged tools expose every building and keep previews outside toolbar layout", ToolPagination),
+    ("Building damage stays visible without expanding secondary details", BuildingDamage),
+    ("Tall buildings occlude by ground position and roofs select their actual footprint", BuildingOcclusion),
     ("Building details control the actual facility and list real roads", BuildingControls),
     ("Map resources and resident plans remain read-only during inspection", DetailedInspection),
     ("Map objects select quietly and details require the explicit view button", QuietSelection),
@@ -88,6 +90,40 @@ static void BuildingControls()
     engine.BuildRoad(engine.State.Settlements[0].Id, 35, 32, 0);
     Call(view, "OpenInspector", "structures", true); Control<ComboBox>(view, "structures-kind").SelectedIndex = 1;
     Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("道路 1 级") == true), "Road listing omitted actual road");
+}
+
+static void BuildingOcclusion()
+{
+    var engine = TwoTownWorld(); var centre = engine.State.Society.Buildings.First(b => b.Kind == BuildingKind.TownCenter);
+    var rear = engine.State.Residents[0]; var front = engine.State.Residents[1];
+    rear.X = rear.FromX = front.X = front.FromX = centre.X;
+    rear.Y = rear.FromY = centre.Y - 1; front.Y = front.FromY = centre.Y + 1;
+    var view = View(engine); var map = Map(view); map.FocusTile(centre.X, centre.Y);
+    for (var i = 0; i < 8; i++) map.ZoomIn();
+    var before = engine.ExportJson(); Call(map, "BuildScene", engine.State);
+    var sprites = ((System.Collections.IEnumerable)typeof(WorldMapControl).GetField("_sceneSprites", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(map)!).Cast<object>().ToArray();
+    var ids = sprites.Select(s => (int)s.GetType().GetProperty("Id")!.GetValue(s)!).ToArray();
+    Assert(Array.IndexOf(ids, rear.Id) < Array.IndexOf(ids, centre.Id) && Array.IndexOf(ids, front.Id) > Array.IndexOf(ids, centre.Id), "Building does not draw between people behind and ahead of it");
+    var bounds = (Rect)typeof(WorldMapControl).GetMethod("BuildingBounds", BindingFlags.NonPublic | BindingFlags.Static)!.Invoke(null, [centre])!;
+    Assert(bounds.Height > 8, "Fixture does not contain a building taller than one tile");
+    var foot = map.GetTileScreenPosition(centre.X, centre.Y); var size = map.GetTileScreenPosition(centre.X + 1, centre.Y).X - foot.X;
+    Call(map, "SelectObjectAt", new Point(foot.X, foot.Y - size * 1.1));
+    Assert(map.SelectedBuildingId == centre.Id, "Clicking a high roof selected the ground behind the building");
+    Assert(Field<(int X, int Y)?>(map, "_selection") == (centre.X, centre.Y), "Roof selection highlights the wrong footprint");
+    Assert(engine.ExportJson() == before, "Depth ordering or selecting a roof changed the world");
+}
+
+static void BuildingDamage()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var building = engine.State.Society.Buildings.First(b => b.Kind == BuildingKind.Workshop);
+    building.Health = 23; Call(view, "OpenBuilding", building);
+    var health = Control<TextBlock>(view, "building-health");
+    Assert(health.Text!.Contains("23") && health.Text.Contains("低于 50") && !health.GetLogicalAncestors().OfType<Expander>().Any(), "Damage magnitude and operational threshold are hidden");
+    Click(view, "building-repair"); Call(view, "RefreshInspector", false);
+    Assert(health.Text!.Contains("100 / 100"), "Repair did not refresh the visible health");
+    var button = Control<Button>(view, "building-repair");
+    Assert(button.HorizontalContentAlignment == Avalonia.Layout.HorizontalAlignment.Center && button.VerticalContentAlignment == Avalonia.Layout.VerticalAlignment.Center, "Action label is not centred");
+    Assert(button.Margin.Left >= 2 && button.Margin.Right >= 2, "Adjacent wrap buttons touch each other");
 }
 
 static void DetailedInspection()

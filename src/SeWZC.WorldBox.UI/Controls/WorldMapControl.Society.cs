@@ -22,114 +22,47 @@ public sealed partial class WorldMapControl
     private void DrawBuildings(DrawingContext context, WorldState state)
     {
         foreach (var building in state.Society.Buildings)
+            DrawBuilding(context, building);
+    }
+
+    private static double BuildingHeight(BuildingKind kind) => kind switch
+    {
+        BuildingKind.SignalTower => 16, BuildingKind.TownCenter or BuildingKind.PowerPlant => 13,
+        BuildingKind.Academy or BuildingKind.Foundry or BuildingKind.AetherForge => 12,
+        BuildingKind.Farm or BuildingKind.AutomatedFarm => 6.4,
+        BuildingKind.Bridge or BuildingKind.MountainPass => 4, _ => 9.6
+    };
+
+    private static Rect BuildingBounds(Building building)
+    {
+        var height = building.IsCompleted ? BuildingHeight(building.Kind) : 8;
+        return new Rect(building.X * TilePixels, (building.Y + .5) * TilePixels + 2 - height, 8, height);
+    }
+
+    private void DrawBuilding(DrawingContext context, Building building)
+    {
+        var x = (building.X + .5) * TilePixels; var y = (building.Y + .5) * TilePixels;
+        var bounds = BuildingBounds(building);
+        if (!Visible(bounds)) return;
+        var race = _settlementStyles.GetValueOrDefault(building.SettlementId);
+        if (!building.IsCompleted)
         {
-            var x = (building.X + .5) * TilePixels;
-            var y = (building.Y + .5) * TilePixels;
-            if (!Visible(new Rect(x - 9, y - 16, 18, 22))) continue;
-            var town = state.Settlements.FirstOrDefault(s => s.Id == building.SettlementId);
-            var roof = town is null ? RoofBrush : NationBrush(town.NationId);
-            void Box(IBrush brush, double dx, double dy, double width, double height) =>
-                context.DrawRectangle(brush, null, new Rect(x + dx, y + dy, width, height));
-            Box(ShadowBrush, -4, 2, 10, 3);
-            if (!building.IsCompleted)
-            {
-                Box(StoneBrush, -4, -2, 8, 5);
-                Box(WoodBrush, -4, -8, 1, 10);
-                Box(WoodBrush, 3, -8, 1, 10);
-                Box(WoodBrush, -4, -7, 8, 1);
-                Box(WoodBrush, -4, -3, 8, 1);
-                var progress = Math.Clamp(building.ConstructionProgress / (double)Math.Max(1, building.ConstructionRequired), 0, 1);
-                Box(WoodBrush, -4, 5, 8, 1.5);
-                Box(ProgressBrush, -4, 5, 8 * progress, 1.5);
-                continue;
-            }
-            switch (building.Kind)
-            {
-                case BuildingKind.TownCenter:
-                    DrawHouse(context, x - 3, y - 5, roof, town?.Population >= 160 ? 1.5 : 1.2);
-                    Box(WoodBrush, 2, -19, 1, 11); Box(roof, 3, -19, 6, 4);
-                    break;
-                case BuildingKind.Bridge:
-                    Box(WoodBrush, -4, -4, 8, 8);
-                    for (var row = 0; row < 4; row++) Box(StoneBrush, -4, -4 + row * 2, 8, .5);
-                    break;
-                case BuildingKind.MountainPass:
-                    Box(StoneBrush, -4, -2, 8, 4); Box(WoodBrush, -4, -2, 8, .5); Box(WoodBrush, -4, 1.5, 8, .5);
-                    break;
-                case BuildingKind.Dock:
-                    DrawHouse(context, x - 3, y - 3, AcademyBrush, 1);
-                    Box(WoodBrush, -5, 2, 10, 3); Box(MessageBrush, 3, -7, .6, 9);
-                    break;
-                case BuildingKind.Airfield:
-                    Box(StoneBrush, -5, -4, 10, 8); Box(WoodBrush, -4, 1, 8, 2);
-                    Box(AcademyBrush, -4, -5, 6, 4); Box(MessageBrush, 1, -2, 3, .6);
-                    break;
-                case BuildingKind.Farm:
-                    Box(WoodBrush, -4, -4, 8, 8);
-                    Box(FarmBrush, -3, -3, 6, 6);
-                    for (var row = 0; row < 3; row++) Box(ProgressBrush, -3, -3 + row * 2.5, 6, 1);
-                    break;
-                case BuildingKind.Workshop:
-                    DrawHouse(context, x - 3, y - 3, RoofBrush, 1);
-                    Box(StoneBrush, 2, -9, 2, 6);
-                    Box(WoodBrush, -1, 1, 4, 2);
-                    break;
-                case BuildingKind.Academy:
-                    Box(StoneBrush, -4, -4, 8, 8);
-                    Box(AcademyBrush, -5, -6, 10, 2);
-                    Box(AcademyBrush, -3, -8, 6, 2);
-                    Box(WallBrush, -3, -2, 1, 5);
-                    Box(WallBrush, 2, -2, 1, 5);
-                    Box(WoodBrush, -1, 0, 2, 4);
-                    break;
-                case BuildingKind.Waystation:
-                    DrawHouse(context, x - 3, y - 3, roof, 1);
-                    Box(WoodBrush, 5, -6, 1, 9);
-                    Box(MessageBrush, 4, -6, 4, 2);
-                    break;
-                case BuildingKind.SignalTower:
-                    Box(StoneBrush, -2, -11, 4, 15);
-                    Box(WoodBrush, -4, -11, 8, 2);
-                    Box(roof, -3, -13, 6, 2);
-                    Box(WoodBrush, 0, -18, 1, 6);
-                    Box(MessageBrush, 1, -18, 4, 3);
-                    break;
-                case BuildingKind.ArcaneSanctum:
-                    Box(StoneBrush, -4, 0, 8, 4);
-                    Box(ArcaneBrush, -2, -7, 4, 8);
-                    Box(ArcaneBrush, -1, -10, 2, 3);
-                    Box(MessageBrush, -1, -6, 1, 5);
-                    break;
-                case BuildingKind.Infirmary:
-                    DrawHouse(context, x - 3, y - 3, HealingBrush, 1);
-                    Box(HealingBrush, -1, -1, 3, 1);
-                    Box(HealingBrush, 0, -2, 1, 3);
-                    break;
-                case BuildingKind.Foundry:
-                case BuildingKind.PowerPlant:
-                case BuildingKind.Fabricator:
-                    Box(StoneBrush, -5, -5, 10, 9);
-                    Box(AcademyBrush, -5, -7, 10, 2);
-                    Box(StoneBrush, 2, -13, 2, 6);
-                    Box(building.Kind == BuildingKind.Foundry ? CargoBrush : AcademyBrush, -3, -3, 3, 3);
-                    if (building.Kind == BuildingKind.Fabricator) Box(MessageBrush, 1, -3, 2, 3);
-                    break;
-                case BuildingKind.AutomatedFarm:
-                    Box(StoneBrush, -5, -4, 10, 8);
-                    Box(FarmBrush, -4, -3, 8, 6);
-                    Box(AcademyBrush, -5, -6, 10, 2);
-                    for (var row = 0; row < 3; row++) Box(ProgressBrush, -3, -3 + row * 2.5, 6, 1);
-                    break;
-                case BuildingKind.Crystallizer:
-                case BuildingKind.RunicGarden:
-                case BuildingKind.AetherForge:
-                    Box(StoneBrush, -4, 0, 8, 4);
-                    Box(building.Kind == BuildingKind.RunicGarden ? FarmBrush : ArcaneBrush, -4, -5, 8, 5);
-                    Box(ArcaneBrush, -2, -10, 4, 7);
-                    Box(MessageBrush, -1, -8, 2, 3);
-                    if (building.Kind == BuildingKind.AetherForge) { Box(ArcaneBrush, -5, -7, 2, 7); Box(ArcaneBrush, 3, -7, 2, 7); }
-                    break;
-            }
+            context.DrawRectangle(StoneBrush, null, new Rect(x - 3, y - 1, 6, 3));
+            context.DrawLine(new Pen(WoodBrush, .4), new(x - 3, y + 2), new(x - 3, y - 6));
+            context.DrawLine(new Pen(WoodBrush, .4), new(x + 3, y + 2), new(x + 3, y - 6));
+            context.DrawLine(new Pen(WoodBrush, .4), new(x - 3, y - 5), new(x + 3, y - 5));
+        }
+        else
+        {
+            using var opacity = context.PushOpacity(building.Enabled && building.Health > 0 ? 1 : .55);
+            context.DrawImage(BuildingIcon(race, building.Kind), bounds);
+        }
+        if (_zoom >= 3 && (!building.IsCompleted || building.Health < 100))
+        {
+            var fraction = building.IsCompleted ? building.Health / 100 : building.ConstructionProgress / Math.Max(1, building.ConstructionRequired);
+            context.DrawRectangle(WoodBrush, null, new Rect(x - 3, y + 2, 6, .45));
+            context.DrawRectangle(building.IsCompleted && building.Health < 50 ? FlameOuter : ProgressBrush, null, new Rect(x - 3, y + 2, 6 * Math.Clamp(fraction, 0, 1), .45));
+            if (building.IsCompleted && building.Health < 50) context.DrawLine(new Pen(WoodBrush, .25), new(x - 1, y - 3), new(x + 1, y + 1));
         }
     }
 

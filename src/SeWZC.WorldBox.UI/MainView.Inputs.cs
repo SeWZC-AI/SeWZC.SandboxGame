@@ -45,8 +45,8 @@ public sealed partial class MainView
             _ => "M 4,4 L 12,12 M 12,4 L 4,12"
         };
         var shape = new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse(path), Stroke = Mint, StrokeThickness = 1.8,
-            Width = 16, Height = 16, Stretch = Stretch.Uniform };
-        var button = Named(new Button { Content = shape, Width = 40, Height = 40, Padding = new Thickness(10),
+            Width = 14, Height = 14, Stretch = Stretch.Uniform };
+        var button = Named(new Button { Content = shape, Width = 30, Height = 30, MinHeight = 30, Padding = new Thickness(7), Margin = new Thickness(2, 0),
             HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center }, id);
         AutomationProperties.SetName(button, label); ToolTip.SetTip(button, label); button.Click += (_, _) => action(); return button;
     }

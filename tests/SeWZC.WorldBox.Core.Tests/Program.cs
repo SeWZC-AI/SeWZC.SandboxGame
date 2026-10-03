@@ -16,6 +16,13 @@ if (args.Contains("--profile-simulation"))
 var developmentOption = Array.IndexOf(args, "--simulate-development");
 if (developmentOption >= 0) return DevelopmentDiagnostics.Run(args[(developmentOption + 1)..]);
 
+var visualOption = Array.IndexOf(args, "--export-visual-fixture");
+if (visualOption >= 0)
+{
+    if (visualOption + 1 >= args.Length) return 2;
+    VisualFixture.Export(args[visualOption + 1]); return 0;
+}
+
 var fixtureOption = Array.IndexOf(args, "--export-browser-fixture");
 if (fixtureOption >= 0)
 {

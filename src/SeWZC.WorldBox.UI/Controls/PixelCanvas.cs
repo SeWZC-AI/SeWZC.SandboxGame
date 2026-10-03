@@ -38,6 +38,20 @@ internal sealed class PixelCanvas(int width, int height)
                (rgba & 255);
     }
 
+    public void Line(int x, int y, int endX, int endY, uint color, int thickness = 1)
+    {
+        var dx = Math.Abs(endX - x); var dy = -Math.Abs(endY - y);
+        var sx = x < endX ? 1 : -1; var sy = y < endY ? 1 : -1; var error = dx + dy;
+        while (true)
+        {
+            Rect(x, y, thickness, thickness, color);
+            if (x == endX && y == endY) return;
+            var twice = error * 2;
+            if (twice >= dy) { error += dy; x += sx; }
+            if (twice <= dx) { error += dx; y += sy; }
+        }
+    }
+
     public static uint Noise(int x, int y, int salt = 0)
     {
         unchecked

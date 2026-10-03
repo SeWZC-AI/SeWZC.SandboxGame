@@ -7,6 +7,7 @@ internal static class EcologyAndConflictTests
     [
         ("settlements resize names and keep a real center through relocation", Centers),
         ("ecology grows toward habitat capacity, migrates and survives save resume", Ecology),
+        ("multiple species share land, migrate into occupied habitats and persist", Coexistence),
         ("ecology animals in unsuitable or overpopulated land decline gradually", Decline),
         ("resource observation can reveal minerals without teaching residents", Resources),
         ("local scarcity escalates in stages and relief ends conflict", Conflicts),
@@ -37,7 +38,7 @@ internal static class EcologyAndConflictTests
     {
         var engine = WorldEngine.Create(82, 32, 32, false);
         foreach (var tile in engine.State.Tiles)
-        { tile.Terrain = TerrainType.Grass; tile.Fertility = 100; tile.ResourceAmount = 100; tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; }
+        { tile.Terrain = TerrainType.Grass; tile.Fertility = 100; tile.ResourceAmount = 100; tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default; }
         engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Disease = false, Construction = false,
             Research = false, Expansion = false, Trade = false, Wars = false, Alliances = false, Migration = false, Secession = false }, false, false);
         return engine;
@@ -74,6 +75,32 @@ internal static class EcologyAndConflictTests
         engine.Step(900);
         Require(source.WildlifePopulation > 11.5 && source.WildlifePopulation <= WorldEngine.WildlifeCapacity(source, source.Wildlife) + .001,
             "Logistic growth did not approach habitat capacity");
+    }
+
+    private static void Coexistence()
+    {
+        var engine = Empty(); var source = engine.State.Tiles[16 * 32 + 16]; var target = engine.State.Tiles[16 * 32 + 17];
+        source.Terrain = target.Terrain = TerrainType.Forest;
+        source.Wildlife = WildlifeKind.Deer; source.WildlifePopulation = 2;
+        source.OtherWildlife = new WildlifePopulations { Boar = 1, Wolf = .5 };
+        target.Wildlife = WildlifeKind.Boar; target.WildlifePopulation = 1;
+        engine.Step(12);
+        Require(source.AnimalPopulation(WildlifeKind.Deer) > 2 && source.AnimalPopulation(WildlifeKind.Boar) > 1, "Coexisting species failed to grow");
+        Require(target.AnimalPopulation(WildlifeKind.Deer) > 0 && target.AnimalPopulation(WildlifeKind.Boar) > 0, "Migration displaced the other species");
+        var summary = engine.GetTileProductionSummary(16, 16);
+        Require(summary.Contains("鹿") && summary.Contains("野猪") && summary.Contains("乔木") && summary.Contains("灌木"), "Detailed ecology omits existing resources");
+        var resumed = WorldEngine.ImportJson(engine.ExportJson()); engine.Step(120); resumed.Step(120);
+        Require(engine.ExportJson() == resumed.ExportJson(), "Multispecies ecology failed deterministic resume");
+        source.Terrain = TerrainType.Desert; var before = source.AnimalPopulation(WildlifeKind.Boar);
+        engine.Step(6); Require(source.AnimalPopulation(WildlifeKind.Boar) < before, "Unsuitable species did not decline");
+        var bad = JsonNode.Parse(engine.ExportJson())!;
+        bad["Tiles"]![16 * 32 + 16]!["OtherWildlife"] = new JsonObject { ["Boar"] = -1 };
+        try { WorldEngine.ImportJson(bad.ToJsonString()); throw new Exception("Corrupt secondary population accepted"); } catch (ArgumentException) { }
+        var legacy = JsonNode.Parse(engine.ExportJson())!;
+        foreach (var t in legacy["Tiles"]!.AsArray()) t!.AsObject().Remove("OtherWildlife");
+        _ = WorldEngine.ImportJson(legacy.ToJsonString());
+        var depleted = new Tile { Terrain = TerrainType.Forest, ResourceAmount = 0, Fertility = 100 };
+        Require(!PlantResources.At(depleted).Any(), "Depleted land invents available plants");
     }
 
     [UnitTest]

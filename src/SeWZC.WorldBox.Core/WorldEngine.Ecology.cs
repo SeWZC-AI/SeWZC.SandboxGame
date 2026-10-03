@@ -1,8 +1,18 @@
+using System.Numerics;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
     private double[]? _wildlifeChanges;
+    private double[]? _wildlifePressure;
+    private int[]? _wildlifeIncoming;
+    private WildlifeHabitat[]? _wildlifeHabitats;
+    private WildlifePopulations[]? _wildlifeCapacities;
+    private readonly record struct WildlifeHabitat(TerrainType Terrain, double Resources, byte Fertility,
+        LandImprovement Improvement, bool Settled, bool Drought, bool Fire, bool Initialized);
+    private static int NextWildlife(ref int mask)
+    { var kind = BitOperations.TrailingZeroCount((uint)mask); mask &= mask - 1; return kind; }
 
     public static string WildlifeName(WildlifeKind kind) => kind switch
     {
@@ -47,6 +57,19 @@ public sealed partial class WorldEngine
                 _ => WildlifeKind.None
             };
             tile.WildlifePopulation = WildlifeCapacity(tile, tile.Wildlife) * (.15 + hash % 50 / 100d);
+            var companion = tile.Terrain switch
+            {
+                TerrainType.Forest => tile.Wildlife == WildlifeKind.Deer ? WildlifeKind.Boar : WildlifeKind.Deer,
+                TerrainType.Grass => WildlifeKind.Deer,
+                TerrainType.Hills or TerrainType.Tundra => WildlifeKind.Rabbit,
+                TerrainType.Wetland => WildlifeKind.Boar,
+                TerrainType.River or TerrainType.Water => WildlifeKind.Waterfowl,
+                _ => WildlifeKind.None
+            };
+            if (companion != WildlifeKind.None)
+                tile.SetAnimalPopulation(companion, WildlifeCapacity(tile, companion) * (.1 + hash % 20 / 100d));
+            if (tile.Terrain == TerrainType.Forest && hash % 7 == 0)
+                tile.SetAnimalPopulation(WildlifeKind.Wolf, WildlifeCapacity(tile, WildlifeKind.Wolf) * .15);
         }
     }
 
@@ -54,35 +77,81 @@ public sealed partial class WorldEngine
     {
         if (State.Tick % 6 != 0) return;
         var tiles = State.Tiles;
-        _wildlifeChanges ??= new double[tiles.Length];
-        Array.Clear(_wildlifeChanges);
-        // Two passes: every migration uses the same starting population, independent of tile order.
+        _wildlifeChanges ??= new double[tiles.Length * 8];
+        _wildlifePressure ??= new double[tiles.Length];
+        _wildlifeIncoming ??= new int[tiles.Length];
+        _wildlifeHabitats ??= new WildlifeHabitat[tiles.Length];
+        _wildlifeCapacities ??= new WildlifePopulations[tiles.Length];
+        Array.Clear(_wildlifeChanges); Array.Clear(_wildlifeIncoming);
+        // Snapshot shared food pressure first. All species migrate from the same starting state.
         for (var i = 0; i < tiles.Length; i++)
         {
-            var tile = tiles[i]; var population = tile.WildlifePopulation;
-            if (population <= 0 || tile.Wildlife == WildlifeKind.None) continue;
-            var capacity = WildlifeCapacity(tile, tile.Wildlife);
-            _wildlifeChanges[i] += capacity > 0
-                ? Math.Max(-population * .12, .07 * population * (1 - population / capacity)) : -population * .12;
-            var moving = population * .025;
-            foreach (var (dx, dy) in Directions)
+            var tile = tiles[i]; var mask = tile.WildlifeMask; var pressure = 0d;
+            var habitat = new WildlifeHabitat(tile.Terrain, tile.ResourceAmount, tile.Fertility, tile.Improvement,
+                tile.SettlementId != 0, tile.DroughtTicks > 0, tile.FireTicks > 0, true);
+            if (_wildlifeHabitats[i] != habitat)
             {
-                var x = i % State.Width + dx; var y = i / State.Width + dy;
-                if (!InBounds(x, y)) continue;
-                var next = Index(x, y); var target = tiles[next];
-                if (target.Wildlife != tile.Wildlife && target.Wildlife != WildlifeKind.None) continue;
-                var targetCapacity = WildlifeCapacity(target, tile.Wildlife);
-                if (targetCapacity <= target.WildlifePopulation) continue;
-                var amount = Math.Min(moving / 4, (targetCapacity - target.WildlifePopulation) * .01);
-                _wildlifeChanges[i] -= amount; _wildlifeChanges[next] += amount;
-                // Empty habitats are assigned in stable direction order, without creating animals.
-                if (target.Wildlife == WildlifeKind.None) target.Wildlife = tile.Wildlife;
+                _wildlifeHabitats[i] = habitat;
+                for (var species = 1; species <= (int)WildlifeKind.Fish; species++)
+                    _wildlifeCapacities[i].Set((WildlifeKind)species, WildlifeCapacity(tile, (WildlifeKind)species));
+            }
+            while (mask != 0)
+            {
+                var kind = (WildlifeKind)NextWildlife(ref mask); var capacity = _wildlifeCapacities[i].Get(kind);
+                if (capacity > 0) pressure += tile.AnimalPopulation(kind) / capacity;
+            }
+            _wildlifePressure[i] = pressure;
+        }
+        Span<int> neighbours = stackalloc int[4];
+        for (var i = 0; i < tiles.Length; i++)
+        {
+            var tile = tiles[i]; var mask = tile.WildlifeMask;
+            if (mask == 0) continue;
+            var x = i % State.Width; var y = i / State.Width; var count = 0;
+            if (x + 1 < State.Width) neighbours[count++] = i + 1;
+            if (y + 1 < State.Height) neighbours[count++] = i + State.Width;
+            if (x > 0) neighbours[count++] = i - 1;
+            if (y > 0) neighbours[count++] = i - State.Width;
+            while (mask != 0)
+            {
+                var species = NextWildlife(ref mask); var kind = (WildlifeKind)species;
+                var population = tile.AnimalPopulation(kind); var capacity = _wildlifeCapacities[i].Get(kind);
+                var density = capacity > 0 ? population / capacity : 0;
+                _wildlifeChanges[i * 8 + species] += capacity > 0
+                    ? Math.Max(-population * .12, .07 * population * (1 - density - .35 * (_wildlifePressure[i] - density))) : -population * .12;
+                for (var n = 0; n < count; n++)
+                {
+                    var next = neighbours[n]; var target = tiles[next]; var targetCapacity = _wildlifeCapacities[next].Get(kind);
+                    var targetPopulation = target.AnimalPopulation(kind);
+                    if (targetCapacity <= 0) continue;
+                    var space = targetCapacity - targetPopulation - .35 * Math.Max(0, _wildlifePressure[next] - targetPopulation / targetCapacity) * targetCapacity;
+                    if (space <= 0) continue;
+                    var amount = Math.Min(population * .025 / 4, space * .01);
+                    _wildlifeChanges[i * 8 + species] -= amount; _wildlifeChanges[next * 8 + species] += amount;
+                    _wildlifeIncoming[next] |= 1 << species;
+                }
             }
         }
         for (var i = 0; i < tiles.Length; i++)
         {
-            tiles[i].WildlifePopulation = Math.Clamp(tiles[i].WildlifePopulation + _wildlifeChanges[i], 0, 1000);
-            if (tiles[i].WildlifePopulation < .001) { tiles[i].WildlifePopulation = 0; tiles[i].Wildlife = WildlifeKind.None; }
+            var tile = tiles[i]; var mask = tile.WildlifeMask | _wildlifeIncoming[i];
+            while (mask != 0)
+            {
+                var species = NextWildlife(ref mask); var kind = (WildlifeKind)species;
+                var population = Math.Clamp(tile.AnimalPopulation(kind) + _wildlifeChanges[i * 8 + species], 0, 1000);
+                tile.SetAnimalPopulation(kind, population < .001 ? 0 : population);
+            }
+            if (tile.WildlifePopulation == 0)
+            {
+                tile.Wildlife = WildlifeKind.None;
+                var remaining = tile.OtherWildlife.ActiveMask;
+                if (remaining != 0)
+                {
+                    var kind = (WildlifeKind)NextWildlife(ref remaining); var population = tile.OtherWildlife.Get(kind);
+                    var others = tile.OtherWildlife; others.Set(kind, 0); tile.OtherWildlife = others;
+                    tile.Wildlife = kind; tile.WildlifePopulation = population;
+                }
+            }
         }
     }
 
