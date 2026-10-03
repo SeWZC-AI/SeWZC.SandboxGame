@@ -231,20 +231,27 @@ public sealed partial class WorldMapControl
 
     private bool SelectObjectAt(Point point)
     {
-        if (!IsNavigationTool || Engine is null || !TryTile(point, out var tile)) return false;
+        if (!IsNavigationTool || Engine is null) return false;
+        var hasTile = TryTile(point, out var tile);
+        var worldPoint = new Point((point.X - _origin.X) / _zoom, (point.Y - _origin.Y) / _zoom);
         var radius = Math.Clamp(TilePixels * _zoom * .65, 7, 17);
-        var candidates = new List<(int Kind, int Id, double Distance)>();
+        var candidates = new List<(int Kind, int Id, double Distance, double Depth, int X, int Y)>();
         foreach (var pair in _renderedResidentPoints)
         {
             var distance = Distance(point, pair.Value);
-            if (distance <= radius) candidates.Add((0, pair.Key, distance));
+            if (distance <= radius) candidates.Add((0, pair.Key, distance, pair.Value.Y + 2.2 * _zoom, tile.X, tile.Y));
         }
         foreach (var building in Engine.State.Society.Buildings)
-            if (building.X == tile.X && building.Y == tile.Y)
-                candidates.Add((1, building.Id, Distance(point, GetTileScreenPosition(building.X, building.Y))));
-        candidates.Sort((a, b) => a.Kind != b.Kind ? a.Kind.CompareTo(b.Kind)
+            if (hasTile && building.X == tile.X && building.Y == tile.Y || _zoom >= 3 && BuildingBounds(building).Contains(worldPoint))
+            {
+                var ground = GetTileScreenPosition(building.X, building.Y);
+                candidates.Add((1, building.Id, Distance(point, ground), ground.Y + 2 * _zoom, building.X, building.Y));
+            }
+        candidates.Sort((a, b) => _zoom >= 3 && Math.Abs(a.Depth - b.Depth) > .01 ? b.Depth.CompareTo(a.Depth)
+            : a.Kind != b.Kind ? a.Kind.CompareTo(b.Kind)
             : Math.Abs(a.Distance - b.Distance) > .01 ? a.Distance.CompareTo(b.Distance) : a.Id.CompareTo(b.Id));
-        candidates.Add((2, 0, 0)); // The ground remains selectable even below residents and buildings.
+        if (hasTile) candidates.Add((2, 0, 0, 0, tile.X, tile.Y)); // Ground and covered people remain accessible by cycling.
+        if (candidates.Count == 0) return false;
         if (_lastResidentClick is { } previous && Distance(previous, point) <= 4) _residentClickCycle++;
         else _residentClickCycle = 0;
         _lastResidentClick = point;
@@ -253,7 +260,7 @@ public sealed partial class WorldMapControl
         { SelectResident(selected.Id, FollowSelectedResident); ResidentSelected?.Invoke(selected.Id); }
         else
         {
-            ClearResidentSelection(); _selection = tile;
+            ClearResidentSelection(); _selection = (selected.X, selected.Y);
             SelectedBuildingId = selected.Kind == 1 ? selected.Id : null;
             if (selected.Kind == 1) BuildingSelected?.Invoke(selected.Id);
             else TileSelected?.Invoke(tile.X, tile.Y);
