@@ -19,6 +19,7 @@ public sealed partial class WorldMapControl
     private double _frozenPresentationTime;
     private double _resumedAt;
     private bool _simulationPaused;
+    private double _lastAnimatedFrameTime;
     private bool _framePending;
     private bool _motionAttached;
     private long _snapshotTick = -1;
@@ -196,7 +197,7 @@ public sealed partial class WorldMapControl
     {
         if (!_motionAttached || _framePending || IsSimulationPaused) return;
         var now = MotionTime;
-        if (!_residentMotion.Values.Any(track => track.IsMoving(now)) &&
+        if (!(Engine is not null && VisibleResidents(Engine.State).Any(person => _residentMotion.TryGetValue(person.Id, out var track) && track.IsMoving(now))) &&
             !_armyMotion.Values.Any(track => track.IsMoving(now)) && !HasAnimatedEffects(PresentationTime)) return;
         if (TopLevel.GetTopLevel(this) is not { } topLevel) return;
         _framePending = true;
@@ -206,9 +207,15 @@ public sealed partial class WorldMapControl
             if (epoch != _motionEpoch) return;
             _framePending = false;
             if (!_motionAttached || IsSimulationPaused) return;
-            _residentGeometryDirty = true;
-            FollowResident();
-            InvalidateVisual();
+            var frameTime = PresentationTime;
+            // Subpixel movement at overview scale does not need a geometry rebuild every display refresh.
+            if (frameTime - _lastAnimatedFrameTime >= (_zoom < 1 ? 1d / 15 : 1d / 30))
+            {
+                _lastAnimatedFrameTime = frameTime;
+                _residentGeometryDirty = true;
+                FollowResident();
+                InvalidateVisual();
+            }
             RequestMotionFrame();
         });
     }

@@ -63,11 +63,11 @@ public sealed partial class WorldMapControl
         _hover = point;
         if (pending) _pendingPlacement = tile;
         var error = PlacementError(tile.X, tile.Y);
-        var detail = ActiveTool.StartsWith("build:") ? GiftBuildings ? "直接赐予 · 无材料消耗，运营仍需人员" : "居民施工 · 扣除当地材料后开工"
-            : ActiveTool.StartsWith("road:") ? "修建道路 · 每格木材 0.5 / 石材 1"
+        var detail = ActiveTool.StartsWith("build:") ? GiftBuildings ? "建造方式：直接赐予\n无材料消耗，运营仍需人员" : "建造方式：居民施工\n扣除当地材料后开工"
+            : ActiveTool.StartsWith("road:") ? "修建道路\n每格木材：0.5\n每格石材：1"
             : Enum.TryParse<RaceKind>(ActiveTool, out _) ? $"投放 {SpawnCount} 位居民"
-            : Enum.TryParse<DisasterKind>(ActiveTool, out _) ? $"单次释放 · 范围 {DisasterRadius} 格" : $"绘制范围 {BrushRadius} 格";
-        SetPlacementMessage($"{tile.X}, {tile.Y} · {(error is null ? detail : "无法放置：" + error)}");
+            : Enum.TryParse<DisasterKind>(ActiveTool, out _) ? $"单次释放\n范围：{DisasterRadius} 格" : $"绘制范围：{BrushRadius} 格";
+        SetPlacementMessage($"位置：{tile.X}, {tile.Y}\n{(error is null ? detail : "无法放置：" + error)}");
         InvalidateVisual();
     }
 
@@ -79,7 +79,7 @@ public sealed partial class WorldMapControl
         if (_drawnPlacementText is null || _drawnPlacementMessage != _placementMessage)
         {
             _drawnPlacementMessage = _placementMessage;
-            _drawnPlacementText = new FormattedText(_placementMessage.Replace(" · ", "\n"), System.Globalization.CultureInfo.CurrentCulture,
+            _drawnPlacementText = new FormattedText(_placementMessage, System.Globalization.CultureInfo.CurrentCulture,
                 FlowDirection.LeftToRight, MapTypeface, 11, LabelBrush) { MaxTextWidth = 210 };
         }
         var text = _drawnPlacementText;

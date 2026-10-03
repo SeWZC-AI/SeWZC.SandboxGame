@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.VisualTree;
 
 namespace SeWZC.WorldBox.UI;
@@ -28,6 +29,9 @@ public sealed partial class MainView
                 if (ancestor.TranslatePoint(default, this) is { } ancestorOrigin)
                     visibleBounds = visibleBounds.Intersect(new Rect(ancestorOrigin, ancestor.Bounds.Size));
             }
+            if (control is Expander && control.GetVisualDescendants().OfType<ToggleButton>().FirstOrDefault() is { } toggle
+                && toggle.TranslatePoint(default, this) is { } headerOrigin)
+            { bounds = new Rect(headerOrigin, toggle.Bounds.Size); visibleBounds = visibleBounds.Intersect(bounds); }
             controls.Add(new UiAutomationControl
             {
                 Id = id,

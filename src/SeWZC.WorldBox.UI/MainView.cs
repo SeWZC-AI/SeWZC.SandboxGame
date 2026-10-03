@@ -52,7 +52,7 @@ public sealed partial class MainView : UserControl
     private readonly TextBlock _date = Text("", 13);
     private readonly TextBlock _population = Text("", 13, Mint);
     private readonly TextBlock _status = Text("正在唤醒世界…", 11, Muted);
-    private readonly TextBlock _version = Text("众生纪元 · v0.3", 10, Muted);
+    private readonly TextBlock _version = Text("众生纪元  v0.3", 10, Muted);
     private readonly TextBlock _simulationStatus = Text("世界正在演化", 11, Mint);
     private readonly Button _play;
     private TextBlock? _modalFeedback;
@@ -87,7 +87,7 @@ public sealed partial class MainView : UserControl
         Focusable = true;
         _map.Engine = _engine;
         _map.WorldEditing += (_, _) => BeginEdit();
-        _map.WorldEdited += (_, _) => { RefreshUi(true); SetStatus("世界已更新 · 暂停中，可撤销本轮编辑"); };
+        _map.WorldEdited += (_, _) => { RefreshUi(true); SetStatus("世界已更新并暂停，可撤销本轮编辑"); };
         _map.TileSelected += (x, y) => { if (_mapPick is not null) FinishMapPick(x, y); else SelectMapObject("tile", x: x, y: y); };
         _map.ResidentSelected += id => SelectMapObject("resident", id);
         _map.BuildingSelected += id => { var b = _engine.State.Society.Buildings.First(building => building.Id == id); SelectMapObject("building", id, b.X, b.Y); };
@@ -109,7 +109,7 @@ public sealed partial class MainView : UserControl
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 7, VerticalAlignment = VerticalAlignment.Center };
         actions.Children.Add(Button("新世界", ShowNewWorld, "创建一片新的大陆"));
         actions.Children.Add(Button("存档", ShowStorage, "保存、导出或导入世界"));
-        actions.Children.Add(Button("概览", () => { if (_mobilePanel) CloseInspector(); else OpenInspector("overview"); }));
+        actions.Children.Add(Button("概览", () => { if (_mobilePanel && _inspectorMode == "overview") CloseInspector(); else OpenInspector("overview"); }));
         actions.Children.Add(Named(Button("规则", ShowRules), "header-rules"));
         Grid.SetColumn(actions, 2); header.Children.Add(actions);
 
@@ -224,8 +224,8 @@ public sealed partial class MainView : UserControl
         try
         {
             if (App.Storage is not null && await App.Storage.LoadAsync() is { } json)
-            { _engine = WorldEngine.ImportJson(json); _map.Engine = _engine; SetStatus("已恢复本机世界 · 每 30 秒自动保存"); }
-            else SetStatus("新世界已诞生 · 选择工具开始创造，或观察文明演化");
+            { _engine = WorldEngine.ImportJson(json); _map.Engine = _engine; SetStatus("已恢复本机世界，每 30 秒自动保存"); }
+            else SetStatus("新世界已诞生，可选择工具创造或观察文明演化");
         }
         catch (Exception ex) { _allowAutosave = false; SetStatus($"本机存档未载入，已暂停自动保存：{FriendlyError(ex)}"); }
         _ready = true; if (_shell is not null) _shell.IsEnabled = true;
@@ -258,7 +258,7 @@ public sealed partial class MainView : UserControl
             }
             if (count > 0)
             { _map.SimulationTickFraction = Math.Clamp(_accumulator / .2, 0, .999999); _map.RefreshWorld(); }
-            _simulationStatus.Text = _accumulator > .4 ? "设备限速 · 世界继续" : "世界正在演化";
+            _simulationStatus.Text = _accumulator > .4 ? "设备限速，世界继续演化" : "世界正在演化";
         }
         if (now - _lastUi > .7) { _lastUi = now; RefreshUi(); }
         if (now - _lastSave > 30 && !_saving && !_modal.IsVisible) { _lastSave = now; _ = SaveAsync(false); }
@@ -325,19 +325,32 @@ public sealed partial class MainView : UserControl
         _toolTitle.FontSize = compact ? 11 : 13;
     }
 
+    private WorldState? _spotlightState;
+    private (int LastId, int Count, int Watches) _spotlightRevision;
+    private EventGroup? _spotlightGroup;
+
     private void RefreshUi(bool force = false)
     {
         var state = _engine.State;
-        _date.Text = $"第 {state.Year} 年 · {state.Day} 日";
-        _population.Text = $"{state.Population:N0} 位居民  /  {state.Nations.Count} 个国家";
-        _worldSubtitle.Text = $"{state.Width} × {state.Height}  ·  种子 {state.Seed}  ·  文明演化";
+        _date.Text = $"第 {state.Year} 年 {state.Day} 日";
+        _population.Text = $"居民 {state.Population:N0}    国家 {state.Nations.Count}";
+        _worldSubtitle.Text = $"地图：{state.Width} × {state.Height}\n种子：{state.Seed}\n文明演化";
         _play.Content = _paused ? "继续" : "暂停";
         if (_paused) _simulationStatus.Text = "时间已暂停";
-        var candidates = _engine.State.Events.Where(e => e.Importance >= EventImportance.Notable && e.Kind is not (WorldEventKind.Editor or WorldEventKind.Policy or WorldEventKind.Magic or WorldEventKind.Culture));
-        var spotlight = WorldStories.Group(candidates).OrderByDescending(g => _watched.Count > 0 && g.Entries.Any(IsWatched))
-            .ThenByDescending(g => g.Latest.Tick).ThenByDescending(g => g.Latest.Id).FirstOrDefault();
+        var watchHash = 17; foreach (var watch in _watched) watchHash = unchecked(watchHash * 31 + watch.GetHashCode());
+        var revision = (state.Events.LastOrDefault()?.Id ?? 0, state.Events.Count, watchHash);
+        if (!ReferenceEquals(_spotlightState, state) || _spotlightRevision != revision)
+        {
+            _spotlightState = state; _spotlightRevision = revision;
+            var candidates = state.Events.Where(e => e.Importance >= EventImportance.Notable && e.Kind is not (WorldEventKind.Editor or WorldEventKind.Policy or WorldEventKind.Magic or WorldEventKind.Culture));
+            _spotlightGroup = WorldStories.Group(candidates).OrderByDescending(g => _watched.Count > 0 && g.Entries.Any(IsWatched))
+                .ThenByDescending(g => g.Latest.Tick).ThenByDescending(g => g.Latest.Id).FirstOrDefault();
+        }
+        var spotlight = _spotlightGroup;
         _focusedEventId = spotlight?.Latest.Id ?? 0;
-        _eventText.Text = spotlight is null ? "选择国家、聚落或居民，关注它的故事" : $"{DateLabel(spotlight.Latest.Tick)} · {spotlight.Latest.Message}" + (spotlight.Count > 1 ? $"（同类 {spotlight.Count} 次）" : "");
+        var spotlightText = spotlight is null ? "选择国家、聚落或居民，关注它的故事" : $"{DateLabel(spotlight.Latest.Tick)}\n{spotlight.Latest.Message}" + (spotlight.Count > 1 ? $"（同类 {spotlight.Count} 次）" : "");
+        spotlightText = DisplayFormat.Text(spotlightText);
+        if (_eventText.Text != spotlightText) _eventText.Text = spotlightText;
         if (_mobilePanel || force) RefreshInspector(force);
         RefreshSelectionSummary();
     }
@@ -370,7 +383,7 @@ public sealed partial class MainView : UserControl
         panel.Children.Add(Button("导入世界文件", async () =>
         {
             var generation = _modalGeneration;
-            try { if (App.Storage is null) return; var json = await App.Storage.ImportAsync(); if (json is null || generation != _modalGeneration || !_modal.IsVisible) return; var candidate = WorldEngine.ImportJson(json); ReplaceWorld(candidate); CloseModal(); SetStatus("导入成功 · 时间已暂停"); }
+            try { if (App.Storage is null) return; var json = await App.Storage.ImportAsync(); if (json is null || generation != _modalGeneration || !_modal.IsVisible) return; var candidate = WorldEngine.ImportJson(json); ReplaceWorld(candidate); CloseModal(); SetStatus("导入成功，时间已暂停"); }
             catch (Exception ex) { SetStatus($"导入失败，当前世界未改变：{FriendlyError(ex)}"); }
         }));
         panel.Children.Add(Button("撤销本轮编辑", () => { RestoreCheckpoint(); CloseModal(); }));
@@ -386,7 +399,7 @@ public sealed partial class MainView : UserControl
             var year = _engine.State.Year;
             await App.Storage.SaveAsync(_engine.ExportJson());
             if (manual) { _allowAutosave = true; SetStatus("世界已保存到本机"); }
-            else SetStatus($"已自动保存 · 第 {year} 年 · {DateTime.Now:HH:mm}");
+            else SetStatus($"已自动保存（第 {year} 年，{DateTime.Now:HH:mm}）");
         }
         catch (Exception ex) { SetStatus($"保存失败：{FriendlyError(ex)}。请尝试导出文件。"); }
         finally { _saving = false; _saveGate.Release(); }
@@ -398,7 +411,7 @@ public sealed partial class MainView : UserControl
         panel.Children.Add(Text("世界种子", 12, Muted));
         var seed = Named(new NumericUpDown { Minimum = int.MinValue, Maximum = int.MaxValue, Increment = 1, Value = Random.Shared.Next(10000, 99999), FormatString = "0" }, "world-seed"); panel.Children.Add(seed);
         panel.Children.Add(Text("世界大小", 12, Muted));
-        var size = Named(new ComboBox { ItemsSource = new[] { "128 × 128 · 小型世界", "256 × 256 · 中型世界" }, SelectedIndex = 1, HorizontalAlignment = HorizontalAlignment.Stretch }, "world-size"); panel.Children.Add(size);
+        var size = Named(new ComboBox { ItemsSource = new[] { "小型世界（128 × 128）", "中型世界（256 × 256）" }, SelectedIndex = 1, HorizontalAlignment = HorizontalAlignment.Stretch }, "world-size"); panel.Children.Add(size);
         var life = Named(new CheckBox { Content = Text("播下四个种族，立即开始观察", 12), IsChecked = true }, "world-initial-life"); panel.Children.Add(life);
         var create = Button("创造世界", () =>
         {
@@ -406,7 +419,7 @@ public sealed partial class MainView : UserControl
             var seedValue = Integer(seed);
             var dimension = size.SelectedIndex == 0 ? 128 : 256;
             ReplaceWorld(WorldEngine.Create(seedValue, dimension, dimension, life.IsChecked == true));
-            _inspectorMode = "overview"; CloseModal(); SetStatus("新世界已诞生 · 点击继续，让时间开始流动");
+            _inspectorMode = "overview"; CloseModal(); SetStatus("新世界已诞生，点击继续让时间开始流动");
         }); create.Background = Mint; create.Foreground = Ink; panel.Children.Add(create); OpenModal(panel);
     }
     private void ReplaceWorld(WorldEngine engine)
@@ -435,8 +448,12 @@ public sealed partial class MainView : UserControl
             swatches.Add((argb, swatch)); palette.Children.Add(swatch);
         }
         panel.Children.Add(palette);
-        panel.Children.Add(Text("古代发展水平 · 影响生产效率", 12, Muted));
-        var technology = Named(new ComboBox { ItemsSource = new[] { "1 · 部落", "2 · 定居", "3 · 农业", "4 · 冶炼", "5 · 城邦" }, SelectedIndex = Math.Clamp(nation.Technology - 1, 0, 4), HorizontalAlignment = HorizontalAlignment.Stretch }, "nation-technology"); panel.Children.Add(technology);
+        panel.Children.Add(Text("古代发展水平（影响生产效率）", 12, Muted));
+        var technology = Named(new ComboBox { ItemsSource = new[] { "1  部落", "2  定居", "3  农业", "4  冶炼", "5  城邦" }, SelectedIndex = Math.Clamp(nation.Technology - 1, 0, 4), HorizontalAlignment = HorizontalAlignment.Stretch }, "nation-technology"); panel.Children.Add(technology);
+        panel.Children.Add(Text("自主发展方向", 12, Muted));
+        var focus = Named(new ComboBox { ItemsSource = Enum.GetValues<DevelopmentFocus>().Select(WorldEngine.DevelopmentFocusName).ToArray(),
+            SelectedIndex = (int)nation.DevelopmentFocus, HorizontalAlignment = HorizontalAlignment.Stretch }, "nation-development-focus"); panel.Children.Add(focus);
+        panel.Children.Add(Paragraph("科技优先工业与能源；法术传承依靠施法者与训练，不要求魔晶设施。魔法工艺与兼修路线才会自主建设魔晶生产链。"));
         var fields = new List<NumericUpDown>();
         foreach (var kind in AdvancementRules.Resources)
         { var value = nation.Resources.Get(kind); var input = Field(panel, ResourceStock.Name(kind), value, "nation-" + kind.ToString().ToLowerInvariant(), Math.Max(1_000_000, value)); fields.Add(input); }
@@ -457,6 +474,7 @@ public sealed partial class MainView : UserControl
                 values[i] = value;
             }
             BeginEdit(); _engine.RenameNation(nationId, name.Text.Trim()); _engine.SetNationResources(nationId, values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9], values[10], values[11]);
+            _engine.SetDevelopmentFocus(nationId, (DevelopmentFocus)focus.SelectedIndex);
             _engine.SetNationColor(nationId, color); _engine.SetNationTechnology(nationId, technology.SelectedIndex + 1);
             if (diplomacy.SelectedIndex > 0 && other.SelectedIndex >= 0) _engine.SetDiplomacy(nationId, others[other.SelectedIndex].Id, diplomacy.SelectedIndex switch { 2 => DiplomaticStatus.Allied, 3 => DiplomaticStatus.War, _ => DiplomaticStatus.Neutral });
             CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("国家已更新");
@@ -467,9 +485,9 @@ public sealed partial class MainView : UserControl
             CloseModal(); BeginEdit(); _map.SelectedNationId = nationId; _map.ActiveTool = "territory";
             SetCategory("terrain"); _map.SelectedNationId = nationId; _map.ActiveTool = "territory";
             _toolTitle.Text = "划定疆域"; _toolHint.Text = "绘制陆地归属，覆盖聚落会一并转移";
-            _mobilePanel = false; ApplyLayout(); SetStatus("领土编辑中 · 覆盖聚落会转移其居民与库存，支持撤销");
+            _mobilePanel = false; ApplyLayout(); SetStatus("领土编辑中，覆盖聚落会转移其居民与库存；支持撤销");
         }));
-        panel.Children.Add(Text("向首都添加居民 · 每次 12 人", 12, Muted));
+        panel.Children.Add(Text("向首都添加居民（每次 12 人）", 12, Muted));
         var people = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
         foreach (var race in Enum.GetValues<RaceKind>()) people.Children.Add(Button(RaceName(race), () =>
         {
@@ -553,15 +571,15 @@ public sealed partial class MainView : UserControl
             else SuspendTool();
             e.Handled = true;
         }
-        if (e.Key == Key.Space && !_modal.IsVisible && e.Source is not TextBox) { TogglePause(); e.Handled = true; }
+        if (e.Key == Key.Space && !_modal.IsVisible && !IsEditingText()) { TogglePause(); e.Handled = true; }
     }
     private void SetStatus(string text) { _status.Text = text; if (_modal.IsVisible && _modalFeedback is not null) _modalFeedback.Text = text; }
     private static string FriendlyError(Exception ex) => ex.Message.Length > 160 ? ex.Message[..160] : ex.Message;
-    private static TextBlock Text(string text, double size = 13, IBrush? color = null, bool bold = false) => new() { Text = text, FontSize = size, Foreground = color ?? Brush.Parse("#E9EFEB"), FontWeight = bold ? FontWeight.SemiBold : FontWeight.Normal, VerticalAlignment = VerticalAlignment.Center };
-    private static TextBlock Paragraph(string text) => new() { Text = text, FontSize = 12, Foreground = Muted, TextWrapping = TextWrapping.Wrap, LineHeight = 18 };
+    private static TextBlock Text(string text, double size = 13, IBrush? color = null, bool bold = false) => new() { Text = DisplayFormat.Text(text), FontSize = size, Foreground = color ?? Brush.Parse("#E9EFEB"), FontWeight = bold ? FontWeight.SemiBold : FontWeight.Normal, VerticalAlignment = VerticalAlignment.Center };
+    private static TextBlock Paragraph(string text) => new() { Text = DisplayFormat.Text(text), FontSize = 12, Foreground = Muted, TextWrapping = TextWrapping.Wrap, LineHeight = 16 };
     private static Button Button(string label, Action action, string? tooltip = null, double minWidth = 0)
     {
-        var button = new Button { Content = label, MinWidth = minWidth, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Stretch };
+        var button = new Button { Content = label, MinWidth = minWidth, FontSize = 12, Padding = new Thickness(8, 4), HorizontalAlignment = HorizontalAlignment.Left };
         button.Click += (_, _) => action(); if (tooltip is not null) ToolTip.SetTip(button, tooltip);
         var id = label switch
         {

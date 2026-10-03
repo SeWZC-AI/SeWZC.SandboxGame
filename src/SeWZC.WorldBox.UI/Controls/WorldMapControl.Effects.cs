@@ -31,9 +31,9 @@ public sealed partial class WorldMapControl
         if (_effects.Count > 128) _effects.RemoveRange(0, _effects.Count - 128);
     }
 
-    private bool HasAnimatedEffects(double now) => _fires.Count > 0 || _effects.Any(e => now - e.Started < e.Duration) ||
-        _zoom >= 3 && Engine is not null && (Engine.State.Residents.Any(r => r.Activity == ResidentActivity.Working) ||
-        Engine.State.Settlements.Any(t => t.ShieldTicks > 0 || t.FertilityBoostTicks > 0));
+    private bool HasAnimatedEffects(double now) => _fires.Count > 0 || _effects.Any(e => now - e.Started < e.Duration && Visible(new Rect((e.Event.X - e.Event.Radius) * TilePixels - 32, (e.Event.Y - e.Event.Radius) * TilePixels - 32, 64 + 2 * e.Event.Radius * TilePixels, 64 + 2 * e.Event.Radius * TilePixels))) ||
+        _zoom >= 3 && Engine is not null && (VisibleResidents(Engine.State).Any(r => r.Activity == ResidentActivity.Working) ||
+        Engine.State.Settlements.Any(t => (t.ShieldTicks > 0 || t.FertilityBoostTicks > 0) && Visible(new Rect(t.X * TilePixels - 32, t.Y * TilePixels - 32, 64, 64))));
 
     private static void Triangle(DrawingContext context, IBrush brush, Point a, Point b, Point c)
     {
@@ -166,8 +166,6 @@ public sealed partial class WorldMapControl
                 context.DrawLine(new Pen(StoneBrush, .2), new(x + 3.2, y + 2), new(x + 2, y + 5));
                 context.DrawLine(new Pen(WoodBrush, .2), new(x + 4, y + 4), new(x + 4.8, y + 5));
             }
-            if (tile.ResourceAmount < 1 && tile.IsWalkable && tile.RoadLevel == 0)
-                context.DrawEllipse(WoodBrush, null, new Point(x + 4, y + 5), 1.2, .5);
         }
     }
 
@@ -175,7 +173,7 @@ public sealed partial class WorldMapControl
     {
         if (_zoom < 3) return;
         // Only visible residents get detailed geometry; world overview retains batched silhouettes.
-        foreach (var resident in state.Residents)
+        foreach (var resident in VisibleResidents(state))
         {
             var position = _residentMotion.TryGetValue(resident.Id, out var motion) ? motion.Position(_renderMotionTime) : new Point(resident.X, resident.Y);
             var x = (position.X + .5) * TilePixels; var y = (position.Y + .5) * TilePixels;

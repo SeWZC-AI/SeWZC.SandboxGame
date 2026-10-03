@@ -17,8 +17,8 @@
       <Setter Property="Background" Value="#213240" />
       <Setter Property="Foreground" Value="#DDE8E1" />
       <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="Padding" Value="12,8" />
-      <Setter Property="MinHeight" Value="36" />
+      <Setter Property="Padding" Value="8,4" />
+      <Setter Property="MinHeight" Value="32" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
     </Style>
     <Style Selector="TextBox">

@@ -133,13 +133,14 @@ public sealed partial class WorldMapControl : Control
             _cachedState = Engine.State;
             _cameraReady = false;
         }
+        if (resetCamera || !_cameraReady) FitWorld();
+        _chunkRefreshTick = -1; _ecologyDirty = true; _visibleResidentTick = -1;
         RebuildChangedChunks();
         _labelSettlements = Engine.State.Settlements.OrderByDescending(settlement => settlement.Population).ToArray();
         _relayOverlayDirty = true;
         CaptureEffects();
         CaptureSelectedRoute();
         CaptureMotionSnapshots();
-        if (resetCamera || !_cameraReady) FitWorld();
         InvalidateVisual();
     }
 
@@ -191,6 +192,7 @@ public sealed partial class WorldMapControl : Control
         _renderFrameTime = PresentationTime; _renderMotionTime = MotionTime;
         RenderedEffectCount = 0; RenderedRouteSegmentCount = 0;
         FollowResident(_renderMotionTime);
+        RebuildChangedChunks();
         if (_residentGeometryDirty || _geometryZoom != _zoom || _geometryOrigin != _origin)
             RebuildResidents();
         using (context.PushClip(new Rect(Bounds.Size)))
@@ -239,14 +241,46 @@ public sealed partial class WorldMapControl : Control
             DrawResidentGoal(context);
             DrawScale(context);
         }
+        RequestMotionFrame();
     }
 
     private bool Visible(Rect world) => new Rect(_origin.X + world.X * _zoom, _origin.Y + world.Y * _zoom,
         world.Width * _zoom, world.Height * _zoom).Intersects(new Rect(Bounds.Size));
 
+    private readonly List<Resident> _visibleResidents = [];
+    private long _visibleResidentTick = -1;
+    private (int Left, int Right, int Top, int Bottom) _residentViewport;
+    private IReadOnlyList<Resident> VisibleResidents(WorldState state)
+    {
+        var viewport = VisibleTiles(state, 3);
+        if (_visibleResidentTick == state.Tick && _residentViewport == viewport) return _visibleResidents;
+        _visibleResidentTick = state.Tick; _residentViewport = viewport; _visibleResidents.Clear();
+        bool Inside(int x, int y) => x >= viewport.Left && x <= viewport.Right && y >= viewport.Top && y <= viewport.Bottom;
+        foreach (var person in state.Residents)
+            if (Inside(person.X, person.Y) || person.MoveStartedTick + person.MoveDurationTicks > state.Tick && Inside(person.FromX, person.FromY))
+                _visibleResidents.Add(person);
+        return _visibleResidents;
+    }
+
+    private long _chunkRefreshTick = -1;
+    private (int Left, int Right, int Top, int Bottom) _chunkViewport;
+    public int TerrainTilesScanned { get; private set; }
+    private (int Left, int Right, int Top, int Bottom) VisibleTiles(WorldState state, int margin = 2)
+    {
+        var size = Math.Max(.01, _zoom * TilePixels);
+        return (Math.Clamp((int)Math.Floor(-_origin.X / size) - margin, 0, state.Width - 1),
+            Math.Clamp((int)Math.Ceiling((Bounds.Width - _origin.X) / size) + margin, 0, state.Width - 1),
+            Math.Clamp((int)Math.Floor(-_origin.Y / size) - margin, 0, state.Height - 1),
+            Math.Clamp((int)Math.Ceiling((Bounds.Height - _origin.Y) / size) + margin, 0, state.Height - 1));
+    }
+
     private void RebuildChangedChunks()
     {
         var state = Engine!.State;
+        var tiles = VisibleTiles(state);
+        var view = (tiles.Left / ChunkTiles, tiles.Right / ChunkTiles, tiles.Top / ChunkTiles, tiles.Bottom / ChunkTiles);
+        if (_chunkRefreshTick == state.Tick && _chunkViewport == view) return;
+        _chunkRefreshTick = state.Tick; _chunkViewport = view; TerrainTilesScanned = 0;
         var colors = new Dictionary<int, uint>();
         uint colorHash = 0;
         _nationBrushes.Clear();
@@ -257,8 +291,8 @@ public sealed partial class WorldMapControl : Control
             _nationBrushes[nation.Id] = Brush(nation.ColorArgb);
         }
         _fires.Clear();
-        for (var cy = 0; cy < state.Height; cy += ChunkTiles)
-        for (var cx = 0; cx < state.Width; cx += ChunkTiles)
+        for (var cy = view.Item3 * ChunkTiles; cy <= view.Item4 * ChunkTiles; cy += ChunkTiles)
+        for (var cx = view.Item1 * ChunkTiles; cx <= view.Item2 * ChunkTiles; cx += ChunkTiles)
         {
             uint terrainHash = 2166136261;
             uint territoryHash = colorHash;
@@ -267,6 +301,7 @@ public sealed partial class WorldMapControl : Control
             for (var y = Math.Max(0, cy - 1); y < Math.Min(state.Height, cy + ChunkTiles + 1); y++)
             for (var x = Math.Max(0, cx - 1); x < Math.Min(state.Width, cx + ChunkTiles + 1); x++)
             {
+                TerrainTilesScanned++;
                 var tile = state.Tiles[y * state.Width + x];
                 terrainHash = unchecked((terrainHash ^ ((uint)tile.Terrain + (tile.DroughtTicks > 0 ? 16u : 0u) + (uint)tile.RoadLevel * 64 + (uint)Math.Clamp((int)(tile.ResourceAmount / 25), 0, 4) * 256)) * 16777619);
                 territoryHash = unchecked((territoryHash ^ (uint)tile.NationId) * 16777619);
@@ -480,7 +515,8 @@ public sealed partial class WorldMapControl : Control
         if (Engine is null) return;
         var now = _renderMotionTime;
         _renderedResidentPoints.Clear();
-        var heads = _zoom >= .7 ? new StreamGeometry() : null;
+        var silhouettes = _zoom < 3;
+        var heads = silhouettes && _zoom >= .7 ? new StreamGeometry() : null;
         using var headContext = heads?.Open();
         var cargo = new StreamGeometry();
         var messages = new StreamGeometry();
@@ -488,24 +524,24 @@ public sealed partial class WorldMapControl : Control
         using var cargoContext = cargo.Open();
         using var messageContext = messages.Open();
         using var magicContext = magic.Open();
-        var contexts = new StreamGeometryContext[4];
+        var contexts = new StreamGeometryContext?[4];
         for (var race = 0; race < 4; race++)
         {
-            _residents[race] = new StreamGeometry();
-            contexts[race] = _residents[race]!.Open();
+            _residents[race] = silhouettes ? new StreamGeometry() : null;
+            contexts[race] = _residents[race]?.Open();
         }
         try
         {
-            foreach (var resident in Engine.State.Residents)
+            foreach (var resident in VisibleResidents(Engine.State))
             {
                 var position = _residentMotion.TryGetValue(resident.Id, out var motion) ? motion.Position(now) : new Point(resident.X, resident.Y);
                 var x = (position.X + .5) * TilePixels - .9;
                 var y = (position.Y + .5) * TilePixels;
-                _renderedResidentPoints[resident.Id] = ToScreen((position.X + .5) * TilePixels, (position.Y + .5) * TilePixels);
                 if (!Visible(new Rect(x - 2, y - 3, 6, 7))) continue;
+                _renderedResidentPoints[resident.Id] = ToScreen((position.X + .5) * TilePixels, (position.Y + .5) * TilePixels);
                 var race = Math.Clamp((int)resident.Race, 0, 3);
                 if (ShowVehicle(resident)) continue;
-                GeometryRect(contexts[race], x, y, resident.Profession == Profession.Soldier ? 2.6 : 1.8, 2.4);
+                if (contexts[race] is { } silhouette) GeometryRect(silhouette, x, y, resident.Profession == Profession.Soldier ? 2.6 : 1.8, 2.4);
                 if (headContext is not null) GeometryRect(headContext, x, y - 1.4, 1.8, 1.4);
                 if (_zoom < .35) continue;
                 if (resident.Inventory.Food + resident.Inventory.Wood + resident.Inventory.Stone + resident.Inventory.Ore > 0)
@@ -516,7 +552,7 @@ public sealed partial class WorldMapControl : Control
                     GeometryRect(magicContext, x - .8, y - 2.5, 3.4, 1.1);
             }
         }
-        finally { foreach (var draw in contexts) draw.Dispose(); }
+        finally { foreach (var draw in contexts) draw?.Dispose(); }
         _heads = heads;
         _cargoGeometry = cargo;
         _messageGeometry = messages;
@@ -593,7 +629,7 @@ public sealed partial class WorldMapControl : Control
             var size = _zoom > .6 ? 12 : 10;
             if (!_settlementLabels.TryGetValue(settlement.Id, out var cached) || cached.Name != settlement.Name || cached.Size != size)
             {
-                cached = (settlement.Name, size, new FormattedText(settlement.Name, CultureInfo.CurrentCulture,
+                cached = (settlement.Name, size, new FormattedText(DisplayFormat.Text(settlement.Name), CultureInfo.CurrentCulture,
                     FlowDirection.LeftToRight, MapTypeface, size, LabelBrush));
                 _settlementLabels[settlement.Id] = cached;
             }

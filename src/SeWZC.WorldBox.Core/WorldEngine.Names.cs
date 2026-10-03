@@ -24,10 +24,10 @@ public sealed partial class WorldEngine
         for (var attempt = 0; attempt < 32768; attempt++)
         {
             var n = (code + (uint)attempt) % 32768;
-            var name = names[n % 32] + "·" + FamilyRoots[n / 32 % 32] + FamilyEnds[n / 1024 % 32];
+            var name = names[n % 32] + " " + FamilyRoots[n / 32 % 32] + FamilyEnds[n / 1024 % 32];
             if (!used.Contains(name)) return name;
         }
-        return names[code % 32] + "·" + id;
+        return names[code % 32] + " " + id;
     }
 
     private string NewPlaceName(string suffix)

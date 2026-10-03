@@ -8,7 +8,7 @@ internal static class DevelopmentDiagnostics
     // Runs the actual core without UI timing or edits. Snapshots deliberately copy mutable values.
     public static int Run(string[] args)
     {
-        var positional = args.Where(a => a != "--no-disasters").ToArray();
+        var positional = args.Where(a => a is not ("--no-disasters" or "--technology" or "--magic-practice")).ToArray();
         if (positional.Length is < 1 or > 4)
         {
             Console.Error.WriteLine("Usage: --simulate-development <output-directory> [seed=73921] [size=256] [ticks=3600] [--no-disasters]");
@@ -22,6 +22,8 @@ internal static class DevelopmentDiagnostics
         Directory.CreateDirectory(output);
         var engine = WorldEngine.Create(seed, size, size);
         engine.State.NaturalDisasters = !args.Contains("--no-disasters");
+        if (args.Contains("--technology") || args.Contains("--magic-practice"))
+            foreach (var nation in engine.State.Nations) engine.SetDevelopmentFocus(nation.Id, args.Contains("--technology") ? DevelopmentFocus.Technology : DevelopmentFocus.MagicPractice);
         var samples = new List<object>();
         var observedEvents = new Dictionary<int, WorldEvent>();
         var elapsed = Stopwatch.StartNew();
@@ -53,7 +55,7 @@ internal static class DevelopmentDiagnostics
                 var research = state.Society.Research.First(r => r.SettlementId == town.Id);
                 return new
                 {
-                    town.Id, town.Name, town.X, town.Y, town.Population, town.Housing, town.Level,
+                    town.Id, town.Name, town.NationId, focus = engine.GetDevelopmentFocus(town.Id).ToString(), town.X, town.Y, town.Population, town.Housing, town.Level,
                     stock = new { town.Resources.Food, town.Resources.Wood, town.Resources.Stone, town.Resources.Ore },
                     policy = engine.GetLocalPolicy(town.Id).ToString(),
                     hunger = people.Average(p => p.Hunger), health = people.Average(p => p.Health),
@@ -65,7 +67,7 @@ internal static class DevelopmentDiagnostics
                         completed = research.Completed.Select(k => k.ToString()).ToArray() },
                     buildings = state.Society.Buildings.Where(b => b.SettlementId == town.Id).Select(b => new
                     {
-                        kind = b.Kind.ToString(), b.X, b.Y, b.ConstructionProgress, b.ConstructionRequired, b.LastWorkedTick
+                        kind = b.Kind.ToString(), b.X, b.Y, b.ConstructionProgress, b.ConstructionRequired, b.LastWorkedTick, b.ProductionBatches
                     }).ToArray()
                 };
             }).ToArray();

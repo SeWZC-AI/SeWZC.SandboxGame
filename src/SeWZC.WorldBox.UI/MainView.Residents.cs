@@ -15,8 +15,20 @@ public sealed partial class MainView
         var id = _selectedResidentId;
         if (_engine.GetResident(id) is not { } resident) { panel.Children.Add(Paragraph("这位居民的记录已不在当前世界中。")); return; }
         Resident Current() => _engine.GetResident(id) ?? resident;
-        panel.Children.Add(LiveText(() => $"{Current().Name}  #{id}", 18, Mint));
-        panel.Children.Add(LiveText(() => $"种族：{RaceName(Current().Race)}\n年龄：{Current().Age:F1} 岁 / 种族预期寿命 {WorldEngine.Lifespan(Current().Race)} 岁\n职业：{ProfessionName(Current().Profession)}\n{NationName(Current().NationId)} / {TownName(Current().SettlementId)}\n文化：{CultureName(Current().CultureId)}"));
+        panel.Children.Add(LiveText(() => $"{Current().Name}   {ProfessionName(Current().Profession)}", 18, Mint));
+        panel.Children.Add(LiveText(() => $"{RaceName(Current().Race)}   年龄 {Current().Age:F1} / 预期寿命 {WorldEngine.Lifespan(Current().Race)} 岁\n{NationName(Current().NationId)}   {TownName(Current().SettlementId)}"));
+        panel.Children.Add(LiveText(() => Current().Health <= 0 ? $"逝世时间：{DateLabel(Current().DeathTick)}\n死亡原因：{WorldEngine.DeathCauseName(Current().DeathCause)}" : ""));
+        panel.Children.Add(LiveText(() => $"生命 {Current().Health:0} / 100   体力 {100 - Current().Agent.Fatigue:0} / 100   饥饿 {Current().Hunger:0}%"));
+        panel.Children.Add(LiveText(() => _engine.GetResidentActionSummary(id)));
+        if (resident.Health > 0)
+        {
+            var quick = new WrapPanel { Orientation = Orientation.Horizontal };
+            quick.Children.Add(Named(Button("安排休息", () => QuickResidentGoal(id, AgentGoalKind.Rest)), "resident-rest"));
+            quick.Children.Add(Named(Button("返回家园", () => QuickResidentGoal(id, AgentGoalKind.ReturnHome)), "resident-home"));
+            quick.Children.Add(Named(Button("恢复自主", () => QuickResidentGoal(id, null)), "resident-autonomy"));
+            quick.Children.Add(Named(Button("治疗", () => RunEdit(() => _engine.EditResident(id, new ResidentEdit { Health = 100, SicknessTicks = 0 }), "居民已得到治疗")), "resident-heal"));
+            panel.Children.Add(quick);
+        }
         panel.Children.Add(WatchControl(ObservedObjectKind.Resident, id, "resident-watch"));
         panel.Children.Add(Named(Button("人物故事与重要转折", () => OpenInspector("story")), "resident-story"));
         var actions = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = 5 };
@@ -32,34 +44,16 @@ public sealed partial class MainView
         });
         Grid.SetColumn(follow, 1); actions.Children.Add(follow);
         var edit = Named(Button("编辑", () => ShowResidentEditor(id)), "resident-edit"); Grid.SetColumn(edit, 2); actions.Children.Add(edit); panel.Children.Add(actions);
-        panel.Children.Add(LiveText(() => _engine.State.ArchivedResidents.Any(r => r.Id == id) ? $"逝世时间：{DateLabel(Current().DeathTick)}\n死亡原因：{WorldEngine.DeathCauseName(Current().DeathCause)}" : ""));
-        panel.Children.Add(LiveText(() => $"生命 {Current().Health:0.0} / 100\n体力 {100 - Current().Agent.Fatigue:0.0} / 100\n饥饿 {Current().Hunger:0}%"));
-        panel.Children.Add(LiveText(() => _engine.GetResidentActionSummary(id)));
-        if (resident.Health > 0)
-        {
-            var quick = new WrapPanel { Orientation = Orientation.Horizontal };
-            quick.Children.Add(Named(Button("安排休息", () => QuickResidentGoal(id, AgentGoalKind.Rest)), "resident-rest"));
-            quick.Children.Add(Named(Button("返回家园", () => QuickResidentGoal(id, AgentGoalKind.ReturnHome)), "resident-home"));
-            quick.Children.Add(Named(Button("恢复自主", () => QuickResidentGoal(id, null)), "resident-autonomy"));
-            quick.Children.Add(Named(Button("治疗", () => RunEdit(() => _engine.EditResident(id, new ResidentEdit { Health = 100, SicknessTicks = 0 }), "居民已得到治疗")), "resident-heal"));
-            panel.Children.Add(quick);
-        }
         var body = FoldSection(panel, "身体、库存与魔法", "resident-body");
         body.Children.Add(LiveText(() =>
         {
             var r = Current();
             return $"位置 {r.X}, {r.Y}\n{ActivityName(r.Activity)}\n生命 {r.Health:F1}\n饥饿 {r.Hunger:F1}\n疫病 {r.SicknessTicks} 日\n疲劳 {r.Agent.Fatigue:F1}\n社交需求 {r.Agent.SocialNeed:F1}\n特质：{r.Trait}\n随身库存：{StockLabel(r.Inventory)}\n魔力 {r.Mana:F1}\n天赋 {r.MagicTalent:F1}\n训练 {r.MagicTraining:F1}\n军队 {(r.ArmyId == 0 ? "无" : r.ArmyId.ToString())}\n家园 {TownName(r.SettlementId)}";
         }));
-        panel.Children.Add(Text("当前目标\n居民自己的理由", 12, Mint));
-        panel.Children.Add(LiveText(() =>
-        {
-            var goal = Current().Agent.Goal;
-            return $"{GoalName(goal.Kind)} → {goal.TargetX}, {goal.TargetY}\n{goal.Reason}\n开始：{DateLabel(goal.StartedTick)}\n{(goal.PlayerDirected ? "玩家指定" : "自主选择")}\n下次考虑：{DateLabel(Current().Agent.NextThinkTick)}";
-        }));
         var route = Named(new CheckBox { Content = "显示后续行动轨迹", IsChecked = _map.ShowResidentRoute }, "resident-route");
         route.IsCheckedChanged += (_, _) => { _map.ShowResidentRoute = route.IsChecked == true; _map.InvalidateVisual(); };
         panel.Children.Add(route);
-        panel.Children.Add(Paragraph("虚线预览当前目标下最多 24 格的移动；遇险、改目标或地形改变会重新规划。军队成员由军令统一调动。"));
+
         panel.Children.Add(Named(Button("编辑目标与人格", () => ShowGoalEditor(id)), "resident-goal-edit"));
         var secondary = FoldSection(panel, "性格、记忆与消息", "resident-cognition");
         secondary.Children.Add(Text("性格倾向", 12, Mint));

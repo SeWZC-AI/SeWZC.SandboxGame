@@ -16,7 +16,7 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             desktop.MainWindow = new Window
             {
-                Title = "SeWZC.WorldBox · 众生与山海", Width = 1440, Height = 920,
+                Title = "SeWZC.WorldBox：众生与山海", Width = 1440, Height = 920,
                 MinWidth = 390, MinHeight = 640, Content = view,
                 Background = Avalonia.Media.Brush.Parse("#101C27")
             };

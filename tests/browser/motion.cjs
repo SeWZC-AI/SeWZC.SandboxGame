@@ -67,7 +67,7 @@ const distance = (first, second) => Math.hypot(first.x - second.x, first.y - sec
         await ui.click('header-overview');
         await ui.click('inspector-residents');
         await ui.fill('resident-search', actor.Id, inspector);
-        await ui.click(`resident-row-${actor.Id}`, inspector);
+        await ui.openResidentRow(actor.Id, inspector);
         await ui.click('resident-locate', inspector);
         await ui.click('resident-goal-edit', inspector);
         await ui.selectIndex('resident-goal', 3, modal); // Work at an entered location.

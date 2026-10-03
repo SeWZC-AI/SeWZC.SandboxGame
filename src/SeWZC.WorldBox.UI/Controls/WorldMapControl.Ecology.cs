@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.UI.Controls;
@@ -16,54 +17,69 @@ public sealed partial class WorldMapControl
     private static readonly IBrush OilMarkerBrush = Brush(0xFF368BE8);
     private static readonly IBrush RareMarkerBrush = Brush(0xFFCC73ED);
 
+    private bool _ecologyDirty = true;
+    private (int Left, int Right, int Top, int Bottom) _ecologyViewport;
+    private readonly Dictionary<WildlifeKind, WriteableBitmap> _animalIcons = [];
+    private readonly List<(WriteableBitmap Icon, Rect Bounds)> _wildlifeDraws = [];
+    private readonly List<(IBrush Brush, Point Point)> _depositDraws = [];
+    private static readonly Pen DepositPen = new(MessageBrush, .15);
+
+    private WriteableBitmap AnimalIcon(WildlifeKind kind)
+    {
+        if (_animalIcons.TryGetValue(kind, out var icon)) return icon;
+        var canvas = new PixelCanvas(32, 32);
+        var color = kind is WildlifeKind.Fish or WildlifeKind.Waterfowl ? 0xBFE9F0FFu : 0xF3DBAAFFu;
+        void Box(double x, double y, double w, double h) => canvas.Rect((int)((x + 4) * 4), (int)((y + 4) * 4), Math.Max(1, (int)(w * 4)), Math.Max(1, (int)(h * 4)), color);
+        Box(-2.5, -1.1, 4, 1.9); Box(1, -2, 1.5, 1.5);
+        if (kind == WildlifeKind.Fish) { Box(-3.5, -1.7, 1, 3); Box(-.7, -2, 1, 1); }
+        else if (kind == WildlifeKind.Waterfowl) { Box(2, -1.8, 1.5, .5); Box(-1, -2, 1.8, .7); }
+        else
+        {
+            Box(-2, .7, .7, 1.2); Box(.5, .7, .7, 1.2);
+            if (kind == WildlifeKind.Rabbit) { Box(1.1, -4, .5, 2); Box(2, -3.6, .5, 1.6); }
+            else if (kind is WildlifeKind.Deer or WildlifeKind.Goat) { Box(.8, -3.5, .4, 1.5); Box(2, -3.5, .4, 1.5); Box(.2, -3.4, 2.8, .4); }
+            else if (kind == WildlifeKind.Wolf) { Box(1, -3, .6, 1); Box(-3.5, -1.3, 1.2, .5); }
+            else if (kind == WildlifeKind.Boar) { Box(2.2, -1.2, 1, .6); Box(-3.2, -.7, .8, .4); }
+        }
+        icon = MakeBitmap(canvas, opaque: false); _animalIcons[kind] = icon; return icon;
+    }
+
     private void DrawEcology(DrawingContext context, WorldState state)
     {
         RenderedWildlifeCount = 0;
         if (_zoom < 3) return;
-        var left = Math.Clamp((int)(-_origin.X / (_zoom * TilePixels)) - 2, 0, state.Width - 1);
-        var right = Math.Clamp((int)((Bounds.Width - _origin.X) / (_zoom * TilePixels)) + 2, 0, state.Width - 1);
-        var top = Math.Clamp((int)(-_origin.Y / (_zoom * TilePixels)) - 2, 0, state.Height - 1);
-        var bottom = Math.Clamp((int)((Bounds.Height - _origin.Y) / (_zoom * TilePixels)) + 2, 0, state.Height - 1);
-        for (var y = top; y <= bottom; y++)
-            for (var x = left; x <= right; x++)
-            {
-                var tile = state.Tiles[y * state.Width + x];
-                if (tile.Deposit is { } resource && VisibleResources.Contains(resource) && Engine!.IsDepositVisible(tile, ResourceVisibility))
+        var viewport = VisibleTiles(state);
+        if (_ecologyDirty || viewport != _ecologyViewport)
+        {
+            _ecologyDirty = false; _ecologyViewport = viewport;
+            _wildlifeDraws.Clear(); _depositDraws.Clear();
+            for (var y = viewport.Top; y <= viewport.Bottom; y++)
+                for (var x = viewport.Left; x <= viewport.Right; x++)
                 {
-                    var brush = resource == ResourceKind.Coal ? CoalMarkerBrush : resource == ResourceKind.Oil ? OilMarkerBrush : RareMarkerBrush;
-                    var point = new Point((x + .8) * TilePixels, (y + .2) * TilePixels);
-                    context.DrawEllipse(brush, new Pen(MessageBrush, .15), point, .8, .8);
+                    var tile = state.Tiles[y * state.Width + x];
+                    if (tile.Deposit is { } resource && VisibleResources.Contains(resource) && Engine!.IsDepositVisible(tile, ResourceVisibility))
+                        _depositDraws.Add((resource == ResourceKind.Coal ? CoalMarkerBrush : resource == ResourceKind.Oil ? OilMarkerBrush : RareMarkerBrush,
+                            new Point((x + .8) * TilePixels, (y + .2) * TilePixels)));
+                    if (!ShowWildlife || tile.Wildlife == WildlifeKind.None || tile.WildlifePopulation < .25) continue;
+                    var scale = .25 + .75 * Math.Clamp(tile.WildlifePopulation / Math.Max(1, WorldEngine.WildlifeCapacity(tile, tile.Wildlife)), 0, 1);
+                    var cx = (x + .5) * TilePixels; var cy = (y + .75) * TilePixels;
+                    _wildlifeDraws.Add((AnimalIcon(tile.Wildlife), new Rect(cx - 4 * scale, cy - 4 * scale, 8 * scale, 8 * scale)));
                 }
-                if (!ShowWildlife || tile.Wildlife == WildlifeKind.None || tile.WildlifePopulation < .25) continue;
-                var capacity = Math.Max(1, WorldEngine.WildlifeCapacity(tile, tile.Wildlife));
-                var scale = .25 + .75 * Math.Clamp(tile.WildlifePopulation / capacity, 0, 1);
-                var cx = (x + .5) * TilePixels; var cy = (y + .75) * TilePixels;
-                var brushAnimal = tile.Wildlife is WildlifeKind.Fish or WildlifeKind.Waterfowl ? WaterAnimalBrush : AnimalBrush;
-                void Box(double dx, double dy, double width, double height) => context.DrawRectangle(brushAnimal, null,
-                    new Rect(cx + dx * scale, cy + dy * scale, width * scale, height * scale));
-                context.DrawEllipse(ShadowBrush, null, new Point(cx, cy + 1.1 * scale), 3 * scale, .7 * scale);
-                Box(-2.5, -1.1, 4, 1.9); Box(1, -2, 1.5, 1.5);
-                if (tile.Wildlife == WildlifeKind.Fish) { Box(-3.5, -1.7, 1, 3); Box(-.7, -2, 1, 1); }
-                else if (tile.Wildlife == WildlifeKind.Waterfowl) { Box(2, -1.8, 1.5, .5); Box(-1, -2, 1.8, .7); }
-                else
-                {
-                    Box(-2, .7, .7, 1.2); Box(.5, .7, .7, 1.2);
-                    if (tile.Wildlife == WildlifeKind.Rabbit) { Box(1.1, -4, .5, 2); Box(2, -3.6, .5, 1.6); }
-                    else if (tile.Wildlife is WildlifeKind.Deer or WildlifeKind.Goat) { Box(.8, -3.5, .4, 1.5); Box(2, -3.5, .4, 1.5); Box(.2, -3.4, 2.8, .4); }
-                    else if (tile.Wildlife == WildlifeKind.Wolf) { Box(1, -3, .6, 1); Box(-3.5, -1.3, 1.2, .5); }
-                    else if (tile.Wildlife == WildlifeKind.Boar) { Box(2.2, -1.2, 1, .6); Box(-3.2, -.7, .8, .4); }
-                }
-                RenderedWildlifeCount++;
-            }
+        }
+        foreach (var (brush, point) in _depositDraws) context.DrawEllipse(brush, DepositPen, point, .8, .8);
+        foreach (var (icon, bounds) in _wildlifeDraws) context.DrawImage(icon, bounds);
+        RenderedWildlifeCount = _wildlifeDraws.Count;
     }
 
     private void DrawInfrastructureOverlay(DrawingContext context, WorldState state)
     {
         var roadPen = new Pen(MessageBrush, 1.2);
-        for (var i = 0; i < state.Tiles.Length; i++)
+        var viewport = VisibleTiles(state);
+        for (var y = viewport.Top; y <= viewport.Bottom; y++)
+        for (var x = viewport.Left; x <= viewport.Right; x++)
         {
+            var i = y * state.Width + x;
             if (state.Tiles[i].RoadLevel == 0) continue;
-            var x = i % state.Width; var y = i / state.Width;
             if (!Visible(new Rect(x * TilePixels, y * TilePixels, TilePixels, TilePixels))) continue;
             var center = new Point((x + .5) * TilePixels, (y + .5) * TilePixels);
             context.DrawEllipse(MessageBrush, null, center, 1.2, 1.2);

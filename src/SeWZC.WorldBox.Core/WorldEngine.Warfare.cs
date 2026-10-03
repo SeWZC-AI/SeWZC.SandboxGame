@@ -142,7 +142,7 @@ public sealed partial class WorldEngine
             {
                 var home = _settlements.GetValueOrDefault(commander.SettlementId);
                 if (home is null) { DisbandArmy(army); continue; }
-                army.Status = OutcomeName(army.Outcome) + " · 返乡";
+                army.Status = OutcomeName(army.Outcome) + "，正在返乡";
                 if (Distance(commander.X, commander.Y, home.X, home.Y) <= 1) { DisbandArmy(army); continue; }
                 MoveArmy(army, commander, soldiers, home.X, home.Y);
                 continue;
