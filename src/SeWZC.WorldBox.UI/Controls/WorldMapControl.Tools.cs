@@ -71,9 +71,28 @@ public sealed partial class WorldMapControl
         InvalidateVisual();
     }
 
+    private string _drawnPlacementMessage = "";
+    private FormattedText? _drawnPlacementText;
+    private void DrawPlacementHint(DrawingContext context)
+    {
+        if (HasPendingPlacement || IsNavigationTool || _hover is not { } hover || _placementMessage.Length == 0) return;
+        if (_drawnPlacementText is null || _drawnPlacementMessage != _placementMessage)
+        {
+            _drawnPlacementMessage = _placementMessage;
+            _drawnPlacementText = new FormattedText(_placementMessage.Replace(" · ", "\n"), System.Globalization.CultureInfo.CurrentCulture,
+                FlowDirection.LeftToRight, MapTypeface, 11, LabelBrush) { MaxTextWidth = 210 };
+        }
+        var text = _drawnPlacementText;
+        var x = Math.Clamp(hover.X + 16, 4, Math.Max(4, Bounds.Width - text.Width - 12));
+        var y = Math.Clamp(hover.Y - text.Height - 18, 4, Math.Max(4, Bounds.Height - text.Height - 12));
+        context.DrawRectangle(LabelShadow, null, new Rect(x - 4, y - 3, text.Width + 8, text.Height + 6), 4, 4);
+        context.DrawText(text, new Point(x, y));
+    }
+
     private void DrawMapOverlay(DrawingContext context, WorldState state)
     {
         if (Overlay == 0) return;
+        if (Overlay == 4) { DrawInfrastructureOverlay(context, state); return; }
         if (Overlay == 1)
         {
             foreach (var town in state.Settlements)

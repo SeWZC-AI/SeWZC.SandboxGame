@@ -34,6 +34,7 @@
 | 世界数据、版本和基本编辑 | [Core](../src/SeWZC.WorldBox.Core/) 中 `WorldState*.cs`、`WorldEngine.Commands.cs`、`WorldEngine.NationEditing.cs` | [Program.cs](../tests/SeWZC.WorldBox.Core.Tests/Program.cs) |
 | 有限战争、战报与故事观察 | Core 中 `WorldEngine.Campaigns.cs`、`WorldEngine.Stories.cs`、`WorldState.Stories.cs`；UI 中 `MainView.Stories.cs` | `StoryTests.cs`、`tests/browser/stories.cjs` |
 | 世界规则、发展与自主外交 | Core 中 `WorldEngine.Evolution.cs` | `EvolutionTests.cs`、`--evolution` 长程探查 |
+| 动物、局部冲突与死亡 | Core 中 `WorldEngine.Ecology.cs`、`WorldEngine.Conflicts.cs`、`WorldEngine.Mortality.cs`；UI 中 `MainView.Buildings.cs`、`WorldMapControl.Ecology.cs` | `EcologyAndConflictTests.cs`、Headless、桌面／触屏浏览器与五种子演化 |
 | 目标、知识与通信 | Core 中 `WorldEngine.Agents.cs`、`WorldEngine.Communication.cs` | [AgentBehaviorTests.cs](../tests/SeWZC.WorldBox.Core.Tests/AgentBehaviorTests.cs) |
 | 时代路线、配方与加工运输 | Core 中 `AdvancementRules.cs`、`WorldEngine.Advancement.cs`；UI 中 `MainView.Society.cs` | `AdvancementTests.cs`、`tests/browser/advancement.cjs` |
 | 地块改造、矿藏与载具 | Core 中 `WorldEngine.Land.cs`、`WorldEngine.Transport.cs`、`WorldState.Land.cs`；UI 中 `MainView.Selection.cs`、`WorldMapControl.Transport.cs` | `LandTransportTests.cs`、`tests/browser/land.cjs` |

@@ -12,11 +12,13 @@ public sealed partial class WorldEngine
             State.Tick++;
             Reindex();
             UpdateDisasters();
+            TickWildlife();
             UpdateResidents();
             UpdateAgentNeedsAndActions();
             UpdateLocalCommunication();
             TickSociety();
             TickDiplomacy();
+            TickLocalConflicts();
             TickMigrationAndSecession();
             Reindex();
             if (State.Tick % 12 == 0) GrowSettlements();
@@ -44,24 +46,22 @@ public sealed partial class WorldEngine
     private void UpdateResidents()
     {
         var infected = new HashSet<int>(State.Residents.Where(r => r.SicknessTicks > 0).Select(r => Index(r.X, r.Y)));
-        var deaths = 0;
         foreach (var person in State.Residents)
         {
             if (State.Rules.Aging) person.Age = Math.Min(1000, person.Age + 1d / 120);
             if (person.Profession == Profession.Child && person.Age >= 14) person.Profession = AssignProfession();
-            var maxAge = person.Race switch { RaceKind.Elf => 180, RaceKind.Dwarf => 120, RaceKind.Orc => 70, _ => 90 };
-            if (State.Rules.Aging && person.Age > maxAge) person.Health -= 0.5;
-            if (State.Rules.Hunger && person.Hunger > 60) person.Health -= 0.55;
-            else if (person.SicknessTicks == 0 && person.Age <= maxAge) person.Health = Math.Min(100, person.Health + 0.15);
+            var maxAge = Lifespan(person.Race);
+            if (State.Rules.Aging && person.Age > maxAge) DamageResident(person, .5, DeathCause.OldAge);
+            if (State.Rules.Hunger && person.Hunger > 60) DamageResident(person, .55, DeathCause.Starvation);
+            else if (person.Health > 0 && person.SicknessTicks == 0 && person.Age <= maxAge) person.Health = Math.Min(100, person.Health + 0.15);
             var tile = State.Tiles[Index(person.X, person.Y)];
-            if (tile.FireTicks > 0) person.Health -= 4;
-            if (person.SicknessTicks > 0) { person.SicknessTicks--; if (State.Rules.Disease) person.Health -= 0.5; }
+            if (tile.FireTicks > 0) DamageResident(person, 4, DeathCause.Fire);
+            if (person.SicknessTicks > 0) { person.SicknessTicks--; if (State.Rules.Disease) DamageResident(person, .5, DeathCause.Disease); }
             else if (State.Rules.Disease && infected.Contains(Index(person.X, person.Y)) && RandomInt(100) < 3) person.SicknessTicks = 45;
-            if (person.Health <= 0) { deaths++; continue; }
+            if (person.Health <= 0) continue;
             if (person.SicknessTicks > 0) person.Activity = ResidentActivity.Sick;
         }
         ArchiveDeadResidents();
-        if (deaths > 0 && (deaths >= 3 || State.Tick % 12 == 0)) AddEvent(WorldEventKind.Death, $"{deaths} 位居民因饥饿、灾害、疾病或衰老逝去。");
     }
 
     private void GrowSettlements()
@@ -101,6 +101,7 @@ public sealed partial class WorldEngine
         if (pioneers.Length < 6 || origin.Resources.Food < 80 || origin.Resources.Wood < 20 || origin.Resources.Stone < 5) return;
         // Founders select a site that somebody in the present party can actually see.
         var location = Circle(origin.X, origin.Y, 9).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].FireTicks == 0
+            && !State.Society.Buildings.Any(b => b.X == i % State.Width && b.Y == i / State.Width)
             && State.Tiles[i].Fertility >= 25 && (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == origin.NationId)
             && Distance(i % State.Width, i / State.Width, origin.X, origin.Y) >= 8
             && pioneers.Any(p => Distance(p.X, p.Y, i % State.Width, i / State.Width) <= 6)

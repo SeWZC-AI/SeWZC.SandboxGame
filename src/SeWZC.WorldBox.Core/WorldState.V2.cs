@@ -3,14 +3,14 @@ using System.Text.Json.Serialization;
 namespace SeWZC.WorldBox.Core;
 
 public enum EventImportance { Routine, Notable, Major, Historic }
-public enum AgentGoalKind { Idle, Eat, Gather, Work, Rest, Flee, Socialize, DeliverMessage, Trade, Petition, Study, TrainMagic, March, ReturnHome, Migrate }
+public enum AgentGoalKind { Idle, Eat, Gather, Work, Rest, Flee, Socialize, DeliverMessage, Trade, Petition, Study, TrainMagic, March, ReturnHome, Migrate, Explore }
 public enum AgentFactKind { FoodSupply, Danger, SettlementLocation, ReliefRequest, Policy, WarOrder, PeaceOrder, Culture, Research, Personal, TradeExchange, DiplomaticNotice, WarReport }
 public enum PersonalExperienceKind { Neutral, Hardship, Achievement, Kindness, Betrayal, Learning }
 
 public sealed partial class WorldState
 {
     [JsonRequired]
-    public int SimulationVersion { get; set; } = 7;
+    public int SimulationVersion { get; set; } = 8;
     public SocietyState Society { get; set; } = new();
     public List<PendingMessage> PendingMessages { get; set; } = [];
     public List<Resident> ArchivedResidents { get; set; } = [];
@@ -105,6 +105,7 @@ public sealed class AgentState
     public int MissionOriginSettlementId { get; set; }
     public long MissionStartedTick { get; set; }
     public long MissionRetryTick { get; set; }
+    [JsonRequired] public int ExplorationHeading { get; set; }
     public long JobChangedTick { get; set; } = -120;
 }
 

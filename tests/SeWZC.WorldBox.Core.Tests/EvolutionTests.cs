@@ -97,9 +97,11 @@ internal static class EvolutionTests
         Check(engine.State.Diplomacies.All(d => d.Status == DiplomaticStatus.Neutral), "Nations declared war without delivered information");
         var a = engine.State.Settlements[0]; var b = engine.State.Settlements[1];
         a.PublicKnowledge.Add(Fact(engine, AgentFactKind.SettlementLocation, b.Id, b.X, b.Y, b.NationId, a.RepresentativeId));
-        var relation = engine.State.Diplomacies.Single(); relation.FirstOpinion = relation.SecondOpinion = relation.Opinion = -70;
+        var relation = engine.State.Diplomacies.Single(); relation.FirstOpinion = relation.SecondOpinion = relation.Opinion = -90;
         a.Resources.Food = 80;
         engine.Step(60);
+        Check(relation.Status == DiplomaticStatus.Neutral && relation.FirstEscalationTick > 0, "New dispute immediately became war");
+        engine.Step(180);
         Check(relation.Status == DiplomaticStatus.War && relation.Reason.Length > 0, "Delivered contact and hostility did not create autonomous war");
         Check(!b.PublicKnowledge.Any(f => f.Kind == AgentFactKind.WarOrder), "Other capital learned the war declaration without delivery");
         var restored = WorldEngine.ImportJson(engine.ExportJson()); engine.Step(120); restored.Step(120);

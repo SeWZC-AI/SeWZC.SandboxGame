@@ -17,12 +17,12 @@ public sealed partial class MainView
         var nation = _engine.State.Nations.FirstOrDefault(n => n.Id == _selectedNationId);
         if (nation is null) { panel.Children.Add(Paragraph("这个国家已不在当前世界中。其历史仍可在编年史查询。")); return; }
         panel.Children.Add(LiveText(() => nation.Name, 18, Mint));
-        panel.Children.Add(LiveText(() => $"实际国家状态\n人口 {nation.Population} · 领土 {nation.Territory}\n{StockLabel(nation.Resources)}\n国家文化：{CultureName(nation.CultureId)}\n首都：{TownName(nation.CapitalId)} · 代表：{ResidentName(nation.RepresentativeId)}"));
+        panel.Children.Add(LiveText(() => $"实际国家状态\n人口 {nation.Population}\n领土 {nation.Territory}\n{StockLabel(nation.Resources)}\n国家文化：{CultureName(nation.CultureId)}\n首都：{TownName(nation.CapitalId)}\n代表：{ResidentName(nation.RepresentativeId)}"));
         panel.Children.Add(WatchControl(ObservedObjectKind.Nation, nation.Id, "nation-follow"));
         BuildMilitarySummary(panel, nation);
-        panel.Children.Add(Text("外交关系 · 依据已收到的信息", 13, Mint));
+        panel.Children.Add(Text("外交关系\n依据已收到的信息", 13, Mint));
         LiveRows(panel, () => _engine.State.Diplomacies.Where(d => d.FirstNationId == nation.Id || d.SecondNationId == nation.Id), d => $"{d.FirstNationId}:{d.SecondNationId}",
-            d => $"{NationName(d.FirstNationId == nation.Id ? d.SecondNationId : d.FirstNationId)} · {(d.Status == DiplomaticStatus.War ? "战争" : d.Status == DiplomaticStatus.Allied ? "联盟" : "和平")} · 关系 {d.Opinion}\n{d.Reason}");
+            d => $"{NationName(d.FirstNationId == nation.Id ? d.SecondNationId : d.FirstNationId)}\n{(d.Status == DiplomaticStatus.War ? "战争" : d.Status == DiplomaticStatus.Allied ? "联盟" : "和平")}\n关系 {d.Opinion}\n{d.Reason}");
         panel.Children.Add(Button("编辑这个国家", () => ShowNationEditor(nation.Id)));
         panel.Children.Add(Named(Button("文化、制度与政策", () => ShowGovernanceEditor(nation.Id)), "nation-governance"));
         panel.Children.Add(Named(Button("编辑国家文化价值", () => ShowCultureEditor(nation.CultureId)), "nation-culture-edit"));
@@ -37,7 +37,7 @@ public sealed partial class MainView
         {
             var policy = _engine.State.Society.Policies.FirstOrDefault(p => p.SettlementId == t.Id);
             var development = _engine.GetDevelopment(t.Id);
-            return $"{t.Name} · {t.Population} 人 · {development.Stage}\n{development.Goal} · {development.Progress:P0}\n{development.Blocker}\n{_engine.GetDevelopmentEstimate(t.Id).Explanation}\n{StockLabel(t.Resources)}";
+            return $"{t.Name}\n{t.Population} 人\n{development.Stage}\n{development.Goal}\n{development.Progress:P0}\n{development.Blocker}\n{_engine.GetDevelopmentEstimate(t.Id).Explanation}\n{StockLabel(t.Resources)}";
         }, t => { _inspectorSettlementId = t.Id; OpenInspector("infrastructure"); });
         panel.Children.Add(Text("居民构成与文化传播", 12, Mint));
         panel.Children.Add(LiveText(() => string.Join("\n", _engine.State.Residents.Where(r => r.NationId == nation.Id).GroupBy(r => r.CultureId).Select(g => $"{CultureName(g.Key)}：{g.Count()} 人"))));
@@ -92,48 +92,48 @@ public sealed partial class MainView
         if (towns.Length == 0) { panel.Children.Add(Paragraph("先投放居民形成聚落，才能建设设施与运输网络。")); return; }
         var selected = Array.FindIndex(towns, t => t.Id == _inspectorSettlementId); if (selected < 0) selected = 0;
         var town = towns[selected]; _inspectorSettlementId = town.Id;
-        var picker = Named(new ComboBox { ItemsSource = towns.Select(t => $"{t.Name} · {NationName(t.NationId)}").ToArray(), SelectedIndex = selected, HorizontalAlignment = HorizontalAlignment.Stretch }, "infrastructure-town");
+        var picker = Named(new ComboBox { ItemsSource = towns.Select(t => $"{t.Name}\n{NationName(t.NationId)}").ToArray(), SelectedIndex = selected, HorizontalAlignment = HorizontalAlignment.Stretch }, "infrastructure-town");
         picker.SelectionChanged += (_, _) => { if (picker.SelectedIndex < 0) return; _inspectorSettlementId = towns[picker.SelectedIndex].Id; InvalidateInspector(); RefreshInspector(true); }; panel.Children.Add(picker);
         panel.Children.Add(WatchControl(ObservedObjectKind.Settlement, town.Id, "settlement-watch"));
-        panel.Children.Add(LiveText(() => $"{town.Name} #{town.Id}\n实际库存：{StockLabel(town.Resources)}\n居民 {town.Population} · 代表 {ResidentName(town.RepresentativeId)}"));
-        panel.Children.Add(LiveText(() => { var d = _engine.GetDevelopment(town.Id); return $"{d.Stage} · {d.Goal} · {d.Progress:P0}\n{d.Blocker}\n动荡 {town.Unrest:0}/100"; }, 13, Mint));
+        panel.Children.Add(LiveText(() => $"{town.Name} #{town.Id}\n实际库存：{StockLabel(town.Resources)}\n居民 {town.Population}\n代表 {ResidentName(town.RepresentativeId)}"));
+        panel.Children.Add(LiveText(() => { var d = _engine.GetDevelopment(town.Id); return $"{d.Stage}\n{d.Goal}\n{d.Progress:P0}\n{d.Blocker}\n动荡 {town.Unrest:0}/100"; }, 13, Mint));
         panel.Children.Add(Named(LiveText(() => _engine.GetDevelopmentEstimate(town.Id).Explanation), "development-estimate"));
         panel.Children.Add(Named(LiveText(() => _engine.GetAdvancementStage(town.Id)), "advancement-stage"));
         panel.Children.Add(Named(Button("定位聚落并开始建设", () => { _map.SelectedSettlementId = town.Id; SetCategory("build"); _map.FocusTile(town.X, town.Y); _mobilePanel = false; ApplyLayout(); }), "infrastructure-build"));
         if (!communications)
         {
-            panel.Children.Add(Text("研究 · 当地掌握的知识", 12, Mint));
+            panel.Children.Add(Text("研究\n当地掌握的知识", 12, Mint));
             panel.Children.Add(LiveText(() =>
             {
                 var research = _engine.State.Society.Research.FirstOrDefault(r => r.SettlementId == town.Id);
-                return research is null ? "尚无研究记录" : $"已掌握：{string.Join("、", research.Completed.Select(WorldEngine.ResearchName))}\n{(research.ActiveProject is { } project ? $"正在研究 {WorldEngine.ResearchName(project)} · {research.Progress:F1}/{research.RequiredProgress:F0}\n{_engine.GetCompletionEstimate(research.Observation, research.Progress, research.RequiredProgress).Explanation}" : "暂无研究项目")}";
+                return research is null ? "尚无研究记录" : $"已掌握：{string.Join("、", research.Completed.Select(WorldEngine.ResearchName))}\n{(research.ActiveProject is { } project ? $"正在研究 {WorldEngine.ResearchName(project)}\n{research.Progress:F1}/{research.RequiredProgress:F0}\n{_engine.GetCompletionEstimate(research.Observation, research.Progress, research.RequiredProgress).Explanation}" : "暂无研究项目")}";
             }));
             var researchPicker = EnumField(panel, "选择研究", ResearchKind.Agriculture, WorldEngine.ResearchName, "research-kind");
             var cost = Paragraph(StockLabel(WorldEngine.GetResearchCost(ResearchKind.Agriculture))); panel.Children.Add(cost);
             researchPicker.SelectionChanged += (_, _) => { if (researchPicker.SelectedItem is ResearchKind kind) cost.Text = "投入材料：" + StockLabel(WorldEngine.GetResearchCost(kind)) + "\n" + WorldEngine.ResearchDescription(kind) + "\n" + (_engine.ResearchPrerequisiteError(town.Id, kind) ?? "研究前置已满足"); };
             panel.Children.Add(Named(Button("投入研究", () => RunEdit(() => _engine.StartResearch(town.Id, (ResearchKind)researchPicker.SelectedItem!), "研究已立项，需居民到学舍工作后推进")), "research-start"));
             panel.Children.Add(Paragraph("科技与魔法可并存，前置与动力来源各自独立。研究需要学舍、到场人员及当地材料；新魔法发展受世界规则限制。"));
-            panel.Children.Add(Text("设施 · 施工与工作人员", 12, Mint));
-            LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.SettlementId == town.Id).OrderBy(b => b.Id), b => b.Id.ToString(), b => $"{WorldEngine.BuildingName(b.Kind)} #{b.Id} · {b.X},{b.Y}\n{(b.IsCompleted ? "已建成" : $"施工 {b.ConstructionProgress:F1}/{b.ConstructionRequired:F0}")} · 健康 {b.Health:F0}\n{(b.IsCompleted ? "" : _engine.GetCompletionEstimate(b.Observation, b.ConstructionProgress, b.ConstructionRequired).Explanation + "\n")}工作岗位 {b.Workers.Count}/{b.WorkSlots} · 最近工作 {DateLabel(b.LastWorkedTick)}", b => _map.FocusTile(b.X, b.Y));
+            panel.Children.Add(Text("设施\n施工与工作人员", 12, Mint));
+            LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.SettlementId == town.Id).OrderBy(b => b.Id), b => b.Id.ToString(), b => $"{WorldEngine.BuildingName(b.Kind)} #{b.Id}\n{b.X},{b.Y}\n{(b.IsCompleted ? "已建成" : $"施工 {b.ConstructionProgress:F1}/{b.ConstructionRequired:F0}")}\n健康 {b.Health:F0}\n{(b.IsCompleted ? "" : _engine.GetCompletionEstimate(b.Observation, b.ConstructionProgress, b.ConstructionRequired).Explanation + "\n")}工作岗位 {b.Workers.Count}/{b.WorkSlots}\n最近工作 {DateLabel(b.LastWorkedTick)}", OpenBuilding);
             panel.Children.Add(Named(Button("查看设施成本与建造", () => ShowBuildingEditor(town.Id)), "building-open"));
         }
-        panel.Children.Add(Text("进阶生产 · 配方与阻碍", 12, Mint));
+        panel.Children.Add(Text("进阶生产\n配方与阻碍", 12, Mint));
         LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.SettlementId == town.Id && AdvancementRules.For(b.Kind) is not null).OrderBy(b => b.Id),
-            b => b.Id.ToString(), b => WorldEngine.BuildingName(b.Kind) + "\n" + WorldEngine.ProductionRecipe(b.Kind) + "\n" + _engine.GetProductionStatus(b.Id), b => _map.FocusTile(b.X, b.Y));
+            b => b.Id.ToString(), b => WorldEngine.BuildingName(b.Kind) + "\n" + WorldEngine.ProductionRecipe(b.Kind) + "\n" + _engine.GetProductionStatus(b.Id), OpenBuilding);
         panel.Children.Add(Text("实体运输与传信", 12, Mint));
-        LiveRows(panel, () => _engine.State.Residents.Where(r => (r.SettlementId == town.Id || r.Agent.DestinationSettlementId == town.Id) && (r.Agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage || r.Profession is Profession.Trader or Profession.Messenger)).OrderBy(r => r.Id).Take(30), r => r.Id.ToString(), r => $"{r.Name} · {WorldEngine.TravelModeName(r.TravelMode)} · {GoalName(r.Agent.Goal.Kind)}\n{r.X},{r.Y} → {TownName(r.Agent.DestinationSettlementId)}\n携带：{StockLabel(r.Inventory)} · 消息 {r.Agent.CarriedMessages.Count} 条\n{r.Agent.Goal.Reason}", r => OpenResident(r.Id));
-        panel.Children.Add(Text("通信覆盖与连通 · 当前实际状态", 12, Mint));
+        LiveRows(panel, () => _engine.State.Residents.Where(r => (r.SettlementId == town.Id || r.Agent.DestinationSettlementId == town.Id) && (r.Agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage || r.Profession is Profession.Trader or Profession.Messenger)).OrderBy(r => r.Id).Take(30), r => r.Id.ToString(), r => $"{r.Name}\n{WorldEngine.TravelModeName(r.TravelMode)}\n{GoalName(r.Agent.Goal.Kind)}\n{r.X},{r.Y} → {TownName(r.Agent.DestinationSettlementId)}\n携带：{StockLabel(r.Inventory)}\n消息 {r.Agent.CarriedMessages.Count} 条\n{r.Agent.Goal.Reason}", r => OpenResident(r.Id));
+        panel.Children.Add(Text("通信覆盖与连通\n当前实际状态", 12, Mint));
         panel.Children.Add(Paragraph("同国在运作的信号塔通过视线连通；聚落接入距离 12 格，塔间 24 格，山脉阻挡。设施需要工作人员、足够健康且未着火。道路与驿站改变实际信使行程。"));
-        LiveRows(panel, () => _engine.State.Settlements.Where(t => t.NationId == town.NationId && t.Id != town.Id).OrderBy(t => t.Id), t => t.Id.ToString(), t => _engine.CanRelayInformation(town.Id, t.Id, out var ticks) ? $"{town.Name} ↔ {t.Name}\n信号连通 · 预计 {ticks} 日" : $"{town.Name} ↔ {t.Name}\n信号未连通 · 依赖居民实际携带消息", t => _map.FocusTile(t.X, t.Y));
-        panel.Children.Add(LiveText(() => $"等待投递消息 {_engine.State.PendingMessages.Count} 条\n聚落公开知识 {town.PublicKnowledge.Count} 条 · 已递送报告 {_engine.State.Society.Reports.Count(r => r.RecipientSettlementId == town.Id)} 条"));
+        LiveRows(panel, () => _engine.State.Settlements.Where(t => t.NationId == town.NationId && t.Id != town.Id).OrderBy(t => t.Id), t => t.Id.ToString(), t => _engine.CanRelayInformation(town.Id, t.Id, out var ticks) ? $"{town.Name} ↔ {t.Name}\n信号连通\n预计 {ticks} 日" : $"{town.Name} ↔ {t.Name}\n信号未连通\n依赖居民实际携带消息", t => _map.FocusTile(t.X, t.Y));
+        panel.Children.Add(LiveText(() => $"等待投递消息 {_engine.State.PendingMessages.Count} 条\n聚落公开知识 {town.PublicKnowledge.Count} 条\n已递送报告 {_engine.State.Society.Reports.Count(r => r.RecipientSettlementId == town.Id)} 条"));
         if (communications)
         {
-            panel.Children.Add(Text("聚落已知消息 · 与实际世界可能不同步", 12, Mint));
+            panel.Children.Add(Text("聚落已知消息\n与实际世界可能不同步", 12, Mint));
             LiveRows(panel, () => town.PublicKnowledge.OrderByDescending(f => f.LearnedTick).Take(30), f => f.Id.ToString(), FactLabel);
             panel.Children.Add(Text("实际递送的公民报告", 12, Mint));
             LiveRows(panel, () => _engine.State.Society.Reports.Where(r => r.RecipientSettlementId == town.Id).OrderByDescending(r => r.ReceivedTick).Take(20),
                 r => $"{r.FactId}:{r.OriginResidentId}:{r.RepresentativeId}:{r.ReceivedTick}",
-                r => $"{FactKindName(r.Topic)} · 主题 #{r.SubjectId} · 数值 {r.Value:F2}\n原始提出者：{ResidentName(r.OriginResidentId)}（{ProfessionName(r.ReportedProfession)}）\n递送代表：{ResidentName(r.RepresentativeId)}\n观察：{DateLabel(r.ObservedTick)}\n递送：{DateLabel(r.ReceivedTick)} · 可信度 {r.Confidence:P0}\n消息年龄 {Math.Max(0, _engine.State.Tick - r.ObservedTick)} 日");
+                r => $"{FactKindName(r.Topic)}\n主题 #{r.SubjectId}\n数值 {r.Value:F2}\n原始提出者：{ResidentName(r.OriginResidentId)}（{ProfessionName(r.ReportedProfession)}）\n递送代表：{ResidentName(r.RepresentativeId)}\n观察：{DateLabel(r.ObservedTick)}\n递送：{DateLabel(r.ReceivedTick)}\n可信度 {r.Confidence:P0}\n消息年龄 {Math.Max(0, _engine.State.Tick - r.ObservedTick)} 日");
         }
         panel.Children.Add(Button(communications ? "查看建设与研究" : "查看聚落通信与已知消息", () => OpenInspector(communications ? "infrastructure" : "communication")));
     }
@@ -162,11 +162,11 @@ public sealed partial class MainView
         if (casters.Length == 0) { SetStatus("当前世界没有成年居民。"); return; }
         _paused = true; _map.IsSimulationPaused = true;
         var panel = ModalPanel("施放魔法", "需要天赋至少 25、训练至少 8，目标在施法者 4 格内。治疗寻找本国伤病居民；丰饶与护盾作用于本国聚落；战斗火花只对交战敌人生效。");
-        var caster = Named(new ComboBox { ItemsSource = casters.Select(r => $"{r.Name} · 天赋{r.MagicTalent:F0} 训练{r.MagicTraining:F0} 魔力{r.Mana:F0}").ToArray(), SelectedIndex = Math.Max(0, Array.FindIndex(casters, r => r.Id == _selectedResidentId)), HorizontalAlignment = HorizontalAlignment.Stretch }, "spell-caster"); panel.Children.Add(caster);
+        var caster = Named(new ComboBox { ItemsSource = casters.Select(r => $"{r.Name}\n天赋{r.MagicTalent:F0} 训练{r.MagicTraining:F0} 魔力{r.Mana:F0}").ToArray(), SelectedIndex = Math.Max(0, Array.FindIndex(casters, r => r.Id == _selectedResidentId)), HorizontalAlignment = HorizontalAlignment.Stretch }, "spell-caster"); panel.Children.Add(caster);
         var spell = EnumField(panel, "法术", SpellKind.Heal, SpellName, "spell-kind");
         var initial = casters[caster.SelectedIndex];
         var x = Field(panel, "目标 X", _selectedTile?.X ?? initial.X, "spell-x"); var y = Field(panel, "目标 Y", _selectedTile?.Y ?? initial.Y, "spell-y");
-        var cost = Paragraph("基础魔力：治疗 16 · 丰饶 25 · 护盾 22 · 火花 20；种族适性可降低消耗。"); panel.Children.Add(cost);
+        var cost = Paragraph("基础魔力：治疗 16\n丰饶 25\n护盾 22\n火花 20；种族适性可降低消耗。"); panel.Children.Add(cost);
         panel.Children.Add(Named(Button("施放法术", () =>
         {
             try { var xx = Integer(x); var yy = Integer(y); RunEdit(() => { _engine.CastSpell(casters[caster.SelectedIndex].Id, (SpellKind)spell.SelectedItem!, xx, yy); CloseModal(); }, "法术已生效，消耗已从施法者魔力扣除"); }
