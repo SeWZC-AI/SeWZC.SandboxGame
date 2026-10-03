@@ -24,7 +24,8 @@ public sealed partial class WorldEngine
         radius = Math.Clamp(radius, 0, 32);
         var indexes = Circle(x, y, radius).ToHashSet();
         foreach (var index in indexes)
-            if (State.Tiles[index].IsWalkable) State.Tiles[index].NationId = nationId;
+            if (State.Tiles[index].IsWalkable)
+            { State.Tiles[index].NationId = nationId; State.Tiles[index].ClaimedSettlementId = 0; }
         foreach (var town in State.Settlements.Where(s => s.NationId != nationId && indexes.Contains(Index(s.X, s.Y))).ToArray()) TransferSettlementOwnership(town, nationId);
         _armyPaths.Clear(); _armyTargets.Clear();
         Reindex(); RemoveEmptyNations(); InitializeSociety(); RefreshTotals();
@@ -44,11 +45,6 @@ public sealed partial class WorldEngine
         foreach (var other in State.Nations) State.Diplomacies.Add(new DiplomaticRelation { FirstNationId = other.Id, SecondNationId = nation.Id });
         State.Nations.Add(nation); _nations[nation.Id] = nation;
         TransferSettlementOwnership(town, nation.Id);
-        foreach (var index in Circle(town.X, town.Y, 12))
-        {
-            var tile = State.Tiles[index];
-            if (tile.IsWalkable && tile.NationId == parent.Id && (tile.SettlementId == 0 || tile.SettlementId == town.Id)) tile.NationId = nation.Id;
-        }
         State.Tiles[Index(town.X, town.Y)].NationId = nation.Id;
         _armyPaths.Clear(); _armyTargets.Clear();
         Reindex(); InitializeSociety(); RefreshTotals();
@@ -62,6 +58,8 @@ public sealed partial class WorldEngine
         if (previousId == targetNationId) return;
         var previousNation = _nations[previousId];
         town.NationId = targetNationId;
+        foreach (var ground in State.Tiles)
+            if (ground.ClaimedSettlementId == town.Id) ground.NationId = targetNationId;
         State.Tiles[Index(town.X, town.Y)].NationId = targetNationId;
         var remainingHome = State.Settlements.FirstOrDefault(s => s.NationId == previousId);
         if (previousNation.CapitalId == town.Id) previousNation.CapitalId = remainingHome?.Id ?? 0;

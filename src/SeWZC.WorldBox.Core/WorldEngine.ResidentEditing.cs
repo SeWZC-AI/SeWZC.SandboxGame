@@ -61,6 +61,7 @@ public sealed partial class WorldEngine
             if (isLive && health <= 0) { candidate.DeathCause = DeathCause.PlayerIntervention; candidate.DeathTick = State.Tick; }
         }
         if (patch.Hunger is { } hunger) candidate.Hunger = hunger;
+        if (patch.Thirst is { } thirst) candidate.Thirst = thirst;
         if (patch.Trait is not null)
         {
             candidate.Trait = patch.Trait;

@@ -25,7 +25,7 @@ internal static class StoryTests
         foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 85; }
         engine.SpawnResidents(12, 24, RaceKind.Human, 24);
         if (twoNations) engine.SpawnResidents(42, 24, RaceKind.Elf, 24);
-        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Disease = false,
+        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
             Construction = false, Research = false, Expansion = false, Wars = false, Migration = false, Secession = false }, false, false);
         foreach (var person in engine.State.Residents)
         {

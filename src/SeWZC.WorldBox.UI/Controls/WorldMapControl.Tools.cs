@@ -8,6 +8,8 @@ public sealed partial class WorldMapControl
 {
     private (int X, int Y)? _pendingPlacement;
     private string _placementMessage = "";
+    public BridgeDirection ConstructionBridgeDirection { get; set; }
+    public int ConstructionBridgeLevel { get; set; } = 1;
     public bool GiftBuildings { get; set; } = true;
     public int SpawnCount { get; set; } = 12;
     public int DisasterRadius { get; set; } = 2;
@@ -45,7 +47,7 @@ public sealed partial class WorldMapControl
         if (Engine is null) return "世界尚未就绪";
         if (x < 0 || y < 0 || x >= Engine.State.Width || y >= Engine.State.Height) return "请选择世界范围内的地点";
         if (ActiveTool.StartsWith("build:") && Enum.TryParse<BuildingKind>(ActiveTool[6..], out var kind))
-            return Engine.FacilityPlacementError(SelectedSettlementId, kind, x, y, GiftBuildings);
+            return Engine.FacilityPlacementError(SelectedSettlementId, kind, x, y, GiftBuildings, kind == BuildingKind.Bridge ? ConstructionBridgeDirection : null, kind == BuildingKind.Bridge ? ConstructionBridgeLevel : 1);
         if (ActiveTool.StartsWith("road:")) return Engine.RoadPlacementError(SelectedSettlementId, x, y, 0);
         var tile = Engine.State.Tiles[y * Engine.State.Width + x];
         if (Enum.TryParse<RaceKind>(ActiveTool, out _) && !tile.IsWalkable) return "居民需要可通行的陆地";
@@ -67,6 +69,7 @@ public sealed partial class WorldMapControl
             : ActiveTool.StartsWith("road:") ? "修建道路\n每格木材：0.5\n每格石材：1"
             : Enum.TryParse<RaceKind>(ActiveTool, out _) ? $"投放 {SpawnCount} 位居民"
             : Enum.TryParse<DisasterKind>(ActiveTool, out _) ? $"单次释放\n范围：{DisasterRadius} 格" : $"绘制范围：{BrushRadius} 格";
+        if (ActiveTool == "build:Bridge") detail += $"\n方向：{WorldEngine.BridgeDirectionName(ConstructionBridgeDirection)}\n等级 {ConstructionBridgeLevel}   离自然岸最多 {WorldEngine.BridgeShoreLimit(ConstructionBridgeLevel)} 格\n材料：木材 {WorldEngine.FacilityCost(BuildingKind.Bridge, ConstructionBridgeLevel).Wood:0.#}   石材 {WorldEngine.FacilityCost(BuildingKind.Bridge, ConstructionBridgeLevel).Stone:0.#}";
         SetPlacementMessage($"位置：{tile.X}, {tile.Y}\n{(error is null ? detail : "无法放置：" + error)}");
         InvalidateVisual();
     }

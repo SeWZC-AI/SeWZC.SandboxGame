@@ -11,12 +11,14 @@ public sealed partial class WorldEngine
         {
             var tile = State.Tiles[index];
             tile.Terrain = terrain;
-            tile.Improvement = LandImprovement.None; tile.RoadLevel = 0;
+            tile.Improvement = LandImprovement.None; tile.RoadLevel = 0; tile.BridgeLevel = 0;
             tile.LastHarvestTick = 0; tile.Harvested = 0; SeedDeposit(tile, index % State.Width, index / State.Width);
             tile.Fertility = TerrainRules.Fertility(terrain);
+            tile.NaturalWaterYield = terrain == TerrainType.DryFertile ? .001 : IsWaterTerrain(terrain) ? 0 : .004;
+            SeedPlants(tile);
             tile.ResourceAmount = 100;
             tile.Elevation = (byte)(terrain switch { TerrainType.DeepWater => 10, TerrainType.Water => 50, TerrainType.Sand => 75, TerrainType.Mountain => 210, TerrainType.Snow => 240, _ => 110 });
-            if (!tile.IsWalkable) { tile.NationId = 0; tile.FireTicks = 0; tile.RoadLevel = 0; _burningTiles.Remove(index); }
+            if (!tile.IsWalkable) { tile.NationId = 0; tile.ClaimedSettlementId = 0; tile.FireTicks = 0; tile.RoadLevel = 0; _burningTiles.Remove(index); }
         }
         _armyPaths.Clear();
         RelocateInvalidEntities();
@@ -37,7 +39,7 @@ public sealed partial class WorldEngine
         {
             if (State.Nations.Count >= 64 || State.Settlements.Count >= 256) return;
             var nation = new Nation { Id = NewId(), FoundingRace = race, Name = NewPlaceName("王国"), ColorArgb = NationColors[State.Nations.Count % NationColors.Length] };
-            settlement = new Settlement { Id = NewId(), Name = NewPlaceName("村"), X = x, Y = y, NationId = nation.Id, Resources = new ResourceStock { Food = count * 4, Wood = 25, Stone = 12 } };
+            settlement = new Settlement { Id = NewId(), Name = NewPlaceName("村"), X = x, Y = y, NationId = nation.Id, Resources = new ResourceStock { Food = count * 4, Water = count * 2, Wood = 25, Stone = 12 } };
             nation.CapitalId = settlement.Id;
             foreach (var other in State.Nations)
             {
@@ -57,6 +59,7 @@ public sealed partial class WorldEngine
             var position = FindWalkable(x + RandomInt(7) - 3, y + RandomInt(7) - 3, 4);
             if (position >= 0) { person.X = position % State.Width; person.Y = position / State.Width; }
             State.Residents.Add(person); _citizens[settlement.Id].Add(person);
+            ProvisionAtHome(person, settlement);
         }
         InitializeSociety();
         foreach (var person in _citizens[settlement.Id]) InitializeAgent(person);
@@ -92,7 +95,7 @@ public sealed partial class WorldEngine
             {
                 var tile = State.Tiles[index];
                 if (!tile.IsWalkable) continue;
-                tile.Terrain = TerrainType.Sand; tile.Improvement = LandImprovement.None; tile.Fertility = 5; tile.ResourceAmount = 0; tile.RoadLevel = 0;
+                tile.Terrain = TerrainType.Sand; tile.Improvement = LandImprovement.None; tile.Fertility = 5; tile.ResourceAmount = 0; tile.RoadLevel = 0; tile.BridgeLevel = 0; tile.Plants = default;
                 tile.FireTicks = 12; _burningTiles.Add(index);
             }
             foreach (var resident in State.Residents.Where(r => Distance(r.X, r.Y, x, y) <= radius))
@@ -118,10 +121,10 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Editor, $"{previous}更名为{name}。");
     }
 
-    public void SetNationResources(int nationId, double? food = null, double? wood = null, double? stone = null, double? ore = null, double? alloy = null, double? energyCells = null, double? crystals = null, double? coal = null, double? oil = null, double? rareEarth = null, double? boats = null, double? aircraft = null)
+    public void SetNationResources(int nationId, double? food = null, double? wood = null, double? stone = null, double? ore = null, double? alloy = null, double? energyCells = null, double? crystals = null, double? coal = null, double? oil = null, double? rareEarth = null, double? boats = null, double? aircraft = null, double? water = null)
     {
         if (!_nations.ContainsKey(nationId)) throw new ArgumentException("国家不存在。", nameof(nationId));
-        var amounts = new[] { food, wood, stone, ore, alloy, energyCells, crystals, coal, oil, rareEarth, boats, aircraft };
+        var amounts = new[] { food, wood, stone, ore, alloy, energyCells, crystals, coal, oil, rareEarth, boats, aircraft, water };
         if (amounts.Any(v => v.HasValue && (!double.IsFinite(v.Value) || v.Value < 0 || v.Value > 1_000_000))) throw new ArgumentOutOfRangeException(nameof(food), "资源须在 0 到 1,000,000 之间。");
         if (amounts.All(v => !v.HasValue)) return;
         var towns = State.Settlements.Where(s => s.NationId == nationId).ToArray();
@@ -140,6 +143,7 @@ public sealed partial class WorldEngine
             if (rareEarth is { } re) town.Resources.RareEarth = re / towns.Length;
             if (boats is { } bo) town.Resources.Boats = bo / towns.Length;
             if (aircraft is { } ai) town.Resources.Aircraft = ai / towns.Length;
+            if (water is { } wa) town.Resources.Water = wa / towns.Length;
         }
         RefreshTotals();
         AddEvent(WorldEventKind.Editor, $"{_nations[nationId].Name}的资源储备已调整。");
@@ -202,7 +206,7 @@ public sealed partial class WorldEngine
             if (CanTraverse(State.Tiles[Index(resident.X, resident.Y)], resident.TravelMode)) continue;
             var position = FindWalkable(resident.X, resident.Y, 10);
             if (position >= 0) { resident.X = position % State.Width; resident.Y = position / State.Width; DamageResident(resident, 15, DeathCause.TerrainChange); }
-            else DamageResident(resident, resident.Health, State.Tiles[Index(resident.X, resident.Y)].Terrain is TerrainType.Water or TerrainType.River or TerrainType.DeepWater ? DeathCause.Drowning : DeathCause.TerrainChange);
+            else DamageResident(resident, resident.Health, State.Tiles[Index(resident.X, resident.Y)].Terrain is TerrainType.Water or TerrainType.River or TerrainType.DeepWater or TerrainType.Lake ? DeathCause.Drowning : DeathCause.TerrainChange);
         }
         ArchiveDeadResidents();
         foreach (var army in State.Armies.ToArray())
@@ -215,22 +219,4 @@ public sealed partial class WorldEngine
         RemoveEmptyNations();
     }
 
-    private void ClaimTerritory(Settlement settlement, int radius)
-    {
-        var start = Index(settlement.X, settlement.Y);
-        var visited = new HashSet<int> { start }; var queue = new Queue<int>(); queue.Enqueue(start);
-        while (queue.TryDequeue(out var index))
-        {
-            var tile = State.Tiles[index];
-            if (!tile.IsWalkable || tile.NationId != 0 && tile.NationId != settlement.NationId) continue;
-            tile.NationId = settlement.NationId;
-            var x = index % State.Width; var y = index / State.Width;
-            foreach (var (dx, dy) in Directions)
-            {
-                var xx = x + dx; var yy = y + dy;
-                if (!InBounds(xx, yy) || Distance(xx, yy, settlement.X, settlement.Y) > radius) continue;
-                var next = Index(xx, yy); if (visited.Add(next)) queue.Enqueue(next);
-            }
-        }
-    }
 }

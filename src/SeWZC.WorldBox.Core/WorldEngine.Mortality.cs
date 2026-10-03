@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-public enum DeathCause { None, Starvation, OldAge, Fire, Disease, Battle, Magic, Meteor, Drowning, TerrainChange, Conflict, PlayerIntervention }
+public enum DeathCause { None, Starvation, OldAge, Fire, Disease, Battle, Magic, Meteor, Drowning, TerrainChange, Conflict, PlayerIntervention, Dehydration }
 
 public sealed partial class Resident
 {
@@ -14,7 +14,7 @@ public sealed partial class WorldEngine
 {
     public static string DeathCauseName(DeathCause cause) => cause switch
     {
-        DeathCause.Starvation => "长期缺粮导致饥饿致死", DeathCause.OldAge => "超过种族寿命后衰老致死",
+        DeathCause.Dehydration => "长期缺水导致脱水致死", DeathCause.Starvation => "长期缺粮导致饥饿致死", DeathCause.OldAge => "超过种族寿命后衰老致死",
         DeathCause.Fire => "在燃烧地块受到致命灼伤", DeathCause.Disease => "疫病造成致命损伤",
         DeathCause.Battle => "战斗中受到致命攻击", DeathCause.Magic => "被战斗法术击杀",
         DeathCause.Meteor => "被陨石撞击致死", DeathCause.Drowning => "地形变为水域后无处逃生，溺亡",

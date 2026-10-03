@@ -22,7 +22,7 @@ internal static class SocietyRegressionTests
         foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 80; tile.ResourceAmount = 100; }
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Disease = false, Construction = false,
+            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false, Construction = false,
             Research = false, Expansion = false, Trade = false, Wars = true, Alliances = false,
             Peace = true, Migration = false, Secession = false, Conflict = 3
         }, false, false);

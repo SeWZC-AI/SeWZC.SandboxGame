@@ -573,6 +573,7 @@ static (WorldEngine Engine, int ResidentId, Building Target) WorkingWorld(Profes
     var engine = WorldEngine.Create(77, 64, 64, false);
     foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 80; }
     engine.State.NaturalDisasters = false;
+    engine.State.Rules.Thirst = false;
     engine.SpawnResidents(16, 32, RaceKind.Human, 3);
     var home = engine.State.Settlements.Single();
     engine.SetNationResources(home.NationId, 1000, 1000, 1000, 1000);

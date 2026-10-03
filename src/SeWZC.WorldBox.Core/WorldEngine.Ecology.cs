@@ -27,13 +27,13 @@ public sealed partial class WorldEngine
     {
         var habitat = kind switch
         {
-            WildlifeKind.Rabbit => tile.Terrain is TerrainType.Grass or TerrainType.Hills or TerrainType.Tundra ? 12 : 0,
-            WildlifeKind.Deer => tile.Terrain is TerrainType.Forest or TerrainType.Grass ? 9 : 0,
+            WildlifeKind.Rabbit => tile.Terrain is TerrainType.Grass or TerrainType.DryFertile or TerrainType.Hills or TerrainType.Tundra ? 12 : 0,
+            WildlifeKind.Deer => tile.Terrain is TerrainType.Forest or TerrainType.Grass or TerrainType.DryFertile ? 9 : 0,
             WildlifeKind.Boar => tile.Terrain is TerrainType.Forest or TerrainType.Wetland ? 8 : 0,
             WildlifeKind.Goat => tile.Terrain is TerrainType.Mountain or TerrainType.Hills ? 7 : 0,
             WildlifeKind.Wolf => tile.Terrain is TerrainType.Forest or TerrainType.Snow or TerrainType.Tundra ? 4 : 0,
             WildlifeKind.Waterfowl => tile.Terrain is TerrainType.Wetland or TerrainType.River or TerrainType.Water ? 10 : 0,
-            WildlifeKind.Fish => tile.Terrain is TerrainType.Water or TerrainType.DeepWater or TerrainType.River ? 18 : 0,
+            WildlifeKind.Fish => tile.Terrain is TerrainType.Water or TerrainType.DeepWater or TerrainType.River or TerrainType.Lake ? 18 : 0,
             _ => 0
         };
         var food = kind is WildlifeKind.Fish or WildlifeKind.Waterfowl or WildlifeKind.Goat
@@ -51,21 +51,21 @@ public sealed partial class WorldEngine
             tile.Wildlife = tile.Terrain switch
             {
                 TerrainType.Forest => hash % 3 == 0 ? WildlifeKind.Boar : WildlifeKind.Deer,
-                TerrainType.Grass => WildlifeKind.Rabbit,
+                TerrainType.Grass or TerrainType.DryFertile => WildlifeKind.Rabbit,
                 TerrainType.Hills or TerrainType.Mountain => WildlifeKind.Goat,
                 TerrainType.Snow or TerrainType.Tundra => WildlifeKind.Wolf,
                 TerrainType.Wetland => WildlifeKind.Waterfowl,
-                TerrainType.River or TerrainType.Water or TerrainType.DeepWater => WildlifeKind.Fish,
+                TerrainType.River or TerrainType.Water or TerrainType.DeepWater or TerrainType.Lake => WildlifeKind.Fish,
                 _ => WildlifeKind.None
             };
             tile.WildlifePopulation = WildlifeCapacity(tile, tile.Wildlife) * (.15 + hash % 50 / 100d);
             var companion = tile.Terrain switch
             {
                 TerrainType.Forest => tile.Wildlife == WildlifeKind.Deer ? WildlifeKind.Boar : WildlifeKind.Deer,
-                TerrainType.Grass => WildlifeKind.Deer,
+                TerrainType.Grass or TerrainType.DryFertile => WildlifeKind.Deer,
                 TerrainType.Hills or TerrainType.Tundra => WildlifeKind.Rabbit,
                 TerrainType.Wetland => WildlifeKind.Boar,
-                TerrainType.River or TerrainType.Water => WildlifeKind.Waterfowl,
+                TerrainType.River or TerrainType.Water or TerrainType.Lake => WildlifeKind.Waterfowl,
                 _ => WildlifeKind.None
             };
             if (companion != WildlifeKind.None)
@@ -146,15 +146,16 @@ public sealed partial class WorldEngine
                 var population = _wildlifePopulations[offset + species]; var capacity = _wildlifeCapacities[offset + species];
                 var density = capacity > 0 ? population / capacity : 0;
                 _wildlifeChanges[offset + species] += capacity > 0
-                    ? Math.Max(-population * .12, .07 * population * (1 - density - .35 * (_wildlifePressure[i] - density))) : -population * .12;
+                    ? Math.Max(-population * .12, .018 * population * (1 - density - .35 * (_wildlifePressure[i] - density))) : -population * .12;
                 for (var n = 0; n < count; n++)
                 {
                     var next = neighbours[n]; var targetOffset = next * 8 + species; var targetCapacity = _wildlifeCapacities[targetOffset];
                     var targetPopulation = _wildlifePopulations[targetOffset];
                     if (targetCapacity <= 0) continue;
-                    var space = targetCapacity - targetPopulation - .35 * Math.Max(0, _wildlifePressure[next] - targetPopulation / targetCapacity) * targetCapacity;
-                    if (space <= 0) continue;
-                    var amount = Math.Min(population * .025 / 4, space * .01);
+                    // Capacity influences preference and future survival, not entry.
+                    // A crowded but suitable neighbour can still receive migrants.
+                    var preference = .5 + .5 / (1 + _wildlifePressure[next]);
+                    var amount = population * .20 / count * preference;
                     _wildlifeChanges[offset + species] -= amount; _wildlifeChanges[targetOffset] += amount;
                     _wildlifeIncoming[next] |= 1 << species;
                 }

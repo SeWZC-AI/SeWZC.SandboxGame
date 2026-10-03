@@ -36,8 +36,8 @@ public sealed partial class WorldEngine
             if (State.Society.Research.Any(r => r.SettlementId == town.Id)) continue;
             State.Society.Research.Add(new SettlementResearch { SettlementId = town.Id });
             // Founding households bring a field and a workshop; later facilities must be constructed.
-            AddFoundingFacility(town, BuildingKind.Farm);
-            AddFoundingFacility(town, BuildingKind.Workshop);
+            if (!town.FoundationPending)
+            { AddFoundingFacility(town, BuildingKind.Farm); AddFoundingFacility(town, BuildingKind.Workshop); }
         }
         foreach (var resident in State.Residents)
         {
@@ -96,17 +96,20 @@ public sealed partial class WorldEngine
         _ => AdvancementRules.For(kind)?.ResearchCost.Copy() ?? throw new ArgumentOutOfRangeException(nameof(kind))
     };
 
-    public int BuildFacility(int settlementId, BuildingKind kind, int x, int y) => PlaceFacility(settlementId, kind, x, y, false);
+    public int BuildFacility(int settlementId, BuildingKind kind, int x, int y, BridgeDirection? direction = null, int bridgeLevel = 1) => PlaceFacility(settlementId, kind, x, y, false, direction, bridgeLevel);
 
-    private int PlaceFacility(int settlementId, BuildingKind kind, int x, int y, bool gift)
+    private int PlaceFacility(int settlementId, BuildingKind kind, int x, int y, bool gift, BridgeDirection? direction = null, int bridgeLevel = 1)
     {
-        if (FacilityPlacementError(settlementId, kind, x, y, gift) is { } error) throw new InvalidOperationException(error);
+        if (FacilityPlacementError(settlementId, kind, x, y, gift, direction, bridgeLevel) is { } error) throw new InvalidOperationException(error);
         var town = RequireTown(settlementId);
         var tile = State.Tiles[Index(x, y)];
-        if (!gift) Spend(town.Resources, GetBuildingCost(kind));
-        var building = new Building { Id = NewId(), SettlementId = settlementId, Kind = kind, X = x, Y = y,
-            ConstructionRequired = kind is BuildingKind.SignalTower or BuildingKind.ArcaneSanctum ? 60 : 30, WorkSlots = kind == BuildingKind.Farm ? 5 : 3 };
+        if (!gift) Spend(town.Resources, FacilityCost(kind, bridgeLevel));
+        var building = new Building { Id = NewId(), SettlementId = settlementId, Kind = kind, X = x, Y = y, Level = kind == BuildingKind.Bridge ? bridgeLevel : 1,
+            Direction = kind == BuildingKind.Bridge ? direction ?? InferBridgeDirection(x, y) : BridgeDirection.Horizontal,
+            ConstructionRequired = kind is BuildingKind.SignalTower or BuildingKind.ArcaneSanctum ? 60 : 30, WorkSlots = (kind == BuildingKind.Farm ? 5 : 3) + (kind == BuildingKind.Bridge ? bridgeLevel - 1 : 0) };
         State.Society.Buildings.Add(building);
+        if (_localWorkQueriesActive)
+        { _workBuildingsById[building.Id] = building; LocalWorkGroup(_localWorkBuildings, _localWorkBuildingBuffers, settlementId).Add(building); }
         if (gift)
         {
             building.ConstructionProgress = building.ConstructionRequired;
@@ -114,7 +117,7 @@ public sealed partial class WorldEngine
             CompleteLandImprovement(building);
             EmitVisual(WorldVisualKind.Construction, x, y);
         }
-        tile.NationId = town.NationId;
+        if (gift) RegisterBuildingGround(building);
         var projectEvent = AddEvent(WorldEventKind.Construction, gift ? $"玩家向{town.Name}赐予{BuildingName(kind)}；实际运营仍需人员与当地条件。" : $"{town.Name}备好材料，开始修建{BuildingName(kind)}；居民必须到场施工。", x, y, gift ? EventAction.Gifted : EventAction.Started, town.Id);
         building.Observation.StartEventId = projectEvent.Id;
         ObserveProject(building.Observation, building.ConstructionProgress);
@@ -188,7 +191,7 @@ public sealed partial class WorldEngine
 
     private int WorkPriority(Building building, Resident resident)
     {
-        if (!building.IsCompleted) return 0;
+        if (!building.IsCompleted || building.IsUpgrading) return 0;
         if (AdvancementRules.For(building.Kind) is { } production)
         {
             if (resident.Profession == Profession.Scholar && State.Society.Research.Any(r => r.SettlementId == building.SettlementId && r.ActiveProject.HasValue)) return 3;
@@ -209,7 +212,8 @@ public sealed partial class WorldEngine
     {
         if (!building.Enabled || resident.Age < 14 || resident.ArmyId != 0 || resident.Health <= 0) return false;
         if (building.LastWorkedTick == State.Tick && building.Workers.Count >= building.WorkSlots && !building.Workers.Contains(resident.Id)) return false;
-        if (!building.IsCompleted) return true;
+        if (!building.IsCompleted || building.IsUpgrading) return true;
+        if (building.Health < 50 || State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return false;
         if (AdvancementRules.For(building.Kind) is { } production) return CanProduce(building, resident, production);
         return building.Kind switch
         {
@@ -226,14 +230,20 @@ public sealed partial class WorldEngine
     {
         var building = FindLocalWorkBuilding(resident, 1, preferNearest: false, followTarget: true);
         if (building is null || !_settlements.TryGetValue(building.SettlementId, out var town)) return false;
-        if (building.IsCompleted && building.Kind is BuildingKind.Waystation or BuildingKind.SignalTower && town.Resources.Food < 0.01) return false;
-        if (building.IsCompleted && building.Kind == BuildingKind.ArcaneSanctum && (!State.Society.MagicEnabled || town.Resources.Food < 0.03)) return false;
+        if (building.IsCompleted && !building.IsUpgrading && building.Kind is BuildingKind.Waystation or BuildingKind.SignalTower && town.Resources.Food < 0.01) return false;
+        if (building.IsCompleted && !building.IsUpgrading && building.Kind == BuildingKind.ArcaneSanctum && (!State.Society.MagicEnabled || town.Resources.Food < 0.03)) return false;
         var production = AdvancementRules.For(building.Kind);
-        if (building.IsCompleted && production is not null && MissingResources(resident.Inventory, production.Input) is not null) return false;
+        if (building.IsCompleted && !building.IsUpgrading && production is not null && MissingResources(resident.Inventory, production.Input) is not null) return false;
         if (building.LastWorkedTick != State.Tick) { building.Workers.Clear(); building.LastWorkedTick = State.Tick; }
         if (building.Workers.Contains(resident.Id)) return false;
         building.Workers.Add(resident.Id);
-        var effort = Math.Clamp((0.6 + resident.Agent.Personality.Diligence * 0.6) * (resident.SicknessTicks > 0 ? 0.45 : 1), 0.1, 1.2);
+        var effort = Math.Clamp((0.6 + resident.Agent.Personality.Diligence * 0.6) * LaborCondition(resident), 0.1, 1.2);
+        if (building.IsUpgrading)
+        {
+            building.UpgradeProgress = Math.Min(building.UpgradeRequired, building.UpgradeProgress + effort * State.Rules.DevelopmentRate);
+            if (building.UpgradeProgress >= building.UpgradeRequired) FinishBuildingUpgrade(building);
+            return true;
+        }
         if (!building.IsCompleted)
         {
             if (building.Observation.Contributors.Count < 32 && !building.Observation.Contributors.Contains(resident.Id)) building.Observation.Contributors.Add(resident.Id);
@@ -252,6 +262,7 @@ public sealed partial class WorldEngine
             return true;
         }
         if (production is not null) return Produce(building, resident, production);
+        effort *= building.Efficiency;
         var culture = GetCulture(resident.CultureId);
         switch (building.Kind)
         {
@@ -316,20 +327,27 @@ public sealed partial class WorldEngine
         }
     }
 
-    private int FindWorkshopResource(Building building, Profession profession) =>
-        Circle(building.X, building.Y, 1).Where(i => State.Tiles[i].ResourceAmount >= .5 && State.Tiles[i].FireTicks == 0)
-            .Select(i => (Index: i, Yield: profession == Profession.Miner
-                ? TerrainRules.For(State.Tiles[i].Terrain).StoneYield + TerrainRules.For(State.Tiles[i].Terrain).OreYield
-                : TerrainRules.For(State.Tiles[i].Terrain).WoodYield))
-            .Where(source => source.Yield > 0).OrderByDescending(source => source.Yield).ThenBy(source => source.Index)
-            .Select(source => source.Index).FirstOrDefault(-1);
+    private int FindWorkshopResource(Building building, Profession profession)
+    {
+        var best = -1; var bestYield = 0d;
+        foreach (var index in Circle(building.X, building.Y, 1))
+        {
+            var tile = State.Tiles[index];
+            if (tile.ResourceAmount < .5 || tile.FireTicks > 0) continue;
+            var yield = TerrainRules.For(tile.Terrain);
+            var value = profession == Profession.Miner ? yield.StoneYield + yield.OreYield : yield.WoodYield;
+            if (value > bestYield || value == bestYield && value > 0 && index < best)
+            { best = index; bestYield = value; }
+        }
+        return best;
+    }
 
     public double GetTerrainMoveCost(int x, int y)
     {
         if (!InBounds(x, y)) return double.PositiveInfinity;
         var tile = State.Tiles[Index(x, y)];
-        if (tile.Improvement == LandImprovement.MountainPass && tile.Terrain == TerrainType.Mountain) return 3.5;
-        if (tile.Improvement == LandImprovement.Bridge && tile.Terrain is TerrainType.River or TerrainType.Water) return 1.2;
+        if (tile.Improvement == LandImprovement.MountainPass && tile.Terrain == TerrainType.Mountain) return 3.5 / (1 + Math.Max(0, tile.RoadLevel - 1) * .25);
+        if (tile.Improvement == LandImprovement.Bridge && tile.Terrain is TerrainType.River or TerrainType.Water or TerrainType.Lake) return 1.2 / (1 + Math.Max(0, tile.BridgeLevel - 1) * .25);
         var cost = TerrainRules.MovementCost(tile.Terrain);
         if (!double.IsFinite(cost)) return cost;
         return tile.RoadLevel > 0 ? Math.Max(0.65, cost * 0.55) : cost;
@@ -339,8 +357,12 @@ public sealed partial class WorldEngine
     {
         if (!InBounds(x, y)) return 0;
         var speed = 1 / GetTerrainMoveCost(x, y);
-        if (State.Society.Buildings.Any(b => b.Kind == BuildingKind.Waystation && IsFacilityOperating(b)
-            && _settlements.TryGetValue(b.SettlementId, out var town) && town.NationId == nationId && Distance(x, y, b.X, b.Y) <= 3)) speed *= 1.25;
+        var bonus = 1d;
+        foreach (var building in State.Society.Buildings)
+            if (building.Kind == BuildingKind.Waystation && IsFacilityOperating(building)
+                && _settlements.TryGetValue(building.SettlementId, out var town) && town.NationId == nationId && Distance(x, y, building.X, building.Y) <= 3)
+                bonus = Math.Max(bonus, 1.25 + (building.Level - 1) * .15);
+        speed *= bonus;
         return speed;
     }
 
@@ -353,21 +375,21 @@ public sealed partial class WorldEngine
         var towers = State.Society.Buildings.Where(b => b.Kind == BuildingKind.SignalTower && IsFacilityOperating(b)
             && HasResearch(b.SettlementId, ResearchKind.SignalNetwork) && HasResearch(b.SettlementId, ResearchKind.Electrification) && _settlements.TryGetValue(b.SettlementId, out var town) && town.NationId == from.NationId).OrderBy(b => b.Id).ToArray();
         var queue = new Queue<(Building Tower, int Hops)>(); var visited = new HashSet<int>();
-        foreach (var tower in towers.Where(t => Distance(t.X, t.Y, from.X, from.Y) <= 12 && ClearSignalLine(t.X, t.Y, from.X, from.Y)))
+        foreach (var tower in towers.Where(t => Distance(t.X, t.Y, from.X, from.Y) <= 12 + (t.Level - 1) * 4 && ClearSignalLine(t.X, t.Y, from.X, from.Y)))
         { queue.Enqueue((tower, 1)); visited.Add(tower.Id); }
         while (queue.TryDequeue(out var node))
         {
-            if (Distance(node.Tower.X, node.Tower.Y, to.X, to.Y) <= 12 && ClearSignalLine(node.Tower.X, node.Tower.Y, to.X, to.Y)) { travelTicks = node.Hops * 2; return true; }
+            if (Distance(node.Tower.X, node.Tower.Y, to.X, to.Y) <= 12 + (node.Tower.Level - 1) * 4 && ClearSignalLine(node.Tower.X, node.Tower.Y, to.X, to.Y)) { travelTicks = node.Hops * 2; return true; }
             foreach (var tower in towers)
-                if (!visited.Contains(tower.Id) && Distance(tower.X, tower.Y, node.Tower.X, node.Tower.Y) <= 24 && ClearSignalLine(tower.X, tower.Y, node.Tower.X, node.Tower.Y))
+                if (!visited.Contains(tower.Id) && Distance(tower.X, tower.Y, node.Tower.X, node.Tower.Y) <= 24 + (Math.Min(tower.Level, node.Tower.Level) - 1) * 8 && ClearSignalLine(tower.X, tower.Y, node.Tower.X, node.Tower.Y))
                 { visited.Add(tower.Id); queue.Enqueue((tower, node.Hops + 1)); }
         }
         return false;
     }
 
-    private bool IsFacilityOperating(Building building) => building.Enabled && building.IsCompleted && building.Health >= 20 && State.Tiles[Index(building.X, building.Y)].IsWalkable
-        && State.Tiles[Index(building.X, building.Y)].FireTicks == 0 && building.LastWorkedTick >= State.Tick - 12
-        && State.Residents.Any(r => building.Workers.Contains(r.Id) && r.SettlementId == building.SettlementId && r.Health > 0 && Distance(r.X, r.Y, building.X, building.Y) <= 1);
+    private bool IsFacilityOperating(Building building) => building.Enabled && building.IsCompleted && !building.IsUpgrading && building.Health >= 50 && State.Tiles[Index(building.X, building.Y)].IsWalkable
+        && State.Tiles[Index(building.X, building.Y)].FireTicks == 0 && (building.Kind is BuildingKind.TownCenter or BuildingKind.Bridge or BuildingKind.MountainPass || building.LastWorkedTick >= State.Tick - 12
+        && State.Residents.Any(r => building.Workers.Contains(r.Id) && r.SettlementId == building.SettlementId && r.Health > 0 && Distance(r.X, r.Y, building.X, building.Y) <= 1));
     private bool ClearSignalLine(int x0, int y0, int x1, int y1)
     {
         var steps = Math.Max(Math.Abs(x1 - x0), Math.Abs(y1 - y0));
@@ -695,6 +717,7 @@ public sealed partial class WorldEngine
 
     private void PlanLocalDevelopment(Settlement town)
     {
+        if (town.FoundationPending) return;
         town.LastDevelopmentTick = State.Tick;
         var local = State.Residents.Where(r => r.SettlementId == town.Id && r.Age >= 16 && r.Health > 50 && r.ArmyId == 0
             && Distance(r.X, r.Y, town.X, town.Y) <= 6 && r.Agent.DestinationSettlementId == 0).ToArray();
@@ -784,6 +807,7 @@ public sealed partial class WorldEngine
             town.DevelopmentGoal = blockedGoal; town.DevelopmentBlocker = blockedReason!;
             return;
         }
+        if (PlanBuildingUpgrade(town, buildings)) return;
         town.DevelopmentGoal = State.Rules.Expansion ? "积累物资，建立新聚落" : "维持繁荣与对外交流";
         town.DevelopmentBlocker = State.Rules.Expansion ? $"拓荒条件：人口 {town.Population}/60，粮食 {town.Resources.Food:0}/120，木材 {town.Resources.Wood:0}/40；需要附近可见用地与到场拓荒者" : "已有研究完成；扩张已关闭";
     }
@@ -874,6 +898,10 @@ public sealed partial class WorldEngine
                 && towns.ContainsKey(building.SettlementId) && Enum.IsDefined(building.Kind) && building.X >= 0 && building.Y >= 0 && building.X < state.Width && building.Y < state.Height
                 && occupied.Add((building.X, building.Y)) && Range(building.Health, 100) && Range(building.ConstructionProgress, 10_000)
                 && building.ConstructionRequired > 0 && building.ConstructionRequired <= 10_000 && building.ConstructionProgress <= building.ConstructionRequired
+                && building.Level is >= 1 and <= 3 && Enum.IsDefined(building.Direction)
+                && (building.PendingDirection is null || building.Kind == BuildingKind.Bridge && Enum.IsDefined(building.PendingDirection.Value))
+                && Range(building.UpgradeProgress, 10_000) && Range(building.UpgradeRequired, 10_000) && building.UpgradeProgress <= building.UpgradeRequired
+                && (building.UpgradeRequired == 0 ? building.PendingDirection is null : building.ConstructionProgress >= building.ConstructionRequired && (building.PendingDirection.HasValue || building.Level < 3))
                 && building.ProductionBatches is >= 0 and <= 1_000_000_000
                 && building.WorkSlots is > 0 and <= 20 && building.Workers is not null && building.Workers.Count <= building.WorkSlots
                 && building.Workers.Distinct().Count() == building.Workers.Count && building.Workers.All(residents.Contains)

@@ -36,6 +36,8 @@ public sealed partial class WorldEngine
         if (state.RandomState == 0) state.RandomState = 1;
         var engine = new WorldEngine(state);
         engine.GenerateTerrain();
+        engine.GenerateLakesAndWater();
+        foreach (var tile in state.Tiles) engine.SeedPlants(tile);
         engine.SeedWildlife();
         if (demo)
         {

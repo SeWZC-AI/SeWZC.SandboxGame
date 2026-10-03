@@ -134,33 +134,92 @@ public sealed partial class WorldMapControl
         cached = MakeBitmap(c, opaque: false); _personIcons[key] = cached; return cached;
     }
 
-    private readonly Dictionary<int, WriteableBitmap> _activityIcons = [];
+    private readonly Dictionary<ResidentTaskIcon, WriteableBitmap> _activityIcons = [];
+    private readonly Dictionary<int, Building> _activityBuildings = [];
+
+    public WriteableBitmap ActivityPreview(ResidentTaskIcon kind)
+    {
+        if (_activityIcons.TryGetValue(kind, out var icon)) return icon;
+        var c = new PixelCanvas(24, 24);
+        const uint light = 0xFFF3D8FF, blue = 0x70D9E8FF, gold = 0xFFD173FF, green = 0xAAD586FF, metal = 0xCDD9DFFF, brown = 0xBB8960FF;
+        c.Rect(1, 1, 22, 22, 0x122938FF); c.Rect(2, 2, 20, 1, 0x6A8491FF);
+        switch (kind)
+        {
+            case ResidentTaskIcon.Log:
+                c.Line(6, 20, 16, 5, brown, 3); c.Rect(7, 4, 10, 7, metal); c.Rect(5, 5, 3, 5, light); break;
+            case ResidentTaskIcon.Mine:
+                c.Line(5, 20, 15, 5, brown, 3); c.Line(5, 5, 18, 5, metal, 2); c.Line(18, 5, 20, 10, metal, 2); c.Rect(16, 17, 4, 4, metal); break;
+            case ResidentTaskIcon.Gather: case ResidentTaskIcon.Farm:
+                c.Line(12, 6, 12, 20, green, 2);
+                for (var i = 0; i < 3; i++) { c.Line(7, 5 + i * 4, 12, 10 + i * 4, gold, 2); c.Line(17, 5 + i * 4, 12, 10 + i * 4, gold, 2); }
+                if (kind == ResidentTaskIcon.Farm) c.Line(4, 21, 20, 21, brown, 2); break;
+            case ResidentTaskIcon.Build: case ResidentTaskIcon.Upgrade:
+                c.Line(6, 20, 15, 7, brown, 3); c.Rect(8, 5, 11, 5, metal);
+                if (kind == ResidentTaskIcon.Upgrade) { c.Line(17, 19, 17, 12, green, 2); c.Line(14, 15, 17, 12, green, 2); c.Line(17, 12, 20, 15, green, 2); } break;
+            case ResidentTaskIcon.Research:
+                c.Rect(4, 6, 16, 13, light); c.Line(12, 6, 12, 19, blue, 2); c.Line(6, 9, 9, 9, brown); c.Line(15, 9, 18, 9, brown); break;
+            case ResidentTaskIcon.Magic:
+                c.Line(5, 20, 16, 8, 0xD9AEFFFF, 3); c.Line(16, 4, 16, 12, light, 2); c.Line(12, 8, 20, 8, light, 2); break;
+            case ResidentTaskIcon.Heal:
+                c.Rect(9, 5, 6, 15, green); c.Rect(5, 9, 15, 6, green); break;
+            case ResidentTaskIcon.Smelt:
+                c.Rect(4, 6, 16, 15, metal); c.Rect(7, 11, 10, 8, brown); c.Line(9, 17, 12, 12, gold, 3); c.Line(12, 12, 15, 17, gold, 3); break;
+            case ResidentTaskIcon.Power:
+                c.Line(14, 4, 8, 12, gold, 3); c.Line(8, 12, 16, 12, gold, 3); c.Line(16, 12, 10, 21, gold, 3); break;
+            case ResidentTaskIcon.Craft:
+                c.Rect(6, 6, 12, 12, metal); c.Rect(9, 9, 6, 6, brown);
+                c.Rect(10, 3, 4, 3, metal); c.Rect(10, 18, 4, 3, metal); c.Rect(3, 10, 3, 4, metal); c.Rect(18, 10, 3, 4, metal); break;
+            case ResidentTaskIcon.Ship:
+                c.Line(3, 15, 7, 19, brown, 3); c.Line(7, 19, 17, 19, brown, 3); c.Line(17, 19, 21, 15, brown, 3);
+                c.Line(11, 4, 11, 15, light, 2); for (var i = 0; i < 8; i++) c.Rect(13, 5 + i, Math.Max(1, i), 1, light);
+                c.Line(3, 22, 21, 22, blue, 2); break;
+            case ResidentTaskIcon.Plane:
+                c.Line(12, 3, 12, 21, metal, 3); c.Line(3, 13, 21, 13, metal, 3); c.Line(7, 20, 17, 20, metal, 2); break;
+            case ResidentTaskIcon.Crystal:
+                c.Line(12, 3, 4, 12, 0xD9AEFFFF, 3); c.Line(4, 12, 12, 21, 0xD9AEFFFF, 3);
+                c.Line(12, 21, 20, 12, 0xD9AEFFFF, 3); c.Line(20, 12, 12, 3, 0xD9AEFFFF, 3); c.Line(12, 6, 12, 18, light, 2); break;
+            case ResidentTaskIcon.Runic:
+                c.Line(12, 5, 12, 20, green, 3); c.Line(6, 9, 12, 14, green, 3); c.Line(18, 9, 12, 14, green, 3);
+                c.Line(5, 4, 9, 4, 0xD9AEFFFF, 2); c.Line(19, 19, 19, 23, 0xD9AEFFFF, 2); break;
+            case ResidentTaskIcon.Aether:
+                c.Line(5, 6, 18, 6, 0xD9AEFFFF, 3); c.Line(15, 3, 18, 6, 0xD9AEFFFF, 3);
+                c.Line(18, 18, 5, 18, blue, 3); c.Line(8, 21, 5, 18, blue, 3); c.Rect(10, 10, 4, 4, light); break;
+            case ResidentTaskIcon.Water:
+                for (var i = 0; i < 6; i++) c.Rect(12 - i, 4 + i * 2, i * 2 + 1, 3, blue);
+                c.Rect(6, 16, 13, 3, blue); c.Rect(8, 19, 9, 2, blue); c.Rect(9, 13, 2, 4, light); break;
+            case ResidentTaskIcon.Claim:
+                c.Line(6, 4, 6, 21, brown, 2); c.Rect(8, 4, 12, 8, green); c.Line(10, 8, 12, 10, light, 2); c.Line(12, 10, 17, 6, light, 2); break;
+            case ResidentTaskIcon.Hunt:
+                c.Line(6, 4, 11, 9, brown, 2); c.Line(11, 9, 11, 15, brown, 2); c.Line(11, 15, 6, 20, brown, 2); c.Line(6, 4, 6, 20, light);
+                c.Line(4, 12, 20, 12, gold, 2); c.Line(16, 8, 20, 12, gold, 2); c.Line(20, 12, 16, 16, gold, 2); break;
+            case ResidentTaskIcon.Fish:
+                c.Rect(6, 9, 11, 7, blue); c.Line(5, 12, 2, 9, blue, 2); c.Line(2, 9, 2, 16, blue, 2); c.Line(2, 16, 5, 12, blue, 2); c.Rect(14, 10, 2, 2, light);
+                c.Line(17, 4, 20, 4, brown, 2); c.Line(20, 4, 20, 19, light); c.Line(20, 19, 17, 19, light); break;
+            case ResidentTaskIcon.Message: case ResidentTaskIcon.Talk:
+                c.Rect(4, 6, 16, 11, light); c.Line(4, 6, 12, 12, blue, 2); c.Line(12, 12, 19, 6, blue, 2);
+                if (kind == ResidentTaskIcon.Talk) c.Rect(6, 17, 3, 4, light); break;
+            case ResidentTaskIcon.Pickup: case ResidentTaskIcon.Deliver: case ResidentTaskIcon.Trade:
+                c.Rect(4, 8, 12, 11, gold); c.Line(10, 8, 10, 18, brown, 2); c.Line(4, 11, 15, 11, brown);
+                var right = kind == ResidentTaskIcon.Deliver ? 16 : 20; var left = kind == ResidentTaskIcon.Deliver ? 20 : 16;
+                c.Line(left, 5, right, 5, blue, 2); c.Line(right, 5, right == 20 ? 17 : 19, 2, blue, 2); break;
+            case ResidentTaskIcon.Rest:
+                c.Rect(5, 4, 8, 15, blue); c.Rect(10, 3, 8, 12, 0x122938FF); c.Rect(17, 5, 3, 3, light); break;
+            case ResidentTaskIcon.Eat:
+                c.Rect(4, 9, 16, 9, gold); c.Line(7, 8, 16, 8, light, 2); c.Line(7, 12, 15, 12, light, 2); break;
+            case ResidentTaskIcon.Flee: case ResidentTaskIcon.March:
+                c.Line(6, 18, 16, 8, kind == ResidentTaskIcon.Flee ? gold : metal, 3); c.Rect(14, 5, 5, 6, metal); break;
+            default:
+                c.Line(4, 12, 20, 12, blue, 3); c.Line(13, 5, 20, 12, blue, 3); c.Line(20, 12, 13, 19, blue, 3); break;
+        }
+        icon = MakeBitmap(c, opaque: false); _activityIcons[kind] = icon; return icon;
+    }
+
     private void DrawActivityBadge(DrawingContext context, Resident resident, double x, double y, bool moving)
     {
-        if (_zoom < 5) return;
-        var kind = moving ? 0 : resident.Activity switch
-        {
-            ResidentActivity.Resting or ResidentActivity.Sick => 2, ResidentActivity.Eating or ResidentActivity.Hungry => 3,
-            ResidentActivity.Talking => 4, ResidentActivity.Studying => 5, ResidentActivity.Casting => 6,
-            ResidentActivity.Delivering => 7, _ => resident.Agent.Goal.Kind == AgentGoalKind.Explore ? 0 : 1
-        };
-        if (!_activityIcons.TryGetValue(kind, out var icon))
-        {
-            var c = new PixelCanvas(12, 12); const uint light = 0xF1E9D0FF, blue = 0x7FC8D5FF;
-            switch (kind)
-            {
-                case 0: c.Line(2, 6, 10, 6, blue, 2); c.Line(6, 2, 10, 6, blue, 2); c.Line(10, 6, 6, 10, blue, 2); break;
-                case 1: c.Line(3, 10, 7, 3, light, 2); c.Rect(3, 2, 7, 3, 0xB7CCCDFF); break;
-                case 2: c.Rect(3, 2, 6, 8, blue); c.Rect(5, 1, 6, 6, 0x17313FFF); c.Rect(9, 1, 2, 2, light); break;
-                case 3: c.Rect(3, 3, 7, 6, 0xD6AB57FF); c.Line(4, 4, 8, 4, light); break;
-                case 4: c.Rect(1, 2, 10, 7, light); c.Rect(3, 9, 2, 2, light); c.Line(3, 5, 8, 5, 0x537C91FF); break;
-                case 5: c.Rect(1, 2, 10, 8, light); c.Line(6, 2, 6, 10, 0x527BADFF); break;
-                case 6: c.Line(6, 1, 6, 10, 0xC7A0EAFF, 2); c.Line(1, 6, 10, 6, 0xC7A0EAFF, 2); c.Rect(5, 5, 3, 3, light); break;
-                case 7: c.Rect(2, 3, 8, 7, 0xD5AF67FF); c.Line(6, 3, 6, 10, light); c.Line(2, 5, 9, 5, light); break;
-            }
-            icon = MakeBitmap(c, opaque: false); _activityIcons[kind] = icon;
-        }
-        context.DrawImage(icon, new Rect(x, y, 1.8, 1.8));
+        if (_zoom < 5 || Engine is null) return;
+        var kind = Engine.GetResidentTaskIcon(resident, _activityBuildings.GetValueOrDefault(resident.Agent.Goal.TargetEntityId));
+        context.DrawImage(ActivityPreview(kind), new Rect(x, y, 2.8, 2.8));
+        if (moving) context.DrawLine(new Pen(MessageBrush, .22), new Point(x, y + 3.15), new Point(x + 2.8, y + 3.15));
     }
 
     private WriteableBitmap BuildingIcon(RaceKind race, BuildingKind kind)

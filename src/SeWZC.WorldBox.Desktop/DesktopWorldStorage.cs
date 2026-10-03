@@ -9,7 +9,7 @@ namespace SeWZC.WorldBox.Desktop;
 
 internal sealed class DesktopWorldStorage : IWorldStorage
 {
-    private const int MaxFileBytes = 32 * 1024 * 1024;
+    private const int MaxFileBytes = 64 * 1024 * 1024;
     private static readonly UTF8Encoding Utf8 = new(false, true);
     private static readonly FilePickerFileType WorldFileType = new("WorldBox 世界存档")
     {
@@ -102,18 +102,18 @@ internal sealed class DesktopWorldStorage : IWorldStorage
 
     private static void CheckSize(string json)
     {
-        if (Utf8.GetByteCount(json) > MaxFileBytes) throw new IOException("存档不能超过 32 MiB。");
+        if (Utf8.GetByteCount(json) > MaxFileBytes) throw new IOException("存档不能超过 64 MiB。");
     }
 
     private static async Task<string> ReadUtf8Async(Stream stream)
     {
-        if (stream.CanSeek && stream.Length > MaxFileBytes) throw new IOException("存档不能超过 32 MiB。");
+        if (stream.CanSeek && stream.Length > MaxFileBytes) throw new IOException("存档不能超过 64 MiB。");
         using var buffer = new MemoryStream();
         var chunk = new byte[81920];
         int count;
         while ((count = await stream.ReadAsync(chunk)) != 0)
         {
-            if (buffer.Length + count > MaxFileBytes) throw new IOException("存档不能超过 32 MiB。");
+            if (buffer.Length + count > MaxFileBytes) throw new IOException("存档不能超过 64 MiB。");
             buffer.Write(chunk, 0, count);
         }
         var text = Utf8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);

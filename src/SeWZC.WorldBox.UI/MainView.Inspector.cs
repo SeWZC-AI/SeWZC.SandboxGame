@@ -193,6 +193,15 @@ public sealed partial class MainView
         names.IsCheckedChanged += (_, _) => { _map.ShowBuildingNames = names.IsChecked == true; _map.InvalidateVisual(); }; panel.Children.Add(names);
         var legend = FoldSection(panel, "图例与资源说明", "map-legend");
         legend.Children.Add(Paragraph("资源图标：黑色为煤，蓝色为石油，紫色为稀土。动植物在 3 倍近景显示，同格可以有多种动物；标记随数量或植被覆盖缩放，占地格宽度最多 35%。植物对应现有可采储量。"));
+        legend.Children.Add(Paragraph("工作标记在 5 倍近景显示。图标表示实际任务，图标下的短线表示正在移动；查看角色可见具体设施、材料与后续步骤。"));
+        var tasks = new WrapPanel { Orientation = Orientation.Horizontal };
+        foreach (var icon in Enum.GetValues<ResidentTaskIcon>())
+        {
+            var item = new StackPanel { Margin = new Thickness(5), Spacing = 2 };
+            item.Children.Add(new Image { Source = _map.ActivityPreview(icon), Width = 28, Height = 28 });
+            item.Children.Add(Text(WorldEngine.TaskIconName(icon), 11)); tasks.Children.Add(item);
+        }
+        legend.Children.Add(tasks);
         var races = new WrapPanel { Orientation = Orientation.Horizontal };
         foreach (var race in Enum.GetValues<RaceKind>())
         {
@@ -201,7 +210,7 @@ public sealed partial class MainView
             item.Children.Add(Text(RaceName(race), 11)); races.Children.Add(item);
         }
         legend.Children.Add(races);
-        legend.Children.Add(Paragraph("斧头：伐木工   矿镐与头灯：矿工   草帽与锄头：农民\n铁盔与盾：战士   尖帽与法杖：法师   书本：学者\n邮包：信使   背包与货袋：商人   金色绶带：代表\n动作标记：箭头为行走或勘察，锤子为工作，月亮为休息，面包为进食，对话框为交流，书本为研读，星芒为施法，货箱为运输。"));
+        legend.Children.Add(Paragraph("斧头：伐木工   矿镐与头灯：矿工   草帽与锄头：农民\n铁盔与盾：战士   尖帽与法杖：法师   书本：学者\n邮包：信使   背包与货袋：商人   金色绶带：代表"));
         var animals = new WrapPanel { Orientation = Orientation.Horizontal };
         foreach (var kind in Enum.GetValues<WildlifeKind>().Where(k => k != WildlifeKind.None))
         {
@@ -258,6 +267,9 @@ public sealed partial class MainView
         panel.Children.Add(Named(Button("编辑此地资源与道路", () => ShowTileEditor(point.X, point.Y)), "tile-edit"));
         LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.X == point.X && b.Y == point.Y), b => b.Id.ToString(),
             b => BuildingLabel(b) + "\n" + BuildingTask(b), OpenBuilding);
+        panel.Children.Add(Named(LiveText(() => $"肥沃度 {Tile().Fertility:0.0} / 100\n天然供水 {Tile().NaturalWaterYield:0.0000} / 日\n今日可取水 {_engine.AvailableWater(point.X, point.Y):0.0000}\n占领聚落：{TownName(Tile().ClaimedSettlementId)}"), "tile-water"));
+        var effects = FoldSection(panel, "地块加成与减益", "tile-effects");
+        effects.Children.Add(LiveText(() => EffectLabel(_engine.GetTileEffects(point.X, point.Y))));
         var local = FoldSection(panel, "归属与周围环境", "tile-context");
         local.Children.Add(LiveText(() => $"{NationName(Tile().NationId)}\n{(Tile().RoadLevel > 0 ? $"道路 {Tile().RoadLevel} 级\n" : "")}步行耗时系数 {_engine.GetTerrainMoveCost(point.X, point.Y):0.##}"));
         LiveRows(local, () => _engine.State.Conflicts.Where(c => c.SettlementId == Tile().SettlementId || Math.Abs(c.X - point.X) + Math.Abs(c.Y - point.Y) <= 3), c => c.Id.ToString(),
@@ -320,7 +332,7 @@ public sealed partial class MainView
     private static string ImportanceName(EventImportance value) => value switch { EventImportance.Routine => "普通", EventImportance.Notable => "重要日常", EventImportance.Major => "重大", _ => "历史转折" };
     private static string GoalName(AgentGoalKind value) => value switch
     {
-        AgentGoalKind.Explore => "实地探索", AgentGoalKind.Idle => "重新选择任务", AgentGoalKind.Eat => "寻找食物", AgentGoalKind.Gather => "采集资源", AgentGoalKind.Work => "生产劳动", AgentGoalKind.Rest => "休息恢复", AgentGoalKind.Flee => "逃离危险", AgentGoalKind.Socialize => "交流消息", AgentGoalKind.DeliverMessage => "传递消息", AgentGoalKind.Trade => "运输货物", AgentGoalKind.Petition => "表达诉求", AgentGoalKind.Study => "学习研究", AgentGoalKind.TrainMagic => "魔法训练", AgentGoalKind.March => "执行军令", AgentGoalKind.Migrate => "迁往新家园", _ => "返回家园"
+        AgentGoalKind.ClaimLand => "占领地块", AgentGoalKind.FetchWater => "打水或寻找水源", AgentGoalKind.Hunt => "狩猎", AgentGoalKind.Fish => "捕鱼", AgentGoalKind.Explore => "实地探索", AgentGoalKind.Idle => "重新选择任务", AgentGoalKind.Eat => "寻找食物", AgentGoalKind.Gather => "采集资源", AgentGoalKind.Work => "生产劳动", AgentGoalKind.Rest => "休息恢复", AgentGoalKind.Flee => "逃离危险", AgentGoalKind.Socialize => "交流消息", AgentGoalKind.DeliverMessage => "传递消息", AgentGoalKind.Trade => "运输货物", AgentGoalKind.Petition => "表达诉求", AgentGoalKind.Study => "学习研究", AgentGoalKind.TrainMagic => "魔法训练", AgentGoalKind.March => "执行军令", AgentGoalKind.Migrate => "迁往新家园", _ => "返回家园"
     };
     private static string EventKindName(WorldEventKind value) => value switch
     {

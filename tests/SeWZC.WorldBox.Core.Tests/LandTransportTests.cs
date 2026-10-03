@@ -25,7 +25,7 @@ internal static class LandTransportTests
         foreach (var tile in engine.State.Tiles)
         { tile.Terrain = TerrainType.Grass; tile.Fertility = 100; tile.Deposit = null; tile.DepositAmount = 0; }
         engine.SpawnResidents(8, 16, RaceKind.Human, 3);
-        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Disease = false,
+        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
             Construction = false, Research = false, Expansion = false, Trade = false, Wars = false,
             Alliances = false, Peace = false, Migration = false, Secession = false, ResourceRegeneration = false }, false, false);
         var town = engine.State.Settlements[0];

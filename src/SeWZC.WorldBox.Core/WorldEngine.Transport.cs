@@ -3,7 +3,7 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     private static readonly ResourceKind[] MineralAndVehicleResources =
-        [ResourceKind.Coal, ResourceKind.Oil, ResourceKind.RareEarth, ResourceKind.Boats, ResourceKind.Aircraft];
+        [ResourceKind.Coal, ResourceKind.Oil, ResourceKind.RareEarth, ResourceKind.Boats, ResourceKind.Aircraft, ResourceKind.Water];
 
     /// <summary>Vehicles are manufactured, carried to the warehouse and borrowed there by actual travellers.</summary>
     private void PrepareJourneyTransport(Resident person, Settlement home)

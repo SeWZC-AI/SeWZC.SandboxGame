@@ -24,6 +24,7 @@
 | [0016](0016-development-and-refresh.md) | 发展路线、物资预算与按变化刷新 | 采用 |
 | [0017](0017-readable-map-and-communities.md) | 可辨识地图、紧凑详情与多物种共存 | 采用 |
 | [0018](0018-five-speed-work-budget.md) | 分区生态、增量统计与可响应的保存 | 采用 |
+| [0019](0019-local-claims-water-and-upgrades.md) | 实地占地、独立供水与可施工升级 | 采用 |
 
 ## 何时新增或替代
 

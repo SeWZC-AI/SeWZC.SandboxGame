@@ -38,8 +38,8 @@ internal static class EcologyAndConflictTests
     {
         var engine = WorldEngine.Create(82, 32, 32, false);
         foreach (var tile in engine.State.Tiles)
-        { tile.Terrain = TerrainType.Grass; tile.Fertility = 100; tile.ResourceAmount = 100; tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default; }
-        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Disease = false, Construction = false,
+        { tile.Terrain = TerrainType.Grass; tile.Fertility = 100; tile.ResourceAmount = 100; tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default; tile.Plants = new PlantCoverage { Grass = .6 }; tile.NaturalWaterYield = .001; }
+        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false, Construction = false,
             Research = false, Expansion = false, Trade = false, Wars = false, Alliances = false, Migration = false, Secession = false }, false, false);
         return engine;
     }
@@ -68,24 +68,24 @@ internal static class EcologyAndConflictTests
         var engine = Empty(); var source = engine.State.Tiles[16 * 32 + 16];
         source.Wildlife = WildlifeKind.Rabbit; source.WildlifePopulation = 1;
         engine.Step(12);
-        Require(source.WildlifePopulation > 1 && engine.State.Tiles[16 * 32 + 17].WildlifePopulation > 0, "Animals did not reproduce and migrate");
+        Require(engine.State.Tiles.Sum(t => t.AnimalPopulation(WildlifeKind.Rabbit)) > 1 && engine.State.Tiles[16 * 32 + 17].WildlifePopulation > 0, "Animals did not reproduce and migrate");
         var restored = WorldEngine.ImportJson(engine.ExportJson()); engine.Step(36); restored.Step(36);
         Require(engine.ExportJson() == restored.ExportJson(), "Ecology diverged after resume");
         foreach (var tile in engine.State.Tiles) { tile.Wildlife = WildlifeKind.Rabbit; tile.WildlifePopulation = 1; }
-        engine.Step(900);
+        engine.Step(3600);
         Require(source.WildlifePopulation > 11.5 && source.WildlifePopulation <= WorldEngine.WildlifeCapacity(source, source.Wildlife) + .001,
-            "Logistic growth did not approach habitat capacity");
+            $"Logistic growth did not approach habitat capacity: source {source.WildlifePopulation}, capacity {WorldEngine.WildlifeCapacity(source, source.Wildlife)}, mean {engine.State.Tiles.Average(t => t.AnimalPopulation(WildlifeKind.Rabbit))}");
     }
 
     private static void Coexistence()
     {
         var engine = Empty(); var source = engine.State.Tiles[16 * 32 + 16]; var target = engine.State.Tiles[16 * 32 + 17];
-        source.Terrain = target.Terrain = TerrainType.Forest;
+        source.Terrain = target.Terrain = TerrainType.Forest; source.Plants = target.Plants = new PlantCoverage { Trees = .7, Shrubs = .3 };
         source.Wildlife = WildlifeKind.Deer; source.WildlifePopulation = 2;
         source.OtherWildlife = new WildlifePopulations { Boar = 1, Wolf = .5 };
         target.Wildlife = WildlifeKind.Boar; target.WildlifePopulation = 1;
         engine.Step(12);
-        Require(source.AnimalPopulation(WildlifeKind.Deer) > 2 && source.AnimalPopulation(WildlifeKind.Boar) > 1, "Coexisting species failed to grow");
+        Require(engine.State.Tiles.Sum(t => t.AnimalPopulation(WildlifeKind.Deer)) > 2 && engine.State.Tiles.Sum(t => t.AnimalPopulation(WildlifeKind.Boar)) > 2, "Coexisting species failed to grow");
         Require(target.AnimalPopulation(WildlifeKind.Deer) > 0 && target.AnimalPopulation(WildlifeKind.Boar) > 0, "Migration displaced the other species");
         var summary = engine.GetTileProductionSummary(16, 16);
         Require(summary.Contains("鹿") && summary.Contains("野猪") && summary.Contains("乔木") && summary.Contains("灌木"), "Detailed ecology omits existing resources");

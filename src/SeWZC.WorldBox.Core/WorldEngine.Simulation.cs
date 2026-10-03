@@ -13,6 +13,7 @@ public sealed partial class WorldEngine
             Reindex();
             UpdateDisasters();
             TickWildlife();
+            TickPlants();
             UpdateResidents();
             UpdateAgentNeedsAndActions();
             UpdateLocalCommunication();
@@ -52,8 +53,8 @@ public sealed partial class WorldEngine
             if (person.Profession == Profession.Child && person.Age >= 14) person.Profession = AssignProfession();
             var maxAge = Lifespan(person.Race);
             if (State.Rules.Aging && person.Age > maxAge) DamageResident(person, .5, DeathCause.OldAge);
-            if (State.Rules.Hunger && person.Hunger > 60) DamageResident(person, .55, DeathCause.Starvation);
-            else if (person.Health > 0 && person.SicknessTicks == 0 && person.Age <= maxAge) person.Health = Math.Min(100, person.Health + 0.15);
+            if (State.Rules.Hunger && person.Hunger > 80) DamageResident(person, .30, DeathCause.Starvation);
+            else if (person.Health > 0 && person.SicknessTicks == 0 && person.Age <= maxAge && (!State.Rules.Thirst || person.Thirst <= 95)) person.Health = Math.Min(100, person.Health + 0.15);
             var tile = State.Tiles[Index(person.X, person.Y)];
             if (tile.FireTicks > 0) DamageResident(person, 4, DeathCause.Fire);
             if (person.SicknessTicks > 0) { person.SicknessTicks--; if (State.Rules.Disease) DamageResident(person, .5, DeathCause.Disease); }
@@ -110,7 +111,7 @@ public sealed partial class WorldEngine
         if (location < 0) return;
         var x = location % State.Width; var y = location / State.Width;
         var town = new Settlement { Id = NewId(), Name = NewPlaceName("镇"), X = x, Y = y,
-            NationId = origin.NationId, CultureId = origin.CultureId, Resources = new ResourceStock() };
+            NationId = origin.NationId, CultureId = origin.CultureId, FoundationPending = true, Resources = new ResourceStock() };
         origin.Resources.Food -= 80; origin.Resources.Wood -= 20; origin.Resources.Stone -= 5;
         State.Settlements.Add(town); _settlements[town.Id] = town; _citizens[town.Id] = [];
         foreach (var pioneer in pioneers)
@@ -163,6 +164,6 @@ public sealed partial class WorldEngine
     private void RefreshTerritoryClaims()
     {
         foreach (var town in State.Settlements)
-            ClaimTerritory(town, Math.Min(17, 6 + (_citizens.GetValueOrDefault(town.Id)?.Count ?? 0) / 15));
+            town.MaxClaimRadius = Math.Max(town.MaxClaimRadius, Math.Min(17, 6 + (_citizens.GetValueOrDefault(town.Id)?.Count ?? 0) / 15));
     }
 }

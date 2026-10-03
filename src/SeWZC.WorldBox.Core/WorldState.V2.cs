@@ -3,14 +3,14 @@ using System.Text.Json.Serialization;
 namespace SeWZC.WorldBox.Core;
 
 public enum EventImportance { Routine, Notable, Major, Historic }
-public enum AgentGoalKind { Idle, Eat, Gather, Work, Rest, Flee, Socialize, DeliverMessage, Trade, Petition, Study, TrainMagic, March, ReturnHome, Migrate, Explore }
-public enum AgentFactKind { FoodSupply, Danger, SettlementLocation, ReliefRequest, Policy, WarOrder, PeaceOrder, Culture, Research, Personal, TradeExchange, DiplomaticNotice, WarReport }
+public enum AgentGoalKind { Idle, Eat, Gather, Work, Rest, Flee, Socialize, DeliverMessage, Trade, Petition, Study, TrainMagic, March, ReturnHome, Migrate, Explore, ClaimLand, FetchWater, Hunt, Fish }
+public enum AgentFactKind { FoodSupply, Danger, SettlementLocation, ReliefRequest, Policy, WarOrder, PeaceOrder, Culture, Research, Personal, TradeExchange, DiplomaticNotice, WarReport, WaterSource }
 public enum PersonalExperienceKind { Neutral, Hardship, Achievement, Kindness, Betrayal, Learning }
 
 public sealed partial class WorldState
 {
     [JsonRequired]
-    public int SimulationVersion { get; set; } = 8;
+    public int SimulationVersion { get; set; } = 9;
     public SocietyState Society { get; set; } = new();
     public List<PendingMessage> PendingMessages { get; set; } = [];
     public List<Resident> ArchivedResidents { get; set; } = [];
@@ -208,6 +208,7 @@ public sealed class ResidentEdit
     public double? Age { get; set; }
     public double? Health { get; set; }
     public double? Hunger { get; set; }
+    public double? Thirst { get; set; }
     public string? Trait { get; set; }
     public double? Mana { get; set; }
     public double? MagicTalent { get; set; }

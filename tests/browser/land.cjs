@@ -36,7 +36,7 @@ fs.mkdirSync(output, { recursive: true });
                 worker.Agent.Goal = { Kind: 0, TargetX: worker.X, TargetY: worker.Y, Reason: '等待附近的实际施工' };
                 worker.Agent.NextThinkTick = fixture.Tick;
                 fixture.Armies = [];
-                Object.assign(fixture.Rules, { Births: false, Aging: false, Hunger: false, Disease: false, Construction: false,
+                Object.assign(fixture.Rules, { Births: false, Aging: false, Hunger: false, Thirst: false, Disease: false, Construction: false,
                     Research: false, Expansion: false, Wars: false, Alliances: false, Migration: false, Secession: false });
                 fixture.NaturalDisasters = false; fixture.Society.MagicEnabled = false;
                 Object.assign(town.Resources, { Wood: 100, Stone: 100 });
@@ -82,9 +82,24 @@ fs.mkdirSync(output, { recursive: true });
                 world = await ui.save(); project = world.Society.Buildings.find(b => b.Id === project.Id);
                 assert(project.ConstructionProgress === project.ConstructionRequired, 'Worker failed on-site bridge construction');
                 assert.equal(world.Tiles[bridge.y * world.Width + bridge.x].Improvement, 3);
+                if ((await ui.snapshot()).inspectorOpen) await ui.click('inspector-close');
+                await ui.clickTile(bridge.x, bridge.y); await ui.click('selection-view');
+                // Repeated map taps intentionally cycle between a building and its ground.
+                if ((await ui.snapshot()).inspector === 'tile') await ui.click(`building-row-${project.Id}`, inspector);
+                await ui.click('building-upgrade', inspector); await ui.click('upgrade-apply', modal);
+                world = await ui.save(); project = world.Society.Buildings.find(b => b.Id === project.Id);
+                assert.equal(project.Level, 1); assert(project.UpgradeRequired > project.UpgradeProgress, 'Upgrade bypassed labor');
+                const upgradeTick = world.Tick;
+                await ui.paused(false); await ui.waitFor(s => s.worldTick >= upgradeTick + 100, 'bridge upgrade labor', 30000);
+                await ui.paused(); world = await ui.save(); project = world.Society.Buildings.find(b => b.Id === project.Id);
+                assert.equal(project.Level, 2); assert.equal(world.Tiles[bridge.y * world.Width + bridge.x].BridgeLevel, 2);
+                await ui.click('building-reorient', inspector); await ui.click('upgrade-gift', modal);
+                world = await ui.save(); project = world.Society.Buildings.find(b => b.Id === project.Id);
+                assert.equal(project.Direction, 1); assert.equal(world.Tiles[bridge.y * world.Width + bridge.x].BridgeDirection, 1);
+                assert.equal(project.Level, 2, 'Reorientation also changed the level');
                 await page.screenshot({ path: path.join(output, `land-${label}.png`) });
                 await errors.assertHealthy(`selection and land ${label}`);
-                console.log(`PASS land ${label}: quiet selection, explicit details, compact panel, resident-built bridge and real cost`);
+                console.log(`PASS land ${label}: selection, compact panel, paid bridge construction and upgrades, direction change`);
             } catch (error) {
                 await page.screenshot({ path: path.join(output, `land-${label}-failure.png`) });
                 fs.writeFileSync(path.join(output, `land-${label}-failure.json`), JSON.stringify(await ui.snapshot(), null, 2));

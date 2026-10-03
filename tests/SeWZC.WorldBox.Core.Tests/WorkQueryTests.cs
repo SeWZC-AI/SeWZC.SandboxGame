@@ -14,7 +14,7 @@ internal static class WorkQueryTests
         foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 80; }
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Disease = false, Construction = false,
+            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false, Construction = false,
             Research = false, Expansion = false, Trade = false, Wars = false, Alliances = false,
             Peace = false, Migration = false, Secession = false
         }, false, false);

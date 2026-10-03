@@ -117,13 +117,14 @@ public sealed partial class MainView
             LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.SettlementId == town.Id).OrderBy(b => b.Id), b => b.Id.ToString(), b => $"{WorldEngine.BuildingName(b.Kind)} #{b.Id}\n{b.X},{b.Y}\n{(b.IsCompleted ? "已建成" : $"施工 {b.ConstructionProgress:F1}/{b.ConstructionRequired:F0}")}\n健康 {b.Health:F0}\n{(b.IsCompleted ? "" : _engine.GetCompletionEstimate(b.Observation, b.ConstructionProgress, b.ConstructionRequired).Explanation + "\n")}工作岗位 {b.Workers.Count}/{b.WorkSlots}\n最近工作 {DateLabel(b.LastWorkedTick)}", OpenBuilding);
             panel.Children.Add(Named(Button("查看设施成本与建造", () => ShowBuildingEditor(town.Id)), "building-open"));
         }
+        panel.Children.Add(Named(LiveText(() => $"可占领范围上限：{town.MaxClaimRadius} 格\n" + (town.FoundationPending ? "拓荒队尚未完成到场登记" : "相邻空地须由居民到场驻留登记")), "town-claim-limit"));
         panel.Children.Add(Text("进阶生产\n配方与阻碍", 12, Mint));
         LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.SettlementId == town.Id && AdvancementRules.For(b.Kind) is not null).OrderBy(b => b.Id),
             b => b.Id.ToString(), b => WorldEngine.BuildingName(b.Kind) + "\n" + WorldEngine.ProductionRecipe(b.Kind) + "\n" + _engine.GetProductionStatus(b.Id), OpenBuilding);
         panel.Children.Add(Text("实体运输与传信", 12, Mint));
         LiveRows(panel, () => _engine.State.Residents.Where(r => (r.SettlementId == town.Id || r.Agent.DestinationSettlementId == town.Id) && (r.Agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage || r.Profession is Profession.Trader or Profession.Messenger)).OrderBy(r => r.Id).Take(30), r => r.Id.ToString(), r => $"{r.Name}\n{WorldEngine.TravelModeName(r.TravelMode)}\n{GoalName(r.Agent.Goal.Kind)}\n{r.X},{r.Y} → {TownName(r.Agent.DestinationSettlementId)}\n携带：{StockLabel(r.Inventory)}\n消息 {r.Agent.CarriedMessages.Count} 条\n{r.Agent.Goal.Reason}", r => OpenResident(r.Id));
         panel.Children.Add(Text("通信覆盖与连通\n当前实际状态", 12, Mint));
-        panel.Children.Add(Paragraph("同国在运作的信号塔通过视线连通；聚落接入距离 12 格，塔间 24 格，山脉阻挡。设施需要工作人员、足够健康且未着火。道路与驿站改变实际信使行程。"));
+        panel.Children.Add(Paragraph("同国在运作的信号塔通过视线连通；1 级接入 12 格、塔间 24 格，每级增加 4／8 格；塔间取较低等级。山脉阻挡。设施需要工作人员、足够健康且未着火。道路与驿站改变实际信使行程。"));
         LiveRows(panel, () => _engine.State.Settlements.Where(t => t.NationId == town.NationId && t.Id != town.Id).OrderBy(t => t.Id), t => t.Id.ToString(), t => _engine.CanRelayInformation(town.Id, t.Id, out var ticks) ? $"{town.Name} ↔ {t.Name}\n信号连通\n预计 {ticks} 日" : $"{town.Name} ↔ {t.Name}\n信号未连通\n依赖居民实际携带消息", t => _map.FocusTile(t.X, t.Y));
         panel.Children.Add(LiveText(() => $"等待投递消息 {_engine.State.PendingMessages.Count} 条\n聚落公开知识 {town.PublicKnowledge.Count} 条\n已递送报告 {_engine.State.Society.Reports.Count(r => r.RecipientSettlementId == town.Id)} 条"));
         if (communications)
@@ -143,15 +144,23 @@ public sealed partial class MainView
         var town = _engine.State.Settlements.FirstOrDefault(t => t.Id == townId); if (town is null) return;
         var panel = ModalPanel("建造设施", "普通设施位于聚落 8 格内；桥梁、山路可在 24 格内逐段施工，船坞码头须邻水。材料从聚落扣除，居民到场施工。");
         var type = EnumField(panel, "设施类型", BuildingKind.Farm, WorldEngine.BuildingName, "building-kind");
+        var direction = EnumField(panel, "桥梁方向", BridgeDirection.Horizontal, WorldEngine.BridgeDirectionName, "building-bridge-direction");
+        var level = ObjectField(panel, "桥梁等级", new[] { (1, "1 级：离岸 2 格"), (2, "2 级：离岸 4 格"), (3, "3 级：离岸 6 格") }, 1, "building-bridge-level");
         var cost = Paragraph("材料：" + StockLabel(WorldEngine.GetBuildingCost(BuildingKind.Farm))); panel.Children.Add(cost);
-        type.SelectionChanged += (_, _) => { if (type.SelectedItem is BuildingKind kind) cost.Text = "材料：" + StockLabel(WorldEngine.GetBuildingCost(kind)) + "\n" + (AdvancementRules.For(kind) is { } a ? "运营需要：" + WorldEngine.ResearchName(a.Research) + "及其前置\n" : "") + WorldEngine.ProductionRecipe(kind); };
+        void RefreshCost()
+        {
+            if (type.SelectedItem is BuildingKind kind)
+                cost.Text = "材料：" + StockLabel(WorldEngine.FacilityCost(kind, kind == BuildingKind.Bridge ? Integer(level) : 1)) + "\n" + (AdvancementRules.For(kind) is { } a ? "运营需要：" + WorldEngine.ResearchName(a.Research) + "及其前置\n" : "") + WorldEngine.ProductionRecipe(kind);
+        }
+        type.SelectionChanged += (_, _) => RefreshCost();
+        level.SelectionChanged += (_, _) => RefreshCost();
         panel.Children.Add(Paragraph($"{town.Name}库存：{StockLabel(town.Resources)}\n驿站需要驿路运输；无线信号塔需要电气化与信号网络；奥术研习所需要奥术基础及开放魔法发展。"));
         var x = Field(panel, "目标 X", _selectedTile?.X ?? town.X + 1, "building-x"); var y = Field(panel, "目标 Y", _selectedTile?.Y ?? town.Y, "building-y");
         var gift = Named(new CheckBox { Content = Text("直接赐予完工设施（运营知识与原料仍需具备）", 12), IsChecked = false }, "building-gift");
         panel.Children.Add(gift);
         panel.Children.Add(Named(Button("建造设施", () =>
         {
-            try { var xx = Integer(x); var yy = Integer(y); RunEdit(() => { if (gift.IsChecked == true) _engine.GrantFacility(townId, (BuildingKind)type.SelectedItem!, xx, yy); else _engine.BuildFacility(townId, (BuildingKind)type.SelectedItem!, xx, yy); CloseModal(); }, gift.IsChecked == true ? "设施已赐予；实际运营仍需知识、材料与人员" : "设施已立项，继续模拟后居民会施工"); }
+            try { var xx = Integer(x); var yy = Integer(y); RunEdit(() => { if (gift.IsChecked == true) _engine.GrantFacility(townId, (BuildingKind)type.SelectedItem!, xx, yy, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? (BridgeDirection?)direction.SelectedItem : null, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? Integer(level) : 1); else _engine.BuildFacility(townId, (BuildingKind)type.SelectedItem!, xx, yy, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? (BridgeDirection?)direction.SelectedItem : null, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? Integer(level) : 1); CloseModal(); }, gift.IsChecked == true ? "设施已赐予；实际运营仍需知识、材料与人员" : "设施已立项，继续模拟后居民会施工"); }
             catch (ArgumentException ex) { SetStatus(FriendlyError(ex)); }
         }), "building-apply"));
         OpenModal(panel);

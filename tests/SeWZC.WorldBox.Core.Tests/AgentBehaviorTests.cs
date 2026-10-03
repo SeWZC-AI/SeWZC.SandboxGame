@@ -131,9 +131,10 @@ internal static class AgentBehaviorTests
         void Choose(int x, int y, (int X, int Y, byte Fertility)[] resources, AgentGoalKind kind, int targetX, int targetY)
         {
             var engine = Flat();
+            engine.State.Rules.Hunger = engine.State.Rules.Thirst = false;
             engine.SpawnResidents(10, 10, RaceKind.Human, 1);
             engine.State.Society.Buildings.Clear();
-            foreach (var tile in engine.State.Tiles) tile.Fertility = 0;
+            foreach (var tile in engine.State.Tiles) { tile.Fertility = 0; tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default; }
             foreach (var site in resources) engine.State.Tiles[site.Y * engine.State.Width + site.X].Fertility = site.Fertility;
             var person = engine.State.Residents.Single();
             person.Profession = Profession.Farmer; person.Age = 60; person.Inventory.Food = 1.2;
@@ -143,7 +144,7 @@ internal static class AgentBehaviorTests
             person.Agent.Fatigue = person.Agent.SocialNeed = 0;
             engine.Tick();
             Require(person.Agent.Goal.Kind == kind && person.Agent.Goal.TargetX == targetX && person.Agent.Goal.TargetY == targetY,
-                "Resource choice changed a score tie, map edge or visible-circle boundary.");
+                $"Resource choice changed: {person.Agent.Goal.Kind} at {person.Agent.Goal.TargetX},{person.Agent.Goal.TargetY}; expected {kind} at {targetX},{targetY}.");
         }
         // Center score 4 equals a distance-four yield-1 site: original row order selects the northern tile.
         Choose(20, 20, [(20, 20, 50), (20, 16, 100)], AgentGoalKind.Gather, 20, 16);
@@ -288,7 +289,7 @@ internal static class AgentBehaviorTests
     private static void ReusableLocalDetours()
     {
         var engine = Flat(); engine.SpawnResidents(10, 10, RaceKind.Human, 3);
-        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Disease = false,
+        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
             Construction = false, Research = false, Expansion = false, Wars = false, Migration = false }, false, false);
         HoldResidents(engine);
         var travelers = engine.State.Residents.Take(2).ToArray();
@@ -324,7 +325,7 @@ internal static class AgentBehaviorTests
     {
         var engine = WorldEngine.Create(223, 64, 64, false);
         engine.State.NaturalDisasters = false;
-        foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 80; }
+        foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 80; tile.ResourceAmount = 100; }
         return engine;
     }
 

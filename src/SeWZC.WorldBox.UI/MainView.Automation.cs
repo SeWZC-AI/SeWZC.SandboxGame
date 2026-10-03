@@ -63,7 +63,7 @@ public sealed partial class MainView
             : null;
         var snapshot = new UiAutomationSnapshot
         {
-            Ready = _ready, Paused = _paused, Saving = _saving, SaveCaptureActive = _saveCapture is not null, Speed = _speed, ActiveTool = _map.ActiveTool,
+            Ready = _ready, Paused = _paused, Saving = _saving, SaveCaptureActive = _saveCapture is not null, EditCaptureActive = _prepareEditTask is not null, Speed = _speed, ActiveTool = _map.ActiveTool,
             RenderedWildlifeCount = _map.RenderedWildlifeCount, RenderedEffectCount = _map.RenderedEffectCount, RenderedEffectTime = _map.RenderedEffectTime, RenderedRouteSegmentCount = _map.RenderedRouteSegmentCount,
             RenderedPlantCount = _map.RenderedPlantCount, RenderedBuildingLabelCount = _map.RenderedBuildingLabelCount,
             WorldTick = _engine.State.Tick, SelectedResidentPoint = residentPoint,
@@ -100,6 +100,7 @@ internal sealed class UiAutomationSnapshot
     public bool Paused { get; init; }
     public bool Saving { get; init; }
     public bool SaveCaptureActive { get; init; }
+    public bool EditCaptureActive { get; init; }
     public long WorldTick { get; init; }
     public UiAutomationPoint? SelectedResidentPoint { get; init; }
     public int Speed { get; init; }

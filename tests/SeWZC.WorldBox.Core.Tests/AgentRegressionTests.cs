@@ -246,7 +246,7 @@ internal static class AgentRegressionTests
     {
         var engine = WorldEngine.Create(223, 64, 64, false);
         foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 0; }
-        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Disease = false,
+        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
             Construction = false, Research = false, Expansion = false, Trade = false, Wars = false,
             Alliances = false, Peace = false, Migration = false, Secession = false }, false, false);
         return engine;
