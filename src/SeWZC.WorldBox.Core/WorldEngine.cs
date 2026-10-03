@@ -35,6 +35,7 @@ public sealed partial class WorldEngine
         if (state.RandomState == 0) state.RandomState = 1;
         var engine = new WorldEngine(state);
         engine.GenerateTerrain();
+        engine.SeedWildlife();
         if (demo)
         {
             for (var race = 0; race < 4; race++)
@@ -109,7 +110,10 @@ public sealed partial class WorldEngine
         foreach (var resident in State.Residents.Where(r => r.Health <= 0).ToArray())
         {
             resident.Health = 0;
-            RecordLife(resident, "生命结束，留下的经历仍保存在人物档案中。", importance: EventImportance.Major);
+            if (resident.DeathCause == DeathCause.None) { resident.DeathCause = DeathCause.PlayerIntervention; resident.DeathTick = State.Tick; }
+            var death = AddEvent(WorldEventKind.Death, $"{resident.Name}逝世：{DeathCauseName(resident.DeathCause)}，终年 {resident.Age:0.0} 岁。", resident.X, resident.Y, residentId: resident.Id);
+            death.NationId = resident.NationId; death.SettlementId = resident.SettlementId;
+            RecordLife(resident, $"逝世原因：{DeathCauseName(resident.DeathCause)}，终年 {resident.Age:0.0} 岁。", death, importance: EventImportance.Major);
             if (resident.History.Count > 24) resident.History.RemoveAt(0);
             State.ArchivedResidents.Add(resident);
             State.Residents.Remove(resident);
@@ -177,6 +181,7 @@ public sealed partial class WorldEngine
         foreach (var settlement in State.Settlements)
         {
             settlement.Population = _citizens.GetValueOrDefault(settlement.Id)?.Count ?? 0;
+            RefreshSettlementName(settlement);
             if (!_nations.TryGetValue(settlement.NationId, out var nation)) continue;
             nation.Population += settlement.Population;
             nation.Resources.Food += settlement.Resources.Food; nation.Resources.Wood += settlement.Resources.Wood;

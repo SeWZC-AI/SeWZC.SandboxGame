@@ -14,6 +14,9 @@ AppBuilder.Configure<TestApp>().UseHeadless(new AvaloniaHeadlessPlatformOptions(
 
 var tests = new (string Name, Action Test)[]
 {
+    ("Paged tools expose every building and keep previews outside toolbar layout", ToolPagination),
+    ("Building details control the actual facility and list real roads", BuildingControls),
+    ("Map resources and resident plans remain read-only during inspection", DetailedInspection),
     ("Map objects select quietly and details require the explicit view button", QuietSelection),
     ("Advanced research choices show separate prerequisites and commit only valid projects", AdvancedResearchUi),
     ("Advanced resource editors preserve untouched stocks and gifted factories expose requirements", AdvancedResourcesUi),
@@ -51,6 +54,48 @@ foreach (var (name, test) in tests)
 Console.WriteLine($"{tests.Length - failures}/{tests.Length} UI checks passed");
 return failures == 0 ? 0 : 1;
 
+static void ToolPagination()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var map = Map(view); var before = engine.ExportJson();
+    Call(view, "SetCategory", "build");
+    var found = new HashSet<string>();
+    for (var page = 0; page < 3; page++)
+    {
+        foreach (var tool in Field<string?[]>(view, "_slotTools")) if (tool is not null) found.Add(tool);
+        if (page < 2) Click(view, "tool-page-next");
+    }
+    Assert(Enum.GetValues<BuildingKind>().Where(k => k != BuildingKind.TownCenter).All(k => found.Contains("build:" + k)) && found.Contains("road:Road"), "Pagination hid a real tool");
+    Call(view, "SelectTool", "Human");
+    Call(map, "PreviewPlacement", map.GetTileScreenPosition(32, 32), false);
+    Assert(!Field<Border>(view, "_placementBar").IsVisible, "Mouse hover opened a shifting option bar");
+    Preview(map, 32, 32); Assert(Field<Border>(view, "_placementBar").IsVisible, "Touch preview has no confirmation");
+    Assert(Field<Border>(view, "_placementBar").Parent != Field<Border>(view, "_toolBar").Parent, "Preview participates in the toolbar stack");
+    map.CancelPlacement(); Assert(engine.ExportJson() == before, "Tool paging or preview changed the world");
+}
+
+static void BuildingControls()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var building = engine.State.Society.Buildings.First(b => b.Kind == BuildingKind.Workshop);
+    Call(view, "OpenBuilding", building); Assert(Field<string>(view, "_inspectorMode") == "building", "Facility opened ground details");
+    Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("实际可采材料") == true), "Building lacks functional description");
+    Click(view, "building-toggle"); Assert(!building.Enabled, "Building control did not stop work");
+    Assert(!engine.TryWorkAtBuilding(engine.State.Residents[0]), "Stopped workshop still performed work");
+    Click(view, "building-toggle"); Assert(building.Enabled, "Building did not resume");
+    engine.BuildRoad(engine.State.Settlements[0].Id, 35, 32, 0);
+    Call(view, "OpenInspector", "structures", true); Control<ComboBox>(view, "structures-kind").SelectedIndex = 1;
+    Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("道路 1 级") == true), "Road listing omitted actual road");
+}
+
+static void DetailedInspection()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var person = engine.State.Residents[0]; var before = engine.ExportJson();
+    Call(view, "OpenResident", person.Id);
+    var text = string.Join("\n", view.GetLogicalDescendants().OfType<TextBlock>().Select(t => t.Text));
+    Assert(text.Contains("体力") && text.Contains("预期寿命") && text.Contains("现在：") && text.Contains("后续："), "Resident omits current status and future actions");
+    Call(view, "OpenInspector", "overview", true); Control<ComboBox>(view, "map-resources").SelectedIndex = 1;
+    Assert(Map(view).ResourceVisibility == ResourceVisibility.All && engine.ExportJson() == before, "Resource visibility edits simulation knowledge");
+}
+
 static void QuietSelection()
 {
     var engine = TwoTownWorld(); var view = View(engine); var resident = engine.State.Residents[0];
@@ -66,7 +111,7 @@ static void QuietSelection()
     Call(view, "SelectMapObject", "building", building.Id, building.X, building.Y);
     Assert(!Field<bool>(view, "_mobilePanel"), "Building selection opened details");
     Click(view, "selection-view");
-    Assert(Field<string>(view, "_inspectorMode") == "tile", "Building details did not open");
+    Assert(Field<string>(view, "_inspectorMode") == "building", "Building details did not open");
     Call(view, "SelectMapObject", "tile", 0, 1, 1);
     Assert(!Field<bool>(view, "_mobilePanel") && engine.ExportJson() == before, "Ground selection changed the world or opened details");
     Click(view, "selection-clear"); Assert(!Control<Border>(view, "selection-summary").IsVisible, "Selection did not clear");
@@ -355,11 +400,11 @@ static void InvalidGoalEdit()
     Call(view, "OpenResident", id);
     Click(view, "resident-goal-edit");
     var before = engine.ExportJson();
-    Control<TextBox>(view, "resident-goal-reason").Text = new string('x', 401);
+    Control<NumericUpDown>(view, "resident-goal-duration").Value = 100001;
     Control<NumericUpDown>(view, "resident-courage").Value = .01m;
     Click(view, "resident-goal-apply");
     Assert(Field<Border>(view, "_modal").IsVisible && engine.ExportJson() == before,
-        "An invalid goal reason partially committed its accompanying personality edit");
+        "An invalid goal duration partially committed its accompanying personality edit");
 }
 
 static MainView EditPersonalityOnly(WorldEngine engine, int id, int targetEntity)

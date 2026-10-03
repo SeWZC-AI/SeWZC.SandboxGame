@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace SeWZC.WorldBox.Core;
 
 public enum BuildingKind { Farm, Workshop, Academy, Waystation, SignalTower, ArcaneSanctum, Infirmary,
-    Foundry, PowerPlant, AutomatedFarm, Fabricator, Crystallizer, RunicGarden, AetherForge, MountainPass, Bridge, Dock, Airfield }
+    Foundry, PowerPlant, AutomatedFarm, Fabricator, Crystallizer, RunicGarden, AetherForge, MountainPass, Bridge, Dock, Airfield, TownCenter }
 public enum ResearchKind { Agriculture, Logistics, SignalNetwork, ArcaneArts,
     Industry, Electrification, Automation, AdvancedComputing, Crystalcraft, RunicEngineering, AetherMastery, Aviation }
 public enum InstitutionKind { Council, Monarchy, GuildCouncil }
@@ -34,6 +34,7 @@ public sealed class CultureDefinition
 public sealed class Building
 {
     [JsonRequired] public int ProductionBatches { get; set; }
+    [JsonRequired] public bool Enabled { get; set; } = true;
     public ProjectObservation Observation { get; set; } = new();
     public int Id { get; set; }
     public int SettlementId { get; set; }

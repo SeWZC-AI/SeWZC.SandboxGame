@@ -12,7 +12,7 @@ public enum WorldEventKind { Founding, Growth, Trade, Diplomacy, War, Disaster, 
 
 public sealed partial class WorldState
 {
-    [JsonRequired] public int FormatVersion { get; set; } = 7;
+    [JsonRequired] public int FormatVersion { get; set; } = 8;
     public int Seed { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
@@ -119,6 +119,8 @@ public sealed class DiplomaticRelation
 {
     public long LastChangedTick { get; set; }
     public long LastContactTick { get; set; }
+    [JsonRequired] public long FirstEscalationTick { get; set; }
+    [JsonRequired] public long SecondEscalationTick { get; set; }
     public long LastEvaluatedTick { get; set; }
     public int LastEventId { get; set; }
     public int AllianceOfferNationId { get; set; }

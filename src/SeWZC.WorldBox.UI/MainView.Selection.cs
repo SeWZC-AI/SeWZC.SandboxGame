@@ -46,14 +46,15 @@ public sealed partial class MainView
         if (_mapSelectionKind == "resident" && resident is null || _mapSelectionKind == "building" && building is null)
         { ClearMapSelection(); return; }
         _selectionBar.IsVisible = _mapSelectionKind is not null && !_mobilePanel && !_toolsOpen;
-        _selectionText.Text = resident is not null ? $"{resident.Name} · {WorldEngine.TravelModeName(resident.TravelMode)}\n{GoalName(resident.Agent.Goal.Kind)}"
-            : building is not null ? $"{WorldEngine.BuildingName(building.Kind)} · {building.X},{building.Y}\n{(building.IsCompleted ? "已建成" : $"施工 {building.ConstructionProgress / building.ConstructionRequired:P0}")}"
-            : _selectedTile is { } p ? $"{TerrainName(_engine.State.Tiles[p.Y * _engine.State.Width + p.X].Terrain)} · {p.X},{p.Y}\n{WorldEngine.ImprovementName(_engine.State.Tiles[p.Y * _engine.State.Width + p.X].Improvement)}" : "";
+        _selectionText.Text = resident is not null ? $"{resident.Name}\n{GoalName(resident.Agent.Goal.Kind)}"
+            : building is not null ? $"{BuildingLabel(building)}\n{(building.IsCompleted ? "已建成" : $"施工 {building.ConstructionProgress / building.ConstructionRequired:P0}")}"
+            : _selectedTile is { } p ? $"{TerrainName(_engine.State.Tiles[p.Y * _engine.State.Width + p.X].Terrain)}\n位置：{p.X}, {p.Y}\n{WorldEngine.ImprovementName(_engine.State.Tiles[p.Y * _engine.State.Width + p.X].Improvement)}" : "";
     }
 
     private void ViewMapSelection()
     {
         if (_mapSelectionKind == "resident") OpenResident(_selectedResidentId);
+        else if (_mapSelectionKind == "building") OpenInspector("building");
         else if (_selectedTile is not null) OpenInspector("tile");
         RefreshSelectionSummary();
     }
@@ -72,7 +73,7 @@ public sealed partial class MainView
         var terrain = _engine.State.Tiles[y * _engine.State.Width + x].Terrain;
         var kind = terrain == TerrainType.Mountain ? BuildingKind.MountainPass
             : terrain is TerrainType.River or TerrainType.Water ? BuildingKind.Bridge : BuildingKind.Farm;
-        var panel = ModalPanel("安排居民改造地块", $"{WorldEngine.BuildingName(kind)} · {x},{y}。投入材料后，由居民到场施工；桥梁和山路完工后才可通行。");
+        var panel = ModalPanel("安排居民改造地块", $"{WorldEngine.BuildingName(kind)}\n位置：{x}, {y}。投入材料后，由居民到场施工；桥梁和山路完工后才可通行。");
         var town = ObjectField(panel, "负责聚落", towns.Select(t => (t.Id, t.Name)), towns[0].Id, "land-town");
         panel.Children.Add(Paragraph("材料：" + StockLabel(WorldEngine.GetBuildingCost(kind))));
         panel.Children.Add(Named(Button("开始居民施工", () => RunEdit(() =>

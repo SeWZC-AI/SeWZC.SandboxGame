@@ -322,7 +322,7 @@ public sealed partial class WorldEngine
                 var frontier = Circle(person.X, person.Y, 6).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].FireTicks == 0)
                     .OrderByDescending(i => (i % State.Width - person.X) * heading.X + (i / State.Width - person.Y) * heading.Y)
                     .ThenByDescending(i => Distance(i % State.Width, i / State.Width, home.X, home.Y)).FirstOrDefault(-1);
-                if (frontier >= 0) choices.Add(new(AgentGoalKind.Idle, frontier % State.Width, frontier / State.Width,
+                if (frontier >= 0) choices.Add(new(AgentGoalKind.Explore, frontier % State.Width, frontier / State.Width,
                     42, "还不知道远方聚落，沿眼前可通行的土地探索"));
             }
         }

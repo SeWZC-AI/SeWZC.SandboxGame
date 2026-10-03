@@ -204,7 +204,7 @@ public sealed partial class WorldEngine
         foreach (var resident in residents)
         {
             EmitVisual(WorldVisualKind.Battle, resident.X, resident.Y);
-            var incoming = Math.Min(resident.Health, damage); var dealt = TryAbsorbShieldDamage(resident, incoming); resident.Health -= dealt; damage -= incoming;
+            var incoming = Math.Min(resident.Health, damage); var dealt = TryAbsorbShieldDamage(resident, incoming); DamageResident(resident, dealt, DeathCause.Battle); damage -= incoming;
             if (damage <= 0) break;
         }
     }
@@ -307,6 +307,7 @@ public sealed partial class WorldEngine
             resident.SettlementId = destination.Id; resident.X = destination.X; resident.Y = destination.Y;
         }
         var tile = State.Tiles[Index(settlement.X, settlement.Y)]; if (tile.SettlementId == settlement.Id) tile.SettlementId = 0;
+        State.Conflicts.RemoveAll(c => c.SettlementId == settlement.Id);
         State.Settlements.Remove(settlement); _settlements.Remove(settlement.Id); _citizens.Remove(settlement.Id);
         State.TradeRoutes.RemoveAll(r => r.FromSettlementId == settlement.Id || r.ToSettlementId == settlement.Id);
         if (_nations.TryGetValue(settlement.NationId, out var nation) && nation.CapitalId == settlement.Id) nation.CapitalId = destination?.Id ?? 0;

@@ -92,6 +92,7 @@ public sealed partial class WorldEngine
     public string? FacilityPlacementError(int settlementId, BuildingKind kind, int x, int y, bool gift = false)
     {
         if (!Enum.IsDefined(kind)) return "未知的建筑类型";
+        if (kind == BuildingKind.TownCenter) return "每处聚落的中心由定居和重建维护，无需另行放置";
         if (!_settlements.TryGetValue(settlementId, out var town)) return "先选择归属聚落";
         if (!InBounds(x, y) || !BuildingTerrainValid(kind, State.Tiles[Index(x, y)])) return kind == BuildingKind.Bridge ? "桥梁需要河流或浅水" : kind == BuildingKind.MountainPass ? "山路需要山地" : "需要可通行的陆地";
         var range = kind is BuildingKind.Bridge or BuildingKind.MountainPass ? 24 : 8;
@@ -101,7 +102,7 @@ public sealed partial class WorldEngine
         var tile = State.Tiles[Index(x, y)];
         if (tile.FireTicks > 0) return "此处正在燃烧";
         if (tile.NationId != 0 && tile.NationId != town.NationId) return "此处属于其他国家";
-        if (State.Society.Buildings.Count >= MaxBuildings) return "世界建筑数量已达上限";
+        if (State.Society.Buildings.Count >= MaxBuildings - 256) return "世界建筑数量已达上限";
         if (State.Society.Buildings.Any(b => b.X == x && b.Y == y)) return "此处已有建筑";
         if ((kind == BuildingKind.ArcaneSanctum || AdvancementRules.For(kind)?.Magic == true) && !State.Society.MagicEnabled) return "规则已关闭新的魔法发展";
         if (kind == BuildingKind.SignalTower && (!HasResearch(settlementId, ResearchKind.Electrification) || !HasResearch(settlementId, ResearchKind.SignalNetwork))) return "无线信号塔需要电气化与信号网络";
@@ -215,9 +216,12 @@ public sealed partial class WorldEngine
                 var tradeReport = capital.PublicKnowledge.Where(f => f.Kind == AgentFactKind.TradeExchange && f.SubjectId == otherId && State.Tick - f.ObservedTick <= 360).OrderByDescending(f => f.ObservedTick).FirstOrDefault();
                 var trade = tradeReport is not null;
                 var nearby = Distance(capital.X, capital.Y, contact.X, contact.Y) <= 28;
+                var otherFood = capital.PublicKnowledge.Where(f => f.Kind == AgentFactKind.FoodSupply && f.SubjectId == contact.SubjectId && f.LearnedTick < State.Tick && f.Confidence >= .5 && State.Tick - f.ObservedTick <= 180).OrderByDescending(f => f.ObservedTick).FirstOrDefault();
+                var bothScarce = ownFood < capital.Population && otherFood is { Value: < 12 };
+                var abundant = ownFood >= capital.Population * 3 && otherFood is { Value: >= 36 };
                 var pressure = nearby && (ownFood < capital.Population || GetLocalPolicy(capital.Id) == PolicyKind.Defense);
-                var change = trade ? 10 : pressure ? -(3 + State.Rules.Conflict * 3) : cooperation >= .55 ? 4 : State.Rules.Conflict >= 2 && nearby ? -5 : 1;
-                var reason = trade ? "收到实际贸易交付的报告，往来改善关系" : pressure ? "收到邻近聚落的消息，本地粮食或防务压力加剧竞争" : "依据已经送达的聚落消息与当地合作倾向评估关系";
+                var change = trade ? 10 : abundant ? 6 : pressure ? -(3 + State.Rules.Conflict * (bothScarce ? 6 : 3)) : cooperation >= .55 ? 4 : State.Rules.Conflict >= 2 && nearby && ownFood < capital.Population * 2 ? -5 : 1;
+                var reason = trade ? "收到实际贸易交付的报告，往来改善关系" : bothScarce ? "本地缺粮，收到的对方粮情也显示短缺，邻近资源竞争加剧" : abundant ? "本地资源充足，收到的对方粮情也充足，争夺意愿减弱" : pressure ? "收到邻近聚落的消息，本地粮食或防务压力加剧竞争" : "依据已经送达的聚落消息与当地合作倾向评估关系";
                 assessments.Add(new(nation, other, capital, contact, relation, ownFood, change, reason, tradeReport));
             }
         }
@@ -231,7 +235,24 @@ public sealed partial class WorldEngine
             var relation = group.Key;
             relation.LastEvaluatedTick = State.Tick;
             relation.LastContactTick = Math.Max(relation.LastContactTick, sides.Max(a => a.Contact.ObservedTick));
-            foreach (var side in sides) SetLocalOpinion(relation, side.Nation.Id, LocalOpinion(relation, side.Nation.Id) + side.Change);
+            foreach (var side in sides)
+            {
+                SetLocalOpinion(relation, side.Nation.Id, LocalOpinion(relation, side.Nation.Id) + side.Change);
+                var first = side.Nation.Id == relation.FirstNationId;
+                var started = first ? relation.FirstEscalationTick : relation.SecondEscalationTick;
+                if (LocalOpinion(relation, side.Nation.Id) <= -25 && side.Change < 6 && relation.Status != DiplomaticStatus.War)
+                {
+                    if (started == 0)
+                    {
+                        started = State.Tick;
+                        var dispute = AddEvent(WorldEventKind.Diplomacy, $"{side.Nation.Name}与{side.Other.Name}的竞争发展为外交争端：{side.Reason}。", side.Capital.X, side.Capital.Y, causeEventId: relation.LastEventId);
+                        dispute.SecondNationId = side.Other.Id; dispute.Importance = EventImportance.Notable;
+                        relation.LastEventId = dispute.Id;
+                    }
+                }
+                else if (LocalOpinion(relation, side.Nation.Id) > -25 || side.Change >= 6) started = 0;
+                if (first) relation.FirstEscalationTick = started; else relation.SecondEscalationTick = started;
+            }
             relation.Reason = sides.Length == 1 ? sides[0].Reason : "双方各自依据已送达消息与当地情况累计态度；所示关系为双方态度均值";
             if (State.Tick - relation.LastChangedTick < 360) continue;
             // Resolve at most one action: either side can end an existing war; otherwise a war
@@ -246,7 +267,9 @@ public sealed partial class WorldEngine
                 continue;
             }
             var declarer = sides.Where(a => State.Rules.Wars && State.Tick >= a.Nation.Military.RecoveryUntilTick && State.Rules.Conflict > 0 && LocalOpinion(relation, a.Nation.Id) <= -55
-                && a.Food > 20 && a.Capital.Population >= 18).OrderBy(a => LocalOpinion(relation, a.Nation.Id)).FirstOrDefault();
+                && a.Food > 20 && a.Capital.Population >= 18
+                && (a.Nation.Id == relation.FirstNationId ? relation.FirstEscalationTick : relation.SecondEscalationTick) > 0
+                && State.Tick - (a.Nation.Id == relation.FirstNationId ? relation.FirstEscalationTick : relation.SecondEscalationTick) >= 180).OrderBy(a => LocalOpinion(relation, a.Nation.Id)).FirstOrDefault();
             if (declarer is not null)
             {
                 ChangeAutonomousDiplomacy(declarer.Nation, declarer.Other, relation, declarer.Contact, DiplomaticStatus.War, declarer.Reason);

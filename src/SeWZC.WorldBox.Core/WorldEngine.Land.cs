@@ -159,7 +159,7 @@ public sealed partial class WorldEngine
         return false;
     }
 
-    public string GetTileProductionSummary(int x, int y)
+    public string GetTileProductionSummary(int x, int y, ResourceVisibility visibility = ResourceVisibility.Researched)
     {
         if (!InBounds(x, y)) return "地格不存在";
         var tile = State.Tiles[Index(x, y)];
@@ -169,10 +169,11 @@ public sealed partial class WorldEngine
             : tile.Terrain is TerrainType.Water or TerrainType.DeepWater or TerrainType.River ? "暂无直接采集产出"
             : tile.Terrain == TerrainType.Forest ? "木材、野生食物" : yields.StoneYield >= .3 ? "石材、矿石"
             : ResourceSiteYield(Index(x, y), Profession.Farmer) > 0 ? "野生食物" : "少量自然材料";
-        var deposit = tile.DepositDiscovered && tile.Deposit is { } kind
-            ? $"{ResourceStock.Name(kind)}矿藏：{tile.DepositAmount:0.#}（不可再生）" : "深层资源：尚未发现，需相应科技与实地勘探";
-        return $"{ImprovementName(tile.Improvement)} · 产出：{products}\n自然资源 {tile.ResourceAmount:0.#} · 肥力 {tile.Fertility}%\n{deposit}\n累计采收 {tile.Harvested:0.#} · 最近劳动日 {tile.LastHarvestTick}\n"
+        var deposit = IsDepositVisible(tile, visibility) && tile.Deposit is { } kind
+            ? $"{ResourceStock.Name(kind)}矿藏：{tile.DepositAmount:0.#}（不可再生）" : visibility == ResourceVisibility.None ? "矿藏显示已关闭" : tile.Deposit is null ? "深层资源：无矿藏" : "当前研究尚未显示此矿藏，可切换全部资源查看";
+        return $"{ImprovementName(tile.Improvement)}\n产出：{products}\n可采自然资源 {tile.ResourceAmount:0.#}\n肥力 {tile.Fertility}%\n{deposit}\n累计采收 {tile.Harvested:0.#}\n最近劳动日序 {tile.LastHarvestTick}\n"
             + (tile.FireTicks > 0 ? "火灾中，暂停生产" : tile.DroughtTicks > 0 ? "干旱中，粮食减产" : "环境正常")
-            + (tile.IsWalkable ? $" · 步行耗时系数 {GetTerrainMoveCost(x, y):0.##}" : " · 地面受阻，可修桥／山路或使用运输工具");
+            + $"\n野生动物：{WildlifeName(tile.Wildlife)}\n数量 {tile.WildlifePopulation:0.0} / 栖息地容量 {WildlifeCapacity(tile, tile.Wildlife):0.0}\n"
+            + (tile.IsWalkable ? $"\n步行耗时系数 {GetTerrainMoveCost(x, y):0.##}" : "\n地面受阻，可修桥／山路或使用运输工具");
     }
 }

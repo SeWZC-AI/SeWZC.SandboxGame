@@ -128,10 +128,20 @@ class UiDriver {
     async tool(category, key) {
         if (!(await this.snapshot()).toolsOpen) await this.click("tools-toggle");
         await this.click(`tool-category-${category}`);
-        const snapshot = await this.snapshot();
-        const index = snapshot.toolSlots.indexOf(key);
-        assert(index >= 0, `Tool ${key} is absent from ${category}`);
-        await this.click(`tool-slot-${index}`);
+        let snapshot = await this.snapshot();
+        // Selecting an already open category keeps its page. Search from page one.
+        while (this.control(snapshot, 'tool-page-prev').enabled) {
+            await this.click('tool-page-prev');
+            snapshot = await this.snapshot();
+        }
+        for (let page = 0; page < 8; page++) {
+            const index = snapshot.toolSlots.indexOf(key);
+            if (index >= 0) { await this.click(`tool-slot-${index}`); return; }
+            if (!this.control(snapshot, 'tool-page-next').enabled) break;
+            await this.click('tool-page-next');
+            snapshot = await this.snapshot();
+        }
+        assert.fail(`Tool ${key} is absent from every page in ${category}`);
     }
 
     async stableToolLayout() {
@@ -156,7 +166,7 @@ class UiDriver {
             snapshot.toolSlots.forEach((key, index) => {
                 const slot = this.control(snapshot, `tool-slot-${index}`);
                 assert.equal(slot.enabled, key !== null);
-                assert.equal(slot.visible, key !== null);
+                assert.equal(slot.visible, true, 'Empty slots keep the toolbar geometry stable');
             });
         }
         await this.click('tools-toggle');

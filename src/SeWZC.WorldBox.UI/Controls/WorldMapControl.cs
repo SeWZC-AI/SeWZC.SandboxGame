@@ -204,6 +204,7 @@ public sealed partial class WorldMapControl : Control
                     if (ShowBorders && chunk.Territory is not null) context.DrawImage(chunk.Territory, chunk.Bounds);
                 }
                 DrawTerrainDetails(context, state);
+                DrawEcology(context, state);
                 foreach (var settlement in state.Settlements)
                     if (Visible(new Rect(settlement.X * TilePixels - 28, settlement.Y * TilePixels - 28, 56, 56)))
                         DrawSettlement(context, settlement);
@@ -233,6 +234,7 @@ public sealed partial class WorldMapControl : Control
             }
             DrawLabels(context, state);
             DrawSelection(context);
+            DrawPlacementHint(context);
             DrawResidentSelection(context);
             DrawResidentGoal(context);
             DrawScale(context);
@@ -538,12 +540,6 @@ public sealed partial class WorldMapControl : Control
         var x = settlement.X * TilePixels + 4;
         var y = settlement.Y * TilePixels + 4;
         var nationBrush = NationBrush(settlement.NationId);
-        // The town hall marks the settlement; farms and other facilities are rendered only
-        // from real construction entities, so decorations cannot imply nonexistent production.
-        context.DrawRectangle(WoodBrush, null, new Rect(x - 6, y + 2, 14, 3));
-        DrawHouse(context, x - 3, y - 5, nationBrush, settlement.Level >= 2 ? 1.5 : 1.2);
-        context.DrawRectangle(WoodBrush, null, new Rect(x + 2, y - 19, 1, 11));
-        context.DrawRectangle(nationBrush, null, new Rect(x + 3, y - 19, 6, 4));
         if (settlement.FertilityBoostTicks > 0)
             context.DrawEllipse(null, new Pen(HealingBrush, .8), new Point(x, y), 10, 6);
         if (settlement.ShieldTicks > 0)
@@ -633,7 +629,7 @@ public sealed partial class WorldMapControl : Control
             return;
         }
         var brushTiles = ActiveTool.StartsWith("road:", StringComparison.OrdinalIgnoreCase)
-            ? 0 : Math.Clamp(BrushRadius, 0, 16);
+            ? 0 : Enum.TryParse<RaceKind>(ActiveTool, out _) ? 3 : Math.Clamp(BrushRadius, 0, 16);
         var toolName = ActiveTool.Contains(':') ? ActiveTool[(ActiveTool.IndexOf(':') + 1)..] : ActiveTool;
         if (Enum.TryParse<DisasterKind>(toolName, true, out _)) brushTiles = DisasterRadius;
         var radius = Math.Max(3, (brushTiles + .5) * TilePixels * _zoom);

@@ -106,6 +106,7 @@ internal static class SocietyRegressionTests
             engine.State.Tick = 359;
             DeliverContact(engine, west, east); DeliverContact(engine, east, west);
             var relation = engine.State.Diplomacies.Single(); relation.FirstOpinion = relation.SecondOpinion = relation.Opinion = -54;
+            relation.FirstEscalationTick = relation.SecondEscalationTick = 120;
             engine.Step();
             Check(relation.Status == DiplomaticStatus.War && relation.Opinion == -58,
                 "A capital's diplomatic assessment was skipped or counted twice because of founding order.");

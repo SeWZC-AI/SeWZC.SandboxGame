@@ -16,7 +16,7 @@ public sealed partial class MainView
         if (_engine.GetResident(id) is not { } resident) { panel.Children.Add(Paragraph("这位居民的记录已不在当前世界中。")); return; }
         Resident Current() => _engine.GetResident(id) ?? resident;
         panel.Children.Add(LiveText(() => $"{Current().Name}  #{id}", 18, Mint));
-        panel.Children.Add(LiveText(() => $"{RaceName(Current().Race)} · {Current().Age:F1} 岁 · {ProfessionName(Current().Profession)}\n{NationName(Current().NationId)} / {TownName(Current().SettlementId)}\n文化：{CultureName(Current().CultureId)}"));
+        panel.Children.Add(LiveText(() => $"种族：{RaceName(Current().Race)}\n年龄：{Current().Age:F1} 岁 / 种族预期寿命 {WorldEngine.Lifespan(Current().Race)} 岁\n职业：{ProfessionName(Current().Profession)}\n{NationName(Current().NationId)} / {TownName(Current().SettlementId)}\n文化：{CultureName(Current().CultureId)}"));
         panel.Children.Add(WatchControl(ObservedObjectKind.Resident, id, "resident-watch"));
         panel.Children.Add(Named(Button("人物故事与重要转折", () => OpenInspector("story")), "resident-story"));
         var actions = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = 5 };
@@ -32,19 +32,29 @@ public sealed partial class MainView
         });
         Grid.SetColumn(follow, 1); actions.Children.Add(follow);
         var edit = Named(Button("编辑", () => ShowResidentEditor(id)), "resident-edit"); Grid.SetColumn(edit, 2); actions.Children.Add(edit); panel.Children.Add(actions);
-        panel.Children.Add(LiveText(() => _engine.State.ArchivedResidents.Any(r => r.Id == id) ? "此人已离世：档案修改不会使其复生。" : ""));
-        panel.Children.Add(LiveText(() => $"生命 {Current().Health:0}% · 饥饿 {Current().Hunger:0}% · {ActivityName(Current().Activity)}"));
+        panel.Children.Add(LiveText(() => _engine.State.ArchivedResidents.Any(r => r.Id == id) ? $"逝世时间：{DateLabel(Current().DeathTick)}\n死亡原因：{WorldEngine.DeathCauseName(Current().DeathCause)}" : ""));
+        panel.Children.Add(LiveText(() => $"生命 {Current().Health:0.0} / 100\n体力 {100 - Current().Agent.Fatigue:0.0} / 100\n饥饿 {Current().Hunger:0}%"));
+        panel.Children.Add(LiveText(() => _engine.GetResidentActionSummary(id)));
+        if (resident.Health > 0)
+        {
+            var quick = new WrapPanel { Orientation = Orientation.Horizontal };
+            quick.Children.Add(Named(Button("安排休息", () => QuickResidentGoal(id, AgentGoalKind.Rest)), "resident-rest"));
+            quick.Children.Add(Named(Button("返回家园", () => QuickResidentGoal(id, AgentGoalKind.ReturnHome)), "resident-home"));
+            quick.Children.Add(Named(Button("恢复自主", () => QuickResidentGoal(id, null)), "resident-autonomy"));
+            quick.Children.Add(Named(Button("治疗", () => RunEdit(() => _engine.EditResident(id, new ResidentEdit { Health = 100, SicknessTicks = 0 }), "居民已得到治疗")), "resident-heal"));
+            panel.Children.Add(quick);
+        }
         var body = FoldSection(panel, "身体、库存与魔法", "resident-body");
         body.Children.Add(LiveText(() =>
         {
             var r = Current();
-            return $"位置 {r.X}, {r.Y} · {ActivityName(r.Activity)}\n生命 {r.Health:F1} · 饥饿 {r.Hunger:F1} · 疫病 {r.SicknessTicks} 日\n疲劳 {r.Agent.Fatigue:F1} · 社交需求 {r.Agent.SocialNeed:F1}\n特质：{r.Trait}\n随身库存：{StockLabel(r.Inventory)}\n魔力 {r.Mana:F1} · 天赋 {r.MagicTalent:F1} · 训练 {r.MagicTraining:F1}\n军队 {(r.ArmyId == 0 ? "无" : r.ArmyId.ToString())} · 家园 {TownName(r.SettlementId)}";
+            return $"位置 {r.X}, {r.Y}\n{ActivityName(r.Activity)}\n生命 {r.Health:F1}\n饥饿 {r.Hunger:F1}\n疫病 {r.SicknessTicks} 日\n疲劳 {r.Agent.Fatigue:F1}\n社交需求 {r.Agent.SocialNeed:F1}\n特质：{r.Trait}\n随身库存：{StockLabel(r.Inventory)}\n魔力 {r.Mana:F1}\n天赋 {r.MagicTalent:F1}\n训练 {r.MagicTraining:F1}\n军队 {(r.ArmyId == 0 ? "无" : r.ArmyId.ToString())}\n家园 {TownName(r.SettlementId)}";
         }));
-        panel.Children.Add(Text("当前目标 · 居民自己的理由", 12, Mint));
+        panel.Children.Add(Text("当前目标\n居民自己的理由", 12, Mint));
         panel.Children.Add(LiveText(() =>
         {
             var goal = Current().Agent.Goal;
-            return $"{GoalName(goal.Kind)} → {goal.TargetX}, {goal.TargetY}\n{goal.Reason}\n开始：{DateLabel(goal.StartedTick)} · {(goal.PlayerDirected ? "玩家指定" : "自主选择")}\n下次考虑：{DateLabel(Current().Agent.NextThinkTick)}";
+            return $"{GoalName(goal.Kind)} → {goal.TargetX}, {goal.TargetY}\n{goal.Reason}\n开始：{DateLabel(goal.StartedTick)}\n{(goal.PlayerDirected ? "玩家指定" : "自主选择")}\n下次考虑：{DateLabel(Current().Agent.NextThinkTick)}";
         }));
         var route = Named(new CheckBox { Content = "显示后续行动轨迹", IsChecked = _map.ShowResidentRoute }, "resident-route");
         route.IsCheckedChanged += (_, _) => { _map.ShowResidentRoute = route.IsChecked == true; _map.InvalidateVisual(); };
@@ -53,22 +63,22 @@ public sealed partial class MainView
         panel.Children.Add(Named(Button("编辑目标与人格", () => ShowGoalEditor(id)), "resident-goal-edit"));
         var secondary = FoldSection(panel, "性格、记忆与消息", "resident-cognition");
         secondary.Children.Add(Text("性格倾向", 12, Mint));
-        secondary.Children.Add(LiveText(() => { var p = Current().Agent.Personality; return $"勇气 {p.Courage:P0} · 勤勉 {p.Diligence:P0}\n社交 {p.Sociability:P0} · 抱负 {p.Ambition:P0}"; }));
-        secondary.Children.Add(Text("已知消息与记忆 · 可能过时或有误", 12, Mint));
+        secondary.Children.Add(LiveText(() => { var p = Current().Agent.Personality; return $"勇气 {p.Courage:P0}\n勤勉 {p.Diligence:P0}\n社交 {p.Sociability:P0}\n抱负 {p.Ambition:P0}"; }));
+        secondary.Children.Add(Text("已知消息与记忆\n可能过时或有误", 12, Mint));
         secondary.Children.Add(Paragraph("下面是居民知道的内容，不等同于全世界的即时状态。改动只影响今后的认知与决策，不会重写已经发生的世界事件。"));
         secondary.Children.Add(Named(Button("添加一条记忆", () => ShowMemoryEditor(id, null)), "resident-memory-add"));
         LiveRows(secondary, () => Current().Agent.Memory.OrderByDescending(f => f.LearnedTick).Take(40), fact => fact.Id.ToString(), fact => FactLabel(fact), fact => ShowMemoryEditor(id, fact.Id));
-        secondary.Children.Add(LiveText(() => $"携带消息 {Current().Agent.CarriedMessages.Count} 条 · 目的地 {TownName(Current().Agent.DestinationSettlementId)}"));
+        secondary.Children.Add(LiveText(() => $"携带消息 {Current().Agent.CarriedMessages.Count} 条\n目的地 {TownName(Current().Agent.DestinationSettlementId)}"));
         secondary = FoldSection(panel, "决策记录", "resident-decisions");
-        LiveRows(secondary, () => Current().Agent.Decisions.AsEnumerable().Reverse().Take(20), d => $"{d.Tick}:{d.Goal}:{d.EvidenceFactId}", d => $"{DateLabel(d.Tick)} · {GoalName(d.Goal)}\n{d.Reason}\n评估 {d.Score:F2} · 依据记忆 #{d.EvidenceFactId}\n消息观察时间 {DateLabel(d.KnowledgeObservedTick)} · 来源 {ResidentName(d.SourceResidentId)}");
+        LiveRows(secondary, () => Current().Agent.Decisions.AsEnumerable().Reverse().Take(20), d => $"{d.Tick}:{d.Goal}:{d.EvidenceFactId}", d => $"{DateLabel(d.Tick)}\n{GoalName(d.Goal)}\n{d.Reason}\n评估 {d.Score:F2}\n依据记忆 #{d.EvidenceFactId}\n消息观察时间 {DateLabel(d.KnowledgeObservedTick)}\n来源 {ResidentName(d.SourceResidentId)}");
         secondary = FoldSection(panel, "个人履历", "resident-history");
         secondary.Children.Add(Named(Button("添加个人经历", () => ShowHistoryEntryEditor(id, null)), "resident-history-add"));
-        LiveRows(secondary, () => Current().History.Select((entry, index) => (entry, index)).Reverse().Take(40), item => item.index.ToString(), item => $"{ImportanceName(item.entry.Importance)} · {DateLabel(item.entry.Tick)}\n{item.entry.Text}\n经历类型 {ExperienceName(item.entry.Experience)} · 心理影响 {item.entry.Impact:+0.00;-0.00;0}{(item.entry.PlayerEdited ? " · 玩家编辑" : "")}", item => ShowHistoryEntryEditor(id, item.index));
+        LiveRows(secondary, () => Current().History.Select((entry, index) => (entry, index)).Reverse().Take(40), item => item.index.ToString(), item => $"{ImportanceName(item.entry.Importance)}\n{DateLabel(item.entry.Tick)}\n{item.entry.Text}\n经历类型 {ExperienceName(item.entry.Experience)}\n心理影响 {item.entry.Impact:+0.00;-0.00;0}{(item.entry.PlayerEdited ? "\n玩家编辑" : "")}", item => ShowHistoryEntryEditor(id, item.index));
 
 
     }
 
-    private string FactLabel(AgentFact fact) => $"{FactKindName(fact.Kind)} · 置信度 {fact.Confidence:P0}\n{fact.Text}\n观察 {DateLabel(fact.ObservedTick)} · 获知 {DateLabel(fact.LearnedTick)}\n消息年龄 {Math.Max(0, _engine.State.Tick - fact.ObservedTick)} 日 · 经过 {fact.Hops} 次转述\n来源 {ResidentName(fact.SourceResidentId)} · 地点 {fact.X},{fact.Y} · 值 {fact.Value:F1}";
+    private string FactLabel(AgentFact fact) => $"{FactKindName(fact.Kind)}\n置信度 {fact.Confidence:P0}\n{fact.Text}\n观察 {DateLabel(fact.ObservedTick)}\n获知 {DateLabel(fact.LearnedTick)}\n消息年龄 {Math.Max(0, _engine.State.Tick - fact.ObservedTick)} 日\n经过 {fact.Hops} 次转述\n来源 {ResidentName(fact.SourceResidentId)}\n地点 {fact.X},{fact.Y}\n值 {fact.Value:F1}";
     private static string FactKindName(AgentFactKind kind) => kind switch { AgentFactKind.FoodSupply => "粮食供给", AgentFactKind.Danger => "危险", AgentFactKind.SettlementLocation => "聚落位置", AgentFactKind.ReliefRequest => "救济请求", AgentFactKind.Policy => "政策", AgentFactKind.WarOrder => "战争命令", AgentFactKind.PeaceOrder => "和平命令", AgentFactKind.Culture => "文化", AgentFactKind.Research => "研究", AgentFactKind.TradeExchange => "贸易往来", AgentFactKind.DiplomaticNotice => "外交声明", AgentFactKind.WarReport => "前线战报", _ => "个人记忆" };
 
     private void ShowResidentEditor(int id)
@@ -92,7 +102,7 @@ public sealed partial class MainView
         var hunger = Field(condition, "饥饿 0–100", resident.Hunger, "resident-hunger");
         var sickness = Field(condition, "疫病剩余日数", resident.SicknessTicks, "resident-sickness");
         var x = Field(belonging, "位置 X", resident.X, "resident-x"); var y = Field(belonging, "位置 Y", resident.Y, "resident-y");
-        var army = ObjectField(belonging, "军队", _engine.State.Armies.Where(a => a.NationId == resident.NationId).Select(a => (a.Id, NationName(a.NationId) + " · " + a.Status)), resident.ArmyId, "resident-army", true, archived);
+        var army = ObjectField(belonging, "军队", _engine.State.Armies.Where(a => a.NationId == resident.NationId).Select(a => (a.Id, NationName(a.NationId) + "\n" + a.Status)), resident.ArmyId, "resident-army", true, archived);
         var mana = Field(magic, "魔力", resident.Mana, "resident-mana");
         var talent = Field(magic, "魔法天赋", resident.MagicTalent, "resident-magic-talent");
         var training = Field(magic, "魔法训练", resident.MagicTraining, "resident-magic-training");
@@ -108,7 +118,7 @@ public sealed partial class MainView
                     CultureId = Integer(culture), SettlementId = Integer(home) == resident.SettlementId ? null : Integer(home), Age = Number(age), Health = Number(health), Hunger = Number(hunger), SicknessTicks = Integer(sickness),
                     X = Integer(x), Y = Integer(y), ArmyId = Integer(army) == resident.ArmyId ? null : Integer(army), Mana = Number(mana), MagicTalent = Number(talent), MagicTraining = Number(training), Inventory = ReadStock(inventory)
                 };
-                BeginEdit(); _engine.EditResident(id, patch); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("居民档案已更新 · 可撤销");
+                BeginEdit(); _engine.EditResident(id, patch); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("居民档案已更新\n可撤销");
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { SetStatus("未应用变更：" + FriendlyError(ex)); }
         }), "resident-apply"));
@@ -124,7 +134,7 @@ public sealed partial class MainView
         var mind = CloneMind(id);
         var originalGoal = mind.Goal;
         var goal = EnumField(panel, "当前目标", mind.Goal.Kind, GoalName, "resident-goal");
-        var reason = Field(panel, "目标备注（仅记录，不参与行动评分）", mind.Goal.Reason, "resident-goal-reason");
+        panel.Children.Add(Paragraph("选择目标、地点、对象和持续时间决定实际行动。"));
         var x = Field(panel, "目标 X", mind.Goal.TargetX, "resident-goal-x"); var y = Field(panel, "目标 Y", mind.Goal.TargetY, "resident-goal-y");
         x.Maximum = _engine.State.Width - 1; y.Maximum = _engine.State.Height - 1;
         AddMapPicker(panel, x, y);
@@ -143,7 +153,7 @@ public sealed partial class MainView
                 choices.AddRange(_engine.State.Society.Buildings.Where(building => building.SettlementId == resident.SettlementId
                     && (kind == AgentGoalKind.Work || kind == AgentGoalKind.Study && building.Kind == BuildingKind.Academy
                         || kind == AgentGoalKind.TrainMagic && building.Kind == BuildingKind.ArcaneSanctum))
-                    .Select(building => new EntityChoice(building.Id, $"{WorldEngine.BuildingName(building.Kind)} #{building.Id} · {building.X},{building.Y}")));
+                    .Select(building => new EntityChoice(building.Id, $"{WorldEngine.BuildingName(building.Kind)} #{building.Id}\n{building.X},{building.Y}")));
             else choices.AddRange(_engine.State.Residents.Select(person => new EntityChoice(person.Id, person.Name)));
             if (kind == originalGoal.Kind && choices.All(choice => choice.Id != originalGoal.TargetEntityId))
                 choices.Add(new(originalGoal.TargetEntityId, $"保留原目标 #{originalGoal.TargetEntityId}（历史引用）"));
@@ -181,12 +191,12 @@ public sealed partial class MainView
             {
                 var kind = (AgentGoalKind)goal.SelectedItem!;
                 var targetX = Integer(x); var targetY = Integer(y); var targetTown = Integer(town); var targetEntity = Integer(entity);
-                var keepDays = Integer(duration); var goalReason = reason.Text ?? "";
+                var keepDays = Integer(duration); var goalReason = originalGoal.Reason;
                 var goalChanged = kind != originalGoal.Kind || targetX != originalGoal.TargetX || targetY != originalGoal.TargetY
                     || targetTown != originalGoal.TargetSettlementId || targetEntity != originalGoal.TargetEntityId
                     || goalReason != originalGoal.Reason || keepDays != initialDuration;
                 mind.Goal = goalChanged ? new AgentGoal { Kind = kind, TargetX = targetX, TargetY = targetY,
-                    TargetSettlementId = targetTown, TargetEntityId = targetEntity, Reason = goalReason,
+                    TargetSettlementId = targetTown, TargetEntityId = targetEntity, Reason = "玩家指定：" + GoalName(kind),
                     PlayerDirected = true, StartedTick = _engine.State.Tick, ReviewTick = _engine.State.Tick + keepDays } : originalGoal;
                 mind.Fatigue = Number(fatigue); mind.SocialNeed = Number(social); mind.Personality.Courage = Number(courage); mind.Personality.Diligence = Number(diligence); mind.Personality.Sociability = Number(sociability); mind.Personality.Ambition = Number(ambition);
                 BeginEdit(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("目标与人格已更新，将影响接下来的行动");
@@ -202,10 +212,12 @@ public sealed partial class MainView
         var mind = CloneMind(id);
         var fact = factId.HasValue ? mind.Memory.FirstOrDefault(f => f.Id == factId) : null;
         var adding = fact is null;
-        fact ??= new AgentFact { Id = 0, Kind = AgentFactKind.Personal, ObservedTick = _engine.State.Tick, LearnedTick = _engine.State.Tick, OriginResidentId = id, SourceResidentId = id, OriginProfession = _engine.GetResident(id)?.Profession ?? Profession.Child, X = _engine.GetResident(id)?.X ?? 0, Y = _engine.GetResident(id)?.Y ?? 0 };
+        fact ??= new AgentFact { Id = 0, Kind = AgentFactKind.FoodSupply, SubjectId = _engine.GetResident(id)?.SettlementId ?? 0, ObservedTick = _engine.State.Tick, LearnedTick = _engine.State.Tick, OriginResidentId = id, SourceResidentId = id, OriginProfession = _engine.GetResident(id)?.Profession ?? Profession.Child, X = _engine.GetResident(id)?.X ?? 0, Y = _engine.GetResident(id)?.Y ?? 0 };
         var panel = ModalPanel(adding ? "添加记忆" : "编辑记忆", "这是角色的认知记录，允许它与实际世界不同。修改将影响以后的决策与传播，不回算已经发生的战争、死亡或资源变化。");
         var kind = EnumField(panel, "记忆类型", fact.Kind, FactKindName, "memory-kind");
-        var text = Field(panel, "可选说明（不执行文字指令）", fact.Text, "memory-text"); text.AcceptsReturn = true; text.TextWrapping = Avalonia.Media.TextWrapping.Wrap; text.MinHeight = 88;
+        kind.ItemsSource = Enum.GetValues<AgentFactKind>().Where(k => k != AgentFactKind.Personal || fact.Kind == AgentFactKind.Personal).ToArray();
+        kind.SelectedItem = fact.Kind;
+        panel.Children.Add(Paragraph("记忆由类型、对象、数值和可信度决定实际作用；现有文字保留为记录。"));
         var meaning = Paragraph(""); panel.Children.Add(meaning);
         var value = Field(panel, "数值", fact.Value, "memory-value"); value.Minimum = -1_000_000_000; value.Maximum = 1_000_000_000; value.Value = (decimal)fact.Value;
         var choice = Named(new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch }, "memory-value-choice"); panel.Children.Add(choice);
@@ -263,7 +275,7 @@ public sealed partial class MainView
         {
             try
             {
-                fact.Kind = (AgentFactKind)kind.SelectedItem!; fact.Text = text.Text ?? ""; fact.Value = choice.IsVisible ? Integer(choice) : Number(value); fact.TargetNationId = addressed.IsVisible ? Integer(addressed) : 0; fact.Confidence = Number(confidence); fact.SubjectId = Integer(subject);
+                fact.Kind = (AgentFactKind)kind.SelectedItem!; fact.Text = adding ? FactKindName(fact.Kind) + "（玩家设置）" : fact.Text; fact.Value = choice.IsVisible ? Integer(choice) : Number(value); fact.TargetNationId = addressed.IsVisible ? Integer(addressed) : 0; fact.Confidence = Number(confidence); fact.SubjectId = Integer(subject);
                 fact.X = Integer(x); fact.Y = Integer(y); fact.ObservedTick = Integer(observed); fact.LearnedTick = Integer(learned); fact.OriginResidentId = Integer(origin); fact.SourceResidentId = Integer(source); fact.Hops = Integer(hops);
                 if (adding) mind.Memory.Add(fact);
                 BeginEdit(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("记忆已更新，世界历史保持原样");
@@ -285,19 +297,25 @@ public sealed partial class MainView
         _paused = true; _map.IsSimulationPaused = true;
         var history = JsonSerializer.Deserialize(_engine.ExportResidentHistory(id), ResidentUiJsonContext.Default.ListResidentHistoryEntry) ?? [];
         var adding = !index.HasValue || index < 0 || index >= history.Count;
-        var entry = adding ? new ResidentHistoryEntry { Tick = _engine.State.Tick, PlayerEdited = true } : history[index!.Value];
+        var entry = adding ? new ResidentHistoryEntry { Tick = _engine.State.Tick, PlayerEdited = true, Experience = PersonalExperienceKind.Learning, Impact = .25 } : history[index!.Value];
         var panel = ModalPanel(adding ? "添加个人经历" : "编辑个人经历", "这份个人履历独立于世界编年史。经历类型与影响数值改变今后的性格倾向；文字用于记录，不会被自动理解成新的世界事实。过去的资源、死亡、战争不回算。");
-        var text = Field(panel, "经历内容", entry.Text, "history-entry-text"); text.AcceptsReturn = true; text.TextWrapping = Avalonia.Media.TextWrapping.Wrap; text.MinHeight = 88;
+        if (!adding) panel.Children.Add(Paragraph(entry.Text));
+        panel.Children.Add(Paragraph("选择经历类型和强度，会直接调整今后的性格倾向。"));
         var tick = Field(panel, "发生日序（0 起）", entry.Tick, "history-entry-tick"); AddDatePreview(panel, tick, "发生时间");
         var importance = EnumField(panel, "重要程度", entry.Importance, ImportanceName, "history-entry-importance");
         var experience = EnumField(panel, "经历类型", entry.Experience, ExperienceName, "history-entry-experience");
-        var impact = Field(panel, "心理影响 −1 至 1", entry.Impact, "history-entry-impact");
-        panel.Children.Add(Paragraph("艰难与成就影响勇气，善意与背叛影响社交，学习影响勤勉。正负数值决定影响方向。"));
+        var impact = Field(panel, "影响强度 −1 至 1", entry.Impact, "history-entry-impact");
+        var strength = ObjectField(panel, "强度预设", new[] { (0, "保持当前强度"), (1, "轻微（0.25）"), (2, "明显（0.5）"), (3, "重大（1）") }, 0, "history-entry-strength");
+        strength.SelectionChanged += (_, _) => { var value = Integer(strength); if (value > 0) impact.Value = new[] { 0m, .25m, .5m, 1m }[value]; };
+        var effects = Paragraph(""); panel.Children.Add(effects);
+        void UpdateEffect() { var strength = (double)(impact.Value ?? 0); effects.Text = $"当前强度对应 {Math.Abs(strength) * 10:0.#} 个百分点的性格变化；范围限制为 0–100%。"; }
+        experience.SelectionChanged += (_, _) => UpdateEffect(); impact.ValueChanged += (_, _) => UpdateEffect(); UpdateEffect();
+        panel.Children.Add(Paragraph("强度为 1 时：艰难使勇气减少 10 个百分点，成就使勇气增加 10 个百分点；善意使社交增加 10 个百分点，背叛使社交减少 10 个百分点；学习使勤勉增加 10 个百分点。负强度反向作用，中性经历不改变性格。"));
         panel.Children.Add(Named(Button("保存个人经历", () =>
         {
             try
             {
-                entry.Text = text.Text ?? ""; entry.Tick = Integer(tick); entry.Importance = (EventImportance)importance.SelectedItem!; entry.Experience = (PersonalExperienceKind)experience.SelectedItem!; entry.Impact = Number(impact); entry.PlayerEdited = true;
+                entry.Text = adding ? ExperienceName((PersonalExperienceKind)experience.SelectedItem!) + "（玩家设置）" : entry.Text; entry.Tick = Integer(tick); entry.Importance = (EventImportance)importance.SelectedItem!; entry.Experience = (PersonalExperienceKind)experience.SelectedItem!; entry.Impact = Number(impact); entry.PlayerEdited = true;
                 if (adding) history.Add(entry);
                 BeginEdit(); _engine.EditResident(id, new ResidentEdit { History = history }); CloseModal(); RefreshUi(true); SetStatus("个人经历已更新，将影响今后的性格与行为");
             }

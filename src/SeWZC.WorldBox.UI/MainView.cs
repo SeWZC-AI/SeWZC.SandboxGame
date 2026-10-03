@@ -36,10 +36,9 @@ public sealed partial class MainView : UserControl
     private readonly Border _placementBar = new();
     private bool _toolsOpen;
     private int _focusedEventId;
-    private readonly Stack<(string Mode, int Nation, int Resident, int Town, (int X, int Y)? Tile, int Event, Vector Scroll)> _navigation = new();
+    private readonly Stack<(string Mode, int Nation, int Resident, int Town, (int X, int Y)? Tile, int Building, int Event, Vector Scroll)> _navigation = new();
     private readonly ComboBox _toolContext = new() { Width = 112, MinHeight = 36, FontSize = 10 };
     private bool _updatingToolContext;
-    private int _terrainPage;
     private int[] _constructionTowns = [];
     private readonly List<Button> _categoryButtons = [];
     private readonly Button[] _toolSlots = new Button[8];
@@ -152,6 +151,10 @@ public sealed partial class MainView : UserControl
             _toolSlots[i] = button; _toolSwatches[i] = swatch; _toolLabels[i] = label; _toolChoices.Children.Add(button);
         }
         toolsPanel.Children.Add(_toolChoices);
+        var pagination = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, Height = 32, HorizontalAlignment = HorizontalAlignment.Center };
+        _toolPrevious = Named(Button("上一页", () => { _toolPage--; SetCategory(_category); }), "tool-page-prev");
+        _toolNext = Named(Button("下一页", () => { _toolPage++; SetCategory(_category); }), "tool-page-next");
+        pagination.Children.Add(_toolPrevious); pagination.Children.Add(_toolPageLabel); pagination.Children.Add(_toolNext); toolsPanel.Children.Add(pagination);
         var settings = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = 5, Height = 36 };
         Named(_toolContext, "tool-context"); _toolContext.SelectionChanged += (_, _) => OnToolContextChanged();
         var hint = new StackPanel { Spacing = 2 }; hint.Children.Add(_toolTitle); hint.Children.Add(_toolHint); settings.Children.Add(hint);
@@ -167,8 +170,10 @@ public sealed partial class MainView : UserControl
         placementActions.Children.Add(Named(Button("取消", () => _map.CancelPlacement()), "placement-cancel"));
         placement.Children.Add(placementActions);
         _placementBar.Child = placement; _placementBar.Background = Panel; _placementBar.Padding = new Thickness(8); _placementBar.IsVisible = false;
-        bottom.Children.Add(_placementBar);
-        _map.PlacementChanged += message => { _placementText.Text = message; _placementBar.IsVisible = message.Length > 0; placementActions.IsVisible = _map.HasPendingPlacement; };
+        _placementBar.VerticalAlignment = VerticalAlignment.Top; _placementBar.HorizontalAlignment = HorizontalAlignment.Left;
+        _placementBar.Margin = new Thickness(8); _placementBar.MaxWidth = 240;
+        _placementBar.CornerRadius = new CornerRadius(8); mapLayer.Children.Add(_placementBar);
+        _map.PlacementChanged += message => { _placementText.Text = message; _placementBar.IsVisible = _map.HasPendingPlacement; placementActions.IsVisible = _map.HasPendingPlacement; };
         var eventButton = Named(new Button { Content = _eventText, Padding = new Thickness(8, 3), MinHeight = 28,
             HorizontalAlignment = HorizontalAlignment.Stretch, Background = Panel }, "event-spotlight");
         _eventText.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -314,7 +319,7 @@ public sealed partial class MainView : UserControl
         _toolChoices.Columns = compact ? 4 : 8; _toolChoices.Rows = compact ? 2 : 1;
         _toolBar.Width = Math.Max(280, Math.Min(650, _map.Bounds.Width - 12));
         _selectionBar.Width = Math.Max(260, Math.Min(480, _map.Bounds.Width - 12));
-        _placementBar.MaxWidth = Math.Max(280, Math.Min(650, _map.Bounds.Width - 12));
+        _placementBar.MaxWidth = Math.Max(120, Math.Min(240, _map.Bounds.Width - 60));
         _eventText.MaxWidth = Math.Max(240, Math.Min(620, _map.Bounds.Width - 32));
         _toolContext.Width = compact ? 108 : 132;
         _toolTitle.FontSize = compact ? 11 : 13;

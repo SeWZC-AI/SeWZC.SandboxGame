@@ -45,6 +45,10 @@ public sealed partial class WorldMapControl
             }
             switch (building.Kind)
             {
+                case BuildingKind.TownCenter:
+                    DrawHouse(context, x - 3, y - 5, roof, town?.Population >= 160 ? 1.5 : 1.2);
+                    Box(WoodBrush, 2, -19, 1, 11); Box(roof, 3, -19, 6, 4);
+                    break;
                 case BuildingKind.Bridge:
                     Box(WoodBrush, -4, -4, 8, 8);
                     for (var row = 0; row < 4; row++) Box(StoneBrush, -4, -4 + row * 2, 8, .5);

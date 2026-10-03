@@ -32,7 +32,8 @@ internal static class DevelopmentDiagnostics
             Sample();
         }
         var save = engine.ExportJson();
-        _ = WorldEngine.ImportJson(save);
+        try { _ = WorldEngine.ImportJson(save); }
+        catch { File.WriteAllText(Path.Combine(output, "invalid.worldbox.json"), save, new UTF8Encoding(false)); throw; }
         File.WriteAllText(Path.Combine(output, "final.worldbox.json"), save, new UTF8Encoding(false));
         File.WriteAllText(Path.Combine(output, "report.json"), JsonSerializer.Serialize(new
         {
