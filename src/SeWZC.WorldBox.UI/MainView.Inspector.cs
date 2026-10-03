@@ -187,7 +187,35 @@ public sealed partial class MainView
         }
         var wildlife = Named(new CheckBox { Content = "近景显示野生动物图标", IsChecked = _map.ShowWildlife }, "map-wildlife");
         wildlife.IsCheckedChanged += (_, _) => { _map.ShowWildlife = wildlife.IsChecked == true; _map.RefreshWorld(); }; panel.Children.Add(wildlife);
-        panel.Children.Add(Paragraph("资源图标：黑色为煤，蓝色为石油，紫色为稀土。野生动物图标在 3 倍近景出现，数量越多图标越大。显示设置只影响玩家观察。"));
+        var plants = Named(new CheckBox { Content = "显示植物资源", IsChecked = _map.ShowPlants }, "map-plants");
+        plants.IsCheckedChanged += (_, _) => { _map.ShowPlants = plants.IsChecked == true; _map.RefreshWorld(); }; panel.Children.Add(plants);
+        var names = Named(new CheckBox { Content = "近景显示建筑名称", IsChecked = _map.ShowBuildingNames }, "map-building-names");
+        names.IsCheckedChanged += (_, _) => { _map.ShowBuildingNames = names.IsChecked == true; _map.InvalidateVisual(); }; panel.Children.Add(names);
+        var legend = FoldSection(panel, "图例与资源说明", "map-legend");
+        legend.Children.Add(Paragraph("资源图标：黑色为煤，蓝色为石油，紫色为稀土。动植物在 3 倍近景显示，同格可以有多种动物；标记随数量或植被覆盖缩放，占地格宽度最多 35%。植物对应现有可采储量。"));
+        var races = new WrapPanel { Orientation = Orientation.Horizontal };
+        foreach (var race in Enum.GetValues<RaceKind>())
+        {
+            var item = new StackPanel { Margin = new Thickness(4, 0), Spacing = 2 };
+            item.Children.Add(new Image { Source = _map.ResidentPreview(race, Profession.Lumberjack), Width = 32, Height = 40 });
+            item.Children.Add(Text(RaceName(race), 11)); races.Children.Add(item);
+        }
+        legend.Children.Add(races);
+        legend.Children.Add(Paragraph("斧头：伐木工   矿镐与头灯：矿工   草帽与锄头：农民\n铁盔与盾：战士   尖帽与法杖：法师   书本：学者\n邮包：信使   背包与货袋：商人   金色绶带：代表\n动作标记：箭头为行走或勘察，锤子为工作，月亮为休息，面包为进食，对话框为交流，书本为研读，星芒为施法，货箱为运输。"));
+        var animals = new WrapPanel { Orientation = Orientation.Horizontal };
+        foreach (var kind in Enum.GetValues<WildlifeKind>().Where(k => k != WildlifeKind.None))
+        {
+            var item = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 3, Margin = new Thickness(3, 2) };
+            item.Children.Add(new Image { Source = _map.AnimalPreview(kind), Width = 20, Height = 20 }); item.Children.Add(Text(WorldEngine.WildlifeName(kind), 11)); animals.Children.Add(item);
+        }
+        legend.Children.Add(animals);
+        var vegetation = new WrapPanel { Orientation = Orientation.Horizontal };
+        foreach (var kind in Enum.GetValues<PlantKind>())
+        {
+            var item = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 3, Margin = new Thickness(3, 2) };
+            item.Children.Add(new Image { Source = _map.PlantPreview(kind), Width = 20, Height = 20 }); item.Children.Add(Text(PlantResources.Name(kind), 11)); vegetation.Children.Add(item);
+        }
+        legend.Children.Add(vegetation);
         panel.Children.Add(Text("文明国家", 12, Mint));
         LiveRows(panel, () => _engine.State.Nations.OrderBy(n => n.Id).Take(16), n => n.Id.ToString(), n => $"{n.Name}   人口 {n.Population}   领土 {n.Territory} 格", n => OpenNation(n.Id));
         panel.Children.Add(Button("世界规则与魔法", () => OpenInspector("rules")));

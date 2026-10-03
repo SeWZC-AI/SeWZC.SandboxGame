@@ -67,6 +67,8 @@ fs.mkdirSync(output, { recursive: true });
                 await ui.click(actor.id, { scroll: 'inspector-scroll' }); snapshot = await ui.snapshot();
                 for (const tab of ['overview', 'residents', 'nations', 'history'])
                     assert(!snapshot.controls.some(c => c.id === `inspector-${tab}`), 'Object details retained unrelated global tabs');
+                await ui.point('resident-body', { scroll: 'inspector-scroll' });
+                assert(ui.control(await ui.snapshot(), 'resident-body').height <= 34, 'Collapsed headers still waste vertical space');
                 await page.screenshot({ path: path.join(output, `details-${mobile ? 'mobile' : 'desktop'}.png`) });
                 await diagnostics.assertHealthy('compact details and Android input sequence');
                 console.log(`PASS ${mobile ? 'mobile' : 'desktop'}: compact pages, living defaults, virtual input, IME, focus and contextual detail`);

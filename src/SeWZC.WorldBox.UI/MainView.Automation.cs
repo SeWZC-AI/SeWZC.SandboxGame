@@ -65,6 +65,7 @@ public sealed partial class MainView
         {
             Ready = _ready, Paused = _paused, Saving = _saving, Speed = _speed, ActiveTool = _map.ActiveTool,
             RenderedWildlifeCount = _map.RenderedWildlifeCount, RenderedEffectCount = _map.RenderedEffectCount, RenderedEffectTime = _map.RenderedEffectTime, RenderedRouteSegmentCount = _map.RenderedRouteSegmentCount,
+            RenderedPlantCount = _map.RenderedPlantCount, RenderedBuildingLabelCount = _map.RenderedBuildingLabelCount,
             WorldTick = _engine.State.Tick, SelectedResidentPoint = residentPoint,
             Category = _category, Inspector = _inspectorMode, Status = _status.Text,
             SelectedBuildingId = _map.SelectedBuildingId, SelectionKind = _mapSelectionKind,
@@ -86,6 +87,8 @@ public sealed partial class MainView
 
 internal sealed class UiAutomationSnapshot
 {
+    public int RenderedPlantCount { get; init; }
+    public int RenderedBuildingLabelCount { get; init; }
     public int RenderedWildlifeCount { get; init; }
     public int RenderedEffectCount { get; init; }
     public double RenderedEffectTime { get; init; }

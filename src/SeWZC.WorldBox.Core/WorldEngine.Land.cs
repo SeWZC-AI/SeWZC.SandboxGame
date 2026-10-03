@@ -180,8 +180,13 @@ public sealed partial class WorldEngine
         if (IsDepositVisible(tile, visibility) && tile.Deposit is { } kind)
             lines.Add($"{ResourceStock.Name(kind)}矿藏：{tile.DepositAmount:0.#}（不可再生）");
         if (tile.Harvested > 0) lines.Add($"累计采收 {tile.Harvested:0.#}   最近劳动距今 {Math.Max(0, State.Tick - tile.LastHarvestTick)} 日");
-        if (tile.Wildlife != WildlifeKind.None && tile.WildlifePopulation > 0)
-            lines.Add($"野生动物：{WildlifeName(tile.Wildlife)}   数量 {tile.WildlifePopulation:0.0} / 容量 {WildlifeCapacity(tile, tile.Wildlife):0.0}");
+        var plants = PlantResources.At(tile).ToArray();
+        if (plants.Length > 0) lines.Add("植物：" + string.Join("、", plants.Select(p => $"{PlantResources.Name(p.Kind)} 覆盖 {p.Cover:P0}")) + "（共享可采储量）");
+        for (var species = 1; species <= (int)WildlifeKind.Fish; species++)
+        {
+            var speciesKind = (WildlifeKind)species; var population = tile.AnimalPopulation(speciesKind);
+            if (population > 0) lines.Add($"野生动物：{WildlifeName(speciesKind)}   数量 {population:0.0} / 容量 {WildlifeCapacity(tile, speciesKind):0.0}");
+        }
         return string.Join("\n", lines);
     }
 }

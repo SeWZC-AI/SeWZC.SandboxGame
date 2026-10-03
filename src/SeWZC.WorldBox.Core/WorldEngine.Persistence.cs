@@ -59,6 +59,9 @@ public sealed partial class WorldEngine
                 && (tile.Improvement != LandImprovement.Bridge || tile.Terrain is TerrainType.River or TerrainType.Water), "地块改造或矿藏状态无效。");
             Require(Enum.IsDefined(tile.Wildlife) && FiniteRange(tile.WildlifePopulation, 1000)
                 && (tile.Wildlife != WildlifeKind.None || tile.WildlifePopulation == 0), "野生动物状态无效。");
+            for (var species = 1; species <= (int)WildlifeKind.Fish; species++)
+                Require(FiniteRange(tile.OtherWildlife.Get((WildlifeKind)species), 1000)
+                    && ((WildlifeKind)species != tile.Wildlife || tile.OtherWildlife.Get((WildlifeKind)species) == 0), "共存动物状态无效。");
             Require(tile!.NationId == 0 || nations.ContainsKey(tile.NationId), "地格引用了不存在的国家。");
             Require(tile.SettlementId == 0 || towns.TryGetValue(tile.SettlementId, out var town) && town.X == i % state.Width && town.Y == i / state.Width, "聚落地格引用无效。");
         }

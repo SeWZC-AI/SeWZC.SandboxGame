@@ -9,8 +9,8 @@ public sealed partial class MainView
     private readonly Dictionary<string, bool> _expandedDetails = [];
     private StackPanel FoldSection(StackPanel parent, string title, string id, bool expanded = false)
     {
-        var content = new StackPanel { Spacing = 4, Margin = new Thickness(0, 3) };
-        var fold = Named(new Expander { Header = Text(title, 13, Mint), Content = content,
+        var content = new StackPanel { Spacing = 3, Margin = new Thickness(0) };
+        var fold = Named(new Expander { Header = Text(title, 12, Mint), Content = content, Margin = new Thickness(0),
             IsExpanded = _expandedDetails.GetValueOrDefault(id, expanded), HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch }, id);
         fold.PropertyChanged += (_, e) => { if (e.Property == Expander.IsExpandedProperty) { _expandedDetails[id] = fold.IsExpanded; RefreshInspector(); } };
