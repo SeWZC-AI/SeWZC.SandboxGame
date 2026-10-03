@@ -1,4 +1,4 @@
-// Deployment-only smoke: full interaction regressions run against this artifact before deployment.
+// Fast artifact and live-site check; full interaction regressions are available on demand.
 const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

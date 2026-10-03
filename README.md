@@ -81,7 +81,7 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 
 核心测试采用可执行测试程序，默认运行聚焦单个命令、查询或规则的单元检查。测试作者应控制夹具和检查范围，使单元与 Headless UI 快速检查合计不超过 **10 秒**（含进程启动，不含编译／还原）。快速脚本直接运行已构建的程序并报告耗时，不设置硬超时或按耗时判失败；测试失败仍返回非零。可通过 `WORLDBOX_DOTNET` 指定 SDK 路径；不能以 `dotnet test` 代替。
 
-跨系统模拟与保存续演放在 `--suite integration`。混合编辑随机回归、五种子 6,000 tick 战争、大世界发展放在 `--suite long`；`--suite all` 执行全部核心检查，`--list` 可查看所选套件。长程检查保留原断言与规模，日常 CI 不执行；修改相应机制时本地运行，或手动运行 Actions 并勾选 `full_regression`。
+跨系统模拟与保存续演放在 `--suite integration`。混合编辑随机回归、五种子 6,000 tick 战争、大世界发展放在 `--suite long`；`--suite all` 执行全部核心检查，`--list` 可查看所选套件。集成与长程检查保留原断言与规模，日常 CI 不执行；修改相应机制时本地运行，或手动运行 Actions 并勾选 `full_regression`。
 
 共享界面回归同样是可执行程序，使用 Avalonia Headless 验证实际控件与事件处理，包括聚落消亡、国家编辑和切换世界。它不替代发布后的浏览器检查。
 
@@ -101,9 +101,9 @@ Linux 桌面版需要图形会话以及 Avalonia 所需的系统图形库。无�
 
 ## 发布到 GitHub Pages
 
-仓库中的 [GitHub Actions 工作流](.github/workflows/build-and-deploy.yml) 在 `main` 推送、PR 和手动运行时验证，避免功能分支推送与 PR 重复执行。它缓存 NuGet 包，先构建桌面与测试项目，再一次性发布浏览器项目；九套完整 Chromium 验收（桌面、触屏、连续运动、故事、特效、双线时代发展、地块与运输、紧凑详情和软键盘输入、可响应保存与后台存储）使用同一发布产物，在独立 runner 上并行运行。全部成功后，只有 `main` 的非 PR 运行进入部署。
+仓库中的 [GitHub Actions 工作流](.github/workflows/build-and-deploy.yml) 在 `main` 推送、PR 和手动运行时验证，避免功能分支推送与 PR 重复执行。原生构建与浏览器发布在独立 runner 并行执行，分别只还原需要的项目；NuGet 包与锁定版本的 Chromium 下载均缓存。日常流程运行核心单元、Headless UI、静态资源检查，以及较短的 `deploy-smoke`：从仓库子路径验证当前提交、实际渲染、模拟推进、IndexedDB 保存和刷新恢复。全部成功后，只有 `main` 的非 PR 运行进入部署。
 
-部署后执行较短的上线检查：确认当前提交的 HTML 已生效、应用渲染与模拟可用、IndexedDB 保存和刷新恢复成功。完整功能验收不重复执行。证据分别上传为 `worldbox-browser-tests-<suite>` 和 `worldbox-live-browser-tests`。并行验收缩短等待时间，但会增加 runner 初始化和 artifact 下载次数。
+需要完整回归时，在 Actions 手动勾选 `full_regression`：执行核心集成、长程模拟，以及原有九套完整 Chromium 验收（桌面、触屏、连续运动、故事、特效、双线时代发展、地块与运输、紧凑详情和软键盘输入、可响应保存与后台存储）。浏览器套件使用同一发布产物，在独立 runner 并行执行；该次运行必须全部成功才部署。部署后仍对真实站点运行 `deploy-smoke`，确认上线提交与存储恢复。证据分别上传为 `worldbox-browser-tests-<suite>` 和 `worldbox-live-browser-tests`。
 
 1. 在 GitHub 仓库的 **Settings → Pages → Build and deployment** 中，将 **Source** 设置为 **GitHub Actions**。
 2. 如果 **Settings → Environments → github-pages** 设置了部署分支限制，确保允许 `main`；从 `alpha` 迁移时，删除旧的 `alpha` 部署分支规则并添加 `main`。

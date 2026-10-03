@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       full_regression:
-        description: Also run long simulation and mixed-edit regressions
+        description: Run integration, long simulations and all browser regressions
         type: boolean
         default: false
 
@@ -43,11 +43,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-${{ hashFiles('global.json') }}-
 
-      - name: Install WebAssembly workload
-        run: dotnet workload install wasm-tools --skip-manifest-update
-
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore scripts/ci-build.slnf
 
       # Compile native checks here; the Browser project is built once by publish.
       - name: Build desktop and test projects
@@ -57,23 +54,53 @@ jobs:
         run: python3 scripts/run-fast-tests.py
 
       - name: Test simulation integration
+        if: inputs.full_regression == true
         run: dotnet tests/SeWZC.WorldBox.Core.Tests/bin/Release/net10.0/SeWZC.WorldBox.Core.Tests.dll --suite integration
 
       - name: Test long simulations and mixed edits
         if: inputs.full_regression == true
         run: dotnet tests/SeWZC.WorldBox.Core.Tests/bin/Release/net10.0/SeWZC.WorldBox.Core.Tests.dll --suite long
 
-      - name: Publish and check static site
-        run: bash scripts/publish-browser.sh --no-restore
-
       - name: Prepare large save fixture
+        if: inputs.full_regression == true
         run: dotnet tests/SeWZC.WorldBox.Core.Tests/bin/Release/net10.0/SeWZC.WorldBox.Core.Tests.dll --export-browser-fixture artifacts/save-fixture/world.worldbox.json
 
       - name: Upload save fixture
+        if: inputs.full_regression == true
         uses: actions/upload-artifact@v4
         with:
           name: worldbox-save-fixture
           path: artifacts/save-fixture
+
+  publish:
+    name: Publish and check static site
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pinned .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('global.json') }}-browser-${{ hashFiles('**/*.csproj', '**/*.props', '**/*.targets', '**/NuGet.Config', '**/nuget.config') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-${{ hashFiles('global.json') }}-browser-
+            ${{ runner.os }}-nuget-${{ hashFiles('global.json') }}-
+
+      - name: Install WebAssembly workload
+        run: dotnet workload install wasm-tools --skip-manifest-update
+
+      - name: Restore browser project
+        run: dotnet restore src/SeWZC.WorldBox.Browser/SeWZC.WorldBox.Browser.csproj
+
+      - name: Publish and check static site
+        run: bash scripts/publish-browser.sh --no-restore
 
       - name: Upload static site for browser checks and review
         uses: actions/upload-artifact@v4
@@ -81,6 +108,7 @@ jobs:
           name: worldbox-static-site
           path: artifacts/site
           include-hidden-files: true
+          compression-level: 0
 
       - name: Prepare GitHub Pages artifact
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
@@ -90,13 +118,14 @@ jobs:
 
   browser:
     name: Browser (${{ matrix.suite }})
-    needs: build
+    needs: [build, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        suite: [smoke, mobile-smoke, motion, stories, effects, advancement, land, details, saving]
+        # Keep normal pushes and PRs short; the manual option retains every regression.
+        suite: ${{ fromJSON(inputs.full_regression == true && '["deploy-smoke", "smoke", "mobile-smoke", "motion", "stories", "effects", "advancement", "land", "details", "saving"]' || '["deploy-smoke"]') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -111,23 +140,13 @@ jobs:
           name: worldbox-save-fixture
           path: artifacts/save-fixture
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: tests/browser/package-lock.json
-
-      - name: Install browser checks
-        run: npm ci --prefix tests/browser
-
-      - name: Install headless Chromium
-        working-directory: tests/browser
-        run: npx playwright install --with-deps --only-shell chromium
+      - uses: ./.github/actions/setup-browser
 
       # Separate runners prevent motion/effects measurements competing for CPU.
       - name: Test published site under its GitHub Pages path
         env:
           WORLDBOX_BASE_URL: http://127.0.0.1:8080/SeWZC.SandboxGame/
+          WORLDBOX_EXPECTED_REVISION: ${{ github.sha }}
           BROWSER_SUITE: ${{ matrix.suite }}
         run: |
           set -euo pipefail
@@ -157,7 +176,7 @@ jobs:
   deploy:
     name: Deploy main to GitHub Pages
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: [build, browser]
+    needs: [build, publish, browser]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -190,18 +209,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: npm
-          cache-dependency-path: tests/browser/package-lock.json
-
-      - name: Install browser checks
-        run: npm ci --prefix tests/browser
-
-      - name: Install headless Chromium
-        working-directory: tests/browser
-        run: npx playwright install --with-deps --only-shell chromium
+      - uses: ./.github/actions/setup-browser
 
       - name: Test deployed revision, startup and save recovery
         run: |
