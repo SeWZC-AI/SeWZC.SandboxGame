@@ -18,7 +18,7 @@ public sealed partial class MainView
         panel.Children.Add(LiveText(() => $"{Current().Name}   {ProfessionName(Current().Profession)}", 18, Mint));
         panel.Children.Add(LiveText(() => $"{RaceName(Current().Race)}   年龄 {Current().Age:F1} / 预期寿命 {WorldEngine.Lifespan(Current().Race)} 岁\n{NationName(Current().NationId)}   {TownName(Current().SettlementId)}"));
         panel.Children.Add(LiveText(() => Current().Health <= 0 ? $"逝世时间：{DateLabel(Current().DeathTick)}\n死亡原因：{WorldEngine.DeathCauseName(Current().DeathCause)}" : ""));
-        panel.Children.Add(LiveText(() => $"生命 {Current().Health:0} / 100   体力 {100 - Current().Agent.Fatigue:0} / 100   饥饿 {Current().Hunger:0}%"));
+        panel.Children.Add(LiveText(() => $"生命 {Current().Health:0} / 100   体力 {100 - Current().Agent.Fatigue:0} / 100   饥饿 {Current().Hunger:0}%   口渴 {Current().Thirst:0}%"));
         panel.Children.Add(LiveText(() => _engine.GetResidentActionSummary(id)));
         if (resident.Health > 0)
         {
@@ -48,8 +48,10 @@ public sealed partial class MainView
         body.Children.Add(LiveText(() =>
         {
             var r = Current();
-            return $"位置 {r.X}, {r.Y}\n{ActivityName(r.Activity)}\n生命 {r.Health:F1}\n饥饿 {r.Hunger:F1}\n疫病 {r.SicknessTicks} 日\n疲劳 {r.Agent.Fatigue:F1}\n社交需求 {r.Agent.SocialNeed:F1}\n特质：{r.Trait}\n随身库存：{StockLabel(r.Inventory)}\n魔力 {r.Mana:F1}\n天赋 {r.MagicTalent:F1}\n训练 {r.MagicTraining:F1}\n军队 {(r.ArmyId == 0 ? "无" : r.ArmyId.ToString())}\n家园 {TownName(r.SettlementId)}";
+            return $"位置 {r.X}, {r.Y}\n{ActivityName(r.Activity)}\n生命 {r.Health:F1}\n饥饿 {r.Hunger:F1}\n口渴 {r.Thirst:F1}\n疫病 {r.SicknessTicks} 日\n疲劳 {r.Agent.Fatigue:F1}\n社交需求 {r.Agent.SocialNeed:F1}\n特质：{r.Trait}\n随身库存：{StockLabel(r.Inventory)}\n魔力 {r.Mana:F1}\n天赋 {r.MagicTalent:F1}\n训练 {r.MagicTraining:F1}\n军队 {(r.ArmyId == 0 ? "无" : r.ArmyId.ToString())}\n家园 {TownName(r.SettlementId)}";
         }));
+        var effects = FoldSection(panel, "当前加成与减益", "resident-effects");
+        effects.Children.Add(LiveText(() => EffectLabel(_engine.GetResidentEffects(id))));
         var route = Named(new CheckBox { Content = "显示后续行动轨迹", IsChecked = _map.ShowResidentRoute }, "resident-route");
         route.IsCheckedChanged += (_, _) => { _map.ShowResidentRoute = route.IsChecked == true; _map.InvalidateVisual(); };
         panel.Children.Add(route);
@@ -73,7 +75,7 @@ public sealed partial class MainView
     }
 
     private string FactLabel(AgentFact fact) => $"{FactKindName(fact.Kind)}\n置信度 {fact.Confidence:P0}\n{fact.Text}\n观察 {DateLabel(fact.ObservedTick)}\n获知 {DateLabel(fact.LearnedTick)}\n消息年龄 {Math.Max(0, _engine.State.Tick - fact.ObservedTick)} 日\n经过 {fact.Hops} 次转述\n来源 {ResidentName(fact.SourceResidentId)}\n地点 {fact.X},{fact.Y}\n值 {fact.Value:F1}";
-    private static string FactKindName(AgentFactKind kind) => kind switch { AgentFactKind.FoodSupply => "粮食供给", AgentFactKind.Danger => "危险", AgentFactKind.SettlementLocation => "聚落位置", AgentFactKind.ReliefRequest => "救济请求", AgentFactKind.Policy => "政策", AgentFactKind.WarOrder => "战争命令", AgentFactKind.PeaceOrder => "和平命令", AgentFactKind.Culture => "文化", AgentFactKind.Research => "研究", AgentFactKind.TradeExchange => "贸易往来", AgentFactKind.DiplomaticNotice => "外交声明", AgentFactKind.WarReport => "前线战报", _ => "个人记忆" };
+    private static string FactKindName(AgentFactKind kind) => kind switch { AgentFactKind.WaterSource => "淡水源位置", AgentFactKind.FoodSupply => "粮食供给", AgentFactKind.Danger => "危险", AgentFactKind.SettlementLocation => "聚落位置", AgentFactKind.ReliefRequest => "救济请求", AgentFactKind.Policy => "政策", AgentFactKind.WarOrder => "战争命令", AgentFactKind.PeaceOrder => "和平命令", AgentFactKind.Culture => "文化", AgentFactKind.Research => "研究", AgentFactKind.TradeExchange => "贸易往来", AgentFactKind.DiplomaticNotice => "外交声明", AgentFactKind.WarReport => "前线战报", _ => "个人记忆" };
 
     private void ShowResidentEditor(int id)
     {
@@ -94,6 +96,7 @@ public sealed partial class MainView
         var age = Field(condition, "年龄", resident.Age, "resident-age");
         var health = Field(condition, "生命 0–100", resident.Health, "resident-health");
         var hunger = Field(condition, "饥饿 0–100", resident.Hunger, "resident-hunger");
+        var thirst = Field(condition, "口渴 0–100", resident.Thirst, "resident-thirst");
         var sickness = Field(condition, "疫病剩余日数", resident.SicknessTicks, "resident-sickness");
         var x = Field(belonging, "位置 X", resident.X, "resident-x"); var y = Field(belonging, "位置 Y", resident.Y, "resident-y");
         var army = ObjectField(belonging, "军队", _engine.State.Armies.Where(a => a.NationId == resident.NationId).Select(a => (a.Id, NationName(a.NationId) + "\n" + a.Status)), resident.ArmyId, "resident-army", true, archived);
@@ -102,17 +105,17 @@ public sealed partial class MainView
         var training = Field(magic, "魔法训练", resident.MagicTraining, "resident-magic-training");
         possessions.Children.Add(Text("随身库存", 13, Mint));
         var inventory = StockFields(possessions, resident.Inventory, "resident-inventory");
-        panel.Children.Add(Named(Button("应用档案变更", () =>
+        panel.Children.Add(Named(Button("应用档案变更", async () =>
         {
             try
             {
                 var patch = new ResidentEdit
                 {
                     Name = name.Text ?? "", Trait = Integer(trait) == 0 ? null : new[] { "", "勤劳", "勇敢", "好奇", "温和" }[Integer(trait)], Race = (RaceKind)race.SelectedItem!, Profession = (Profession)profession.SelectedItem!,
-                    CultureId = Integer(culture), SettlementId = Integer(home) == resident.SettlementId ? null : Integer(home), Age = Number(age), Health = Number(health), Hunger = Number(hunger), SicknessTicks = Integer(sickness),
+                    CultureId = Integer(culture), SettlementId = Integer(home) == resident.SettlementId ? null : Integer(home), Age = Number(age), Health = Number(health), Hunger = Number(hunger), Thirst = Number(thirst), SicknessTicks = Integer(sickness),
                     X = Integer(x), Y = Integer(y), ArmyId = Integer(army) == resident.ArmyId ? null : Integer(army), Mana = Number(mana), MagicTalent = Number(talent), MagicTraining = Number(training), Inventory = ReadStock(inventory)
                 };
-                BeginEdit(); _engine.EditResident(id, patch); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("居民档案已更新\n可撤销");
+                await PrepareEditAsync(); _engine.EditResident(id, patch); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("居民档案已更新\n可撤销");
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { SetStatus("未应用变更：" + FriendlyError(ex)); }
         }), "resident-apply"));
@@ -141,13 +144,24 @@ public sealed partial class MainView
         {
             var kind = (AgentGoalKind)goal.SelectedItem!;
             var facilities = kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic;
-            entityLabel.Text = facilities ? "目标设施（本聚落）" : "目标居民";
+            var sourceGoal = kind is AgentGoalKind.FetchWater or AgentGoalKind.Hunt or AgentGoalKind.Fish;
+            entityLabel.Text = sourceGoal ? "附近源地块" : facilities ? "目标设施（本聚落）" : "目标居民";
             var choices = new List<EntityChoice> { new(0, "无 / 按目标地点行动") };
             if (facilities)
                 choices.AddRange(_engine.State.Society.Buildings.Where(building => building.SettlementId == resident.SettlementId
                     && (kind == AgentGoalKind.Work || kind == AgentGoalKind.Study && building.Kind == BuildingKind.Academy
                         || kind == AgentGoalKind.TrainMagic && building.Kind == BuildingKind.ArcaneSanctum))
                     .Select(building => new EntityChoice(building.Id, $"{WorldEngine.BuildingName(building.Kind)} #{building.Id}\n{building.X},{building.Y}")));
+            else if (sourceGoal)
+            {
+                for (var yy = Math.Max(0, resident.Y - 6); yy <= Math.Min(_engine.State.Height - 1, resident.Y + 6); yy++)
+                for (var xx = Math.Max(0, resident.X - 6); xx <= Math.Min(_engine.State.Width - 1, resident.X + 6); xx++)
+                {
+                    var index = yy * _engine.State.Width + xx; var tile = _engine.State.Tiles[index];
+                    if (kind == AgentGoalKind.FetchWater ? WorldEngine.IsFreshWater(tile) : kind == AgentGoalKind.Fish ? tile.AnimalPopulation(WildlifeKind.Fish) > 0 : tile.WildlifeMask != 0 && tile.IsWalkable)
+                        choices.Add(new(index + 1, $"{TerrainName(tile.Terrain)} {xx}, {yy}"));
+                }
+            }
             else choices.AddRange(_engine.State.Residents.Select(person => new EntityChoice(person.Id, person.Name)));
             if (kind == originalGoal.Kind && choices.All(choice => choice.Id != originalGoal.TargetEntityId))
                 choices.Add(new(originalGoal.TargetEntityId, $"保留原目标 #{originalGoal.TargetEntityId}（历史引用）"));
@@ -167,6 +181,19 @@ public sealed partial class MainView
                 if (_engine.State.Society.Buildings.FirstOrDefault(item => item.Id == choice.Id) is { } building)
                 { x.Value = building.X; y.Value = building.Y; }
             }
+            else if ((AgentGoalKind)goal.SelectedItem! is AgentGoalKind.FetchWater or AgentGoalKind.Fish or AgentGoalKind.Hunt)
+            {
+                if (choice.Id <= 0 || choice.Id > _engine.State.Tiles.Length) return;
+                var sourceX = (choice.Id - 1) % _engine.State.Width; var sourceY = (choice.Id - 1) / _engine.State.Width;
+                if ((AgentGoalKind)goal.SelectedItem! == AgentGoalKind.Hunt) { x.Value = sourceX; y.Value = sourceY; }
+                else
+                {
+                    var bank = new[] { (X: sourceX - 1, Y: sourceY), (X: sourceX + 1, Y: sourceY), (X: sourceX, Y: sourceY - 1), (X: sourceX, Y: sourceY + 1) }
+                        .Where(p => p.X >= 0 && p.Y >= 0 && p.X < _engine.State.Width && p.Y < _engine.State.Height && _engine.State.Tiles[p.Y * _engine.State.Width + p.X].IsWalkable)
+                        .OrderBy(p => Math.Abs(p.X - resident.X) + Math.Abs(p.Y - resident.Y)).Select(p => ((int X, int Y)?)p).FirstOrDefault();
+                    if (bank is { } p) { x.Value = p.X; y.Value = p.Y; }
+                }
+            }
             else if (_engine.State.Residents.FirstOrDefault(person => person.Id == choice.Id) is { } target)
             { x.Value = target.X; y.Value = target.Y; }
         };
@@ -179,7 +206,7 @@ public sealed partial class MainView
         var diligence = Field(panel, "勤勉 0–1", mind.Personality.Diligence, "resident-diligence");
         var sociability = Field(panel, "社交 0–1", mind.Personality.Sociability, "resident-sociability");
         var ambition = Field(panel, "抱负 0–1", mind.Personality.Ambition, "resident-ambition");
-        panel.Children.Add(Named(Button("应用目标与人格", () =>
+        panel.Children.Add(Named(Button("应用目标与人格", async () =>
         {
             try
             {
@@ -193,7 +220,7 @@ public sealed partial class MainView
                     TargetSettlementId = targetTown, TargetEntityId = targetEntity, Reason = "玩家指定：" + GoalName(kind),
                     PlayerDirected = true, StartedTick = _engine.State.Tick, ReviewTick = _engine.State.Tick + keepDays } : originalGoal;
                 mind.Fatigue = Number(fatigue); mind.SocialNeed = Number(social); mind.Personality.Courage = Number(courage); mind.Personality.Diligence = Number(diligence); mind.Personality.Sociability = Number(sociability); mind.Personality.Ambition = Number(ambition);
-                BeginEdit(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("目标与人格已更新，将影响接下来的行动");
+                await PrepareEditAsync(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("目标与人格已更新，将影响接下来的行动");
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { SetStatus("未应用变更：" + FriendlyError(ex)); }
         }), "resident-goal-apply"));
@@ -265,20 +292,20 @@ public sealed partial class MainView
         var origin = ObjectField(panel, "最初观察者", _engine.State.Residents.Concat(_engine.State.ArchivedResidents).Select(p => (p.Id, p.Name)), fact.OriginResidentId, "memory-origin", true); var source = ObjectField(panel, "消息来源", _engine.State.Residents.Concat(_engine.State.ArchivedResidents).Select(p => (p.Id, p.Name)), fact.SourceResidentId, "memory-source", true);
         var hops = Field(panel, "转述次数", fact.Hops, "memory-hops"); hops.Maximum = 1000;
         x.Minimum = -1; y.Minimum = -1; AddMapPicker(panel, x, y);
-        panel.Children.Add(Named(Button("保存记忆", () =>
+        panel.Children.Add(Named(Button("保存记忆", async () =>
         {
             try
             {
                 fact.Kind = (AgentFactKind)kind.SelectedItem!; fact.Text = adding ? FactKindName(fact.Kind) + "（玩家设置）" : fact.Text; fact.Value = choice.IsVisible ? Integer(choice) : Number(value); fact.TargetNationId = addressed.IsVisible ? Integer(addressed) : 0; fact.Confidence = Number(confidence); fact.SubjectId = Integer(subject);
                 fact.X = Integer(x); fact.Y = Integer(y); fact.ObservedTick = Integer(observed); fact.LearnedTick = Integer(learned); fact.OriginResidentId = Integer(origin); fact.SourceResidentId = Integer(source); fact.Hops = Integer(hops);
                 if (adding) mind.Memory.Add(fact);
-                BeginEdit(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("记忆已更新，世界历史保持原样");
+                await PrepareEditAsync(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("记忆已更新，世界历史保持原样");
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { if (adding) mind.Memory.Remove(fact); SetStatus("未应用变更：" + FriendlyError(ex)); }
         }), "memory-apply"));
-        if (!adding) panel.Children.Add(Named(Button("删除这条记忆", () =>
+        if (!adding) panel.Children.Add(Named(Button("删除这条记忆", async () =>
         {
-            try { mind.Memory.Remove(fact); BeginEdit(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("这条记忆已移除"); }
+            try { mind.Memory.Remove(fact); await PrepareEditAsync(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("这条记忆已移除"); }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { SetStatus(FriendlyError(ex)); }
         }), "memory-delete"));
         OpenModal(panel);
@@ -305,19 +332,19 @@ public sealed partial class MainView
         void UpdateEffect() { var strength = (double)(impact.Value ?? 0); effects.Text = $"当前强度对应 {Math.Abs(strength) * 10:0.#} 个百分点的性格变化；范围限制为 0–100%。"; }
         experience.SelectionChanged += (_, _) => UpdateEffect(); impact.ValueChanged += (_, _) => UpdateEffect(); UpdateEffect();
         panel.Children.Add(Paragraph("强度为 1 时：艰难使勇气减少 10 个百分点，成就使勇气增加 10 个百分点；善意使社交增加 10 个百分点，背叛使社交减少 10 个百分点；学习使勤勉增加 10 个百分点。负强度反向作用，中性经历不改变性格。"));
-        panel.Children.Add(Named(Button("保存个人经历", () =>
+        panel.Children.Add(Named(Button("保存个人经历", async () =>
         {
             try
             {
                 entry.Text = adding ? ExperienceName((PersonalExperienceKind)experience.SelectedItem!) + "（玩家设置）" : entry.Text; entry.Tick = Integer(tick); entry.Importance = (EventImportance)importance.SelectedItem!; entry.Experience = (PersonalExperienceKind)experience.SelectedItem!; entry.Impact = Number(impact); entry.PlayerEdited = true;
                 if (adding) history.Add(entry);
-                BeginEdit(); _engine.EditResident(id, new ResidentEdit { History = history }); CloseModal(); RefreshUi(true); SetStatus("个人经历已更新，将影响今后的性格与行为");
+                await PrepareEditAsync(); _engine.EditResident(id, new ResidentEdit { History = history }); CloseModal(); RefreshUi(true); SetStatus("个人经历已更新，将影响今后的性格与行为");
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { if (adding) history.Remove(entry); SetStatus("未应用变更：" + FriendlyError(ex)); }
         }), "history-entry-apply"));
-        if (!adding) panel.Children.Add(Named(Button("删除这条个人经历", () =>
+        if (!adding) panel.Children.Add(Named(Button("删除这条个人经历", async () =>
         {
-            try { history.Remove(entry); BeginEdit(); _engine.EditResident(id, new ResidentEdit { History = history }); CloseModal(); RefreshUi(true); SetStatus("个人经历已移除，世界历史未改变"); }
+            try { history.Remove(entry); await PrepareEditAsync(); _engine.EditResident(id, new ResidentEdit { History = history }); CloseModal(); RefreshUi(true); SetStatus("个人经历已移除，世界历史未改变"); }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { SetStatus(FriendlyError(ex)); }
         }), "history-entry-delete"));
         OpenModal(panel);
@@ -329,11 +356,11 @@ public sealed partial class MainView
         var panel = ModalPanel(history ? "编辑个人经历与历史" : "高级认知编辑", history ? "个人历史与世界事件独立。Experience 与 Impact 是结构化心理影响；文本不会被当作可执行命令。仅影响今后认知，不重新计算过去的世界。" : "包含目标、人格、全部记忆、决策依据、携带消息与任务。字段统一经过模拟核心校验。只修改这个角色的认知，不会改动世界事实。");
         var input = Named(new TextBox { Text = history ? _engine.ExportResidentHistory(id) : _engine.ExportResidentMind(id), AcceptsReturn = true, TextWrapping = Avalonia.Media.TextWrapping.Wrap, MinHeight = 280, MaxHeight = 420 }, history ? "resident-history-json" : "resident-mind-json-input");
         panel.Children.Add(input);
-        panel.Children.Add(Named(Button("校验并应用", () =>
+        panel.Children.Add(Named(Button("校验并应用", async () =>
         {
             try
             {
-                BeginEdit(); if (history) _engine.EditResidentHistoryJson(id, input.Text ?? ""); else _engine.EditResidentMindJson(id, input.Text ?? "");
+                await PrepareEditAsync(); if (history) _engine.EditResidentHistoryJson(id, input.Text ?? ""); else _engine.EditResidentMindJson(id, input.Text ?? "");
                 CloseModal(); RefreshUi(true); SetStatus("角色记录已更新，将影响未来行为");
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or JsonException) { SetStatus("未应用变更：" + FriendlyError(ex)); }

@@ -10,12 +10,10 @@ public static class PlantResources
         if (tile.FireTicks > 0 || tile.ResourceAmount < 1) yield break;
         var cover = Math.Clamp(tile.ResourceAmount / 100, 0, 1) * (tile.DroughtTicks > 0 ? .4 : 1);
         if (tile.Improvement == LandImprovement.Farmland) { yield return (PlantKind.Crops, cover); yield break; }
-        switch (tile.Terrain)
+        for (var species = 0; species < 4; species++)
         {
-            case TerrainType.Forest: yield return (PlantKind.Trees, cover); yield return (PlantKind.Shrubs, cover * .6); break;
-            case TerrainType.Grass: case TerrainType.Hills: case TerrainType.Tundra:
-                yield return (PlantKind.Grass, cover); yield return (PlantKind.Shrubs, cover * .35); break;
-            case TerrainType.Wetland: yield return (PlantKind.Reeds, cover); yield return (PlantKind.Grass, cover * .5); break;
+            var kind = (PlantKind)species; var coverage = tile.Plants.Get(kind) * cover;
+            if (coverage > .001) yield return (kind, coverage);
         }
     }
 

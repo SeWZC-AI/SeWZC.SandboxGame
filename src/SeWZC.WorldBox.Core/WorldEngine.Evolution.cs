@@ -11,6 +11,7 @@ public sealed record WorldRules
     public bool Births { get; set; } = true;
     public bool Aging { get; set; } = true;
     public bool Hunger { get; set; } = true;
+    public bool Thirst { get; set; } = true;
     public bool Disease { get; set; } = true;
     public bool Construction { get; set; } = true;
     public bool Research { get; set; } = true;
@@ -89,16 +90,17 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>Read-only validation shared by the map preview and the committing command.</summary>
-    public string? FacilityPlacementError(int settlementId, BuildingKind kind, int x, int y, bool gift = false)
+    public string? FacilityPlacementError(int settlementId, BuildingKind kind, int x, int y, bool gift = false, BridgeDirection? direction = null, int bridgeLevel = 1)
     {
         if (!Enum.IsDefined(kind)) return "未知的建筑类型";
         if (kind == BuildingKind.TownCenter) return "每处聚落的中心由定居和重建维护，无需另行放置";
         if (!_settlements.TryGetValue(settlementId, out var town)) return "先选择归属聚落";
         if (!InBounds(x, y) || !BuildingTerrainValid(kind, State.Tiles[Index(x, y)])) return kind == BuildingKind.Bridge ? "桥梁需要河流或浅水" : kind == BuildingKind.MountainPass ? "山路需要山地" : "需要可通行的陆地";
+        if (kind == BuildingKind.Bridge && BridgePlacementError(x, y, direction ?? InferBridgeDirection(x, y), bridgeLevel) is { } bridgeError) return bridgeError;
         var range = kind is BuildingKind.Bridge or BuildingKind.MountainPass ? 24 : 8;
         if (Distance(x, y, town.X, town.Y) > range) return $"距归属聚落超过 {range} 格";
         if (kind is BuildingKind.Bridge or BuildingKind.MountainPass && !Directions.Any(d => Walkable(x + d.X, y + d.Y))) return "需要相邻的可通行施工位置，逐段向前建设";
-        if (kind == BuildingKind.Dock && !Directions.Any(d => InBounds(x + d.X, y + d.Y) && State.Tiles[Index(x + d.X, y + d.Y)].Terrain is TerrainType.Water or TerrainType.River or TerrainType.DeepWater)) return "船坞码头需要紧邻水岸";
+        if (kind == BuildingKind.Dock && !Directions.Any(d => InBounds(x + d.X, y + d.Y) && State.Tiles[Index(x + d.X, y + d.Y)].Terrain is TerrainType.Water or TerrainType.River or TerrainType.DeepWater or TerrainType.Lake)) return "船坞码头需要紧邻水岸";
         var tile = State.Tiles[Index(x, y)];
         if (tile.FireTicks > 0) return "此处正在燃烧";
         if (tile.NationId != 0 && tile.NationId != town.NationId) return "此处属于其他国家";
@@ -113,7 +115,7 @@ public sealed partial class WorldEngine
         if (kind == BuildingKind.ArcaneSanctum && !HasResearch(settlementId, ResearchKind.ArcaneArts)) return "当地尚未掌握奥术基础";
         if (AdvancementRules.For(kind) is { } advancement && (!HasResearch(settlementId, advancement.Research)
             || advancement.Prerequisites.Any(p => !HasResearch(settlementId, p)))) return "当地尚未掌握" + ResearchName(advancement.Research) + "及其前置";
-        return MissingResources(town.Resources, GetBuildingCost(kind));
+        return MissingResources(town.Resources, FacilityCost(kind, bridgeLevel));
     }
 
     public static string? MissingResources(ResourceStock stock, ResourceStock cost)
@@ -124,7 +126,7 @@ public sealed partial class WorldEngine
         return missing.Count == 0 ? null : string.Join("\n", missing);
     }
 
-    public int GrantFacility(int settlementId, BuildingKind kind, int x, int y) => PlaceFacility(settlementId, kind, x, y, true);
+    public int GrantFacility(int settlementId, BuildingKind kind, int x, int y, BridgeDirection? direction = null, int bridgeLevel = 1) => PlaceFacility(settlementId, kind, x, y, true, direction, bridgeLevel);
 
     public bool IsBuildingOperational(Building building) => IsFacilityOperating(building)
         && (building.Kind != BuildingKind.SignalTower || HasResearch(building.SettlementId, ResearchKind.SignalNetwork) && HasResearch(building.SettlementId, ResearchKind.Electrification));

@@ -9,6 +9,9 @@ public sealed partial class WorldEngine
     private readonly List<List<Building>> _localWorkBuildingBuffers = [];
     private readonly List<List<Resident>> _localWorkResidentBuffers = [];
     private bool _localWorkQueriesActive;
+    private readonly Dictionary<int, Building> _workBuildingsById = [];
+    private Building? FindBuilding(int id) => id == 0 ? null : _localWorkQueriesActive
+        ? _workBuildingsById.GetValueOrDefault(id) : State.Society.Buildings.FirstOrDefault(b => b.Id == id);
     private readonly Dictionary<int, SettlementResearch> _localResearch = [];
 
     private static List<T> LocalWorkGroup<T>(Dictionary<int, List<T>> groups, List<List<T>> buffers, int settlementId)
@@ -25,7 +28,10 @@ public sealed partial class WorldEngine
     {
         foreach (var research in State.Society.Research) _localResearch[research.SettlementId] = research;
         foreach (var building in State.Society.Buildings)
+        {
+            _workBuildingsById[building.Id] = building;
             LocalWorkGroup(_localWorkBuildings, _localWorkBuildingBuffers, building.SettlementId).Add(building);
+        }
         foreach (var resident in State.Residents)
             LocalWorkGroup(_localWorkResidents, _localWorkResidentBuffers, resident.SettlementId).Add(resident);
         _localWorkQueriesActive = true;
@@ -33,7 +39,7 @@ public sealed partial class WorldEngine
 
     private void EndLocalWorkQueries()
     {
-        _localWorkQueriesActive = false; _localResearch.Clear();
+        _localWorkQueriesActive = false; _localResearch.Clear(); _workBuildingsById.Clear();
         foreach (var group in _localWorkBuildings.Values) group.Clear();
         foreach (var group in _localWorkResidents.Values) group.Clear();
         _localWorkBuildings.Clear();

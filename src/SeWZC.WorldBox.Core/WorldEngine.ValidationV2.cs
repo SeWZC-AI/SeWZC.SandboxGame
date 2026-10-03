@@ -29,7 +29,7 @@ public sealed partial class WorldEngine
         CheckV2(IdentityText(person.Name, 80) && person.Name.Length > 0 && IdentityText(person.Trait, 80) && Enum.IsDefined(person.Race) && Enum.IsDefined(person.Profession) && Enum.IsDefined(person.Activity), "身份信息无效。");
         CheckV2(person.Agent is not null && person.Agent.ExplorationHeading is >= 0 and < 8, "资源勘察方向无效。");
         CheckV2(Enum.IsDefined(person.DeathCause) && person.DeathTick >= 0 && person.DeathTick <= tick, "死亡记录无效。");
-        CheckV2(Number(person.Age, 0, 1000) && Number(person.Health, 0, 100) && Number(person.Hunger, 0, 100) && Number(person.Mana, 0, 1000) && Number(person.MagicTalent, 0, 100) && Number(person.MagicTraining, 0, 100) && person.SicknessTicks is >= 0 and <= 10_000, "生命或魔法数值无效。");
+        CheckV2(Number(person.Age, 0, 1000) && Number(person.Health, 0, 100) && Number(person.Hunger, 0, 100) && Number(person.Thirst, 0, 100) && Number(person.Mana, 0, 1000) && Number(person.MagicTalent, 0, 100) && Number(person.MagicTraining, 0, 100) && person.SicknessTicks is >= 0 and <= 10_000, "生命或魔法数值无效。");
         CheckV2(Coordinates(person.X, person.Y, width, height) && Coordinates(person.FromX, person.FromY, width, height) && person.MoveStartedTick >= 0 && person.MoveStartedTick <= tick && person.MoveDurationTicks is >= 1 and <= 100, "移动位置或时间无效。");
         CheckV2(person.Inventory is not null && AdvancementRules.Resources.All(kind => Number(person.Inventory.Get(kind), 0, 1_000_000)), "背包数值无效。");
         CheckV2(Enum.IsDefined(person.TravelMode) && (person.TravelMode != TravelMode.Aircraft || person.Inventory.Aircraft >= 1)

@@ -15,7 +15,7 @@ internal static class TradeRegressionTests
     private static (WorldEngine Engine, Resident Trader, Settlement Source, Settlement Destination) Fixture()
     {
         var fixture = AgentBehaviorTests.TradeWorld();
-        fixture.Engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false,
+        fixture.Engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Thirst = false,
             Disease = false, Construction = false, Research = false, Expansion = false,
             Wars = false, Alliances = false, Peace = false, Migration = false, Secession = false }, false, false);
         foreach (var person in fixture.Engine.State.Residents)

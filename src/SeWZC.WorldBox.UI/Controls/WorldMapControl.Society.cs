@@ -30,7 +30,7 @@ public sealed partial class WorldMapControl
         BuildingKind.SignalTower => 16, BuildingKind.TownCenter or BuildingKind.PowerPlant => 13,
         BuildingKind.Academy or BuildingKind.Foundry or BuildingKind.AetherForge => 12,
         BuildingKind.Farm or BuildingKind.AutomatedFarm => 6.4,
-        BuildingKind.Bridge or BuildingKind.MountainPass => 4, _ => 9.6
+        BuildingKind.Bridge => 8, BuildingKind.MountainPass => 4, _ => 9.6
     };
 
     private static Rect BuildingBounds(Building building)
@@ -55,11 +55,19 @@ public sealed partial class WorldMapControl
         else
         {
             using var opacity = context.PushOpacity(building.Enabled && building.Health > 0 ? 1 : .55);
-            context.DrawImage(BuildingIcon(race, building.Kind), bounds);
+            if (building.Kind == BuildingKind.Bridge)
+            {
+                var horizontal = building.Direction == BridgeDirection.Horizontal;
+                var deck = new Rect(x - (horizontal ? 4 : 2), y - (horizontal ? 2 : 4), horizontal ? 8 : 4, horizontal ? 4 : 8);
+                context.DrawRectangle(WoodBrush, new Pen(StoneBrush, .35), deck);
+                for (var i = -3; i <= 3; i++)
+                    context.DrawLine(new Pen(ProgressBrush, .18), horizontal ? new Point(x + i, y - 1.7) : new Point(x - 1.7, y + i), horizontal ? new Point(x + i, y + 1.7) : new Point(x + 1.7, y + i));
+            }
+            else context.DrawImage(BuildingIcon(race, building.Kind), bounds);
         }
-        if (_zoom >= 3 && (!building.IsCompleted || building.Health < 100))
+        if (_zoom >= 3 && (!building.IsCompleted || building.IsUpgrading || building.Health < 100))
         {
-            var fraction = building.IsCompleted ? building.Health / 100 : building.ConstructionProgress / Math.Max(1, building.ConstructionRequired);
+            var fraction = building.IsUpgrading ? building.UpgradeProgress / Math.Max(1, building.UpgradeRequired) : building.IsCompleted ? building.Health / 100 : building.ConstructionProgress / Math.Max(1, building.ConstructionRequired);
             context.DrawRectangle(WoodBrush, null, new Rect(x - 3, y + 2, 6, .45));
             context.DrawRectangle(building.IsCompleted && building.Health < 50 ? FlameOuter : ProgressBrush, null, new Rect(x - 3, y + 2, 6 * Math.Clamp(fraction, 0, 1), .45));
             if (building.IsCompleted && building.Health < 50) context.DrawLine(new Pen(WoodBrush, .25), new(x - 1, y - 3), new(x + 1, y + 1));
@@ -113,8 +121,11 @@ public sealed partial class WorldMapControl
                 Stroke(tile, (x, y) => Engine.BuildRoad(SelectedSettlementId, x, y, 0));
             else
             {
-                if (GiftBuildings) Engine.GrantFacility(SelectedSettlementId, Enum.Parse<BuildingKind>(tool, true), tile.X, tile.Y);
-                else Engine.BuildFacility(SelectedSettlementId, Enum.Parse<BuildingKind>(tool, true), tile.X, tile.Y);
+                var kind = Enum.Parse<BuildingKind>(tool, true);
+                var direction = kind == BuildingKind.Bridge ? (BridgeDirection?)ConstructionBridgeDirection : null;
+                var level = kind == BuildingKind.Bridge ? ConstructionBridgeLevel : 1;
+                if (GiftBuildings) Engine.GrantFacility(SelectedSettlementId, kind, tile.X, tile.Y, direction, level);
+                else Engine.BuildFacility(SelectedSettlementId, kind, tile.X, tile.Y, direction, level);
             }
             edited = true;
         }

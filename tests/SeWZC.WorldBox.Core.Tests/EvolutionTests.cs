@@ -20,6 +20,7 @@ internal static class EvolutionTests
         var engine = WorldEngine.Create(223, 64, 64, false);
         foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 80; }
         engine.State.NaturalDisasters = false;
+        engine.State.Rules.Thirst = false;
         engine.SpawnResidents(14, 24, RaceKind.Human, 24);
         return engine;
     }
@@ -32,7 +33,7 @@ internal static class EvolutionTests
     private static void Rules()
     {
         var engine = Flat();
-        var rules = WorldRules.For(WorldPreset.Flourishing) with { Births = false, Aging = false, Hunger = false, Disease = false, Construction = false, Research = false, Trade = false };
+        var rules = WorldRules.For(WorldPreset.Flourishing) with { Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false, Construction = false, Research = false, Trade = false };
         engine.ConfigureWorld(rules, false, false);
         var before = engine.ExportJson();
         try { engine.ConfigureWorld(rules with { DevelopmentRate = double.NaN }, true, true); throw new InvalidOperationException("Invalid rules accepted"); }
@@ -87,7 +88,7 @@ internal static class EvolutionTests
     private static void Diplomacy()
     {
         var engine = Flat(); engine.SpawnResidents(36, 24, RaceKind.Orc, 24);
-        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Construction = false, Research = false, Expansion = false, Conflict = 3 }, false, false);
+        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Thirst = false, Construction = false, Research = false, Expansion = false, Conflict = 3 }, false, false);
         foreach (var resident in engine.State.Residents)
         {
             resident.Age = 24;
@@ -110,7 +111,7 @@ internal static class EvolutionTests
     private static void Alliance()
     {
         var engine = Flat(); engine.SpawnResidents(36, 24, RaceKind.Elf, 24);
-        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Construction = false, Research = false, Expansion = false, Wars = false }, false, false);
+        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Thirst = false, Construction = false, Research = false, Expansion = false, Wars = false }, false, false);
         foreach (var resident in engine.State.Residents)
             resident.Agent.Goal = new() { Kind = AgentGoalKind.Rest, TargetX = resident.X, TargetY = resident.Y, PlayerDirected = true, ReviewTick = 3000 };
         var a = engine.State.Settlements[0]; var b = engine.State.Settlements[1];
@@ -118,6 +119,7 @@ internal static class EvolutionTests
         b.PublicKnowledge.Add(Fact(engine, AgentFactKind.SettlementLocation, a.Id, a.X, a.Y, a.NationId, b.RepresentativeId));
         var foreignOrder = Fact(engine, AgentFactKind.WarOrder, a.NationId, a.X, a.Y, a.Id, b.RepresentativeId);
         foreignOrder.TargetNationId = b.NationId; a.PublicKnowledge.Add(foreignOrder);
+        a.Resources.Food = b.Resources.Food = 1000;
         var initialRelation = engine.State.Diplomacies.Single();
         initialRelation.FirstOpinion = initialRelation.SecondOpinion = initialRelation.Opinion = 80;
         engine.Step(420);

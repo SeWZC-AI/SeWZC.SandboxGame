@@ -31,7 +31,7 @@ public sealed class CultureDefinition
     public double NatureAffinity { get; set; } = 0.5;
 }
 
-public sealed class Building
+public sealed partial class Building
 {
     [JsonRequired] public int ProductionBatches { get; set; }
     [JsonRequired] public bool Enabled { get; set; } = true;
@@ -114,8 +114,10 @@ public static class TerrainRules
     public static TerrainParameters For(TerrainType terrain) => terrain switch
     {
         TerrainType.DeepWater => new(double.PositiveInfinity, 0, 0, 0, 0, 0, 0.5),
+        TerrainType.Lake => new(double.PositiveInfinity, 80, 0, 0, 0, 0, 1.7),
         TerrainType.Water => new(double.PositiveInfinity, 5, 0, 0, 0, 0, 0.8),
         TerrainType.Sand => new(1.4, 20, 0.12, 0, 0.25, 0.01, 0.4),
+        TerrainType.DryFertile => new(1.1, 85, 0.5, 0.04, 0.05, 0, .8),
         TerrainType.Grass => new(1, 85, 0.5, 0.08, 0.05, 0, 1),
         TerrainType.Forest => new(1.5, 75, 0.35, 0.7, 0.04, 0, 1.8),
         TerrainType.Mountain => new(double.PositiveInfinity, 5, 0, 0, 0.8, 0.5, 1.4),

@@ -57,32 +57,29 @@ public sealed partial class WorldEngine
             {
                 InitializeAgent(person);
                 if (person.Health <= 0 || !_settlements.TryGetValue(person.SettlementId, out var home)) continue;
-                person.Agent.SocialNeed = Math.Min(100, person.Agent.SocialNeed + 0.11);
+                person.Agent.SocialNeed = Math.Min(100, person.Agent.SocialNeed + 0.07);
                 // Soldiers consume their army's physical provisions in the military system.
                 if (person.ArmyId != 0)
                 {
-                    if ((State.Tick + person.Id) % 8 == 0) ObserveAgentEnvironment(person);
+                    if ((State.Tick + person.Id) % 16 == 0) ObserveAgentEnvironment(person);
                     continue;
                 }
-                var consumption = !State.Rules.Hunger ? 0 : person.Age < 14 ? 0.025 : person.Race == RaceKind.Orc ? 0.064 : 0.05;
+                DrinkCarriedWater(person);
+                var consumption = !State.Rules.Hunger ? 0 : FoodUse(person);
                 var meal = Math.Min(consumption, person.Inventory.Food);
                 person.Inventory.Food -= meal;
-                person.Hunger = Math.Clamp(person.Hunger + (meal >= consumption - 0.000001 ? -3 : 2 * (1 - meal / consumption)), 0, 100);
+                person.Hunger = Math.Clamp(person.Hunger + (meal >= consumption - 0.000001 ? -3 : .8 * (1 - meal / consumption)), 0, 100);
                 if (Distance(person.X, person.Y, home.X, home.Y) <= 1 && Walkable(person.X, person.Y) && State.Tick - person.MoveStartedTick >= person.MoveDurationTicks)
                 {
                     TransferPersonalProduction(person, home);
                     if ((State.Tick + person.Id) % 12 == 0) DeliverLocalDiscoveries(person, home);
-                    if (person.Inventory.Food < 0.3)
-                    {
-                        var ration = Math.Min(home.Resources.Food, TravelReserve(person) - person.Inventory.Food);
-                        home.Resources.Food -= ration; person.Inventory.Food += ration;
-                    }
+                    ProvisionAtHome(person, home);
                 }
                 var danger = State.Tiles[Index(person.X, person.Y)].FireTicks > 0;
-                if ((State.Tick + person.Id) % 8 == 0 || person.Agent.Memory.Count < 2 || danger)
+                if ((State.Tick + person.Id) % 16 == 0 || person.Agent.Memory.Count < 2 || danger)
                     ObserveAgentEnvironment(person);
                 var directed = person.Agent.Goal.PlayerDirected && State.Tick < person.Agent.Goal.ReviewTick;
-                var emergency = danger || person.Hunger > 85 && person.Inventory.Food < 0.05;
+                var emergency = danger || person.Hunger > 85 && person.Inventory.Food < 0.05 || State.Rules.Thirst && person.Thirst > 85 && person.Inventory.Water < .025;
                 if ((!directed && (State.Tick >= person.Agent.NextThinkTick || person.Agent.Goal.Kind == AgentGoalKind.Idle)) || emergency)
                     ChooseAgentGoal(person, home, emergency && directed);
                 // Position records a committed destination; work and delivery wait for arrival.
@@ -100,13 +97,15 @@ public sealed partial class WorldEngine
     private double TravelReserve(Resident person) => person.Profession is Profession.Messenger or Profession.Trader
         && !person.Agent.Memory.Any(f => f.Kind == AgentFactKind.SettlementLocation && f.Value != person.NationId
             && State.Tick - f.ObservedTick < 1200) ? 6
-        : person.Profession is Profession.Lumberjack or Profession.Miner ? 3 : 1.2;
+        : person.Profession is Profession.Lumberjack or Profession.Miner ? 4 : Math.Clamp(2 + Distance(person.X, person.Y, person.Agent.Goal.TargetX, person.Agent.Goal.TargetY) * .15, 2, 8);
 
     private void TransferPersonalProduction(Resident person, Settlement home)
     {
         // Mission food stays with the carrier until its recorded destination is reached.
         if (person.Agent.DestinationSettlementId != 0
             && person.Agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage or AgentGoalKind.Petition) return;
+        var water = Math.Max(0, person.Inventory.Water - WaterReserve(person));
+        home.Resources.Water += water; person.Inventory.Water -= water;
         var food = Math.Max(0, person.Inventory.Food - TravelReserve(person));
         home.Resources.Food += food; person.Inventory.Food -= food;
         home.Resources.Wood += person.Inventory.Wood; person.Inventory.Wood = 0;
@@ -116,7 +115,7 @@ public sealed partial class WorldEngine
         home.Resources.EnergyCells += person.Inventory.EnergyCells; person.Inventory.EnergyCells = 0;
         home.Resources.Crystals += person.Inventory.Crystals; person.Inventory.Crystals = 0;
         foreach (var kind in MineralAndVehicleResources)
-        { home.Resources.Set(kind, home.Resources.Get(kind) + person.Inventory.Get(kind)); person.Inventory.Set(kind, 0); }
+        { if (kind == ResourceKind.Water) continue; home.Resources.Set(kind, home.Resources.Get(kind) + person.Inventory.Get(kind)); person.Inventory.Set(kind, 0); }
         person.TravelMode = TravelMode.Foot;
         if (person.Agent.Goal.Kind == AgentGoalKind.ReturnHome && person.Agent.DestinationSettlementId == 0)
             person.Agent.MissionOriginSettlementId = 0;
@@ -143,30 +142,36 @@ public sealed partial class WorldEngine
                 (180 - personality.Courage * 30) * (dangerFact is null ? 1 : Math.Max(0.6, AgentFactReliability(dangerFact))),
                 dangerFact?.OriginResidentId == person.Id ? "亲眼见到附近危险，先离开危险区域" : "可信的近时报告指出附近危险，先离开核实", dangerFact));
         }
+        if (agent.Goal.Kind is AgentGoalKind.ClaimLand or AgentGoalKind.FetchWater or AgentGoalKind.Hunt or AgentGoalKind.Fish
+            && choices.Count == 0 && State.Tick - agent.Goal.StartedTick < 48 && person.Hunger < 75 && person.Thirst < 80
+            && (agent.Goal.Kind != AgentGoalKind.ClaimLand || CanClaimTile(home, Index(agent.Goal.TargetX, agent.Goal.TargetY)))
+            && person.Inventory.Food < TravelReserve(person) + 2 && person.Inventory.Water < WaterReserve(person) + 2)
+        { agent.NextThinkTick = State.Tick + 12; return; }
         if (agent.Goal.Kind == AgentGoalKind.Migrate && choices.Count == 0 && State.Tick - agent.Goal.StartedTick < 360)
-        { agent.NextThinkTick = State.Tick + 6; return; }
+        { agent.NextThinkTick = State.Tick + 12; return; }
         if (agent.Goal.Kind == AgentGoalKind.Work && choices.Count == 0 && person.Hunger < 65 && agent.Fatigue < 60
-            && State.Society.Buildings.FirstOrDefault(b => b.Id == agent.Goal.TargetEntityId && b.SettlementId == home.Id) is { } factory
+            && FindBuilding(agent.Goal.TargetEntityId) is { } factory && factory.SettlementId == home.Id
             && AdvancementRules.For(factory.Kind) is { } recipe && CanProduce(factory, person, recipe)
             && MissingResources(person.Inventory, recipe.Input) is null)
-        { agent.NextThinkTick = State.Tick + 6; return; }
+        { agent.NextThinkTick = State.Tick + 12; return; }
         if (agent.Goal.Kind == AgentGoalKind.Explore && choices.Count == 0 && person.Hunger < 65 && agent.Fatigue < 60
             && Distance(person.X, person.Y, agent.Goal.TargetX, agent.Goal.TargetY) > 1 && State.Tick - agent.Goal.StartedTick < 48)
-        { agent.NextThinkTick = State.Tick + 6; return; }
+        { agent.NextThinkTick = State.Tick + 12; return; }
         var activeMission = agent.DestinationSettlementId != 0 && State.Tick - agent.MissionStartedTick < 360
             && agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage or AgentGoalKind.Petition;
         if (activeMission && choices.Count == 0 && !(person.Hunger > 85 && person.Inventory.Food < 0.05))
         {
             // Cargo and travel rations belong to this continuing mission, not a full ordinary work bag.
-            agent.NextThinkTick = State.Tick + 6;
+            agent.NextThinkTick = State.Tick + 12;
             return;
         }
         if (agent.Goal.Kind == AgentGoalKind.ReturnHome && agent.MissionOriginSettlementId != 0
             && Distance(person.X, person.Y, home.X, home.Y) > 1 && choices.Count == 0)
         {
-            agent.NextThinkTick = State.Tick + 6;
+            agent.NextThinkTick = State.Tick + 12;
             return;
         }
+        AddProvisionChoices(person, home, choices);
         if (person.Inventory.Food < 0.3 && (foodFact is null || foodFact.Value > 0 || AgentFactReliability(foodFact) < 0.5))
             choices.Add(new(AgentGoalKind.Eat, home.X, home.Y, 48 + person.Hunger,
                 foodFact is null ? "随身口粮不足，返回家园查看粮仓" : $"口粮不足；上次获知家乡有 {foodFact.Value:0.0} 份粮食", foodFact, home.Id));
@@ -249,7 +254,7 @@ public sealed partial class WorldEngine
             && previous.TargetEntityId == selected.EntityId && previous.TargetX == selected.X && previous.TargetY == selected.Y;
         if (continuingMission)
         {
-            agent.NextThinkTick = State.Tick + 6;
+            agent.NextThinkTick = State.Tick + 12;
             return;
         }
         var reason = (interrupted ? "紧急需要打断原意愿：" : "") + selected.Reason
@@ -261,7 +266,7 @@ public sealed partial class WorldEngine
             TargetSettlementId = selected.SettlementId, TargetEntityId = selected.EntityId,
             StartedTick = State.Tick, ReviewTick = State.Tick + 12, Reason = reason
         };
-        agent.NextThinkTick = State.Tick + 6;
+        agent.NextThinkTick = State.Tick + 12;
         agent.Decisions.Add(new AgentDecision
         {
             Tick = State.Tick, Goal = selected.Kind, Score = selected.Score, Reason = reason,
@@ -275,7 +280,7 @@ public sealed partial class WorldEngine
         else if (agent.DestinationSettlementId != 0)
         {
             agent.DestinationSettlementId = 0; agent.CarriedMessages.Clear();
-            agent.MissionRetryTick = State.Tick + 60;
+            agent.MissionRetryTick = State.Tick + 120;
         }
     }
 
@@ -305,7 +310,7 @@ public sealed partial class WorldEngine
     {
         var tile = State.Tiles[index];
         if (profession == Profession.Farmer)
-            return tile.ResourceAmount > 0 && tile.Terrain is TerrainType.Grass or TerrainType.Forest or TerrainType.Wetland or TerrainType.Tundra or TerrainType.Sand
+            return tile.ResourceAmount > 0 && tile.Terrain is TerrainType.Grass or TerrainType.DryFertile or TerrainType.Forest or TerrainType.Wetland or TerrainType.Tundra or TerrainType.Sand
                 ? tile.Fertility / 100d * (tile.DroughtTicks > 0 ? 0.15 : 1) : 0;
         if (profession == Profession.Lumberjack) return tile.ResourceAmount > 0 && tile.Terrain == TerrainType.Forest ? 1 : 0;
         if (profession == Profession.Miner)
@@ -331,13 +336,14 @@ public sealed partial class WorldEngine
             return;
         }
         if (ActOnProduction(person, home)) return;
-        var interactionRange = goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest or AgentGoalKind.ReturnHome or AgentGoalKind.Socialize ? 1 : goal.TargetEntityId != 0 && State.Society.Buildings.Any(b => b.Id == goal.TargetEntityId && !b.IsCompleted) ? 1 : 0;
+        var interactionRange = home.FoundationPending && goal.Kind == AgentGoalKind.ReturnHome ? 0 : goal.Kind is AgentGoalKind.FetchWater or AgentGoalKind.Hunt or AgentGoalKind.Fish or AgentGoalKind.ClaimLand ? 0 : goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest or AgentGoalKind.ReturnHome or AgentGoalKind.Socialize ? 1 : goal.TargetEntityId != 0 && FindBuilding(goal.TargetEntityId) is { } project && (!project.IsCompleted || project.IsUpgrading) ? 1 : 0;
         if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > interactionRange || !Walkable(person.X, person.Y))
         {
-            if (MoveAgentTowards(person, goal.TargetX, goal.TargetY)) person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + 0.22);
+            if (MoveAgentTowards(person, goal.TargetX, goal.TargetY)) person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + 0.15);
             person.Activity = goal.Kind == AgentGoalKind.Flee ? ResidentActivity.Fleeing : ResidentActivity.Wandering;
             return;
         }
+        if (State.Tick - person.MoveStartedTick < person.MoveDurationTicks) return;
         goal.WorkTicks++;
         switch (goal.Kind)
         {
@@ -350,14 +356,16 @@ public sealed partial class WorldEngine
                 break;
             case AgentGoalKind.Eat:
                 person.Activity = ResidentActivity.Eating;
-                if (Distance(person.X, person.Y, home.X, home.Y) <= 1 && person.Inventory.Food < 1.2)
-                {
-                    var ration = Math.Min(home.Resources.Food, TravelReserve(person) - person.Inventory.Food);
-                    home.Resources.Food -= ration; person.Inventory.Food += ration;
-                    ObserveAgentEnvironment(person);
-                }
+                if (Distance(person.X, person.Y, home.X, home.Y) <= 1) ProvisionAtHome(person, home);
                 person.Agent.NextThinkTick = State.Tick + 1;
                 break;
+            case AgentGoalKind.ClaimLand:
+                person.Activity = ResidentActivity.Working; TryClaimLand(person); break;
+            case AgentGoalKind.FetchWater:
+                TryFetchWater(person); break;
+            case AgentGoalKind.Hunt:
+            case AgentGoalKind.Fish:
+                TryHarvestWildlife(person); break;
             case AgentGoalKind.Gather:
                 GatherActualResources(person, Profession.Farmer);
                 break;
@@ -382,10 +390,11 @@ public sealed partial class WorldEngine
                 person.Agent.Fatigue = Math.Max(0, person.Agent.Fatigue - .4);
                 break;
             case AgentGoalKind.ReturnHome:
+                FinishFoundation(person, home);
                 TransferPersonalProduction(person, home);
                 person.Activity = ResidentActivity.Resting;
-                person.Agent.Fatigue = Math.Max(0, person.Agent.Fatigue - 0.8);
-                person.Agent.NextThinkTick = State.Tick + 1;
+                person.Agent.Fatigue = Math.Max(0, person.Agent.Fatigue - 0.8 * HomeRestMultiplier(person));
+                person.Agent.NextThinkTick = home.FoundationPending ? State.Tick + 4 : State.Tick + 1;
                 break;
             case AgentGoalKind.Flee:
                 person.Activity = ResidentActivity.Fleeing;
@@ -404,7 +413,7 @@ public sealed partial class WorldEngine
             person.Agent.NextThinkTick = State.Tick + 1;
             return;
         }
-        var productivity = (person.SicknessTicks > 0 ? 0.4 : 1) * (person.Hunger > 60 ? 0.55 : 1)
+        var productivity = GatheringCondition(person)
             * (0.75 + person.Agent.Personality.Diligence * 0.5) * State.Rules.GatheringRate;
         if (profession == Profession.Farmer)
         {
@@ -426,7 +435,7 @@ public sealed partial class WorldEngine
             var amount = Math.Min(tile.ResourceAmount, 0.24 * productivity * (person.Race == RaceKind.Dwarf ? 1.3 : 1));
             tile.ResourceAmount -= amount; RecordHarvest(tile, amount); person.Inventory.Stone += amount * 0.7; person.Inventory.Ore += amount * 0.3;
         }
-        person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + 0.45);
+        person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + 0.30);
         person.Activity = ResidentActivity.Working;
     }
 
@@ -460,7 +469,7 @@ public sealed partial class WorldEngine
         foreach (var (dx, dy) in Directions)
         {
             var x = person.X + dx; var y = person.Y + dy;
-            if (!InBounds(x, y) || !CanTraverse(State.Tiles[Index(x, y)], person.TravelMode) || person.TravelMode != TravelMode.Aircraft && State.Tiles[Index(x, y)].FireTicks > 0) continue;
+            if (!CanTraverseStep(person.X, person.Y, x, y, person.TravelMode) || person.TravelMode != TravelMode.Aircraft && State.Tiles[Index(x, y)].FireTicks > 0) continue;
             var distance = Distance(x, y, targetX, targetY);
             if (distance > bestDistance || distance == bestDistance && (bestStep < 0 || bestStep != previous)) continue;
             bestDistance = distance; bestStep = Index(x, y);
@@ -484,7 +493,7 @@ public sealed partial class WorldEngine
                 foreach (var (dx, dy) in Directions)
                 {
                     var x = current.Index % State.Width + dx; var y = current.Index / State.Width + dy;
-                    if (!InBounds(x, y) || !CanTraverse(State.Tiles[Index(x, y)], person.TravelMode) || person.TravelMode != TravelMode.Aircraft && State.Tiles[Index(x, y)].FireTicks > 0) continue;
+                    if (!CanTraverseStep(current.Index % State.Width, current.Index / State.Width, x, y, person.TravelMode) || person.TravelMode != TravelMode.Aircraft && State.Tiles[Index(x, y)].FireTicks > 0) continue;
                     var index = Index(x, y);
                     if (current.First < 0 && index == previous) continue;
                     if (_localMoveVisited[index] == search) continue;
@@ -505,7 +514,7 @@ public sealed partial class WorldEngine
             foreach (var (dx, dy) in Directions)
             {
                 var x = person.X + dx; var y = person.Y + dy;
-                if (!InBounds(x, y) || !CanTraverse(State.Tiles[Index(x, y)], person.TravelMode) || person.TravelMode != TravelMode.Aircraft && State.Tiles[Index(x, y)].FireTicks > 0) continue;
+                if (!CanTraverseStep(person.X, person.Y, x, y, person.TravelMode) || person.TravelMode != TravelMode.Aircraft && State.Tiles[Index(x, y)].FireTicks > 0) continue;
                 var index = Index(x, y);
                 var score = dx * (targetX - person.X) + dy * (targetY - person.Y);
                 if (score > bestAnyScore) { bestAny = index; bestAnyScore = score; }

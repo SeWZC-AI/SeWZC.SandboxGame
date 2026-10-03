@@ -2,7 +2,7 @@
 const DATABASE_NAME = "sewzc-worldbox";
 const STORE_NAME = "worlds";
 const AUTOSAVE_KEY = "autosave";
-const MAX_FILE_BYTES = 32 * 1024 * 1024;
+const MAX_FILE_BYTES = 64 * 1024 * 1024;
 let databasePromise;
 let pickerPending = false;
 let saveWorker;
@@ -11,7 +11,7 @@ const saveRequests = new Map();
 
 function checkSize(text) {
     if (typeof text !== "string") throw new Error("存档内容不是文本。");
-    if (new Blob([text]).size > MAX_FILE_BYTES) throw new Error("存档不能超过 32 MiB。");
+    if (new Blob([text]).size > MAX_FILE_BYTES) throw new Error("存档不能超过 64 MiB。");
     return text;
 }
 
@@ -158,7 +158,7 @@ export function importFile() {
             const file = input.files?.[0];
             if (!file) { finish(null); return; }
             try {
-                if (file.size > MAX_FILE_BYTES) throw new Error("存档不能超过 32 MiB。");
+                if (file.size > MAX_FILE_BYTES) throw new Error("存档不能超过 64 MiB。");
                 const bytes = await file.arrayBuffer();
                 const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
                 finish(checkSize(text));

@@ -13,7 +13,7 @@ const baseUrl = process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.Sa
 
 (async () => {
     const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
-    assert.equal(fixture.FormatVersion, 8, 'Generate a fixture for the current alpha version');
+    assert.equal(fixture.FormatVersion, 9, 'Generate a fixture for the current alpha version');
     assert.equal(fixture.Width, 256);
     assert(fixture.Residents.length >= 2000, 'Scale scenario must start with at least 2,000 residents');
     fs.mkdirSync(output, { recursive: true });
@@ -79,7 +79,7 @@ const baseUrl = process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.Sa
                 transaction.onabort = () => { database.close(); reject(transaction.error); };
             };
         }));
-        assert(saveBytes <= 32 * 1024 * 1024, 'Current world exceeds the import/export limit');
+        assert(saveBytes <= 64 * 1024 * 1024, 'Current world exceeds the import/export limit');
         await diagnostics.assertHealthy('scale world after simulation and save');
         assert.deepEqual(failedRequests, [], 'Scale run had failed HTTP requests');
         const report = {
