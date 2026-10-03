@@ -81,6 +81,22 @@
 
 可用 Core.Tests 的 `--export-visual-fixture <路径>` 导出四种族、职业、同类建筑、山河与多物种的受控画面夹具；发布后运行 `CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/browser/visuals.cjs <路径>` 验证桌面／触屏生命值、折叠高度、按钮间距、近景标记和观察不变性。定位建筑只移动镜头，检查近景须另行放大。夹具不是自主发展证据；百年晋升仍由核心长程场景验证。
 
+### 浏览器速度调查
+
+`scripts/profile-browser-stages.py <新目录>` 将 Core、UI、Browser 复制到独立目录，插入有界的阶段计时和只读计时导出；不修改生产源码。发布打印出的 Browser 项目，使用该静态产物单独服务，再运行以下命令：
+
+```bash
+python3 scripts/profile-browser-stages.py /tmp/worldbox-speed-probe
+dotnet publish /tmp/worldbox-speed-probe/src/SeWZC.WorldBox.Browser/SeWZC.WorldBox.Browser.csproj -c Release -o /tmp/worldbox-speed-probe/publish
+WORLDBOX_BASE_URL=http://127.0.0.1:8080/probe/ CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/browser/five-speed-profile.cjs artifacts/separator-verification/baseline.worldbox.json artifacts/speed-investigation/probe
+```
+
+需先将 `publish/wwwroot` 放在上述 `/probe/` 服务路径；夹具可以由现有 `--export-browser-fixture` 生成。`WORLDBOX_PROFILE_CASES` 可筛选 `default-far-1,default-far-5,default-near-5,large-far-1,large-far-5,large-near-5,large-auto-5`，默认普通场景观察 15 秒，自动保存场景 38 秒。`WORLDBOX_PROFILE_SECONDS` 设置普通场景时长。对正式产物运行同一脚本会只记录推进、长任务和浏览器动画帧机会，不要求它暴露探针。
+
+隔离副本额外允许 `WORLDBOX_PROFILE_EXACT_TERRAIN=1` 做地形资源失效条件的实验对照；这个开关只存在于副本中，不是正式产品选项。它限定资源量只影响森林树桩阈值，不改变世界；需用相同夹具、相同视角与无并发负载分别测原条件与实验条件。嵌套计时不能直接全部相加，异步存储等待不能全部归为主线程阻塞；动画帧机会不等于实际绘制 FPS。原始逐次计时与汇总一起保留，并补一轮未插桩对照以检查探针对结论的影响。
+
+### 检查范围
+
 安装与启动命令统一维护在 [项目 README](../README.md#开发环境)，完整发布和浏览器复现步骤见 [验证记录](verification.md#复现命令)。以下是范围选择，不要求每次无关改动都重复全部压力测试。
 
 | 改动范围 | 应执行的检查 |
