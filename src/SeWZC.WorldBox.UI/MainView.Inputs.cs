@@ -18,7 +18,7 @@ public sealed partial class MainView
             _mapPick = (xx, yy) => { x.Value = xx; y.Value = yy; };
             _map.PickingLocation = true; _map.ActiveTool = "inspect";
             _modal.IsVisible = false; _mobilePanel = false; _toolsOpen = false;
-            ApplyLayout(); SetStatus("点选目标地格 · Escape 返回表单");
+            ApplyLayout(); SetStatus("点选目标地格，按 Escape 返回表单");
         }), "map-pick-" + x.Name));
     }
 

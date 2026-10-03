@@ -1,5 +1,31 @@
 # 模拟推进性能调查
 
+## 2026-10-03：可见范围缓存和按变化刷新
+
+对照从 `219a331` 开始：基线产物仅包含点分隔清理，生产源码 SHA-256 为 `466fbbad762442a539bf4904242701d0d3de867ce357ec41fac244420785fa26`（Core `af5fa276a921644984b21e6454deac6f4cb7339f23c8235cf8bc6b7d4fd3bec5`）；最终产物为 `371000e69ec1af11ea8ee1b90f3ba58bcf21244b159e22ee9662175ef4d61e36`（Core `00c96eb66a6a1c83dc8649e73fe9cace52b788dce507ff86748221f2d93eae64`），摘要算法见 [验证记录](verification.md)。使用同一个格式 8 存档：256×256、2,000 初始居民、16 国、8 场战争；最终产物允许缺省的发展偏好按文化自动选择。环境同验证记录，4 核云容器、Headless Chromium、软件渲染。
+
+两个版本分别独立测量，期间无其他浏览器、构建、发布或原生模拟负载。均观察 15 秒并计入暂停与检查操作；实际耗时不同，不将 tick 数直接当作相同时间内的吞吐量。近景为 390×844 触屏视口，定位同一居民后放大五次，每格 71.288256 CSS px；全图为 1440×960。长任务指 Chromium 主线程超过 50 ms 的任务，不等同于丢帧数。
+
+| 视角与版本 | 实际耗时 ms | 推进 tick | 长任务数 | 长任务累计 ms | 最长 ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 手机近景，基线 | 16,099 | 70 | 75 | 10,560 | 422 |
+| 手机近景，最终 | 15,250 | 75 | 59 | 4,496 | 318 |
+| 全图，基线 | 17,343 | 81 | 120 | 未记录 | 364 |
+| 全图，最终 | 16,580 | 77 | 129 | 未记录 | 381 |
+
+近景长任务累计时间在本次样本中减少约 **57.4%**，数量减少约 **21.3%**；全图每秒推进基本持平，长任务没有改善。最终全图推进后仍有 2,124 人，实际存档 21,322,305 bytes，保存／导入限额内；页面、控制台、HTTP 与渲染诊断无错误。功能正常和近景改善不意味着全图高人口卡顿已经解决，也不能外推真实手机帧率。发展规划同时发生变化，运行后世界会分歧，这组数据是整体产物对照，不是单一缓存的因果实验。
+
+算法修改包括：地形仅对可见分块及边缘核对；居民集合按日序或视野范围变更筛选，逐帧只插值可见居民；动物复用位图并缓存可见绘制指令；近景不构造不使用的远景轮廓；折叠详情不计算，文本变化才更新，列表复用行，事件摘要按标识失效。远景／近景几何按 15 / 30 Hz 调度，逻辑变化和交互仍即时绘制，世界步进独立。实际劳动、运输和通信均保留。
+
+复现：先发布并在仓库子路径启动静态服务，再运行以下命令。夹具可由 Core.Tests 的 `--export-browser-fixture` 生成；比较版本时应复用同一存档。
+
+```bash
+CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/browser/near-stress.cjs artifacts/separator-verification/baseline.worldbox.json artifacts/compact-verification/near-stress.json
+CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/browser/stress.cjs artifacts/separator-verification/baseline.worldbox.json
+```
+
+原始基线报告在 `artifacts/separator-verification/baseline-{near,stress}.json`，最终报告在 `artifacts/compact-verification/{near-stress,stress-report}.json`，最终源码清单为 `source-final.json`。首次完整修正、尚未加入旧文字显示转换与任务优先布局时，近景记录 54 个长任务、累计 4,290 ms，全图记录 132 个、最长 384 ms；保留在日志与早期记录中，不选择较好的一轮代替最终产物结果。本节没有复用旧版原生每 tick 数据；下节记录属于之前版本。
+
 ## 2026-10-03：动物与冲突更新后的负载检查
 
 `3ef2dae` 加本轮工作区修改，Core SHA-256 `582b8e6570459d7ae43cecf14821df04f04a834775edc7d7e5e1eef1e7b0c2ab`，计算方式见[验证记录](verification.md)。Debian 13 / Linux x64、.NET 10.0.12（SDK 10.0.401），4 个逻辑处理器。功能检查完成后独立运行，没有并发构建、发布或浏览器负载。

@@ -12,6 +12,8 @@ public sealed partial class MainView
     private string? _inspectorKey;
     private bool _refreshingInspector;
     private string _residentSearch = "";
+    private bool _includeDeceased;
+    private int _residentPage;
     private int _historyImportance, _historyNationId;
     private WorldEventKind? _historyKind;
     private string _historySearch = "";
@@ -56,16 +58,17 @@ public sealed partial class MainView
             if (_inspectorMode is "infrastructure" or "communication" &&
                 !_engine.State.Settlements.Any(town => town.Id == _inspectorSettlementId))
                 _inspectorSettlementId = _engine.State.Settlements.OrderBy(town => town.Id).FirstOrDefault()?.Id ?? 0;
+            if (!_mobilePanel) return;
             var key = $"{_inspectorMode}:{_selectedNationId}:{_selectedResidentId}:{_selectedTile}:{_eventDetailId}:{_inspectorSettlementId}:{_selectedBuildingId}";
             if (_inspectorKey != key)
             {
                 _inspectorKey = key; _inspectorUpdates.Clear();
-                var content = new StackPanel { Margin = new Thickness(6), Spacing = 8 };
+                var content = new StackPanel { Margin = new Thickness(6), Spacing = 5 };
                 var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto") };
                 header.Children.Add(Text(_inspectorMode switch
                 {
                     "watched" => "我的关注", "story" => "人物故事", "event" => "事件与后果", "resident" => "居民档案", "residents" => "大地上的居民", "nation" => "国家与文明", "nations" => "文明国家",
-                    "building" => "建筑详情", "structures" => "建筑与道路", "history" => "世界编年史", "tile" => "此处的故事", "rules" => "世界规则", "infrastructure" => "建设与运输", "communication" => "消息与通信", _ => "世界概览"
+                    "building" => "建筑详情", "structures" => "建筑与道路", "history" => "世界编年史", "tile" => "地块详情", "rules" => "世界规则", "infrastructure" => "建设与运输", "communication" => "消息与通信", _ => "世界概览"
                 }, 17, null, true));
                 var back = IconButton("back", GoBack, "返回上一处", "inspector-back"); Grid.SetColumn(back, 1); header.Children.Add(back);
                 var expand = Named(Button(_expandedInspector ? "收起" : "展开", () => { _expandedInspector = !_expandedInspector; InvalidateInspector(); ApplyLayout(); RefreshInspector(); }), "inspector-expand");
@@ -77,9 +80,10 @@ public sealed partial class MainView
                 for (var i = 0; i < entries.Length; i++)
                 {
                     var entry = entries[i]; var button = Named(Button(entry.Item1, () => OpenInspector(entry.Item2)), "inspector-" + entry.Item2);
-                    button.Padding = new Thickness(4, 6); button.FontSize = 11; Grid.SetColumn(button, i); navigation.Children.Add(button);
+                    button.Padding = new Thickness(4, 3); button.FontSize = 11; button.HorizontalAlignment = HorizontalAlignment.Stretch; Grid.SetColumn(button, i); navigation.Children.Add(button);
                 }
-                _inspectorNavigation.Children.Add(navigation);
+                if (_inspectorMode is "overview" or "residents" or "nations" or "history" or "structures" or "watched")
+                    _inspectorNavigation.Children.Add(navigation);
                 switch (_inspectorMode)
                 {
                     case "building": BuildBuildingInspector(content); break;
@@ -109,14 +113,16 @@ public sealed partial class MainView
     private TextBlock LiveText(Func<string> value, double size = 12, IBrush? color = null)
     {
         var text = Text(value(), size, color); text.TextWrapping = TextWrapping.Wrap;
-        _inspectorUpdates.Add(() => text.Text = value()); return text;
+        text.IsVisible = !string.IsNullOrWhiteSpace(text.Text);
+        _inspectorUpdates.Add(() => { if (DetailsVisible(text)) { var next = DisplayFormat.Text(value()); if (text.Text != next) text.Text = next; text.IsVisible = !string.IsNullOrWhiteSpace(next); } }); return text;
     }
     private void LiveRows<T>(StackPanel parent, Func<IEnumerable<T>> items, Func<T, string> key, Func<T, string> label, Action<T>? action = null)
     {
-        var list = new StackPanel { Spacing = 6 }; parent.Children.Add(list);
+        var list = new StackPanel { Spacing = 3 }; parent.Children.Add(list);
         var rows = new Dictionary<string, (Control Row, TextBlock Text)>();
         void Update()
         {
+            if (!DetailsVisible(list)) return;
             var wanted = items().DistinctBy(key).ToList(); var keys = new HashSet<string>();
             foreach (var item in wanted)
             {
@@ -128,7 +134,7 @@ public sealed partial class MainView
                     if (action is null) control = Card(text);
                     else
                     {
-                        var button = new Button { Content = text, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(6), Background = Ink, CornerRadius = new CornerRadius(7) };
+                        var button = new Button { Content = text, HorizontalAlignment = HorizontalAlignment.Stretch, HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(6, 3), Background = Ink, CornerRadius = new CornerRadius(7) };
                         if (item is Resident resident) Named(button, $"resident-row-{resident.Id}");
                         if (item is Building building) Named(button, $"building-row-{building.Id}");
                         if (item is int tileIndex && _inspectorMode == "structures" && _listRoads) Named(button, $"road-row-{tileIndex}");
@@ -139,7 +145,7 @@ public sealed partial class MainView
                     }
                     row = (control, text); rows[id] = row; list.Children.Add(control);
                 }
-                row.Text.Text = label(item); if (row.Row is Button b) { b.Tag = item; if (item is EventGroup group) Avalonia.Automation.AutomationProperties.SetAutomationId(b, $"history-row-{group.Latest.Id}"); }
+                var nextLabel = DisplayFormat.Text(label(item)); if (row.Text.Text != nextLabel) row.Text.Text = nextLabel; if (row.Row is Button b) { b.Tag = item; if (item is EventGroup group) Avalonia.Automation.AutomationProperties.SetAutomationId(b, $"history-row-{group.Latest.Id}"); }
             }
             foreach (var obsolete in rows.Keys.Where(id => !keys.Contains(id)).ToArray())
             { list.Children.Remove(rows[obsolete].Row); rows.Remove(obsolete); }
@@ -147,8 +153,7 @@ public sealed partial class MainView
             foreach (var item in wanted)
             {
                 if (!rows.TryGetValue(key(item), out var row)) continue;
-                var current = list.Children.IndexOf(row.Row);
-                if (current != index) { list.Children.Remove(row.Row); list.Children.Insert(index, row.Row); }
+                if (index >= list.Children.Count || !ReferenceEquals(list.Children[index], row.Row)) { list.Children.Remove(row.Row); list.Children.Insert(index, row.Row); }
                 index++;
             }
         }
@@ -158,7 +163,7 @@ public sealed partial class MainView
     private string NationName(int id) => _engine.State.Nations.FirstOrDefault(n => n.Id == id)?.Name ?? (id == 0 ? "世界" : $"国家 #{id}（已消亡）");
     private string ResidentName(int id) => _engine.GetResident(id)?.Name ?? (id == 0 ? "未指定" : $"居民 #{id}");
     private string TownName(int id) => _engine.State.Settlements.FirstOrDefault(t => t.Id == id)?.Name ?? (id == 0 ? "无" : $"聚落 #{id}");
-    private static string DateLabel(long tick) => tick < 0 ? "尚无记录" : $"第 {1 + tick / 120} 年\n{1 + tick % 120} 日";
+    private static string DateLabel(long tick) => tick < 0 ? "尚无记录" : $"第 {1 + tick / 120} 年 {1 + tick % 120} 日";
     private static string StockLabel(ResourceStock stock) => AdvancementRules.Stock(stock) is { Length: > 0 } text ? text : "暂无库存";
 
     private void BuildOverview(StackPanel panel)
@@ -184,7 +189,7 @@ public sealed partial class MainView
         wildlife.IsCheckedChanged += (_, _) => { _map.ShowWildlife = wildlife.IsChecked == true; _map.RefreshWorld(); }; panel.Children.Add(wildlife);
         panel.Children.Add(Paragraph("资源图标：黑色为煤，蓝色为石油，紫色为稀土。野生动物图标在 3 倍近景出现，数量越多图标越大。显示设置只影响玩家观察。"));
         panel.Children.Add(Text("文明国家", 12, Mint));
-        LiveRows(panel, () => _engine.State.Nations.OrderBy(n => n.Id).Take(16), n => n.Id.ToString(), n => $"{n.Name}\n{n.Population} 人\n{n.Territory} 格领土", n => OpenNation(n.Id));
+        LiveRows(panel, () => _engine.State.Nations.OrderBy(n => n.Id).Take(16), n => n.Id.ToString(), n => $"{n.Name}   人口 {n.Population}   领土 {n.Territory} 格", n => OpenNation(n.Id));
         panel.Children.Add(Button("世界规则与魔法", () => OpenInspector("rules")));
         panel.Children.Add(Named(Button("聚落发展与运输", () => OpenInspector("infrastructure")), "overview-infrastructure"));
         panel.Children.Add(Text("近期重要事件", 12, Mint));
@@ -194,41 +199,47 @@ public sealed partial class MainView
     private void BuildNationList(StackPanel panel)
     {
         panel.Children.Add(LiveText(() => $"{_engine.State.Nations.Count} 个国家\n点击查看其文化、政策、研究与库存"));
-        LiveRows(panel, () => _engine.State.Nations.OrderBy(n => n.Id), n => n.Id.ToString(), n => $"{n.Name}\n{n.Population} 人\n{n.Territory} 领土\n{n.Decision}", n => OpenNation(n.Id));
+        LiveRows(panel, () => _engine.State.Nations.OrderBy(n => n.Id), n => n.Id.ToString(), n => $"{n.Name}   人口 {n.Population}   领土 {n.Territory} 格\n{n.Decision}", n => OpenNation(n.Id));
     }
     private void BuildResidentList(StackPanel panel)
     {
         var search = Named(new TextBox { Text = _residentSearch, PlaceholderText = "搜索姓名 / 编号 / 国家" }, "resident-search");
-        search.TextChanged += (_, _) => { _residentSearch = search.Text ?? ""; RefreshInspector(); }; panel.Children.Add(search);
-        panel.Children.Add(Paragraph("名单保留固定编号顺序。也可直接点击地图居民；重叠时连续点击切换。"));
-        IEnumerable<Resident> Filter() => _engine.State.Residents.Concat(_engine.State.ArchivedResidents).Where(r => string.IsNullOrWhiteSpace(_residentSearch) || r.Name.Contains(_residentSearch, StringComparison.OrdinalIgnoreCase) || r.Id.ToString() == _residentSearch || NationName(r.NationId).Contains(_residentSearch, StringComparison.OrdinalIgnoreCase)).OrderBy(r => r.Id).Take(60);
-        LiveRows(panel, Filter, r => r.Id.ToString(), r => $"{r.Name}  #{r.Id}\n{RaceName(r.Race)}\n{ProfessionName(r.Profession)}\n{NationName(r.NationId)}\n{(r.Health <= 0 ? "已离世\n保留生平" : GoalName(r.Agent.Goal.Kind))}", r => OpenResident(r.Id));
-        panel.Children.Add(LiveText(() => _engine.State.Residents.Count > 60 ? "最多显示前 60 条，请用搜索缩小范围。" : ""));
+        BindSearch(search, value => { _residentSearch = value; _residentPage = 0; }); panel.Children.Add(search);
+        var deceased = Named(new CheckBox { Content = "包含亡者", IsChecked = _includeDeceased }, "residents-deceased");
+        deceased.IsCheckedChanged += (_, _) => { _includeDeceased = deceased.IsChecked == true; _residentPage = 0; RefreshInspector(); }; panel.Children.Add(deceased);
+        IEnumerable<Resident> Matches() => (_includeDeceased ? _engine.State.Residents.Concat(_engine.State.ArchivedResidents) : _engine.State.Residents)
+            .Where(r => string.IsNullOrWhiteSpace(_residentSearch) || DisplayFormat.Text(r.Name).Contains(DisplayFormat.Text(_residentSearch), StringComparison.OrdinalIgnoreCase)
+                || r.Id.ToString() == _residentSearch || NationName(r.NationId).Contains(_residentSearch, StringComparison.OrdinalIgnoreCase)).OrderBy(r => r.Id);
+        Resident[] filtered = [];
+        _inspectorUpdates.Add(() => { filtered = Matches().ToArray(); _residentPage = Math.Clamp(_residentPage, 0, Math.Max(0, (filtered.Length - 1) / 20)); });
+        filtered = Matches().ToArray();
+        var pages = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        pages.Children.Add(Named(Button("上一页", () => { _residentPage = Math.Max(0, _residentPage - 1); RefreshInspector(); }), "residents-prev"));
+        pages.Children.Add(Named(Button("下一页", () => { _residentPage = Math.Min(Math.Max(0, (filtered.Length - 1) / 20), _residentPage + 1); RefreshInspector(); }), "residents-next"));
+        pages.Children.Add(LiveText(() => $"{filtered.Length} 人   第 {_residentPage + 1}/{Math.Max(1, (filtered.Length + 19) / 20)} 页")); panel.Children.Add(pages);
+        LiveRows(panel, () => filtered.Skip(_residentPage * 20).Take(20), r => r.Id.ToString(),
+            r => $"{r.Name}   {ProfessionName(r.Profession)}   {r.Age:0} 岁\n{(r.Health <= 0 ? WorldEngine.DeathCauseName(r.DeathCause) : ResidentTask(r))}", r => OpenResident(r.Id));
     }
     private void BuildTileInspector(StackPanel panel)
     {
         if (_selectedTile is not { } point || point.X < 0 || point.Y < 0 || point.X >= _engine.State.Width || point.Y >= _engine.State.Height) { panel.Children.Add(Paragraph("请先在地图上选择一处位置。")); return; }
         Tile Tile() => _engine.State.Tiles[point.Y * _engine.State.Width + point.X];
-        panel.Children.Add(LiveText(() => $"{TerrainName(Tile().Terrain)}\n位置：{point.X}, {point.Y}", 16, Mint));
-        panel.Children.Add(LiveText(() => $"归属：{NationName(Tile().NationId)}\n道路：{Tile().RoadLevel} 级\n火灾：{Tile().FireTicks} 日\n干旱：{Tile().DroughtTicks} 日"));
+        panel.Children.Add(LiveText(() => TerrainName(Tile().Terrain), 16, Mint));
         panel.Children.Add(LiveText(() => _engine.GetTileProductionSummary(point.X, point.Y, _resourceVisibility)));
         panel.Children.Add(Named(Button("安排居民改造此地", () => ShowLandProject(point.X, point.Y)), "tile-improve"));
         panel.Children.Add(Named(Button("编辑此地资源与道路", () => ShowTileEditor(point.X, point.Y)), "tile-edit"));
-        panel.Children.Add(LiveText(() =>
-        {
-            var buildings = _engine.State.Society.Buildings.Where(b => b.X == point.X && b.Y == point.Y);
-            return string.Join("\n", buildings.Select(b => $"{BuildingLabel(b)}\n生命 {b.Health:0} / 100\n施工 {b.ConstructionProgress:0}/{b.ConstructionRequired:0}\n工人 {b.Workers.Count}/{b.WorkSlots}\n最近工作：{DateLabel(b.LastWorkedTick)}\n{_engine.GetProductionStatus(b.Id)}"));
-        }));
-        LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.X == point.X && b.Y == point.Y), b => b.Id.ToString(), BuildingLabel, OpenBuilding);
-        panel.Children.Add(Text("附近资源冲突", 13, Mint));
-        LiveRows(panel, () => _engine.State.Conflicts.Where(c => c.SettlementId == Tile().SettlementId || Math.Abs(c.X - point.X) + Math.Abs(c.Y - point.Y) <= 3), c => c.Id.ToString(),
-            c => $"{(c.Stage == ConflictStage.Dispute ? "资源争执" : c.Stage == ConflictStage.Confrontation ? "持续对峙" : c.Stage == ConflictStage.Violence ? "局部斗殴" : "已平息")}\n参与者 {c.Participants.Count} 人\n紧张程度 {c.Tension:0} / 100");
-        var nearby = FoldSection(panel, "附近居民\n点击查看", "tile-residents", true);
-        LiveRows(nearby, () => _engine.State.Residents.Where(r => Math.Abs(r.X - point.X) <= 6 && Math.Abs(r.Y - point.Y) <= 6).OrderBy(r => r.Id).Take(16), r => r.Id.ToString(), r => $"{r.Name}\n{ProfessionName(r.Profession)}\n{GoalName(r.Agent.Goal.Kind)}\n{r.Agent.Goal.Reason}", r => OpenResident(r.Id));
+        LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.X == point.X && b.Y == point.Y), b => b.Id.ToString(),
+            b => BuildingLabel(b) + "\n" + BuildingTask(b), OpenBuilding);
+        var local = FoldSection(panel, "归属与周围环境", "tile-context");
+        local.Children.Add(LiveText(() => $"{NationName(Tile().NationId)}\n{(Tile().RoadLevel > 0 ? $"道路 {Tile().RoadLevel} 级\n" : "")}步行耗时系数 {_engine.GetTerrainMoveCost(point.X, point.Y):0.##}"));
+        LiveRows(local, () => _engine.State.Conflicts.Where(c => c.SettlementId == Tile().SettlementId || Math.Abs(c.X - point.X) + Math.Abs(c.Y - point.Y) <= 3), c => c.Id.ToString(),
+            c => $"{(c.Stage == ConflictStage.Dispute ? "资源争执" : c.Stage == ConflictStage.Confrontation ? "持续对峙" : c.Stage == ConflictStage.Violence ? "局部斗殴" : "已平息")}   {c.Participants.Count} 人   紧张 {c.Tension:0}%");
+        var nearby = FoldSection(panel, "附近居民", "tile-residents");
+        LiveRows(nearby, () => _engine.State.Residents.Where(r => Math.Abs(r.X - point.X) <= 6 && Math.Abs(r.Y - point.Y) <= 6).OrderBy(r => r.Id).Take(16), r => r.Id.ToString(), r => $"{r.Name}   {ProfessionName(r.Profession)}\n{ResidentTask(r)}", r => OpenResident(r.Id));
         panel.Children.Add(Button("查看建筑与道路", () => OpenInspector("structures")));
     }
 
-    private string EventLabel(WorldEvent item) => $"{ImportanceName(item.Importance)}\n{DateLabel(item.Tick)}\n{NationName(item.NationId)}{(item.ResidentId > 0 ? "\n" + ResidentName(item.ResidentId) : "")}\n{item.Message}{(item.X >= 0 ? $"\n定位 {item.X}, {item.Y}" : "")}";
+    private string EventLabel(WorldEvent item) => $"{ImportanceName(item.Importance)}   {DateLabel(item.Tick)}   {NationName(item.NationId)}\n{item.Message}";
     private void FocusEvent(WorldEvent item)
     {
         RememberLocation(); _eventDetailId = item.Id; OpenInspector("event", false);
@@ -272,9 +283,9 @@ public sealed partial class MainView
         var kind = Named(new ComboBox { ItemsSource = new[] { "所有类型" }.Concat(kinds.Select(EventKindName)).ToArray(), SelectedIndex = _historyKind.HasValue ? Array.IndexOf(kinds, _historyKind.Value) + 1 : 0, HorizontalAlignment = HorizontalAlignment.Stretch }, "history-kind");
         kind.SelectionChanged += (_, _) => { _historyKind = kind.SelectedIndex > 0 ? kinds[kind.SelectedIndex - 1] : null; RefreshInspector(); }; panel.Children.Add(kind);
         var search = Named(new TextBox { Text = _historySearch, PlaceholderText = "搜索事件内容" }, "history-search");
-        search.TextChanged += (_, _) => { _historySearch = search.Text ?? ""; RefreshInspector(); }; panel.Children.Add(search);
+        BindSearch(search, value => _historySearch = value); panel.Children.Add(search);
         IEnumerable<WorldEvent> Filter() => _engine.State.Events.Where(e => (!_historyWatchedOnly || IsWatched(e)) && (_historyImportance == 2 || (_historyImportance == 0 ? e.Importance >= EventImportance.Major : e.Importance < EventImportance.Major)) && (_historyNationId == 0 || (e.NationId == _historyNationId || e.SecondNationId == _historyNationId)) && (!_historyKind.HasValue || e.Kind == _historyKind) && e.Message.Contains(_historySearch, StringComparison.OrdinalIgnoreCase)).Reverse();
-        panel.Children.Add(LiveText(() => $"符合筛选：{Filter().Count()} 条\n点击有坐标的记录定位"));
+        panel.Children.Add(LiveText(() => $"符合筛选：{Filter().Count()} 条\n点击事件查看经过和前因"));
         LiveRows(panel, () => WorldStories.Group(Filter()).Take(100), GroupKey, GroupLabel, g => FocusEvent(g.Latest));
     }
 

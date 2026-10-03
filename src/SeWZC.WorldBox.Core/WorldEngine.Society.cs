@@ -757,9 +757,12 @@ public sealed partial class WorldEngine
         if (!buildings.Any(b => b.Kind == BuildingKind.Academy)) { PlanBuilding(BuildingKind.Academy); return; }
         foreach (var plan in PendingLocalDevelopment(town, buildings, project))
         {
+            var stage = plan.Research is { } researchKind ? AdvancementRules.For(researchKind) : plan.Facility is { } buildingKind ? AdvancementRules.For(buildingKind) : null;
+            var isFoundation = plan.Research is ResearchKind.Agriculture or ResearchKind.Logistics;
             if (plan.Facility is { } facility)
             {
                 if (PlanBuilding(facility)) return;
+                if (stage is not null) break;
                 continue;
             }
             var kind = plan.Research!.Value;
@@ -771,6 +774,7 @@ public sealed partial class WorldEngine
                 RememberBlocker(missing);
                 if (town.Resources.Wood < GetResearchCost(kind).Wood) Recruit(Profession.Lumberjack);
                 if (town.Resources.Stone < GetResearchCost(kind).Stone || town.Resources.Ore < GetResearchCost(kind).Ore) Recruit(Profession.Miner);
+                if (stage is not null || isFoundation) break;
                 continue;
             }
             StartResearch(town.Id, kind); Recruit(Profession.Scholar); town.DevelopmentBlocker = "等待学者到学院工作"; return;
@@ -791,36 +795,45 @@ public sealed partial class WorldEngine
             yield return new(BuildingKind.Academy, null, GetBuildingCost(BuildingKind.Academy));
             yield break;
         }
-        // Basic production and transport must not lose every material delivery to optional
-        // facilities. These projects still require local knowledge, payment and actual labor.
-        if (!project.ActiveProject.HasValue && buildings.Any(b => b.Kind == BuildingKind.Academy && b.IsCompleted))
-            foreach (var basic in new[] { ResearchKind.Agriculture, ResearchKind.Logistics })
-                if (!HasResearch(town.Id, basic)) yield return new(null, basic, GetResearchCost(basic));
+        var focus = GetDevelopmentFocus(town.Id);
+        var technology = focus is DevelopmentFocus.Technology or DevelopmentFocus.Integrated;
+        var magic = State.Society.MagicEnabled && focus is DevelopmentFocus.MagicPractice or DevelopmentFocus.ArcaneIndustry or DevelopmentFocus.Integrated;
+        var magicalIndustry = magic && focus is DevelopmentFocus.ArcaneIndustry or DevelopmentFocus.Integrated;
+        // Complete the next usable stage before spending its materials on optional networks.
+        // Natural magic develops practitioners and sanctums without requiring crystal industry.
+        var foundations = magic && !technology
+            ? new[] { ResearchKind.Agriculture, ResearchKind.ArcaneArts, ResearchKind.Logistics }
+            : new[] { ResearchKind.Agriculture, ResearchKind.Logistics };
+        if (!project.ActiveProject.HasValue)
+            foreach (var kind in foundations)
+                if (!HasResearch(town.Id, kind) && ResearchPrerequisiteError(town.Id, kind) is null)
+                    yield return new(null, kind, GetResearchCost(kind));
+        var route = AdvancementRules.All.Where(a => a.Magic ? magicalIndustry : technology).ToArray();
+        foreach (var advancement in route)
+        {
+            if (HasResearch(town.Id, advancement.Research))
+            {
+                if (!buildings.Any(b => b.Kind == advancement.Facility))
+                    yield return new(advancement.Facility, null, GetBuildingCost(advancement.Facility));
+                continue;
+            }
+            if (!project.ActiveProject.HasValue && ResearchPrerequisiteError(town.Id, advancement.Research) is null)
+                yield return new(null, advancement.Research, GetResearchCost(advancement.Research));
+        }
         var facilities = new[]
         {
             (BuildingKind.Infirmary, GetLocalPolicy(town.Id) == PolicyKind.PublicHealth),
-            (BuildingKind.ArcaneSanctum, HasResearch(town.Id, ResearchKind.ArcaneArts) && State.Society.MagicEnabled),
+            (BuildingKind.ArcaneSanctum, magic && HasResearch(town.Id, ResearchKind.ArcaneArts)),
             (BuildingKind.Waystation, HasResearch(town.Id, ResearchKind.Logistics)),
-            (BuildingKind.SignalTower, HasResearch(town.Id, ResearchKind.SignalNetwork) && HasResearch(town.Id, ResearchKind.Electrification)),
+            (BuildingKind.SignalTower, technology && HasResearch(town.Id, ResearchKind.SignalNetwork) && HasResearch(town.Id, ResearchKind.Electrification)),
             (BuildingKind.Dock, HasResearch(town.Id, ResearchKind.Logistics) && Circle(town.X, town.Y, 6).Any(i => State.Tiles[i].Terrain is TerrainType.Water or TerrainType.River))
         };
         foreach (var (kind, needed) in facilities)
             if (needed && !buildings.Any(b => b.Kind == kind)) yield return new(kind, null, GetBuildingCost(kind));
-        foreach (var advancement in AdvancementRules.All)
-            if (HasResearch(town.Id, advancement.Research) && (!advancement.Magic || State.Society.MagicEnabled)
-                && !buildings.Any(b => b.Kind == advancement.Facility))
-                yield return new(advancement.Facility, null, GetBuildingCost(advancement.Facility));
-        if (project.ActiveProject.HasValue || !buildings.Any(b => b.Kind == BuildingKind.Academy && b.IsCompleted)) yield break;
-        var order = State.Society.MagicEnabled && _citizens.GetValueOrDefault(town.Id)?.Any(r => r.Age >= 16 && r.Health > 50
-            && r.ArmyId == 0 && r.Agent.DestinationSettlementId == 0 && Distance(r.X, r.Y, town.X, town.Y) <= 6 && r.MagicTalent >= 55) == true
-            ? new[] { ResearchKind.Agriculture, ResearchKind.ArcaneArts, ResearchKind.Logistics, ResearchKind.SignalNetwork }
-            : new[] { ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.SignalNetwork };
-        foreach (var kind in order.Concat(AdvancementRules.All.Select(a => a.Research)))
-        {
-            if (HasResearch(town.Id, kind)) continue;
-            if (ResearchPrerequisiteError(town.Id, kind) is not null) continue;
-            yield return new(null, kind, GetResearchCost(kind));
-        }
+        if (project.ActiveProject.HasValue) yield break;
+        foreach (var kind in technology ? new[] { ResearchKind.SignalNetwork }.Concat(magic ? new[] { ResearchKind.ArcaneArts } : []) : [])
+            if (!HasResearch(town.Id, kind) && ResearchPrerequisiteError(town.Id, kind) is null)
+                yield return new(null, kind, GetResearchCost(kind));
     }
 
     private ResourceStock LocalDevelopmentReserve(Settlement town)
@@ -833,7 +846,7 @@ public sealed partial class WorldEngine
             .Where(p => p.Facility.HasValue ? State.Rules.Construction : State.Rules.Research).ToArray();
         // Reserve wood and stone for the next project the local planner can pursue; optional ore
         // shortages may defer magic while the same planner proceeds with basic transport.
-        return plans.FirstOrDefault(p => town.Resources.Ore >= p.Cost.Ore)?.Cost ?? plans.FirstOrDefault()?.Cost ?? new();
+        return plans.FirstOrDefault()?.Cost ?? new();
     }
 
     private static void ValidateSocietyState(WorldState state)

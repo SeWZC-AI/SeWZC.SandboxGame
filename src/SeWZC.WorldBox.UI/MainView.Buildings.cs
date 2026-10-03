@@ -32,21 +32,27 @@ public sealed partial class MainView
         panel.Children.Add(LiveText(() => Current() is { } b ? BuildingLabel(b) : "建筑已不存在", 18, Mint));
         panel.Children.Add(Paragraph(WorldEngine.BuildingDescription(building.Kind)));
         panel.Children.Add(LiveText(() => Current() is not { } b ? "建筑已不存在" :
-            $"归属聚落：{TownName(b.SettlementId)}\n位置：{b.X}, {b.Y}\n生命：{b.Health:0.0} / 100\n状态：{(b.Health <= 0 ? "已损毁，等待重建" : !b.Enabled ? "已停用" : b.IsCompleted ? "已建成" : "居民施工中")}\n施工：{b.ConstructionProgress:0.0} / {b.ConstructionRequired:0}\n最近工作：{DateLabel(b.LastWorkedTick)}\n累计加工：{b.ProductionBatches} 批\n{_engine.GetProductionStatus(b.Id)}"));
-        panel.Children.Add(Named(Button("定位建筑", () => { if (Current() is { } b) _map.FocusTile(b.X, b.Y); CloseInspector(); }), "building-locate"));
-        panel.Children.Add(Named(Button("修复建筑", () => RunEdit(() => _engine.RestoreBuilding(id), "建筑已修复")), "building-repair"));
-        if (!building.IsCompleted) panel.Children.Add(Named(Button("赐予完工", () => RunEdit(() => _engine.RestoreBuilding(id, true), "已赐予完工；运营仍需实际条件")), "building-finish"));
+            !b.IsCompleted ? $"施工：{b.ConstructionProgress:0.0} / {b.ConstructionRequired:0}\n" + _engine.GetProductionStatus(b.Id)
+            : _engine.GetProductionStatus(b.Id)));
+        var condition = FoldSection(panel, "建筑状态与工作记录", "building-condition");
+        condition.Children.Add(LiveText(() => Current() is not { } b ? "建筑已不存在" :
+            $"聚落：{TownName(b.SettlementId)}   生命 {b.Health:0} / 100\n最近工作：{DateLabel(b.LastWorkedTick)}   累计加工 {b.ProductionBatches} 批"));
+        var actions = new WrapPanel { Orientation = Orientation.Horizontal };
+        panel.Children.Add(actions);
+        actions.Children.Add(Named(Button("定位建筑", () => { if (Current() is { } b) _map.FocusTile(b.X, b.Y); CloseInspector(); }), "building-locate"));
+        actions.Children.Add(Named(Button("修复建筑", () => RunEdit(() => _engine.RestoreBuilding(id), "建筑已修复")), "building-repair"));
+        if (!building.IsCompleted) actions.Children.Add(Named(Button("赐予完工", () => RunEdit(() => _engine.RestoreBuilding(id, true), "已赐予完工；运营仍需实际条件")), "building-finish"));
         if (building.Kind != BuildingKind.TownCenter)
         {
             var toggle = Named(Button(building.Enabled ? "停用建筑" : "恢复运营", () =>
             {
                 if (Current() is { } b) RunEdit(() => _engine.SetBuildingEnabled(id, !b.Enabled), "建筑运营状态已更新");
             }), "building-toggle");
-            _inspectorUpdates.Add(() => toggle.Content = Current()?.Enabled == true ? "停用建筑" : "恢复运营"); panel.Children.Add(toggle);
+            _inspectorUpdates.Add(() => toggle.Content = Current()?.Enabled == true ? "停用建筑" : "恢复运营"); actions.Children.Add(toggle);
         }
         panel.Children.Add(Text("实际到场工作人员", 13, Mint));
         LiveRows(panel, () => Current() is { } b ? _engine.State.Residents.Where(r => b.Workers.Contains(r.Id) && _engine.State.Tick - b.LastWorkedTick <= 1) : [],
-            r => r.Id.ToString(), r => r.Name + "\n" + _engine.GetResidentActionSummary(r.Id), r => OpenResident(r.Id));
+            r => r.Id.ToString(), r => r.Name + "   " + ProfessionName(r.Profession) + "\n" + ResidentTask(r), r => OpenResident(r.Id));
         panel.Children.Add(Button("查看归属聚落", () => { _inspectorSettlementId = building.SettlementId; OpenInspector("infrastructure"); }));
         panel.Children.Add(Named(Button("查看所在土地", () => { _selectedTile = (building.X, building.Y); OpenInspector("tile"); }), "building-ground"));
     }
@@ -57,12 +63,24 @@ public sealed partial class MainView
             HorizontalAlignment = HorizontalAlignment.Stretch }, "structures-kind");
         mode.SelectionChanged += (_, _) => { _listRoads = mode.SelectedIndex == 1; _structurePage = 0; InvalidateInspector(); RefreshInspector(); }; panel.Children.Add(mode);
         var search = Named(new TextBox { Text = _structureSearch, PlaceholderText = "按建筑、聚落或国家名称搜索" }, "structures-search");
-        search.TextChanged += (_, _) => { _structureSearch = search.Text ?? ""; _structurePage = 0; RefreshInspector(); }; panel.Children.Add(search);
+        BindSearch(search, value => { _structureSearch = value; _structurePage = 0; }); panel.Children.Add(search);
         bool Matches(string text) => text.Contains(_structureSearch, StringComparison.OrdinalIgnoreCase);
-        IEnumerable<Building> Buildings() => _engine.State.Society.Buildings.OrderBy(b => b.Id).Where(b => Matches(BuildingLabel(b) + TownName(b.SettlementId)));
-        IEnumerable<int> Roads() => Enumerable.Range(0, _engine.State.Tiles.Length).Where(i => _engine.State.Tiles[i].RoadLevel > 0 && Matches(NationName(_engine.State.Tiles[i].NationId)));
+        Building[] buildingRows = []; int[] roadRows = [];
+        long sampledTick = -1; int sampledEventId = -1; string? sampledSearch = null;
+        void SampleRows()
+        {
+            var latestEventId = _engine.State.Events.LastOrDefault()?.Id ?? 0;
+            if (sampledTick == _engine.State.Tick && sampledEventId == latestEventId && sampledSearch == _structureSearch) return;
+            sampledTick = _engine.State.Tick; sampledEventId = latestEventId; sampledSearch = _structureSearch;
+            if (_listRoads) roadRows = Enumerable.Range(0, _engine.State.Tiles.Length)
+                .Where(i => _engine.State.Tiles[i].RoadLevel > 0 && Matches(NationName(_engine.State.Tiles[i].NationId))).ToArray();
+            else buildingRows = _engine.State.Society.Buildings.OrderBy(b => b.Id).Where(b => Matches(BuildingLabel(b) + TownName(b.SettlementId))).ToArray();
+        }
+        _inspectorUpdates.Add(SampleRows); SampleRows();
+        IEnumerable<Building> Buildings() => buildingRows;
+        IEnumerable<int> Roads() => roadRows;
         int Count() => _listRoads ? Roads().Count() : Buildings().Count();
-        panel.Children.Add(LiveText(() => $"共 {Count()} 处{(_listRoads ? "道路地块" : "建筑")}\n第 {_structurePage + 1} / {Math.Max(1, (Count() + 19) / 20)} 页"));
+        panel.Children.Add(LiveText(() => $"共 {Count()} 处{(_listRoads ? "道路地块" : "建筑")}   第 {_structurePage + 1} / {Math.Max(1, (Count() + 19) / 20)} 页"));
         var pages = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         pages.Children.Add(Named(Button("上一页", () => { _structurePage = Math.Max(0, _structurePage - 1); RefreshInspector(); }), "structures-prev"));
         pages.Children.Add(Named(Button("下一页", () => { _structurePage = Math.Min(Math.Max(0, (Count() - 1) / 20), _structurePage + 1); RefreshInspector(); }), "structures-next")); panel.Children.Add(pages);
@@ -72,7 +90,7 @@ public sealed partial class MainView
                 i => $"道路 {_engine.State.Tiles[i].RoadLevel} 级\n位置 {i % _engine.State.Width}, {i / _engine.State.Width}\n归属：{NationName(_engine.State.Tiles[i].NationId)}\n步行耗时系数 {_engine.GetTerrainMoveCost(i % _engine.State.Width, i / _engine.State.Width):0.##}",
                 i => { _selectedTile = (i % _engine.State.Width, i / _engine.State.Width); _map.FocusTile(_selectedTile.Value.X, _selectedTile.Value.Y); OpenInspector("tile"); });
         else LiveRows(panel, () => Buildings().Skip(_structurePage * 20).Take(20), b => b.Id.ToString(),
-            b => $"{BuildingLabel(b)}\n聚落：{TownName(b.SettlementId)}\n{(b.IsCompleted ? "已建成" : "施工或重建中")}\n生命 {b.Health:0} / 100", OpenBuilding);
+            b => $"{BuildingLabel(b)}   {TownName(b.SettlementId)}\n{BuildingTask(b)}", OpenBuilding);
         panel.Children.Add(Button("地图突出显示建筑与道路", () => { _map.Overlay = 4; _map.RefreshWorld(); CloseInspector(); }));
     }
 

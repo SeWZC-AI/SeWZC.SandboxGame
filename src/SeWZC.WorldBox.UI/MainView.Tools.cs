@@ -43,12 +43,12 @@ public sealed partial class MainView
         foreach (var button in _categoryButtons) button.Background = Equals(button.Tag, category) ? Brush.Parse("#355347") : Panel;
         (_toolTitle.Text, _toolHint.Text) = category switch
         {
-            "terrain" => ("塑造山海", "绘制地形 · 编辑时自动暂停"),
+            "terrain" => ("塑造山海", "绘制地形时自动暂停"),
             "life" => ("播下文明", "选择人数，在陆地投放居民"),
             "disaster" => ("改变命运", "点击世界，降下灾害"),
             "build" => ("建设与交通", "选择归属聚落与建造方式"),
             "rules" => ("世界与文明", "查看实际规则及发展方向"),
-            _ => ("见证众生", "点击居民检查 · 拖动平移 · 滚轮缩放")
+            _ => ("见证众生", "点选查看，拖动平移，滚轮缩放")
         };
         _brushPicker.ItemsSource = category == "life" ? new[] { "1 位居民", "12 位居民", "36 位居民" }
             : category == "disaster" ? new[] { "范围 2 格", "范围 5 格", "范围 10 格" } : new[] { "小笔刷", "中笔刷", "大笔刷" };
@@ -98,14 +98,14 @@ public sealed partial class MainView
         _map.CancelPlacement();
         _mobilePanel = false;
         _toolTitle.Text = _tools.Select(t => t.Tool).Contains(tool)
-            ? ToolChoices(_category).First(t => t.Key == tool).Label + " · 已启用" : "地图工具已启用";
+            ? ToolChoices(_category).First(t => t.Key == tool).Label + "（已启用）" : "地图工具已启用";
         foreach (var (key, button) in _tools)
         {
             button.BorderBrush = key == tool ? Mint : Brushes.Transparent;
             button.Background = key == tool ? Brush.Parse("#2C423F") : Ink;
         }
         ApplyLayout();
-        SetStatus("工具已启用 · 再点一次停用 · 触屏拖动 / 右键漫游");
+        SetStatus("工具已启用，再点一次停用；触屏拖动或右键可漫游");
     }
 
     private void ToggleTools()
@@ -118,9 +118,9 @@ public sealed partial class MainView
     private void SuspendTool()
     {
         _map.CancelPlacement(); _map.ActiveTool = "pan";
-        _toolTitle.Text = "漫游 · 点选查看";
+        _toolTitle.Text = "漫游（点选查看）";
         foreach (var (_, button) in _tools) { button.BorderBrush = Brushes.Transparent; button.Background = Ink; }
-        SetStatus("漫游中 · 拖动地图，轻点查看对象");
+        SetStatus("漫游中，可拖动地图或轻点查看对象");
     }
 
     private void CloseInspector() { _mobilePanel = false; ApplyLayout(); }

@@ -43,7 +43,7 @@ public sealed partial class MainView
             var box = Named(new ComboBox { ItemsSource = choices, SelectedIndex = selected, HorizontalAlignment = HorizontalAlignment.Stretch }, id);
             panel.Children.Add(box); return box;
         }
-        var conflict = Select("竞争与动荡强度", ["和平倾向", "低 · 留出恢复时间", "标准", "高"], draft.Conflict, "rule-conflict");
+        var conflict = Select("竞争与动荡强度", ["和平倾向", "低（留出恢复时间）", "标准", "高"], draft.Conflict, "rule-conflict");
         var rates = new[] { .5, 1d, 2d, 3d };
         var development = Select("建设与研究速率（不改变世界时间）", ["缓慢 0.5 倍", "标准 1 倍", "快速 2 倍", "迅速 3 倍"], Array.IndexOf(rates, draft.DevelopmentRate), "rule-development-rate");
         panel.Children.Add(Text("生态与劳动", 14, Mint));
@@ -79,6 +79,6 @@ public sealed partial class MainView
             draft.DisasterStrength = Math.Max(0, strength.SelectedIndex) + 1;
             draft.DevelopmentRate = rates[Math.Max(0, development.SelectedIndex)]; draft.MagicRate = rates[Math.Max(0, magicRate.SelectedIndex)];
             _engine.ConfigureWorld(draft, disasters.IsChecked == true, magic.IsChecked == true); CloseModal();
-        }, "世界规则已应用并随存档保存 · 点击继续观察")), "world-rules-apply"));
+        }, "世界规则已应用并随存档保存，点击继续观察")), "world-rules-apply"));
     }
 }

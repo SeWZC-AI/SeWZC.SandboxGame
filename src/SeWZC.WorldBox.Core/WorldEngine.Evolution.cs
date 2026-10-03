@@ -121,7 +121,7 @@ public sealed partial class WorldEngine
         var missing = new List<string>();
         foreach (var kind in AdvancementRules.Resources)
             if (stock.Get(kind) + .000001 < cost.Get(kind)) missing.Add($"{ResourceStock.Name(kind)}缺 {cost.Get(kind) - stock.Get(kind):0.#}");
-        return missing.Count == 0 ? null : string.Join(" · ", missing);
+        return missing.Count == 0 ? null : string.Join("\n", missing);
     }
 
     public int GrantFacility(int settlementId, BuildingKind kind, int x, int y) => PlaceFacility(settlementId, kind, x, y, true);

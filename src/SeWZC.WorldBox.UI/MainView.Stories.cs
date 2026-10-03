@@ -29,14 +29,14 @@ public sealed partial class MainView
     {
         var fact = _engine.State.Residents.Concat(_engine.State.ArchivedResidents).SelectMany(r => r.Agent.Memory.Concat(r.Agent.CarriedMessages))
             .Concat(_engine.State.Settlements.SelectMany(t => t.PublicKnowledge)).FirstOrDefault(f => f.Id == id);
-        return fact is null ? "采用的消息已超出认知记录的保留范围" : $"采用的消息：{fact.Text}\n观察：{DateLabel(fact.ObservedTick)} · 原始来源：{ResidentName(fact.OriginResidentId)}";
+        return fact is null ? "采用的消息已超出认知记录的保留范围" : $"采用的消息：{fact.Text}\n观察时间：{DateLabel(fact.ObservedTick)}\n原始来源：{ResidentName(fact.OriginResidentId)}";
     }
 
     private string WatchedName(ObservedObject target) => target.Kind switch
     {
-        ObservedObjectKind.Nation => "国家 · " + NationName(target.Id),
-        ObservedObjectKind.Settlement => "聚落 · " + TownName(target.Id),
-        _ => "居民 · " + ResidentName(target.Id)
+        ObservedObjectKind.Nation => "国家：" + NationName(target.Id),
+        ObservedObjectKind.Settlement => "聚落：" + TownName(target.Id),
+        _ => "居民：" + ResidentName(target.Id)
     };
 
     private void OpenWatched(ObservedObject target)
@@ -61,7 +61,7 @@ public sealed partial class MainView
 
     private static string GroupKey(EventGroup group) => group.Entries[0].Id.ToString();
     private string GroupLabel(EventGroup group) => group.Count == 1 ? EventLabel(group.Latest)
-        : $"同类事件 {group.Count} 次 · {DateLabel(group.Entries[0].Tick)} 至 {DateLabel(group.Latest.Tick)}\n{EventLabel(group.Latest)}\n点击展开原始记录";
+        : $"同类事件 {group.Count} 次   {DateLabel(group.Entries[0].Tick)} 至 {DateLabel(group.Latest.Tick)}\n{EventLabel(group.Latest)}\n点击展开原始记录";
 
     private void BuildStoryInspector(StackPanel panel)
     {
@@ -75,7 +75,7 @@ public sealed partial class MainView
             {
                 var entry = x.entry;
                 var retained = _engine.State.Events.Any(e => e.Id == entry.EventId);
-                return $"{DateLabel(entry.Tick)} · {ImportanceName(entry.Importance)}{(entry.PlayerEdited ? " · 玩家编辑" : " · 模拟记录")}\n{entry.Text}"
+                return $"时间：{DateLabel(entry.Tick)}\n重要程度：{ImportanceName(entry.Importance)}\n记录来源：{(entry.PlayerEdited ? "玩家编辑" : "模拟记录")}\n{entry.Text}"
                     + (entry.SettlementId > 0 ? $"\n当时归属：{NationName(entry.NationId)} / {TownName(entry.SettlementId)}" : "")
                     + (entry.EvidenceFactId > 0 ? $"\n{EvidenceLabel(entry.EvidenceFactId)}" : "")
                     + (entry.EventId > 0 ? retained ? "\n查看关联世界事件" : "\n关联事件已超出保留范围" : "");
@@ -86,7 +86,7 @@ public sealed partial class MainView
             });
         panel.Children.Add(Text("实际决策与当时依据", 13, Mint));
         LiveRows(panel, () => person.Agent.Decisions.AsEnumerable().Reverse(), d => $"{d.Tick}:{d.Goal}:{d.EvidenceFactId}",
-            d => $"{DateLabel(d.Tick)} · {GoalName(d.Goal)}\n{d.Reason}\n依据观察于 {DateLabel(d.KnowledgeObservedTick)} 的消息 · 来源 {ResidentName(d.SourceResidentId)}");
+            d => $"决策时间：{DateLabel(d.Tick)}\n目标：{GoalName(d.Goal)}\n{d.Reason}\n消息观察时间：{DateLabel(d.KnowledgeObservedTick)}\n消息来源：{ResidentName(d.SourceResidentId)}");
         panel.Children.Add(Text("此人参与或直接相关的世界事件", 13, Mint));
         LiveRows(panel, () => WorldStories.Group(_engine.State.Events.Where(e => InvolvesObject(e, new(ObservedObjectKind.Resident, person.Id)))), GroupKey, GroupLabel, g => FocusEvent(g.Latest));
     }
@@ -98,13 +98,13 @@ public sealed partial class MainView
         {
             var record = nation.Military;
             if (record.CampaignEventId == 0) return "尚无作战目标";
-            return $"{WorldEngine.ObjectiveName(record.Objective)} · {TownName(record.TargetSettlementId)} · {record.TargetX},{record.TargetY}\n{record.Report}"
-                + (record.LastReportEventId > 0 ? $"\n战报观察：{DateLabel(record.LastReportObservedTick)} · 送达：{DateLabel(record.LastReportReceivedTick)}" : "")
+            return $"作战目标：{WorldEngine.ObjectiveName(record.Objective)}\n目标聚落：{TownName(record.TargetSettlementId)}\n目标位置：{record.TargetX}, {record.TargetY}\n{record.Report}"
+                + (record.LastReportEventId > 0 ? $"\n战报观察：{DateLabel(record.LastReportObservedTick)}\n战报送达：{DateLabel(record.LastReportReceivedTick)}" : "")
                 + (record.RecoveryUntilTick > _engine.State.Tick ? $"\n恢复期剩余 {record.RecoveryUntilTick - _engine.State.Tick} 日，暂停自主进攻，仍可组织防御" : "\n当前不在恢复期");
         }), "nation-military"));
-        panel.Children.Add(Text("前线实际状态 · 上帝视角", 12, Mint));
+        panel.Children.Add(Text("前线实际状态（上帝视角）", 12, Mint));
         LiveRows(panel, () => _engine.State.Armies.Where(a => a.NationId == nation.Id), a => a.Id.ToString(),
-            a => $"{WorldEngine.ObjectiveName(a.Objective)} · {a.Status}\n目标 {TownName(a.TargetSettlementId)} · 部队 {a.Soldiers}/{a.InitialSoldiers} 人\n实有军粮 {a.Supplies:F1} · 士气 {a.Morale:F0}\n{WorldEngine.OutcomeName(a.Outcome)}",
+            a => $"作战目标：{WorldEngine.ObjectiveName(a.Objective)}\n行动状态：{a.Status}\n目标聚落：{TownName(a.TargetSettlementId)}\n部队：{a.Soldiers}/{a.InitialSoldiers} 人\n实有军粮：{a.Supplies:F1}\n士气：{a.Morale:F0}\n{WorldEngine.OutcomeName(a.Outcome)}",
             a => _map.FocusTile(a.X, a.Y));
     }
 }

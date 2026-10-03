@@ -49,7 +49,7 @@ fs.mkdirSync(output, { recursive: true });
                 await ui.click('storage-import', modal); await (await chooser).setFiles(filename);
                 await ui.waitFor(s => !s.modalOpen && s.status.startsWith('导入成功'), 'land fixture import');
                 await ui.click('header-overview'); await ui.click('inspector-residents');
-                await ui.fill('resident-search', worker.Id, inspector); await ui.click(`resident-row-${worker.Id}`, inspector);
+                await ui.fill('resident-search', worker.Id, inspector); await ui.openResidentRow(worker.Id, inspector);
                 await ui.click('resident-locate', inspector);
                 if ((await ui.snapshot()).inspectorOpen) await ui.click('inspector-close');
                 await ui.clickTile(worker.X, worker.Y);

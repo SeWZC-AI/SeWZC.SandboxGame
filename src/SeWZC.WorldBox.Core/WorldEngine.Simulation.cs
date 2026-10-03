@@ -88,7 +88,7 @@ public sealed partial class WorldEngine
                 }
                 if (State.Tick % 120 == 0) AddEvent(WorldEventKind.Growth, $"{town.Name}迎来新生儿，人口增至{citizens.Count}。", town.X, town.Y);
             }
-            if (State.Rules.Expansion && State.Tick % 120 == 0 && citizens.Count >= 60 && town.Resources.Food >= 120 && town.Resources.Wood >= 40 && State.Settlements.Count < 256)
+            if (State.Rules.Expansion && State.Tick % 120 == 0 && citizens.Count >= 60 && town.Resources.Food >= 120 && town.Resources.Wood >= 40 + developmentReserve.Wood && State.Settlements.Count < 256)
                 ExpandSettlement(town, citizens);
         }
     }

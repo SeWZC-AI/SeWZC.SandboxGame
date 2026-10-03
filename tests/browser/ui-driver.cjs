@@ -63,6 +63,17 @@ class UiDriver {
         throw new Error(`Could not scroll ${id} into view`);
     }
 
+    async openResidentRow(id, options = { scroll: 'inspector-scroll' }) {
+        if (!(await this.snapshot()).controls.some(c => c.id === `resident-row-${id}`)) await this.fill('resident-search', String(id), options);
+        await this.waitFor(s => s.controls.some(c => c.id === `resident-row-${id}`), "resident search result");
+        await this.click(`resident-row-${id}`, options);
+    }
+
+    async openOverview() {
+        const snapshot = await this.snapshot();
+        if (!snapshot.inspectorOpen || snapshot.inspector !== 'overview') await this.click('header-overview');
+    }
+
     async click(id, options) {
         const point = await this.point(id, options);
         if (this.touch) await this.page.touchscreen.tap(point.x, point.y);
@@ -75,7 +86,8 @@ class UiDriver {
         await this.page.keyboard.press('Control+A');
         // Avalonia's browser text input consumes real keypresses. insertText alone
         // skips those events, so smoke fixtures use ordinary ASCII input.
-        await this.page.keyboard.type(String(value), { delay: 20 });
+        if (String(value).length === 0) await this.page.keyboard.press("Backspace");
+        else await this.page.keyboard.type(String(value), { delay: 20 });
         await this.page.keyboard.press("Tab");
         await this.waitFor(snapshot => this.control(snapshot, id).value === String(value), `text in ${id}`);
     }

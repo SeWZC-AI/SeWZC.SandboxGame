@@ -16,28 +16,29 @@ public sealed partial class WorldEngine
     public static string ResearchDescription(ResearchKind kind)
     {
         var a = AdvancementRules.For(kind);
-        return a is null ? kind == ResearchKind.SignalNetwork ? "近现代 · 前置：电气化；解锁无线信号塔通信。" : kind == ResearchKind.Logistics ? "古代交通：解锁驿站、桥梁、山路和船坞码头；舟船由居民制造并实际运回。" : "在已建成学舍由实际到场人员推进。"
-            : $"{(a.Magic ? "魔法" : "科技")}路线 · {a.Stage}\n前置：{string.Join("、", a.Prerequisites.Select(ResearchName))}\n解锁{a.FacilityName}：{ProductionRecipe(a.Facility)}";
+        return a is null ? kind == ResearchKind.SignalNetwork ? "阶段：近现代\n前置：电气化\n解锁无线信号塔通信。" : kind == ResearchKind.Logistics ? "古代交通：解锁驿站、桥梁、山路和船坞码头；舟船由居民制造并实际运回。" : "在已建成学舍由实际到场人员推进。"
+            : $"路线：{(a.Magic ? "魔法" : "科技")}\n阶段：{a.Stage}\n前置：{string.Join("、", a.Prerequisites.Select(ResearchName))}\n解锁设施：{a.FacilityName}\n{ProductionRecipe(a.Facility)}";
     }
 
     public string GetAdvancementStage(int settlementId)
     {
         string Stage(bool magic) => AdvancementRules.All.LastOrDefault(a => a.Magic == magic && HasResearch(settlementId, a.Research))?.Stage
             ?? (magic ? HasResearch(settlementId, ResearchKind.ArcaneArts) ? "基础奥术" : "未发展" : "古代");
-        return $"科技：{Stage(false)} · 魔法：{Stage(true)}";
+        return $"科技：{Stage(false)}   魔法：{Stage(true)}";
     }
 
     public static string ProductionRecipe(BuildingKind kind)
     {
         var a = AdvancementRules.For(kind);
-        return a is null ? "" : $"每批 {AdvancementRules.Stock(a.Input)}{(a.Mana > 0 ? $"、施作者魔力 {a.Mana:0}" : "")} → {ResourceStock.Name(a.Output)} {a.Yield:0}\n工人先到粮仓取料，现场加工后实地运回；农业产出仍受肥力与干旱影响。";
+        return a is null ? "" : $"每批原料：{AdvancementRules.Stock(a.Input)}{(a.Mana > 0 ? $"\n施作者魔力消耗：{a.Mana:0}" : "")}\n每批产出：{ResourceStock.Name(a.Output)} {a.Yield:0}\n工人先到粮仓取料，现场加工后实地运回；农业产出仍受肥力与干旱影响。";
     }
 
     private string? ProductionRequirement(Building building, Advancement a)
     {
         if (!building.Enabled) return "玩家已停用，恢复运营后才会安排工作";
         if (!building.IsCompleted) return "等待施工完成";
-        if (building.Health < 50 || State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return "设施损坏或正在燃烧";
+        if (building.Health < 50) return "设施受损，需要修复后运营";
+        if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return "设施所在地正在燃烧，暂停生产";
         if (!HasResearch(building.SettlementId, a.Research)
             || a.Prerequisites.Any(p => !HasResearch(building.SettlementId, p))) return "缺少当地运营知识：" + ResearchName(a.Research) + "及其前置";
         return null;
@@ -54,12 +55,36 @@ public sealed partial class WorldEngine
     {
         var building = State.Society.Buildings.FirstOrDefault(b => b.Id == buildingId);
         var a = building is null ? null : AdvancementRules.For(building.Kind);
-        if (a is null || building is null) return "";
+        if (building is null) return "建筑已不存在";
+        if (building.Health <= 0) return "建筑已损毁，等待重建";
+        if (building.Health < 50) return "建筑受损，需要修复后工作";
+        if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return "正在燃烧，暂停工作";
+        var workers = State.Tick - building.LastWorkedTick <= 1 ? building.Workers.Count : 0;
+        if (!building.IsCompleted) return $"施工：{building.ConstructionProgress / building.ConstructionRequired:P0}   到场工人 {workers}/{building.WorkSlots}";
+        if (!building.Enabled) return "已停用";
+        if (a is null)
+        {
+            var town = RequireTown(building.SettlementId);
+            var research = State.Society.Research.First(r => r.SettlementId == town.Id);
+            var activity = building.Kind switch
+            {
+                BuildingKind.Farm => $"产出：粮食   累计采收 {State.Tiles[Index(building.X, building.Y)].Harvested:0.#}",
+                BuildingKind.Workshop => "产出：附近实际可采的木材、石材与矿石",
+                BuildingKind.Academy => research.ActiveProject is { } kind ? $"正在研究：{ResearchName(kind)}   {research.Progress / research.RequiredProgress:P0}" : "等待当地研究立项",
+                BuildingKind.TownCenter => $"家园粮仓：粮食 {town.Resources.Food:0.#}   木材 {town.Resources.Wood:0.#}",
+                BuildingKind.ArcaneSanctum => "功能：训练法术，提升到场居民的魔法熟练度",
+                BuildingKind.Infirmary => "功能：治疗附近受伤与患病居民",
+                BuildingKind.SignalTower => "功能：值守无线通信，传递实际收到的消息",
+                BuildingKind.Waystation => "功能：值守驿站，改善附近信使通行",
+                _ => BuildingDescription(building.Kind)
+            };
+            return activity + (building.Kind is BuildingKind.TownCenter or BuildingKind.Bridge or BuildingKind.MountainPass ? "" : $"\n到场工作 {workers}/{building.WorkSlots} 人");
+        }
         var requirement = ProductionRequirement(building, a);
         if (requirement is not null) return requirement;
         if (ProductionYield(building, a) <= 0) return "土地无法产粮，需要恢复肥力";
         var missing = MissingResources(RequireTown(building.SettlementId).Resources, a.Input);
-        return $"累计加工 {building.ProductionBatches} 批 · " + (missing is not null ? missing + "；等待材料实际运到"
+        return $"产出：{ResourceStock.Name(a.Output)} {ProductionYield(building, a):0.#} / 批   累计 {building.ProductionBatches} 批\n" + (missing is not null ? missing + "\n等待材料实际运到"
             : a.Magic ? "需要天赋 ≥25、训练 ≥8 且魔力足够的到场施作者" : "原料可用，等待工人取料并到场加工");
     }
 

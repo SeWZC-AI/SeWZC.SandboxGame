@@ -56,7 +56,7 @@ var tests = new (string Name, Action Run)[]
 }.Concat(AgentBehaviorTests.Cases).Concat(EditorAndMigrationTests.Cases).Concat(SocietyBehaviorTests.Cases()).Concat(EvolutionTests.Cases).Concat(WorkQueryTests.Cases)
     .Concat(PersistenceRegressionTests.Cases).Concat(SocietyRegressionTests.Cases).Concat(AgentRegressionTests.Cases)
     .Concat(DiplomacyKnowledgeTests.Cases).Concat(StoryTests.Cases).Concat(PresentationWorldTests.Cases)
-    .Concat(TradeRegressionTests.Cases).Concat(AdvancementTests.Cases).Concat(LandTransportTests.Cases).Concat(EcologyAndConflictTests.Cases).ToArray();
+    .Concat(TradeRegressionTests.Cases).Concat(AdvancementTests.Cases).Concat(LandTransportTests.Cases).Concat(EcologyAndConflictTests.Cases).Concat(DevelopmentPlanningTests.Cases).ToArray();
 var filterOption = Array.IndexOf(args, "--filter");
 var suiteOption = Array.IndexOf(args, "--suite");
 var suite = suiteOption < 0 ? "unit" : args.ElementAtOrDefault(suiteOption + 1);

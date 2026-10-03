@@ -163,17 +163,25 @@ public sealed partial class WorldEngine
     {
         if (!InBounds(x, y)) return "地格不存在";
         var tile = State.Tiles[Index(x, y)];
-        var yields = TerrainRules.For(tile.Terrain);
-        var products = tile.Improvement is LandImprovement.Bridge or LandImprovement.MountainPass ? "通行设施，不直接生产资源"
-            : tile.Improvement == LandImprovement.Farmland ? "粮食（居民耕作，受肥力和干旱影响）"
-            : tile.Terrain is TerrainType.Water or TerrainType.DeepWater or TerrainType.River ? "暂无直接采集产出"
-            : tile.Terrain == TerrainType.Forest ? "木材、野生食物" : yields.StoneYield >= .3 ? "石材、矿石"
-            : ResourceSiteYield(Index(x, y), Profession.Farmer) > 0 ? "野生食物" : "少量自然材料";
-        var deposit = IsDepositVisible(tile, visibility) && tile.Deposit is { } kind
-            ? $"{ResourceStock.Name(kind)}矿藏：{tile.DepositAmount:0.#}（不可再生）" : visibility == ResourceVisibility.None ? "矿藏显示已关闭" : tile.Deposit is null ? "深层资源：无矿藏" : "当前研究尚未显示此矿藏，可切换全部资源查看";
-        return $"{ImprovementName(tile.Improvement)}\n产出：{products}\n可采自然资源 {tile.ResourceAmount:0.#}\n肥力 {tile.Fertility}%\n{deposit}\n累计采收 {tile.Harvested:0.#}\n最近劳动日序 {tile.LastHarvestTick}\n"
-            + (tile.FireTicks > 0 ? "火灾中，暂停生产" : tile.DroughtTicks > 0 ? "干旱中，粮食减产" : "环境正常")
-            + $"\n野生动物：{WildlifeName(tile.Wildlife)}\n数量 {tile.WildlifePopulation:0.0} / 栖息地容量 {WildlifeCapacity(tile, tile.Wildlife):0.0}\n"
-            + (tile.IsWalkable ? $"\n步行耗时系数 {GetTerrainMoveCost(x, y):0.##}" : "\n地面受阻，可修桥／山路或使用运输工具");
+        var products = new List<string>();
+        if (tile.Improvement is LandImprovement.Bridge or LandImprovement.MountainPass) products.Add("通行设施");
+        else
+        {
+            if (ResourceSiteYield(Index(x, y), Profession.Farmer) > 0) products.Add(tile.Improvement == LandImprovement.Farmland ? "耕种粮食" : "野生食物");
+            if (ResourceSiteYield(Index(x, y), Profession.Lumberjack) > 0) products.Add("木材");
+            if (ResourceSiteYield(Index(x, y), Profession.Miner) > 0) products.Add("石材、矿石");
+        }
+        var lines = new List<string> { products.Count > 0 ? "可采产出：" + string.Join("、", products) : tile.ResourceAmount < 1 && tile.IsWalkable ? "资源暂已采尽，等待自然恢复" : "此地暂无直接采集产出" };
+        if (tile.IsWalkable) lines.Add($"可采储量 {tile.ResourceAmount:0.#}   肥力 {tile.Fertility}%");
+        if (tile.Improvement == LandImprovement.Farmland) lines.Add("耕地：需要居民到场耕作，产物随身运回家园");
+        if (tile.FireTicks > 0) lines.Add($"正在燃烧：剩余 {tile.FireTicks} 日，暂停生产");
+        else if (tile.DroughtTicks > 0) lines.Add($"干旱：剩余 {tile.DroughtTicks} 日，粮食减产");
+        else if (tile.ResourceAmount >= 1 && tile.IsWalkable) lines.Add("状态：可以采收，自然资源持续恢复");
+        if (IsDepositVisible(tile, visibility) && tile.Deposit is { } kind)
+            lines.Add($"{ResourceStock.Name(kind)}矿藏：{tile.DepositAmount:0.#}（不可再生）");
+        if (tile.Harvested > 0) lines.Add($"累计采收 {tile.Harvested:0.#}   最近劳动距今 {Math.Max(0, State.Tick - tile.LastHarvestTick)} 日");
+        if (tile.Wildlife != WildlifeKind.None && tile.WildlifePopulation > 0)
+            lines.Add($"野生动物：{WildlifeName(tile.Wildlife)}   数量 {tile.WildlifePopulation:0.0} / 容量 {WildlifeCapacity(tile, tile.Wildlife):0.0}");
+        return string.Join("\n", lines);
     }
 }

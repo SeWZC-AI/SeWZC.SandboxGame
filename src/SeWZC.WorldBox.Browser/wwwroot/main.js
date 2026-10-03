@@ -1,5 +1,8 @@
 import { dotnet } from './_framework/dotnet.js';
 import * as storage from './storage.js';
+import { installTextInputBridge } from './text-input.js';
+
+installTextInputBridge(document.getElementById('out'));
 
 try {
     const runtime = await dotnet.withDiagnosticTracing(false).create();

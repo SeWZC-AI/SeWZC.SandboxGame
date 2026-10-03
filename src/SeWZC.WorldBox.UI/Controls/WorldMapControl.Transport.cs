@@ -11,7 +11,7 @@ public sealed partial class WorldMapControl
 
     private void DrawVehicles(DrawingContext context, WorldState state)
     {
-        foreach (var person in state.Residents)
+        foreach (var person in VisibleResidents(state))
         {
             if (!ShowVehicle(person)) continue;
             var point = ResidentMapPosition(person.Id, person.X, person.Y);

@@ -46,9 +46,10 @@ public sealed partial class MainView
         if (_mapSelectionKind == "resident" && resident is null || _mapSelectionKind == "building" && building is null)
         { ClearMapSelection(); return; }
         _selectionBar.IsVisible = _mapSelectionKind is not null && !_mobilePanel && !_toolsOpen;
-        _selectionText.Text = resident is not null ? $"{resident.Name}\n{GoalName(resident.Agent.Goal.Kind)}"
-            : building is not null ? $"{BuildingLabel(building)}\n{(building.IsCompleted ? "已建成" : $"施工 {building.ConstructionProgress / building.ConstructionRequired:P0}")}"
-            : _selectedTile is { } p ? $"{TerrainName(_engine.State.Tiles[p.Y * _engine.State.Width + p.X].Terrain)}\n位置：{p.X}, {p.Y}\n{WorldEngine.ImprovementName(_engine.State.Tiles[p.Y * _engine.State.Width + p.X].Improvement)}" : "";
+        _selectionText.Text = resident is not null ? $"{resident.Name}   {ProfessionName(resident.Profession)}\n{ResidentTask(resident)}"
+            : building is not null ? $"{BuildingLabel(building)}\n{BuildingTask(building)}"
+            : _selectedTile is { } p ? $"{TerrainName(_engine.State.Tiles[p.Y * _engine.State.Width + p.X].Terrain)}\n{_engine.GetTileProductionSummary(p.X, p.Y, _resourceVisibility).Split('\n')[0]}" : "";
+        _selectionText.Text = DisplayFormat.Text(_selectionText.Text);
     }
 
     private void ViewMapSelection()

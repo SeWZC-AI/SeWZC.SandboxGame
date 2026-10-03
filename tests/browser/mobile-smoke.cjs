@@ -83,7 +83,7 @@ const summary = world => ({ population: world.Residents.length, tick: world.Tick
         await ui.click('header-overview');
         await ui.click('inspector-residents');
         const actor = before.Residents[0];
-        await ui.click(`resident-row-${actor.Id}`, { scroll: 'inspector-scroll' });
+        await ui.openResidentRow(actor.Id, { scroll: 'inspector-scroll' });
         await ui.click('resident-edit', { scroll: 'inspector-scroll' });
         await ui.fill('resident-name', 'Touch resident', { scroll: 'modal-scroll' });
         const footer = ui.control(await ui.snapshot(), 'resident-apply');

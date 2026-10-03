@@ -62,19 +62,19 @@ function fixture(world) {
                 await ui.waitFor(s => !s.modalOpen && s.status.startsWith('导入成功'), 'story fixture import', 30000);
                 const baseline = await ui.save();
 
-                await ui.click('header-overview'); await ui.click('inspector-nations');
+                await ui.click('header-overview'); await ui.openOverview(); await ui.click('inspector-nations');
                 await ui.click(`nation-row-${data.nation.Id}`, scroll); await ui.click('nation-follow', scroll);
                 assert.match(ui.control(await ui.snapshot(), 'nation-military').value, /有限占领[\s\S]*尚未收到前线战报/);
-                await ui.click('inspector-overview'); await ui.click('overview-infrastructure', scroll);
+                await ui.openOverview(); await ui.click('overview-infrastructure', scroll);
                 await ui.click('settlement-watch', scroll);
                 assert.match(ui.control(await ui.snapshot(), 'development-estimate').value, /预计还需约/);
-                await ui.click('inspector-residents'); await ui.click(`resident-row-${data.actor.Id}`, scroll);
+                await ui.openOverview(); await ui.click('inspector-residents'); await ui.openResidentRow(data.actor.Id, scroll);
                 await ui.click('resident-watch', scroll); await ui.click('resident-story', scroll);
                 await ui.waitFor(s => s.inspector === 'story', 'resident story');
                 assert.equal(ui.control(await ui.snapshot(), 'story-watch').value, 'True');
                 await page.screenshot({ path: path.join(output, `story-${label}.png`) });
 
-                await ui.click('inspector-overview'); await ui.click('overview-watched', scroll);
+                await ui.openOverview(); await ui.click('overview-watched', scroll);
                 const grouped = ui.control(await ui.snapshot(), `history-row-${data.deliveries[2].Id}`);
                 assert.match(grouped.value, /同类事件 3 次/);
                 assert(!(await ui.snapshot()).controls.some(c => c.id === `history-row-${data.deliveries[0].Id}`));
@@ -85,11 +85,11 @@ function fixture(world) {
                 ui.control(await ui.snapshot(), `history-row-${data.deliveries[0].Id}`);
                 await page.screenshot({ path: path.join(output, `event-causes-${label}.png`) });
 
-                await ui.click('inspector-nations'); await ui.click(`nation-row-${data.nation.Id}`, scroll);
+                await ui.openOverview(); await ui.click('inspector-nations'); await ui.click(`nation-row-${data.nation.Id}`, scroll);
                 await ui.click('nation-follow', scroll);
-                await ui.click('inspector-overview'); await ui.click('overview-infrastructure', scroll);
+                await ui.openOverview(); await ui.click('overview-infrastructure', scroll);
                 await ui.click('settlement-watch', scroll);
-                await ui.click('inspector-history'); await ui.click('history-watched', scroll);
+                await ui.openOverview(); await ui.click('inspector-history'); await ui.click('history-watched', scroll);
                 await ui.selectIndex('history-importance', 2, scroll);
                 assert((await ui.snapshot()).controls.some(c => c.id === `history-row-${data.war.Id}`));
                 assert.equal(digest(await ui.save()), digest(baseline), 'Attention, stories, causal navigation and estimates must leave the paused world unchanged');
