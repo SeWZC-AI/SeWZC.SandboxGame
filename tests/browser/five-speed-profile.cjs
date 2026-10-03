@@ -17,6 +17,7 @@ const supportedCases = new Set(['default-far-1', 'default-far-5', 'default-near-
 assert.ok(cases.every(name => supportedCases.has(name)), 'WORLDBOX_PROFILE_CASES contains an unsupported case');
 const large = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
 fs.mkdirSync(output, { recursive: true });
+const defaultFixture = process.env.WORLDBOX_PROFILE_DEFAULT_FIXTURE;
 
 function stats(values) {
     const ordered = [...values].sort((a, b) => a - b);
@@ -26,7 +27,9 @@ function stats(values) {
 
 (async () => {
     const browser = await chromium.launch(chromiumLaunchOptions());
-    const reports = []; let defaultWorld;
+    const reports = [];
+    let defaultWorld = defaultFixture ? JSON.parse(fs.readFileSync(defaultFixture, 'utf8')) : undefined;
+    if (defaultWorld) fs.writeFileSync(path.join(output, 'default.worldbox.json'), JSON.stringify(defaultWorld));
     try {
         for (const name of cases) {
             const [scale, view, speedText] = name.split('-'); const speed = Number(speedText);
@@ -39,6 +42,8 @@ function stats(values) {
                 await page.goto(testUrl(baseUrl)); await ui.ready(); await ui.paused();
                 if (process.env.WORLDBOX_PROFILE_EXACT_TERRAIN === '1')
                     await page.evaluate(() => worldboxTest.setExactResourceHash(true));
+                if (process.env.WORLDBOX_PROFILE_LEGACY_TERRAIN === '1')
+                    await page.evaluate(() => worldboxTest.setExactResourceHash(false));
                 const savedPath = scale === 'large' ? fixturePath : defaultWorld ? path.join(output, 'default.worldbox.json') : null;
                 if (savedPath) {
                     await ui.click('header-storage'); const picker = page.waitForEvent('filechooser');
@@ -86,6 +91,7 @@ function stats(values) {
                 const frameGaps = raw.frames.slice(1).map((time, i) => time - raw.frames[i]);
                 const report = { name, speed, baseUrl, population: world.Residents.length, width: world.Width, height: world.Height,
                     exactTerrainCounterfactual: process.env.WORLDBOX_PROFILE_EXACT_TERRAIN === '1',
+                    legacyTerrainCounterfactual: process.env.WORLDBOX_PROFILE_LEGACY_TERRAIN === '1',
                     tickBefore: before.worldTick, tickAfter: raw.after.worldTick, elapsedMs: raw.elapsedMs,
                     ticksPerSecond: (raw.after.worldTick - before.worldTick) * 1000 / raw.elapsedMs,
                     longTasks: stats(raw.tasks.map(task => task.ms)), frameGaps: stats(frameGaps), gapsOver100ms: frameGaps.filter(ms => ms >= 100).length,

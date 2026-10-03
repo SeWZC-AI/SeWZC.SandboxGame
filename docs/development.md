@@ -73,7 +73,7 @@
 
 ## 按改动选择验证
 
-地图图形优先复用 `WorldMapControl.Sprites.cs` 的透明像素位图；种族、职业、动作和建筑用途分别决定图形，图例使用同一素材。静态相邻地貌进入地形分块缓存，纹理失效摘要包含高度；动态水流仅遍历缓存的可见河格。不要在每帧扫描全世界来判断建筑风格、生态容量或资源种类。共存动物容量按精确栖息地状态失效，增长与迁移每 6 tick 更新，实际人口变化不要求重算容量。
+地图图形优先复用 `WorldMapControl.Sprites.cs` 的透明像素位图；种族、职业、动作和建筑用途分别决定图形，图例使用同一素材。静态相邻地貌进入地形分块缓存，纹理失效摘要包含高度；动态水流仅遍历缓存的可见河格。不要在每帧扫描全世界来判断建筑风格、生态容量或资源种类。共存动物容量按精确栖息地输入失效，资源食物输入先归一化并截在 0–1；同为饱和供给时不重算。每日完整处理六个行区之一及邻行迁入，每格每 6 tick 增长与迁出；分区由已保存日序推导，不留未提交状态。实际人口变化不要求重算容量。地形资源摘要仅依赖森林资源不足 25 的图像阈值，动物及植物数量由独立图层刷新。
 
 超过一格高的建筑以底部落点排序；近景将可见建筑、居民和舟船放入复用的绘制列表，按实际插值后的底部 Y 排序，不能先画所有建筑再画所有人物。可见建筑集只在世界或视野范围变化时重建；飞机、选中圈和文字保留上层。绘制、屋顶点选和名称位置共用 `BuildingBounds`，避免图形高度与命中地块不一致；屋顶选择高亮建筑真实占地。
 
@@ -91,9 +91,11 @@ dotnet publish /tmp/worldbox-speed-probe/src/SeWZC.WorldBox.Browser/SeWZC.WorldB
 WORLDBOX_BASE_URL=http://127.0.0.1:8080/probe/ CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/browser/five-speed-profile.cjs artifacts/separator-verification/baseline.worldbox.json artifacts/speed-investigation/probe
 ```
 
-需先将 `publish/wwwroot` 放在上述 `/probe/` 服务路径；夹具可以由现有 `--export-browser-fixture` 生成。`WORLDBOX_PROFILE_CASES` 可筛选 `default-far-1,default-far-5,default-near-5,large-far-1,large-far-5,large-near-5,large-auto-5`，默认普通场景观察 15 秒，自动保存场景 38 秒。`WORLDBOX_PROFILE_SECONDS` 设置普通场景时长。对正式产物运行同一脚本会只记录推进、长任务和浏览器动画帧机会，不要求它暴露探针。
+需先将 `publish/wwwroot` 放在上述 `/probe/` 服务路径；夹具可以由现有 `--export-browser-fixture` 生成。`WORLDBOX_PROFILE_CASES` 可筛选 `default-far-1,default-far-5,default-near-5,large-far-1,large-far-5,large-near-5,large-auto-5`，默认普通场景观察 15 秒，自动保存场景 38 秒。`WORLDBOX_PROFILE_SECONDS` 设置普通场景时长；`WORLDBOX_PROFILE_DEFAULT_FIXTURE` 可指定此前保存的默认世界，避免两个版本初次启动后日序或群落数量不同。对正式产物运行同一脚本会只记录推进、长任务和浏览器动画帧机会，不要求它暴露探针。
 
-隔离副本额外允许 `WORLDBOX_PROFILE_EXACT_TERRAIN=1` 做地形资源失效条件的实验对照；这个开关只存在于副本中，不是正式产品选项。它限定资源量只影响森林树桩阈值，不改变世界；需用相同夹具、相同视角与无并发负载分别测原条件与实验条件。嵌套计时不能直接全部相加，异步存储等待不能全部归为主线程阻塞；动画帧机会不等于实际绘制 FPS。原始逐次计时与汇总一起保留，并补一轮未插桩对照以检查探针对结论的影响。
+隔离副本额外允许 `WORLDBOX_PROFILE_EXACT_TERRAIN=1` 做地形资源失效条件的实验对照；这个开关只存在于副本中，不是正式产品选项。它限定资源量只影响森林树桩阈值，不改变世界；当前正式实现已采用此条件，隔离副本可用 `WORLDBOX_PROFILE_LEGACY_TERRAIN=1` 恢复旧失效条件作对照；需用相同夹具、相同视角与无并发负载分别测原条件与实验条件。嵌套计时不能直接全部相加，`Save.Serialize` 在缓冲保存实现中包含让出执行权的等待，异步存储等待也不能全部归为主线程阻塞；动画帧机会不等于实际绘制 FPS。原始逐次计时与汇总一起保留，并补一轮未插桩对照以检查探针对结论的影响。
+
+`tests/browser/saving.cjs <当前格式大世界存档>` 通过实际按钮与拖动验证保存时镜头可用、日序一致、编辑取消与 Worker 不可用时的回退；CI 使用构建任务生成并上传的同一大世界夹具。存储 Worker 不继承文档 import map，必须使用发布后实际解析的模块 URL。
 
 ### 检查范围
 
@@ -122,7 +124,7 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 
 核心测试方法用 `[UnitTest]` 标记聚焦且有界的命令／查询／规则检查；未标记的方法归入 `integration`，避免新增长程场景无意挤入快速套件。`[LongRunningTest]` 标记混合编辑随机回归、五种子 6,000 tick 战争、大世界发展。CLI 默认 `unit`，另支持 `--suite integration|long|all`、`--list` 和 `--filter <名称片段>`；筛选零项视为错误。不得仅为达到耗时目标把普通单元标成集成，应先缩小夹具或直接构造前置状态。
 
-日常 CI 执行快速、普通集成和八套浏览器检查；长程回归保留原种子、步数与断言，通过 Actions 手动输入 `full_regression=true` 或本地 `--suite long` 运行。涉及战争长程恢复、自主发展或随机编辑存档的修改必须补跑对应长程回归。全部核心检查使用 `--suite all`。
+日常 CI 执行快速、普通集成和九套浏览器检查；长程回归保留原种子、步数与断言，通过 Actions 手动输入 `full_regression=true` 或本地 `--suite long` 运行。涉及战争长程恢复、自主发展或随机编辑存档的修改必须补跑对应长程回归。全部核心检查使用 `--suite all`。
 
 `SeWZC.WorldBox.UI.Tests` 使用 Avalonia Headless 运行共享界面的状态与控件事件回归，纳入解决方案和 CI。它适合精确复现对象消亡、编辑未变字段、世界切换等边界；真实浏览器仍负责验证裁剪发布、渲染、触屏与存储。
 
@@ -144,7 +146,7 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 
 当前工作流自动验证 `main` 推送与 PR，其他分支可手动运行，避免功能分支 push／PR 双跑。CI 的 `scripts/ci-build.slnf` 只构建桌面与测试依赖，浏览器在 `publish` 阶段构建；新增项目时同步维护该筛选文件。CI 发布传 `--no-restore`，本地独立发布仍自动还原。
 
-八套浏览器检查下载同一静态产物，在八个独立 runner 并行执行；部署依赖全部检查成功。只有 `main` 非 PR 运行会部署，公网仅运行 `deploy-smoke.cjs`，校验 HTML 提交标记、渲染、模拟推进、存档和刷新恢复，不重复整套功能回归。静态产物的提交标记由发布脚本生成，CI 使用 `GITHUB_SHA`。推送授权沿用当前任务与会话约定；本指南不增加新的授权，也不要求重复确认已有授权。已部署与已通过公网验收是两个状态，报告时分别说明。
+九套浏览器检查下载同一静态产物，在九个独立 runner 并行执行；部署依赖全部检查成功。只有 `main` 非 PR 运行会部署，公网仅运行 `deploy-smoke.cjs`，校验 HTML 提交标记、渲染、模拟推进、存档和刷新恢复，不重复整套功能回归。静态产物的提交标记由发布脚本生成，CI 使用 `GITHUB_SHA`。推送授权沿用当前任务与会话约定；本指南不增加新的授权，也不要求重复确认已有授权。已部署与已通过公网验收是两个状态，报告时分别说明。
 
 ## 文档随行为一起维护
 

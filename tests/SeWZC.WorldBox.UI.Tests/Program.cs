@@ -18,6 +18,8 @@ var tests = new (string Name, Action Test)[]
     ("Context details prioritize useful facts and omit unrelated tabs", ContextDetails),
     ("Resident search remains attached and excludes archived people by default", ResidentSearch),
     ("Close terrain refresh scans visible chunks without modifying the world", VisibleTerrain),
+    ("Terrain images ignore invisible resource changes and retain the forest stump threshold", TerrainResourceImages),
+    ("Save capture suspends stepping and continuing map strokes cancel it", SaveCaptureBoundary),
     ("Paged tools expose every building and keep previews outside toolbar layout", ToolPagination),
     ("Building damage stays visible without expanding secondary details", BuildingDamage),
     ("Tall buildings occlude by ground position and roofs select their actual footprint", BuildingOcclusion),
@@ -265,6 +267,45 @@ static void VisibleTerrain()
     map.RefreshWorld();
     Assert(map.TerrainTilesScanned < engine.State.Tiles.Length / 8, "Near camera still hashes the entire map");
     Assert(engine.ExportJson() == before, "Visible chunk caching changed the simulation");
+}
+
+static void TerrainResourceImages()
+{
+    var engine = WorldEngine.Create(42, 32, 32, false); engine.State.NaturalDisasters = false;
+    foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.ResourceAmount = 100; }
+    var map = Map(View(engine)); map.RefreshWorld(true);
+    object? Image()
+    {
+        var chunks = Field<System.Collections.IDictionary>(map, "_chunks");
+        var chunk = chunks.Values.Cast<object>().Single();
+        return chunk.GetType().GetProperty("Terrain")!.GetValue(chunk);
+    }
+    var grass = engine.State.Tiles[10 * 32 + 10]; var original = Image();
+    grass.ResourceAmount = 20; engine.Step(); map.RefreshWorld();
+    Assert(ReferenceEquals(original, Image()), "Grass harvesting rebuilt an unchanged terrain image");
+    grass.Terrain = TerrainType.Forest; grass.ResourceAmount = 30; map.RefreshWorld(); var forest = Image();
+    Assert(!ReferenceEquals(original, forest), "A real terrain change failed to rebuild the image");
+    grass.ResourceAmount = 27; map.RefreshWorld();
+    Assert(ReferenceEquals(forest, Image()), "Forest resources rebuilt the same standing trees");
+    grass.ResourceAmount = 24; map.RefreshWorld(); var stump = Image();
+    Assert(!ReferenceEquals(forest, stump), "Depleted forest did not show its stump");
+    grass.ResourceAmount = 26; var before = engine.ExportJson(); map.RefreshWorld();
+    Assert(!ReferenceEquals(stump, Image()) && engine.ExportJson() == before, "Forest recovery remained stale or observation changed the world");
+}
+
+static void SaveCaptureBoundary()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var map = Map(view);
+    void Set(string field, object value) => typeof(MainView).GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(view, value);
+    using var capture = new CancellationTokenSource(); Set("_saveCapture", capture); Set("_ready", true); Set("_paused", false);
+    var tick = engine.State.Tick; Call(view, "OnTick", null, EventArgs.Empty);
+    Assert(engine.State.Tick == tick, "Simulation advanced while a save was reading the world");
+    Call(view, "FinishSaveCapture", capture);
+    map.ActiveTool = "Grass"; Call(map, "ApplyTool", map.GetTileScreenPosition(30, 30));
+    using var continuing = new CancellationTokenSource(); Set("_saveCapture", continuing);
+    Call(map, "ApplyTool", map.GetTileScreenPosition(31, 30));
+    Assert(continuing.IsCancellationRequested, "Continuing stroke did not cancel the incomplete save");
+    Call(view, "FinishSaveCapture", continuing);
 }
 
 static void FoldedDetails()
