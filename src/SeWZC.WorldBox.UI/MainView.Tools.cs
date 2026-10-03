@@ -9,21 +9,32 @@ public sealed partial class MainView
 {
     private sealed record ToolChoice(string Key, string Label, string Color);
 
+    private int _toolPage;
+    private readonly TextBlock _toolPageLabel = Text("", 11);
+    private Button? _toolPrevious, _toolNext;
+
     private void SetCategory(string category)
     {
         if (category is "rules" or "inspect") return;
+        if (_category != category) _toolPage = 0;
         _category = category;
         _toolsOpen = true; _mobilePanel = false;
         _map.ActiveTool = "pan"; _map.CancelPlacement();
         UpdateToolContext();
-        var items = ToolChoices(category);
+        var allItems = ToolChoices(category);
+        var pages = Math.Max(1, (allItems.Length + _toolSlots.Length - 1) / _toolSlots.Length);
+        _toolPage = Math.Clamp(_toolPage, 0, pages - 1);
+        _toolPageLabel.Text = $"第 {_toolPage + 1} / {pages} 页";
+        if (_toolPrevious is not null) _toolPrevious.IsEnabled = _toolPage > 0;
+        if (_toolNext is not null) _toolNext.IsEnabled = _toolPage + 1 < pages;
+        var items = allItems.Skip(_toolPage * _toolSlots.Length).Take(_toolSlots.Length).ToArray();
         _tools.Clear();
         for (var i = 0; i < _toolSlots.Length; i++)
         {
             var choice = i < items.Length ? items[i] : null;
             _slotTools[i] = choice?.Key;
             _toolSlots[i].IsEnabled = choice is not null;
-            _toolSlots[i].Opacity = 1; _toolSlots[i].IsVisible = choice is not null;
+            _toolSlots[i].Opacity = 1; _toolSlots[i].IsVisible = true;
             _toolLabels[i].Text = choice?.Label ?? "—";
             _toolSwatches[i].Background = Brush.Parse(choice?.Color ?? "#2A3C46");
             ToolTip.SetTip(_toolSlots[i], choice?.Label ?? "此分组没有更多工具");
@@ -44,15 +55,14 @@ public sealed partial class MainView
         _brushPicker.SelectedIndex = category == "life" ? 1 : 0;
         _brushPicker.IsVisible = category is "terrain" or "life" or "disaster";
         _buildMode.IsVisible = category == "build";
-        _toolContext.IsVisible = category is "build" or "terrain";
+        _toolContext.IsVisible = category == "build";
         foreach (var (_, button) in _tools) { button.BorderBrush = Brushes.Transparent; button.Background = Ink; }
         ApplyLayout();
     }
 
     private ToolChoice[] ToolChoices(string category) => category switch
     {
-        "terrain" when _terrainPage == 1 => [new("Wetland", "湿地", "#58887D"), new("Desert", "荒漠", "#CEAE75"), new("River", "河流", "#428E9C"), new("Tundra", "苔原", "#99A88C"), new("Forest", "森林", "#427D61"), new("Grass", "草地", "#8CAC69"), new("Snow", "雪原", "#D4E8E7"), new("Hills", "丘陵", "#92905E")],
-        "terrain" => [new("Grass", "草地", "#8CAC69"), new("Forest", "森林", "#427D61"), new("Sand", "沙地", "#E6D09A"), new("Mountain", "山脉", "#9DABB0"), new("Water", "浅海", "#4A9CBA"), new("DeepWater", "深海", "#28556F"), new("Snow", "雪原", "#D4E8E7"), new("Hills", "丘陵", "#92905E")],
+        "terrain" => [new("Grass", "草地", "#8CAC69"), new("Forest", "森林", "#427D61"), new("Sand", "沙地", "#E6D09A"), new("Mountain", "山脉", "#9DABB0"), new("Water", "浅海", "#4A9CBA"), new("DeepWater", "深海", "#28556F"), new("Snow", "雪原", "#D4E8E7"), new("Hills", "丘陵", "#92905E"), new("Wetland", "湿地", "#58887D"), new("Desert", "荒漠", "#CEAE75"), new("River", "河流", "#428E9C"), new("Tundra", "苔原", "#99A88C")],
         "life" => [new("Human", "人类", "#DEBC85"), new("Elf", "精灵", "#90C599"), new("Dwarf", "矮人", "#BE9785"), new("Orc", "兽人", "#A9B768")],
         "disaster" => [new("Fire", "火灾", "#F0A065"), new("Drought", "干旱", "#D8C180"), new("Plague", "疫病", "#B194C7"), new("Meteor", "陨石", "#EC8758")],
         "build" => BuildToolChoices(),
@@ -62,11 +72,7 @@ public sealed partial class MainView
     private void UpdateToolContext()
     {
         _updatingToolContext = true;
-        if (_category == "terrain")
-        {
-            _toolContext.ItemsSource = new[] { "基础地形", "生态地形" }; _toolContext.SelectedIndex = _terrainPage; _toolContext.IsEnabled = true; _toolContext.Opacity = 1;
-        }
-        else if (_category == "build")
+        if (_category == "build")
         {
             var towns = _engine.State.Settlements.OrderBy(t => t.Id).ToArray(); _constructionTowns = towns.Select(t => t.Id).ToArray();
             _toolContext.ItemsSource = towns.Select(t => t.Name).ToArray();
@@ -80,11 +86,10 @@ public sealed partial class MainView
     private void OnToolContextChanged()
     {
         if (_updatingToolContext) return;
-        if (_category == "terrain" && _toolContext.SelectedIndex >= 0) { _terrainPage = _toolContext.SelectedIndex; SetCategory("terrain"); }
-        else if (_category == "build" && _toolContext.SelectedIndex >= 0 && _toolContext.SelectedIndex < _constructionTowns.Length) _map.SelectedSettlementId = _constructionTowns[_toolContext.SelectedIndex];
+        if (_category == "build" && _toolContext.SelectedIndex >= 0 && _toolContext.SelectedIndex < _constructionTowns.Length) _map.SelectedSettlementId = _constructionTowns[_toolContext.SelectedIndex];
     }
-    private ToolChoice[] BuildToolChoices() =>
-    [new("build:Farm", "农场", "#ADBB75"), new("build:Workshop", "工坊", "#CEB294"), new("build:Academy", "学院", "#91B0C8"), new("build:Waystation", "驿站", "#CEAB76"), new("build:Bridge", "桥梁", "#99AAC8"), new("build:MountainPass", "山路", "#B598D1"), new("build:Dock", "船坞码头", "#91C7B1"), new("road:Road", "道路", "#B0A28B")];
+    private ToolChoice[] BuildToolChoices() => new ToolChoice[]
+    {new("build:Farm", "农场", "#ADBB75"), new("build:Workshop", "工坊", "#CEB294"), new("build:Academy", "学院", "#91B0C8"), new("build:Waystation", "驿站", "#CEAB76"), new("build:Bridge", "桥梁", "#99AAC8"), new("build:MountainPass", "山路", "#B598D1"), new("build:Dock", "船坞码头", "#91C7B1"), new("road:Road", "道路", "#B0A28B") }.Concat(Enum.GetValues<BuildingKind>().Where(k => k is not (BuildingKind.TownCenter or BuildingKind.Farm or BuildingKind.Workshop or BuildingKind.Academy or BuildingKind.Waystation or BuildingKind.Bridge or BuildingKind.MountainPass or BuildingKind.Dock)).Select(k => new ToolChoice("build:" + k, WorldEngine.BuildingName(k), AdvancementRules.For(k)?.Magic == true ? "#B598D1" : "#91B0C8"))).ToArray();
 
     private void SelectTool(string tool)
     {

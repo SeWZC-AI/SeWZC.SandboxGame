@@ -150,6 +150,9 @@ public sealed partial class WorldEngine
             && AdvancementRules.For(factory.Kind) is { } recipe && CanProduce(factory, person, recipe)
             && MissingResources(person.Inventory, recipe.Input) is null)
         { agent.NextThinkTick = State.Tick + 6; return; }
+        if (agent.Goal.Kind == AgentGoalKind.Explore && choices.Count == 0 && person.Hunger < 65 && agent.Fatigue < 60
+            && Distance(person.X, person.Y, agent.Goal.TargetX, agent.Goal.TargetY) > 1 && State.Tick - agent.Goal.StartedTick < 48)
+        { agent.NextThinkTick = State.Tick + 6; return; }
         var activeMission = agent.DestinationSettlementId != 0 && State.Tick - agent.MissionStartedTick < 360
             && agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage or AgentGoalKind.Petition;
         if (activeMission && choices.Count == 0 && !(person.Hunger > 85 && person.Inventory.Food < 0.05))
@@ -207,9 +210,28 @@ public sealed partial class WorldEngine
                 + (person.Profession == Profession.Farmer && foodFact is { Value: < 12 } ? 18 * AgentFactReliability(foodFact) : 0),
                 kind == AgentGoalKind.Study ? "附近有可参与的研究设施，前往学习" : kind == AgentGoalKind.TrainMagic ? "附近有可训练的魔法设施" : "附近有实际施工或生产工作", EntityId: work.Id));
         }
-        if (agent.SocialNeed > 35)
+        if (person.Age >= 14 && person.Profession == Profession.Lumberjack && FindVisibleResourceSite(person, Profession.Lumberjack) < 0
+            && (Distance(person.X, person.Y, home.X, home.Y) <= 1 && home.Resources.Wood < 40 || agent.Goal.Kind == AgentGoalKind.Explore))
+        {
+            var offsets = new (int X, int Y)[] { (6, 0), (4, 4), (0, 6), (-4, 4), (-6, 0), (-4, -4), (0, -6), (4, -4) };
+            var heading = offsets[agent.ExplorationHeading % offsets.Length];
+            var site = Circle(person.X, person.Y, 6).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].FireTicks == 0)
+                .OrderBy(i => Distance(i % State.Width, i / State.Width, person.X + heading.X, person.Y + heading.Y)).FirstOrDefault(-1);
+            if (site >= 0 && Distance(person.X, person.Y, home.X, home.Y) < 24)
+                choices.Add(new(AgentGoalKind.Explore, site % State.Width, site / State.Width, 62,
+                    "在家园看到木材短缺，眼前没有可采森林，沿可见陆地寻找下一处材料来源"));
+            else choices.Add(new(AgentGoalKind.ReturnHome, home.X, home.Y, 70, "勘察距离已达口粮范围，先返回家园补给", null, home.Id));
+        }
+        if (agent.SocialNeed > 35 && _citizens[home.Id].Count > 1)
             choices.Add(new(AgentGoalKind.Socialize, home.X, home.Y,
                 agent.SocialNeed * (0.6 + personality.Sociability * 0.5), "社交需求较高，去聚落与人交流", null, home.Id));
+        if (person.Age >= 14 && person.ArmyId == 0 && FindLocalWorkTarget(person) is { } useful
+            && !choices.Any(c => c.EntityId == useful.Id))
+            choices.Add(new(AgentGoalKind.Work, useful.X, useful.Y, 25 + personality.Diligence * 8, "本职暂无任务，协助附近实际施工或生产", EntityId: useful.Id));
+        if (Distance(person.X, person.Y, home.X, home.Y) <= 1 && choices.Count == 0)
+            choices.Add(_citizens[home.Id].Count > 1
+                ? new(AgentGoalKind.Socialize, home.X, home.Y, 8, "暂时没有可执行工作，在家园交流消息与恢复精力", null, home.Id)
+                : new(AgentGoalKind.Rest, home.X, home.Y, 8, "暂时没有可执行工作或交流对象，在家园休息并等待下一次评估", null, home.Id));
         AddAgentMissionChoices(person, home, choices);
         choices.Add(new(AgentGoalKind.ReturnHome, home.X, home.Y, 5, "当前看不到合适资源，回到已知家园", null, home.Id));
         var selected = choices[0];
@@ -221,7 +243,7 @@ public sealed partial class WorldEngine
         }
         var previous = agent.Goal;
         var continuingMission = previous.Kind == selected.Kind && previous.TargetSettlementId == selected.SettlementId
-            && selected.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage or AgentGoalKind.Petition;
+            && previous.TargetEntityId == selected.EntityId && previous.TargetX == selected.X && previous.TargetY == selected.Y;
         if (continuingMission)
         {
             agent.NextThinkTick = State.Tick + 6;
@@ -316,6 +338,11 @@ public sealed partial class WorldEngine
         goal.WorkTicks++;
         switch (goal.Kind)
         {
+            case AgentGoalKind.Explore:
+                person.Agent.ExplorationHeading = (person.Agent.ExplorationHeading + 1) % 8;
+                person.Agent.NextThinkTick = State.Tick + 1;
+                person.Activity = ResidentActivity.Working;
+                break;
             case AgentGoalKind.Eat:
                 person.Activity = ResidentActivity.Eating;
                 if (Distance(person.X, person.Y, home.X, home.Y) <= 1 && person.Inventory.Food < 1.2)
@@ -345,6 +372,7 @@ public sealed partial class WorldEngine
                 break;
             case AgentGoalKind.Socialize:
                 person.Activity = ResidentActivity.Talking;
+                person.Agent.Fatigue = Math.Max(0, person.Agent.Fatigue - .4);
                 break;
             case AgentGoalKind.ReturnHome:
                 TransferPersonalProduction(person, home);

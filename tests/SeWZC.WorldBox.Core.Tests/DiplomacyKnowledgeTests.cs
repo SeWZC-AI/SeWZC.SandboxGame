@@ -75,6 +75,7 @@ internal static class DiplomacyKnowledgeTests
             Contact(engine, a, b); Contact(engine, b, a);
             var relation = engine.State.Diplomacies.Single();
             Opinions(relation, war ? -54 : 54, war ? 100 : -100);
+            if (war) relation.FirstEscalationTick = relation.SecondEscalationTick = 120;
             engine.Step();
             if (war)
                 Check(relation.Status == DiplomaticStatus.War && relation.Opinion > 0
@@ -96,7 +97,7 @@ internal static class DiplomacyKnowledgeTests
             original.State.Tick = 359;
             Contact(original, a, b); Contact(original, a, c, knownX: 32);
             if (mutual) { Contact(original, b, a); Contact(original, c, a); }
-            foreach (var relation in original.State.Diplomacies) Opinions(relation, -54, -54);
+            foreach (var relation in original.State.Diplomacies) { Opinions(relation, -54, -54); relation.FirstEscalationTick = relation.SecondEscalationTick = 120; }
             var unchanged = WorldEngine.ImportJson(original.ExportJson());
             var moved = WorldEngine.ImportJson(original.ExportJson());
             // Move a remote capital past the home capital in geographic ordering, but keep it
@@ -106,6 +107,7 @@ internal static class DiplomacyKnowledgeTests
             movedTown.X = 2; movedTown.Y = 50;
             var capitalTile = moved.State.Tiles[50 * moved.State.Width + 2];
             capitalTile.SettlementId = b.Id; capitalTile.NationId = b.NationId;
+            moved.ReconcileSocietyTopology();
             moved = WorldEngine.ImportJson(moved.ExportJson());
             unchanged.Step(); moved.Step();
             var expected = unchanged.State.Armies.Single(army => army.NationId == a.NationId);

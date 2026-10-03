@@ -1,0 +1,89 @@
+namespace SeWZC.WorldBox.Core;
+
+public enum ResourceVisibility { Researched, All, None }
+
+public sealed partial class WorldEngine
+{
+    public bool IsDepositVisible(Tile tile, ResourceVisibility visibility) => tile.Deposit is { } kind
+        && (visibility == ResourceVisibility.All || visibility == ResourceVisibility.Researched
+            && (tile.DepositDiscovered || DepositResearch(kind) is { } research && State.Society.Research.Any(r => r.Completed.Contains(research))));
+
+    public static string BuildingDescription(BuildingKind kind) => kind switch
+    {
+        BuildingKind.TownCenter => "聚落的公共中心与家园粮仓。居民在附近领取口粮、交付采收、交流消息；代表在此汇集诉求。定居时建立，受损后可由居民重建。",
+        BuildingKind.Farm => "居民到场耕作，将粮食装入随身库存并运回家园。肥力、干旱、农业研究和政策影响收成。",
+        BuildingKind.Workshop => "为附近伐木和采矿提供劳动岗位，需要附近存在实际可采材料；材料由劳动者随身携带并运回。",
+        BuildingKind.Academy => "到场学者推进当地已经立项的研究。研究需预付材料并满足前置知识，成果通过消息传播。",
+        BuildingKind.Waystation => "到场人员值守的交通驿站，改善附近信使行程；每次工作消耗少量当地粮食。",
+        BuildingKind.SignalTower => "无线通信设施，需要电气化和信号网络、健康的建筑与实际值守人员。接入距离 12 格，塔间 24 格，山脉阻挡信号。",
+        BuildingKind.ArcaneSanctum => "具备天赋的居民到场训练魔法，消耗粮食并受开放魔法发展规则限制。",
+        BuildingKind.Infirmary => "工作人员在现场治疗附近受伤或患病居民，治疗受粮食和实际距离限制。",
+        BuildingKind.Bridge => "完工后让居民通过此格浅水或河流。桥梁损毁会恢复阻水，需要逐格延伸跨越宽河。",
+        BuildingKind.MountainPass => "完工后开放山地步行通道，山路仍比平地耗时，连接相邻可通行道路才能使用。",
+        _ => "居民从家园领取实际原料，抵达设施加工，产物随身带回。运营需要当地掌握对应研究及其前置。\n" + ProductionRecipe(kind)
+    };
+
+    public void SetBuildingEnabled(int id, bool enabled)
+    {
+        var building = State.Society.Buildings.FirstOrDefault(b => b.Id == id) ?? throw new ArgumentException("建筑已不存在。");
+        if (building.Kind == BuildingKind.TownCenter) throw new InvalidOperationException("城镇中心是公共家园，不能停用。");
+        building.Enabled = enabled; building.Workers.Clear();
+        AddEvent(WorldEventKind.Editor, $"玩家{(enabled ? "启用" : "停用")}{BuildingName(building.Kind)}。", building.X, building.Y);
+    }
+
+    public void RestoreBuilding(int id, bool finish = false)
+    {
+        var building = State.Society.Buildings.FirstOrDefault(b => b.Id == id) ?? throw new ArgumentException("建筑已不存在。");
+        building.Health = 100;
+        if (finish) { building.ConstructionProgress = building.ConstructionRequired; CompleteLandImprovement(building); }
+        AddEvent(WorldEventKind.Editor, $"玩家{(finish ? "赐予完工" : "修复")}{BuildingName(building.Kind)}。", building.X, building.Y);
+    }
+
+    public string GetResidentActionSummary(int id)
+    {
+        var person = GetResident(id);
+        if (person is null || person.Health <= 0) return "已离世，保留生平记录";
+        var goal = person.Agent.Goal;
+        var exploringRoutes = goal.Kind == AgentGoalKind.Explore && person.Profession is Profession.Trader or Profession.Messenger or Profession.Representative;
+        var facility = State.Society.Buildings.FirstOrDefault(b => b.Id == goal.TargetEntityId);
+        if (goal.Kind == AgentGoalKind.Work && facility is { IsCompleted: true } && facility.SettlementId == person.SettlementId
+            && AdvancementRules.For(facility.Kind) is { } recipe && _settlements.TryGetValue(person.SettlementId, out var home))
+        {
+            var pickingUp = MissingResources(person.Inventory, recipe.Input) is not null;
+            var x = pickingUp ? home.X : facility.X; var y = pickingUp ? home.Y : facility.Y;
+            var travelling = person.MoveStartedTick + person.MoveDurationTicks > State.Tick || Distance(person.X, person.Y, x, y) > 1;
+            var action = !CanProduce(facility, person, recipe) ? "当前加工条件未满足：" + GetProductionStatus(facility.Id)
+                : travelling ? pickingUp ? "正在返回" + home.Name + "的仓库取料" : "正在携带原料前往" + BuildingName(facility.Kind)
+                : pickingUp ? "已到家园仓库，准备领取实际原料" : "已抵达" + BuildingName(facility.Kind) + "，正在加工" + ResourceStock.Name(recipe.Output);
+            return $"现在：{action}\n后续：{(pickingUp ? "领取原料后运至设施加工，再" : "完成加工后")}" +
+                $"将{ResourceStock.Name(recipe.Output)}亲自运回家园入库\n行动依据：{goal.Reason}";
+        }
+        var destination = facility is not null ? BuildingName(facility.Kind)
+            : _settlements.GetValueOrDefault(goal.TargetSettlementId)?.Name ?? "目标地块";
+        var moving = person.MoveStartedTick + person.MoveDurationTicks > State.Tick
+            || Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > (goal.TargetEntityId == 0 ? 1 : 0);
+        var current = moving ? $"正在前往{destination}（{TravelModeName(person.TravelMode)}）" : goal.Kind switch
+        {
+            AgentGoalKind.Explore => exploringRoutes ? "正在实地寻找其他聚落与可通行路线" : "正在实地勘察可采材料",
+            AgentGoalKind.Work => facility is null ? "正在实地采集材料" : facility.IsCompleted ? "正在" + BuildingName(facility.Kind) + "劳动" : "正在施工" + BuildingName(facility.Kind),
+            AgentGoalKind.Gather => "正在采集可食资源", AgentGoalKind.Eat => "正在家园领取口粮",
+            AgentGoalKind.Rest => "正在休息恢复体力", AgentGoalKind.Socialize => "正在与附近居民交流消息",
+            AgentGoalKind.Study => "正在学舍推进研究", AgentGoalKind.TrainMagic => "正在进行魔法训练",
+            AgentGoalKind.Trade => "正在交易与交付货物", AgentGoalKind.DeliverMessage or AgentGoalKind.Petition => "正在递送消息或诉求",
+            AgentGoalKind.ReturnHome => "正在交付随身物资并补充口粮", AgentGoalKind.Flee => "正在离开危险区域",
+            AgentGoalKind.Migrate => "正在步行迁往新家园", AgentGoalKind.March => "正在执行实际收到的军令",
+            _ => "正在重新选择可执行任务"
+        };
+        var next = goal.Kind switch
+        {
+            AgentGoalKind.Explore => exploringRoutes ? "发现聚落后记下实际位置，再按已知消息选择拜访或运输；口粮不足时返乡补给" : "看到材料后实地采集；勘察距离达到补给范围时先返乡",
+            AgentGoalKind.Work or AgentGoalKind.Gather => "完成现场劳动后，将采收物资带回家园；疲劳或饥饿时先休息、进食",
+            AgentGoalKind.Trade => "完成交易后携带实际收到的货物返乡",
+            AgentGoalKind.DeliverMessage or AgentGoalKind.Petition => "送达消息后返回出发聚落",
+            AgentGoalKind.Migrate => "抵达并确认接纳后改变家园归属",
+            AgentGoalKind.Rest => "恢复体力后重新评估可执行工作",
+            _ => "完成当前任务后，按自身需求、可见岗位与已知消息重新选择"
+        };
+        return $"现在：{current}\n后续：{next}\n行动依据：{goal.Reason}";
+    }
+}

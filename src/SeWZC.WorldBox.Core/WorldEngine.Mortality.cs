@@ -1,0 +1,31 @@
+using System.Text.Json.Serialization;
+
+namespace SeWZC.WorldBox.Core;
+
+public enum DeathCause { None, Starvation, OldAge, Fire, Disease, Battle, Magic, Meteor, Drowning, TerrainChange, Conflict, PlayerIntervention }
+
+public sealed partial class Resident
+{
+    [JsonRequired] public DeathCause DeathCause { get; set; }
+    [JsonRequired] public long DeathTick { get; set; }
+}
+
+public sealed partial class WorldEngine
+{
+    public static string DeathCauseName(DeathCause cause) => cause switch
+    {
+        DeathCause.Starvation => "长期缺粮导致饥饿致死", DeathCause.OldAge => "超过种族寿命后衰老致死",
+        DeathCause.Fire => "在燃烧地块受到致命灼伤", DeathCause.Disease => "疫病造成致命损伤",
+        DeathCause.Battle => "战斗中受到致命攻击", DeathCause.Magic => "被战斗法术击杀",
+        DeathCause.Meteor => "被陨石撞击致死", DeathCause.Drowning => "地形变为水域后无处逃生，溺亡",
+        DeathCause.TerrainChange => "地形变化造成致命损伤", DeathCause.Conflict => "资源冲突斗殴中受到致命伤",
+        DeathCause.PlayerIntervention => "玩家将生命设为零", _ => "尚未死亡"
+    };
+
+    private void DamageResident(Resident person, double damage, DeathCause cause)
+    {
+        if (person.Health <= 0) return;
+        person.Health = Math.Max(0, person.Health - damage);
+        if (person.Health <= 0) { person.DeathCause = cause; person.DeathTick = State.Tick; }
+    }
+}

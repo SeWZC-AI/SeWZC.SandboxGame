@@ -71,7 +71,6 @@ const distance = (first, second) => Math.hypot(first.x - second.x, first.y - sec
         await ui.click('resident-locate', inspector);
         await ui.click('resident-goal-edit', inspector);
         await ui.selectIndex('resident-goal', 3, modal); // Work at an entered location.
-        await ui.fill('resident-goal-reason', 'Walk the visible route for field work', modal);
         await ui.fill('resident-goal-x', route.target.x, modal);
         await ui.fill('resident-goal-y', route.target.y, modal);
         await ui.selectIndex('resident-goal-entity', 0, modal);

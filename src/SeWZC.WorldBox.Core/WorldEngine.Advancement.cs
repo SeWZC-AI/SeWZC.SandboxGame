@@ -35,6 +35,7 @@ public sealed partial class WorldEngine
 
     private string? ProductionRequirement(Building building, Advancement a)
     {
+        if (!building.Enabled) return "玩家已停用，恢复运营后才会安排工作";
         if (!building.IsCompleted) return "等待施工完成";
         if (building.Health < 50 || State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return "设施损坏或正在燃烧";
         if (!HasResearch(building.SettlementId, a.Research)

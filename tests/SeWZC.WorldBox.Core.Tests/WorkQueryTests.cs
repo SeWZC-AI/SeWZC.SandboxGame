@@ -85,9 +85,9 @@ internal static class WorkQueryTests
             var town = engine.State.Settlements.Single(t => t.Id == resident.SettlementId);
             Hold(resident, town.X, town.Y);
         }
-        engine.State.Society.Buildings.Clear();
-        var originClinic = Facility(engine, home, BuildingKind.Infirmary, home.X, home.Y);
-        var destinationClinic = Facility(engine, destination, BuildingKind.Infirmary, destination.X, destination.Y);
+        engine.State.Society.Buildings.RemoveAll(b => b.Kind != BuildingKind.TownCenter);
+        var originClinic = Facility(engine, home, BuildingKind.Infirmary, home.X + 1, home.Y);
+        var destinationClinic = Facility(engine, destination, BuildingKind.Infirmary, destination.X + 1, destination.Y);
         engine.State.Society.Buildings.AddRange([originClinic, destinationClinic]);
         var migrant = engine.State.Residents[0];
         Hold(migrant, destination.X, destination.Y, AgentGoalKind.Migrate);

@@ -96,7 +96,7 @@ public sealed partial class WorldEngine
                 tile.FireTicks = 12; _burningTiles.Add(index);
             }
             foreach (var resident in State.Residents.Where(r => Distance(r.X, r.Y, x, y) <= radius))
-                resident.Health = Math.Max(0, resident.Health - 65);
+                DamageResident(resident, 65, DeathCause.Meteor);
             foreach (var building in State.Society.Buildings.Where(b => Distance(b.X, b.Y, x, y) <= radius))
                 building.Health = Math.Max(0, building.Health - 80);
         }
@@ -185,7 +185,7 @@ public sealed partial class WorldEngine
             if (Walkable(settlement.X, settlement.Y)) continue;
             State.Tiles[Index(settlement.X, settlement.Y)].SettlementId = 0;
             var position = Circle(settlement.X, settlement.Y, 12)
-                .Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].SettlementId == 0 && (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == settlement.NationId))
+                .Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].SettlementId == 0 && !State.Society.Buildings.Any(b => b.X == i % State.Width && b.Y == i / State.Width) && (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == settlement.NationId))
                 .OrderBy(i => Distance(i % State.Width, i / State.Width, settlement.X, settlement.Y))
                 .FirstOrDefault(-1);
             if (position >= 0)
@@ -201,8 +201,8 @@ public sealed partial class WorldEngine
         {
             if (CanTraverse(State.Tiles[Index(resident.X, resident.Y)], resident.TravelMode)) continue;
             var position = FindWalkable(resident.X, resident.Y, 10);
-            if (position >= 0) { resident.X = position % State.Width; resident.Y = position / State.Width; resident.Health -= 15; }
-            else resident.Health = 0;
+            if (position >= 0) { resident.X = position % State.Width; resident.Y = position / State.Width; DamageResident(resident, 15, DeathCause.TerrainChange); }
+            else DamageResident(resident, resident.Health, State.Tiles[Index(resident.X, resident.Y)].Terrain is TerrainType.Water or TerrainType.River or TerrainType.DeepWater ? DeathCause.Drowning : DeathCause.TerrainChange);
         }
         ArchiveDeadResidents();
         foreach (var army in State.Armies.ToArray())

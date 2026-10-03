@@ -22,7 +22,7 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
             const errors = observeBrowserErrors(page);
             try {
                 await page.goto(testUrl(baseUrl)); await ui.ready(); await ui.paused();
-                const world = await ui.save(); assert.equal(world.FormatVersion, 7);
+                const world = await ui.save(); assert.equal(world.FormatVersion, 8);
                 const town = world.Settlements[0];
                 Object.assign(town.Resources, { Food: 1000, Wood: 1000, Stone: 1000, Ore: 1000, Alloy: 100, EnergyCells: 100, Crystals: 100,
                     Coal: 30, Oil: 20, RareEarth: 10, Boats: 2, Aircraft: 1 });
@@ -73,7 +73,7 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
                 await ui.waitFor(s => !s.modalOpen && s.paused, 'loaded paused world', 30000);
                 assert.equal(digest(await ui.save()), digest(saved), 'Advanced stocks, research and facilities changed after restore');
                 await errors.assertHealthy(`advancement ${label}`);
-                console.log(`PASS advancement ${label}: independent routes, real gift/construction, resources and format-7 restore`);
+                console.log(`PASS advancement ${label}: independent routes, real gift/construction, resources and format-8 restore`);
             } catch (error) {
                 await page.screenshot({ path: path.join(output, `advancement-${label}-failure.png`) });
                 fs.writeFileSync(path.join(output, `advancement-${label}-failure.json`), JSON.stringify(await ui.snapshot(), null, 2));

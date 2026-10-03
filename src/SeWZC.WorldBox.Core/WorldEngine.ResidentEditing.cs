@@ -55,7 +55,11 @@ public sealed partial class WorldEngine
         if (patch.Inventory is { } stock) candidate.Inventory = stock.Copy();
         if (patch.Profession is { } profession) candidate.Profession = profession;
         if (patch.Age is { } age) candidate.Age = age;
-        if (patch.Health is { } health) candidate.Health = health;
+        if (patch.Health is { } health)
+        {
+            candidate.Health = health;
+            if (isLive && health <= 0) { candidate.DeathCause = DeathCause.PlayerIntervention; candidate.DeathTick = State.Tick; }
+        }
         if (patch.Hunger is { } hunger) candidate.Hunger = hunger;
         if (patch.Trait is not null)
         {
