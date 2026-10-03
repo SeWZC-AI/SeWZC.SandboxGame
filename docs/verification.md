@@ -1,5 +1,13 @@
 # 构建与验证记录
 
+## 2026-10-03：CI 等待时间优化
+
+基线为从远端 `main` 快进同步的 `b5b3410398e3a1bde57a5d113216813418c240f7`，以下检查对应该基线加本轮 CI 编排修改。环境为 Linux x86_64、Node 24.19.0、Python 3.12.14、actionlint 1.7.7；仅调整工作流、共享浏览器安装 action、脚本说明及相关文档。
+
+`actionlint -shellcheck= .github/workflows/build-and-deploy.yml` 通过；YAML、内嵌 Bash 与十个浏览器脚本的 `node --check` 通过。静态核对确认原生构建与浏览器发布可并行、默认矩阵仅有 `deploy-smoke`、完整模式保留全部九套回归及快速冒烟、大世界夹具与集成／长程检查只在完整模式启用，部署仍依赖本次全部检查成功。`git diff --check` 通过。
+
+本轮未安装 .NET、构建游戏、执行浏览器交互或完整回归，也未触发线上工作流或部署；实际节省时间需由下一次 Actions 运行确认，历史截图只作为识别耗时路径的依据。
+
 ## 2026-10-03：5 倍速算法与保存优化
 
 开始从远端确认 `f32d4b6`，完成优化后再次拉取并合入最新 `15c415cc5150a3441059ca6ab23aedfc6c7f5ced` 的移动端缩放修复。以下最终产物对应该基线加本次优化，生产源码 SHA-256 为 `12b590d0fe70ff4a2ffc084089ec0c4023aaf9c546c7682dcd3c3c6488940ed4`（77 文件），Core 为 `6de16df5cb461930d31f19240a21f615be1b24e77fbed9e5f79114996f236597`（36 文件）。摘要按仓库相对路径排序 `.cs/.csproj/.axaml/.js/.html/.css`，排除 `bin/obj`，依次输入路径 UTF-8、NUL 和原始字节。环境为 Debian 13 / Linux x64、4 核云容器、.NET SDK 10.0.401 / Runtime 10.0.12、Avalonia 12.1.3、Node 24.19.0、Playwright 1.57.0、Chromium 151.0.7922.173、软件渲染。
