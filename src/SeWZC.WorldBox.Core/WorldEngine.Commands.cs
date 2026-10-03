@@ -53,13 +53,27 @@ public sealed partial class WorldEngine
             ClaimTerritory(settlement, 6);
             AddEvent(WorldEventKind.Founding, $"{RaceNames[(int)race]}在{settlement.Name}定居，建立了{nation.Name}。", x, y);
         }
+        // Founding families start on the same connected shore as their camp.
+        var spawnSites = new List<int> { index }; var spawnSeen = new HashSet<int> { index };
+        for (var site = 0; site < spawnSites.Count; site++)
+            foreach (var (dx, dy) in Directions)
+            {
+                var xx = spawnSites[site] % State.Width + dx; var yy = spawnSites[site] / State.Width + dy;
+                if (!InBounds(xx, yy) || Distance(x, y, xx, yy) > 3
+                    || !CanTraverseStep(spawnSites[site] % State.Width, spawnSites[site] / State.Width, xx, yy, TravelMode.Foot)) continue;
+                var next = Index(xx, yy); if (spawnSeen.Add(next)) spawnSites.Add(next);
+            }
         for (var i = 0; i < count; i++)
         {
             var person = NewResident(settlement, race, 16 + RandomInt(28));
-            var position = FindWalkable(x + RandomInt(7) - 3, y + RandomInt(7) - 3, 4);
-            if (position >= 0) { person.X = position % State.Width; person.Y = position / State.Width; }
+            var position = spawnSites[RandomInt(spawnSites.Count)];
+            person.X = person.FromX = position % State.Width; person.Y = person.FromY = position / State.Width;
             State.Residents.Add(person); _citizens[settlement.Id].Add(person);
-            ProvisionAtHome(person, settlement);
+            // Equal starting rations, independent of profession and list order.
+            var food = State.Rules.Hunger ? Math.Min(settlement.Resources.Food, 1) : 0;
+            var water = State.Rules.Thirst ? Math.Min(settlement.Resources.Water, .75) : 0;
+            settlement.Resources.Food -= food; person.Inventory.Food += food;
+            settlement.Resources.Water -= water; person.Inventory.Water += water;
         }
         InitializeSociety();
         foreach (var person in _citizens[settlement.Id]) InitializeAgent(person);
@@ -86,8 +100,14 @@ public sealed partial class WorldEngine
         foreach (var index in Circle(x, y, radius))
         {
             var tile = State.Tiles[index];
-            if (kind == DisasterKind.Fire && tile.IsWalkable) { tile.FireTicks = 16 + RandomInt(16); _burningTiles.Add(index); }
             if (kind == DisasterKind.Drought && tile.IsWalkable) { tile.DroughtTicks = 150; _dryTiles.Add(index); }
+        }
+        if (kind == DisasterKind.Fire)
+        {
+            var started = 0; var seeds = Math.Clamp(1 + radius / 10, 1, 3);
+            foreach (var index in Circle(x, y, radius).OrderBy(i => Distance(x, y, i % State.Width, i / State.Width)).ThenBy(i => i))
+                if (Ignite(index) && ++started >= seeds) break;
+            if (started == 0) return;
         }
         if (kind == DisasterKind.Meteor)
         {
@@ -103,12 +123,17 @@ public sealed partial class WorldEngine
             foreach (var building in State.Society.Buildings.Where(b => Distance(b.X, b.Y, x, y) <= radius))
                 building.Health = Math.Max(0, building.Health - 80);
         }
-        EmitVisual(kind switch { DisasterKind.Fire => WorldVisualKind.Fire, DisasterKind.Drought => WorldVisualKind.Drought,
-            DisasterKind.Plague => WorldVisualKind.Plague, _ => WorldVisualKind.Meteor }, x, y, radius);
+        if (kind is DisasterKind.Drought or DisasterKind.Meteor)
+            EmitVisual(kind == DisasterKind.Drought ? WorldVisualKind.Drought : WorldVisualKind.Meteor, x, y, radius);
         if (kind == DisasterKind.Plague)
-            foreach (var resident in State.Residents)
-                if (Distance(resident.X, resident.Y, x, y) <= radius * 1.4) resident.SicknessTicks = 45 + RandomInt(40);
-        var label = kind == DisasterKind.Fire ? "火灾吞噬草木，威胁附近居民" : kind == DisasterKind.Drought ? "旱灾来临，农田减产，粮食储备将经受考验" : kind == DisasterKind.Plague ? "疫病扩散，患病居民的健康与生产力下降" : "陨石撞击大地，摧毁植被与道路，重创居民和建筑";
+            foreach (var resident in State.Residents.Where(r => r.Health > 0 && r.SicknessTicks == 0
+                && r.DiseaseImmuneUntilTick <= State.Tick && Distance(r.X, r.Y, x, y) <= radius)
+                .OrderBy(r => Distance(r.X, r.Y, x, y)).ThenBy(r => r.Id).Take(Math.Clamp(1 + radius / 10, 1, 3)))
+            {
+                resident.SicknessTicks = 72 + RandomInt(25);
+                EmitVisual(WorldVisualKind.Plague, resident.X, resident.Y, 1);
+            }
+        var label = kind == DisasterKind.Fire ? "局部起火，火势将按地形和建筑可燃性逐步蔓延" : kind == DisasterKind.Drought ? "旱灾来临，农田减产，粮食储备将经受考验" : kind == DisasterKind.Plague ? "出现少量疫病病例，后续传播取决于居民实际接触" : "陨石撞击大地，摧毁植被与道路，重创居民和建筑";
         AddEvent(WorldEventKind.Disaster, label + "。", x, y);
     }
 

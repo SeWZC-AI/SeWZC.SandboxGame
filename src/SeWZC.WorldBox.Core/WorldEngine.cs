@@ -48,6 +48,8 @@ public sealed partial class WorldEngine
                 // Demo settlements start within travelling distance on land that can feed them.
                 // This chooses initial conditions, not knowledge granted to the inhabitants.
                 var location = engine.Circle(x, y, 20).Where(i => state.Tiles[i].IsWalkable && state.Tiles[i].Fertility >= 50
+                    && TerrainRules.For(state.Tiles[i].Terrain).FoodYield >= .35
+                    && engine.Circle(i % width, i / width, 6).Any(source => IsWaterSource(state.Tiles[source]))
                     && state.Tiles[i].NationId == 0 && state.Settlements.All(t => Distance(t.X, t.Y, i % width, i / width) >= 16))
                     .OrderBy(i => Distance(x, y, i % width, i / width)).FirstOrDefault(-1);
                 if (location < 0) location = engine.FindWalkable(x, y, Math.Max(width, height));
@@ -120,6 +122,7 @@ public sealed partial class WorldEngine
             if (resident.History.Count > 24) resident.History.RemoveAt(0);
             State.ArchivedResidents.Add(resident);
             State.Residents.Remove(resident);
+            if (_citizens.TryGetValue(resident.SettlementId, out var citizens)) citizens.Remove(resident);
         }
         while (State.ArchivedResidents.Count > 256) State.ArchivedResidents.RemoveAt(0);
     }
