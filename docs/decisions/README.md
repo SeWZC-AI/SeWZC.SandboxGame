@@ -21,6 +21,7 @@
 | [0013](0013-independent-advancement.md) | 科技与魔法并行发展，保持各自的生产基础 | 采用 |
 | [0014](0014-land-and-transport.md) | 地块改造、阶段资源与基础载具运输 | 采用 |
 | [0015](0015-ecology-and-escalation.md) | 有界动物生态、逐步资源冲突与可操作观察 | 采用 |
+| [0016](0016-development-and-refresh.md) | 发展路线、物资预算与按变化刷新 | 采用 |
 
 ## 何时新增或替代
 

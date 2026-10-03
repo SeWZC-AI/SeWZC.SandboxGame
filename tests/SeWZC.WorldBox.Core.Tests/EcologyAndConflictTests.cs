@@ -13,9 +13,25 @@ internal static class EcologyAndConflictTests
         ("new ecology and conflict records reject corrupt saves", Persistence),
         ("deaths retain the specific fatal cause and survive save resume", Mortality),
         ("resident inspection distinguishes warehouse pickup, factory travel and blocked operation without simulating", Inspection),
+        ("nearby farms do not hijack an actual forestry task", ForestryTask),
         ("a lone resident works instead of endlessly seeking unavailable conversation", LoneResident),
         ("messengers without foreign addresses explore an actual route and retain their destination while travelling", ExploreRoute)
     ];
+
+    private static void ForestryTask()
+    {
+        var engine = Empty(); engine.SpawnResidents(16, 16, RaceKind.Human, 3);
+        var town = engine.State.Settlements.Single(); engine.GrantFacility(town.Id, BuildingKind.Farm, 18, 16);
+        var person = engine.State.Residents.First(p => p.Id != town.RepresentativeId);
+        var tile = engine.State.Tiles[16 * engine.State.Width + 19]; tile.Terrain = TerrainType.Forest; tile.ResourceAmount = 100;
+        engine.EditResident(person.Id, new ResidentEdit { X = 19, Y = 16, Age = 25, Profession = Profession.Lumberjack });
+        person = engine.GetResident(person.Id)!;
+        person.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Work, TargetX = 19, TargetY = 16, PlayerDirected = true,
+            StartedTick = engine.State.Tick, ReviewTick = engine.State.Tick + 24, Reason = "到森林执行伐木任务" };
+        var wood = person.Inventory.Wood;
+        engine.Step();
+        Require(person.Inventory.Wood > wood && tile.ResourceAmount < 100, $"A nearby farm stole the resource work target: {person.Profession}, {person.Activity}, {person.Agent.Goal.Kind}, wood={person.Inventory.Wood}");
+    }
 
     private static WorldEngine Empty()
     {

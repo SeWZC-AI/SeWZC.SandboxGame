@@ -100,7 +100,7 @@ Linux 桌面版需要图形会话以及 Avalonia 所需的系统图形库。无�
 
 ## 发布到 GitHub Pages
 
-仓库中的 [GitHub Actions 工作流](.github/workflows/build-and-deploy.yml) 在 `main` 推送、PR 和手动运行时验证，避免功能分支推送与 PR 重复执行。它缓存 NuGet 包，先构建桌面与测试项目，再一次性发布浏览器项目；七套完整 Chromium 验收（桌面、触屏、连续运动、故事、特效、双线时代发展、地块与运输）使用同一发布产物，在独立 runner 上并行运行。全部成功后，只有 `main` 的非 PR 运行进入部署。
+仓库中的 [GitHub Actions 工作流](.github/workflows/build-and-deploy.yml) 在 `main` 推送、PR 和手动运行时验证，避免功能分支推送与 PR 重复执行。它缓存 NuGet 包，先构建桌面与测试项目，再一次性发布浏览器项目；八套完整 Chromium 验收（桌面、触屏、连续运动、故事、特效、双线时代发展、地块与运输、紧凑详情和软键盘输入）使用同一发布产物，在独立 runner 上并行运行。全部成功后，只有 `main` 的非 PR 运行进入部署。
 
 部署后执行较短的上线检查：确认当前提交的 HTML 已生效、应用渲染与模拟可用、IndexedDB 保存和刷新恢复成功。完整功能验收不重复执行。证据分别上传为 `worldbox-browser-tests-<suite>` 和 `worldbox-live-browser-tests`。并行验收缩短等待时间，但会增加 runner 初始化和 artifact 下载次数。
 

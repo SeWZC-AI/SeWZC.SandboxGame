@@ -200,7 +200,7 @@ public sealed partial class WorldEngine
         {
             var site = FindVisibleResourceSite(person, person.Profession);
             if (site >= 0) choices.Add(new(AgentGoalKind.Work, site % State.Width, site / State.Width,
-                37 + personality.Diligence * 12, person.Profession == Profession.Lumberjack ? "看见可采木材，前往伐木" : "看见矿石露头，前往开采"));
+                58 + personality.Diligence * 12, person.Profession == Profession.Lumberjack ? "看见可采木材，前往伐木" : "看见矿石露头，前往开采"));
         }
         if (person.Age >= 14 && person.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner or Profession.Builder or Profession.Scholar or Profession.Mage
             && FindLocalWorkTarget(person) is { } work)
@@ -210,8 +210,11 @@ public sealed partial class WorldEngine
                 + (person.Profession == Profession.Farmer && foodFact is { Value: < 12 } ? 18 * AgentFactReliability(foodFact) : 0),
                 kind == AgentGoalKind.Study ? "附近有可参与的研究设施，前往学习" : kind == AgentGoalKind.TrainMagic ? "附近有可训练的魔法设施" : "附近有实际施工或生产工作", EntityId: work.Id));
         }
-        if (person.Age >= 14 && person.Profession == Profession.Lumberjack && FindVisibleResourceSite(person, Profession.Lumberjack) < 0
-            && (Distance(person.X, person.Y, home.X, home.Y) <= 1 && home.Resources.Wood < 40 || agent.Goal.Kind == AgentGoalKind.Explore))
+        if (person.Age >= 14 && person.Profession is Profession.Lumberjack or Profession.Miner
+            && (person.Profession == Profession.Lumberjack ? FindVisibleResourceSite(person, Profession.Lumberjack) < 0 : depositSite < 0)
+            && (Distance(person.X, person.Y, home.X, home.Y) <= 1 && (person.Profession == Profession.Lumberjack ? home.Resources.Wood < 60
+                : HasResearch(home.Id, ResearchKind.Industry) && home.Resources.Coal < 8 || HasResearch(home.Id, ResearchKind.Electrification) && home.Resources.Oil < 8
+                    || HasResearch(home.Id, ResearchKind.AdvancedComputing) && home.Resources.RareEarth < 8) || agent.Goal.Kind == AgentGoalKind.Explore))
         {
             var offsets = new (int X, int Y)[] { (6, 0), (4, 4), (0, 6), (-4, 4), (-6, 0), (-4, -4), (0, -6), (4, -4) };
             var heading = offsets[agent.ExplorationHeading % offsets.Length];
@@ -219,8 +222,8 @@ public sealed partial class WorldEngine
                 .OrderBy(i => Distance(i % State.Width, i / State.Width, person.X + heading.X, person.Y + heading.Y)).FirstOrDefault(-1);
             if (site >= 0 && Distance(person.X, person.Y, home.X, home.Y) < 24)
                 choices.Add(new(AgentGoalKind.Explore, site % State.Width, site / State.Width, 62,
-                    "在家园看到木材短缺，眼前没有可采森林，沿可见陆地寻找下一处材料来源"));
-            else choices.Add(new(AgentGoalKind.ReturnHome, home.X, home.Y, 70, "勘察距离已达口粮范围，先返回家园补给", null, home.Id));
+                    person.Profession == Profession.Lumberjack ? "在家园看到木材短缺，眼前没有可采森林，沿可见陆地寻找下一处材料来源" : "在家园看到生产燃料不足，沿可见陆地寻找当前知识能够开采的矿藏"));
+            else { agent.ExplorationHeading = (agent.ExplorationHeading + 3) % 8; choices.Add(new(AgentGoalKind.ReturnHome, home.X, home.Y, 70, "勘察距离已达口粮范围，先返回家园补给", null, home.Id)); }
         }
         if (agent.SocialNeed > 35 && _citizens[home.Id].Count > 1)
             choices.Add(new(AgentGoalKind.Socialize, home.X, home.Y,
@@ -339,7 +342,9 @@ public sealed partial class WorldEngine
         switch (goal.Kind)
         {
             case AgentGoalKind.Explore:
-                person.Agent.ExplorationHeading = (person.Agent.ExplorationHeading + 1) % 8;
+                // Keep the outward heading across completed legs; rotate only after resupply or a blocked leg.
+                if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) == 0 && goal.TargetX == person.FromX && goal.TargetY == person.FromY)
+                    person.Agent.ExplorationHeading = (person.Agent.ExplorationHeading + 1) % 8;
                 person.Agent.NextThinkTick = State.Tick + 1;
                 person.Activity = ResidentActivity.Working;
                 break;
@@ -357,7 +362,9 @@ public sealed partial class WorldEngine
                 GatherActualResources(person, Profession.Farmer);
                 break;
             case AgentGoalKind.Work:
-                if (TryWorkAtBuilding(person)) person.Activity = ResidentActivity.Working;
+                if (goal.TargetEntityId == 0 && person.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner)
+                    GatherActualResources(person, person.Profession);
+                else if (TryWorkAtBuilding(person)) person.Activity = ResidentActivity.Working;
                 else if (person.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner) GatherActualResources(person, person.Profession);
                 else person.Agent.NextThinkTick = State.Tick + 1;
                 break;

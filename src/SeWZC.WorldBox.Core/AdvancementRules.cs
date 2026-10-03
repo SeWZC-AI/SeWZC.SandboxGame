@@ -94,6 +94,6 @@ public static class AdvancementRules
     private static readonly Advancement DockRecipe = new(ResearchKind.Logistics, "造船", "古代", false, [], new(),
         BuildingKind.Dock, "船坞码头", new() { Wood = 25, Stone = 10 }, new() { Wood = 4 }, ResourceKind.Boats, 1);
     public static Advancement? For(BuildingKind kind) => kind == BuildingKind.Dock ? DockRecipe : ByBuilding.GetValueOrDefault(kind);
-    public static string Stock(ResourceStock stock) => string.Join(" · ", Resources.Where(k => stock.Get(k) > 0)
+    public static string Stock(ResourceStock stock) => string.Join("   ", Resources.Where(k => stock.Get(k) > 0)
         .Select(k => $"{ResourceStock.Name(k)} {stock.Get(k):0.#}"));
 }

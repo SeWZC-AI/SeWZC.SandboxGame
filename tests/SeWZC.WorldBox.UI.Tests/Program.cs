@@ -14,6 +14,10 @@ AppBuilder.Configure<TestApp>().UseHeadless(new AvaloniaHeadlessPlatformOptions(
 
 var tests = new (string Name, Action Test)[]
 {
+    ("Imported separators are formatted without changing historical world data", ImportedSeparators),
+    ("Context details prioritize useful facts and omit unrelated tabs", ContextDetails),
+    ("Resident search remains attached and excludes archived people by default", ResidentSearch),
+    ("Close terrain refresh scans visible chunks without modifying the world", VisibleTerrain),
     ("Paged tools expose every building and keep previews outside toolbar layout", ToolPagination),
     ("Building details control the actual facility and list real roads", BuildingControls),
     ("Map resources and resident plans remain read-only during inspection", DetailedInspection),
@@ -175,6 +179,56 @@ static void EmptyRuleNumber()
     Control<NumericUpDown>(view, "rule-gathering-rate").Value = null;
     Click(view, "world-rules-apply");
     Assert(engine.ExportJson() == before && Field<Border>(view, "_modal").IsVisible, "Empty input changed world or closed the form");
+}
+
+static void ImportedSeparators()
+{
+    var engine = TwoTownWorld(); var id = engine.State.Residents[0].Id;
+    engine.EditResident(id, new ResidentEdit { Name = "伊恩\u00B7河翼" });
+    var before = engine.ExportJson(); var view = View(engine); Call(view, "OpenResident", id);
+    Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("伊恩 河翼") == true), "Legacy name separators remain in the visible title");
+    Call(view, "RefreshUi", true);
+    Assert(engine.ExportJson() == before, "Formatting rewrote the saved name or history");
+    Call(view, "OpenInspector", "residents", true); Control<TextBox>(view, "resident-search").Text = "伊恩 河翼"; Call(view, "RefreshUi", true);
+    Assert(Control<Button>(view, $"resident-row-{id}").IsEnabled, "Displayed legacy name cannot be searched");
+}
+
+static void ContextDetails()
+{
+    var engine = TwoTownWorld(); var view = View(engine);
+    Call(view, "OpenResident", engine.State.Residents[0].Id);
+    Assert(!view.GetLogicalDescendants().OfType<Avalonia.Controls.Control>().Any(c => AutomationProperties.GetAutomationId(c) == "inspector-overview"), "Resident detail retained unrelated world tabs");
+    var town = engine.State.Settlements[0];
+    Call(view, "SelectMapObject", "tile", 0, town.X, town.Y);
+    var summary = Field<TextBlock>(view, "_selectionText").Text!;
+    Assert(!summary.Contains("位置") && summary.Contains("可采"), "Tile selection omitted useful output or retained coordinates");
+    var center = engine.State.Society.Buildings.First(b => b.Kind == BuildingKind.TownCenter);
+    Call(view, "OpenBuilding", center);
+    Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("家园粮仓") == true), "Center details omit their actual stock and function");
+}
+
+static void ResidentSearch()
+{
+    var engine = TwoTownWorld(); var dead = engine.State.Residents[0];
+    engine.EditResident(dead.Id, new ResidentEdit { Health = 0 }); engine.Step();
+    var view = View(engine); Call(view, "OpenInspector", "residents", true);
+    Assert(!view.GetLogicalDescendants().OfType<Button>().Any(b => AutomationProperties.GetAutomationId(b) == $"resident-row-{dead.Id}"), "Resident list included deceased people by default");
+    var input = Control<TextBox>(view, "resident-search"); input.Text = "测试输入";
+    Call(view, "RefreshUi", true); Call(view, "RefreshUi", true);
+    Assert(ReferenceEquals(input, Control<TextBox>(view, "resident-search")) && input.Text == "测试输入", "Timed updates replaced the active search editor");
+    input.Text = dead.Id.ToString(); Control<CheckBox>(view, "residents-deceased").IsChecked = true; Call(view, "RefreshUi", true);
+    Assert(Control<Button>(view, $"resident-row-{dead.Id}").IsEnabled, "Explicitly including deceased people lost their historical records");
+}
+
+static void VisibleTerrain()
+{
+    var engine = WorldEngine.Create(42, 256, 256, false); var map = Map(View(engine));
+    map.Arrange(new Rect(0, 0, 320, 480)); map.RefreshWorld(true);
+    var before = engine.ExportJson();
+    for (var i = 0; i < 20; i++) map.ZoomIn();
+    map.RefreshWorld();
+    Assert(map.TerrainTilesScanned < engine.State.Tiles.Length / 8, "Near camera still hashes the entire map");
+    Assert(engine.ExportJson() == before, "Visible chunk caching changed the simulation");
 }
 
 static void FoldedDetails()

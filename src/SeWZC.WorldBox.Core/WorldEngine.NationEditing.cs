@@ -40,7 +40,7 @@ public sealed partial class WorldEngine
         if (State.Nations.Count >= 64) throw new InvalidOperationException("国家数量已达上限。");
         var parent = _nations[town.NationId];
         if (State.Settlements.Count(s => s.NationId == parent.Id) < 2) throw new InvalidOperationException("拆分需要原国家至少拥有两个聚落。");
-        var nation = new Nation { Id = NewId(), Name = name, CapitalId = town.Id, Technology = parent.Technology, ColorArgb = NationColors[State.Nations.Count % NationColors.Length], FoundingRace = parent.FoundingRace, Decision = "独立建国：储备资源，建立外交关系" };
+        var nation = new Nation { Id = NewId(), Name = name, CapitalId = town.Id, Technology = parent.Technology, DevelopmentFocus = parent.DevelopmentFocus, ColorArgb = NationColors[State.Nations.Count % NationColors.Length], FoundingRace = parent.FoundingRace, Decision = "独立建国：储备资源，建立外交关系" };
         foreach (var other in State.Nations) State.Diplomacies.Add(new DiplomaticRelation { FirstNationId = other.Id, SecondNationId = nation.Id });
         State.Nations.Add(nation); _nations[nation.Id] = nation;
         TransferSettlementOwnership(town, nation.Id);

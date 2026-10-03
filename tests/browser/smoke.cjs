@@ -69,8 +69,8 @@ const stock = (world, id) => town(world, id).Resources;
             && baseline.Society.Buildings.some(building => building.Id === person.Agent.Goal.TargetEntityId));
         assert(worker, 'Normal simulation must produce an inspectable resident targeting actual building work');
         await ui.click('header-overview');
-        await ui.click('inspector-residents', scroll);
-        await ui.click(`resident-row-${worker.Id}`, scroll);
+        await ui.openOverview(); await ui.click('inspector-residents', scroll);
+        await ui.openResidentRow(worker.Id, scroll);
         await ui.click('resident-goal-edit', scroll);
         assert(Number(ui.control(await ui.snapshot(), 'resident-goal-entity').value) > 0,
             'The automatic building target must be selected in the goal editor');
@@ -113,8 +113,8 @@ const stock = (world, id) => town(world, id).Resources;
         passed('resident placement, real terrain painting, paused time, complete batch undo');
 
         await ui.click('header-overview');
-        await ui.click('inspector-residents', scroll);
-        await ui.click(`resident-row-${actor.Id}`, scroll);
+        await ui.openOverview(); await ui.click('inspector-residents', scroll);
+        await ui.openResidentRow(actor.Id, scroll);
         await ui.click('resident-edit', scroll);
         await ui.fill('resident-name', 'Smoke resident', modal);
         await ui.click('resident-apply');
@@ -152,7 +152,7 @@ const stock = (world, id) => town(world, id).Resources;
         await page.screenshot({ path: path.join(output, 'resident-panel.png') });
         passed('resident identity, goal, personality, sourced memory and structured history edits without retrospective world changes');
 
-        await ui.click('inspector-nations', scroll);
+        await ui.openOverview(); await ui.click('inspector-nations', scroll);
         await ui.click(`nation-row-${home.NationId}`, scroll);
         await ui.click('nation-governance', scroll);
         const currentCultureIndex = Number(ui.control(await ui.snapshot(), 'nation-culture').value);
@@ -190,7 +190,7 @@ const stock = (world, id) => town(world, id).Resources;
         for (const resource of ['food', 'wood', 'stone', 'ore']) await ui.fill(`nation-${resource}`, '500', modal);
         await ui.click('nation-apply');
         const funded = await ui.save();
-        await ui.click('inspector-overview', scroll);
+        await ui.openOverview();
         await ui.click('overview-infrastructure', scroll);
         await ui.click('research-start', scroll);
         assert.match((await ui.snapshot()).status, /学舍|学院/);
@@ -234,7 +234,7 @@ const stock = (world, id) => town(world, id).Resources;
         passed('research facility requirement, construction and roads consume actual resources, magic development switch preserves facilities');
 
         await ui.click('header-overview');
-        await ui.click('inspector-history', scroll);
+        await ui.openOverview(); await ui.click('inspector-history', scroll);
         const rowIds = snapshot => snapshot.controls.filter(item => item.id.startsWith('history-row-')).map(item => Number(item.id.slice(12)));
         assert.deepEqual(rowIds(await ui.snapshot()), noNewMagic.Events.filter(item => value(item, 'Importance') >= 2).reverse().slice(0, 100).map(item => item.Id));
         await ui.selectIndex('history-importance', 2, scroll);
