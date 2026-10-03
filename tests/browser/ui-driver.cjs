@@ -79,6 +79,7 @@ class UiDriver {
         if (this.touch) await this.page.touchscreen.tap(point.x, point.y);
         else await this.page.mouse.click(point.x, point.y, { delay: 80 });
         await this.page.waitForTimeout(180);
+        if ((await this.snapshot()).editCaptureActive) await this.waitFor(s => !s.editCaptureActive, "completed edit checkpoint", 30000);
     }
 
     async fill(id, value, options) {
@@ -101,6 +102,7 @@ class UiDriver {
         // Choice-dependent descriptions can move fields in a compact dialog. Let the
         // popup close and Avalonia arrange its new content before the next real tap.
         await this.page.waitForTimeout(180);
+        if ((await this.snapshot()).editCaptureActive) await this.waitFor(s => !s.editCaptureActive, "completed edit checkpoint", 30000);
     }
 
     async tilePoint(x, y) {
@@ -118,6 +120,7 @@ class UiDriver {
         if (this.touch) await this.page.touchscreen.tap(point.x, point.y);
         else await this.page.mouse.click(point.x, point.y, { delay: 80 });
         await this.page.waitForTimeout(180);
+        if ((await this.snapshot()).editCaptureActive) await this.waitFor(s => !s.editCaptureActive, "completed edit checkpoint", 30000);
     }
 
     async paused(value = true) {

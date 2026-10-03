@@ -25,6 +25,7 @@ public sealed partial class MainView
         Toggle("自然生育", "有足够成年居民、住房与粮食时出现新生儿", "rule-births", r => r.Births, (r, v) => r.Births = v);
         Toggle("衰老", "关闭后停止自然增龄与衰老伤害", "rule-aging", r => r.Aging, (r, v) => r.Aging = v);
         Toggle("饥饿与粮食压力", "关闭后停止生存口粮消耗和饥饿伤害", "rule-hunger", r => r.Hunger, (r, v) => r.Hunger = v);
+        Toggle("饮水与缺水压力", "居民须在河湖岸边打水，随身携带并运输入仓", "rule-thirst", r => r.Thirst, (r, v) => r.Thirst = v);
         Toggle("疾病传播与伤害", "关闭后现有疾病倒计时继续消退，不再传播或伤害", "rule-disease", r => r.Disease, (r, v) => r.Disease = v);
         panel.Children.Add(Text("文明发展", 14, Mint));
         Toggle("自主建设", "关闭后不自行立项；已开始施工继续", "rule-construction", r => r.Construction, (r, v) => r.Construction = v);

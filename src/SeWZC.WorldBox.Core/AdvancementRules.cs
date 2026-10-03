@@ -2,10 +2,11 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-public enum ResourceKind { Food, Wood, Stone, Ore, Alloy, EnergyCells, Crystals, Coal, Oil, RareEarth, Boats, Aircraft }
+public enum ResourceKind { Food, Wood, Stone, Ore, Alloy, EnergyCells, Crystals, Coal, Oil, RareEarth, Boats, Aircraft, Water }
 
 public sealed partial class ResourceStock
 {
+    [JsonRequired] public double Water { get; set; }
     [JsonRequired] public double Alloy { get; set; }
     [JsonRequired] public double EnergyCells { get; set; }
     [JsonRequired] public double Crystals { get; set; }
@@ -18,7 +19,7 @@ public sealed partial class ResourceStock
 
     public double Get(ResourceKind kind) => kind switch
     {
-        ResourceKind.Food => Food, ResourceKind.Wood => Wood, ResourceKind.Stone => Stone,
+        ResourceKind.Water => Water, ResourceKind.Food => Food, ResourceKind.Wood => Wood, ResourceKind.Stone => Stone,
         ResourceKind.Ore => Ore, ResourceKind.Alloy => Alloy, ResourceKind.EnergyCells => EnergyCells,
         ResourceKind.Crystals => Crystals, ResourceKind.Coal => Coal, ResourceKind.Oil => Oil,
         ResourceKind.RareEarth => RareEarth, ResourceKind.Boats => Boats, ResourceKind.Aircraft => Aircraft, _ => throw new ArgumentOutOfRangeException(nameof(kind))
@@ -27,6 +28,7 @@ public sealed partial class ResourceStock
     {
         switch (kind)
         {
+            case ResourceKind.Water: Water = value; break;
             case ResourceKind.Food: Food = value; break;
             case ResourceKind.Wood: Wood = value; break;
             case ResourceKind.Stone: Stone = value; break;
@@ -42,11 +44,11 @@ public sealed partial class ResourceStock
             default: throw new ArgumentOutOfRangeException(nameof(kind));
         }
     }
-    public ResourceStock Copy() => new() { Food = Food, Wood = Wood, Stone = Stone, Ore = Ore,
+    public ResourceStock Copy() => new() { Water = Water, Food = Food, Wood = Wood, Stone = Stone, Ore = Ore,
         Alloy = Alloy, EnergyCells = EnergyCells, Crystals = Crystals, Coal = Coal, Oil = Oil, RareEarth = RareEarth, Boats = Boats, Aircraft = Aircraft };
     public static string Name(ResourceKind kind) => kind switch
     {
-        ResourceKind.Food => "粮食", ResourceKind.Wood => "木材", ResourceKind.Stone => "石材",
+        ResourceKind.Water => "饮水", ResourceKind.Food => "粮食", ResourceKind.Wood => "木材", ResourceKind.Stone => "石材",
         ResourceKind.Ore => "矿石", ResourceKind.Alloy => "合金", ResourceKind.EnergyCells => "动力单元",
         ResourceKind.Crystals => "魔晶", ResourceKind.Coal => "煤", ResourceKind.Oil => "石油",
         ResourceKind.RareEarth => "稀土", ResourceKind.Boats => "舟船", ResourceKind.Aircraft => "运输机", _ => kind.ToString()

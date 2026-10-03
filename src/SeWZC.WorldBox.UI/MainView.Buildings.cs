@@ -33,6 +33,10 @@ public sealed partial class MainView
         panel.Children.Add(Named(LiveText(() => Current() is { } b ? $"建筑生命 {b.Health:0.#} / 100" +
             (b.Health <= 0 ? "   已损毁" : b.Health < 50 ? "   低于 50，暂停工作" : b.Health < 100 ? "   有损伤，仍可工作" : "   结构完好") : "建筑已不存在"), "building-health"));
         panel.Children.Add(Paragraph(WorldEngine.BuildingDescription(building.Kind)));
+        panel.Children.Add(Named(LiveText(() => Current() is { } b ? $"等级 {b.Level} / 3" +
+            (b.IsUpgrading ? $"\n{(b.PendingDirection.HasValue ? "改向" : "升级")}施工 {b.UpgradeProgress:0.0} / {b.UpgradeRequired:0}" : "") : ""), "building-level"));
+        panel.Children.Add(Text("提供的加成与生效条件", 13, Mint));
+        panel.Children.Add(Named(LiveText(() => EffectLabel(_engine.GetBuildingEffects(id))), "building-effects"));
         panel.Children.Add(LiveText(() => Current() is not { } b ? "建筑已不存在" :
             !b.IsCompleted ? $"施工：{b.ConstructionProgress:0.0} / {b.ConstructionRequired:0}\n" + _engine.GetProductionStatus(b.Id)
             : _engine.GetProductionStatus(b.Id)));
@@ -43,6 +47,9 @@ public sealed partial class MainView
         panel.Children.Add(actions);
         actions.Children.Add(Named(Button("定位建筑", () => { if (Current() is { } b) _map.FocusTile(b.X, b.Y); CloseInspector(); }), "building-locate"));
         actions.Children.Add(Named(Button("修复建筑", () => RunEdit(() => _engine.RestoreBuilding(id), "建筑已修复")), "building-repair"));
+        actions.Children.Add(Named(Button("升级建筑", () => ShowBuildingUpgrade(id, false)), "building-upgrade"));
+        if (building.Kind == BuildingKind.Bridge)
+            actions.Children.Add(Named(Button("改造桥梁方向", () => ShowBuildingUpgrade(id, true)), "building-reorient"));
         if (!building.IsCompleted) actions.Children.Add(Named(Button("赐予完工", () => RunEdit(() => _engine.RestoreBuilding(id, true), "已赐予完工；运营仍需实际条件")), "building-finish"));
         if (building.Kind != BuildingKind.TownCenter)
         {
@@ -57,6 +64,23 @@ public sealed partial class MainView
             r => r.Id.ToString(), r => r.Name + "   " + ProfessionName(r.Profession) + "\n" + ResidentTask(r), r => OpenResident(r.Id));
         panel.Children.Add(Button("查看归属聚落", () => { _inspectorSettlementId = building.SettlementId; OpenInspector("infrastructure"); }));
         panel.Children.Add(Named(Button("查看所在土地", () => { _selectedTile = (building.X, building.Y); OpenInspector("tile"); }), "building-ground"));
+    }
+
+    private static string EffectLabel(IReadOnlyList<EffectInfo> effects) => effects.Count == 0 ? "当前无额外加成或减益" : string.Join("\n\n", effects);
+
+    private void ShowBuildingUpgrade(int id, bool reorient)
+    {
+        var building = _engine.State.Society.Buildings.FirstOrDefault(b => b.Id == id);
+        if (building is null) return;
+        var direction = reorient ? (BridgeDirection?)(building.Direction == BridgeDirection.Horizontal ? BridgeDirection.Vertical : BridgeDirection.Horizontal) : null;
+        var panel = ModalPanel(reorient ? "改造桥梁方向" : "升级建筑", reorient
+            ? $"{WorldEngine.BridgeDirectionName(building.Direction)} → {WorldEngine.BridgeDirectionName(direction!.Value)}。只允许所选轴向通行。"
+            : $"{BuildingLabel(building)}：{building.Level} 级 → {building.Level + 1} 级。升级期间暂停运营，居民到场施工后生效。");
+        panel.Children.Add(Paragraph("材料：" + StockLabel(WorldEngine.GetUpgradeCost(building, reorient))));
+        panel.Children.Add(LiveText(() => _engine.BuildingUpgradeError(id, direction: direction) ?? "材料与条件满足，可安排施工"));
+        panel.Children.Add(Named(Button("安排居民施工", () => RunEdit(() => { _engine.UpgradeBuilding(id, direction: direction); CloseModal(); }, "项目已开始，等待居民到场施工")), "upgrade-apply"));
+        panel.Children.Add(Named(Button("直接赐予完成", () => RunEdit(() => { _engine.UpgradeBuilding(id, true, direction); CloseModal(); }, "建筑改造已完成")), "upgrade-gift"));
+        OpenModal(panel);
     }
 
     private void BuildStructuresInspector(StackPanel panel)

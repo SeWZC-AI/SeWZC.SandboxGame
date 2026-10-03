@@ -37,6 +37,7 @@ public sealed partial class WorldEngine
     {
         if (!building.Enabled) return "玩家已停用，恢复运营后才会安排工作";
         if (!building.IsCompleted) return "等待施工完成";
+        if (building.IsUpgrading) return "正在升级或改向，暂停生产";
         if (building.Health < 50) return "设施受损，需要修复后运营";
         if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return "设施所在地正在燃烧，暂停生产";
         if (!HasResearch(building.SettlementId, a.Research)
@@ -46,9 +47,9 @@ public sealed partial class WorldEngine
 
     private double ProductionYield(Building building, Advancement a)
     {
-        if (a.Output != ResourceKind.Food) return a.Yield;
+        if (a.Output != ResourceKind.Food) return a.Yield * building.Efficiency;
         var tile = State.Tiles[Index(building.X, building.Y)];
-        return a.Yield * tile.Fertility / 100d * (tile.DroughtTicks > 0 ? .18 : 1);
+        return a.Yield * building.Efficiency * tile.Fertility / 100d * (tile.DroughtTicks > 0 ? .18 : 1);
     }
 
     public string GetProductionStatus(int buildingId)
@@ -61,6 +62,7 @@ public sealed partial class WorldEngine
         if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return "正在燃烧，暂停工作";
         var workers = State.Tick - building.LastWorkedTick <= 1 ? building.Workers.Count : 0;
         if (!building.IsCompleted) return $"施工：{building.ConstructionProgress / building.ConstructionRequired:P0}   到场工人 {workers}/{building.WorkSlots}";
+        if (building.IsUpgrading) return $"{(building.PendingDirection.HasValue ? "改向" : "升级")}：{building.UpgradeProgress:0.#} / {building.UpgradeRequired:0}\n等待居民到场施工";
         if (!building.Enabled) return "已停用";
         if (a is null)
         {
@@ -101,9 +103,9 @@ public sealed partial class WorldEngine
     {
         var goal = person.Agent.Goal;
         if (goal.Kind != AgentGoalKind.Work) return false;
-        var building = State.Society.Buildings.FirstOrDefault(b => b.Id == goal.TargetEntityId && b.SettlementId == home.Id);
+        var building = FindBuilding(goal.TargetEntityId);
         var a = building is null ? null : AdvancementRules.For(building.Kind);
-        if (building is null || a is null || !building.IsCompleted) return false;
+        if (building is null || building.SettlementId != home.Id || a is null || !building.IsCompleted || building.IsUpgrading) return false;
         if (!CanProduce(building, person, a))
         {
             goal.Reason = GetProductionStatus(building.Id); person.Agent.NextThinkTick = State.Tick + 1;

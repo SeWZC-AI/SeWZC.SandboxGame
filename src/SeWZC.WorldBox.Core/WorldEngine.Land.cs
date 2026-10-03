@@ -5,7 +5,7 @@ public sealed partial class WorldEngine
     public static bool CanTraverse(Tile tile, TravelMode mode) => mode switch
     {
         TravelMode.Aircraft => true,
-        TravelMode.Boat => tile.IsWalkable || tile.Terrain is TerrainType.River or TerrainType.Water or TerrainType.DeepWater,
+        TravelMode.Boat => tile.IsWalkable || tile.Terrain is TerrainType.River or TerrainType.Water or TerrainType.DeepWater or TerrainType.Lake,
         _ => tile.IsWalkable
     };
 
@@ -18,7 +18,7 @@ public sealed partial class WorldEngine
     private void SeedDeposit(Tile tile, int x, int y)
     {
         tile.Deposit = null; tile.DepositAmount = 0; tile.DepositDiscovered = false;
-        if (tile.Terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.River) return;
+        if (tile.Terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.River or TerrainType.Lake) return;
         var hash = unchecked((uint)(x * 374761393 + y * 668265263 + State.Seed * 31 + 937));
         hash = (hash ^ (hash >> 13)) * 1274126177;
         tile.Deposit = (hash % 43) switch { 0 or 1 => ResourceKind.Coal, 2 => ResourceKind.Oil, 3 => ResourceKind.RareEarth, _ => null };
@@ -52,7 +52,7 @@ public sealed partial class WorldEngine
 
     private static bool BuildingTerrainValid(BuildingKind kind, Tile tile) => kind switch
     {
-        BuildingKind.Bridge => tile.Terrain is TerrainType.River or TerrainType.Water,
+        BuildingKind.Bridge => tile.Terrain is TerrainType.River or TerrainType.Water or TerrainType.Lake,
         BuildingKind.MountainPass => tile.Terrain == TerrainType.Mountain,
         _ => tile.IsWalkable
     };
@@ -66,9 +66,11 @@ public sealed partial class WorldEngine
             if (tile.Terrain == TerrainType.Forest) tile.Terrain = TerrainType.Grass;
         }
         else if (building.Kind == BuildingKind.MountainPass)
-        { tile.Improvement = LandImprovement.MountainPass; tile.RoadLevel = Math.Max((byte)1, tile.RoadLevel); }
+        { tile.Improvement = LandImprovement.MountainPass; tile.RoadLevel = (byte)building.Level; }
         else if (building.Kind == BuildingKind.Bridge)
-        { tile.Improvement = LandImprovement.Bridge; tile.RoadLevel = Math.Max((byte)1, tile.RoadLevel); }
+        { tile.Improvement = LandImprovement.Bridge; tile.RoadLevel = (byte)building.Level;
+            tile.BridgeDirection = building.Direction; tile.BridgeLevel = (byte)building.Level; }
+        RegisterBuildingGround(building);
     }
 
     private void PlanVisibleCrossing(Resident person, int targetX, int targetY)
@@ -81,10 +83,16 @@ public sealed partial class WorldEngine
             var x = person.X + dx; var y = person.Y + dy;
             if (!InBounds(x, y) || Distance(x, y, targetX, targetY) >= distance) continue;
             var tile = State.Tiles[Index(x, y)];
-            if (tile.IsWalkable || tile.Terrain is not (TerrainType.River or TerrainType.Water or TerrainType.Mountain)) continue;
+            if (tile.IsWalkable || tile.Terrain is not (TerrainType.River or TerrainType.Water or TerrainType.Lake or TerrainType.Mountain)) continue;
             if (State.Society.Buildings.Any(b => b.SettlementId == person.SettlementId && !b.IsCompleted)) return;
             var kind = tile.Terrain == TerrainType.Mountain ? BuildingKind.MountainPass : BuildingKind.Bridge;
-            if (FacilityPlacementError(person.SettlementId, kind, x, y) is null) BuildFacility(person.SettlementId, kind, x, y);
+            var direction = dx != 0 ? BridgeDirection.Horizontal : BridgeDirection.Vertical;
+            var level = kind == BuildingKind.Bridge ? Math.Max(1, (int)State.Tiles[Index(person.X, person.Y)].BridgeLevel) : 1;
+            var home = _settlements[person.SettlementId];
+            var reserve = LocalDevelopmentReserve(home); var cost = FacilityCost(kind, level);
+            if (AdvancementRules.Resources.Any(k => home.Resources.Get(k) < cost.Get(k) + reserve.Get(k))) return;
+            if (FacilityPlacementError(person.SettlementId, kind, x, y, direction: direction, bridgeLevel: level) is null)
+                BuildFacility(person.SettlementId, kind, x, y, direction, level);
             return;
         }
     }
@@ -97,7 +105,7 @@ public sealed partial class WorldEngine
             if (building.Kind != BuildingKind.Bridge || building.Health > 0 || !InBounds(building.X, building.Y)) continue;
             var tile = State.Tiles[Index(building.X, building.Y)];
             if (tile.Improvement != LandImprovement.Bridge) continue;
-            tile.Improvement = LandImprovement.None; tile.RoadLevel = 0; changed = true;
+            tile.Improvement = LandImprovement.None; tile.RoadLevel = 0; tile.BridgeLevel = 0; changed = true;
         }
         return changed;
     }
@@ -105,6 +113,7 @@ public sealed partial class WorldEngine
     private void RecordHarvest(Tile tile, double amount)
     {
         if (amount <= 0) return;
+        if (tile.ResourceAmount < 1 && tile.Improvement != LandImprovement.Farmland) tile.Plants = new();
         tile.LastHarvestTick = State.Tick;
         tile.Harvested = Math.Min(1_000_000_000, tile.Harvested + amount);
     }
@@ -149,7 +158,7 @@ public sealed partial class WorldEngine
             if (tile.Deposit is not { } kind || tile.DepositAmount <= 0 || tile.FireTicks > 0
                 || DepositResearch(kind) is not { } research || !HasResearch(home.Id, research) || home.Resources.Get(kind) >= 80) continue;
             tile.DepositDiscovered = true;
-            var amount = Math.Min(tile.DepositAmount, .4 * State.Rules.GatheringRate * (person.SicknessTicks > 0 ? .4 : 1));
+            var amount = Math.Min(tile.DepositAmount, .4 * State.Rules.GatheringRate * GatheringCondition(person));
             amount = Math.Min(amount, 1_000_000 - person.Inventory.Get(kind));
             tile.DepositAmount -= amount; person.Inventory.Set(kind, person.Inventory.Get(kind) + amount);
             RecordHarvest(tile, amount); person.Activity = ResidentActivity.Working;
@@ -172,6 +181,9 @@ public sealed partial class WorldEngine
             if (ResourceSiteYield(Index(x, y), Profession.Miner) > 0) products.Add("石材、矿石");
         }
         var lines = new List<string> { products.Count > 0 ? "可采产出：" + string.Join("、", products) : tile.ResourceAmount < 1 && tile.IsWalkable ? "资源暂已采尽，等待自然恢复" : "此地暂无直接采集产出" };
+        lines.Add(IsFreshWater(tile) ? "淡水源：可在岸边打水，现场取水有每日流量限制"
+            : $"天然供水 {tile.NaturalWaterYield:0.000000} / 日（不累计）   今日剩余 {AvailableWater(x, y):0.000000}\n供水与肥力独立；水源距离影响仅在生成时计算");
+        if (tile.ClaimedSettlementId != 0) lines.Add("实际地盘：" + _settlements.GetValueOrDefault(tile.ClaimedSettlementId)?.Name);
         if (tile.IsWalkable) lines.Add($"可采储量 {tile.ResourceAmount:0.#}   肥力 {tile.Fertility}%");
         if (tile.Improvement == LandImprovement.Farmland) lines.Add("耕地：需要居民到场耕作，产物随身运回家园");
         if (tile.FireTicks > 0) lines.Add($"正在燃烧：剩余 {tile.FireTicks} 日，暂停生产");

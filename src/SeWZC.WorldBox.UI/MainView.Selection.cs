@@ -73,13 +73,15 @@ public sealed partial class MainView
         if (towns.Length == 0) { SetStatus("需要先有聚落与居民。"); return; }
         var terrain = _engine.State.Tiles[y * _engine.State.Width + x].Terrain;
         var kind = terrain == TerrainType.Mountain ? BuildingKind.MountainPass
-            : terrain is TerrainType.River or TerrainType.Water ? BuildingKind.Bridge : BuildingKind.Farm;
+            : terrain is TerrainType.River or TerrainType.Water or TerrainType.Lake ? BuildingKind.Bridge : BuildingKind.Farm;
         var panel = ModalPanel("安排居民改造地块", $"{WorldEngine.BuildingName(kind)}\n位置：{x}, {y}。投入材料后，由居民到场施工；桥梁和山路完工后才可通行。");
         var town = ObjectField(panel, "负责聚落", towns.Select(t => (t.Id, t.Name)), towns[0].Id, "land-town");
-        panel.Children.Add(Paragraph("材料：" + StockLabel(WorldEngine.GetBuildingCost(kind))));
+        var direction = EnumField(panel, "桥梁方向", BridgeDirection.Horizontal, WorldEngine.BridgeDirectionName, "land-bridge-direction"); direction.IsVisible = kind == BuildingKind.Bridge;
+        var level = ObjectField(panel, "桥梁等级", new[] { (1, "1 级：离岸 2 格"), (2, "2 级：离岸 4 格"), (3, "3 级：离岸 6 格") }, 1, "land-bridge-level"); level.IsVisible = kind == BuildingKind.Bridge;
+        panel.Children.Add(LiveText(() => "材料：" + StockLabel(WorldEngine.FacilityCost(kind, kind == BuildingKind.Bridge ? Integer(level) : 1))));
         panel.Children.Add(Named(Button("开始居民施工", () => RunEdit(() =>
         {
-            _engine.BuildFacility(Integer(town), kind, x, y); CloseModal();
+            _engine.BuildFacility(Integer(town), kind, x, y, kind == BuildingKind.Bridge ? (BridgeDirection?)direction.SelectedItem : null, kind == BuildingKind.Bridge ? Integer(level) : 1); CloseModal();
         }, "改造已立项，继续模拟后居民会到场施工")), "land-apply"));
         OpenModal(panel);
     }

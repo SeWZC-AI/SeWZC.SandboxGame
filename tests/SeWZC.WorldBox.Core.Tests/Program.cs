@@ -63,7 +63,7 @@ var tests = new (string Name, Action Run)[]
 }.Concat(AgentBehaviorTests.Cases).Concat(EditorAndMigrationTests.Cases).Concat(SocietyBehaviorTests.Cases()).Concat(EvolutionTests.Cases).Concat(WorkQueryTests.Cases)
     .Concat(PersistenceRegressionTests.Cases).Concat(SocietyRegressionTests.Cases).Concat(AgentRegressionTests.Cases)
     .Concat(DiplomacyKnowledgeTests.Cases).Concat(StoryTests.Cases).Concat(PresentationWorldTests.Cases)
-    .Concat(TradeRegressionTests.Cases).Concat(AdvancementTests.Cases).Concat(LandTransportTests.Cases).Concat(EcologyAndConflictTests.Cases).Concat(DevelopmentPlanningTests.Cases).Concat(PerformanceBehaviorTests.Cases).ToArray();
+    .Concat(TradeRegressionTests.Cases).Concat(AdvancementTests.Cases).Concat(LandTransportTests.Cases).Concat(EcologyAndConflictTests.Cases).Concat(DevelopmentPlanningTests.Cases).Concat(PerformanceBehaviorTests.Cases).Concat(ProvisioningAndClaimsTests.Cases).ToArray();
 var filterOption = Array.IndexOf(args, "--filter");
 var suiteOption = Array.IndexOf(args, "--suite");
 var suite = suiteOption < 0 ? "unit" : args.ElementAtOrDefault(suiteOption + 1);
@@ -207,7 +207,7 @@ static void InvalidSaves()
     Reject("{unfinished", "malformed JSON");
     Reject("null", "null save");
     Reject("{}", "missing dimensions and terrain");
-    Reject("{}" + new string(' ', 32 * 1024 * 1024), "oversized input");
+    Reject("{}" + new string(' ', WorldEngine.MaxSaveBytes), "oversized input");
     Reject(Modify(valid, root => root["FormatVersion"] = 999), "unsupported save version");
     Reject(Modify(valid, root => root["RandomState"] = 0), "zero random state");
     Reject(Modify(valid, root => root["Width"] = 257), "oversized dimension");
@@ -473,7 +473,7 @@ static void SpawnOnOwnedLand()
     engine.SpawnResidents(24, 24, RaceKind.Human, 60);
     var nationId = engine.State.Nations.Single().Id;
     engine.SetNationResources(nationId, 10000, 500, 500, 500);
-    engine.Step(30);
+    engine.TransferTerritory(33, 24, nationId, 0);
     Check(engine.State.Tiles[24 * engine.State.Width + 33].NationId == nationId,
         "Scenario requires owned territory beyond the village founding radius.");
     var before = engine.State.Population;

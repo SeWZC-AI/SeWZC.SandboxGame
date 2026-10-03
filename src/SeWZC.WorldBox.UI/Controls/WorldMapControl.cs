@@ -139,6 +139,8 @@ public sealed partial class WorldMapControl : Control
         RebuildChangedChunks();
         _labelSettlements = Engine.State.Settlements.OrderByDescending(settlement => settlement.Population).ToArray();
         _relayOverlayDirty = true;
+        _activityBuildings.Clear();
+        foreach (var building in Engine.State.Society.Buildings) _activityBuildings[building.Id] = building;
         CaptureArchitecture(Engine.State);
         CaptureEffects();
         CaptureSelectedRoute();
@@ -392,6 +394,8 @@ public sealed partial class WorldMapControl : Control
             TerrainType.Wetland => 0x58887DFF,
             TerrainType.Desert => 0xCEAE75FF,
             TerrainType.River => 0x428E9CFF,
+            TerrainType.Lake => 0x559BA8FF,
+            TerrainType.DryFertile => 0xA3A66BFF,
             TerrainType.Tundra => 0x99A88CFF,
             _ => 0x719262FF
         };
@@ -401,11 +405,11 @@ public sealed partial class WorldMapControl : Control
         canvas.Rect(px, py, 8, 8, color);
         var nx = (int)((noise >> 5) % 6) + 1;
         var ny = (int)((noise >> 10) % 6) + 1;
-        if (tile.Terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.River)
+        if (tile.Terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.River or TerrainType.Lake)
         {
             if (noise % 7 == 0) canvas.Rect(px + nx - 1, py + ny, 3, 1, PixelCanvas.Shade(color, 11));
             bool LandAt(int tx, int ty) => tx >= 0 && tx < state.Width && ty >= 0 && ty < state.Height &&
-                state.Tiles[ty * state.Width + tx].Terrain is not TerrainType.DeepWater and not TerrainType.Water and not TerrainType.River;
+                state.Tiles[ty * state.Width + tx].Terrain is not TerrainType.DeepWater and not TerrainType.Water and not TerrainType.River and not TerrainType.Lake;
             const uint coast = 0x74A29AFF;
             if (LandAt(x, y - 1)) canvas.Rect(px, py, 8, 1, coast);
             if (LandAt(x - 1, y)) canvas.Rect(px, py, 1, 8, coast);
@@ -889,13 +893,26 @@ public sealed partial class WorldMapControl : Control
         InvalidateVisual();
     }
 
-    private void ApplyTool(Point point)
+    public Func<Task>? PrepareWorldEdit { get; set; }
+    private bool _preparingWorldEdit;
+
+    private async void ApplyTool(Point point)
     {
         if (Engine is null || !TryTile(point, out var tile)) return;
         if (IsNavigationTool) { SelectTile(point); return; }
         if (_lastPaint == tile) return;
         if (PlacementError(tile.X, tile.Y) is { } placementError)
         { SetPlacementMessage("无法放置：" + placementError); ToolError?.Invoke(placementError); return; }
+        if (_preparingWorldEdit) return;
+        var editEngine = Engine; var editTool = ActiveTool;
+        if (PrepareWorldEdit is not null)
+        {
+            _preparingWorldEdit = true;
+            try { await PrepareWorldEdit(); }
+            catch (Exception error) { ToolError?.Invoke("无法准备恢复点：" + error.Message); return; }
+            finally { _preparingWorldEdit = false; }
+            if (!ReferenceEquals(editEngine, Engine) || editTool != ActiveTool) return;
+        }
         var tool = ActiveTool;
         var prefix = tool.IndexOf(':');
         if (prefix >= 0) tool = tool[(prefix + 1)..];

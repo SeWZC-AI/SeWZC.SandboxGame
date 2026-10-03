@@ -19,7 +19,7 @@ internal static class AdvancementTests
         var engine = WorldEngine.Create(223, 64, 64, false);
         foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 100; }
         engine.SpawnResidents(24, 24, RaceKind.Human, 2);
-        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Disease = false,
+        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
             Construction = false, Research = false, Expansion = false, Trade = false, Wars = false,
             Alliances = false, Peace = false, Migration = false, Secession = false, ResourceRegeneration = false }, false, true);
         var town = engine.State.Settlements[0];

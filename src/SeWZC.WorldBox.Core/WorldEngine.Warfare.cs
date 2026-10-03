@@ -56,11 +56,13 @@ public sealed partial class WorldEngine
                 if (count < 3) { nation.Decision = "当地兵员尚未集结，等待居民返回聚落"; continue; }
                 var provisions = Math.Min(capital.Resources.Food, count * 10);
                 capital.Resources.Food -= provisions;
+                var waterProvisions = Math.Min(capital.Resources.Water, count * 3);
+                capital.Resources.Water -= waterProvisions;
                 nation.Military.LastMobilizedOrderId = order.Id;
                 var army = new Army { Id = NewId(), CampaignEventId = order.CampaignEventId, Objective = order.WarObjective, InitialSoldiers = count, StartedTick = State.Tick, NationId = nation.Id, TargetNationId = order.SubjectId,
                     TargetX = order.X, TargetY = order.Y, TargetSettlementId = (int)order.Value,
                     X = capital.X, Y = capital.Y, FromX = capital.X, FromY = capital.Y,
-                    Soldiers = count, Supplies = provisions, CommanderId = recruits[0].Id,
+                    Soldiers = count, Supplies = provisions, WaterSupplies = waterProvisions, CommanderId = recruits[0].Id,
                     LastOrderTick = order.ObservedTick, LastOrderFactId = order.Id };
                 State.Armies.Add(army);
                 foreach (var resident in recruits.Take(count))
@@ -111,11 +113,14 @@ public sealed partial class WorldEngine
             }
             foreach (var soldier in soldiers)
             {
+                if (State.Rules.Thirst && Distance(soldier.X, soldier.Y, army.X, army.Y) <= 2 && soldier.Inventory.Water < .025)
+                { var water = Math.Min(army.WaterSupplies, .125); army.WaterSupplies -= water; soldier.Inventory.Water += water; }
+                DrinkCarriedWater(soldier);
                 if (!State.Rules.Hunger) soldier.Hunger = 0;
-                else if (Distance(soldier.X, soldier.Y, army.X, army.Y) <= 2 && army.Supplies >= 0.08)
-                { army.Supplies -= 0.08; soldier.Hunger = Math.Max(0, soldier.Hunger - 3); }
+                else if (Distance(soldier.X, soldier.Y, army.X, army.Y) <= 2 && army.Supplies >= 0.06)
+                { army.Supplies -= 0.06; soldier.Hunger = Math.Max(0, soldier.Hunger - 3); }
                 else if (soldier.Inventory.Food >= 0.05) { soldier.Inventory.Food -= 0.05; soldier.Hunger = Math.Max(0, soldier.Hunger - 3); }
-                else soldier.Hunger = Math.Min(100, soldier.Hunger + 2);
+                else soldier.Hunger = Math.Min(100, soldier.Hunger + .8);
             }
             var depot = State.Settlements.FirstOrDefault(s => s.NationId == army.NationId && Distance(s.X, s.Y, army.X, army.Y) <= 1);
             if (depot is not null && army.Supplies < soldiers.Length * 5)
@@ -123,11 +128,13 @@ public sealed partial class WorldEngine
                 var amount = Math.Min(depot.Resources.Food, soldiers.Length * 5 - army.Supplies);
                 depot.Resources.Food -= amount; army.Supplies += amount;
             }
+            if (depot is not null && army.WaterSupplies < soldiers.Length)
+            { var water = Math.Min(depot.Resources.Water, soldiers.Length * 3 - army.WaterSupplies); depot.Resources.Water -= water; army.WaterSupplies += water; }
             army.Morale = Math.Clamp(army.Morale + (army.Supplies > 0 ? 0.15 : -1.2), 0, 100);
             if (army.Outcome == WarOutcome.None)
             {
                 if (army.InitialSoldiers > 0 && soldiers.Length * 5 <= army.InitialSoldiers * 3) EndCampaign(army, WarOutcome.HeavyLosses, soldiers);
-                else if (army.Morale < 15 || State.Rules.Hunger && army.Supplies <= 0 && soldiers.Average(r => r.Hunger) > 40) EndCampaign(army, WarOutcome.SupplyShortage, soldiers);
+                else if (State.Rules.Thirst && army.WaterSupplies <= 0 && soldiers.Average(r => r.Thirst) > 60 || army.Morale < 15 || State.Rules.Hunger && army.Supplies <= 0 && soldiers.Average(r => r.Hunger) > 40) EndCampaign(army, WarOutcome.SupplyShortage, soldiers);
                 else if (army.BlockedTicks >= 120) EndCampaign(army, WarOutcome.RouteBlocked, soldiers);
                 else if (State.Tick - army.StartedTick >= 720) EndCampaign(army, WarOutcome.Exhausted, soldiers);
             }
@@ -243,15 +250,18 @@ public sealed partial class WorldEngine
         if (localDepot is not null)
         {
             localDepot.Resources.Food += army.Supplies;
+            localDepot.Resources.Water += army.WaterSupplies;
             foreach (var veteran in veterans.Where(r => Distance(r.X, r.Y, localDepot.X, localDepot.Y) <= 2))
                 foreach (var report in veteran.Agent.Memory.Where(f => f.Kind == AgentFactKind.WarReport).ToArray()) ReceiveWarReport(localDepot, report);
         }
         else
         {
             var nearby = veterans.Where(r => Distance(r.X, r.Y, army.X, army.Y) <= 2).ToArray();
-            foreach (var veteran in nearby) veteran.Inventory.Food = Math.Min(1_000_000, veteran.Inventory.Food + army.Supplies / nearby.Length);
+            foreach (var veteran in nearby)
+            { veteran.Inventory.Food = Math.Min(1_000_000, veteran.Inventory.Food + army.Supplies / nearby.Length);
+              veteran.Inventory.Water = Math.Min(1_000_000, veteran.Inventory.Water + army.WaterSupplies / nearby.Length); }
         }
-        army.Supplies = 0;
+        army.Supplies = 0; army.WaterSupplies = 0;
         WorldEvent? homecoming = null;
         if (veterans.Length > 0)
         {
@@ -282,7 +292,7 @@ public sealed partial class WorldEngine
             foreach (var (dx, dy) in Directions)
             {
                 var xx = x + dx; var yy = y + dy;
-                if (!Walkable(xx, yy)) continue;
+                if (!CanTraverseStep(x, y, xx, yy, TravelMode.Foot)) continue;
                 var next = Index(xx, yy); if (previous[next] != -1) continue;
                 previous[next] = current;
                 if (next == goal)
@@ -308,6 +318,8 @@ public sealed partial class WorldEngine
         }
         var tile = State.Tiles[Index(settlement.X, settlement.Y)]; if (tile.SettlementId == settlement.Id) tile.SettlementId = 0;
         State.Conflicts.RemoveAll(c => c.SettlementId == settlement.Id);
+        foreach (var ground in State.Tiles)
+            if (ground.ClaimedSettlementId == settlement.Id) ground.ClaimedSettlementId = 0;
         State.Settlements.Remove(settlement); _settlements.Remove(settlement.Id); _citizens.Remove(settlement.Id);
         State.TradeRoutes.RemoveAll(r => r.FromSettlementId == settlement.Id || r.ToSettlementId == settlement.Id);
         if (_nations.TryGetValue(settlement.NationId, out var nation) && nation.CapitalId == settlement.Id) nation.CapitalId = destination?.Id ?? 0;

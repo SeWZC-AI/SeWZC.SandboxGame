@@ -30,6 +30,7 @@ public sealed partial class MainView : UserControl
     private readonly Border _toolBar = new();
     private readonly Border _timeStatus = new();
     private readonly ComboBox _brushPicker = new() { Width = 100, MinHeight = 36, FontSize = 11 };
+    private readonly StackPanel _bridgeSettings = new() { Orientation = Orientation.Horizontal, Spacing = 8, IsVisible = false };
     private readonly ComboBox _buildMode = new() { Width = 132, MinHeight = 36, FontSize = 11, ItemsSource = new[] { "直接赐予", "居民施工" }, SelectedIndex = 0 };
     private readonly TextBlock _eventText = Text("选择一个文明，观察它的发展", 11, Mint);
     private readonly TextBlock _placementText = Text("", 12);
@@ -76,6 +77,7 @@ public sealed partial class MainView : UserControl
     private string _category = "terrain", _inspectorMode = "overview";
     private (int X, int Y)? _selectedTile;
     private string? _checkpoint;
+    private Task? _prepareEditTask;
     private bool _isCompact;
     private readonly Control _headerStats;
     private readonly TextBlock _brandName = Text("SeWZC. WORLDBOX", 15, null, true);
@@ -89,7 +91,7 @@ public sealed partial class MainView : UserControl
         Background = Ink;
         Focusable = true;
         _map.Engine = _engine;
-        _map.WorldEditing += (_, _) => BeginEdit();
+        _map.PrepareWorldEdit = PrepareEditAsync;
         _map.WorldMutationStarting += (_, _) => _saveCapture?.Cancel();
         _map.WorldEdited += (_, _) => { RefreshUi(true); SetStatus("世界已更新并暂停，可撤销本轮编辑"); };
         _map.TileSelected += (x, y) => { if (_mapPick is not null) FinishMapPick(x, y); else SelectMapObject("tile", x: x, y: y); };
@@ -163,6 +165,11 @@ public sealed partial class MainView : UserControl
         Named(_toolContext, "tool-context"); _toolContext.SelectionChanged += (_, _) => OnToolContextChanged();
         var hint = new StackPanel { Spacing = 2 }; hint.Children.Add(_toolTitle); hint.Children.Add(_toolHint); settings.Children.Add(hint);
         Grid.SetColumn(_toolContext, 1); settings.Children.Add(_toolContext); Grid.SetColumn(_brushPicker, 2); settings.Children.Add(_brushPicker); Grid.SetColumn(_buildMode, 2); settings.Children.Add(_buildMode); toolsPanel.Children.Add(settings);
+        var bridgeDirection = Named(new ComboBox { ItemsSource = new[] { "左右", "上下" }, SelectedIndex = 0, Width = 105 }, "bridge-direction");
+        var bridgeLevel = Named(new ComboBox { ItemsSource = new[] { "1 级：离岸 2 格", "2 级：离岸 4 格", "3 级：离岸 6 格" }, SelectedIndex = 0, Width = 165 }, "bridge-level");
+        bridgeDirection.SelectionChanged += (_, _) => { _map.ConstructionBridgeDirection = (BridgeDirection)Math.Max(0, bridgeDirection.SelectedIndex); _map.CancelPlacement(); };
+        bridgeLevel.SelectionChanged += (_, _) => { _map.ConstructionBridgeLevel = Math.Max(1, bridgeLevel.SelectedIndex + 1); _map.CancelPlacement(); };
+        _bridgeSettings.Children.Add(Text("桥梁", 12)); _bridgeSettings.Children.Add(bridgeDirection); _bridgeSettings.Children.Add(bridgeLevel); toolsPanel.Children.Add(_bridgeSettings);
         var toolBox = _toolBar;
         toolBox.Child = toolsPanel; toolBox.Background = Brush.Parse("#F0172632"); toolBox.BorderBrush = Line; toolBox.BorderThickness = new Thickness(1);
         toolBox.CornerRadius = new CornerRadius(12); toolBox.Padding = new Thickness(6); toolBox.Width = 650;
@@ -280,16 +287,35 @@ public sealed partial class MainView : UserControl
 
     private void TogglePause()
     {
+        if (_prepareEditTask is not null) return;
         _paused = !_paused;
         if (!_paused) _checkpoint = null;
         _map.IsSimulationPaused = _paused || _modal.IsVisible; RefreshUi(true);
     }
-    private void BeginEdit()
+    private async Task PrepareEditAsync()
     {
-        _saveCapture?.Cancel();
-        _paused = true; _map.IsSimulationPaused = true;
-        _checkpoint ??= _engine.ExportJson();
-        RefreshUi();
+        _saveCapture?.Cancel(); _paused = true; _map.IsSimulationPaused = true;
+        if (_checkpoint is not null) return;
+        _prepareEditTask ??= CaptureEditCheckpointAsync();
+        try { await _prepareEditTask; }
+        finally { _prepareEditTask = null; }
+    }
+    private async Task CaptureEditCheckpointAsync()
+    {
+        await _saveGate.WaitAsync();
+        try
+        {
+            SetStatus("正在准备编辑恢复点，地图可继续平移");
+            _lastSaveYield = Stopwatch.GetTimestamp();
+            _checkpoint = await _engine.ExportJsonAsync(YieldDuringSave);
+        }
+        finally { _saveGate.Release(); }
+    }
+    private async Task PrepareReplacementAsync()
+    {
+        if (_prepareEditTask is not null) await _prepareEditTask;
+        _checkpoint = null;
+        await PrepareEditAsync();
     }
     private void RestoreCheckpoint()
     {
@@ -389,25 +415,40 @@ public sealed partial class MainView : UserControl
                 try { json = await App.Storage.LoadAsync(); } finally { _saveGate.Release(); }
                 if (generation != _modalGeneration || !_modal.IsVisible) return;
                 if (json is null) { SetStatus("还没有本机存档"); return; }
-                ReplaceWorld(WorldEngine.ImportJson(json)); CloseModal(); SetStatus("已读取本机存档");
+                await PrepareReplacementAsync(); ReplaceWorld(WorldEngine.ImportJson(json)); CloseModal(); SetStatus("已读取本机存档");
             }
             catch (Exception ex) { SetStatus($"读取失败：{FriendlyError(ex)}"); }
         }));
-        panel.Children.Add(Button("导出世界文件", async () =>
-        {
-            try { if (App.Storage is null) return; await App.Storage.ExportAsync(_engine.ExportJson(), $"worldbox-{_engine.State.Seed}-year{_engine.State.Year}.json"); CloseModal(); SetStatus("已导出世界文件"); }
-            catch (OperationCanceledException) { SetStatus("已取消导出"); }
-            catch (Exception ex) { SetStatus($"导出失败：{FriendlyError(ex)}"); }
-        }));
+        panel.Children.Add(Button("导出世界文件", async () => await ExportWorldAsync()));
         panel.Children.Add(Button("导入世界文件", async () =>
         {
             var generation = _modalGeneration;
-            try { if (App.Storage is null) return; var json = await App.Storage.ImportAsync(); if (json is null || generation != _modalGeneration || !_modal.IsVisible) return; var candidate = WorldEngine.ImportJson(json); ReplaceWorld(candidate); CloseModal(); SetStatus("导入成功，时间已暂停"); }
+            try { if (App.Storage is null) return; var json = await App.Storage.ImportAsync(); if (json is null || generation != _modalGeneration || !_modal.IsVisible) return; var candidate = WorldEngine.ImportJson(json); await PrepareReplacementAsync(); ReplaceWorld(candidate); CloseModal(); SetStatus("导入成功，时间已暂停"); }
             catch (Exception ex) { SetStatus($"导入失败，当前世界未改变：{FriendlyError(ex)}"); }
         }));
         panel.Children.Add(Button("撤销本轮编辑", () => { RestoreCheckpoint(); CloseModal(); }));
         OpenModal(panel);
     }
+    private async Task ExportWorldAsync()
+    {
+        if (App.Storage is null) return;
+        await _saveGate.WaitAsync();
+        using var capture = new CancellationTokenSource();
+        _saving = true;
+        try
+        {
+            _saveCapture = capture; _lastSaveYield = Stopwatch.GetTimestamp();
+            _map.IsSimulationPaused = true;
+            var filename = $"worldbox-{_engine.State.Seed}-year{_engine.State.Year}.json";
+            var json = await _engine.ExportJsonAsync(YieldDuringSave, capture.Token);
+            capture.Token.ThrowIfCancellationRequested(); FinishSaveCapture(capture);
+            await App.Storage.ExportAsync(json, filename); CloseModal(); SetStatus("已导出世界文件");
+        }
+        catch (OperationCanceledException) { SetStatus("已取消导出"); }
+        catch (Exception ex) { SetStatus($"导出失败：{FriendlyError(ex)}"); }
+        finally { FinishSaveCapture(capture); _saving = false; _saveGate.Release(); }
+    }
+
     private async Task SaveAsync(bool manual)
     {
         if (App.Storage is null || !_ready || !manual && (_saving || !_allowAutosave)) return;
@@ -456,11 +497,12 @@ public sealed partial class MainView : UserControl
         panel.Children.Add(Text("世界大小", 12, Muted));
         var size = Named(new ComboBox { ItemsSource = new[] { "小型世界（128 × 128）", "中型世界（256 × 256）" }, SelectedIndex = 1, HorizontalAlignment = HorizontalAlignment.Stretch }, "world-size"); panel.Children.Add(size);
         var life = Named(new CheckBox { Content = Text("播下四个种族，立即开始观察", 12), IsChecked = true }, "world-initial-life"); panel.Children.Add(life);
-        var create = Button("创造世界", () =>
+        var create = Button("创造世界", async () =>
         {
             if (seed.Value is not { } seedNumber || seedNumber != decimal.Truncate(seedNumber)) { SetStatus("种子应为一个有效整数"); return; }
             var seedValue = Integer(seed);
             var dimension = size.SelectedIndex == 0 ? 128 : 256;
+            await PrepareReplacementAsync();
             ReplaceWorld(WorldEngine.Create(seedValue, dimension, dimension, life.IsChecked == true));
             _inspectorMode = "overview"; CloseModal(); SetStatus("新世界已诞生，点击继续让时间开始流动");
         }); create.Background = Mint; create.Foreground = Ink; panel.Children.Add(create); OpenModal(panel);
@@ -469,7 +511,7 @@ public sealed partial class MainView : UserControl
     {
         _saveCapture?.Cancel();
         CancelMapPick();
-        ClearMapSelection(); _checkpoint = _engine.ExportJson(); _engine = engine; _paused = true; _accumulator = 0; _selectedTile = null; _selectedNationId = 0;
+        ClearMapSelection(); _checkpoint ??= _engine.ExportJson(); _engine = engine; _paused = true; _accumulator = 0; _selectedTile = null; _selectedNationId = 0;
         _lastStepMilliseconds = _lastMapRefreshMilliseconds = 0;
         _allowAutosave = true;
         _inspectorMode = "overview"; _selectedResidentId = 0; _navigation.Clear(); _watched.Clear(); _historyWatchedOnly = false; _eventDetailId = 0; InvalidateInspector();
@@ -506,7 +548,7 @@ public sealed partial class MainView : UserControl
         var other = Named(new ComboBox { ItemsSource = others.Select(n => n.Name).ToArray(), SelectedIndex = others.Count > 0 ? 0 : -1, HorizontalAlignment = HorizontalAlignment.Stretch }, "nation-diplomacy-target");
         var diplomacy = Named(new ComboBox { ItemsSource = new[] { "保持现有关系", "和平", "结盟", "宣战" }, SelectedIndex = 0, HorizontalAlignment = HorizontalAlignment.Stretch }, "nation-diplomacy");
         if (others.Count > 0) { panel.Children.Add(Text("与另一个国家的关系", 12, Muted)); panel.Children.Add(other); panel.Children.Add(diplomacy); }
-        panel.Children.Add(Button("应用变更", () =>
+        panel.Children.Add(Button("应用变更", async () =>
         {
             var values = new double?[AdvancementRules.Resources.Count];
             if (string.IsNullOrWhiteSpace(name.Text) || name.Text.Any(char.IsControl)) { SetStatus("请输入不含控制字符的国家名称"); return; }
@@ -518,26 +560,26 @@ public sealed partial class MainView : UserControl
                 if (value is < 0 or > 1_000_000) { SetStatus("修改后的资源须在 0 到 1,000,000 之间"); return; }
                 values[i] = value;
             }
-            BeginEdit(); _engine.RenameNation(nationId, name.Text.Trim()); _engine.SetNationResources(nationId, values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9], values[10], values[11]);
+            await PrepareEditAsync(); _engine.RenameNation(nationId, name.Text.Trim()); _engine.SetNationResources(nationId, values[0], values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9], values[10], values[11], values[12]);
             _engine.SetDevelopmentFocus(nationId, (DevelopmentFocus)focus.SelectedIndex);
             _engine.SetNationColor(nationId, color); _engine.SetNationTechnology(nationId, technology.SelectedIndex + 1);
             if (diplomacy.SelectedIndex > 0 && other.SelectedIndex >= 0) _engine.SetDiplomacy(nationId, others[other.SelectedIndex].Id, diplomacy.SelectedIndex switch { 2 => DiplomaticStatus.Allied, 3 => DiplomaticStatus.War, _ => DiplomaticStatus.Neutral });
             CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("国家已更新");
         }));
         panel.Children.Add(new Border { Height = 1, Background = Line });
-        panel.Children.Add(Button("绘制这个国家的领土", () =>
+        panel.Children.Add(Button("绘制这个国家的领土", async () =>
         {
-            CloseModal(); BeginEdit(); _map.SelectedNationId = nationId; _map.ActiveTool = "territory";
+            CloseModal(); await PrepareEditAsync(); _map.SelectedNationId = nationId; _map.ActiveTool = "territory";
             SetCategory("terrain"); _map.SelectedNationId = nationId; _map.ActiveTool = "territory";
             _toolTitle.Text = "划定疆域"; _toolHint.Text = "绘制陆地归属，覆盖聚落会一并转移";
             _mobilePanel = false; ApplyLayout(); SetStatus("领土编辑中，覆盖聚落会转移其居民与库存；支持撤销");
         }));
         panel.Children.Add(Text("向首都添加居民（每次 12 人）", 12, Muted));
         var people = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        foreach (var race in Enum.GetValues<RaceKind>()) people.Children.Add(Button(RaceName(race), () =>
+        foreach (var race in Enum.GetValues<RaceKind>()) people.Children.Add(Button(RaceName(race), async () =>
         {
             var capital = _engine.State.Settlements.First(s => s.Id == nation.CapitalId);
-            BeginEdit(); _engine.SpawnResidents(capital.X, capital.Y, race, 12); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("新居民已加入这个国家");
+            await PrepareEditAsync(); _engine.SpawnResidents(capital.X, capital.Y, race, 12); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("新居民已加入这个国家");
         }));
         panel.Children.Add(people);
         var towns = _engine.State.Settlements.Where(s => s.NationId == nationId).ToList();
@@ -545,11 +587,11 @@ public sealed partial class MainView : UserControl
         {
             panel.Children.Add(Text("选择一处聚落独立建国", 12, Muted));
             var townPicker = new ComboBox { ItemsSource = towns.Select(t => t.Name).ToArray(), SelectedIndex = 0, HorizontalAlignment = HorizontalAlignment.Stretch }; panel.Children.Add(townPicker);
-            panel.Children.Add(Button("让聚落独立", () =>
+            panel.Children.Add(Button("让聚落独立", async () =>
             {
                 try
                 {
-                    BeginEdit(); var town = towns[townPicker.SelectedIndex]; var newName = town.Name.Length > 36 ? town.Name[..36] : town.Name;
+                    await PrepareEditAsync(); var town = towns[townPicker.SelectedIndex]; var newName = town.Name.Length > 36 ? town.Name[..36] : town.Name;
                     _selectedNationId = _engine.SplitSettlement(town.Id, newName + "国"); _inspectorMode = "nation";
                     CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("一个新的国家诞生了");
                 }
@@ -644,7 +686,7 @@ public sealed partial class MainView : UserControl
         var stack = new StackPanel { Spacing = 6 }; stack.Children.Add(Text(label, 10, Muted)); stack.Children.Add(Text(value, 28, Mint, true)); stack.Children.Add(Text(hint, 9, Muted)); return Card(stack);
     }
     private static string RaceName(RaceKind race) => race switch { RaceKind.Human => "人类", RaceKind.Elf => "精灵", RaceKind.Dwarf => "矮人", _ => "兽人" };
-    private static string TerrainName(TerrainType terrain) => terrain switch { TerrainType.DeepWater => "深海", TerrainType.Water => "浅海", TerrainType.Sand => "沙地", TerrainType.Grass => "草地", TerrainType.Forest => "森林", TerrainType.Mountain => "山脉", TerrainType.Snow => "雪原", TerrainType.Hills => "丘陵", TerrainType.Wetland => "湿地", TerrainType.Desert => "荒漠", TerrainType.River => "河流", _ => "苔原" };
+    private static string TerrainName(TerrainType terrain) => terrain switch { TerrainType.DeepWater => "深海", TerrainType.Water => "浅海", TerrainType.Sand => "沙地", TerrainType.Grass => "草地", TerrainType.Forest => "森林", TerrainType.Mountain => "山脉", TerrainType.Snow => "雪原", TerrainType.Hills => "丘陵", TerrainType.Wetland => "湿地", TerrainType.Desert => "荒漠", TerrainType.River => "河流", TerrainType.Lake => "湖泊", TerrainType.DryFertile => "缺水但肥沃", _ => "苔原" };
     private static string ProfessionName(Profession job) => job switch { Profession.Child => "孩童", Profession.Farmer => "农民", Profession.Lumberjack => "伐木工", Profession.Miner => "矿工", Profession.Soldier => "战士", Profession.Builder => "建造者", Profession.Trader => "商人", Profession.Messenger => "信使", Profession.Representative => "代表", Profession.Scholar => "学者", _ => "法师" };
     private static string ActivityName(ResidentActivity activity) => activity switch { ResidentActivity.Wandering => "探索土地", ResidentActivity.Working => "正在工作", ResidentActivity.Hungry => "寻找食物", ResidentActivity.Marching => "正在行军", ResidentActivity.Sick => "正在养病", ResidentActivity.Eating => "正在进食", ResidentActivity.Resting => "正在休息", ResidentActivity.Talking => "交换消息", ResidentActivity.Delivering => "执行运输", ResidentActivity.Studying => "正在学习", ResidentActivity.Casting => "正在施法", _ => "躲避危险" };
 

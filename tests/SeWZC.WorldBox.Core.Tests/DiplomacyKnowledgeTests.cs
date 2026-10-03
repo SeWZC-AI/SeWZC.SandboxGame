@@ -199,7 +199,7 @@ internal static class DiplomacyKnowledgeTests
     {
         var engine = WorldEngine.Create(223, 64, 64, false);
         foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 80; tile.ResourceAmount = 100; }
-        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Disease = false,
+        engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
             Construction = false, Research = false, Expansion = false, Trade = false, Wars = true, Alliances = false,
             Peace = false, Migration = false, Secession = false, Conflict = 3 }, false, false);
         foreach (var (x, population) in locations) engine.SpawnResidents(x, 24, RaceKind.Human, population);

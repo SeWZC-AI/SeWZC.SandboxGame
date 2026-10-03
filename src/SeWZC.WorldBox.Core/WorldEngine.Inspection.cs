@@ -18,7 +18,7 @@ public sealed partial class WorldEngine
         BuildingKind.SignalTower => "无线通信设施，需要电气化和信号网络、健康的建筑与实际值守人员。接入距离 12 格，塔间 24 格，山脉阻挡信号。",
         BuildingKind.ArcaneSanctum => "具备天赋的居民到场训练魔法，消耗粮食并受开放魔法发展规则限制。",
         BuildingKind.Infirmary => "工作人员在现场治疗附近受伤或患病居民，治疗受粮食和实际距离限制。",
-        BuildingKind.Bridge => "完工后让居民通过此格浅水或河流。桥梁损毁会恢复阻水，需要逐格延伸跨越宽河。",
+        BuildingKind.Bridge => "只允许沿左右或上下方向通行。各等级有离自然岸距离上限，同向逐段施工，不能借桥段重置离岸距离。可升级或安排改向。",
         BuildingKind.MountainPass => "完工后开放山地步行通道，山路仍比平地耗时，连接相邻可通行道路才能使用。",
         _ => "居民从家园领取实际原料，抵达设施加工，产物随身带回。运营需要当地掌握对应研究及其前置。\n" + ProductionRecipe(kind)
     };
@@ -45,7 +45,7 @@ public sealed partial class WorldEngine
         if (person is null || person.Health <= 0) return "已离世，保留生平记录";
         var goal = person.Agent.Goal;
         var exploringRoutes = goal.Kind == AgentGoalKind.Explore && person.Profession is Profession.Trader or Profession.Messenger or Profession.Representative;
-        var facility = State.Society.Buildings.FirstOrDefault(b => b.Id == goal.TargetEntityId);
+        var facility = goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic ? State.Society.Buildings.FirstOrDefault(b => b.Id == goal.TargetEntityId) : null;
         if (goal.Kind == AgentGoalKind.Work && facility is { IsCompleted: true } && facility.SettlementId == person.SettlementId
             && AdvancementRules.For(facility.Kind) is { } recipe && _settlements.TryGetValue(person.SettlementId, out var home))
         {
@@ -65,7 +65,9 @@ public sealed partial class WorldEngine
         var current = moving ? $"正在前往{destination}（{TravelModeName(person.TravelMode)}）" : goal.Kind switch
         {
             AgentGoalKind.Explore => exploringRoutes ? "正在实地寻找其他聚落与可通行路线" : "正在实地勘察可采材料",
-            AgentGoalKind.Work => facility is null ? person.Profession == Profession.Lumberjack ? "正在采伐木材" : person.Profession == Profession.Miner ? "正在采收石材与矿石" : "正在采收粮食" : facility.IsCompleted ? facility.Kind == BuildingKind.Academy ? "正在研究" + (State.Society.Research.First(r => r.SettlementId == facility.SettlementId).ActiveProject is { } active ? ResearchName(active) : "当地待立项课题") : facility.Kind == BuildingKind.Farm ? "正在农场耕作和采收粮食" : "正在" + BuildingName(facility.Kind) + "执行" + (person.Profession == Profession.Lumberjack ? "伐木任务" : person.Profession == Profession.Miner ? "采矿任务" : "岗位任务") : "正在施工" + BuildingName(facility.Kind),
+            AgentGoalKind.Work => facility is null ? person.Profession == Profession.Lumberjack ? "正在采伐木材" : person.Profession == Profession.Miner ? "正在采收石材与矿石" : "正在采收粮食" : facility.IsUpgrading ? "正在升级或改向" + BuildingName(facility.Kind) : facility.IsCompleted ? facility.Kind == BuildingKind.Academy ? "正在研究" + (State.Society.Research.First(r => r.SettlementId == facility.SettlementId).ActiveProject is { } active ? ResearchName(active) : "当地待立项课题") : facility.Kind == BuildingKind.Farm ? "正在农场耕作和采收粮食" : "正在" + BuildingName(facility.Kind) + "执行" + (person.Profession == Profession.Lumberjack ? "伐木任务" : person.Profession == Profession.Miner ? "采矿任务" : "岗位任务") : "正在施工" + BuildingName(facility.Kind),
+            AgentGoalKind.ClaimLand => "正在实地登记城镇地盘", AgentGoalKind.FetchWater => "正在河湖岸边打水或实地勘察水源",
+            AgentGoalKind.Hunt => "正在狩猎，实际消耗当地动物数量", AgentGoalKind.Fish => "正在岸边捕鱼，实际消耗鱼群数量",
             AgentGoalKind.Gather => "正在采集可食资源", AgentGoalKind.Eat => "正在家园领取口粮",
             AgentGoalKind.Rest => "正在休息恢复体力", AgentGoalKind.Socialize => "正在与附近居民交流消息",
             AgentGoalKind.Study => "正在学舍推进研究", AgentGoalKind.TrainMagic => "正在进行魔法训练",

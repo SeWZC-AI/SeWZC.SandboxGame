@@ -111,7 +111,7 @@ internal static class PersistenceRegressionTests
     {
         var engine = CreateWorld(14);
         engine.SpawnResidents(44, 32, RaceKind.Elf, 14);
-        engine.ConfigureWorld(new WorldRules { Births = false, Hunger = false, Migration = false, Expansion = false, Secession = false }, false, false);
+        engine.ConfigureWorld(new WorldRules { Births = false, Hunger = false, Thirst = false, Migration = false, Expansion = false, Secession = false }, false, false);
         foreach (var resident in engine.State.Residents)
         {
             var home = engine.State.Settlements.First(t => t.Id == resident.SettlementId);
@@ -176,7 +176,7 @@ internal static class PersistenceRegressionTests
         relation.FirstOpinion = 0; relation.SecondOpinion = 0; relation.Opinion = 0;
         foreach (var army in engine.State.Armies) army.LastOrderFactId = 0;
         var saved = JsonNode.Parse(engine.ExportJson())!;
-        Require(saved["FormatVersion"]!.GetValue<int>() == 8 && saved["SimulationVersion"]!.GetValue<int>() == 8,
+        Require(saved["FormatVersion"]!.GetValue<int>() == 9 && saved["SimulationVersion"]!.GetValue<int>() == 9,
             "New worlds did not explicitly save both current version fields.");
         Require(saved["Diplomacies"]![0]!["FirstOpinion"]?.GetValue<int>() == 0
             && saved["Diplomacies"]![0]!["SecondOpinion"]?.GetValue<int>() == 0
@@ -233,7 +233,7 @@ internal static class PersistenceRegressionTests
         engine.SpawnResidents(44, 32, RaceKind.Elf, 14);
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Disease = false, Construction = false, Research = false,
+            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false, Construction = false, Research = false,
             Expansion = false, Trade = false, Wars = false, Alliances = false, Peace = false, Migration = false, Secession = false
         }, false, false);
         foreach (var resident in engine.State.Residents)

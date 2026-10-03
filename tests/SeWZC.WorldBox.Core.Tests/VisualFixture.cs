@@ -33,7 +33,7 @@ internal static class VisualFixture
                 river.OtherWildlife = new() { Waterfowl = 2 }; river.Wildlife = WildlifeKind.Fish; river.WildlifePopulation = 5;
             }
         }
-        engine.ConfigureWorld(engine.State.Rules with { Births = false, Aging = false, Hunger = false, Disease = false }, false, true);
+        engine.ConfigureWorld(engine.State.Rules with { Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false }, false, true);
         engine.Step(2);
         var json = engine.ExportJson(); _ = WorldEngine.ImportJson(json);
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!); File.WriteAllText(path, json);

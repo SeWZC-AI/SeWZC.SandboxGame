@@ -181,17 +181,16 @@ public sealed partial class WorldEngine
         {
             if ((State.Tick + sender.Id) % 12 != 0 || State.Tick - sender.Agent.LastConversationTick < 6
                 || sender.Health <= 0) continue;
-            var neighbors = _conversationNeighbors;
-            neighbors.Clear();
+            _conversationNeighbors.Clear();
             foreach (var tile in Circle(sender.X, sender.Y, 2))
                 for (var at = _conversationHeads[tile]; at != 0; at = _conversationNext[at - 1])
                 {
                     var neighbor = State.Residents[at - 1];
-                    if (neighbor.Id != sender.Id && neighbor.Health > 0) neighbors.Add(neighbor);
+                    if (neighbor.Id != sender.Id && neighbor.Health > 0) _conversationNeighbors.Add(neighbor);
                 }
-            if (neighbors.Count == 0) continue;
-            neighbors.Sort(ResidentIdOrder);
-            var recipient = neighbors[(int)((State.Tick / 12 + sender.Id) % neighbors.Count)];
+            if (_conversationNeighbors.Count == 0) continue;
+            _conversationNeighbors.Sort(ResidentIdOrder);
+            var recipient = _conversationNeighbors[(int)((State.Tick / 12 + sender.Id) % _conversationNeighbors.Count)];
             var facts = SelectMessageFacts(sender, relay: false);
             if (facts.Count > 0 && State.PendingMessages.Count < MaxPopulation * 2)
                 State.PendingMessages.Add(new PendingMessage { SenderId = sender.Id, RecipientId = recipient.Id, DeliverTick = State.Tick + 1, Facts = facts });
