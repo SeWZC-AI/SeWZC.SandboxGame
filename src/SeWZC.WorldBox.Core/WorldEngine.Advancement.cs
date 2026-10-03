@@ -4,7 +4,7 @@ public sealed partial class WorldEngine
 {
     public string? ResearchPrerequisiteError(int settlementId, ResearchKind kind)
     {
-        if (kind == ResearchKind.SignalNetwork && !HasResearch(settlementId, ResearchKind.Logistics)) return "需要先掌握驿路运输";
+        if (kind == ResearchKind.SignalNetwork && !HasResearch(settlementId, ResearchKind.Electrification)) return "需要先掌握电气化";
         var advancement = AdvancementRules.For(kind);
         if ((kind == ResearchKind.ArcaneArts || advancement?.Magic == true) && !State.Society.MagicEnabled)
             return "世界规则已关闭新的魔法发展";
@@ -16,7 +16,7 @@ public sealed partial class WorldEngine
     public static string ResearchDescription(ResearchKind kind)
     {
         var a = AdvancementRules.For(kind);
-        return a is null ? kind == ResearchKind.SignalNetwork ? "前置：驿路运输；解锁信号塔通信。" : "在已建成学舍由实际到场人员推进。"
+        return a is null ? kind == ResearchKind.SignalNetwork ? "近现代 · 前置：电气化；解锁无线信号塔通信。" : kind == ResearchKind.Logistics ? "古代交通：解锁驿站、桥梁、山路和船坞码头；舟船由居民制造并实际运回。" : "在已建成学舍由实际到场人员推进。"
             : $"{(a.Magic ? "魔法" : "科技")}路线 · {a.Stage}\n前置：{string.Join("、", a.Prerequisites.Select(ResearchName))}\n解锁{a.FacilityName}：{ProductionRecipe(a.Facility)}";
     }
 
@@ -117,6 +117,7 @@ public sealed partial class WorldEngine
         Spend(person.Inventory, a.Input);
         person.Mana -= a.Mana;
         person.Inventory.Set(a.Output, person.Inventory.Get(a.Output) + ProductionYield(building, a));
+        RecordHarvest(State.Tiles[Index(building.X, building.Y)], ProductionYield(building, a));
         building.ProductionBatches = Math.Min(1_000_000_000, building.ProductionBatches + 1);
         if (building.ProductionBatches == 1)
         {

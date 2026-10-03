@@ -38,7 +38,7 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.waitFor(snapshot => snapshot.worldTick >= initialTick + 4, 'ordinary residents choosing work');
         await ui.paused();
         const baseline = await ui.save();
-        assert.equal(baseline.FormatVersion, 6);
+        assert.equal(baseline.FormatVersion, 7);
         assert.equal(baseline.Width, 256);
         assert.equal(baseline.Nations.length, 4);
         const home = baseline.Settlements[0];
@@ -243,7 +243,7 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.waitFor(snapshot => !snapshot.modalOpen && snapshot.status.startsWith('导入成功'), 'valid file import', 30000);
         const imported = await ui.save();
         assert.deepEqual(imported, exported, 'Current-format JSON must round-trip all fields, including explicit zero values');
-        for (const invalidVersion of [1, 2, 3, 4, 5, 999]) {
+        for (const invalidVersion of [1, 2, 3, 4, 5, 6, 999]) {
             const invalidPath = path.join(output, `invalid-${invalidVersion}.json`);
             fs.writeFileSync(invalidPath, JSON.stringify({ ...exported, FormatVersion: invalidVersion }));
             await importFile(invalidPath);

@@ -9,6 +9,7 @@ public sealed partial class WorldEngine
     private readonly List<List<Building>> _localWorkBuildingBuffers = [];
     private readonly List<List<Resident>> _localWorkResidentBuffers = [];
     private bool _localWorkQueriesActive;
+    private readonly Dictionary<int, SettlementResearch> _localResearch = [];
 
     private static List<T> LocalWorkGroup<T>(Dictionary<int, List<T>> groups, List<List<T>> buffers, int settlementId)
     {
@@ -22,6 +23,7 @@ public sealed partial class WorldEngine
 
     private void BeginLocalWorkQueries()
     {
+        foreach (var research in State.Society.Research) _localResearch[research.SettlementId] = research;
         foreach (var building in State.Society.Buildings)
             LocalWorkGroup(_localWorkBuildings, _localWorkBuildingBuffers, building.SettlementId).Add(building);
         foreach (var resident in State.Residents)
@@ -31,7 +33,7 @@ public sealed partial class WorldEngine
 
     private void EndLocalWorkQueries()
     {
-        _localWorkQueriesActive = false;
+        _localWorkQueriesActive = false; _localResearch.Clear();
         foreach (var group in _localWorkBuildings.Values) group.Clear();
         foreach (var group in _localWorkResidents.Values) group.Clear();
         _localWorkBuildings.Clear();
@@ -61,7 +63,8 @@ public sealed partial class WorldEngine
             if (followTarget && resident.Agent.Goal.TargetEntityId != 0 && resident.Agent.Goal.TargetEntityId != building.Id) continue;
             if (building.SettlementId != resident.SettlementId || building.Health <= 0) continue;
             var distance = Distance(resident.X, resident.Y, building.X, building.Y);
-            if (distance > range || !BuildingHasWork(building, resident)) continue;
+            var workRange = range > 1 && building.Kind is BuildingKind.Bridge or BuildingKind.MountainPass ? 24 : range;
+            if (distance > workRange || !BuildingHasWork(building, resident)) continue;
             var priority = WorkPriority(building, resident);
             if (selected is not null && !(priority < bestPriority || priority == bestPriority
                 && (preferNearest && distance < bestDistance

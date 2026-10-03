@@ -50,7 +50,7 @@ public sealed partial class WorldEngine
                     .OrderByDescending(f => f.ObservedTick).ThenByDescending(f => f.Id).FirstOrDefault();
                 if (order is null || order.Kind != AgentFactKind.WarOrder || order.Id <= nation.Military.LastMobilizedOrderId
                     || order.WarObjective == WarObjective.OccupySettlement && State.Tick < nation.Military.RecoveryUntilTick) continue;
-                var recruits = State.Residents.Where(r => r.NationId == nation.Id && r.ArmyId == 0 && r.Age >= 16 && r.Health > 50
+                var recruits = State.Residents.Where(r => r.NationId == nation.Id && r.ArmyId == 0 && r.Age >= 16 && r.Health > 50 && r.TravelMode == TravelMode.Foot
                     && Distance(r.X, r.Y, capital.X, capital.Y) <= 5).ToArray();
                 var count = Math.Min(40, recruits.Length / 2);
                 if (count < 3) { nation.Decision = "当地兵员尚未集结，等待居民返回聚落"; continue; }

@@ -23,7 +23,7 @@ internal static class AdvancementTests
             Construction = false, Research = false, Expansion = false, Trade = false, Wars = false,
             Alliances = false, Peace = false, Migration = false, Secession = false, ResourceRegeneration = false }, false, true);
         var town = engine.State.Settlements[0];
-        town.Resources = new() { Food = 10000, Wood = 10000, Stone = 10000, Ore = 10000 };
+        town.Resources = new() { Food = 10000, Wood = 10000, Stone = 10000, Ore = 10000, Coal = 10000, Oil = 10000, RareEarth = 10000 };
         foreach (var person in engine.State.Residents)
         {
             person.Age = 25; person.Inventory = new() { Food = 1.2 };
@@ -36,7 +36,7 @@ internal static class AdvancementTests
 
     private static void Hold(WorldEngine engine, Resident person, int x, int y)
     {
-        person.X = person.FromX = x; person.Y = person.FromY = y;
+        person.X = person.FromX = x; person.Y = person.FromY = y; person.MoveStartedTick = Math.Max(0, engine.State.Tick - 1); person.MoveDurationTicks = 1;
         person.Agent.Goal = new() { Kind = AgentGoalKind.Rest, TargetX = x, TargetY = y,
             PlayerDirected = true, StartedTick = engine.State.Tick, ReviewTick = engine.State.Tick + 90000 };
     }
@@ -55,6 +55,7 @@ internal static class AdvancementTests
 
     private static void Know(WorldEngine engine, Settlement town, ResearchKind kind)
     {
+        if (kind == ResearchKind.SignalNetwork) Know(engine, town, ResearchKind.Electrification);
         if (AdvancementRules.For(kind) is { } a) foreach (var required in a.Prerequisites) Know(engine, town, required);
         engine.GrantReceivedResearch(town.Id, kind);
     }
@@ -74,7 +75,7 @@ internal static class AdvancementTests
             var (engine, town, worker) = World();
             if (magic) { worker.MagicTalent = 100; worker.MagicTraining = 20; worker.Mana = 100; }
             foreach (var kind in magic ? new[] { ResearchKind.ArcaneArts, ResearchKind.Logistics }
-                         : new[] { ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.SignalNetwork }) Know(engine, town, kind);
+                         : new[] { ResearchKind.Agriculture, ResearchKind.Logistics }) Know(engine, town, kind);
             var academy = Facility(engine, town, BuildingKind.Academy);
             void Supply(ResourceStock cost)
             {
@@ -93,6 +94,7 @@ internal static class AdvancementTests
             }
             foreach (var a in AdvancementRules.All.Where(a => a.Magic == magic))
             {
+                if (a.Research == ResearchKind.Aviation) engine.GrantReceivedResearch(town.Id, ResearchKind.SignalNetwork);
                 Supply(a.ResearchCost);
                 Hold(engine, worker, academy.X, academy.Y); worker.Agent.Goal.TargetEntityId = academy.Id;
                 engine.StartResearch(town.Id, a.Research);
@@ -121,9 +123,9 @@ internal static class AdvancementTests
     {
         var (engine, town, worker) = World(); Know(engine, town, ResearchKind.Industry);
         var building = Facility(engine, town, BuildingKind.Foundry);
-        var wood = town.Resources.Wood; var ore = town.Resources.Ore;
+        var coal = town.Resources.Coal; var ore = town.Resources.Ore;
         SendToWork(engine, worker, building); engine.Step();
-        Check(town.Resources.Wood == wood - 1 && town.Resources.Ore == ore - 2 && worker.Inventory.Ore == 2,
+        Check(town.Resources.Coal == coal - 1 && town.Resources.Ore == ore - 2 && worker.Inventory.Ore == 2,
             "The worker did not physically load one batch of inputs at home.");
         Check(town.Resources.Alloy == 0 && building.ProductionBatches == 0, "Remote factory produced before its carrier arrived.");
         var saved = WorldEngine.ImportJson(engine.ExportJson());
@@ -136,9 +138,9 @@ internal static class AdvancementTests
         Check(engine.ExportJson() == returnSave.ExportJson() && town.Resources.Alloy == 1, "Output failed physical return or deterministic continuation.");
         Check(engine.State.Events.Any(e => e.ResidentId == worker.Id && e.Action == EventAction.Delivery), "First production has no observable event.");
         Hold(engine, worker, town.X, town.Y);
-        town.Resources.Wood = 1 - .0000001; town.Resources.Ore = 2 - .0000001;
+        town.Resources.Coal = 1 - .0000001; town.Resources.Ore = 2 - .0000001;
         SendToWork(engine, worker, building); engine.Step();
-        Check(town.Resources.Wood == 0 && town.Resources.Ore == 0, "Material precision tolerance created negative warehouse stock.");
+        Check(town.Resources.Coal == 0 && town.Resources.Ore == 0, "Material precision tolerance created negative warehouse stock.");
         WorldEngine.ImportJson(engine.ExportJson());
     }
 
@@ -185,8 +187,8 @@ internal static class AdvancementTests
         var (engine, town, worker) = World();
         engine.SpawnResidents(town.X, town.Y, RaceKind.Human, 6);
         foreach (var person in engine.State.Residents) { person.Age = 25; Hold(engine, person, town.X, town.Y); }
-        foreach (var kind in new[] { ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.SignalNetwork }) Know(engine, town, kind);
-        Facility(engine, town, BuildingKind.Academy); Facility(engine, town, BuildingKind.Waystation); Facility(engine, town, BuildingKind.SignalTower);
+        foreach (var kind in new[] { ResearchKind.Agriculture, ResearchKind.Logistics }) Know(engine, town, kind);
+        Facility(engine, town, BuildingKind.Academy); Facility(engine, town, BuildingKind.Waystation);
         engine.ConfigureWorld(engine.State.Rules with { Research = true, Construction = true }, false, false);
         engine.Step(60);
         Check(engine.State.Society.Research.Single(r => r.SettlementId == town.Id).ActiveProject == ResearchKind.Industry,

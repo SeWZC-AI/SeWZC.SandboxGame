@@ -387,7 +387,8 @@ public sealed partial class WorldEngine
             agent.CarriedMessages = agent.Memory.OrderByDescending(f => f.ObservedTick).Take(8).Select(CopyAgentFact).ToList();
             goal.TargetX = address.X; goal.TargetY = address.Y;
         }
-        if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > 1)
+        PrepareJourneyTransport(person, home);
+        if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > 1 || !Walkable(person.X, person.Y))
         {
             MoveAgentTowards(person, goal.TargetX, goal.TargetY);
             person.Activity = ResidentActivity.Delivering;

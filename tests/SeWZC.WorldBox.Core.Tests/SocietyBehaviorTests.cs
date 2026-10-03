@@ -161,7 +161,9 @@ internal static class SocietyBehaviorTests
         var engine = FlatWorld(); var from = engine.State.Settlements.Single();
         engine.SpawnResidents(52, 32, RaceKind.Elf, 16);
         var to = engine.State.Settlements.Last(); engine.TransferTerritory(to.X, to.Y, from.NationId, 0);
-        engine.SetNationResources(from.NationId, 2000, 2000, 2000, 1000);
+        engine.SetNationResources(from.NationId, 2000, 2000, 2000, 1000, 1000, 1000);
+        engine.GrantReceivedResearch(from.Id, ResearchKind.Electrification);
+        engine.GrantReceivedResearch(to.Id, ResearchKind.Electrification);
         var originalCost = engine.GetTerrainMoveCost(17, 33); var stone = from.Resources.Stone;
         engine.BuildRoad(from.Id, 17, 33, 0);
         Check(engine.GetTerrainMoveCost(17, 33) < originalCost && from.Resources.Stone < stone, "Roads did not consume materials and improve physical travel.");

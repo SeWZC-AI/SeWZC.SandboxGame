@@ -86,6 +86,9 @@ class UiDriver {
         for (let i = 0; i < index; i++) await this.page.keyboard.press('ArrowDown');
         await this.page.keyboard.press('Enter');
         await this.waitFor(snapshot => this.control(snapshot, id).value === String(index), `selection in ${id}`);
+        // Choice-dependent descriptions can move fields in a compact dialog. Let the
+        // popup close and Avalonia arrange its new content before the next real tap.
+        await this.page.waitForTimeout(180);
     }
 
     async tilePoint(x, y) {

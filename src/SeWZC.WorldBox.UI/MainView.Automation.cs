@@ -63,6 +63,7 @@ public sealed partial class MainView
             RenderedEffectCount = _map.RenderedEffectCount, RenderedEffectTime = _map.RenderedEffectTime, RenderedRouteSegmentCount = _map.RenderedRouteSegmentCount,
             WorldTick = _engine.State.Tick, SelectedResidentPoint = residentPoint,
             Category = _category, Inspector = _inspectorMode, Status = _status.Text,
+            SelectedBuildingId = _map.SelectedBuildingId, SelectionKind = _mapSelectionKind,
             SelectedResidentId = _selectedResidentId, SelectedNationId = _selectedNationId,
             ModalOpen = _modal.IsVisible, Width = Bounds.Width, Height = Bounds.Height,
             ToolsOpen = _toolsOpen, InspectorOpen = _mobilePanel, PendingPlacement = _map.HasPendingPlacement,
@@ -97,6 +98,8 @@ internal sealed class UiAutomationSnapshot
     public string Category { get; init; } = "";
     public string Inspector { get; init; } = "";
     public string? Status { get; init; }
+    public int? SelectedBuildingId { get; init; }
+    public string? SelectionKind { get; init; }
     public int SelectedResidentId { get; init; }
     public int SelectedNationId { get; init; }
     public bool ModalOpen { get; init; }

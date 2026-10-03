@@ -9,7 +9,8 @@
     "test:stress": "node stress.cjs",
     "test:stories": "node stories.cjs",
     "test:effects": "node effects.cjs",
-    "test:advancement": "node advancement.cjs"
+    "test:advancement": "node advancement.cjs",
+    "test:land": "node land.cjs"
   },
   "devDependencies": {
     "playwright": "1.57.0"

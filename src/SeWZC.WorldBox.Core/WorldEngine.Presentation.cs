@@ -41,13 +41,14 @@ public sealed partial class WorldEngine
             var needsInputs = MissingResources(person.Inventory, production.Input) is not null;
             targetX = needsInputs ? home.X : factory!.X; targetY = needsInputs ? home.Y : factory!.Y;
         }
-        var cursor = new Resident { X = person.X, Y = person.Y, FromX = person.FromX, FromY = person.FromY };
+        var cursor = new Resident { X = person.X, Y = person.Y, FromX = person.FromX, FromY = person.FromY, TravelMode = person.TravelMode };
         var route = new List<RoutePoint> { new(cursor.X, cursor.Y) };
         var visited = new HashSet<int> { Index(cursor.X, cursor.Y) };
         for (var i = 0; i < Math.Clamp(steps, 0, 64); i++)
         {
-            var interactionRange = production is not null || goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest or AgentGoalKind.ReturnHome or AgentGoalKind.Socialize ? 1 : 0;
-            if (Distance(cursor.X, cursor.Y, targetX, targetY) <= interactionRange) break;
+            var interactionRange = production is not null || goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest or AgentGoalKind.ReturnHome or AgentGoalKind.Socialize
+                || goal.TargetEntityId != 0 && State.Society.Buildings.Any(b => b.Id == goal.TargetEntityId && !b.IsCompleted) ? 1 : 0;
+            if (Distance(cursor.X, cursor.Y, targetX, targetY) <= interactionRange && Walkable(cursor.X, cursor.Y)) break;
             var next = SelectAgentStep(cursor, targetX, targetY);
             if (next < 0 || !visited.Add(next)) break;
             cursor.FromX = cursor.X; cursor.FromY = cursor.Y;
