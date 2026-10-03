@@ -1,8 +1,11 @@
 import { dotnet } from './_framework/dotnet.js';
 import * as storage from './storage.js';
 import { installTextInputBridge } from './text-input.js';
+import { installTouchGestures } from './touch-gestures.js';
 
-installTextInputBridge(document.getElementById('out'));
+const root = document.getElementById('out');
+installTouchGestures(root);
+installTextInputBridge(root);
 
 try {
     const runtime = await dotnet.withDiagnosticTracing(false).create();
