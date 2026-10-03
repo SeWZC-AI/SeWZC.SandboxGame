@@ -19,3 +19,5 @@
 这批交付的是到未来制造／以太文明的生产与研究基础路径，不包含现代军种、铁路、电网、星际探索或科技魔法融合。扩展这些系统时仍须落实位置、资源和已知信息约束。
 
 主要实现见 `AdvancementRules.cs`、`WorldEngine.Advancement.cs`；机制场景见 `AdvancementTests.cs`，共享界面和实际浏览器场景分别在 UI 测试与 `tests/browser/advancement.cjs`。实际运行证据见 [验证记录](../verification.md)。配方平衡、默认世界的发展节奏及大规模工人运输需要继续以测量结果调整。
+
+本轮后续由 [ADR-0014](0014-land-and-transport.md) 加入航空、阶段矿藏与格式 7，并将无线信号放到电气化之后；上文保留格式 6 首次引入时的归属。当前配方与前置以 [产品约定](../product.md) 为准。

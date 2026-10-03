@@ -11,6 +11,8 @@ public sealed partial class WorldEngine
         {
             var tile = State.Tiles[index];
             tile.Terrain = terrain;
+            tile.Improvement = LandImprovement.None; tile.RoadLevel = 0;
+            tile.LastHarvestTick = 0; tile.Harvested = 0; SeedDeposit(tile, index % State.Width, index / State.Width);
             tile.Fertility = TerrainRules.Fertility(terrain);
             tile.ResourceAmount = 100;
             tile.Elevation = (byte)(terrain switch { TerrainType.DeepWater => 10, TerrainType.Water => 50, TerrainType.Sand => 75, TerrainType.Mountain => 210, TerrainType.Snow => 240, _ => 110 });
@@ -90,7 +92,7 @@ public sealed partial class WorldEngine
             {
                 var tile = State.Tiles[index];
                 if (!tile.IsWalkable) continue;
-                tile.Terrain = TerrainType.Sand; tile.Fertility = 5; tile.ResourceAmount = 0; tile.RoadLevel = 0;
+                tile.Terrain = TerrainType.Sand; tile.Improvement = LandImprovement.None; tile.Fertility = 5; tile.ResourceAmount = 0; tile.RoadLevel = 0;
                 tile.FireTicks = 12; _burningTiles.Add(index);
             }
             foreach (var resident in State.Residents.Where(r => Distance(r.X, r.Y, x, y) <= radius))
@@ -116,10 +118,10 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Editor, $"{previous}更名为{name}。");
     }
 
-    public void SetNationResources(int nationId, double? food = null, double? wood = null, double? stone = null, double? ore = null, double? alloy = null, double? energyCells = null, double? crystals = null)
+    public void SetNationResources(int nationId, double? food = null, double? wood = null, double? stone = null, double? ore = null, double? alloy = null, double? energyCells = null, double? crystals = null, double? coal = null, double? oil = null, double? rareEarth = null, double? boats = null, double? aircraft = null)
     {
         if (!_nations.ContainsKey(nationId)) throw new ArgumentException("国家不存在。", nameof(nationId));
-        var amounts = new[] { food, wood, stone, ore, alloy, energyCells, crystals };
+        var amounts = new[] { food, wood, stone, ore, alloy, energyCells, crystals, coal, oil, rareEarth, boats, aircraft };
         if (amounts.Any(v => v.HasValue && (!double.IsFinite(v.Value) || v.Value < 0 || v.Value > 1_000_000))) throw new ArgumentOutOfRangeException(nameof(food), "资源须在 0 到 1,000,000 之间。");
         if (amounts.All(v => !v.HasValue)) return;
         var towns = State.Settlements.Where(s => s.NationId == nationId).ToArray();
@@ -133,6 +135,11 @@ public sealed partial class WorldEngine
             if (alloy is { } a) town.Resources.Alloy = a / towns.Length;
             if (energyCells is { } e) town.Resources.EnergyCells = e / towns.Length;
             if (crystals is { } c) town.Resources.Crystals = c / towns.Length;
+            if (coal is { } co) town.Resources.Coal = co / towns.Length;
+            if (oil is { } oi) town.Resources.Oil = oi / towns.Length;
+            if (rareEarth is { } re) town.Resources.RareEarth = re / towns.Length;
+            if (boats is { } bo) town.Resources.Boats = bo / towns.Length;
+            if (aircraft is { } ai) town.Resources.Aircraft = ai / towns.Length;
         }
         RefreshTotals();
         AddEvent(WorldEventKind.Editor, $"{_nations[nationId].Name}的资源储备已调整。");
@@ -192,7 +199,7 @@ public sealed partial class WorldEngine
         }
         foreach (var resident in State.Residents)
         {
-            if (Walkable(resident.X, resident.Y)) continue;
+            if (CanTraverse(State.Tiles[Index(resident.X, resident.Y)], resident.TravelMode)) continue;
             var position = FindWalkable(resident.X, resident.Y, 10);
             if (position >= 0) { resident.X = position % State.Width; resident.Y = position / State.Width; resident.Health -= 15; }
             else resident.Health = 0;

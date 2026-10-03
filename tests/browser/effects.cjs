@@ -31,6 +31,7 @@ async function samples(page, duration) {
         await ui.selectIndex('world-size', 0, modal); await ui.click('world-initial-life', modal); await ui.click('world-create-apply');
         await ui.tool('terrain', 'Forest'); await ui.clickTile(64, 64); await ui.click('tool-suspend');
         await ui.clickTile(64, 64);
+        await ui.click('selection-view');
         await ui.click('tile-edit', inspector); await ui.fill('tile-resources', 155, modal);
         await ui.fill('tile-fertility', 75, modal); await ui.fill('tile-road', 2, modal); await ui.click('tile-apply', modal);
         let world = await ui.save();

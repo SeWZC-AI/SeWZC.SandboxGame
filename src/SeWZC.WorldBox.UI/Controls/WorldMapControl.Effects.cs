@@ -177,12 +177,13 @@ public sealed partial class WorldMapControl
         // Only visible residents get detailed geometry; world overview retains batched silhouettes.
         foreach (var resident in state.Residents)
         {
-            var position = _residentMotion.TryGetValue(resident.Id, out var motion) ? motion.Position(_renderFrameTime) : new Point(resident.X, resident.Y);
+            var position = _residentMotion.TryGetValue(resident.Id, out var motion) ? motion.Position(_renderMotionTime) : new Point(resident.X, resident.Y);
             var x = (position.X + .5) * TilePixels; var y = (position.Y + .5) * TilePixels;
             if (!Visible(new Rect(x - 5, y - 7, 10, 12))) continue;
+            if (ShowVehicle(resident)) continue;
             var child = resident.Age < 14;
             var tall = child ? .68 : resident.Race == RaceKind.Dwarf ? .82 : resident.Race == RaceKind.Elf ? 1.15 : 1;
-            var moving = motion?.IsMoving(_renderFrameTime) == true;
+            var moving = motion?.IsMoving(_renderMotionTime) == true;
             var gait = moving ? Math.Sin(_renderFrameTime * 12 + resident.Id) * .6 : 0;
             void Box(IBrush brush, double dx, double dy, double w, double h) => context.DrawRectangle(brush, null, new Rect(x + dx, y + dy * tall, w, h * tall));
             context.DrawEllipse(ShadowBrush, null, new Point(x, y + 2.7), 2.2, .7);

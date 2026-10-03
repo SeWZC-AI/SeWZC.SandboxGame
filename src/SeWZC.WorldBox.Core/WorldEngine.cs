@@ -58,8 +58,12 @@ public sealed partial class WorldEngine
 
     private void Reindex()
     {
-        _settlements.Clear(); _nations.Clear(); _citizens.Clear();
-        foreach (var settlement in State.Settlements) { _settlements[settlement.Id] = settlement; _citizens[settlement.Id] = []; }
+        _settlements.Clear(); _nations.Clear();
+        foreach (var group in _citizens.Values) group.Clear();
+        foreach (var settlement in State.Settlements)
+        { _settlements[settlement.Id] = settlement; if (!_citizens.ContainsKey(settlement.Id)) _citizens[settlement.Id] = []; }
+        if (_citizens.Count != _settlements.Count)
+            foreach (var id in _citizens.Keys.Where(id => !_settlements.ContainsKey(id)).ToArray()) _citizens.Remove(id);
         foreach (var nation in State.Nations) _nations[nation.Id] = nation;
         foreach (var person in State.Residents)
             if (_citizens.TryGetValue(person.SettlementId, out var list)) list.Add(person);
@@ -144,12 +148,13 @@ public sealed partial class WorldEngine
             var fine = Noise(x / 7.0, y / 7.0, 71);
             var elevation = 0.75 - radial * 0.58 + (broad - 0.5) * 0.48 + (fine - 0.5) * 0.10;
             var moisture = Noise(x / 15.0, y / 15.0, 311);
-            var terrain = elevation < 0.20 ? TerrainType.DeepWater : elevation < 0.27 ? TerrainType.Water : elevation < 0.31 ? TerrainType.Sand : elevation > 0.76 ? TerrainType.Snow : elevation > 0.66 ? TerrainType.Mountain : elevation > 0.57 ? TerrainType.Hills : Math.Abs(ny) > 0.64 ? TerrainType.Tundra : moisture < 0.29 ? TerrainType.Desert : moisture > 0.72 && elevation < 0.43 ? TerrainType.Wetland : moisture > 0.54 ? TerrainType.Forest : TerrainType.Grass;
+            var terrain = elevation < 0.20 ? TerrainType.DeepWater : elevation < 0.27 ? TerrainType.Water : elevation < 0.31 ? TerrainType.Sand : elevation > 0.76 ? TerrainType.Snow : elevation > 0.70 ? TerrainType.Mountain : elevation > 0.57 ? TerrainType.Hills : Math.Abs(ny) > 0.64 ? TerrainType.Tundra : moisture < 0.29 ? TerrainType.Desert : moisture > 0.72 && elevation < 0.43 ? TerrainType.Wetland : moisture > 0.54 ? TerrainType.Forest : TerrainType.Grass;
             if (elevation is > 0.30 and < 0.61 && Math.Abs(nx - 0.22 * Math.Sin(ny * 7 + State.Seed * 0.003)) < 0.014)
                 terrain = TerrainType.River;
             State.Tiles[Index(x, y)] = new Tile { Terrain = terrain, Elevation = (byte)Math.Clamp(elevation * 255, 0, 255), Fertility = TerrainRules.Fertility(terrain), ResourceAmount = terrain is TerrainType.Desert or TerrainType.Sand ? 55 : terrain == TerrainType.Wetland ? 150 : 100 };
-
+            SeedDeposit(State.Tiles[Index(x, y)], x, y);
         }
+        LimitMountainRanges();
     }
 
     private double Noise(double x, double y, int salt)
@@ -178,6 +183,7 @@ public sealed partial class WorldEngine
             nation.Resources.Stone += settlement.Resources.Stone; nation.Resources.Ore += settlement.Resources.Ore;
             nation.Resources.Alloy += settlement.Resources.Alloy; nation.Resources.EnergyCells += settlement.Resources.EnergyCells;
             nation.Resources.Crystals += settlement.Resources.Crystals;
+            foreach (var kind in MineralAndVehicleResources) nation.Resources.Set(kind, nation.Resources.Get(kind) + settlement.Resources.Get(kind));
         }
         foreach (var tile in State.Tiles)
             if (_nations.TryGetValue(tile.NationId, out var nation)) nation.Territory++;

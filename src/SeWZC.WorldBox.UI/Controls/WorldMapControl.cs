@@ -135,6 +135,7 @@ public sealed partial class WorldMapControl : Control
         }
         RebuildChangedChunks();
         _labelSettlements = Engine.State.Settlements.OrderByDescending(settlement => settlement.Population).ToArray();
+        _relayOverlayDirty = true;
         CaptureEffects();
         CaptureSelectedRoute();
         CaptureMotionSnapshots();
@@ -187,9 +188,9 @@ public sealed partial class WorldMapControl : Control
         context.DrawRectangle(OceanBrush, null, new Rect(Bounds.Size));
         if (Engine is null || !_cameraReady) return;
         var state = Engine.State;
-        _renderFrameTime = PresentationTime;
+        _renderFrameTime = PresentationTime; _renderMotionTime = MotionTime;
         RenderedEffectCount = 0; RenderedRouteSegmentCount = 0;
-        FollowResident(_renderFrameTime);
+        FollowResident(_renderMotionTime);
         if (_residentGeometryDirty || _geometryZoom != _zoom || _geometryOrigin != _origin)
             RebuildResidents();
         using (context.PushClip(new Rect(Bounds.Size)))
@@ -218,11 +219,12 @@ public sealed partial class WorldMapControl : Control
                     if (_magicGeometry is not null) context.DrawGeometry(ArcaneBrush, null, _magicGeometry);
                 }
                 DrawCloseDetails(context, state);
+                DrawVehicles(context, state);
                 DrawFires(context, _renderFrameTime);
                 DrawEffects(context);
                 foreach (var army in state.Armies)
                 {
-                    var position = _armyMotion.TryGetValue(army.Id, out var motion) ? motion.Position(_renderFrameTime) : new Point(army.X, army.Y);
+                    var position = _armyMotion.TryGetValue(army.Id, out var motion) ? motion.Position(_renderMotionTime) : new Point(army.X, army.Y);
                     var x = position.X * TilePixels + 4;
                     var y = position.Y * TilePixels;
                     context.DrawRectangle(WoodBrush, null, new Rect(x, y - 10, 1.3, 11));
@@ -474,7 +476,7 @@ public sealed partial class WorldMapControl : Control
     private void RebuildResidents()
     {
         if (Engine is null) return;
-        var now = _renderFrameTime;
+        var now = _renderMotionTime;
         _renderedResidentPoints.Clear();
         var heads = _zoom >= .7 ? new StreamGeometry() : null;
         using var headContext = heads?.Open();
@@ -500,6 +502,7 @@ public sealed partial class WorldMapControl : Control
                 _renderedResidentPoints[resident.Id] = ToScreen((position.X + .5) * TilePixels, (position.Y + .5) * TilePixels);
                 if (!Visible(new Rect(x - 2, y - 3, 6, 7))) continue;
                 var race = Math.Clamp((int)resident.Race, 0, 3);
+                if (ShowVehicle(resident)) continue;
                 GeometryRect(contexts[race], x, y, resident.Profession == Profession.Soldier ? 2.6 : 1.8, 2.4);
                 if (headContext is not null) GeometryRect(headContext, x, y - 1.4, 1.8, 1.4);
                 if (_zoom < .35) continue;
@@ -797,9 +800,9 @@ public sealed partial class WorldMapControl : Control
 
     private void SelectTile(Point point)
     {
-        if (!PickingLocation && SelectResidentAt(point)) return;
+        if (!PickingLocation && SelectObjectAt(point)) return;
         if (!TryTile(point, out var tile)) return;
-        ClearResidentSelection();
+        ClearMapSelection();
         _selection = tile;
         TileSelected?.Invoke(tile.X, tile.Y);
         InvalidateVisual();
