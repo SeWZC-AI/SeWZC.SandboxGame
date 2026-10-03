@@ -641,7 +641,7 @@ public sealed partial class WorldEngine
             if (!InBounds(building.X, building.Y) || !townIds.Contains(building.SettlementId)) { building.Health = 0; continue; }
             var tile = State.Tiles[Index(building.X, building.Y)];
             if (!BuildingTerrainValid(building.Kind, tile)) building.Health = 0;
-            else if (tile.FireTicks > 0) building.Health = Math.Max(0, building.Health - 1.5);
+            else if (tile.FireTicks > 0) building.Health = Math.Max(0, building.Health - 1.5 * BuildingFlammability(building));
             building.Workers.RemoveAll(id => !liveResidents.Contains(id));
         }
         var crossingCollapsed = RemoveFailedCrossings();

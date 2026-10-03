@@ -341,6 +341,8 @@ public sealed partial class WorldEngine
         foreach (var person in State.Residents.Where(r => r.Age >= 16 && r.ArmyId == 0 && r.Hunger > 65 && r.Agent.DestinationSettlementId == 0
                      && !r.Agent.Goal.PlayerDirected && r.Agent.Goal.Kind != AgentGoalKind.Migrate).OrderBy(r => r.Id).ToArray())
         {
+            if (person.Agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Hunt or AgentGoalKind.Fish
+                && person.Inventory.Food < FoodUse(person) * 8) continue;
             var destination = person.Agent.Memory.Where(f => f.Kind == AgentFactKind.FoodSupply && f.SubjectId != person.SettlementId
                     && f.Value > 50 && AgentFactReliability(f) >= .5).OrderByDescending(f => f.Value).FirstOrDefault();
             if (destination is null || !_settlements.TryGetValue(destination.SubjectId, out var town)) continue;

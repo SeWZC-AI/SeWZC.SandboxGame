@@ -26,6 +26,7 @@ internal static class DevelopmentDiagnostics
             foreach (var nation in engine.State.Nations) engine.SetDevelopmentFocus(nation.Id, args.Contains("--technology") ? DevelopmentFocus.Technology : DevelopmentFocus.MagicPractice);
         var samples = new List<object>();
         var observedEvents = new Dictionary<int, WorldEvent>();
+        var observedDeaths = new Dictionary<int, Resident>();
         var elapsed = Stopwatch.StartNew();
         Sample();
         for (var completed = 0; completed < ticks; completed += 120)
@@ -40,7 +41,8 @@ internal static class DevelopmentDiagnostics
         File.WriteAllText(Path.Combine(output, "report.json"), JsonSerializer.Serialize(new
         {
             seed, size, ticks, disasters = engine.State.NaturalDisasters, elapsedSeconds = elapsed.Elapsed.TotalSeconds,
-            saveBytes = Encoding.UTF8.GetByteCount(save), samples, observedEvents = observedEvents.Values
+            saveBytes = Encoding.UTF8.GetByteCount(save), samples, observedEvents = observedEvents.Values,
+            deaths = observedDeaths.Values.Select(r => new { r.Id, cause = r.DeathCause.ToString(), r.DeathTick, r.SettlementId, r.X, r.Y })
         }, new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
         Console.WriteLine($"Report and validated final save: {output}");
         return 0;
@@ -49,6 +51,7 @@ internal static class DevelopmentDiagnostics
         {
             var state = engine.State;
             foreach (var entry in state.Events) observedEvents.TryAdd(entry.Id, entry);
+            foreach (var resident in state.ArchivedResidents) observedDeaths.TryAdd(resident.Id, resident);
             var towns = state.Settlements.Select(town =>
             {
                 var people = state.Residents.Where(p => p.SettlementId == town.Id).ToArray();
@@ -56,9 +59,9 @@ internal static class DevelopmentDiagnostics
                 return new
                 {
                     town.Id, town.Name, town.NationId, focus = engine.GetDevelopmentFocus(town.Id).ToString(), town.X, town.Y, town.Population, town.Housing, town.Level,
-                    stock = new { town.Resources.Food, town.Resources.Wood, town.Resources.Stone, town.Resources.Ore },
+                    stock = new { town.Resources.Food, town.Resources.Water, town.Resources.Wood, town.Resources.Stone, town.Resources.Ore },
                     policy = engine.GetLocalPolicy(town.Id).ToString(),
-                    hunger = people.Average(p => p.Hunger), health = people.Average(p => p.Health),
+                    hunger = people.Average(p => p.Hunger), thirst = people.Average(p => p.Thirst), health = people.Average(p => p.Health),
                     fatigue = people.Average(p => p.Agent.Fatigue), children = people.Count(p => p.Age < 14),
                     foodCarried = people.Sum(p => p.Inventory.Food),
                     goals = people.GroupBy(p => p.Agent.Goal.Kind).ToDictionary(g => g.Key.ToString(), g => g.Count()),
@@ -76,7 +79,8 @@ internal static class DevelopmentDiagnostics
             Console.WriteLine($"tick={state.Tick} population={state.Population} settlements={towns.Length} " +
                 $"buildings={state.Society.Buildings.Count} research={state.Society.Research.Sum(r => r.Completed.Count)} " +
                 $"food={state.Settlements.Sum(t => t.Resources.Food):F1} wood={state.Settlements.Sum(t => t.Resources.Wood):F1} " +
-                $"stone={state.Settlements.Sum(t => t.Resources.Stone):F1} hungry={state.Residents.Count(p => p.Hunger > 60)}");
+                $"stone={state.Settlements.Sum(t => t.Resources.Stone):F1} hungry={state.Residents.Count(p => p.Hunger > 60)} " +
+                $"thirsty={state.Residents.Count(p => p.Thirst > 80)} deaths={observedDeaths.Count}");
         }
     }
 }

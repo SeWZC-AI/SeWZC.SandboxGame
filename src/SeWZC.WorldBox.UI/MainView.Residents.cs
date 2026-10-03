@@ -158,7 +158,7 @@ public sealed partial class MainView
                 for (var xx = Math.Max(0, resident.X - 6); xx <= Math.Min(_engine.State.Width - 1, resident.X + 6); xx++)
                 {
                     var index = yy * _engine.State.Width + xx; var tile = _engine.State.Tiles[index];
-                    if (kind == AgentGoalKind.FetchWater ? WorldEngine.IsFreshWater(tile) : kind == AgentGoalKind.Fish ? tile.AnimalPopulation(WildlifeKind.Fish) > 0 : tile.WildlifeMask != 0 && tile.IsWalkable)
+                    if (kind == AgentGoalKind.FetchWater ? WorldEngine.IsWaterSource(tile) : kind == AgentGoalKind.Fish ? tile.AnimalPopulation(WildlifeKind.Fish) > 0 : tile.WildlifeMask != 0 && tile.IsWalkable)
                         choices.Add(new(index + 1, $"{TerrainName(tile.Terrain)} {xx}, {yy}"));
                 }
             }
@@ -185,7 +185,7 @@ public sealed partial class MainView
             {
                 if (choice.Id <= 0 || choice.Id > _engine.State.Tiles.Length) return;
                 var sourceX = (choice.Id - 1) % _engine.State.Width; var sourceY = (choice.Id - 1) / _engine.State.Width;
-                if ((AgentGoalKind)goal.SelectedItem! == AgentGoalKind.Hunt) { x.Value = sourceX; y.Value = sourceY; }
+                if ((AgentGoalKind)goal.SelectedItem! == AgentGoalKind.Hunt || (AgentGoalKind)goal.SelectedItem! == AgentGoalKind.FetchWater && _engine.State.Tiles[choice.Id - 1].IsWalkable) { x.Value = sourceX; y.Value = sourceY; }
                 else
                 {
                     var bank = new[] { (X: sourceX - 1, Y: sourceY), (X: sourceX + 1, Y: sourceY), (X: sourceX, Y: sourceY - 1), (X: sourceX, Y: sourceY + 1) }

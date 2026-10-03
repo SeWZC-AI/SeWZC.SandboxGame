@@ -121,6 +121,7 @@ public sealed partial class WorldEngine
                 { army.Supplies -= 0.06; soldier.Hunger = Math.Max(0, soldier.Hunger - 3); }
                 else if (soldier.Inventory.Food >= 0.05) { soldier.Inventory.Food -= 0.05; soldier.Hunger = Math.Max(0, soldier.Hunger - 3); }
                 else soldier.Hunger = Math.Min(100, soldier.Hunger + .8);
+                if (State.Rules.Hunger && soldier.Hunger > 80) DamageResident(soldier, .30, DeathCause.Starvation);
             }
             var depot = State.Settlements.FirstOrDefault(s => s.NationId == army.NationId && Distance(s.X, s.Y, army.X, army.Y) <= 1);
             if (depot is not null && army.Supplies < soldiers.Length * 5)

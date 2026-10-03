@@ -184,6 +184,9 @@ public sealed partial class WorldMapControl
             case ResidentTaskIcon.Aether:
                 c.Line(5, 6, 18, 6, 0xD9AEFFFF, 3); c.Line(15, 3, 18, 6, 0xD9AEFFFF, 3);
                 c.Line(18, 18, 5, 18, blue, 3); c.Line(8, 21, 5, 18, blue, 3); c.Rect(10, 10, 4, 4, light); break;
+            case ResidentTaskIcon.Extinguish:
+                c.Rect(5, 13, 10, 8, blue); c.Line(5, 13, 15, 13, light, 2);
+                c.Line(14, 8, 21, 12, blue, 2); c.Line(18, 5, 20, 9, gold, 2); c.Rect(19, 10, 3, 3, gold); break;
             case ResidentTaskIcon.Water:
                 for (var i = 0; i < 6; i++) c.Rect(12 - i, 4 + i * 2, i * 2 + 1, 3, blue);
                 c.Rect(6, 16, 13, 3, blue); c.Rect(8, 19, 9, 2, blue); c.Rect(9, 13, 2, 4, light); break;
