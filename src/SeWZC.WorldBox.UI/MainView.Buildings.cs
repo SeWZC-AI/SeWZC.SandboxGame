@@ -12,6 +12,7 @@ public sealed partial class MainView
     private string _structureSearch = "";
     private int _structuresTownId;
     private BuildingKind? _structuresBuildingKind;
+    private bool _openedStructureHighlights;
 
     private void ResetInfrastructureFilters()
     {
@@ -103,9 +104,11 @@ public sealed partial class MainView
     {
         if (!_engine.State.Settlements.Any(t => t.Id == _structuresTownId)) _structuresTownId = 0;
         _map.InfrastructureTownId = _structuresTownId; _map.InfrastructureKind = _structuresBuildingKind;
-        _map.Overlay = 4; _map.RefreshWorld();
-        panel.Children.Add(Paragraph("地图已启用建设图层。颜色表示设施用途，黄色地块表示道路；仅显示可步行连通的道路连接。"));
+        if (!_openedStructureHighlights) { _map.Overlay = 4; _openedStructureHighlights = true; }
+        _map.RefreshWorld();
+        panel.Children.Add(Paragraph("可启用建设图层。颜色表示设施用途，黄色地块表示道路；仅显示可步行连通的道路连接。"));
         panel.Children.Add(Paragraph("绿：农业   蓝：交通   紫：知识与通信\n橙：材料与工业   青：公共设施   白：中心\n金黄：施工或升级   红：严重受损   灰：停用"));
+        BuildMapHighlights(panel);
         panel.Children.Add(Named(Button("收起面板查看地图", CloseInspector), "structures-map"));
         var towns = _engine.State.Settlements.OrderBy(t => t.Id).ToArray();
         var townFilter = Named(new ComboBox { ItemsSource = new[] { "全部城镇" }.Concat(towns.Select(t => t.Name)).ToArray(),

@@ -22,6 +22,7 @@ internal static class EvolutionTests
         engine.State.NaturalDisasters = false;
         engine.State.Rules.Thirst = false;
         engine.SpawnResidents(14, 24, RaceKind.Human, 24);
+        TestLand.ClaimAllTowns(engine);
         return engine;
     }
     private static AgentFact Fact(WorldEngine engine, AgentFactKind kind, int subject, int x, int y, double value, int source) => new()

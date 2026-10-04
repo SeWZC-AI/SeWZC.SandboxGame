@@ -180,6 +180,7 @@ internal static class ProvisioningAndClaimsTests
     private static void AutonomousUpgrade()
     {
         var e = Flat(6); var town = e.State.Settlements.Single();
+        TestLand.ClaimAllTowns(e);
         e.State.Society.MagicEnabled = true;
         var research = e.State.Society.Research.Single(); research.Completed = Enum.GetValues<ResearchKind>().ToList();
         foreach (var kind in AdvancementRules.Resources) town.Resources.Set(kind, 10_000);

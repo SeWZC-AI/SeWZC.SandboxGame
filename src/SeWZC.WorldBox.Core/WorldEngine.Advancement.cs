@@ -35,6 +35,7 @@ public sealed partial class WorldEngine
 
     private string? ProductionRequirement(Building building, Advancement a)
     {
+        if (!BuildingGroundOwned(building)) return "所在地已脱离城镇占领区域，暂停运营";
         if (!building.Enabled) return "玩家已停用，恢复运营后才会安排工作";
         if (!building.IsCompleted) return "等待施工完成";
         if (building.IsUpgrading) return "正在升级或改向，暂停生产";
@@ -57,6 +58,7 @@ public sealed partial class WorldEngine
         var building = State.Society.Buildings.FirstOrDefault(b => b.Id == buildingId);
         var a = building is null ? null : AdvancementRules.For(building.Kind);
         if (building is null) return "建筑已不存在";
+        if (!BuildingGroundOwned(building)) return "所在地已脱离城镇占领区域，暂停运营";
         if (building.Health <= 0) return "建筑已损毁，等待重建";
         if (building.Health < 50) return "建筑受损，需要修复后工作";
         if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return "正在燃烧，暂停工作";

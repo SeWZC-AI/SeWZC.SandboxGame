@@ -96,6 +96,7 @@ public sealed partial class WorldMapControl
     {
         if (Overlay == 0) return;
         if (Overlay == 4) { DrawInfrastructureColors(context, state); return; }
+        if (Overlay >= 5) { DrawExtraHighlights(context, state); return; }
         if (Overlay == 1)
         {
             foreach (var town in state.Settlements)

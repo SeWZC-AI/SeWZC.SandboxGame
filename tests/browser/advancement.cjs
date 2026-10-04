@@ -22,7 +22,7 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
             const errors = observeBrowserErrors(page);
             try {
                 await page.goto(testUrl(baseUrl)); await ui.ready(); await ui.paused();
-                const world = await ui.save(); assert.equal(world.FormatVersion, 12);
+                const world = await ui.save(); assert.equal(world.FormatVersion, 13);
                 const town = world.Settlements[0];
                 Object.assign(town.Resources, { Food: 1000, Wood: 1000, Stone: 1000, Ore: 1000, Alloy: 100, EnergyCells: 100, Crystals: 100,
                     Coal: 30, Oil: 20, RareEarth: 10, Boats: 2, Aircraft: 1 });

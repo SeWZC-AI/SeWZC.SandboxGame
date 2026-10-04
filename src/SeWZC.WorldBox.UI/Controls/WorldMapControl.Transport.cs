@@ -7,7 +7,7 @@ namespace SeWZC.WorldBox.UI.Controls;
 public sealed partial class WorldMapControl
 {
     private bool ShowVehicle(Resident person) => person.TravelMode == TravelMode.Aircraft
-        || person.TravelMode == TravelMode.Boat && Engine is not null && !Engine.State.Tiles[person.Y * Engine.State.Width + person.X].IsWalkable;
+        || person.TravelMode == TravelMode.Boat && Engine is not null && WorldEngine.IsWaterTerrain(Engine.State.Tiles[person.Y * Engine.State.Width + person.X].Terrain);
 
     private void DrawVehicles(DrawingContext context, WorldState state)
     {

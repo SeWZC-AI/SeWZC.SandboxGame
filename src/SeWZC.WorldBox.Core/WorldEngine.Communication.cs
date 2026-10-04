@@ -299,7 +299,7 @@ public sealed partial class WorldEngine
                 (person.Profession == Profession.Representative ? 88 : 35 + agent.Personality.Courage * 20) * AgentFactReliability(relief),
                 "带着已收到且可信的缺粮报告，去向本地代表请求救济", relief, destination));
         }
-        if (person.Profession is Profession.Trader or Profession.Messenger or Profession.Representative)
+        if (person.Profession is Profession.Trader or Profession.Messenger)
         {
             var addresses = _missionAddresses;
             addresses.Clear();
@@ -330,11 +330,13 @@ public sealed partial class WorldEngine
                         knownFood is null ? "已知聚落地址且家乡有余粮，带货亲自探访" : "有可信且尚新的聚落粮情，先在家园装粮，再亲自交换",
                         knownFood ?? address, address.SubjectId));
                 }
-                else choices.Add(new(AgentGoalKind.DeliverMessage, address.X, address.Y,
+                else if (agent.Memory.Any(f => f.Kind != AgentFactKind.SettlementLocation
+                    && f.ObservedTick > agent.MissionStartedTick && AgentFactReliability(f) >= .5)) choices.Add(new(AgentGoalKind.DeliverMessage, address.X, address.Y,
                     (59 + agent.Personality.Sociability * 8) * AgentFactReliability(address),
                     "带着自己已知的消息，拜访记忆中另一座聚落", address, address.SubjectId));
             }
-            if (addresses.Count == 0)
+            if (addresses.Count == 0 && person.Inventory.Food >= 2 && agent.Fatigue < 35
+                && Distance(person.X, person.Y, home.X, home.Y) < 18)
             {
                 var heading = Directions[(person.Id + (int)(State.Tick / 360)) % Directions.Length];
                 var frontier = Circle(person.X, person.Y, 6).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].FireTicks == 0)

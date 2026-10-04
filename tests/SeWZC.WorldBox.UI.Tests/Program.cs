@@ -22,7 +22,8 @@ var tests = new (string Name, Action Test)[]
     ("Save capture suspends stepping and continuing map strokes cancel it", SaveCaptureBoundary),
     ("Paged tools expose every building and keep previews outside toolbar layout", ToolPagination),
     ("Building damage stays visible without expanding secondary details", BuildingDamage),
-    ("Tall buildings occlude by ground position and roofs select their actual footprint", BuildingOcclusion),
+    ("Tall buildings keep the plot behind clickable and roofs still select their footprint", BuildingOcclusion),
+    ("Highlight controls stay disabled on reopening and guide omits simulation from inspection", HighlightControls),
     ("Building details control the actual facility and list real roads", BuildingControls),
     ("Map resources and resident plans remain read-only during inspection", DetailedInspection),
     ("Map objects select quietly and details require the explicit view button", QuietSelection),
@@ -127,6 +128,7 @@ static void BuildingOcclusion()
     rear.Y = rear.FromY = centre.Y - 1; front.Y = front.FromY = centre.Y + 1;
     var view = View(engine); var map = Map(view); map.FocusTile(centre.X, centre.Y);
     for (var i = 0; i < 8; i++) map.ZoomIn();
+    engine.State.Society.Buildings.RemoveAll(b => b.Id != centre.Id && b.X == centre.X && b.Y == centre.Y - 1);
     var before = engine.ExportJson(); Call(map, "BuildScene", engine.State);
     var sprites = ((System.Collections.IEnumerable)typeof(WorldMapControl).GetField("_sceneSprites", BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(map)!).Cast<object>().ToArray();
     var ids = sprites.Select(s => (int)s.GetType().GetProperty("Id")!.GetValue(s)!).ToArray();
@@ -137,7 +139,25 @@ static void BuildingOcclusion()
     Call(map, "SelectObjectAt", new Point(foot.X, foot.Y - size * 1.1));
     Assert(map.SelectedBuildingId == centre.Id, "Clicking a high roof selected the ground behind the building");
     Assert(Field<(int X, int Y)?>(map, "_selection") == (centre.X, centre.Y), "Roof selection highlights the wrong footprint");
+    var rearBuildingId = engine.GrantFacility(centre.SettlementId, BuildingKind.Housing, centre.X, centre.Y - 1);
+    map.RefreshWorld(); Call(map, "SelectObjectAt", map.GetTileScreenPosition(centre.X, centre.Y - 1));
+    Assert(map.SelectedBuildingId == rearBuildingId, "Foreground roof blocked the building on the pointer's plot");
+    before = engine.ExportJson();
     Assert(engine.ExportJson() == before, "Depth ordering or selecting a roof changed the world");
+}
+
+static void HighlightControls()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var map = Map(view); var before = engine.ExportJson();
+    Call(view, "OpenInspector", "structures", true);
+    Assert(map.Overlay == 4, "First opening did not enable construction highlights");
+    Click(view, "map-highlights-off");
+    Call(view, "OpenInspector", "overview", true); Call(view, "OpenInspector", "structures", true);
+    Assert(map.Overlay == 0, "Reopening forced disabled highlights on");
+    Assert(Control<ComboBox>(view, "map-overlay").ItemCount >= 10, "Additional highlight types are missing");
+    Call(view, "OpenInspector", "guide", true);
+    Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("未使用额度不会累计") == true), "Water rule has no guide entry");
+    Assert(engine.ExportJson() == before, "Highlights or guide changed the simulation");
 }
 
 static void BuildingDamage()
@@ -536,7 +556,7 @@ static void HistoricalGoals()
     mind.Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome, TargetSettlementId = home.Id,
         TargetX = home.X, TargetY = home.Y, StartedTick = engine.State.Tick, ReviewTick = engine.State.Tick + 20 };
     engine.EditResident(returning.Id, new ResidentEdit { Agent = mind });
-    engine.SpawnResidents(44, 32, RaceKind.Elf, 2);
+    engine.SpawnResidents(26, 26, RaceKind.Elf, 2);
     foreach (var resident in engine.State.Residents.Where(person => person.SettlementId == home.Id).ToArray())
         engine.EditResident(resident.Id, new ResidentEdit { Age = 91, Health = .1 });
     engine.Tick();
@@ -613,12 +633,17 @@ static int ChoiceId(object choice) => (int)choice.GetType().GetProperty("Id")!.G
 
 static (WorldEngine Engine, int ResidentId, Building Target) WorkingWorld(Profession profession)
 {
-    var engine = WorldEngine.Create(77, 64, 64, false);
-    foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 80; }
+    var engine = WorldEngine.Create(77, 32, 32, false);
+    foreach (var tile in engine.State.Tiles)
+    {
+        tile.Terrain = TerrainType.Grass; tile.Fertility = 80;
+        tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default;
+    }
     engine.State.NaturalDisasters = false;
     engine.State.Rules.Thirst = false;
-    engine.SpawnResidents(16, 32, RaceKind.Human, 3);
+    engine.SpawnResidents(12, 16, RaceKind.Human, 3);
     var home = engine.State.Settlements.Single();
+    engine.TransferTerritory(home.X, home.Y, home.NationId, 5);
     engine.SetNationResources(home.NationId, 1000, 1000, 1000, 1000);
     if (profession == Profession.Scholar)
     {
@@ -708,6 +733,7 @@ static WorldEngine TwoTownWorld(bool largeTotal = false)
     towns[0].Resources = new ResourceStock { Food = largeTotal ? 900_000.25 : 100.2, Wood = 70.125, Stone = 8.3, Ore = 10.4 };
     towns[1].Resources = new ResourceStock { Food = largeTotal ? 900_000.5 : .2, Wood = 1.75, Stone = .1, Ore = .375 };
     engine.TransferTerritory(towns[1].X, towns[1].Y, towns[0].NationId, 0);
+    foreach (var town in towns) engine.TransferTerritory(town.X, town.Y, town.NationId, 5);
     return engine;
 }
 

@@ -201,12 +201,12 @@ public sealed partial class WorldEngine
         }
         var lines = new List<string> { products.Count > 0 ? "可采产出：" + string.Join("、", products) : tile.ResourceAmount < 1 && tile.IsWalkable ? "资源暂已采尽，等待自然恢复" : "此地暂无直接采集产出" };
         lines.Add(IsFreshWater(tile) ? "淡水源：无限供水，需到岸边打水并携带返仓"
-            : $"每日可取水 {DailyWaterYield(tile):0.###}   今日剩余 {AvailableWater(x, y):0.###}（未取用的水不累积）"
+            : $"每日可取水 {DailyWaterYield(tile):0.###}   今日剩余 {AvailableWater(x, y):0.###}"
                 + (DailyWaterYield(tile) < .025 ? "\n供水不足一名成年居民每日所需的 0.025，建议到河湖岸边打水" : ""));
         if (tile.ClaimedSettlementId != 0) lines.Add("实际地盘：" + _settlements.GetValueOrDefault(tile.ClaimedSettlementId)?.Name);
         lines.Add($"生成海拔 {tile.Elevation} / 255   降水 {tile.Rainfall:0.000000} / 格 / 日");
         lines.Add($"河湖补水 {Math.Max(0, tile.NaturalWaterYield - tile.Rainfall):0.000000} / 日");
-        if (tile.RiverWidth > 0) lines.Add($"水道宽度 {tile.RiverWidth} 格；{(tile.Terrain == TerrainType.Stream ? "小溪可减速步行" : "需桥梁或舟船通行")}");
+        if (IsWaterTerrain(tile.Terrain)) lines.Add(tile.Terrain == TerrainType.Stream ? "通行：可涉水，速度较慢" : "通行：需要桥梁或舟船");
         foreach (var race in Enum.GetValues<RaceKind>())
         {
             var adaptation = RaceTerrainRules.For(race, tile.Terrain);

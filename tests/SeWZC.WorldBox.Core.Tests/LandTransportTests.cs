@@ -33,6 +33,7 @@ internal static class LandTransportTests
         foreach (var person in engine.State.Residents)
         { person.MagicTalent = 0; person.Age = 25; person.Inventory.Food = 1.2; Hold(engine, person, town.X, town.Y); }
         var worker = engine.State.Residents.Last(); worker.Profession = Profession.Builder;
+        TestLand.ClaimAllTowns(engine);
         return (engine, town, worker);
     }
 

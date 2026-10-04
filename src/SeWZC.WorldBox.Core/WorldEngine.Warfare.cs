@@ -320,7 +320,7 @@ public sealed partial class WorldEngine
         var tile = State.Tiles[Index(settlement.X, settlement.Y)]; if (tile.SettlementId == settlement.Id) tile.SettlementId = 0;
         State.Conflicts.RemoveAll(c => c.SettlementId == settlement.Id);
         foreach (var ground in State.Tiles)
-            if (ground.ClaimedSettlementId == settlement.Id) ground.ClaimedSettlementId = 0;
+            if (ground.ClaimedSettlementId == settlement.Id) { ground.ClaimedSettlementId = 0; ground.NationId = 0; }
         State.Settlements.Remove(settlement); _settlements.Remove(settlement.Id); _citizens.Remove(settlement.Id);
         State.TradeRoutes.RemoveAll(r => r.FromSettlementId == settlement.Id || r.ToSettlementId == settlement.Id);
         if (_nations.TryGetValue(settlement.NationId, out var nation) && nation.CapitalId == settlement.Id) nation.CapitalId = destination?.Id ?? 0;

@@ -20,7 +20,7 @@ internal static class TownInfrastructureTests
     ];
 
     private static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
-    private static WorldEngine Flat(int population = 1)
+    private static WorldEngine Flat(int population = 1, bool claimed = true)
     {
         var e = WorldEngine.Create(42, 32, 32, false);
         foreach (var tile in e.State.Tiles)
@@ -34,6 +34,7 @@ internal static class TownInfrastructureTests
             Peace = false, Migration = false, Secession = false, Conflict = 0 }, false, false);
         e.SpawnResidents(12, 16, RaceKind.Human, population);
         foreach (var resident in e.State.Residents) Hold(e, resident, AgentGoalKind.Rest, 12, 16);
+        if (claimed) TestLand.ClaimAllTowns(e);
         return e;
     }
 
@@ -56,7 +57,7 @@ internal static class TownInfrastructureTests
     [UnitTest]
     private static void Expansion()
     {
-        var e = Flat(60); var town = e.State.Settlements.Single(); var center = e.State.Society.Buildings.Single(b => b.Kind == BuildingKind.TownCenter);
+        var e = Flat(60, false); var town = e.State.Settlements.Single(); var center = e.State.Society.Buildings.Single(b => b.Kind == BuildingKind.TownCenter);
         town.Resources = new() { Food = 1000, Wood = 1000, Stone = 1000, Ore = 100 };
         e.UpgradeBuilding(center.Id, true); e.UpgradeBuilding(center.Id, true);
         Check(town.Tier == SettlementTier.Village && town.Name.EndsWith('村'), "Center or population granted a town tier.");
@@ -175,6 +176,7 @@ internal static class TownInfrastructureTests
         {
             var e = Flat(); var migrant = e.State.Residents.Single(); var original = migrant.SettlementId;
             e.SpawnResidents(29, 16, RaceKind.Human, 1); var destination = e.State.Settlements.Single(t => t.Id != original);
+            TestLand.ClaimAllTowns(e);
             destination.Housing = 1; destination.Resources.Food = 20;
             var housing = e.GrantFacility(destination.Id, BuildingKind.Housing, 28, 20);
             e.SetBuildingEnabled(housing, enabled);

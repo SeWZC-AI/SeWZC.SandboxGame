@@ -80,7 +80,7 @@ public sealed partial class WorldMapControl
         var hair = race switch { RaceKind.Elf => 0xE2DDAAFFu, RaceKind.Orc => 0x343B30FFu, RaceKind.Dwarf => 0xB67540FFu, _ => 0x624330FFu };
         var shirt = job switch
         {
-            Profession.Farmer => 0x87A55EFFu, Profession.Lumberjack => 0xB16842FFu, Profession.Miner => 0x687B91FFu,
+            Profession.Fisher => 0x679FAEFFu, Profession.Farmer => 0x87A55EFFu, Profession.Lumberjack => 0xB16842FFu, Profession.Miner => 0x687B91FFu,
             Profession.Builder => 0xD0A552FFu, Profession.Mage => 0x8E6CADFFu, Profession.Soldier => 0x8397A5FFu,
             Profession.Scholar => 0x527AABFFu, Profession.Messenger => 0xB56666FFu, Profession.Trader => 0x7F7656FFu,
             Profession.Representative => 0xE0C078FFu, _ => 0x78928CFFu
@@ -113,6 +113,8 @@ public sealed partial class WorldMapControl
                 c.Line(23, 32, 27 + swing / 2, 16 + swing, wood, 2); c.Line(22 + swing / 2, 14 + swing, 30, 17 + swing, metal, 2); c.Rect(left - 1, headY - 2, width + 2, 3, 0xD1AE51FF); c.Rect(15, headY, 3, 2, paper); break;
             case Profession.Builder:
                 c.Rect(left - 1, headY - 3, width + 2, 4, 0xE5B64FFF); c.Line(25, 29, 27 + swing, 20 + swing, wood, 2); c.Rect(24 + swing, 18 + swing, 6, 3, metal); break;
+            case Profession.Fisher:
+                c.Line(12, 15, 16, 2, 0xC6AB7AFF); c.Line(16, 2, 19, 12, 0xDEE9E9FF); break;
             case Profession.Farmer:
                 c.Rect(left - 3, headY - 2, width + 6, 3, 0xD6BD78FF); c.Rect(left + 1, headY - 5, width - 2, 3, 0xB8A15FFF);
                 c.Line(25, 33, 29 + swing / 2, 20 + swing, wood); c.Rect(23 + swing / 2, 19 + swing, 7, 2, metal); break;

@@ -28,6 +28,7 @@
 | [0020](0020-survival-and-gradual-disasters.md) | 可达的生存补给与逐步发展的灾害 | 采用 |
 | [0021](0021-town-expansion-and-infrastructure.md) | 付费城镇扩充、地理设施与有界导航 | 采用 |
 | [0022](0022-geography-races-and-food-web.md) | 地理、种族适应与食物链 | 采用 |
+| [0023](0023-connected-town-work-and-fishing.md) | 连续城镇领地、稳定任务与真实捕鱼 | 采用 |
 
 ## 何时新增或替代
 

@@ -22,6 +22,7 @@ internal static class SocietyBehaviorTests
         engine.State.NaturalDisasters = false;
         foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 90; tile.ResourceAmount = 100; }
         engine.SpawnResidents(16, 32, RaceKind.Human, population);
+        TestLand.ClaimAllTowns(engine);
         return engine;
     }
 
@@ -170,6 +171,7 @@ internal static class SocietyBehaviorTests
         engine.GrantReceivedResearch(from.Id, ResearchKind.SignalNetwork);
         engine.GrantReceivedResearch(to.Id, ResearchKind.SignalNetwork);
         Check(!engine.CanRelayInformation(from.Id, to.Id, out _), "Technology alone enabled a global information broadcast.");
+        TestLand.ClaimAllTowns(engine, 9);
         var firstTowerId = engine.BuildFacility(from.Id, BuildingKind.SignalTower, 24, 32);
         var secondTowerId = engine.BuildFacility(to.Id, BuildingKind.SignalTower, 44, 32);
         var a = engine.State.Society.Buildings.Single(building => building.Id == firstTowerId);

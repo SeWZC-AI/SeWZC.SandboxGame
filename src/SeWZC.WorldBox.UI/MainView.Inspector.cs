@@ -86,6 +86,7 @@ public sealed partial class MainView
                     _inspectorNavigation.Children.Add(navigation);
                 switch (_inspectorMode)
                 {
+                    case "guide": BuildGameGuide(content); break;
                     case "building": BuildBuildingInspector(content); break;
                     case "structures": BuildStructuresInspector(content); break;
                     case "watched": BuildWatchedInspector(content); break;
@@ -173,8 +174,8 @@ public sealed partial class MainView
         panel.Children.Add(Named(Button("我的关注", () => OpenInspector("watched")), "overview-watched"));
         var borders = Named(new CheckBox { Content = "显示国界", IsChecked = _map.ShowBorders }, "map-borders");
         borders.IsCheckedChanged += (_, _) => { _map.ShowBorders = borders.IsChecked == true; _map.RefreshWorld(); }; panel.Children.Add(borders);
-        var overlay = Named(new ComboBox { ItemsSource = new[] { "地图图层：无", "粮食压力：红色短缺 / 绿色充足", "运输：标记正在实地递送的居民", "通信：运作设施与实际连通聚落", "建设：按用途和状态着色建筑与道路" }, SelectedIndex = _map.Overlay, HorizontalAlignment = HorizontalAlignment.Stretch }, "map-overlay");
-        overlay.SelectionChanged += (_, _) => { _map.Overlay = Math.Max(0, overlay.SelectedIndex); _map.RefreshWorld(); }; panel.Children.Add(overlay);
+        BuildMapHighlights(panel);
+        panel.Children.Add(Named(Button("玩法说明", () => OpenInspector("guide")), "overview-guide"));
         panel.Children.Add(Named(Button("建筑与道路地图", () => OpenInspector("structures")), "overview-structures"));
         panel.Children.Add(Text("矿藏显示", 13, Mint));
         var resources = Named(new ComboBox { ItemsSource = new[] { "已发现或已有聚落掌握开采技术", "全部矿藏（含未发现）", "关闭矿藏显示" }, SelectedIndex = (int)_resourceVisibility, HorizontalAlignment = HorizontalAlignment.Stretch }, "map-resources");
@@ -191,7 +192,7 @@ public sealed partial class MainView
         var names = Named(new CheckBox { Content = "近景显示建筑名称", IsChecked = _map.ShowBuildingNames }, "map-building-names");
         names.IsCheckedChanged += (_, _) => { _map.ShowBuildingNames = names.IsChecked == true; _map.InvalidateVisual(); }; panel.Children.Add(names);
         var legend = FoldSection(panel, "图例与资源说明", "map-legend");
-        legend.Children.Add(Paragraph("矿藏：黑色为煤，蓝色为石油，紫色为稀土。显示设置只改变你看到的内容，不会让居民获得开采知识。\n放大到 3 倍可见动植物；图标越大，动物越多或植被越密。同格可有多种动物，植物对应当地可采资源。"));
+        legend.Children.Add(Paragraph("矿藏图标：煤堆、油井、紫色矿晶。显示设置只改变你看到的内容，不会让居民获得开采知识。\n放大到 3 倍可见动植物；图标越大，动物越多或植被越密。同格可有多种动物，植物对应当地可采资源。"));
         legend.Children.Add(Paragraph("工作标记在 5 倍近景显示。图标表示实际任务，图标下的短线表示正在移动；查看角色可见具体设施、材料与后续步骤。"));
         var tasks = new WrapPanel { Orientation = Orientation.Horizontal };
         foreach (var icon in Enum.GetValues<ResidentTaskIcon>())

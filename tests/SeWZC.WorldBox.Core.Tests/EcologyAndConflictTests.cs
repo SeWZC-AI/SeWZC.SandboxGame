@@ -22,6 +22,7 @@ internal static class EcologyAndConflictTests
     private static void ForestryTask()
     {
         var engine = Empty(); engine.SpawnResidents(16, 16, RaceKind.Human, 3);
+        TestLand.ClaimAllTowns(engine);
         var town = engine.State.Settlements.Single(); engine.GrantFacility(town.Id, BuildingKind.Farm, 18, 16);
         var person = engine.State.Residents.First(p => p.Id != town.RepresentativeId);
         var tile = engine.State.Tiles[16 * engine.State.Width + 19]; tile.Terrain = TerrainType.Forest; tile.ResourceAmount = 100;
@@ -48,9 +49,12 @@ internal static class EcologyAndConflictTests
     private static void Centers()
     {
         var engine = Empty(); engine.SpawnResidents(16, 16, RaceKind.Human, 1);
+        TestLand.ClaimAllTowns(engine);
         var town = engine.State.Settlements.Single(); Require(town.Name.EndsWith('村'), "Small settlement is not a village");
         engine.SpawnResidents(16, 16, RaceKind.Human, 59); Require(town.Name.EndsWith('村'), "Population bypassed paid town expansion");
+        TestLand.ClaimAllTowns(engine);
         engine.SpawnResidents(16, 16, RaceKind.Human, 100); Require(town.Name.EndsWith('村'), "Population bypassed paid city expansion");
+        TestLand.ClaimAllTowns(engine);
         var center = engine.State.Society.Buildings.Single(b => b.Kind == BuildingKind.TownCenter && b.SettlementId == town.Id);
         engine.PaintTerrain(16, 16, TerrainType.Water, 0);
         Require(center.X == town.X && center.Y == town.Y && engine.State.Society.Buildings.Contains(center), "Relocated settlement lost its real center");
@@ -117,6 +121,7 @@ internal static class EcologyAndConflictTests
     private static void Resources()
     {
         var engine = Empty(); engine.SpawnResidents(16, 16, RaceKind.Human, 1);
+        TestLand.ClaimAllTowns(engine);
         var tile = engine.State.Tiles[17 * 32 + 17]; tile.Deposit = ResourceKind.Oil; tile.DepositAmount = 120;
         var before = engine.ExportJson();
         Require(engine.GetTileProductionSummary(17, 17, ResourceVisibility.All).Contains("石油矿藏"), "All resources hides undiscovered oil");
@@ -129,6 +134,7 @@ internal static class EcologyAndConflictTests
     private static void Conflicts()
     {
         var engine = Empty(); engine.SpawnResidents(16, 16, RaceKind.Human, 4);
+        TestLand.ClaimAllTowns(engine);
         engine.State.Rules.Wars = true; engine.State.Rules.Conflict = 3; engine.State.Rules.Hunger = true;
         var town = engine.State.Settlements.Single(); town.Resources.Food = 0;
         foreach (var person in engine.State.Residents)
@@ -161,6 +167,7 @@ internal static class EcologyAndConflictTests
     private static void ExploreRoute()
     {
         var engine = Empty(); engine.SpawnResidents(16, 16, RaceKind.Human, 1);
+        TestLand.ClaimAllTowns(engine);
         var person = engine.State.Residents.Single(); var home = engine.State.Settlements.Single();
         person.Age = 25; person.Profession = Profession.Messenger; person.Inventory.Food = 6;
         person.X = person.FromX = home.X; person.Y = person.FromY = home.Y;
@@ -180,6 +187,7 @@ internal static class EcologyAndConflictTests
     private static void LoneResident()
     {
         var engine = Empty(); engine.SpawnResidents(16, 16, RaceKind.Human, 1);
+        TestLand.ClaimAllTowns(engine);
         var town = engine.State.Settlements.Single(); var person = engine.State.Residents.Single();
         engine.GrantFacility(town.Id, BuildingKind.Farm, 17, 16);
         person.Age = 25; person.Profession = Profession.Farmer; person.Inventory.Food = 2;
@@ -195,6 +203,7 @@ internal static class EcologyAndConflictTests
     private static void Inspection()
     {
         var engine = Empty(); engine.SpawnResidents(16, 16, RaceKind.Human, 1);
+        TestLand.ClaimAllTowns(engine);
         var town = engine.State.Settlements.Single(); var person = engine.State.Residents.Single(); person.Age = 25;
         foreach (var knowledge in new[] { ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Industry }) engine.GrantReceivedResearch(town.Id, knowledge);
         foreach (var kind in AdvancementRules.Resources) town.Resources.Set(kind, 100);
@@ -215,6 +224,7 @@ internal static class EcologyAndConflictTests
         foreach (var cause in new[] { DeathCause.Fire, DeathCause.Disease, DeathCause.Starvation, DeathCause.OldAge, DeathCause.Meteor, DeathCause.PlayerIntervention })
         {
             var engine = Empty(); engine.SpawnResidents(16, 16, RaceKind.Human, 1); var person = engine.State.Residents[0];
+        TestLand.ClaimAllTowns(engine);
             person.X = person.FromX = 16; person.Y = person.FromY = 16; person.Age = 25; person.Health = .1;
             switch (cause)
             {

@@ -16,15 +16,13 @@ public sealed partial class WorldMapControl
     public HashSet<ResourceKind> VisibleResources { get; } = [ResourceKind.Coal, ResourceKind.Oil, ResourceKind.RareEarth];
     public int RenderedWildlifeCount { get; private set; }
     private static readonly IBrush WaterAnimalBrush = Brush(0xFFBFE9F0);
-    private static readonly IBrush CoalMarkerBrush = Brush(0xFF263547);
-    private static readonly IBrush OilMarkerBrush = Brush(0xFF368BE8);
-    private static readonly IBrush RareMarkerBrush = Brush(0xFFCC73ED);
 
     private bool _ecologyDirty = true;
     private (int Left, int Right, int Top, int Bottom) _ecologyViewport;
     private readonly Dictionary<WildlifeKind, WriteableBitmap> _animalIcons = [];
     private readonly List<(WriteableBitmap Icon, Rect Bounds)> _wildlifeDraws = [];
-    private readonly List<(IBrush Brush, Point Point)> _depositDraws = [];
+    private readonly List<(WriteableBitmap Icon, Rect Bounds)> _depositDraws = [];
+    private readonly Dictionary<ResourceKind, WriteableBitmap> _depositIcons = [];
     private readonly Dictionary<PlantKind, WriteableBitmap> _plantIcons = [];
     private readonly List<(WriteableBitmap Icon, Rect Bounds)> _plantDraws = [];
     private readonly List<(Point Start, Point End)> _waterStreams = [];
@@ -51,7 +49,6 @@ public sealed partial class WorldMapControl
         cached = MakeBitmap(c, opaque: false); _plantIcons[kind] = cached; return cached;
     }
     private static readonly Pen WaterFlowPen = new(WaterAnimalBrush, .12);
-    private static readonly Pen DepositPen = new(MessageBrush, .15);
 
     private WriteableBitmap AnimalIcon(WildlifeKind kind)
     {
@@ -85,6 +82,19 @@ public sealed partial class WorldMapControl
         icon = MakeBitmap(canvas, opaque: false); _animalIcons[kind] = icon; return icon;
     }
 
+    private WriteableBitmap DepositIcon(ResourceKind resource)
+    {
+        if (_depositIcons.TryGetValue(resource, out var icon)) return icon;
+        var c = new PixelCanvas(20, 20);
+        if (resource == ResourceKind.Coal)
+        { c.Rect(2, 14, 16, 4, 0x475463FF); c.Rect(4, 9, 7, 7, 0x25323FFF); c.Rect(10, 5, 6, 10, 0x344453FF); c.Rect(11, 6, 3, 2, 0x83909DFF); }
+        else if (resource == ResourceKind.Oil)
+        { c.Rect(2, 16, 16, 2, 0x9FBECBFF); c.Line(5, 16, 10, 2, 0x336B91FF, 2); c.Line(10, 2, 15, 16, 0x336B91FF, 2); c.Rect(6, 10, 9, 2, 0x90D1E5FF); c.Rect(8, 5, 5, 2, 0x90D1E5FF); }
+        else
+        { c.Rect(3, 12, 14, 5, 0x655379FF); c.Line(7, 14, 7, 4, 0xCA9BEAFF, 4); c.Line(13, 15, 13, 7, 0x9871C9FF, 4); c.Rect(6, 4, 2, 6, 0xF1D6FFFF); }
+        icon = MakeBitmap(c, opaque: false); _depositIcons[resource] = icon; return icon;
+    }
+
     private void DrawEcology(DrawingContext context, WorldState state)
     {
         RenderedWildlifeCount = 0; RenderedPlantCount = 0;
@@ -99,8 +109,7 @@ public sealed partial class WorldMapControl
                 {
                     var tile = state.Tiles[y * state.Width + x];
                     if (tile.Deposit is { } resource && VisibleResources.Contains(resource) && Engine!.IsDepositVisible(tile, ResourceVisibility))
-                        _depositDraws.Add((resource == ResourceKind.Coal ? CoalMarkerBrush : resource == ResourceKind.Oil ? OilMarkerBrush : RareMarkerBrush,
-                            new Point((x + .8) * TilePixels, (y + .2) * TilePixels)));
+                        _depositDraws.Add((DepositIcon(resource), new Rect((x + .62) * TilePixels, (y + .05) * TilePixels, 2.8, 2.8)));
                     if (ShowPlants)
                     {
                         var slot = 0;
@@ -143,7 +152,7 @@ public sealed partial class WorldMapControl
         }
         foreach (var (icon, bounds) in _plantDraws) context.DrawImage(icon, bounds);
         RenderedPlantCount = _plantDraws.Count;
-        foreach (var (brush, point) in _depositDraws) context.DrawEllipse(brush, DepositPen, point, .8, .8);
+        foreach (var (icon, bounds) in _depositDraws) context.DrawImage(icon, bounds);
         foreach (var (icon, bounds) in _wildlifeDraws) context.DrawImage(icon, bounds);
         RenderedWildlifeCount = _wildlifeDraws.Count;
     }

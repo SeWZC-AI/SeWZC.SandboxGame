@@ -19,6 +19,7 @@ internal static class PresentationWorldTests
         foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 80; }
         engine.State.NaturalDisasters = false;
         engine.SpawnResidents(16, 16, RaceKind.Human, 4);
+        TestLand.ClaimAllTowns(engine);
         return engine;
     }
     private static object? Invoke(WorldEngine engine, string name, params object[] args) =>

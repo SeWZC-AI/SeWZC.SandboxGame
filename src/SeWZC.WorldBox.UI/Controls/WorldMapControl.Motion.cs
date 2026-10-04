@@ -247,7 +247,11 @@ public sealed partial class WorldMapControl
                 var ground = GetTileScreenPosition(building.X, building.Y);
                 candidates.Add((1, building.Id, Distance(point, ground), ground.Y + 2 * _zoom, building.X, building.Y));
             }
-        candidates.Sort((a, b) => _zoom >= 3 && Math.Abs(a.Depth - b.Depth) > .01 ? b.Depth.CompareTo(a.Depth)
+        // The plot under the pointer takes precedence over an overlapping roof.
+        var footprint = hasTile ? candidates.FindIndex(c => c.Kind == 1 && c.X == tile.X && c.Y == tile.Y) : -1;
+        var directBuilding = footprint >= 0 ? candidates[footprint].Id : 0;
+        candidates.Sort((a, b) => (a.Kind == 1 && a.Id == directBuilding) != (b.Kind == 1 && b.Id == directBuilding)
+            ? (a.Kind == 1 && a.Id == directBuilding ? -1 : 1) : _zoom >= 3 && Math.Abs(a.Depth - b.Depth) > .01 ? b.Depth.CompareTo(a.Depth)
             : a.Kind != b.Kind ? a.Kind.CompareTo(b.Kind)
             : Math.Abs(a.Distance - b.Distance) > .01 ? a.Distance.CompareTo(b.Distance) : a.Id.CompareTo(b.Id));
         if (hasTile) candidates.Add((2, 0, 0, 0, tile.X, tile.Y)); // Ground and covered people remain accessible by cycling.
