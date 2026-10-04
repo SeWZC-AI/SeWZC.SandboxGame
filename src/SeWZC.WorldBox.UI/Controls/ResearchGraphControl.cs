@@ -129,6 +129,9 @@ public sealed class ResearchGraphControl : UserControl
         var current = e.GetPosition(this);
         var delta = new Vector(current.X - start.X, current.Y - start.Y);
         if (!_dragging && delta.Length < 7) return;
+        // A handled pointer event still reaches Avalonia's gesture recognizers.
+        // Once the graph owns a drag, nested scroll views must not capture it again.
+        e.PreventGestureRecognition();
         _dragging = true; e.Pointer.Capture(this);
         _scroll.Offset = _pressOffset - delta;
         e.Handled = true;
