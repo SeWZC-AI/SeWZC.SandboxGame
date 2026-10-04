@@ -353,7 +353,7 @@ public sealed partial class MainView : UserControl
         _inspector.Height = _isCompact && _expandedInspector ? inspectorSpace : double.NaN;
         _inspector.VerticalAlignment = _isCompact ? VerticalAlignment.Bottom : VerticalAlignment.Stretch;
         _inspector.Margin = _isCompact ? new Thickness(6, 6, 6, 80) : new Thickness(0);
-        _inspector.HorizontalAlignment = HorizontalAlignment.Right;
+        _inspector.HorizontalAlignment = _isCompact ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
         _inspector.ZIndex = 20;
         _toolBar.IsVisible = _toolsOpen;
         _toolHint.IsVisible = Bounds.Width > 600;
