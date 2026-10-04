@@ -18,6 +18,7 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
     try {
         for (const mobile of [false, true]) for (const route of ['technology', 'magic']) {
             const label = `${route}-${mobile ? 'mobile' : 'desktop'}`;
+            if (process.env.WORLDBOX_RESEARCH_CASES && !process.env.WORLDBOX_RESEARCH_CASES.split(',').includes(label)) continue;
             const context = await browser.newContext({ viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 1040 }, hasTouch: mobile, isMobile: mobile, acceptDownloads: true });
             const page = await context.newPage(), ui = new UiDriver(page, { touch: mobile });
             const errors = observeBrowserErrors(page);
@@ -74,9 +75,10 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                 const start = await ui.point(`research-node-${endpoint}`, inspector);
                 if (mobile) {
                     const cdp = await context.newCDPSession(page);
-                    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+                    const touch = point => ({ ...point, id: 1, radiusX: 2, radiusY: 2, force: 1 });
+                    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [touch(start)] });
                     for (let i = 1; i <= 8; i++) {
-                        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: start.x - i * 5.5, y: start.y + i * 11 }] });
+                        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [touch({ x: start.x - i * 5.5, y: start.y + i * 11 })] });
                         await page.waitForTimeout(25);
                     }
                     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
@@ -87,7 +89,8 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                 }
                 await page.waitForTimeout(250);
                 snapshot = await ui.snapshot();
-                assert(Math.abs(snapshot.researchGraph.offsetY - beforePan.offsetY) > 30, 'Dragging did not pan the actual tree');
+                assert(Math.abs(snapshot.researchGraph.offsetY - beforePan.offsetY) > 30,
+                    'Dragging did not pan the actual tree: ' + JSON.stringify({ before: beforePan, after: snapshot.researchGraph }));
                 assert(Math.abs(snapshot.researchGraph.offsetX - beforePan.offsetX) > 25, 'Dragging did not move between branch columns');
                 assert.match(ui.control(snapshot, 'research-selected').value, route === 'technology' ? /科技帝国/ : /魔法帝国/);
                 await ui.click('research-zoom-out', inspector);
