@@ -1,0 +1,3853 @@
+{
+  "baseCommit": "6baf41c4adf6c855e2de6aefc90d58c281eb49a2",
+  "sourceCommit": "1dfb8afa264054f04846df512027904ba1966084",
+  "intermediateCommit": "fcd171feb985aedc2b31ee96ee22778b56fa52b2",
+  "sources": {
+    "before": {
+      "production": {
+        "sha256": "c986dc1790a3e2c5b23f4eb980b6fbce8d7a7e617d3fb74f0a4b8e1385c4d94e",
+        "files": 95
+      },
+      "core": {
+        "sha256": "1bbac79cdb70a500410fb5e56df9f904ba41268643a16fa6f262b3cb5a32ea1f",
+        "files": 51
+      }
+    },
+    "intermediate": {
+      "production": {
+        "sha256": "c38d7be8bbd9b931afcfd782b928adb27c5625b1abea92d40f4e538d182de6c1",
+        "files": 95
+      },
+      "core": {
+        "sha256": "709beaece3d6324b7ae751dad47e6c34c126ca36eb014e153cdb60e3c8192c70",
+        "files": 51
+      }
+    },
+    "after": {
+      "production": {
+        "sha256": "0d907619424176278da5ac5f4c17d27e18f0abee5ecf10d079d87d5d16d292bf",
+        "files": 95
+      },
+      "core": {
+        "sha256": "c9e57eb05cdc4df26acfb2e9eed9c1a227dd5db099e2b60e6fe71d73d2c2b560",
+        "files": 51
+      }
+    }
+  },
+  "scenes": [
+    {
+      "name": "early",
+      "initialPopulation": 2000,
+      "warmupTicks": 60,
+      "measuredTicks": 120,
+      "repetitions": 3,
+      "finalTick": 180,
+      "finalPopulation": 2170,
+      "saveBytes": 44698155,
+      "saveWithinLimit": true,
+      "saveSha256": "9649B9CD1B0EC5F70F91E853A490041215C18043FE9665C7256190F906FFD48A",
+      "allDigestsEqual": true,
+      "beforeNative": {
+        "meanMsPerTick": 8.367148611111112,
+        "runMeanMsPerTick": [
+          6.811803333333338,
+          10.165506666666667,
+          8.12413583333333
+        ],
+        "runP95Ms": [
+          10.65,
+          24.497,
+          14.8616
+        ],
+        "runMaxMs": [
+          53.1058,
+          76.6156,
+          68.6674
+        ],
+        "allocatedBytesPerTick": 1849467.7777777778,
+        "gcCollections": [
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            1,
+            0,
+            0
+          ]
+        ]
+      },
+      "intermediateNative": {
+        "meanMsPerTick": 7.156478333333333,
+        "runMeanMsPerTick": [
+          6.428803333333335,
+          8.5112725,
+          6.529359166666664
+        ],
+        "runP95Ms": [
+          11.4089,
+          11.4429,
+          10.8787
+        ],
+        "runMaxMs": [
+          52.3105,
+          75.3325,
+          64.9865
+        ],
+        "allocatedBytesPerTick": 1859371.2222222222,
+        "gcCollections": [
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            2,
+            1,
+            0
+          ]
+        ]
+      },
+      "intermediateDetail": {
+        "meanMsPerTick": 8.040664444444445,
+        "runMeanMsPerTick": [
+          8.186390833333332,
+          8.018668333333336,
+          7.916934166666666
+        ],
+        "runP95Ms": [
+          11.2796,
+          12.4468,
+          11.8376
+        ],
+        "runMaxMs": [
+          88.5516,
+          68.1462,
+          69.6399
+        ],
+        "allocatedBytesPerTick": 1858892.822222222,
+        "gcCollections": [
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            2,
+            1,
+            0
+          ]
+        ]
+      },
+      "intermediateOperations": [
+        {
+          "name": "ActOnAgentGoal",
+          "selfMsPerTick": 0.7131027694444444,
+          "inclusiveMsPerTick": 1.1505533250000002,
+          "selfPercentOfInstrumentedStep": 8.868704500374346,
+          "callsPerTick": 1139.0833333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.7131027694444444,
+              "callsPerTick": 1139.0833333333333
+            }
+          ]
+        },
+        {
+          "name": "FindLocalWorkBuilding",
+          "selfMsPerTick": 0.5823508916666666,
+          "inclusiveMsPerTick": 0.9643263333333334,
+          "selfPercentOfInstrumentedStep": 7.242571751256597,
+          "callsPerTick": 695.2333333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.5823508916666666,
+              "callsPerTick": 695.2333333333333
+            }
+          ]
+        },
+        {
+          "name": "FindVisibleResourceSite",
+          "selfMsPerTick": 0.4797440111111111,
+          "inclusiveMsPerTick": 0.590499025,
+          "selfPercentOfInstrumentedStep": 5.966472229077806,
+          "callsPerTick": 448.19166666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.4797440111111111,
+              "callsPerTick": 448.19166666666666
+            }
+          ]
+        },
+        {
+          "name": "ChooseAgentGoal",
+          "selfMsPerTick": 0.40636628333333336,
+          "inclusiveMsPerTick": 2.7798397722222226,
+          "selfPercentOfInstrumentedStep": 5.053889341372838,
+          "callsPerTick": 373.31666666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.40636628333333336,
+              "callsPerTick": 373.31666666666666
+            }
+          ]
+        },
+        {
+          "name": "ReconcileConnectedClaims",
+          "selfMsPerTick": 0.3897318083333333,
+          "inclusiveMsPerTick": 0.3897318083333333,
+          "selfPercentOfInstrumentedStep": 4.847009983144012,
+          "callsPerTick": 2.775,
+          "byStage": [
+            {
+              "stage": 7,
+              "selfMsPerTick": 0.04893688611111111,
+              "callsPerTick": 0.125
+            },
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.034220025,
+              "callsPerTick": 0.65
+            },
+            {
+              "stage": 17,
+              "selfMsPerTick": 0.3059404527777778,
+              "callsPerTick": 1.0
+            },
+            {
+              "stage": 18,
+              "selfMsPerTick": 0.0006344444444444444,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "TickWildlife",
+          "selfMsPerTick": 0.3822112388888889,
+          "inclusiveMsPerTick": 0.3822112388888889,
+          "selfPercentOfInstrumentedStep": 4.7534782918714,
+          "callsPerTick": 1.0,
+          "byStage": [
+            {
+              "stage": 2,
+              "selfMsPerTick": 0.3822112388888889,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "BuildingHasWork",
+          "selfMsPerTick": 0.338591225,
+          "inclusiveMsPerTick": 0.38365114722222227,
+          "selfPercentOfInstrumentedStep": 4.210985638555575,
+          "callsPerTick": 4942.175,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.338591225,
+              "callsPerTick": 4942.175
+            }
+          ]
+        },
+        {
+          "name": "GrowSettlements",
+          "selfMsPerTick": 0.3359584638888889,
+          "inclusiveMsPerTick": 0.41606346944444444,
+          "selfPercentOfInstrumentedStep": 4.178242559556299,
+          "callsPerTick": 0.08333333333333333,
+          "byStage": [
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.3359584638888889,
+              "callsPerTick": 0.08333333333333333
+            }
+          ]
+        },
+        {
+          "name": "FindHarvestableWildlife",
+          "selfMsPerTick": 0.31110285277777777,
+          "inclusiveMsPerTick": 0.40449046111111114,
+          "selfPercentOfInstrumentedStep": 3.8691187143461607,
+          "callsPerTick": 146.075,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.31110285277777777,
+              "callsPerTick": 146.075
+            }
+          ]
+        },
+        {
+          "name": "ObserveAgentEnvironment",
+          "selfMsPerTick": 0.26283650277777776,
+          "inclusiveMsPerTick": 0.3221230805555555,
+          "selfPercentOfInstrumentedStep": 3.268840586419198,
+          "callsPerTick": 130.625,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.26283650277777776,
+              "callsPerTick": 130.625
+            }
+          ]
+        },
+        {
+          "name": "Communication.SelectNearbyResidentByIdRank",
+          "selfMsPerTick": 0.2290893916666667,
+          "inclusiveMsPerTick": 0.2290893916666667,
+          "selfPercentOfInstrumentedStep": 2.849135083916503,
+          "callsPerTick": 167.75833333333333,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.2290893916666667,
+              "callsPerTick": 167.75833333333333
+            }
+          ]
+        },
+        {
+          "name": "RememberAgentFact",
+          "selfMsPerTick": 0.20342413055555555,
+          "inclusiveMsPerTick": 0.20342413055555555,
+          "selfPercentOfInstrumentedStep": 2.5299417972367673,
+          "callsPerTick": 1051.8166666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.07704586388888889,
+              "callsPerTick": 563.6833333333333
+            },
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.12572258055555555,
+              "callsPerTick": 486.43333333333334
+            },
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.0005813138888888889,
+              "callsPerTick": 1.5
+            },
+            {
+              "stage": 13,
+              "selfMsPerTick": 7.437222222222222e-05,
+              "callsPerTick": 0.2
+            }
+          ]
+        },
+        {
+          "name": "Reachability.BreadthFirstSearch",
+          "selfMsPerTick": 0.19196647500000003,
+          "inclusiveMsPerTick": 0.19196647500000003,
+          "selfPercentOfInstrumentedStep": 2.387445419795324,
+          "callsPerTick": 52.775,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.19196647500000003,
+              "callsPerTick": 52.775
+            }
+          ]
+        },
+        {
+          "name": "SelectMessageFacts",
+          "selfMsPerTick": 0.1489574611111111,
+          "inclusiveMsPerTick": 0.1489574611111111,
+          "selfPercentOfInstrumentedStep": 1.8525516409782603,
+          "callsPerTick": 167.75833333333333,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.1489574611111111,
+              "callsPerTick": 167.75833333333333
+            }
+          ]
+        },
+        {
+          "name": "Communication.GatherNearbyResidents",
+          "selfMsPerTick": 0.11582883888888887,
+          "inclusiveMsPerTick": 0.11582883888888887,
+          "selfPercentOfInstrumentedStep": 1.4405381506614015,
+          "callsPerTick": 171.46666666666667,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.11582883888888887,
+              "callsPerTick": 171.46666666666667
+            }
+          ]
+        },
+        {
+          "name": "ReconcileSocietyTopology",
+          "selfMsPerTick": 0.11262444166666666,
+          "inclusiveMsPerTick": 0.4186213361111112,
+          "selfPercentOfInstrumentedStep": 1.4006857573130356,
+          "callsPerTick": 1.125,
+          "byStage": [
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.011851344444444445,
+              "callsPerTick": 0.125
+            },
+            {
+              "stage": 17,
+              "selfMsPerTick": 0.10077309722222222,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "TransferPersonalProduction",
+          "selfMsPerTick": 0.10492611666666668,
+          "inclusiveMsPerTick": 0.10492611666666668,
+          "selfPercentOfInstrumentedStep": 1.3049433587439843,
+          "callsPerTick": 565.7416666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.10492611666666668,
+              "callsPerTick": 565.7416666666667
+            }
+          ]
+        },
+        {
+          "name": "MoveAgentTowards",
+          "selfMsPerTick": 0.10132278055555556,
+          "inclusiveMsPerTick": 0.16378013611111114,
+          "selfPercentOfInstrumentedStep": 1.2601294489482489,
+          "callsPerTick": 556.85,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.06682035833333333,
+              "callsPerTick": 283.35
+            },
+            {
+              "stage": 13,
+              "selfMsPerTick": 0.034502422222222225,
+              "callsPerTick": 273.5
+            }
+          ]
+        },
+        {
+          "name": "LatestAgentFact",
+          "selfMsPerTick": 0.09606670833333332,
+          "inclusiveMsPerTick": 0.09606670833333332,
+          "selfPercentOfInstrumentedStep": 1.1947608185503735,
+          "callsPerTick": 375.3666666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.09606670833333332,
+              "callsPerTick": 375.3666666666667
+            }
+          ]
+        },
+        {
+          "name": "AddAgentMissionChoices",
+          "selfMsPerTick": 0.07940544166666667,
+          "inclusiveMsPerTick": 0.07954695833333333,
+          "selfPercentOfInstrumentedStep": 0.9875482581732465,
+          "callsPerTick": 319.68333333333334,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.07940544166666667,
+              "callsPerTick": 319.68333333333334
+            }
+          ]
+        },
+        {
+          "name": "AddProvisionChoices",
+          "selfMsPerTick": 0.077220775,
+          "inclusiveMsPerTick": 0.5950686166666667,
+          "selfPercentOfInstrumentedStep": 0.9603780326059288,
+          "callsPerTick": 319.68333333333334,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.077220775,
+              "callsPerTick": 319.68333333333334
+            }
+          ]
+        },
+        {
+          "name": "ProvisionAtHome",
+          "selfMsPerTick": 0.06781349722222223,
+          "inclusiveMsPerTick": 0.06781349722222223,
+          "selfPercentOfInstrumentedStep": 0.8433817589425306,
+          "callsPerTick": 721.525,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.06781349722222223,
+              "callsPerTick": 721.525
+            }
+          ]
+        },
+        {
+          "name": "ActOnProduction",
+          "selfMsPerTick": 0.0658035611111111,
+          "inclusiveMsPerTick": 0.0658035611111111,
+          "selfPercentOfInstrumentedStep": 0.8183846194026527,
+          "callsPerTick": 1137.7166666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.0658035611111111,
+              "callsPerTick": 1137.7166666666667
+            }
+          ]
+        },
+        {
+          "name": "SelectAgentStep",
+          "selfMsPerTick": 0.06245735555555555,
+          "inclusiveMsPerTick": 0.06245735555555555,
+          "selfPercentOfInstrumentedStep": 0.7767685865651234,
+          "callsPerTick": 408.48333333333335,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.0522076111111111,
+              "callsPerTick": 283.35
+            },
+            {
+              "stage": 13,
+              "selfMsPerTick": 0.010249744444444445,
+              "callsPerTick": 125.13333333333334
+            }
+          ]
+        },
+        {
+          "name": "AgentFoodPolicyMultiplier",
+          "selfMsPerTick": 0.05628742777777778,
+          "inclusiveMsPerTick": 0.05628742777777778,
+          "selfPercentOfInstrumentedStep": 0.7000345328011864,
+          "callsPerTick": 403.725,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.05628742777777778,
+              "callsPerTick": 403.725
+            }
+          ]
+        },
+        {
+          "name": "FindWorkshopResource",
+          "selfMsPerTick": 0.04721770833333333,
+          "inclusiveMsPerTick": 0.04721770833333333,
+          "selfPercentOfInstrumentedStep": 0.5872363989266778,
+          "callsPerTick": 400.23333333333335,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.04721770833333333,
+              "callsPerTick": 400.23333333333335
+            }
+          ]
+        },
+        {
+          "name": "ActOnRacialWork",
+          "selfMsPerTick": 0.04685698055555555,
+          "inclusiveMsPerTick": 0.04685698055555555,
+          "selfPercentOfInstrumentedStep": 0.5827501057817498,
+          "callsPerTick": 1137.7166666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.04685698055555555,
+              "callsPerTick": 1137.7166666666667
+            }
+          ]
+        },
+        {
+          "name": "RelayKnownAgentMessages",
+          "selfMsPerTick": 0.03280495555555556,
+          "inclusiveMsPerTick": 0.03280495555555556,
+          "selfPercentOfInstrumentedStep": 0.4079881181737606,
+          "callsPerTick": 1.0,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.03280495555555556,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "FindWaterSite",
+          "selfMsPerTick": 0.03180959722222222,
+          "inclusiveMsPerTick": 0.051310299999999996,
+          "selfPercentOfInstrumentedStep": 0.39560906243513866,
+          "callsPerTick": 15.7,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.03180959722222222,
+              "callsPerTick": 15.7
+            }
+          ]
+        },
+        {
+          "name": "MarkVisibleReachable",
+          "selfMsPerTick": 0.029204805555555553,
+          "inclusiveMsPerTick": 0.234365625,
+          "selfPercentOfInstrumentedStep": 0.363213833350975,
+          "callsPerTick": 261.71666666666664,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.029204805555555553,
+              "callsPerTick": 261.71666666666664
+            }
+          ]
+        },
+        {
+          "name": "ReceiveSocietyReport",
+          "selfMsPerTick": 0.006019644444444445,
+          "inclusiveMsPerTick": 0.006019644444444445,
+          "selfPercentOfInstrumentedStep": 0.07486501253765926,
+          "callsPerTick": 25.216666666666665,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.0028573138888888894,
+              "callsPerTick": 2.65
+            },
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.0031623305555555556,
+              "callsPerTick": 22.566666666666666
+            }
+          ]
+        }
+      ],
+      "afterNative": {
+        "meanMsPerTick": 6.030010277777779,
+        "runMeanMsPerTick": [
+          6.063528333333333,
+          5.975559166666668,
+          6.050943333333336
+        ],
+        "runP95Ms": [
+          10.1849,
+          11.1447,
+          10.4671
+        ],
+        "runMaxMs": [
+          48.0438,
+          55.6092,
+          52.8089
+        ],
+        "allocatedBytesPerTick": 1849227.4,
+        "gcCollections": [
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            2,
+            1,
+            0
+          ]
+        ]
+      },
+      "nativeMeanReductionPercent": 27.93231531981806,
+      "detail": {
+        "meanMsPerTick": 8.706070277777778,
+        "runMeanMsPerTick": [
+          10.54706,
+          7.419733333333337,
+          8.151417499999999
+        ],
+        "runP95Ms": [
+          15.5354,
+          9.7777,
+          12.4107
+        ],
+        "runMaxMs": [
+          103.6598,
+          62.2809,
+          53.5129
+        ],
+        "allocatedBytesPerTick": 1849551.1333333333,
+        "gcCollections": [
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            2,
+            1,
+            0
+          ]
+        ]
+      },
+      "detailOverheadPercent": 44.37902883618632,
+      "reachability": {
+        "requestsPerTick": 261.71666666666664,
+        "lastSearchReusesPerTick": 156.29166666666663,
+        "sharedLookupsPerTick": 105.425,
+        "sharedHitsPerTick": 52.65,
+        "bfsPerTick": 52.775,
+        "sharedLookupHitPercent": 49.940716148921034
+      },
+      "operations": [
+        {
+          "name": "GrowSettlements",
+          "selfMsPerTick": 0.7189440083333333,
+          "inclusiveMsPerTick": 0.8811699583333333,
+          "selfPercentOfInstrumentedStep": 8.257962380207704,
+          "callsPerTick": 0.08333333333333333,
+          "byStage": [
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.7189440083333333,
+              "callsPerTick": 0.08333333333333333
+            }
+          ]
+        },
+        {
+          "name": "FindLocalWorkBuilding",
+          "selfMsPerTick": 0.5281693027777778,
+          "inclusiveMsPerTick": 0.9090364472222221,
+          "selfPercentOfInstrumentedStep": 6.066678603846428,
+          "callsPerTick": 695.2333333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.5281693027777778,
+              "callsPerTick": 695.2333333333333
+            }
+          ]
+        },
+        {
+          "name": "ReconcileConnectedClaims",
+          "selfMsPerTick": 0.4967859250000001,
+          "inclusiveMsPerTick": 0.4967859250000001,
+          "selfPercentOfInstrumentedStep": 5.706201640343346,
+          "callsPerTick": 2.775,
+          "byStage": [
+            {
+              "stage": 7,
+              "selfMsPerTick": 0.09861090277777777,
+              "callsPerTick": 0.125
+            },
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.06701790833333333,
+              "callsPerTick": 0.65
+            },
+            {
+              "stage": 17,
+              "selfMsPerTick": 0.32897833055555553,
+              "callsPerTick": 1.0
+            },
+            {
+              "stage": 18,
+              "selfMsPerTick": 0.0021787833333333333,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "FindVisibleResourceSite",
+          "selfMsPerTick": 0.4600270472222222,
+          "inclusiveMsPerTick": 0.5889156916666667,
+          "selfPercentOfInstrumentedStep": 5.28398040154167,
+          "callsPerTick": 448.19166666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.4600270472222222,
+              "callsPerTick": 448.19166666666666
+            }
+          ]
+        },
+        {
+          "name": "ActOnAgentGoal",
+          "selfMsPerTick": 0.443612125,
+          "inclusiveMsPerTick": 1.1574179055555556,
+          "selfPercentOfInstrumentedStep": 5.095434689199774,
+          "callsPerTick": 1139.0833333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.443612125,
+              "callsPerTick": 1139.0833333333333
+            }
+          ]
+        },
+        {
+          "name": "TickWildlife",
+          "selfMsPerTick": 0.3874771916666666,
+          "inclusiveMsPerTick": 0.3874771916666666,
+          "selfPercentOfInstrumentedStep": 4.450655454226014,
+          "callsPerTick": 1.0,
+          "byStage": [
+            {
+              "stage": 2,
+              "selfMsPerTick": 0.3874771916666666,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "RelayKnownAgentMessages",
+          "selfMsPerTick": 0.344860625,
+          "inclusiveMsPerTick": 0.344860625,
+          "selfPercentOfInstrumentedStep": 3.9611514035242266,
+          "callsPerTick": 1.0,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.344860625,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "BuildingHasWork",
+          "selfMsPerTick": 0.33945983888888887,
+          "inclusiveMsPerTick": 0.38263576666666665,
+          "selfPercentOfInstrumentedStep": 3.899116685921537,
+          "callsPerTick": 4942.175,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.33945983888888887,
+              "callsPerTick": 4942.175
+            }
+          ]
+        },
+        {
+          "name": "ActOnProduction",
+          "selfMsPerTick": 0.30995964722222225,
+          "inclusiveMsPerTick": 0.30995964722222225,
+          "selfPercentOfInstrumentedStep": 3.5602704473152884,
+          "callsPerTick": 1137.7166666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.30995964722222225,
+              "callsPerTick": 1137.7166666666667
+            }
+          ]
+        },
+        {
+          "name": "ChooseAgentGoal",
+          "selfMsPerTick": 0.3012161361111111,
+          "inclusiveMsPerTick": 2.7484115361111114,
+          "selfPercentOfInstrumentedStep": 3.459840392972298,
+          "callsPerTick": 373.31666666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.3012161361111111,
+              "callsPerTick": 373.31666666666666
+            }
+          ]
+        },
+        {
+          "name": "FindHarvestableWildlife",
+          "selfMsPerTick": 0.2564016722222222,
+          "inclusiveMsPerTick": 0.386592475,
+          "selfPercentOfInstrumentedStep": 2.945090770478695,
+          "callsPerTick": 146.075,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.2564016722222222,
+              "callsPerTick": 146.075
+            }
+          ]
+        },
+        {
+          "name": "ObserveAgentEnvironment",
+          "selfMsPerTick": 0.25559133055555555,
+          "inclusiveMsPerTick": 0.32303648055555556,
+          "selfPercentOfInstrumentedStep": 2.935782992792417,
+          "callsPerTick": 130.625,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.25559133055555555,
+              "callsPerTick": 130.625
+            }
+          ]
+        },
+        {
+          "name": "Reachability.BreadthFirstSearch",
+          "selfMsPerTick": 0.24215941944444444,
+          "inclusiveMsPerTick": 0.24215941944444444,
+          "selfPercentOfInstrumentedStep": 2.7815008576550975,
+          "callsPerTick": 52.775,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.24215941944444444,
+              "callsPerTick": 52.775
+            }
+          ]
+        },
+        {
+          "name": "AddAgentMissionChoices",
+          "selfMsPerTick": 0.24023864999999994,
+          "inclusiveMsPerTick": 0.2403794777777778,
+          "selfPercentOfInstrumentedStep": 2.7594384416262807,
+          "callsPerTick": 319.68333333333334,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.24023864999999994,
+              "callsPerTick": 319.68333333333334
+            }
+          ]
+        },
+        {
+          "name": "Communication.SelectNearbyResidentByIdRank",
+          "selfMsPerTick": 0.22479766111111113,
+          "inclusiveMsPerTick": 0.22479766111111113,
+          "selfPercentOfInstrumentedStep": 2.582079559877969,
+          "callsPerTick": 167.75833333333333,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.22479766111111113,
+              "callsPerTick": 167.75833333333333
+            }
+          ]
+        },
+        {
+          "name": "RememberAgentFact",
+          "selfMsPerTick": 0.21252791666666668,
+          "inclusiveMsPerTick": 0.21252791666666668,
+          "selfPercentOfInstrumentedStep": 2.4411463483030182,
+          "callsPerTick": 1051.8166666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.0900142611111111,
+              "callsPerTick": 563.6833333333333
+            },
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.12157741944444445,
+              "callsPerTick": 486.43333333333334
+            },
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.0008568722222222223,
+              "callsPerTick": 1.5
+            },
+            {
+              "stage": 13,
+              "selfMsPerTick": 7.936388888888889e-05,
+              "callsPerTick": 0.2
+            }
+          ]
+        },
+        {
+          "name": "SelectMessageFacts",
+          "selfMsPerTick": 0.16031625,
+          "inclusiveMsPerTick": 0.16031625,
+          "selfPercentOfInstrumentedStep": 1.8414306901381996,
+          "callsPerTick": 167.75833333333333,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.16031625,
+              "callsPerTick": 167.75833333333333
+            }
+          ]
+        },
+        {
+          "name": "Communication.GatherNearbyResidents",
+          "selfMsPerTick": 0.12035340833333331,
+          "inclusiveMsPerTick": 0.12035340833333331,
+          "selfPercentOfInstrumentedStep": 1.3824079578192137,
+          "callsPerTick": 171.46666666666667,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.12035340833333331,
+              "callsPerTick": 171.46666666666667
+            }
+          ]
+        },
+        {
+          "name": "ReconcileSocietyTopology",
+          "selfMsPerTick": 0.11804550555555557,
+          "inclusiveMsPerTick": 0.4470939333333333,
+          "selfPercentOfInstrumentedStep": 1.355898835975014,
+          "callsPerTick": 1.125,
+          "byStage": [
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.009417563888888888,
+              "callsPerTick": 0.125
+            },
+            {
+              "stage": 17,
+              "selfMsPerTick": 0.10862794166666667,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "TransferPersonalProduction",
+          "selfMsPerTick": 0.1104292638888889,
+          "inclusiveMsPerTick": 0.1104292638888889,
+          "selfPercentOfInstrumentedStep": 1.268416867375391,
+          "callsPerTick": 565.7416666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.1104292638888889,
+              "callsPerTick": 565.7416666666667
+            }
+          ]
+        },
+        {
+          "name": "LatestAgentFact",
+          "selfMsPerTick": 0.10345193611111111,
+          "inclusiveMsPerTick": 0.10345193611111111,
+          "selfPercentOfInstrumentedStep": 1.1882736161132528,
+          "callsPerTick": 375.3666666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.10345193611111111,
+              "callsPerTick": 375.3666666666667
+            }
+          ]
+        },
+        {
+          "name": "MoveAgentTowards",
+          "selfMsPerTick": 0.09965831666666666,
+          "inclusiveMsPerTick": 0.1665564611111111,
+          "selfPercentOfInstrumentedStep": 1.1446991982254526,
+          "callsPerTick": 556.85,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.06846028055555556,
+              "callsPerTick": 283.35
+            },
+            {
+              "stage": 13,
+              "selfMsPerTick": 0.031198036111111112,
+              "callsPerTick": 273.5
+            }
+          ]
+        },
+        {
+          "name": "AddProvisionChoices",
+          "selfMsPerTick": 0.07553995000000001,
+          "inclusiveMsPerTick": 0.5727945861111111,
+          "selfPercentOfInstrumentedStep": 0.8676698853765921,
+          "callsPerTick": 319.68333333333334,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.07553995000000001,
+              "callsPerTick": 319.68333333333334
+            }
+          ]
+        },
+        {
+          "name": "ProvisionAtHome",
+          "selfMsPerTick": 0.06991093333333334,
+          "inclusiveMsPerTick": 0.06991093333333334,
+          "selfPercentOfInstrumentedStep": 0.8030136571695361,
+          "callsPerTick": 721.525,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.06991093333333334,
+              "callsPerTick": 721.525
+            }
+          ]
+        },
+        {
+          "name": "SelectAgentStep",
+          "selfMsPerTick": 0.06689814444444445,
+          "inclusiveMsPerTick": 0.06689814444444445,
+          "selfPercentOfInstrumentedStep": 0.768408045306064,
+          "callsPerTick": 408.48333333333335,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.05546329444444444,
+              "callsPerTick": 283.35
+            },
+            {
+              "stage": 13,
+              "selfMsPerTick": 0.011434849999999998,
+              "callsPerTick": 125.13333333333334
+            }
+          ]
+        },
+        {
+          "name": "ActOnRacialWork",
+          "selfMsPerTick": 0.05465251388888889,
+          "inclusiveMsPerTick": 0.05465251388888889,
+          "selfPercentOfInstrumentedStep": 0.6277518116111387,
+          "callsPerTick": 1137.7166666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.05465251388888889,
+              "callsPerTick": 1137.7166666666667
+            }
+          ]
+        },
+        {
+          "name": "FindWorkshopResource",
+          "selfMsPerTick": 0.04593863333333334,
+          "inclusiveMsPerTick": 0.04593863333333334,
+          "selfPercentOfInstrumentedStep": 0.5276621008974804,
+          "callsPerTick": 400.23333333333335,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.04593863333333334,
+              "callsPerTick": 400.23333333333335
+            }
+          ]
+        },
+        {
+          "name": "AgentFoodPolicyMultiplier",
+          "selfMsPerTick": 0.041547880555555555,
+          "inclusiveMsPerTick": 0.041547880555555555,
+          "selfPercentOfInstrumentedStep": 0.4772288670998488,
+          "callsPerTick": 403.725,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.041547880555555555,
+              "callsPerTick": 403.725
+            }
+          ]
+        },
+        {
+          "name": "FindWaterSite",
+          "selfMsPerTick": 0.03458396666666667,
+          "inclusiveMsPerTick": 0.04370096666666667,
+          "selfPercentOfInstrumentedStep": 0.3972396909653044,
+          "callsPerTick": 15.7,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.03458396666666667,
+              "callsPerTick": 15.7
+            }
+          ]
+        },
+        {
+          "name": "MarkVisibleReachable",
+          "selfMsPerTick": 0.03139273611111111,
+          "inclusiveMsPerTick": 0.289651975,
+          "selfPercentOfInstrumentedStep": 0.3605844555521334,
+          "callsPerTick": 261.71666666666664,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.03139273611111111,
+              "callsPerTick": 261.71666666666664
+            }
+          ]
+        },
+        {
+          "name": "ReceiveSocietyReport",
+          "selfMsPerTick": 0.011798975,
+          "inclusiveMsPerTick": 0.011798975,
+          "selfPercentOfInstrumentedStep": 0.13552584143636945,
+          "callsPerTick": 25.216666666666665,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.003247486111111111,
+              "callsPerTick": 2.65
+            },
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.008551488888888889,
+              "callsPerTick": 22.566666666666666
+            }
+          ]
+        }
+      ],
+      "pairedLateWallRuns": []
+    },
+    {
+      "name": "late",
+      "initialPopulation": 2000,
+      "warmupTicks": 600,
+      "measuredTicks": 120,
+      "repetitions": 3,
+      "finalTick": 720,
+      "finalPopulation": 4315,
+      "saveBytes": 71252573,
+      "saveWithinLimit": false,
+      "saveSha256": "44A8DCBAE10347988522C4299E8DD6B88DA7C1E0625D55C06A811A4C4F937AB3",
+      "allDigestsEqual": true,
+      "beforeNative": {
+        "meanMsPerTick": 20.21598416666667,
+        "runMeanMsPerTick": [
+          19.558388333333344,
+          19.71690666666666,
+          21.372657500000003
+        ],
+        "runP95Ms": [
+          32.5385,
+          29.6897,
+          32.4401
+        ],
+        "runMaxMs": [
+          75.7969,
+          96.3303,
+          120.8133
+        ],
+        "allocatedBytesPerTick": 3482778.7555555557,
+        "gcCollections": [
+          [
+            3,
+            2,
+            1
+          ],
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            2,
+            1,
+            0
+          ]
+        ]
+      },
+      "intermediateNative": {
+        "meanMsPerTick": 17.86674444444444,
+        "runMeanMsPerTick": [
+          18.021142499999996,
+          17.850580833333325,
+          17.728509999999996
+        ],
+        "runP95Ms": [
+          30.6734,
+          26.4659,
+          28.5129
+        ],
+        "runMaxMs": [
+          94.2106,
+          82.5772,
+          78.4044
+        ],
+        "allocatedBytesPerTick": 3501537.3777777776,
+        "gcCollections": [
+          [
+            3,
+            2,
+            1
+          ],
+          [
+            3,
+            2,
+            0
+          ],
+          [
+            2,
+            1,
+            0
+          ]
+        ]
+      },
+      "intermediateDetail": {
+        "meanMsPerTick": 22.17862277777778,
+        "runMeanMsPerTick": [
+          21.621048333333327,
+          21.691240000000008,
+          23.223580000000005
+        ],
+        "runP95Ms": [
+          29.3118,
+          29.5338,
+          31.7362
+        ],
+        "runMaxMs": [
+          100.4275,
+          93.4041,
+          90.5364
+        ],
+        "allocatedBytesPerTick": 3501536.5555555555,
+        "gcCollections": [
+          [
+            3,
+            2,
+            1
+          ],
+          [
+            3,
+            2,
+            0
+          ],
+          [
+            2,
+            1,
+            0
+          ]
+        ]
+      },
+      "intermediateOperations": [
+        {
+          "name": "FindHarvestableWildlife",
+          "selfMsPerTick": 2.7165806277777778,
+          "inclusiveMsPerTick": 2.7822076250000003,
+          "selfPercentOfInstrumentedStep": 12.248644359016279,
+          "callsPerTick": 314.31666666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 2.7165806277777778,
+              "callsPerTick": 314.31666666666666
+            }
+          ]
+        },
+        {
+          "name": "Reachability.BreadthFirstSearch",
+          "selfMsPerTick": 2.3960142055555553,
+          "inclusiveMsPerTick": 2.3960142055555553,
+          "selfPercentOfInstrumentedStep": 10.8032596503525,
+          "callsPerTick": 655.0583333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 2.3960142055555553,
+              "callsPerTick": 655.0583333333333
+            }
+          ]
+        },
+        {
+          "name": "ChooseAgentGoal",
+          "selfMsPerTick": 1.4199614694444447,
+          "inclusiveMsPerTick": 9.7683754,
+          "selfPercentOfInstrumentedStep": 6.402387937573821,
+          "callsPerTick": 1612.9833333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 1.4199614694444447,
+              "callsPerTick": 1612.9833333333333
+            }
+          ]
+        },
+        {
+          "name": "GrowSettlements",
+          "selfMsPerTick": 1.2766071916666666,
+          "inclusiveMsPerTick": 1.2901015555555555,
+          "selfPercentOfInstrumentedStep": 5.756025540710234,
+          "callsPerTick": 0.08333333333333333,
+          "byStage": [
+            {
+              "stage": 11,
+              "selfMsPerTick": 1.2766071916666666,
+              "callsPerTick": 0.08333333333333333
+            }
+          ]
+        },
+        {
+          "name": "MoveAgentTowards",
+          "selfMsPerTick": 0.9442724666666666,
+          "inclusiveMsPerTick": 2.2926212055555557,
+          "selfPercentOfInstrumentedStep": 4.257579364273219,
+          "callsPerTick": 969.0416666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.9442724666666666,
+              "callsPerTick": 969.0416666666666
+            }
+          ]
+        },
+        {
+          "name": "FindWaterSite",
+          "selfMsPerTick": 0.938486725,
+          "inclusiveMsPerTick": 1.1867255388888889,
+          "selfPercentOfInstrumentedStep": 4.231492344692978,
+          "callsPerTick": 551.7583333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.938486725,
+              "callsPerTick": 551.7583333333333
+            }
+          ]
+        },
+        {
+          "name": "FindVisibleResourceSite",
+          "selfMsPerTick": 0.8900369166666667,
+          "inclusiveMsPerTick": 1.1745496083333333,
+          "selfPercentOfInstrumentedStep": 4.013039608385662,
+          "callsPerTick": 964.0166666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.8900369166666667,
+              "callsPerTick": 964.0166666666667
+            }
+          ]
+        },
+        {
+          "name": "ActOnAgentGoal",
+          "selfMsPerTick": 0.7352417694444445,
+          "inclusiveMsPerTick": 3.6945008027777777,
+          "selfPercentOfInstrumentedStep": 3.315092090303874,
+          "callsPerTick": 3084.675,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.7352417694444445,
+              "callsPerTick": 3084.675
+            }
+          ]
+        },
+        {
+          "name": "ObserveAgentEnvironment",
+          "selfMsPerTick": 0.6823035805555555,
+          "inclusiveMsPerTick": 0.8913552527777777,
+          "selfPercentOfInstrumentedStep": 3.076401936188754,
+          "callsPerTick": 259.96666666666664,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.6823035805555555,
+              "callsPerTick": 259.96666666666664
+            }
+          ]
+        },
+        {
+          "name": "SelectMessageFacts",
+          "selfMsPerTick": 0.6804806277777777,
+          "inclusiveMsPerTick": 0.6804806277777777,
+          "selfPercentOfInstrumentedStep": 3.068182522404394,
+          "callsPerTick": 324.2583333333333,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.6804806277777777,
+              "callsPerTick": 324.2583333333333
+            }
+          ]
+        },
+        {
+          "name": "LatestAgentFact",
+          "selfMsPerTick": 0.5547988527777777,
+          "inclusiveMsPerTick": 0.5547988527777777,
+          "selfPercentOfInstrumentedStep": 2.5015027233055576,
+          "callsPerTick": 1638.35,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.5547988527777777,
+              "callsPerTick": 1638.35
+            }
+          ]
+        },
+        {
+          "name": "AddProvisionChoices",
+          "selfMsPerTick": 0.5026694166666666,
+          "inclusiveMsPerTick": 5.617630613888888,
+          "selfPercentOfInstrumentedStep": 2.266459111114529,
+          "callsPerTick": 800.3333333333334,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.5026694166666666,
+              "callsPerTick": 800.3333333333334
+            }
+          ]
+        },
+        {
+          "name": "RememberAgentFact",
+          "selfMsPerTick": 0.45748624444444447,
+          "inclusiveMsPerTick": 0.45748624444444447,
+          "selfPercentOfInstrumentedStep": 2.0627351347660325,
+          "callsPerTick": 1787.1416666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.16282203333333334,
+              "callsPerTick": 683.2083333333334
+            },
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.2945285055555556,
+              "callsPerTick": 1103.7166666666667
+            },
+            {
+              "stage": 13,
+              "selfMsPerTick": 0.00013570555555555554,
+              "callsPerTick": 0.21666666666666667
+            }
+          ]
+        },
+        {
+          "name": "Communication.SelectNearbyResidentByIdRank",
+          "selfMsPerTick": 0.4181716833333334,
+          "inclusiveMsPerTick": 0.4181716833333334,
+          "selfPercentOfInstrumentedStep": 1.8854718235810703,
+          "callsPerTick": 324.2583333333333,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.4181716833333334,
+              "callsPerTick": 324.2583333333333
+            }
+          ]
+        },
+        {
+          "name": "FindLocalWorkBuilding",
+          "selfMsPerTick": 0.39558195555555553,
+          "inclusiveMsPerTick": 0.7273113583333333,
+          "selfPercentOfInstrumentedStep": 1.7836182143460917,
+          "callsPerTick": 878.5833333333334,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.39558195555555553,
+              "callsPerTick": 878.5833333333334
+            }
+          ]
+        },
+        {
+          "name": "TickWildlife",
+          "selfMsPerTick": 0.3913703333333334,
+          "inclusiveMsPerTick": 0.3913703333333334,
+          "selfPercentOfInstrumentedStep": 1.7646286573099257,
+          "callsPerTick": 1.0,
+          "byStage": [
+            {
+              "stage": 2,
+              "selfMsPerTick": 0.3913703333333334,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "BuildingHasWork",
+          "selfMsPerTick": 0.3015276361111111,
+          "inclusiveMsPerTick": 0.3331018972222222,
+          "selfPercentOfInstrumentedStep": 1.3595417494238256,
+          "callsPerTick": 4199.816666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.3015276361111111,
+              "callsPerTick": 4199.816666666667
+            }
+          ]
+        },
+        {
+          "name": "ReconcileConnectedClaims",
+          "selfMsPerTick": 0.2959749583333333,
+          "inclusiveMsPerTick": 0.2959749583333333,
+          "selfPercentOfInstrumentedStep": 1.3345055790835223,
+          "callsPerTick": 2.2416666666666667,
+          "byStage": [
+            {
+              "stage": 7,
+              "selfMsPerTick": 0.0064168666666666666,
+              "callsPerTick": 0.016666666666666666
+            },
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.013494363888888888,
+              "callsPerTick": 0.225
+            },
+            {
+              "stage": 17,
+              "selfMsPerTick": 0.2753341805555556,
+              "callsPerTick": 1.0
+            },
+            {
+              "stage": 18,
+              "selfMsPerTick": 0.0007295472222222223,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "Communication.GatherNearbyResidents",
+          "selfMsPerTick": 0.2658738222222222,
+          "inclusiveMsPerTick": 0.2658738222222222,
+          "selfPercentOfInstrumentedStep": 1.1987841846005818,
+          "callsPerTick": 342.51666666666665,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.2658738222222222,
+              "callsPerTick": 342.51666666666665
+            }
+          ]
+        },
+        {
+          "name": "RelayKnownAgentMessages",
+          "selfMsPerTick": 0.22897198611111114,
+          "inclusiveMsPerTick": 0.22897198611111114,
+          "selfPercentOfInstrumentedStep": 1.0323994794687308,
+          "callsPerTick": 1.0,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.22897198611111114,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "AgentFoodPolicyMultiplier",
+          "selfMsPerTick": 0.22066495555555557,
+          "inclusiveMsPerTick": 0.22066495555555557,
+          "selfPercentOfInstrumentedStep": 0.9949443559527704,
+          "callsPerTick": 1170.4666666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.22066495555555557,
+              "callsPerTick": 1170.4666666666667
+            }
+          ]
+        },
+        {
+          "name": "SelectAgentStep",
+          "selfMsPerTick": 0.2157604527777778,
+          "inclusiveMsPerTick": 0.2157604527777778,
+          "selfPercentOfInstrumentedStep": 0.9728307070264182,
+          "callsPerTick": 969.0416666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.2157604527777778,
+              "callsPerTick": 969.0416666666666
+            }
+          ]
+        },
+        {
+          "name": "ReceiveSocietyReport",
+          "selfMsPerTick": 0.20652579722222222,
+          "inclusiveMsPerTick": 0.2072236527777778,
+          "selfPercentOfInstrumentedStep": 0.9311930650137303,
+          "callsPerTick": 118.33333333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.10544360555555557,
+              "callsPerTick": 60.05833333333333
+            },
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.10108219166666667,
+              "callsPerTick": 58.275
+            }
+          ]
+        },
+        {
+          "name": "MarkVisibleReachable",
+          "selfMsPerTick": 0.20354321944444445,
+          "inclusiveMsPerTick": 2.713542636111111,
+          "selfPercentOfInstrumentedStep": 0.917745080404126,
+          "callsPerTick": 1316.15,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.20354321944444445,
+              "callsPerTick": 1316.15
+            }
+          ]
+        },
+        {
+          "name": "ReconcileSocietyTopology",
+          "selfMsPerTick": 0.2032139861111111,
+          "inclusiveMsPerTick": 0.4785481666666666,
+          "selfPercentOfInstrumentedStep": 0.9162606179258549,
+          "callsPerTick": 1.0,
+          "byStage": [
+            {
+              "stage": 17,
+              "selfMsPerTick": 0.2032139861111111,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "TransferPersonalProduction",
+          "selfMsPerTick": 0.13967181666666664,
+          "inclusiveMsPerTick": 0.13967181666666664,
+          "selfPercentOfInstrumentedStep": 0.6297587459155175,
+          "callsPerTick": 624.6333333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.13967181666666664,
+              "callsPerTick": 624.6333333333333
+            }
+          ]
+        },
+        {
+          "name": "ActOnProduction",
+          "selfMsPerTick": 0.13690260277777777,
+          "inclusiveMsPerTick": 0.13690260277777777,
+          "selfPercentOfInstrumentedStep": 0.6172727862748515,
+          "callsPerTick": 3076.4583333333335,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.13690260277777777,
+              "callsPerTick": 3076.4583333333335
+            }
+          ]
+        },
+        {
+          "name": "ActOnRacialWork",
+          "selfMsPerTick": 0.12833765,
+          "inclusiveMsPerTick": 0.12833765,
+          "selfPercentOfInstrumentedStep": 0.5786547311160815,
+          "callsPerTick": 3076.4583333333335,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.12833765,
+              "callsPerTick": 3076.4583333333335
+            }
+          ]
+        },
+        {
+          "name": "AddAgentMissionChoices",
+          "selfMsPerTick": 0.0735717611111111,
+          "inclusiveMsPerTick": 0.075492575,
+          "selfPercentOfInstrumentedStep": 0.3317237587215176,
+          "callsPerTick": 800.3333333333334,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.0735717611111111,
+              "callsPerTick": 800.3333333333334
+            }
+          ]
+        },
+        {
+          "name": "ProvisionAtHome",
+          "selfMsPerTick": 0.061955155555555565,
+          "inclusiveMsPerTick": 0.061955155555555565,
+          "selfPercentOfInstrumentedStep": 0.27934627039886584,
+          "callsPerTick": 715.6416666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.061955155555555565,
+              "callsPerTick": 715.6416666666667
+            }
+          ]
+        },
+        {
+          "name": "FindWorkshopResource",
+          "selfMsPerTick": 0.032492294444444444,
+          "inclusiveMsPerTick": 0.032492294444444444,
+          "selfPercentOfInstrumentedStep": 0.14650275975206456,
+          "callsPerTick": 258.025,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.032492294444444444,
+              "callsPerTick": 258.025
+            }
+          ]
+        }
+      ],
+      "afterNative": {
+        "meanMsPerTick": 25.180331111111116,
+        "runMeanMsPerTick": [
+          25.90883500000001,
+          23.661244166666663,
+          25.970914166666677
+        ],
+        "runP95Ms": [
+          57.0804,
+          32.4837,
+          36.4146
+        ],
+        "runMaxMs": [
+          147.8486,
+          78.2688,
+          100.4668
+        ],
+        "allocatedBytesPerTick": 3473407.2222222225,
+        "gcCollections": [
+          [
+            3,
+            2,
+            1
+          ],
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            3,
+            2,
+            0
+          ]
+        ]
+      },
+      "nativeMeanReductionPercent": -24.556543493093752,
+      "detail": {
+        "meanMsPerTick": 21.76516166666667,
+        "runMeanMsPerTick": [
+          21.35319916666666,
+          21.76585250000001,
+          22.176433333333343
+        ],
+        "runP95Ms": [
+          31.2969,
+          31.8743,
+          33.0686
+        ],
+        "runMaxMs": [
+          80.397,
+          110.5475,
+          97.3634
+        ],
+        "allocatedBytesPerTick": 3482782.9555555554,
+        "gcCollections": [
+          [
+            3,
+            2,
+            1
+          ],
+          [
+            3,
+            1,
+            0
+          ],
+          [
+            3,
+            2,
+            0
+          ]
+        ]
+      },
+      "detailOverheadPercent": -13.562845656693767,
+      "reachability": {
+        "requestsPerTick": 1316.15,
+        "lastSearchReusesPerTick": 365.3166666666667,
+        "sharedLookupsPerTick": 950.8333333333334,
+        "sharedHitsPerTick": 295.7750000000001,
+        "bfsPerTick": 655.0583333333333,
+        "sharedLookupHitPercent": 31.106923751095536
+      },
+      "operations": [
+        {
+          "name": "FindHarvestableWildlife",
+          "selfMsPerTick": 2.6342674361111107,
+          "inclusiveMsPerTick": 2.701530083333333,
+          "selfPercentOfInstrumentedStep": 12.103137465528176,
+          "callsPerTick": 314.31666666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 2.6342674361111107,
+              "callsPerTick": 314.31666666666666
+            }
+          ]
+        },
+        {
+          "name": "Reachability.BreadthFirstSearch",
+          "selfMsPerTick": 2.0315350055555554,
+          "inclusiveMsPerTick": 2.0315350055555554,
+          "selfPercentOfInstrumentedStep": 9.333884290263967,
+          "callsPerTick": 655.0583333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 2.0315350055555554,
+              "callsPerTick": 655.0583333333333
+            }
+          ]
+        },
+        {
+          "name": "GrowSettlements",
+          "selfMsPerTick": 1.4514649972222224,
+          "inclusiveMsPerTick": 1.4664370305555556,
+          "selfPercentOfInstrumentedStep": 6.668753577167956,
+          "callsPerTick": 0.08333333333333333,
+          "byStage": [
+            {
+              "stage": 11,
+              "selfMsPerTick": 1.4514649972222224,
+              "callsPerTick": 0.08333333333333333
+            }
+          ]
+        },
+        {
+          "name": "ChooseAgentGoal",
+          "selfMsPerTick": 1.2249755222222223,
+          "inclusiveMsPerTick": 9.528351155555555,
+          "selfPercentOfInstrumentedStep": 5.6281480513800695,
+          "callsPerTick": 1612.9833333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 1.2249755222222223,
+              "callsPerTick": 1612.9833333333333
+            }
+          ]
+        },
+        {
+          "name": "FindWaterSite",
+          "selfMsPerTick": 0.9563085000000001,
+          "inclusiveMsPerTick": 1.170875111111111,
+          "selfPercentOfInstrumentedStep": 4.393757853242073,
+          "callsPerTick": 551.7583333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.9563085000000001,
+              "callsPerTick": 551.7583333333333
+            }
+          ]
+        },
+        {
+          "name": "MoveAgentTowards",
+          "selfMsPerTick": 0.9441355027777778,
+          "inclusiveMsPerTick": 2.137823802777778,
+          "selfPercentOfInstrumentedStep": 4.337829037234861,
+          "callsPerTick": 969.0416666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.9441355027777778,
+              "callsPerTick": 969.0416666666666
+            }
+          ]
+        },
+        {
+          "name": "FindVisibleResourceSite",
+          "selfMsPerTick": 0.8515271916666668,
+          "inclusiveMsPerTick": 1.0785142055555554,
+          "selfPercentOfInstrumentedStep": 3.9123403019366494,
+          "callsPerTick": 964.0166666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.8515271916666668,
+              "callsPerTick": 964.0166666666667
+            }
+          ]
+        },
+        {
+          "name": "ObserveAgentEnvironment",
+          "selfMsPerTick": 0.802451161111111,
+          "inclusiveMsPerTick": 1.0156202666666667,
+          "selfPercentOfInstrumentedStep": 3.686860559092765,
+          "callsPerTick": 259.96666666666664,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.802451161111111,
+              "callsPerTick": 259.96666666666664
+            }
+          ]
+        },
+        {
+          "name": "ActOnAgentGoal",
+          "selfMsPerTick": 0.728908738888889,
+          "inclusiveMsPerTick": 3.5377277527777777,
+          "selfPercentOfInstrumentedStep": 3.348970019392101,
+          "callsPerTick": 3084.675,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.728908738888889,
+              "callsPerTick": 3084.675
+            }
+          ]
+        },
+        {
+          "name": "SelectMessageFacts",
+          "selfMsPerTick": 0.7034773805555555,
+          "inclusiveMsPerTick": 0.7034773805555555,
+          "selfPercentOfInstrumentedStep": 3.2321256847493602,
+          "callsPerTick": 324.2583333333333,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.7034773805555555,
+              "callsPerTick": 324.2583333333333
+            }
+          ]
+        },
+        {
+          "name": "FindLocalWorkBuilding",
+          "selfMsPerTick": 0.6567574638888889,
+          "inclusiveMsPerTick": 0.9749659861111111,
+          "selfPercentOfInstrumentedStep": 3.0174711033491306,
+          "callsPerTick": 878.5833333333334,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.6567574638888889,
+              "callsPerTick": 878.5833333333334
+            }
+          ]
+        },
+        {
+          "name": "LatestAgentFact",
+          "selfMsPerTick": 0.576543325,
+          "inclusiveMsPerTick": 0.576543325,
+          "selfPercentOfInstrumentedStep": 2.648927372237146,
+          "callsPerTick": 1638.35,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.576543325,
+              "callsPerTick": 1638.35
+            }
+          ]
+        },
+        {
+          "name": "AddProvisionChoices",
+          "selfMsPerTick": 0.49995726111111116,
+          "inclusiveMsPerTick": 5.391343594444444,
+          "selfPercentOfInstrumentedStep": 2.297052825832189,
+          "callsPerTick": 800.3333333333334,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.49995726111111116,
+              "callsPerTick": 800.3333333333334
+            }
+          ]
+        },
+        {
+          "name": "RememberAgentFact",
+          "selfMsPerTick": 0.47140593888888893,
+          "inclusiveMsPerTick": 0.47140593888888893,
+          "selfPercentOfInstrumentedStep": 2.165873822158862,
+          "callsPerTick": 1787.1416666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.16311239444444445,
+              "callsPerTick": 683.2083333333334
+            },
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.3080834388888889,
+              "callsPerTick": 1103.7166666666667
+            },
+            {
+              "stage": 13,
+              "selfMsPerTick": 0.00021010555555555553,
+              "callsPerTick": 0.21666666666666667
+            }
+          ]
+        },
+        {
+          "name": "Communication.SelectNearbyResidentByIdRank",
+          "selfMsPerTick": 0.40115605277777777,
+          "inclusiveMsPerTick": 0.40115605277777777,
+          "selfPercentOfInstrumentedStep": 1.843110834284075,
+          "callsPerTick": 324.2583333333333,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.40115605277777777,
+              "callsPerTick": 324.2583333333333
+            }
+          ]
+        },
+        {
+          "name": "TickWildlife",
+          "selfMsPerTick": 0.38778747222222226,
+          "inclusiveMsPerTick": 0.38778747222222226,
+          "selfPercentOfInstrumentedStep": 1.7816889125896938,
+          "callsPerTick": 1.0,
+          "byStage": [
+            {
+              "stage": 2,
+              "selfMsPerTick": 0.38778747222222226,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "ReconcileSocietyTopology",
+          "selfMsPerTick": 0.3755220777777778,
+          "inclusiveMsPerTick": 0.6569235861111111,
+          "selfPercentOfInstrumentedStep": 1.7253355776947414,
+          "callsPerTick": 1.0,
+          "byStage": [
+            {
+              "stage": 17,
+              "selfMsPerTick": 0.3755220777777778,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "ReconcileConnectedClaims",
+          "selfMsPerTick": 0.30579271388888885,
+          "inclusiveMsPerTick": 0.30579271388888885,
+          "selfPercentOfInstrumentedStep": 1.4049641283262793,
+          "callsPerTick": 2.2416666666666667,
+          "byStage": [
+            {
+              "stage": 7,
+              "selfMsPerTick": 0.008758447222222222,
+              "callsPerTick": 0.016666666666666666
+            },
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.014972033333333332,
+              "callsPerTick": 0.225
+            },
+            {
+              "stage": 17,
+              "selfMsPerTick": 0.28140150833333333,
+              "callsPerTick": 1.0
+            },
+            {
+              "stage": 18,
+              "selfMsPerTick": 0.0006607249999999999,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "BuildingHasWork",
+          "selfMsPerTick": 0.28841817222222216,
+          "inclusiveMsPerTick": 0.3195129027777778,
+          "selfPercentOfInstrumentedStep": 1.325136824799856,
+          "callsPerTick": 4199.816666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.28841817222222216,
+              "callsPerTick": 4199.816666666667
+            }
+          ]
+        },
+        {
+          "name": "Communication.GatherNearbyResidents",
+          "selfMsPerTick": 0.25944042777777776,
+          "inclusiveMsPerTick": 0.25944042777777776,
+          "selfPercentOfInstrumentedStep": 1.1919986249176846,
+          "callsPerTick": 342.51666666666665,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.25944042777777776,
+              "callsPerTick": 342.51666666666665
+            }
+          ]
+        },
+        {
+          "name": "AgentFoodPolicyMultiplier",
+          "selfMsPerTick": 0.23346238055555557,
+          "inclusiveMsPerTick": 0.23346238055555557,
+          "selfPercentOfInstrumentedStep": 1.0726425290610317,
+          "callsPerTick": 1170.4666666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.23346238055555557,
+              "callsPerTick": 1170.4666666666667
+            }
+          ]
+        },
+        {
+          "name": "SelectAgentStep",
+          "selfMsPerTick": 0.22961981944444448,
+          "inclusiveMsPerTick": 0.22961981944444448,
+          "selfPercentOfInstrumentedStep": 1.0549878882641477,
+          "callsPerTick": 969.0416666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.22961981944444448,
+              "callsPerTick": 969.0416666666666
+            }
+          ]
+        },
+        {
+          "name": "ReceiveSocietyReport",
+          "selfMsPerTick": 0.21928163055555552,
+          "inclusiveMsPerTick": 0.22009569999999998,
+          "selfPercentOfInstrumentedStep": 1.0074890961705338,
+          "callsPerTick": 118.33333333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.11162205833333334,
+              "callsPerTick": 60.05833333333333
+            },
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.10765957222222222,
+              "callsPerTick": 58.275
+            }
+          ]
+        },
+        {
+          "name": "MarkVisibleReachable",
+          "selfMsPerTick": 0.1927062111111111,
+          "inclusiveMsPerTick": 2.326873452777778,
+          "selfPercentOfInstrumentedStep": 0.885388374607116,
+          "callsPerTick": 1316.15,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.1927062111111111,
+              "callsPerTick": 1316.15
+            }
+          ]
+        },
+        {
+          "name": "ActOnProduction",
+          "selfMsPerTick": 0.1399010916666667,
+          "inclusiveMsPerTick": 0.1399010916666667,
+          "selfPercentOfInstrumentedStep": 0.6427753389074298,
+          "callsPerTick": 3076.4583333333335,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.1399010916666667,
+              "callsPerTick": 3076.4583333333335
+            }
+          ]
+        },
+        {
+          "name": "TransferPersonalProduction",
+          "selfMsPerTick": 0.12736755555555557,
+          "inclusiveMsPerTick": 0.12736755555555557,
+          "selfPercentOfInstrumentedStep": 0.5851900275595879,
+          "callsPerTick": 624.6333333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.12736755555555557,
+              "callsPerTick": 624.6333333333333
+            }
+          ]
+        },
+        {
+          "name": "ActOnRacialWork",
+          "selfMsPerTick": 0.1167236388888889,
+          "inclusiveMsPerTick": 0.1167236388888889,
+          "selfPercentOfInstrumentedStep": 0.5362865696865053,
+          "callsPerTick": 3076.4583333333335,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.1167236388888889,
+              "callsPerTick": 3076.4583333333335
+            }
+          ]
+        },
+        {
+          "name": "AddAgentMissionChoices",
+          "selfMsPerTick": 0.07675099722222221,
+          "inclusiveMsPerTick": 0.07861135833333334,
+          "selfPercentOfInstrumentedStep": 0.35263233233762886,
+          "callsPerTick": 800.3333333333334,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.07675099722222221,
+              "callsPerTick": 800.3333333333334
+            }
+          ]
+        },
+        {
+          "name": "ProvisionAtHome",
+          "selfMsPerTick": 0.06834709444444444,
+          "inclusiveMsPerTick": 0.06834709444444444,
+          "selfPercentOfInstrumentedStep": 0.3140206146463776,
+          "callsPerTick": 715.6416666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.06834709444444444,
+              "callsPerTick": 715.6416666666667
+            }
+          ]
+        },
+        {
+          "name": "RelayKnownAgentMessages",
+          "selfMsPerTick": 0.06165328055555555,
+          "inclusiveMsPerTick": 0.06165328055555555,
+          "selfPercentOfInstrumentedStep": 0.2832658975833729,
+          "callsPerTick": 1.0,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.06165328055555555,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "FindWorkshopResource",
+          "selfMsPerTick": 0.03201439166666667,
+          "inclusiveMsPerTick": 0.03201439166666667,
+          "selfPercentOfInstrumentedStep": 0.1470900706228003,
+          "callsPerTick": 258.025,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.03201439166666667,
+              "callsPerTick": 258.025
+            }
+          ]
+        }
+      ],
+      "pairedLateWallRuns": [
+        {
+          "before": {
+            "meanMsPerTick": 20.854645833333322,
+            "runMeanMsPerTick": [
+              20.854645833333322
+            ],
+            "runP95Ms": [
+              33.6859
+            ],
+            "runMaxMs": [
+              108.283
+            ],
+            "allocatedBytesPerTick": 3473413.6666666665,
+            "gcCollections": [
+              [
+                3,
+                2,
+                1
+              ]
+            ]
+          },
+          "after": {
+            "meanMsPerTick": 17.233344166666665,
+            "runMeanMsPerTick": [
+              17.233344166666665
+            ],
+            "runP95Ms": [
+              26.4224
+            ],
+            "runMaxMs": [
+              64.3817
+            ],
+            "allocatedBytesPerTick": 3482777.2,
+            "gcCollections": [
+              [
+                3,
+                1,
+                1
+              ]
+            ]
+          }
+        },
+        {
+          "before": {
+            "meanMsPerTick": 19.45002333333333,
+            "runMeanMsPerTick": [
+              19.45002333333333
+            ],
+            "runP95Ms": [
+              29.1551
+            ],
+            "runMaxMs": [
+              75.741
+            ],
+            "allocatedBytesPerTick": 3482786.466666667,
+            "gcCollections": [
+              [
+                3,
+                2,
+                1
+              ]
+            ]
+          },
+          "after": {
+            "meanMsPerTick": 17.48011833333333,
+            "runMeanMsPerTick": [
+              17.48011833333333
+            ],
+            "runP95Ms": [
+              27.6277
+            ],
+            "runMaxMs": [
+              81.9901
+            ],
+            "allocatedBytesPerTick": 3482777.1333333333,
+            "gcCollections": [
+              [
+                3,
+                2,
+                1
+              ]
+            ]
+          }
+        },
+        {
+          "before": {
+            "meanMsPerTick": 18.60370333333334,
+            "runMeanMsPerTick": [
+              18.60370333333334
+            ],
+            "runP95Ms": [
+              28.4852
+            ],
+            "runMaxMs": [
+              76.9314
+            ],
+            "allocatedBytesPerTick": 3482810.4,
+            "gcCollections": [
+              [
+                3,
+                2,
+                1
+              ]
+            ]
+          },
+          "after": {
+            "meanMsPerTick": 17.380596666666673,
+            "runMeanMsPerTick": [
+              17.380596666666673
+            ],
+            "runP95Ms": [
+              25.7967
+            ],
+            "runMaxMs": [
+              75.1531
+            ],
+            "allocatedBytesPerTick": 3482797.066666667,
+            "gcCollections": [
+              [
+                3,
+                2,
+                1
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "large",
+      "initialPopulation": 4000,
+      "warmupTicks": 60,
+      "measuredTicks": 120,
+      "repetitions": 3,
+      "finalTick": 180,
+      "finalPopulation": 3863,
+      "saveBytes": 56918666,
+      "saveWithinLimit": true,
+      "saveSha256": "0513D29CFE6BD3907E4AEF931787BB51933C2B5130865448407D0A5CDB015375",
+      "allDigestsEqual": true,
+      "beforeNative": {
+        "meanMsPerTick": 12.929379444444443,
+        "runMeanMsPerTick": [
+          12.78811833333333,
+          13.12828416666667,
+          12.871735833333329
+        ],
+        "runP95Ms": [
+          14.371,
+          17.9533,
+          18.37
+        ],
+        "runMaxMs": [
+          69.9148,
+          71.7771,
+          65.7952
+        ],
+        "allocatedBytesPerTick": 2582947.311111111,
+        "gcCollections": [
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            3,
+            2,
+            1
+          ],
+          [
+            3,
+            2,
+            1
+          ]
+        ]
+      },
+      "intermediateNative": {
+        "meanMsPerTick": 11.534897777777779,
+        "runMeanMsPerTick": [
+          10.95340083333334,
+          11.957069999999995,
+          11.6942225
+        ],
+        "runP95Ms": [
+          13.2416,
+          16.066,
+          16.3128
+        ],
+        "runMaxMs": [
+          65.6021,
+          60.7015,
+          91.0204
+        ],
+        "allocatedBytesPerTick": 2601919.9777777777,
+        "gcCollections": [
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            4,
+            3,
+            1
+          ],
+          [
+            3,
+            2,
+            1
+          ]
+        ]
+      },
+      "intermediateDetail": {
+        "meanMsPerTick": 14.900564722222223,
+        "runMeanMsPerTick": [
+          15.144400000000006,
+          14.881069166666666,
+          14.676224999999997
+        ],
+        "runP95Ms": [
+          19.9946,
+          19.2585,
+          17.5086
+        ],
+        "runMaxMs": [
+          67.7335,
+          66.3006,
+          70.4396
+        ],
+        "allocatedBytesPerTick": 2601964.7555555557,
+        "gcCollections": [
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            4,
+            3,
+            1
+          ],
+          [
+            3,
+            2,
+            1
+          ]
+        ]
+      },
+      "intermediateOperations": [
+        {
+          "name": "FindHarvestableWildlife",
+          "selfMsPerTick": 1.232718813888889,
+          "inclusiveMsPerTick": 1.4573463416666665,
+          "selfPercentOfInstrumentedStep": 8.272967077888342,
+          "callsPerTick": 356.975,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 1.232718813888889,
+              "callsPerTick": 356.975
+            }
+          ]
+        },
+        {
+          "name": "ActOnAgentGoal",
+          "selfMsPerTick": 1.0153669055555556,
+          "inclusiveMsPerTick": 1.9390543305555556,
+          "selfPercentOfInstrumentedStep": 6.814284723325083,
+          "callsPerTick": 2540.5916666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 1.0153669055555556,
+              "callsPerTick": 2540.5916666666667
+            }
+          ]
+        },
+        {
+          "name": "FindLocalWorkBuilding",
+          "selfMsPerTick": 0.987741536111111,
+          "inclusiveMsPerTick": 2.003171677777778,
+          "selfPercentOfInstrumentedStep": 6.628886586009893,
+          "callsPerTick": 1518.0416666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.987741536111111,
+              "callsPerTick": 1518.0416666666667
+            }
+          ]
+        },
+        {
+          "name": "FindVisibleResourceSite",
+          "selfMsPerTick": 0.9816675305555556,
+          "inclusiveMsPerTick": 1.1475518527777777,
+          "selfPercentOfInstrumentedStep": 6.588122993026755,
+          "callsPerTick": 1043.675,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.9816675305555556,
+              "callsPerTick": 1043.675
+            }
+          ]
+        },
+        {
+          "name": "BuildingHasWork",
+          "selfMsPerTick": 0.760659413888889,
+          "inclusiveMsPerTick": 1.0182269055555555,
+          "selfPercentOfInstrumentedStep": 5.104903257488396,
+          "callsPerTick": 11908.041666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.760659413888889,
+              "callsPerTick": 11908.041666666666
+            }
+          ]
+        },
+        {
+          "name": "Communication.SelectNearbyResidentByIdRank",
+          "selfMsPerTick": 0.7484675166666667,
+          "inclusiveMsPerTick": 0.7484675166666667,
+          "selfPercentOfInstrumentedStep": 5.023081545026454,
+          "callsPerTick": 327.2416666666667,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.7484675166666667,
+              "callsPerTick": 327.2416666666667
+            }
+          ]
+        },
+        {
+          "name": "ChooseAgentGoal",
+          "selfMsPerTick": 0.6736094111111112,
+          "inclusiveMsPerTick": 6.256472724999999,
+          "selfPercentOfInstrumentedStep": 4.520697192815194,
+          "callsPerTick": 887.95,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.6736094111111112,
+              "callsPerTick": 887.95
+            }
+          ]
+        },
+        {
+          "name": "ReconcileConnectedClaims",
+          "selfMsPerTick": 0.4560266972222222,
+          "inclusiveMsPerTick": 0.4560266972222222,
+          "selfPercentOfInstrumentedStep": 3.0604658663850417,
+          "callsPerTick": 2.933333333333333,
+          "byStage": [
+            {
+              "stage": 7,
+              "selfMsPerTick": 0.04256332777777778,
+              "callsPerTick": 0.10833333333333334
+            },
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.04172810833333333,
+              "callsPerTick": 0.825
+            },
+            {
+              "stage": 17,
+              "selfMsPerTick": 0.3712029972222223,
+              "callsPerTick": 1.0
+            },
+            {
+              "stage": 18,
+              "selfMsPerTick": 0.0005322638888888889,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "ObserveAgentEnvironment",
+          "selfMsPerTick": 0.43052819166666667,
+          "inclusiveMsPerTick": 0.5407930277777777,
+          "selfPercentOfInstrumentedStep": 2.889341442372253,
+          "callsPerTick": 249.20833333333334,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.43052819166666667,
+              "callsPerTick": 249.20833333333334
+            }
+          ]
+        },
+        {
+          "name": "RememberAgentFact",
+          "selfMsPerTick": 0.4090079888888889,
+          "inclusiveMsPerTick": 0.4090079888888889,
+          "selfPercentOfInstrumentedStep": 2.7449160250880125,
+          "callsPerTick": 1998.5666666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.15571092222222221,
+              "callsPerTick": 1038.5416666666667
+            },
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.2525327722222222,
+              "callsPerTick": 958.825
+            },
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.0007642944444444445,
+              "callsPerTick": 1.2
+            }
+          ]
+        },
+        {
+          "name": "TickWildlife",
+          "selfMsPerTick": 0.39469661666666667,
+          "inclusiveMsPerTick": 0.39469661666666667,
+          "selfPercentOfInstrumentedStep": 2.648870187302558,
+          "callsPerTick": 1.0,
+          "byStage": [
+            {
+              "stage": 2,
+              "selfMsPerTick": 0.39469661666666667,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "SelectMessageFacts",
+          "selfMsPerTick": 0.3598482305555555,
+          "inclusiveMsPerTick": 0.3598482305555555,
+          "selfPercentOfInstrumentedStep": 2.414997265297532,
+          "callsPerTick": 327.2416666666667,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.3598482305555555,
+              "callsPerTick": 327.2416666666667
+            }
+          ]
+        },
+        {
+          "name": "Reachability.BreadthFirstSearch",
+          "selfMsPerTick": 0.3375518111111111,
+          "inclusiveMsPerTick": 0.3375518111111111,
+          "selfPercentOfInstrumentedStep": 2.2653625376204514,
+          "callsPerTick": 79.96666666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.3375518111111111,
+              "callsPerTick": 79.96666666666667
+            }
+          ]
+        },
+        {
+          "name": "Communication.GatherNearbyResidents",
+          "selfMsPerTick": 0.27026666388888887,
+          "inclusiveMsPerTick": 0.27026666388888887,
+          "selfPercentOfInstrumentedStep": 1.813801482878175,
+          "callsPerTick": 332.0083333333333,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.27026666388888887,
+              "callsPerTick": 332.0083333333333
+            }
+          ]
+        },
+        {
+          "name": "ProvisionAtHome",
+          "selfMsPerTick": 0.26681269444444444,
+          "inclusiveMsPerTick": 0.26681269444444444,
+          "selfPercentOfInstrumentedStep": 1.7906213584410569,
+          "callsPerTick": 1401.8166666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.26681269444444444,
+              "callsPerTick": 1401.8166666666666
+            }
+          ]
+        },
+        {
+          "name": "FindWorkshopResource",
+          "selfMsPerTick": 0.2584452611111111,
+          "inclusiveMsPerTick": 0.2584452611111111,
+          "selfPercentOfInstrumentedStep": 1.7344662160735034,
+          "callsPerTick": 1101.3583333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.2584452611111111,
+              "callsPerTick": 1101.3583333333333
+            }
+          ]
+        },
+        {
+          "name": "GrowSettlements",
+          "selfMsPerTick": 0.2519239222222222,
+          "inclusiveMsPerTick": 0.3715380722222223,
+          "selfPercentOfInstrumentedStep": 1.690700499736839,
+          "callsPerTick": 0.08333333333333333,
+          "byStage": [
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.2519239222222222,
+              "callsPerTick": 0.08333333333333333
+            }
+          ]
+        },
+        {
+          "name": "LatestAgentFact",
+          "selfMsPerTick": 0.23185724444444444,
+          "inclusiveMsPerTick": 0.23185724444444444,
+          "selfPercentOfInstrumentedStep": 1.55602991407876,
+          "callsPerTick": 892.1666666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.23185724444444444,
+              "callsPerTick": 892.1666666666666
+            }
+          ]
+        },
+        {
+          "name": "RelayKnownAgentMessages",
+          "selfMsPerTick": 0.21702130555555554,
+          "inclusiveMsPerTick": 0.21702130555555554,
+          "selfPercentOfInstrumentedStep": 1.4564636280656997,
+          "callsPerTick": 1.0,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.21702130555555554,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "MoveAgentTowards",
+          "selfMsPerTick": 0.19830025555555555,
+          "inclusiveMsPerTick": 0.3588735777777778,
+          "selfPercentOfInstrumentedStep": 1.3308237590473126,
+          "callsPerTick": 1057.7166666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.167480525,
+              "callsPerTick": 782.3833333333333
+            },
+            {
+              "stage": 13,
+              "selfMsPerTick": 0.030819730555555556,
+              "callsPerTick": 275.3333333333333
+            }
+          ]
+        },
+        {
+          "name": "TransferPersonalProduction",
+          "selfMsPerTick": 0.176946575,
+          "inclusiveMsPerTick": 0.176946575,
+          "selfPercentOfInstrumentedStep": 1.1875158982136265,
+          "callsPerTick": 1042.125,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.176946575,
+              "callsPerTick": 1042.125
+            }
+          ]
+        },
+        {
+          "name": "AddProvisionChoices",
+          "selfMsPerTick": 0.162583425,
+          "inclusiveMsPerTick": 1.9319190999999998,
+          "selfPercentOfInstrumentedStep": 1.0911225717339983,
+          "callsPerTick": 716.25,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.162583425,
+              "callsPerTick": 716.25
+            }
+          ]
+        },
+        {
+          "name": "SelectAgentStep",
+          "selfMsPerTick": 0.16057332222222223,
+          "inclusiveMsPerTick": 0.16057332222222223,
+          "selfPercentOfInstrumentedStep": 1.077632460350636,
+          "callsPerTick": 908.45,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.15071614444444445,
+              "callsPerTick": 782.3833333333333
+            },
+            {
+              "stage": 13,
+              "selfMsPerTick": 0.009857177777777778,
+              "callsPerTick": 126.06666666666666
+            }
+          ]
+        },
+        {
+          "name": "AddAgentMissionChoices",
+          "selfMsPerTick": 0.15118691666666667,
+          "inclusiveMsPerTick": 0.15148256944444446,
+          "selfPercentOfInstrumentedStep": 1.0146388374206472,
+          "callsPerTick": 716.25,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.15118691666666667,
+              "callsPerTick": 716.25
+            }
+          ]
+        },
+        {
+          "name": "ReconcileSocietyTopology",
+          "selfMsPerTick": 0.1332957361111111,
+          "inclusiveMsPerTick": 0.5105877833333333,
+          "selfPercentOfInstrumentedStep": 0.8945683509049703,
+          "callsPerTick": 1.1,
+          "byStage": [
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.015270697222222221,
+              "callsPerTick": 0.1
+            },
+            {
+              "stage": 17,
+              "selfMsPerTick": 0.1180250388888889,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "ActOnProduction",
+          "selfMsPerTick": 0.12668038888888888,
+          "inclusiveMsPerTick": 0.12668038888888888,
+          "selfPercentOfInstrumentedStep": 0.8501717300684707,
+          "callsPerTick": 2539.425,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.12668038888888888,
+              "callsPerTick": 2539.425
+            }
+          ]
+        },
+        {
+          "name": "FindWaterSite",
+          "selfMsPerTick": 0.10729859722222224,
+          "inclusiveMsPerTick": 0.13945271944444443,
+          "selfPercentOfInstrumentedStep": 0.7200975212852205,
+          "callsPerTick": 58.983333333333334,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.10729859722222224,
+              "callsPerTick": 58.983333333333334
+            }
+          ]
+        },
+        {
+          "name": "AgentFoodPolicyMultiplier",
+          "selfMsPerTick": 0.10650561388888889,
+          "inclusiveMsPerTick": 0.10650561388888889,
+          "selfPercentOfInstrumentedStep": 0.7147756871929146,
+          "callsPerTick": 848.3666666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.10650561388888889,
+              "callsPerTick": 848.3666666666667
+            }
+          ]
+        },
+        {
+          "name": "ActOnRacialWork",
+          "selfMsPerTick": 0.1045968,
+          "inclusiveMsPerTick": 0.1045968,
+          "selfPercentOfInstrumentedStep": 0.7019653412464811,
+          "callsPerTick": 2539.425,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.1045968,
+              "callsPerTick": 2539.425
+            }
+          ]
+        },
+        {
+          "name": "MarkVisibleReachable",
+          "selfMsPerTick": 0.06555158333333333,
+          "inclusiveMsPerTick": 0.45222969166666666,
+          "selfPercentOfInstrumentedStep": 0.43992683871619853,
+          "callsPerTick": 790.6583333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.06555158333333333,
+              "callsPerTick": 790.6583333333333
+            }
+          ]
+        },
+        {
+          "name": "ReceiveSocietyReport",
+          "selfMsPerTick": 0.015403158333333335,
+          "inclusiveMsPerTick": 0.015403158333333335,
+          "selfPercentOfInstrumentedStep": 0.10337298364512025,
+          "callsPerTick": 50.74166666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.008396530555555556,
+              "callsPerTick": 9.883333333333333
+            },
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.007006627777777778,
+              "callsPerTick": 40.858333333333334
+            }
+          ]
+        }
+      ],
+      "afterNative": {
+        "meanMsPerTick": 12.013324444444443,
+        "runMeanMsPerTick": [
+          10.93287083333333,
+          11.350727499999996,
+          13.756375
+        ],
+        "runP95Ms": [
+          13.733,
+          16.4194,
+          24.6063
+        ],
+        "runMaxMs": [
+          69.44,
+          61.9919,
+          71.406
+        ],
+        "allocatedBytesPerTick": 2582943.711111111,
+        "gcCollections": [
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            3,
+            2,
+            1
+          ],
+          [
+            3,
+            2,
+            1
+          ]
+        ]
+      },
+      "nativeMeanReductionPercent": 7.08506548157356,
+      "detail": {
+        "meanMsPerTick": 18.380178055555554,
+        "runMeanMsPerTick": [
+          16.06573833333333,
+          16.43140166666667,
+          22.643394166666663
+        ],
+        "runP95Ms": [
+          26.8512,
+          27.1471,
+          31.1173
+        ],
+        "runMaxMs": [
+          105.6833,
+          72.9157,
+          156.0637
+        ],
+        "allocatedBytesPerTick": 2582898.1555555556,
+        "gcCollections": [
+          [
+            2,
+            1,
+            0
+          ],
+          [
+            3,
+            2,
+            1
+          ],
+          [
+            2,
+            1,
+            0
+          ]
+        ]
+      },
+      "detailOverheadPercent": 52.998265721987224,
+      "reachability": {
+        "requestsPerTick": 790.6583333333333,
+        "lastSearchReusesPerTick": 474.41666666666663,
+        "sharedLookupsPerTick": 316.2416666666667,
+        "sharedHitsPerTick": 236.275,
+        "bfsPerTick": 79.96666666666667,
+        "sharedLookupHitPercent": 74.71343118395741
+      },
+      "operations": [
+        {
+          "name": "FindLocalWorkBuilding",
+          "selfMsPerTick": 1.3825540472222224,
+          "inclusiveMsPerTick": 2.6530361305555554,
+          "selfPercentOfInstrumentedStep": 7.52198397122891,
+          "callsPerTick": 1518.0416666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 1.3825540472222224,
+              "callsPerTick": 1518.0416666666667
+            }
+          ]
+        },
+        {
+          "name": "FindHarvestableWildlife",
+          "selfMsPerTick": 1.2516267527777778,
+          "inclusiveMsPerTick": 1.4538348777777776,
+          "selfPercentOfInstrumentedStep": 6.809655211144506,
+          "callsPerTick": 356.975,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 1.2516267527777778,
+              "callsPerTick": 356.975
+            }
+          ]
+        },
+        {
+          "name": "FindVisibleResourceSite",
+          "selfMsPerTick": 1.138664188888889,
+          "inclusiveMsPerTick": 1.300953138888889,
+          "selfPercentOfInstrumentedStep": 6.195066149235256,
+          "callsPerTick": 1043.675,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 1.138664188888889,
+              "callsPerTick": 1043.675
+            }
+          ]
+        },
+        {
+          "name": "ActOnAgentGoal",
+          "selfMsPerTick": 1.0091407916666666,
+          "inclusiveMsPerTick": 2.5871602916666663,
+          "selfPercentOfInstrumentedStep": 5.490375493732748,
+          "callsPerTick": 2540.5916666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 1.0091407916666666,
+              "callsPerTick": 2540.5916666666667
+            }
+          ]
+        },
+        {
+          "name": "BuildingHasWork",
+          "selfMsPerTick": 0.9101358250000001,
+          "inclusiveMsPerTick": 1.273173261111111,
+          "selfPercentOfInstrumentedStep": 4.951724745261128,
+          "callsPerTick": 11908.041666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.9101358250000001,
+              "callsPerTick": 11908.041666666666
+            }
+          ]
+        },
+        {
+          "name": "Communication.SelectNearbyResidentByIdRank",
+          "selfMsPerTick": 0.8899920500000001,
+          "inclusiveMsPerTick": 0.8899920500000001,
+          "selfPercentOfInstrumentedStep": 4.842129642650512,
+          "callsPerTick": 327.2416666666667,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.8899920500000001,
+              "callsPerTick": 327.2416666666667
+            }
+          ]
+        },
+        {
+          "name": "ChooseAgentGoal",
+          "selfMsPerTick": 0.859795411111111,
+          "inclusiveMsPerTick": 7.2305130194444445,
+          "selfPercentOfInstrumentedStep": 4.67784048942459,
+          "callsPerTick": 887.95,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.859795411111111,
+              "callsPerTick": 887.95
+            }
+          ]
+        },
+        {
+          "name": "ReconcileConnectedClaims",
+          "selfMsPerTick": 0.7803242444444446,
+          "inclusiveMsPerTick": 0.7803242444444446,
+          "selfPercentOfInstrumentedStep": 4.245466186920781,
+          "callsPerTick": 2.933333333333333,
+          "byStage": [
+            {
+              "stage": 7,
+              "selfMsPerTick": 0.07012300555555555,
+              "callsPerTick": 0.10833333333333334
+            },
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.050725313888888894,
+              "callsPerTick": 0.825
+            },
+            {
+              "stage": 17,
+              "selfMsPerTick": 0.6589135694444443,
+              "callsPerTick": 1.0
+            },
+            {
+              "stage": 18,
+              "selfMsPerTick": 0.0005623555555555556,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "ObserveAgentEnvironment",
+          "selfMsPerTick": 0.5423971111111111,
+          "inclusiveMsPerTick": 0.6779337000000001,
+          "selfPercentOfInstrumentedStep": 2.950989427151753,
+          "callsPerTick": 249.20833333333334,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.5423971111111111,
+              "callsPerTick": 249.20833333333334
+            }
+          ]
+        },
+        {
+          "name": "RememberAgentFact",
+          "selfMsPerTick": 0.5257749166666668,
+          "inclusiveMsPerTick": 0.5257749166666668,
+          "selfPercentOfInstrumentedStep": 2.860553989615716,
+          "callsPerTick": 1998.5666666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.18433384722222224,
+              "callsPerTick": 1038.5416666666667
+            },
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.34087136944444446,
+              "callsPerTick": 958.825
+            },
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.0005697,
+              "callsPerTick": 1.2
+            }
+          ]
+        },
+        {
+          "name": "SelectMessageFacts",
+          "selfMsPerTick": 0.4882232916666666,
+          "inclusiveMsPerTick": 0.4882232916666666,
+          "selfPercentOfInstrumentedStep": 2.656248977517915,
+          "callsPerTick": 327.2416666666667,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.4882232916666666,
+              "callsPerTick": 327.2416666666667
+            }
+          ]
+        },
+        {
+          "name": "TickWildlife",
+          "selfMsPerTick": 0.48618592777777775,
+          "inclusiveMsPerTick": 0.48618592777777775,
+          "selfPercentOfInstrumentedStep": 2.645164406504888,
+          "callsPerTick": 1.0,
+          "byStage": [
+            {
+              "stage": 2,
+              "selfMsPerTick": 0.48618592777777775,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "FindWorkshopResource",
+          "selfMsPerTick": 0.3640221083333333,
+          "inclusiveMsPerTick": 0.3640221083333333,
+          "selfPercentOfInstrumentedStep": 1.9805145914965974,
+          "callsPerTick": 1101.3583333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.3640221083333333,
+              "callsPerTick": 1101.3583333333333
+            }
+          ]
+        },
+        {
+          "name": "Communication.GatherNearbyResidents",
+          "selfMsPerTick": 0.32749588055555556,
+          "inclusiveMsPerTick": 0.32749588055555556,
+          "selfPercentOfInstrumentedStep": 1.7817884003390672,
+          "callsPerTick": 332.0083333333333,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.32749588055555556,
+              "callsPerTick": 332.0083333333333
+            }
+          ]
+        },
+        {
+          "name": "LatestAgentFact",
+          "selfMsPerTick": 0.30878126388888893,
+          "inclusiveMsPerTick": 0.30878126388888893,
+          "selfPercentOfInstrumentedStep": 1.6799688390154486,
+          "callsPerTick": 892.1666666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.30878126388888893,
+              "callsPerTick": 892.1666666666666
+            }
+          ]
+        },
+        {
+          "name": "Reachability.BreadthFirstSearch",
+          "selfMsPerTick": 0.3021918083333333,
+          "inclusiveMsPerTick": 0.3021918083333333,
+          "selfPercentOfInstrumentedStep": 1.6441179591401918,
+          "callsPerTick": 79.96666666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.3021918083333333,
+              "callsPerTick": 79.96666666666667
+            }
+          ]
+        },
+        {
+          "name": "MoveAgentTowards",
+          "selfMsPerTick": 0.2651914722222222,
+          "inclusiveMsPerTick": 0.47632321666666666,
+          "selfPercentOfInstrumentedStep": 1.4428123134643192,
+          "callsPerTick": 1057.7166666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.23087261666666667,
+              "callsPerTick": 782.3833333333333
+            },
+            {
+              "stage": 13,
+              "selfMsPerTick": 0.034318855555555555,
+              "callsPerTick": 275.3333333333333
+            }
+          ]
+        },
+        {
+          "name": "ActOnRacialWork",
+          "selfMsPerTick": 0.25503430277777783,
+          "inclusiveMsPerTick": 0.25503430277777783,
+          "selfPercentOfInstrumentedStep": 1.3875507734849808,
+          "callsPerTick": 2539.425,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.25503430277777783,
+              "callsPerTick": 2539.425
+            }
+          ]
+        },
+        {
+          "name": "GrowSettlements",
+          "selfMsPerTick": 0.24760887777777776,
+          "inclusiveMsPerTick": 0.3592606222222222,
+          "selfPercentOfInstrumentedStep": 1.3471516817158147,
+          "callsPerTick": 0.08333333333333333,
+          "byStage": [
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.24760887777777776,
+              "callsPerTick": 0.08333333333333333
+            }
+          ]
+        },
+        {
+          "name": "TransferPersonalProduction",
+          "selfMsPerTick": 0.22803436666666665,
+          "inclusiveMsPerTick": 0.22803436666666665,
+          "selfPercentOfInstrumentedStep": 1.24065374109769,
+          "callsPerTick": 1042.125,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.22803436666666665,
+              "callsPerTick": 1042.125
+            }
+          ]
+        },
+        {
+          "name": "SelectAgentStep",
+          "selfMsPerTick": 0.21113174444444446,
+          "inclusiveMsPerTick": 0.21113174444444446,
+          "selfPercentOfInstrumentedStep": 1.1486925959383087,
+          "callsPerTick": 908.45,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.19944534166666664,
+              "callsPerTick": 782.3833333333333
+            },
+            {
+              "stage": 13,
+              "selfMsPerTick": 0.011686402777777778,
+              "callsPerTick": 126.06666666666666
+            }
+          ]
+        },
+        {
+          "name": "AddProvisionChoices",
+          "selfMsPerTick": 0.18838693611111113,
+          "inclusiveMsPerTick": 1.997944736111111,
+          "selfPercentOfInstrumentedStep": 1.0249461977011134,
+          "callsPerTick": 716.25,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.18838693611111113,
+              "callsPerTick": 716.25
+            }
+          ]
+        },
+        {
+          "name": "AddAgentMissionChoices",
+          "selfMsPerTick": 0.18057795277777774,
+          "inclusiveMsPerTick": 0.18092502777777777,
+          "selfPercentOfInstrumentedStep": 0.982460301700922,
+          "callsPerTick": 716.25,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.18057795277777774,
+              "callsPerTick": 716.25
+            }
+          ]
+        },
+        {
+          "name": "ActOnProduction",
+          "selfMsPerTick": 0.1588028611111111,
+          "inclusiveMsPerTick": 0.1588028611111111,
+          "selfPercentOfInstrumentedStep": 0.8639897863400278,
+          "callsPerTick": 2539.425,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.1588028611111111,
+              "callsPerTick": 2539.425
+            }
+          ]
+        },
+        {
+          "name": "ReconcileSocietyTopology",
+          "selfMsPerTick": 0.15868620277777776,
+          "inclusiveMsPerTick": 0.8220211055555555,
+          "selfPercentOfInstrumentedStep": 0.8633550899133624,
+          "callsPerTick": 1.1,
+          "byStage": [
+            {
+              "stage": 11,
+              "selfMsPerTick": 0.011098558333333335,
+              "callsPerTick": 0.1
+            },
+            {
+              "stage": 17,
+              "selfMsPerTick": 0.14758764444444444,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "FindWaterSite",
+          "selfMsPerTick": 0.14672792499999998,
+          "inclusiveMsPerTick": 0.1747323111111111,
+          "selfPercentOfInstrumentedStep": 0.7982943612216548,
+          "callsPerTick": 58.983333333333334,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.14672792499999998,
+              "callsPerTick": 58.983333333333334
+            }
+          ]
+        },
+        {
+          "name": "ProvisionAtHome",
+          "selfMsPerTick": 0.14087018055555556,
+          "inclusiveMsPerTick": 0.14087018055555556,
+          "selfPercentOfInstrumentedStep": 0.7664244607955603,
+          "callsPerTick": 1401.8166666666666,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.14087018055555556,
+              "callsPerTick": 1401.8166666666666
+            }
+          ]
+        },
+        {
+          "name": "AgentFoodPolicyMultiplier",
+          "selfMsPerTick": 0.12808243055555557,
+          "inclusiveMsPerTick": 0.12808243055555557,
+          "selfPercentOfInstrumentedStep": 0.6968508692811147,
+          "callsPerTick": 848.3666666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.12808243055555557,
+              "callsPerTick": 848.3666666666667
+            }
+          ]
+        },
+        {
+          "name": "RelayKnownAgentMessages",
+          "selfMsPerTick": 0.08183629166666667,
+          "inclusiveMsPerTick": 0.08183629166666667,
+          "selfPercentOfInstrumentedStep": 0.4452421049421281,
+          "callsPerTick": 1.0,
+          "byStage": [
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.08183629166666667,
+              "callsPerTick": 1.0
+            }
+          ]
+        },
+        {
+          "name": "MarkVisibleReachable",
+          "selfMsPerTick": 0.06910038888888889,
+          "inclusiveMsPerTick": 0.41503822777777777,
+          "selfPercentOfInstrumentedStep": 0.37595059569078954,
+          "callsPerTick": 790.6583333333333,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.06910038888888889,
+              "callsPerTick": 790.6583333333333
+            }
+          ]
+        },
+        {
+          "name": "ReceiveSocietyReport",
+          "selfMsPerTick": 0.015032791666666665,
+          "inclusiveMsPerTick": 0.015032791666666665,
+          "selfPercentOfInstrumentedStep": 0.08178806332141535,
+          "callsPerTick": 50.74166666666667,
+          "byStage": [
+            {
+              "stage": 5,
+              "selfMsPerTick": 0.008061802777777778,
+              "callsPerTick": 9.883333333333333
+            },
+            {
+              "stage": 6,
+              "selfMsPerTick": 0.006970988888888889,
+              "callsPerTick": 40.858333333333334
+            }
+          ]
+        }
+      ],
+      "pairedLateWallRuns": []
+    }
+  ],
+  "valueComparison": {
+    "afterSourceCommit": "fcd171feb985aedc2b31ee96ee22778b56fa52b2",
+    "before": {
+      "framework": ".NET 10.0.12",
+      "assemblyModuleId": "45537f97-e27b-46da-8f9c-5cc2135609ed",
+      "wildlife": {
+        "type": "WildlifePopulations",
+        "comparisons": 100000,
+        "runs": [
+          {
+            "elapsedMs": 550.5075,
+            "nsPerComparison": 5505.075,
+            "allocatedBytesPerComparison": 2288.00024
+          },
+          {
+            "elapsedMs": 137.9799,
+            "nsPerComparison": 1379.799,
+            "allocatedBytesPerComparison": 2288
+          },
+          {
+            "elapsedMs": 171.8167,
+            "nsPerComparison": 1718.167,
+            "allocatedBytesPerComparison": 2288
+          }
+        ]
+      },
+      "plants": {
+        "type": "PlantCoverage",
+        "comparisons": 100000,
+        "runs": [
+          {
+            "elapsedMs": 25.5409,
+            "nsPerComparison": 255.409,
+            "allocatedBytesPerComparison": 344
+          },
+          {
+            "elapsedMs": 26.8804,
+            "nsPerComparison": 268.804,
+            "allocatedBytesPerComparison": 344
+          },
+          {
+            "elapsedMs": 23.1786,
+            "nsPerComparison": 231.786,
+            "allocatedBytesPerComparison": 344
+          }
+        ]
+      },
+      "saves": [
+        {
+          "meanMs": 5.868235,
+          "allocatedBytesPerSave": 3115650,
+          "saveBytes": 209805,
+          "saveSha256": "B28BFFA013868AB35CF3F4AE4998F9EA38EDFCA3C04640C55C87088EB34EF3F3"
+        },
+        {
+          "meanMs": 3.8669400000000005,
+          "allocatedBytesPerSave": 3116075,
+          "saveBytes": 209805,
+          "saveSha256": "B28BFFA013868AB35CF3F4AE4998F9EA38EDFCA3C04640C55C87088EB34EF3F3"
+        },
+        {
+          "meanMs": 4.106215000000001,
+          "allocatedBytesPerSave": 3116075,
+          "saveBytes": 209805,
+          "saveSha256": "B28BFFA013868AB35CF3F4AE4998F9EA38EDFCA3C04640C55C87088EB34EF3F3"
+        }
+      ],
+      "limitation": "Isolated default-value and 32x32 empty-world save measurements; not full game CPU percentages."
+    },
+    "after": {
+      "framework": ".NET 10.0.12",
+      "assemblyModuleId": "4b8ffb8a-de92-4a6a-8a74-00cbd645d03e",
+      "wildlife": {
+        "type": "WildlifePopulations",
+        "comparisons": 100000,
+        "runs": [
+          {
+            "elapsedMs": 21.9196,
+            "nsPerComparison": 219.196,
+            "allocatedBytesPerComparison": 0.00024
+          },
+          {
+            "elapsedMs": 20.6441,
+            "nsPerComparison": 206.441,
+            "allocatedBytesPerComparison": 0
+          },
+          {
+            "elapsedMs": 19.1116,
+            "nsPerComparison": 191.116,
+            "allocatedBytesPerComparison": 0
+          }
+        ]
+      },
+      "plants": {
+        "type": "PlantCoverage",
+        "comparisons": 100000,
+        "runs": [
+          {
+            "elapsedMs": 2.7037,
+            "nsPerComparison": 27.037,
+            "allocatedBytesPerComparison": 0
+          },
+          {
+            "elapsedMs": 0.2773,
+            "nsPerComparison": 2.773,
+            "allocatedBytesPerComparison": 0
+          },
+          {
+            "elapsedMs": 0.5329,
+            "nsPerComparison": 5.329,
+            "allocatedBytesPerComparison": 0
+          }
+        ]
+      },
+      "saves": [
+        {
+          "meanMs": 2.816195,
+          "allocatedBytesPerSave": 419632,
+          "saveBytes": 209805,
+          "saveSha256": "B28BFFA013868AB35CF3F4AE4998F9EA38EDFCA3C04640C55C87088EB34EF3F3"
+        },
+        {
+          "meanMs": 2.67037,
+          "allocatedBytesPerSave": 419632,
+          "saveBytes": 209805,
+          "saveSha256": "B28BFFA013868AB35CF3F4AE4998F9EA38EDFCA3C04640C55C87088EB34EF3F3"
+        },
+        {
+          "meanMs": 2.959955,
+          "allocatedBytesPerSave": 419632,
+          "saveBytes": 209805,
+          "saveSha256": "B28BFFA013868AB35CF3F4AE4998F9EA38EDFCA3C04640C55C87088EB34EF3F3"
+        }
+      ],
+      "limitation": "Isolated default-value and 32x32 empty-world save measurements; not full game CPU percentages."
+    }
+  },
+  "lateProcessCpuRuns": [
+    {
+      "before": {
+        "wallMsPerTick": 19.351303333333323,
+        "processCpuMsPerTick": 20.072308333333336,
+        "gcCollections": [
+          3,
+          2,
+          1
+        ]
+      },
+      "after": {
+        "wallMsPerTick": 17.298526666666657,
+        "processCpuMsPerTick": 17.97850833333333,
+        "gcCollections": [
+          3,
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "before": {
+        "wallMsPerTick": 20.712849999999996,
+        "processCpuMsPerTick": 21.427808333333335,
+        "gcCollections": [
+          3,
+          2,
+          1
+        ]
+      },
+      "after": {
+        "wallMsPerTick": 22.109969166666666,
+        "processCpuMsPerTick": 22.952475,
+        "gcCollections": [
+          3,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "before": {
+        "wallMsPerTick": 25.300954999999988,
+        "processCpuMsPerTick": 26.262075,
+        "gcCollections": [
+          3,
+          2,
+          1
+        ]
+      },
+      "after": {
+        "wallMsPerTick": 22.779384999999998,
+        "processCpuMsPerTick": 23.365608333333334,
+        "gcCollections": [
+          3,
+          2,
+          1
+        ]
+      }
+    }
+  ],
+  "matchedSimulationRuns": 57,
+  "limitations": [
+    "Native x64 only; generation, warmup, serialization and browser rendering excluded from simulation timings.",
+    "Elapsed nested self times subtract measured children but include instrumentation and runtime pauses; not exact uninstrumented CPU shares.",
+    "All runs retained, including slow first runs. Separate old/new mean changes are combined optimizations, not one-change causal estimates.",
+    "The late stress save exceeds the unchanged 64 MiB import cap; digest comparison only for that scene.",
+    "Value comparison and empty-world save measurements are isolated microbenchmarks, not whole game CPU percentages."
+  ],
+  "processCpuDriverSha256": "9f9657ce7d3aabadc70e183974a33f20b61c3f229898e4f3630addef1e16de34",
+  "retainedOperations": "Measured hotspots and optimization targets; all run-level performance and save results retained."
+}

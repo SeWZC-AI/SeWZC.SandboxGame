@@ -481,36 +481,6 @@
             "selfPercentOfInstrumentedStep": 0.808379
           },
           {
-            "name": "GatherActualResources",
-            "selfMsPerTick": 0.066602,
-            "inclusiveMsPerTick": 0.082967,
-            "callsPerTick": 309.733333,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.066602,
-                "callsPerTick": 309.733333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.788087
-          },
-          {
-            "name": "BalanceLocalWorkforce",
-            "selfMsPerTick": 0.064264,
-            "inclusiveMsPerTick": 0.064264,
-            "callsPerTick": 0.158333,
-            "byStage": {
-              "TickSociety": {
-                "selfMsPerTick": 0.007785,
-                "callsPerTick": 0.033333
-              },
-              "GrowSettlements": {
-                "selfMsPerTick": 0.056479,
-                "callsPerTick": 0.125
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.760417
-          },
-          {
             "name": "ActOnProduction",
             "selfMsPerTick": 0.060929,
             "inclusiveMsPerTick": 0.060929,
@@ -522,19 +492,6 @@
               }
             },
             "selfPercentOfInstrumentedStep": 0.720956
-          },
-          {
-            "name": "TickPlants",
-            "selfMsPerTick": 0.05989,
-            "inclusiveMsPerTick": 0.05989,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "TickPlants": {
-                "selfMsPerTick": 0.05989,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.708658
           },
           {
             "name": "FindWorkshopResource",
@@ -563,32 +520,6 @@
             "selfPercentOfInstrumentedStep": 0.579964
           },
           {
-            "name": "TryWorkAtBuilding",
-            "selfMsPerTick": 0.044899,
-            "inclusiveMsPerTick": 0.07949,
-            "callsPerTick": 112.991667,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.044899,
-                "callsPerTick": 112.991667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.531279
-          },
-          {
-            "name": "ProductiveGoalContinues",
-            "selfMsPerTick": 0.040847,
-            "inclusiveMsPerTick": 0.042809,
-            "callsPerTick": 371.583333,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.040847,
-                "callsPerTick": 371.583333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.483328
-          },
-          {
             "name": "AgentFoodPolicyMultiplier",
             "selfMsPerTick": 0.039738,
             "inclusiveMsPerTick": 0.039738,
@@ -615,36 +546,6 @@
             "selfPercentOfInstrumentedStep": 0.413269
           },
           {
-            "name": "VisibleClaimSite",
-            "selfMsPerTick": 0.033433,
-            "inclusiveMsPerTick": 0.033433,
-            "callsPerTick": 301.05,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.033433,
-                "callsPerTick": 301.05
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.395602
-          },
-          {
-            "name": "RefreshLocalRepresentatives",
-            "selfMsPerTick": 0.032128,
-            "inclusiveMsPerTick": 0.032128,
-            "callsPerTick": 0.158333,
-            "byStage": {
-              "TickSociety": {
-                "selfMsPerTick": 0.005129,
-                "callsPerTick": 0.033333
-              },
-              "GrowSettlements": {
-                "selfMsPerTick": 0.026999,
-                "callsPerTick": 0.125
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.380158
-          },
-          {
             "name": "RelayKnownAgentMessages",
             "selfMsPerTick": 0.02836,
             "inclusiveMsPerTick": 0.02836,
@@ -656,84 +557,6 @@
               }
             },
             "selfPercentOfInstrumentedStep": 0.335576
-          },
-          {
-            "name": "BeginLocalWorkQueries",
-            "selfMsPerTick": 0.026867,
-            "inclusiveMsPerTick": 0.026867,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.026867,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.317911
-          },
-          {
-            "name": "Communication.RebuildResidentIdDictionary",
-            "selfMsPerTick": 0.023991,
-            "inclusiveMsPerTick": 0.023991,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "UpdateLocalCommunication": {
-                "selfMsPerTick": 0.023991,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.283874
-          },
-          {
-            "name": "PlanLocalDevelopment",
-            "selfMsPerTick": 0.014032,
-            "inclusiveMsPerTick": 0.067723,
-            "callsPerTick": 0.391667,
-            "byStage": {
-              "TickSociety": {
-                "selfMsPerTick": 0.014032,
-                "callsPerTick": 0.391667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.166038
-          },
-          {
-            "name": "AddBoatFishingChoice",
-            "selfMsPerTick": 0.011031,
-            "inclusiveMsPerTick": 0.011031,
-            "callsPerTick": 301.05,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.011031,
-                "callsPerTick": 301.05
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.13053
-          },
-          {
-            "name": "Communication.ResidentIdDictionaryLookup",
-            "selfMsPerTick": 0.009035,
-            "inclusiveMsPerTick": 0.009035,
-            "callsPerTick": 167.45,
-            "byStage": {
-              "UpdateLocalCommunication": {
-                "selfMsPerTick": 0.009035,
-                "callsPerTick": 167.45
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.106912
-          },
-          {
-            "name": "ExchangeCulture",
-            "selfMsPerTick": 0.008758,
-            "inclusiveMsPerTick": 0.008758,
-            "callsPerTick": 167.758333,
-            "byStage": {
-              "UpdateLocalCommunication": {
-                "selfMsPerTick": 0.008758,
-                "callsPerTick": 167.758333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.103627
           },
           {
             "name": "ReceiveSocietyReport",
@@ -751,61 +574,6 @@
               }
             },
             "selfPercentOfInstrumentedStep": 0.083567
-          },
-          {
-            "name": "EndLocalWorkQueries",
-            "selfMsPerTick": 0.004407,
-            "inclusiveMsPerTick": 0.004407,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.004407,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.052145
-          },
-          {
-            "name": "ObserveProjects",
-            "selfMsPerTick": 0.001741,
-            "inclusiveMsPerTick": 0.001741,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "ObserveProjects": {
-                "selfMsPerTick": 0.001741,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.020604
-          },
-          {
-            "name": "PrepareJourneyTransport",
-            "selfMsPerTick": 0.000152,
-            "inclusiveMsPerTick": 0.000152,
-            "callsPerTick": 0.691667,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.000152,
-                "callsPerTick": 0.691667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.001798
-          },
-          {
-            "name": "CanProduce",
-            "selfMsPerTick": 0.0,
-            "inclusiveMsPerTick": 0.0,
-            "callsPerTick": 0.0,
-            "byStage": {},
-            "selfPercentOfInstrumentedStep": 0.0
-          },
-          {
-            "name": "WildlifeCapacity",
-            "selfMsPerTick": 0.0,
-            "inclusiveMsPerTick": 0.0,
-            "callsPerTick": 0.0,
-            "byStage": {},
-            "selfPercentOfInstrumentedStep": 0.0
           }
         ],
         "stages": [
@@ -1413,19 +1181,6 @@
             "selfPercentOfInstrumentedStep": 0.776453
           },
           {
-            "name": "ProductiveGoalContinues",
-            "selfMsPerTick": 0.155375,
-            "inclusiveMsPerTick": 0.157208,
-            "callsPerTick": 1612.983333,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.155375,
-                "callsPerTick": 1612.983333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.574316
-          },
-          {
             "name": "TransferPersonalProduction",
             "selfMsPerTick": 0.139592,
             "inclusiveMsPerTick": 0.139592,
@@ -1437,19 +1192,6 @@
               }
             },
             "selfPercentOfInstrumentedStep": 0.515976
-          },
-          {
-            "name": "GatherActualResources",
-            "selfMsPerTick": 0.139392,
-            "inclusiveMsPerTick": 0.270594,
-            "callsPerTick": 555.216667,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.139392,
-                "callsPerTick": 555.216667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.515238
           },
           {
             "name": "ActOnProduction",
@@ -1478,19 +1220,6 @@
             "selfPercentOfInstrumentedStep": 0.45516
           },
           {
-            "name": "VisibleClaimSite",
-            "selfMsPerTick": 0.110365,
-            "inclusiveMsPerTick": 0.110365,
-            "callsPerTick": 397.183333,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.110365,
-                "callsPerTick": 397.183333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.407946
-          },
-          {
             "name": "AddAgentMissionChoices",
             "selfMsPerTick": 0.096149,
             "inclusiveMsPerTick": 0.098418,
@@ -1502,19 +1231,6 @@
               }
             },
             "selfPercentOfInstrumentedStep": 0.355398
-          },
-          {
-            "name": "TickPlants",
-            "selfMsPerTick": 0.069261,
-            "inclusiveMsPerTick": 0.069261,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "TickPlants": {
-                "selfMsPerTick": 0.069261,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.256012
           },
           {
             "name": "RelayKnownAgentMessages",
@@ -1530,45 +1246,6 @@
             "selfPercentOfInstrumentedStep": 0.241683
           },
           {
-            "name": "Communication.RebuildResidentIdDictionary",
-            "selfMsPerTick": 0.064785,
-            "inclusiveMsPerTick": 0.064785,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "UpdateLocalCommunication": {
-                "selfMsPerTick": 0.064785,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.239466
-          },
-          {
-            "name": "TryWorkAtBuilding",
-            "selfMsPerTick": 0.064271,
-            "inclusiveMsPerTick": 0.10744,
-            "callsPerTick": 119.691667,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.064271,
-                "callsPerTick": 119.691667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.237568
-          },
-          {
-            "name": "BeginLocalWorkQueries",
-            "selfMsPerTick": 0.062791,
-            "inclusiveMsPerTick": 0.062791,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.062791,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.232097
-          },
-          {
             "name": "FindWorkshopResource",
             "selfMsPerTick": 0.033847,
             "inclusiveMsPerTick": 0.033847,
@@ -1580,139 +1257,6 @@
               }
             },
             "selfPercentOfInstrumentedStep": 0.125111
-          },
-          {
-            "name": "PlanLocalDevelopment",
-            "selfMsPerTick": 0.033391,
-            "inclusiveMsPerTick": 0.039379,
-            "callsPerTick": 0.516667,
-            "byStage": {
-              "TickSociety": {
-                "selfMsPerTick": 0.033391,
-                "callsPerTick": 0.516667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.123425
-          },
-          {
-            "name": "Communication.ResidentIdDictionaryLookup",
-            "selfMsPerTick": 0.030608,
-            "inclusiveMsPerTick": 0.030608,
-            "callsPerTick": 323.766667,
-            "byStage": {
-              "UpdateLocalCommunication": {
-                "selfMsPerTick": 0.030608,
-                "callsPerTick": 323.766667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.113138
-          },
-          {
-            "name": "ExchangeCulture",
-            "selfMsPerTick": 0.019823,
-            "inclusiveMsPerTick": 0.019823,
-            "callsPerTick": 324.258333,
-            "byStage": {
-              "UpdateLocalCommunication": {
-                "selfMsPerTick": 0.019823,
-                "callsPerTick": 324.258333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.073273
-          },
-          {
-            "name": "AddBoatFishingChoice",
-            "selfMsPerTick": 0.015213,
-            "inclusiveMsPerTick": 0.015213,
-            "callsPerTick": 397.183333,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.015213,
-                "callsPerTick": 397.183333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.056232
-          },
-          {
-            "name": "BalanceLocalWorkforce",
-            "selfMsPerTick": 0.012559,
-            "inclusiveMsPerTick": 0.012559,
-            "callsPerTick": 0.033333,
-            "byStage": {
-              "TickSociety": {
-                "selfMsPerTick": 0.012559,
-                "callsPerTick": 0.033333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.046423
-          },
-          {
-            "name": "EndLocalWorkQueries",
-            "selfMsPerTick": 0.006944,
-            "inclusiveMsPerTick": 0.006944,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.006944,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.025667
-          },
-          {
-            "name": "RefreshLocalRepresentatives",
-            "selfMsPerTick": 0.003158,
-            "inclusiveMsPerTick": 0.003158,
-            "callsPerTick": 0.033333,
-            "byStage": {
-              "TickSociety": {
-                "selfMsPerTick": 0.003158,
-                "callsPerTick": 0.033333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.011672
-          },
-          {
-            "name": "ObserveProjects",
-            "selfMsPerTick": 0.002805,
-            "inclusiveMsPerTick": 0.002805,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "ObserveProjects": {
-                "selfMsPerTick": 0.002805,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.010368
-          },
-          {
-            "name": "PrepareJourneyTransport",
-            "selfMsPerTick": 0.000604,
-            "inclusiveMsPerTick": 0.000604,
-            "callsPerTick": 8.075,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.000604,
-                "callsPerTick": 8.075
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.002234
-          },
-          {
-            "name": "CanProduce",
-            "selfMsPerTick": 0.0,
-            "inclusiveMsPerTick": 0.0,
-            "callsPerTick": 0.0,
-            "byStage": {},
-            "selfPercentOfInstrumentedStep": 0.0
-          },
-          {
-            "name": "WildlifeCapacity",
-            "selfMsPerTick": 0.0,
-            "inclusiveMsPerTick": 0.0,
-            "callsPerTick": 0.0,
-            "byStage": {},
-            "selfPercentOfInstrumentedStep": 0.0
           }
         ],
         "stages": [
@@ -2222,19 +1766,6 @@
             "selfPercentOfInstrumentedStep": 0.727284
           },
           {
-            "name": "ProductiveGoalContinues",
-            "selfMsPerTick": 0.168855,
-            "inclusiveMsPerTick": 0.170223,
-            "callsPerTick": 1612.983333,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.168855,
-                "callsPerTick": 1612.983333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.626205
-          },
-          {
             "name": "TransferPersonalProduction",
             "selfMsPerTick": 0.168199,
             "inclusiveMsPerTick": 0.168199,
@@ -2274,32 +1805,6 @@
             "selfPercentOfInstrumentedStep": 0.576693
           },
           {
-            "name": "GatherActualResources",
-            "selfMsPerTick": 0.154053,
-            "inclusiveMsPerTick": 0.298974,
-            "callsPerTick": 555.216667,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.154053,
-                "callsPerTick": 555.216667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.571311
-          },
-          {
-            "name": "VisibleClaimSite",
-            "selfMsPerTick": 0.13961,
-            "inclusiveMsPerTick": 0.13961,
-            "callsPerTick": 397.183333,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.13961,
-                "callsPerTick": 397.183333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.517748
-          },
-          {
             "name": "AddAgentMissionChoices",
             "selfMsPerTick": 0.082689,
             "inclusiveMsPerTick": 0.085005,
@@ -2326,32 +1831,6 @@
             "selfPercentOfInstrumentedStep": 0.292196
           },
           {
-            "name": "BeginLocalWorkQueries",
-            "selfMsPerTick": 0.07641,
-            "inclusiveMsPerTick": 0.07641,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.07641,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.283367
-          },
-          {
-            "name": "Communication.RebuildResidentIdDictionary",
-            "selfMsPerTick": 0.068515,
-            "inclusiveMsPerTick": 0.068515,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "UpdateLocalCommunication": {
-                "selfMsPerTick": 0.068515,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.25409
-          },
-          {
             "name": "RelayKnownAgentMessages",
             "selfMsPerTick": 0.068094,
             "inclusiveMsPerTick": 0.068094,
@@ -2365,32 +1844,6 @@
             "selfPercentOfInstrumentedStep": 0.252528
           },
           {
-            "name": "TickPlants",
-            "selfMsPerTick": 0.067757,
-            "inclusiveMsPerTick": 0.067757,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "TickPlants": {
-                "selfMsPerTick": 0.067757,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.251281
-          },
-          {
-            "name": "TryWorkAtBuilding",
-            "selfMsPerTick": 0.06678,
-            "inclusiveMsPerTick": 0.110954,
-            "callsPerTick": 119.691667,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.06678,
-                "callsPerTick": 119.691667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.247656
-          },
-          {
             "name": "FindWorkshopResource",
             "selfMsPerTick": 0.043514,
             "inclusiveMsPerTick": 0.043514,
@@ -2402,139 +1855,6 @@
               }
             },
             "selfPercentOfInstrumentedStep": 0.161374
-          },
-          {
-            "name": "PlanLocalDevelopment",
-            "selfMsPerTick": 0.03165,
-            "inclusiveMsPerTick": 0.037164,
-            "callsPerTick": 0.516667,
-            "byStage": {
-              "TickSociety": {
-                "selfMsPerTick": 0.03165,
-                "callsPerTick": 0.516667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.117375
-          },
-          {
-            "name": "Communication.ResidentIdDictionaryLookup",
-            "selfMsPerTick": 0.028266,
-            "inclusiveMsPerTick": 0.028266,
-            "callsPerTick": 323.766667,
-            "byStage": {
-              "UpdateLocalCommunication": {
-                "selfMsPerTick": 0.028266,
-                "callsPerTick": 323.766667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.104827
-          },
-          {
-            "name": "ExchangeCulture",
-            "selfMsPerTick": 0.021735,
-            "inclusiveMsPerTick": 0.021735,
-            "callsPerTick": 324.258333,
-            "byStage": {
-              "UpdateLocalCommunication": {
-                "selfMsPerTick": 0.021735,
-                "callsPerTick": 324.258333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.080606
-          },
-          {
-            "name": "AddBoatFishingChoice",
-            "selfMsPerTick": 0.01485,
-            "inclusiveMsPerTick": 0.01485,
-            "callsPerTick": 397.183333,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.01485,
-                "callsPerTick": 397.183333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.055071
-          },
-          {
-            "name": "EndLocalWorkQueries",
-            "selfMsPerTick": 0.006672,
-            "inclusiveMsPerTick": 0.006672,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.006672,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.024745
-          },
-          {
-            "name": "BalanceLocalWorkforce",
-            "selfMsPerTick": 0.005872,
-            "inclusiveMsPerTick": 0.005872,
-            "callsPerTick": 0.033333,
-            "byStage": {
-              "TickSociety": {
-                "selfMsPerTick": 0.005872,
-                "callsPerTick": 0.033333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.021776
-          },
-          {
-            "name": "RefreshLocalRepresentatives",
-            "selfMsPerTick": 0.003015,
-            "inclusiveMsPerTick": 0.003015,
-            "callsPerTick": 0.033333,
-            "byStage": {
-              "TickSociety": {
-                "selfMsPerTick": 0.003015,
-                "callsPerTick": 0.033333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.011181
-          },
-          {
-            "name": "ObserveProjects",
-            "selfMsPerTick": 0.00273,
-            "inclusiveMsPerTick": 0.00273,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "ObserveProjects": {
-                "selfMsPerTick": 0.00273,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.010123
-          },
-          {
-            "name": "PrepareJourneyTransport",
-            "selfMsPerTick": 0.000625,
-            "inclusiveMsPerTick": 0.000625,
-            "callsPerTick": 8.075,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.000625,
-                "callsPerTick": 8.075
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.002319
-          },
-          {
-            "name": "CanProduce",
-            "selfMsPerTick": 0.0,
-            "inclusiveMsPerTick": 0.0,
-            "callsPerTick": 0.0,
-            "byStage": {},
-            "selfPercentOfInstrumentedStep": 0.0
-          },
-          {
-            "name": "WildlifeCapacity",
-            "selfMsPerTick": 0.0,
-            "inclusiveMsPerTick": 0.0,
-            "callsPerTick": 0.0,
-            "byStage": {},
-            "selfPercentOfInstrumentedStep": 0.0
           }
         ],
         "stages": [
@@ -3179,19 +2499,6 @@
             "selfPercentOfInstrumentedStep": 0.634623
           },
           {
-            "name": "GatherActualResources",
-            "selfMsPerTick": 0.120643,
-            "inclusiveMsPerTick": 0.182075,
-            "callsPerTick": 644.883333,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.120643,
-                "callsPerTick": 644.883333
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.599712
-          },
-          {
             "name": "AgentFoodPolicyMultiplier",
             "selfMsPerTick": 0.111817,
             "inclusiveMsPerTick": 0.111817,
@@ -3203,19 +2510,6 @@
               }
             },
             "selfPercentOfInstrumentedStep": 0.55584
-          },
-          {
-            "name": "VisibleClaimSite",
-            "selfMsPerTick": 0.110298,
-            "inclusiveMsPerTick": 0.110298,
-            "callsPerTick": 713.316667,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.110298,
-                "callsPerTick": 713.316667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.548289
           },
           {
             "name": "FindWaterSite",
@@ -3231,19 +2525,6 @@
             "selfPercentOfInstrumentedStep": 0.545374
           },
           {
-            "name": "ProductiveGoalContinues",
-            "selfMsPerTick": 0.105129,
-            "inclusiveMsPerTick": 0.107924,
-            "callsPerTick": 886.125,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.105129,
-                "callsPerTick": 886.125
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.522591
-          },
-          {
             "name": "ActOnRacialWork",
             "selfMsPerTick": 0.1047,
             "inclusiveMsPerTick": 0.1047,
@@ -3257,32 +2538,6 @@
             "selfPercentOfInstrumentedStep": 0.520461
           },
           {
-            "name": "TryWorkAtBuilding",
-            "selfMsPerTick": 0.102993,
-            "inclusiveMsPerTick": 0.135726,
-            "callsPerTick": 124.366667,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.102993,
-                "callsPerTick": 124.366667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.511973
-          },
-          {
-            "name": "TickPlants",
-            "selfMsPerTick": 0.064978,
-            "inclusiveMsPerTick": 0.064978,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "TickPlants": {
-                "selfMsPerTick": 0.064978,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.323004
-          },
-          {
             "name": "RelayKnownAgentMessages",
             "selfMsPerTick": 0.058471,
             "inclusiveMsPerTick": 0.058471,
@@ -3294,173 +2549,6 @@
               }
             },
             "selfPercentOfInstrumentedStep": 0.29066
-          },
-          {
-            "name": "Communication.RebuildResidentIdDictionary",
-            "selfMsPerTick": 0.054227,
-            "inclusiveMsPerTick": 0.054227,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "UpdateLocalCommunication": {
-                "selfMsPerTick": 0.054227,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.269561
-          },
-          {
-            "name": "BeginLocalWorkQueries",
-            "selfMsPerTick": 0.040479,
-            "inclusiveMsPerTick": 0.040479,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.040479,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.201218
-          },
-          {
-            "name": "BalanceLocalWorkforce",
-            "selfMsPerTick": 0.040477,
-            "inclusiveMsPerTick": 0.040477,
-            "callsPerTick": 0.133333,
-            "byStage": {
-              "TickSociety": {
-                "selfMsPerTick": 0.015162,
-                "callsPerTick": 0.033333
-              },
-              "GrowSettlements": {
-                "selfMsPerTick": 0.025315,
-                "callsPerTick": 0.1
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.201211
-          },
-          {
-            "name": "RefreshLocalRepresentatives",
-            "selfMsPerTick": 0.03439,
-            "inclusiveMsPerTick": 0.03439,
-            "callsPerTick": 0.133333,
-            "byStage": {
-              "TickSociety": {
-                "selfMsPerTick": 0.007167,
-                "callsPerTick": 0.033333
-              },
-              "GrowSettlements": {
-                "selfMsPerTick": 0.027223,
-                "callsPerTick": 0.1
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.170951
-          },
-          {
-            "name": "AddBoatFishingChoice",
-            "selfMsPerTick": 0.026615,
-            "inclusiveMsPerTick": 0.026615,
-            "callsPerTick": 713.316667,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.026615,
-                "callsPerTick": 713.316667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.132301
-          },
-          {
-            "name": "Communication.ResidentIdDictionaryLookup",
-            "selfMsPerTick": 0.019504,
-            "inclusiveMsPerTick": 0.019504,
-            "callsPerTick": 327.35,
-            "byStage": {
-              "UpdateLocalCommunication": {
-                "selfMsPerTick": 0.019504,
-                "callsPerTick": 327.35
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.096955
-          },
-          {
-            "name": "ExchangeCulture",
-            "selfMsPerTick": 0.018121,
-            "inclusiveMsPerTick": 0.018121,
-            "callsPerTick": 327.241667,
-            "byStage": {
-              "UpdateLocalCommunication": {
-                "selfMsPerTick": 0.018121,
-                "callsPerTick": 327.241667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.090078
-          },
-          {
-            "name": "PlanLocalDevelopment",
-            "selfMsPerTick": 0.014782,
-            "inclusiveMsPerTick": 0.066028,
-            "callsPerTick": 0.366667,
-            "byStage": {
-              "TickSociety": {
-                "selfMsPerTick": 0.014782,
-                "callsPerTick": 0.366667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.07348
-          },
-          {
-            "name": "EndLocalWorkQueries",
-            "selfMsPerTick": 0.004613,
-            "inclusiveMsPerTick": 0.004613,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.004613,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.022931
-          },
-          {
-            "name": "ObserveProjects",
-            "selfMsPerTick": 0.001825,
-            "inclusiveMsPerTick": 0.001825,
-            "callsPerTick": 1.0,
-            "byStage": {
-              "ObserveProjects": {
-                "selfMsPerTick": 0.001825,
-                "callsPerTick": 1.0
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.009071
-          },
-          {
-            "name": "PrepareJourneyTransport",
-            "selfMsPerTick": 0.000132,
-            "inclusiveMsPerTick": 0.000132,
-            "callsPerTick": 0.791667,
-            "byStage": {
-              "UpdateAgentNeedsAndActions": {
-                "selfMsPerTick": 0.000132,
-                "callsPerTick": 0.791667
-              }
-            },
-            "selfPercentOfInstrumentedStep": 0.000655
-          },
-          {
-            "name": "CanProduce",
-            "selfMsPerTick": 0.0,
-            "inclusiveMsPerTick": 0.0,
-            "callsPerTick": 0.0,
-            "byStage": {},
-            "selfPercentOfInstrumentedStep": 0.0
-          },
-          {
-            "name": "WildlifeCapacity",
-            "selfMsPerTick": 0.0,
-            "inclusiveMsPerTick": 0.0,
-            "callsPerTick": 0.0,
-            "byStage": {},
-            "selfPercentOfInstrumentedStep": 0.0
           }
         ],
         "stages": [
@@ -3613,7 +2701,7 @@
   "limitations": [
     "Native elapsed simulation time, excluding generation, warmup, serialization and UI.",
     "Percentages divide aggregate probe self time by aggregate instrumented step elapsed time; inclusive times overlap.",
-    "The probe increases elapsed time, and short dictionary timings include probe overhead.",
+    "The probe increases elapsed time; instrumented self times are not exact uninstrumented CPU shares.",
     "The 600-day warmup scene exceeds the existing 64 MiB save import limit; its digest is checked but it is not import-validated.",
     "All three repetitions are included, including slow first repetitions. No browser performance claim."
   ],
@@ -3630,15 +2718,5 @@
     "terrain": "flat grass",
     "naturalDisasters": false
   },
-  "deepDiagnostic": {
-    "meanMsPerTick": 15.920456,
-    "purpose": "Call counts only. Leaf timers roughly double step time, so their wall-time shares are not used.",
-    "callsPerTick": {
-      "ResourceSiteYield": 33756.833333,
-      "CanTraverseStep": 44507.366667,
-      "AdvancementRules.For.BuildingKind": 4364.375,
-      "AdvancementRules.For.ResearchKind": 1.45,
-      "HasResearch": 727.591667
-    }
-  }
+  "retainedOperations": "Measured hotspots and optimization targets; all run-level performance and save results retained."
 }

@@ -10,10 +10,43 @@ public enum ConflictScope { Individual, Group, Settlement }
 
 public sealed partial class Tile
 {
-    [JsonRequired] public WildlifeKind Wildlife { get; set; }
-    [JsonRequired] public double WildlifePopulation { get; set; }
+    private WildlifeKind _wildlife;
+    private double _wildlifePopulation;
+    private WildlifePopulations _otherWildlife;
+    // 255 means uncomputed; None (0) is a valid cached result for empty tiles.
+    private byte _edibleLandAnimal = byte.MaxValue, _edibleWaterAnimal = byte.MaxValue;
+    [JsonRequired] public WildlifeKind Wildlife
+    {
+        get => _wildlife;
+        set { if (_wildlife != value) InvalidateEdibleAnimals(); _wildlife = value; }
+    }
+    [JsonRequired] public double WildlifePopulation
+    {
+        get => _wildlifePopulation;
+        set
+        {
+            if ((_wildlifePopulation >= .5) != (value >= .5)) InvalidateEdibleAnimals();
+            _wildlifePopulation = value;
+        }
+    }
     // A zero-valued population set is the safe default for existing format 8 worlds.
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public WildlifePopulations OtherWildlife { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public WildlifePopulations OtherWildlife
+    {
+        get => _otherWildlife;
+        set { _otherWildlife = value; InvalidateEdibleAnimals(); }
+    }
+
+    private void InvalidateEdibleAnimals() => _edibleLandAnimal = _edibleWaterAnimal = byte.MaxValue;
+
+    internal WildlifeKind EdibleAnimal(bool aquatic)
+    {
+        ref var cached = ref (aquatic ? ref _edibleWaterAnimal : ref _edibleLandAnimal);
+        if (cached != byte.MaxValue) return (WildlifeKind)cached;
+        cached = (byte)WildlifeKind.None;
+        foreach (var kind in AnimalRules.EdibleAnimals(aquatic))
+            if (AnimalPopulation(kind) >= .5) { cached = (byte)kind; break; }
+        return (WildlifeKind)cached;
+    }
 
     [JsonIgnore] public int WildlifeMask => OtherWildlife.ActiveMask | (WildlifePopulation > 0 ? 1 << (int)Wildlife : 0);
 
