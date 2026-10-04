@@ -10,10 +10,39 @@ public sealed partial class WorldEngine
     private readonly (int Index, int First, int Depth)[] _localMoveQueue = new (int, int, int)[85];
     private int[] _localMoveVisited = [];
     private int _localMoveSearch;
-    private int _visibleAccessResident, _visibleAccessOrigin, _visibleAccessSearch;
-    private long _visibleAccessTick;
+    private int _visibleAccessOrigin, _visibleAccessSearch, _visibleAccessWidth;
+    private long _visibleAccessTick, _visibleAccessRevision;
     private TravelMode _visibleAccessMode;
     private RaceKind _visibleAccessRace;
+    private VisibleAccessCache? _visibleAccessCache;
+
+    // Bounded, derived reachability. Integer keys describe geography only,
+    // never supplies, knowledge or an individual's target choice.
+    private sealed class VisibleAccessCache
+    {
+        private const int Slots = 1024, Cells = 85;
+        private readonly int[] _keys = new int[Slots], _counts = new int[Slots], _indices = new int[Slots * Cells];
+        private readonly long[] _ticks = new long[Slots], _revisions = new long[Slots];
+        private int _width;
+        public int Slot(int key, int width)
+        {
+            if (_width != width) { Array.Clear(_counts); _width = width; }
+            return (int)(unchecked((uint)key * 2654435761u) >> 22);
+        }
+        public bool TryMark(int slot, int key, long tick, long revision, int[] visited, int search)
+        {
+            if (_counts[slot] == 0 || _keys[slot] != key || _ticks[slot] != tick || _revisions[slot] != revision) return false;
+            var first = slot * Cells;
+            for (var i = 0; i < _counts[slot]; i++) visited[_indices[first + i]] = search;
+            return true;
+        }
+        public void Store(int slot, int key, long tick, long revision, (int Index, int First, int Depth)[] queue, int count)
+        {
+            _keys[slot] = key; _ticks[slot] = tick; _revisions[slot] = revision; _counts[slot] = count;
+            var first = slot * Cells;
+            for (var i = 0; i < count; i++) _indices[first + i] = queue[i].Index;
+        }
+    }
 
     private static (int X, int Y, int Distance)[] CreateVisibleResourceOffsets()
     {
@@ -338,7 +367,7 @@ public sealed partial class WorldEngine
         {
             // Valid fertility is at most 100 and ResourceSiteYield is at most 1.
             // Keep equal-score candidates: the original row order chose the lowest tile index.
-            if (8 - offset.Distance < bestScore) break;
+            if (offset.Distance > 6 || 8 - offset.Distance < bestScore) break;
             var x = person.X + offset.X; var y = person.Y + offset.Y;
             if (!InBounds(x, y)) continue;
             var index = Index(x, y);
@@ -377,16 +406,23 @@ public sealed partial class WorldEngine
 
     private int MarkVisibleReachable(Resident person, TravelMode? requestedMode = null)
     {
+        _territoryCounts.Bind(State.Tiles);
+        var revision = _territoryCounts.TraversalRevision;
         var mode = requestedMode ?? person.TravelMode;
         var start = Index(person.X, person.Y);
-        if (_visibleAccessSearch != 0 && _visibleAccessSearch == _localMoveSearch && _visibleAccessResident == person.Id
-            && _visibleAccessOrigin == start && _visibleAccessTick == State.Tick && _visibleAccessMode == mode && _visibleAccessRace == person.Race)
+        if (_visibleAccessSearch != 0 && _visibleAccessSearch == _localMoveSearch && _visibleAccessRevision == revision
+            && _visibleAccessOrigin == start && _visibleAccessTick == State.Tick && _visibleAccessWidth == State.Width
+            && _visibleAccessMode == mode && _visibleAccessRace == person.Race)
             return _visibleAccessSearch;
         if (_localMoveVisited.Length != State.Tiles.Length) _localMoveVisited = new int[State.Tiles.Length];
         if (_localMoveSearch == int.MaxValue) { Array.Clear(_localMoveVisited); _localMoveSearch = 0; }
         var search = ++_localMoveSearch;
-        _visibleAccessResident = person.Id; _visibleAccessOrigin = start; _visibleAccessTick = State.Tick;
+        _visibleAccessOrigin = start; _visibleAccessTick = State.Tick; _visibleAccessRevision = revision; _visibleAccessWidth = State.Width;
         _visibleAccessMode = mode; _visibleAccessRace = person.Race; _visibleAccessSearch = search;
+        var cache = _visibleAccessCache ??= new();
+        var key = start * 12 + (int)person.Race * 3 + (int)mode;
+        var slot = cache.Slot(key, State.Width);
+        if (cache.TryMark(slot, key, State.Tick, revision, _localMoveVisited, search)) return search;
         _localMoveVisited[start] = search; var head = 0; var tail = 1;
         _localMoveQueue[0] = (start, -1, 0);
         while (head < tail)
@@ -401,6 +437,7 @@ public sealed partial class WorldEngine
                 _localMoveVisited[index] = search; _localMoveQueue[tail++] = (index, -1, current.Depth + 1);
             }
         }
+        cache.Store(slot, key, State.Tick, revision, _localMoveQueue, tail);
         return search;
     }
 

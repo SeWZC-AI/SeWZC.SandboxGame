@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Diagnostics;
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Automation;
@@ -52,16 +53,18 @@ var tests = new (string Name, Action Test)[]
     ("Abandoned map picker cannot reopen an empty modal", MapPickerLifecycle)
 };
 var failures = 0;
+var suiteClock = Stopwatch.StartNew();
 foreach (var (name, test) in tests)
 {
-    try { test(); Console.WriteLine($"PASS {name}"); }
+    var started = Stopwatch.GetTimestamp();
+    try { test(); Console.WriteLine($"PASS {name} ({Stopwatch.GetElapsedTime(started).TotalMilliseconds:F0} ms)"); }
     catch (Exception error)
     {
         while (error is TargetInvocationException { InnerException: { } inner }) error = inner;
         failures++; Console.Error.WriteLine($"FAIL {name}: {error}");
     }
 }
-Console.WriteLine($"{tests.Length - failures}/{tests.Length} UI checks passed");
+Console.WriteLine($"{tests.Length - failures}/{tests.Length} UI checks passed in {suiteClock.Elapsed.TotalSeconds:F2} s");
 return failures == 0 ? 0 : 1;
 
 static void ToolPagination()
@@ -85,9 +88,9 @@ static void ToolPagination()
     }
     Assert(Enum.GetValues<TerrainType>().All(t => found.Contains(t.ToString())), "Pagination hid a terrain tool");
     Call(view, "SelectTool", "Human");
-    Call(map, "PreviewPlacement", map.GetTileScreenPosition(32, 32), false);
+    Call(map, "PreviewPlacement", map.GetTileScreenPosition(12, 12), false);
     Assert(!Field<Border>(view, "_placementBar").IsVisible, "Mouse hover opened a shifting option bar");
-    Preview(map, 32, 32); Assert(Field<Border>(view, "_placementBar").IsVisible, "Touch preview has no confirmation");
+    Preview(map, 12, 12); Assert(Field<Border>(view, "_placementBar").IsVisible, "Touch preview has no confirmation");
     Assert(Field<Border>(view, "_placementBar").Parent != Field<Border>(view, "_toolBar").Parent, "Preview participates in the toolbar stack");
     map.CancelPlacement(); Assert(engine.ExportJson() == before, "Tool paging or preview changed the world");
 }
@@ -100,7 +103,7 @@ static void BuildingControls()
     Click(view, "building-toggle"); Assert(!building.Enabled, "Building control did not stop work");
     Assert(!engine.TryWorkAtBuilding(engine.State.Residents[0]), "Stopped workshop still performed work");
     Click(view, "building-toggle"); Assert(building.Enabled, "Building did not resume");
-    engine.BuildRoad(engine.State.Settlements[0].Id, 35, 32, 0);
+    engine.BuildRoad(engine.State.Settlements[0].Id, 15, 12, 0);
     var saved = engine.ExportJson();
     Call(view, "OpenInspector", "structures", true);
     Assert(Map(view).Overlay == 4, "Structures page did not activate map colors");
@@ -300,8 +303,8 @@ static void GoalRouteRefresh()
     Call(view, "OpenResident", resident.Id); Call(view, "ShowGoalEditor", resident.Id);
     Control<ComboBox>(view, "resident-goal").SelectedItem = AgentGoalKind.Work;
     Control<ComboBox>(view, "resident-goal-entity").SelectedIndex = 0;
-    Control<NumericUpDown>(view, "resident-goal-x").Value = 35;
-    Control<NumericUpDown>(view, "resident-goal-y").Value = 32;
+    Control<NumericUpDown>(view, "resident-goal-x").Value = 15;
+    Control<NumericUpDown>(view, "resident-goal-y").Value = 12;
     Click(view, "resident-goal-apply");
     Assert(Field<IReadOnlyList<RoutePoint>>(map, "_selectedRoute").Count > 1, "Paused edit left the cached route empty");
     Assert(engine.State.Tick == 0, "Refreshing the preview advanced simulation");
@@ -358,12 +361,12 @@ static void ResidentSearch()
 
 static void VisibleTerrain()
 {
-    var engine = WorldEngine.Create(42, 256, 256, false); var map = Map(View(engine));
+    var engine = EmptyWorld(42, 144); var map = Map(View(engine));
     map.Arrange(new Rect(0, 0, 320, 480)); map.RefreshWorld(true);
     var before = engine.ExportJson();
     for (var i = 0; i < 20; i++) map.ZoomIn();
     map.RefreshWorld();
-    Assert(map.TerrainTilesScanned < engine.State.Tiles.Length / 8, "Near camera still hashes the entire map");
+    Assert(map.TerrainTilesScanned < engine.State.Tiles.Length / 8, $"Near camera scans {map.TerrainTilesScanned} of {engine.State.Tiles.Length} tiles");
     Assert(engine.ExportJson() == before, "Visible chunk caching changed the simulation");
 }
 
@@ -435,14 +438,14 @@ static void CloseZoom()
 static void TileForm()
 {
     var engine = TwoTownWorld(); var view = View(engine);
-    Call(view, "ShowTileEditor", 32, 32);
+    Call(view, "ShowTileEditor", 12, 12);
     Control<NumericUpDown>(view, "tile-resources").Value = 12.5m;
     Control<NumericUpDown>(view, "tile-fertility").Value = 0;
     Control<NumericUpDown>(view, "tile-road").Value = 3;
     Click(view, "tile-apply");
-    var tile = engine.State.Tiles[32 * engine.State.Width + 32];
+    var tile = engine.State.Tiles[12 * engine.State.Width + 12];
     Assert(tile.ResourceAmount == 12.5 && tile.Fertility == 0 && tile.RoadLevel == 3, "Tile form did not commit values");
-    Call(view, "ShowTileEditor", 32, 32);
+    Call(view, "ShowTileEditor", 12, 12);
     var before = engine.ExportJson();
     Control<NumericUpDown>(view, "tile-resources").Value = 50;
     Control<NumericUpDown>(view, "tile-road").Value = 1.5m;
@@ -696,13 +699,13 @@ static (WorldEngine Engine, int ResidentId, Building Target) WorkingWorld(Profes
 
 static void ReplaceWorldPlacement()
 {
-    var big = WorldEngine.Create(73921, 256, 256, false);
-    big.PaintTerrain(80, 200, TerrainType.Grass, 2);
+    var big = EmptyWorld(73921, 64);
+    big.PaintTerrain(40, 50, TerrainType.Grass, 2);
     var view = View(big);
     var map = Map(view);
-    Preview(map, 80, 200);
+    Preview(map, 40, 50);
     map.InfrastructureTownId = 999; map.InfrastructureKind = BuildingKind.Housing;
-    var small = WorldEngine.Create(42, 128, 128, false);
+    var small = EmptyWorld(42, 32);
     Call(view, "ReplaceWorld", small);
     Assert(!map.HasPendingPlacement, "Replacing the world must remove old pending placement");
     Assert(map.InfrastructureTownId == 0 && map.InfrastructureKind is null, "Old town filters hid buildings in the replacement world");
@@ -714,17 +717,17 @@ static void ReplaceWorldPlacement()
     Preview(map, 10, 10);
     map.InfrastructureTownId = 999; map.InfrastructureKind = BuildingKind.Housing;
     Call(view, "RestoreCheckpoint");
-    Assert(map.Engine!.State.Width == 256 && !map.HasPendingPlacement, "Undoing world replacement must also clear pending placement");
+    Assert(map.Engine!.State.Width == 64 && !map.HasPendingPlacement, "Undoing world replacement must also clear pending placement");
     Assert(map.InfrastructureTownId == 0 && map.InfrastructureKind is null, "Undo kept a filter for the discarded world");
 }
 
 static void PlacementBounds()
 {
-    var engine = WorldEngine.Create(42, 128, 128, false);
+    var engine = EmptyWorld(42, 32);
     var map = Map(View(engine));
     map.ActiveTool = "Human";
     var before = engine.ExportJson();
-    foreach (var tile in new[] { (128, 0), (0, 128), (-1, 0), (0, -1) })
+    foreach (var tile in new[] { (engine.State.Width, 0), (0, engine.State.Height), (-1, 0), (0, -1) })
     {
         // Model a late confirmation carrying stale coordinates; no input path may index them.
         typeof(WorldMapControl).GetField("_pendingPlacement", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(map, tile);
@@ -746,7 +749,7 @@ static void MapPickerLifecycle()
     Click(view, "map-pick-resident_goal_x");
     Call(view, "ShowNewWorld");
     Assert(!Map(view).PickingLocation, "Opening another modal must abandon the old map picker");
-    Call(view, "ReplaceWorld", WorldEngine.Create(42, 128, 128, false));
+    Call(view, "ReplaceWorld", EmptyWorld(42, 32));
     Call(view, "CloseModal");
     Call(view, "FinishMapPick", 10, 10);
     Assert(!Field<Border>(view, "_modal").IsVisible, "A stale map pick must not reopen an empty modal");
@@ -754,21 +757,27 @@ static void MapPickerLifecycle()
 
 static WorldEngine TwoTownWorld(bool largeTotal = false)
 {
-    var engine = WorldEngine.Create(42, 48, 48, false);
-    // These component checks cover residents, facilities and forms. Ecology has
-    // dedicated fixtures; a complete generated food web only enlarges every save.
-    foreach (var tile in engine.State.Tiles)
-    { tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default; }
-    engine.PaintTerrain(32, 32, TerrainType.Grass, 5);
-    engine.PaintTerrain(44, 44, TerrainType.Grass, 5);
-    engine.SpawnResidents(32, 32, RaceKind.Human, 1);
-    engine.SpawnResidents(44, 44, RaceKind.Human, 1);
+    var engine = EmptyWorld(42, 32);
+    engine.PaintTerrain(12, 12, TerrainType.Grass, 5);
+    engine.PaintTerrain(24, 24, TerrainType.Grass, 5);
+    engine.SpawnResidents(12, 12, RaceKind.Human, 1);
+    engine.SpawnResidents(24, 24, RaceKind.Human, 1);
     var towns = engine.State.Settlements.ToArray();
     Assert(towns.Length == 2, "Fixture requires two settlements");
     towns[0].Resources = new ResourceStock { Food = largeTotal ? 900_000.25 : 100.2, Wood = 70.125, Stone = 8.3, Ore = 10.4 };
     towns[1].Resources = new ResourceStock { Food = largeTotal ? 900_000.5 : .2, Wood = 1.75, Stone = .1, Ore = .375 };
     engine.TransferTerritory(towns[1].X, towns[1].Y, towns[0].NationId, 0);
     foreach (var town in towns) engine.TransferTerritory(town.X, town.Y, town.NationId, 5);
+    return engine;
+}
+
+static WorldEngine EmptyWorld(int seed, int size)
+{
+    var engine = WorldEngine.Create(seed, size, size, false);
+    // Form, camera and replacement checks need terrain, not a complete food
+    // web in every snapshot. Resource images have their own ecological fixture.
+    foreach (var tile in engine.State.Tiles)
+    { tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default; }
     return engine;
 }
 

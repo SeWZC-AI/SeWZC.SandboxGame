@@ -1,13 +1,15 @@
 namespace SeWZC.WorldBox.Core;
 
-// Derived counts only. A world's fixed tile objects notify their ownership
-// changes; loading or replacing the grid rebuilds this index from actual land.
+// Runtime tile indexes only. Ownership and traversal changes notify separate
+// revisions; loading or replacing the grid rebuilds the ownership index.
 internal sealed class TerritoryCounts
 {
     private readonly Dictionary<int, int> _counts = [];
     private Tile[]? _tiles;
     public long Revision { get; private set; }
+    public long TraversalRevision { get; private set; }
     public void InvalidateClaims() => Revision++;
+    public void InvalidateTraversal() => TraversalRevision++;
 
     public void Bind(Tile[] tiles)
     {
@@ -15,7 +17,7 @@ internal sealed class TerritoryCounts
         if (_tiles is not null)
             foreach (var tile in _tiles)
                 if (ReferenceEquals(tile.TerritoryCounts, this)) tile.TerritoryCounts = null;
-        _tiles = tiles; _counts.Clear(); Revision++;
+        _tiles = tiles; _counts.Clear(); Revision++; TraversalRevision++;
         foreach (var tile in tiles)
         {
             tile.TerritoryCounts = this;

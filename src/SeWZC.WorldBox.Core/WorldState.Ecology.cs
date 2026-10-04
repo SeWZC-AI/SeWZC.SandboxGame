@@ -52,7 +52,7 @@ public sealed class LocalConflict
 }
 
 // Value storage avoids allocating a collection for every map tile. Zero fields are omitted.
-public struct WildlifePopulations
+public struct WildlifePopulations : IEquatable<WildlifePopulations>
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Rabbit { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Deer { get; set; }
@@ -85,6 +85,35 @@ public struct WildlifePopulations
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double MuskOx { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double PolarBear { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double SnowLeopard { get; set; }
+
+    // JSON default omission must not box and reflect over every population.
+    public readonly bool Equals(WildlifePopulations other) =>
+        Rabbit.Equals(other.Rabbit) && Deer.Equals(other.Deer) && Boar.Equals(other.Boar) &&
+        Goat.Equals(other.Goat) && Wolf.Equals(other.Wolf) && Waterfowl.Equals(other.Waterfowl) &&
+        Fish.Equals(other.Fish) && Fox.Equals(other.Fox) && Bear.Equals(other.Bear) &&
+        Bison.Equals(other.Bison) && Yak.Equals(other.Yak) && Jerboa.Equals(other.Jerboa) &&
+        Gazelle.Equals(other.Gazelle) && Camel.Equals(other.Camel) && Fennec.Equals(other.Fennec) &&
+        Jackal.Equals(other.Jackal) && Lion.Equals(other.Lion) && Capybara.Equals(other.Capybara) &&
+        Hippo.Equals(other.Hippo) && Otter.Equals(other.Otter) && Crocodile.Equals(other.Crocodile) &&
+        GrassCarp.Equals(other.GrassCarp) && Manatee.Equals(other.Manatee) && PredatoryFish.Equals(other.PredatoryFish) &&
+        Pike.Equals(other.Pike) && Shark.Equals(other.Shark) && SeaTurtle.Equals(other.SeaTurtle) &&
+        SeaCow.Equals(other.SeaCow) && MuskOx.Equals(other.MuskOx) && PolarBear.Equals(other.PolarBear) &&
+        SnowLeopard.Equals(other.SnowLeopard);
+    public override readonly bool Equals(object? obj) => obj is WildlifePopulations other && Equals(other);
+    public override readonly int GetHashCode()
+    {
+        var hash = new HashCode();
+        hash.Add(Rabbit); hash.Add(Deer); hash.Add(Boar); hash.Add(Goat);
+        hash.Add(Wolf); hash.Add(Waterfowl); hash.Add(Fish); hash.Add(Fox);
+        hash.Add(Bear); hash.Add(Bison); hash.Add(Yak); hash.Add(Jerboa);
+        hash.Add(Gazelle); hash.Add(Camel); hash.Add(Fennec); hash.Add(Jackal);
+        hash.Add(Lion); hash.Add(Capybara); hash.Add(Hippo); hash.Add(Otter);
+        hash.Add(Crocodile); hash.Add(GrassCarp); hash.Add(Manatee); hash.Add(PredatoryFish);
+        hash.Add(Pike); hash.Add(Shark); hash.Add(SeaTurtle); hash.Add(SeaCow);
+        hash.Add(MuskOx); hash.Add(PolarBear); hash.Add(SnowLeopard);
+        return hash.ToHashCode();
+    }
+
     [JsonIgnore] public readonly int ActiveMask => (Rabbit > 0 ? 1 << (int)WildlifeKind.Rabbit : 0) | (Deer > 0 ? 1 << (int)WildlifeKind.Deer : 0) | (Boar > 0 ? 1 << (int)WildlifeKind.Boar : 0) | (Goat > 0 ? 1 << (int)WildlifeKind.Goat : 0) | (Wolf > 0 ? 1 << (int)WildlifeKind.Wolf : 0) | (Waterfowl > 0 ? 1 << (int)WildlifeKind.Waterfowl : 0) | (Fish > 0 ? 1 << (int)WildlifeKind.Fish : 0) | (Fox > 0 ? 1 << (int)WildlifeKind.Fox : 0) | (Bear > 0 ? 1 << (int)WildlifeKind.Bear : 0) | (Bison > 0 ? 1 << (int)WildlifeKind.Bison : 0) | (Yak > 0 ? 1 << (int)WildlifeKind.Yak : 0) | (Jerboa > 0 ? 1 << (int)WildlifeKind.Jerboa : 0) | (Gazelle > 0 ? 1 << (int)WildlifeKind.Gazelle : 0) | (Camel > 0 ? 1 << (int)WildlifeKind.Camel : 0) | (Fennec > 0 ? 1 << (int)WildlifeKind.Fennec : 0) | (Jackal > 0 ? 1 << (int)WildlifeKind.Jackal : 0) | (Lion > 0 ? 1 << (int)WildlifeKind.Lion : 0) | (Capybara > 0 ? 1 << (int)WildlifeKind.Capybara : 0) | (Hippo > 0 ? 1 << (int)WildlifeKind.Hippo : 0) | (Otter > 0 ? 1 << (int)WildlifeKind.Otter : 0) | (Crocodile > 0 ? 1 << (int)WildlifeKind.Crocodile : 0) | (GrassCarp > 0 ? 1 << (int)WildlifeKind.GrassCarp : 0) | (Manatee > 0 ? 1 << (int)WildlifeKind.Manatee : 0) | (PredatoryFish > 0 ? 1 << (int)WildlifeKind.PredatoryFish : 0) | (Pike > 0 ? 1 << (int)WildlifeKind.Pike : 0) | (Shark > 0 ? 1 << (int)WildlifeKind.Shark : 0) | (SeaTurtle > 0 ? 1 << (int)WildlifeKind.SeaTurtle : 0) | (SeaCow > 0 ? 1 << (int)WildlifeKind.SeaCow : 0) | (MuskOx > 0 ? 1 << (int)WildlifeKind.MuskOx : 0) | (PolarBear > 0 ? 1 << (int)WildlifeKind.PolarBear : 0) | (SnowLeopard > 0 ? 1 << (int)WildlifeKind.SnowLeopard : 0);
     internal readonly void CopyTo(Span<double> destination)
     {

@@ -15,13 +15,13 @@ internal static class EvolutionTests
     ];
 
     private static void Check(bool value, string message) { if (!value) throw new InvalidOperationException(message); }
-    private static WorldEngine Flat()
+    private static WorldEngine Flat(int size = 64, int population = 24)
     {
-        var engine = WorldEngine.Create(223, 64, 64, false);
+        var engine = WorldEngine.Create(223, size, size, false);
         foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 80; }
         engine.State.NaturalDisasters = false;
         engine.State.Rules.Thirst = false;
-        engine.SpawnResidents(14, 24, RaceKind.Human, 24);
+        engine.SpawnResidents(14, 24, RaceKind.Human, population);
         TestLand.ClaimAllTowns(engine);
         return engine;
     }
@@ -54,7 +54,7 @@ internal static class EvolutionTests
     [UnitTest]
     private static void Placement()
     {
-        var engine = Flat(); var town = engine.State.Settlements[0]; town.Resources = new();
+        var engine = Flat(32, 1); TestLand.ClearWildlife(engine); var town = engine.State.Settlements[0]; town.Resources = new();
         var before = engine.ExportJson();
         Check(engine.FacilityPlacementError(town.Id, BuildingKind.Academy, town.X + 2, town.Y) is not null, "Cost missing from preview");
         Check(engine.FacilityPlacementError(town.Id, BuildingKind.Academy, town.X + 2, town.Y, true) is null, "Gift unexpectedly required resources");
@@ -160,7 +160,7 @@ internal static class EvolutionTests
     [UnitTest]
     private static void Traits()
     {
-        var engine = Flat(); var id = engine.State.Residents[0].Id;
+        var engine = Flat(32, 1); var id = engine.State.Residents[0].Id;
         engine.EditResident(id, new ResidentEdit { Trait = "勇敢" });
         Check(engine.GetResident(id)!.Agent.Personality.Courage == .9, "Trait preset changed only its label");
     }

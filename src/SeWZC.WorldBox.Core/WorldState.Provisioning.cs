@@ -28,7 +28,12 @@ public sealed partial class Tile
         get => _claimedSettlementId;
         set { if (_claimedSettlementId == value) return; _claimedSettlementId = value; TerritoryCounts?.InvalidateClaims(); }
     }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public BridgeDirection BridgeDirection { get; set; }
+    private BridgeDirection _bridgeDirection;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public BridgeDirection BridgeDirection
+    {
+        get => _bridgeDirection;
+        set { if (_bridgeDirection == value) return; _bridgeDirection = value; TerritoryCounts?.InvalidateTraversal(); }
+    }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public byte BridgeLevel { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public long WaterDrawTick { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double WaterDrawn { get; set; }
@@ -42,12 +47,16 @@ public sealed partial class Settlement
     [JsonRequired] public int MaxClaimRadius { get; set; } = 6;
 }
 
-public struct PlantCoverage
+public struct PlantCoverage : IEquatable<PlantCoverage>
 {
     [JsonPropertyName("t"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Trees { get; set; }
     [JsonPropertyName("s"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Shrubs { get; set; }
     [JsonPropertyName("g"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Grass { get; set; }
     [JsonPropertyName("r"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Reeds { get; set; }
+    public readonly bool Equals(PlantCoverage other) => Trees.Equals(other.Trees) && Shrubs.Equals(other.Shrubs)
+        && Grass.Equals(other.Grass) && Reeds.Equals(other.Reeds);
+    public override readonly bool Equals(object? obj) => obj is PlantCoverage other && Equals(other);
+    public override readonly int GetHashCode() => HashCode.Combine(Trees, Shrubs, Grass, Reeds);
     [JsonIgnore] public readonly double Total => Trees + Shrubs + Grass + Reeds;
     public readonly double Get(PlantKind kind) => kind switch
     { PlantKind.Trees => Trees, PlantKind.Shrubs => Shrubs, PlantKind.Grass => Grass, PlantKind.Reeds => Reeds, _ => 0 };

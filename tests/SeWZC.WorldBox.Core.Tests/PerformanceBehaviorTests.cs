@@ -8,7 +8,8 @@ internal static class PerformanceBehaviorTests
         ("ecology reads changed food capacity before the next band", CapacityEdits),
         ("large-map ecology uses sparse cycles and resumes across band boundaries", SparseEcology),
         ("territory totals track edits and rebuild after loading", TerritoryEdits),
-        ("buffered saves preserve complete JSON and cancel before returning a partial capture", BufferedSave)
+        ("buffered saves preserve complete JSON and cancel before returning a partial capture", BufferedSave),
+        ("ecological value equality covers every saved field and preserves default omission", EcologicalValueEquality)
     ];
 
     private static WorldEngine Flat()
@@ -25,6 +26,34 @@ internal static class PerformanceBehaviorTests
 
     private static void Check(bool valid, string message)
     { if (!valid) throw new InvalidOperationException(message); }
+
+    [UnitTest]
+    private static void EcologicalValueEquality()
+    {
+        void Fields<T>() where T : struct, IEquatable<T>
+        {
+            foreach (var property in typeof(T).GetProperties().Where(p => p.CanWrite && p.PropertyType == typeof(double)))
+            {
+                object box = default(T); property.SetValue(box, .25); var value = (T)box;
+                Check(!value.Equals(default) && !default(T).Equals(value), "Equality omitted " + property.Name);
+                Check(value.Equals((object)value) && value.Equals(value) && value.GetHashCode() == ((T)box).GetHashCode(), "Inconsistent equality for " + property.Name);
+                property.SetValue(box, -0d); var zero = (T)box;
+                Check(zero.Equals(default) && zero.GetHashCode() == default(T).GetHashCode(), "Signed zero changed equality for " + property.Name);
+                property.SetValue(box, double.NaN); value = (T)box;
+                Check(value.Equals((T)box), "NaN changed existing double equality for " + property.Name);
+            }
+        }
+        Fields<WildlifePopulations>(); Fields<PlantCoverage>();
+        var engine = Flat(); var tile = engine.State.Tiles[0]; tile.OtherWildlife = default; tile.Plants = default;
+        var json = engine.ExportJson();
+        using (var document = System.Text.Json.JsonDocument.Parse(json))
+            Check(!document.RootElement.GetProperty("Tiles")[0].TryGetProperty("OtherWildlife", out _)
+                && !document.RootElement.GetProperty("Tiles")[0].TryGetProperty("p", out _), "Empty ecological values were written");
+        tile.OtherWildlife = new() { SnowLeopard = .25 }; tile.Plants = new() { Reeds = .25 };
+        json = engine.ExportJson(); var resumed = WorldEngine.ImportJson(json);
+        Check(resumed.State.Tiles[0].OtherWildlife.Equals(tile.OtherWildlife) && resumed.State.Tiles[0].Plants.Equals(tile.Plants)
+            && resumed.ExportJson() == json, "Nonempty ecological values changed during saving");
+    }
 
     [UnitTest]
     private static void DailyEcology()
