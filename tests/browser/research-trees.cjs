@@ -67,27 +67,28 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                     }
                     return ui.point('research-graph', inspector);
                 }
-                const graphPoint = await showGraph();
+                await showGraph();
                 snapshot = await ui.snapshot();
                 const beforePan = snapshot.researchGraph;
-                const graph = ui.control(snapshot, 'research-graph');
-                const start = { x: graphPoint.x - graph.width / 2 + 25, y: graphPoint.y - 80 };
+                // Start on a real button: its lost capture must not truncate the graph drag.
+                const start = await ui.point(`research-node-${endpoint}`, inspector);
                 if (mobile) {
                     const cdp = await context.newCDPSession(page);
                     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
                     for (let i = 1; i <= 8; i++) {
-                        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: start.x, y: start.y + i * 11 }] });
+                        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: start.x - i * 5.5, y: start.y + i * 11 }] });
                         await page.waitForTimeout(25);
                     }
                     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
                     await cdp.detach();
                 } else {
                     await page.mouse.move(start.x, start.y); await page.mouse.down();
-                    await page.mouse.move(start.x, start.y + 88, { steps: 8 }); await page.mouse.up();
+                    await page.mouse.move(start.x - 44, start.y + 88, { steps: 8 }); await page.mouse.up();
                 }
                 await page.waitForTimeout(250);
                 snapshot = await ui.snapshot();
                 assert(Math.abs(snapshot.researchGraph.offsetY - beforePan.offsetY) > 30, 'Dragging did not pan the actual tree');
+                assert(Math.abs(snapshot.researchGraph.offsetX - beforePan.offsetX) > 25, 'Dragging did not move between branch columns');
                 assert.match(ui.control(snapshot, 'research-selected').value, route === 'technology' ? /科技帝国/ : /魔法帝国/);
                 await ui.click('research-zoom-out', inspector);
                 assert((await ui.snapshot()).researchGraph.zoom < beforePan.zoom, 'Zoom did not change tree geometry');
