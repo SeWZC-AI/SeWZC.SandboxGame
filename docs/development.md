@@ -177,3 +177,16 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 生态结构默认值比较和空世界保存可用 `python3 scripts/profile-ecology-values.py <已构建的 Core.dll> <输出.json>` 调查，SDK 路径通过 `WORLDBOX_DOTNET` 指定。脚本在临时目录编译独立探针，分别记录泛型比较器的调用耗时／分配与 32×32 空世界实际序列化耗时、载荷和摘要。优化前后 DLL 先后串行运行；微基准不能冒充真实生态或整场游戏的 CPU 百分比。
 
 原生 `--profile-simulation` 同时记录整个测量窗口的进程 CPU 时间和每 tick 墙钟耗时。CPU 包含该进程的 GC、JIT 和工作线程，可能大于墙钟；不包含生成、预热或保存，也不能当成模拟主线程或单个方法的 CPU 百分比。分批与交替复测结论不一致时保留所有组，不将负“探针开销”当成优化、不将异常直接归因于 GC／调度，记录独立的配对 CPU 与墙钟证据。
+
+
+### 帝国研究与存档模拟
+
+研究图、说明、成本和前置统一维护在 `ResearchRules.cs`，每批生产配方仍由 `AdvancementRules.cs` 负责。新增知识的效果需进入实际采收、生产、训练等规则及对应效果展示，不能只新增卡片。矿工材料目标是保存状态；生产预算缓存只在居民阶段存在，退出阶段必须清空。
+
+复现完整自主科技路线：
+
+```bash
+dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --simulate-development artifacts/empires/technology 73921 128 24000 --peaceful --technology --require-empire --until-empire
+```
+
+将 `--technology` 替换为 `--arcane-industry` 可运行魔法帝国路线。`--require-empire` 失败时返回非零，要求同一聚落完整掌握路线并有各配套设施真实生产记录；`--until-empire` 达标后继续 1,200 日再保存。报告记录实际推进日数、首次达标、各采样、死亡原因和 24 日保存续演校验。繁荣规则场景与默认战争／灾害世界的结果须分别说明。

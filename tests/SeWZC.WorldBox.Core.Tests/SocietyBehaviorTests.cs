@@ -269,6 +269,7 @@ internal static class SocietyBehaviorTests
             "Lacking ore for optional magic prevented funded transport research from starting.");
         engine.GrantReceivedResearch(town.Id, ResearchKind.Logistics);
         engine.GrantReceivedResearch(town.Id, ResearchKind.ArcaneArts);
+        foreach (var r in ResearchRules.All.Where(r => r.Branch == "民生与资源")) engine.GrantReceivedResearch(town.Id, r.Kind);
         engine.SetNationResources(town.NationId, 500, 100, 15, 0);
         engine.State.Tick += 60;
         engine.TickSociety();

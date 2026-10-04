@@ -82,7 +82,10 @@ public sealed partial class WorldEngine
             if (State.Rules.Construction && State.Rules.Expansion && SettlementExpansionError(town.Id) is null
                 && AdvancementRules.Resources.All(k => town.Resources.Get(k) >= SettlementExpansionCost(town.Tier).Get(k) + developmentReserve.Get(k)))
                 ExpandTown(town.Id);
-            if (State.Rules.Construction && citizens.Count > GetHousingCapacity(town.Id) * 0.75
+            if (State.Rules.Construction && town.Resources.Food >= citizens.Count * 2 + developmentReserve.Food
+                && GetHousingCapacity(town.Id) < 60 + State.Society.Buildings.Where(b => b.SettlementId == town.Id && IsFacilityOperating(b))
+                    .Sum(b => b.Kind == BuildingKind.Farm ? 30 * b.Efficiency : b.Kind is BuildingKind.AutomatedFarm or BuildingKind.RunicGarden ? 120 * b.Efficiency : 0)
+                && citizens.Count > GetHousingCapacity(town.Id) * 0.75
                 && !State.Society.Buildings.Any(b => b.SettlementId == town.Id && (!b.IsCompleted || b.IsUpgrading))
                 && town.Resources.Wood >= 25 + developmentReserve.Wood && town.Resources.Stone >= 8 + developmentReserve.Stone)
             {

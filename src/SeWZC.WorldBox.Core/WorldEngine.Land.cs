@@ -188,7 +188,7 @@ public sealed partial class WorldEngine
                 AddEvent(WorldEventKind.Research, $"{person.Name}在实地勘探中发现{ResourceStock.Name(resource)}。", x, y,
                     EventAction.General, home.Id, person.Id);
             }
-            if (home.Resources.Get(resource) >= 80) continue;
+            if (home.Resources.Get(resource) >= 80 || person.Agent.MaterialPriority is { } needed && needed != resource) continue;
             var site = tile.IsWalkable ? Index(x, y) : Directions.Select(d => (X: x + d.X, Y: y + d.Y))
                 .Where(p => Walkable(p.X, p.Y) && State.Tiles[Index(p.X, p.Y)].FireTicks == 0)
                 .OrderBy(p => Distance(person.X, person.Y, p.X, p.Y)).Select(p => Index(p.X, p.Y)).FirstOrDefault(-1);
@@ -206,9 +206,10 @@ public sealed partial class WorldEngine
         {
             var tile = State.Tiles[index];
             if (tile.Deposit is not { } kind || tile.DepositAmount <= 0 || tile.FireTicks > 0
-                || DepositResearch(kind) is not { } research || !HasResearch(home.Id, research) || home.Resources.Get(kind) >= 80) continue;
+                || DepositResearch(kind) is not { } research || !HasResearch(home.Id, research) || home.Resources.Get(kind) >= 80
+                || person.Agent.MaterialPriority is { } needed && needed != kind) continue;
             tile.DepositDiscovered = true;
-            var amount = Math.Min(tile.DepositAmount, .4 * State.Rules.GatheringRate * GatheringCondition(person) * GatheringTerritoryMultiplier(person, tile));
+            var amount = Math.Min(tile.DepositAmount, .4 * State.Rules.GatheringRate * GatheringCondition(person) * GatheringTerritoryMultiplier(person, tile) * (HasResearch(person.SettlementId, ResearchKind.Forestry) ? 1.25 : 1));
             amount = Math.Min(amount, 1_000_000 - person.Inventory.Get(kind));
             tile.DepositAmount -= amount; person.Inventory.Set(kind, person.Inventory.Get(kind) + amount);
             RecordHarvest(tile, amount); person.Activity = ResidentActivity.Working;

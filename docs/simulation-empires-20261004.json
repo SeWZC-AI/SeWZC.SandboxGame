@@ -1,0 +1,345 @@
+{
+  "date": "2026-10-04",
+  "rules": "Flourishing: wars, secession and natural disasters disabled; births, aging, hunger, thirst, disease, gathering, transport, construction and research enabled",
+  "postStartInterventions": false,
+  "baselineCommit": "e01d809e9c517e90a6dc81ab3b7ff0fb2b93b554",
+  "baseline": [
+    {
+      "route": "technology",
+      "ticks": 24000,
+      "population": 519,
+      "settlements": 2,
+      "totalCompletedResearch": 5,
+      "food": 27.614092887500053
+    },
+    {
+      "route": "magic",
+      "ticks": 24000,
+      "population": 375,
+      "settlements": 1,
+      "totalCompletedResearch": 4,
+      "food": 18.78000000000008
+    }
+  ],
+  "finalRuns": [
+    {
+      "seed": 73921,
+      "route": "technology",
+      "dimensions": [
+        128,
+        128
+      ],
+      "completionTick": 7680,
+      "finalTick": 8880,
+      "stabilityTicks": 1200,
+      "population": 628,
+      "nations": 4,
+      "settlements": 8,
+      "food": 57055.42412187305,
+      "water": 32.326975999999235,
+      "hungry": 2,
+      "thirsty": 0,
+      "saveBytes": 13504551,
+      "sha256": "ede7c536c258e7ddea88e0b219bd732a458d9db0d8a8c6d1b68dd164bae24a41",
+      "deterministicContinuationTicks": 24,
+      "completeTowns": [
+        {
+          "id": 80,
+          "name": "琥珀河城",
+          "population": 246,
+          "completed": [
+            "Agriculture",
+            "Logistics",
+            "SignalNetwork",
+            "Industry",
+            "Electrification",
+            "Automation",
+            "AdvancedComputing",
+            "Aviation",
+            "Irrigation",
+            "Forestry",
+            "Medicine",
+            "ScientificMethod",
+            "EfficientSmelting",
+            "EnergyRecycling",
+            "TechnologicalEmpire"
+          ],
+          "resources": {
+            "Water": 12.42591199999819,
+            "Alloy": 109.25,
+            "EnergyCells": 226.125,
+            "Crystals": 0,
+            "Coal": 80,
+            "Oil": 201.5,
+            "RareEarth": 132,
+            "Boats": 71.25,
+            "Aircraft": 118.75,
+            "Food": 40179.902684363245,
+            "Wood": 3416.187644878764,
+            "Stone": 417.31818282730063,
+            "Ore": 39.89061780769132
+          },
+          "production": {
+            "Foundry": 149,
+            "PowerPlant": 931,
+            "Airfield": 105,
+            "AutomatedFarm": 3595,
+            "Fabricator": 132,
+            "Shipyard": 57
+          }
+        }
+      ],
+      "deathCauses": {
+        "OldAge": 92
+      }
+    },
+    {
+      "seed": 73921,
+      "route": "magic",
+      "dimensions": [
+        128,
+        128
+      ],
+      "completionTick": 5400,
+      "finalTick": 6600,
+      "stabilityTicks": 1200,
+      "population": 526,
+      "nations": 4,
+      "settlements": 7,
+      "food": 31829.17026757181,
+      "water": 51.35500000000074,
+      "hungry": 0,
+      "thirsty": 0,
+      "saveBytes": 12077671,
+      "sha256": "8e9cd943f654159ed90fd1857129cf29521bbe5f606782bc31338d3a70529da0",
+      "deterministicContinuationTicks": 24,
+      "completeTowns": [
+        {
+          "id": 80,
+          "name": "琥珀河镇",
+          "population": 120,
+          "completed": [
+            "Agriculture",
+            "Logistics",
+            "ArcaneArts",
+            "Crystalcraft",
+            "RunicEngineering",
+            "AetherMastery",
+            "Irrigation",
+            "Forestry",
+            "Medicine",
+            "ManaAttunement",
+            "Restoration",
+            "ArcaneScholarship",
+            "Leylines",
+            "MagicalEmpire"
+          ],
+          "resources": {
+            "Water": 20.735000000000117,
+            "Alloy": 0,
+            "EnergyCells": 0,
+            "Crystals": 91.4375,
+            "Coal": 0,
+            "Oil": 0,
+            "RareEarth": 0,
+            "Boats": 1,
+            "Aircraft": 0,
+            "Food": 8332.015744675296,
+            "Wood": 3271.9055767450236,
+            "Stone": 6.682088759996295,
+            "Ore": 88.7064379999984
+          },
+          "production": {
+            "Crystallizer": 243,
+            "RunicGarden": 46,
+            "AetherForge": 32,
+            "Shipyard": 2
+          }
+        }
+      ],
+      "deathCauses": {
+        "OldAge": 36
+      }
+    },
+    {
+      "seed": 42,
+      "route": "technology",
+      "dimensions": [
+        128,
+        128
+      ],
+      "completionTick": 3000,
+      "finalTick": 4200,
+      "stabilityTicks": 1200,
+      "population": 752,
+      "nations": 4,
+      "settlements": 7,
+      "food": 40817.25423123033,
+      "water": 71.37510400000109,
+      "hungry": 0,
+      "thirsty": 1,
+      "saveBytes": 13746196,
+      "sha256": "34947b782fbb907c337809b72471c5456de7950a184116aecd41c9a8a3cb5483",
+      "deterministicContinuationTicks": 24,
+      "completeTowns": [
+        {
+          "id": 2,
+          "name": "星湖堡镇",
+          "population": 220,
+          "completed": [
+            "Agriculture",
+            "Logistics",
+            "SignalNetwork",
+            "Industry",
+            "Electrification",
+            "Automation",
+            "AdvancedComputing",
+            "Aviation",
+            "Irrigation",
+            "Forestry",
+            "Medicine",
+            "ScientificMethod",
+            "EfficientSmelting",
+            "EnergyRecycling",
+            "TechnologicalEmpire"
+          ],
+          "resources": {
+            "Water": 0,
+            "Alloy": 78.1875,
+            "EnergyCells": 90.375,
+            "Crystals": 0,
+            "Coal": 115,
+            "Oil": 107,
+            "RareEarth": 118.5,
+            "Boats": 76.25,
+            "Aircraft": 103,
+            "Food": 2504.6447458830567,
+            "Wood": 338.87732362499844,
+            "Stone": 489.66249725506157,
+            "Ore": 211.1498897449397
+          },
+          "production": {
+            "Foundry": 183,
+            "PowerPlant": 225,
+            "Airfield": 89,
+            "AutomatedFarm": 397,
+            "Fabricator": 103,
+            "Shipyard": 62
+          }
+        },
+        {
+          "id": 158,
+          "name": "银叶泉镇",
+          "population": 220,
+          "completed": [
+            "Agriculture",
+            "Logistics",
+            "SignalNetwork",
+            "Industry",
+            "Electrification",
+            "Automation",
+            "AdvancedComputing",
+            "Aviation",
+            "Irrigation",
+            "Forestry",
+            "Medicine",
+            "ScientificMethod",
+            "EfficientSmelting",
+            "EnergyRecycling",
+            "TechnologicalEmpire"
+          ],
+          "resources": {
+            "Water": 4.798499999999995,
+            "Alloy": 219.1875,
+            "EnergyCells": 178.875,
+            "Crystals": 0,
+            "Coal": 69.5,
+            "Oil": 11.75,
+            "RareEarth": 95,
+            "Boats": 0,
+            "Aircraft": 94.25,
+            "Food": 22695.862878509604,
+            "Wood": 468.1565783375006,
+            "Stone": 848.051884305459,
+            "Ore": 77.58192948078843
+          },
+          "production": {
+            "Foundry": 215,
+            "PowerPlant": 477,
+            "Airfield": 82,
+            "AutomatedFarm": 1623,
+            "Fabricator": 100
+          }
+        }
+      ],
+      "deathCauses": {
+        "OldAge": 10
+      }
+    },
+    {
+      "seed": 42,
+      "route": "magic",
+      "dimensions": [
+        128,
+        128
+      ],
+      "completionTick": 2280,
+      "finalTick": 3480,
+      "stabilityTicks": 1200,
+      "population": 440,
+      "nations": 4,
+      "settlements": 4,
+      "food": 19896.091428768188,
+      "water": 30.56500000000035,
+      "hungry": 0,
+      "thirsty": 0,
+      "saveBytes": 10566968,
+      "sha256": "e7d23b183c9e376e6a7f6e38ce7e9194d440253d718ca39b7294b294dce8ea39",
+      "deterministicContinuationTicks": 24,
+      "completeTowns": [
+        {
+          "id": 2,
+          "name": "星湖堡镇",
+          "population": 100,
+          "completed": [
+            "Agriculture",
+            "Logistics",
+            "ArcaneArts",
+            "Crystalcraft",
+            "RunicEngineering",
+            "AetherMastery",
+            "Irrigation",
+            "Forestry",
+            "Medicine",
+            "ManaAttunement",
+            "Restoration",
+            "ArcaneScholarship",
+            "Leylines",
+            "MagicalEmpire"
+          ],
+          "resources": {
+            "Water": 1.475000000000005,
+            "Alloy": 0,
+            "EnergyCells": 0,
+            "Crystals": 69.5625,
+            "Coal": 0,
+            "Oil": 0,
+            "RareEarth": 0,
+            "Boats": 0,
+            "Aircraft": 0,
+            "Food": 103.23611614508569,
+            "Wood": 1058.6292771249975,
+            "Stone": 675.6727562697367,
+            "Ore": 362.84426560526293
+          },
+          "production": {
+            "Crystallizer": 185,
+            "RunicGarden": 37,
+            "AetherForge": 3
+          }
+        }
+      ],
+      "deathCauses": {}
+    }
+  ]
+}

@@ -4,27 +4,25 @@ public sealed partial class WorldEngine
 {
     public string? ResearchPrerequisiteError(int settlementId, ResearchKind kind)
     {
-        if (kind == ResearchKind.SignalNetwork && !HasResearch(settlementId, ResearchKind.Electrification)) return "需要先掌握电气化";
-        var advancement = AdvancementRules.For(kind);
-        if ((kind == ResearchKind.ArcaneArts || advancement?.Magic == true) && !State.Society.MagicEnabled)
-            return "世界规则已关闭新的魔法发展";
-        if (advancement is null) return null;
-        var missing = advancement.Prerequisites.Where(p => !HasResearch(settlementId, p)).Select(ResearchName).ToArray();
+        var definition = ResearchRules.For(kind);
+        if (definition.Magic && !State.Society.MagicEnabled) return "世界规则已关闭新的魔法发展";
+        var missing = definition.Prerequisites.Where(p => !HasResearch(settlementId, p)).Select(ResearchName).ToArray();
         return missing.Length == 0 ? null : "需要先掌握" + string.Join("、", missing);
     }
 
     public static string ResearchDescription(ResearchKind kind)
     {
-        var a = AdvancementRules.For(kind);
-        return a is null ? kind == ResearchKind.SignalNetwork ? "阶段：近现代\n前置：电气化\n解锁无线信号塔通信。" : kind == ResearchKind.Logistics ? "古代交通：解锁驿站、桥梁、山路和船坞与码头；舟船由居民制造并实际运回。" : "在已建成学舍由实际到场人员推进。"
-            : $"路线：{(a.Magic ? "魔法" : "科技")}\n阶段：{a.Stage}\n前置：{string.Join("、", a.Prerequisites.Select(ResearchName))}\n解锁设施：{a.FacilityName}\n{ProductionRecipe(a.Facility)}";
+        var r = ResearchRules.For(kind);
+        return $"分支：{r.Branch}\n阶段：{r.Stage}\n前置：{(r.Prerequisites.Length == 0 ? "无" : string.Join("、", r.Prerequisites.Select(ResearchName)))}\n{r.Effect}";
     }
 
     public string GetAdvancementStage(int settlementId)
     {
-        string Stage(bool magic) => AdvancementRules.All.LastOrDefault(a => a.Magic == magic && HasResearch(settlementId, a.Research))?.Stage
-            ?? (magic ? HasResearch(settlementId, ResearchKind.ArcaneArts) ? "基础奥术" : "未发展" : "古代");
-        return $"科技：{Stage(false)}   魔法：{Stage(true)}";
+        string Stage(bool magic) => HasResearch(settlementId, magic ? ResearchKind.MagicalEmpire : ResearchKind.TechnologicalEmpire)
+            ? magic ? "魔法帝国" : "科技帝国"
+            : AdvancementRules.All.LastOrDefault(a => a.Magic == magic && HasResearch(settlementId, a.Research))?.Stage
+                ?? (magic ? HasResearch(settlementId, ResearchKind.ArcaneArts) ? "基础奥术" : "未发展" : "古代");
+        return $"科技：{Stage(false)}\n魔法：{Stage(true)}";
     }
 
     public static string ProductionRecipe(BuildingKind kind)
@@ -49,9 +47,14 @@ public sealed partial class WorldEngine
 
     private double ProductionYield(Building building, Advancement a)
     {
-        if (a.Output != ResourceKind.Food) return a.Yield * building.Efficiency;
+        var multiplier = (HasResearch(building.SettlementId, a.Magic ? ResearchKind.MagicalEmpire : ResearchKind.TechnologicalEmpire) ? 1.25 : 1)
+            * (a.Output == ResourceKind.Food && HasResearch(building.SettlementId, ResearchKind.Irrigation) ? 1.25 : 1)
+            * (building.Kind is BuildingKind.Foundry or BuildingKind.DwarvenForge && HasResearch(building.SettlementId, ResearchKind.EfficientSmelting) ? 1.25 : 1)
+            * (building.Kind == BuildingKind.PowerPlant && HasResearch(building.SettlementId, ResearchKind.EnergyRecycling) ? 1.5 : 1)
+            * (building.Kind is BuildingKind.Crystallizer or BuildingKind.AetherForge && HasResearch(building.SettlementId, ResearchKind.Leylines) ? 1.25 : 1);
+        if (a.Output != ResourceKind.Food) return a.Yield * building.Efficiency * multiplier;
         var tile = State.Tiles[Index(building.X, building.Y)];
-        return a.Yield * building.Efficiency * tile.Fertility / 100d * (tile.DroughtTicks > 0 ? .18 : 1);
+        return a.Yield * building.Efficiency * multiplier * tile.Fertility / 100d * (tile.DroughtTicks > 0 ? .18 : 1);
     }
 
     public string GetProductionStatus(int buildingId)
@@ -92,8 +95,14 @@ public sealed partial class WorldEngine
         var requirement = ProductionRequirement(building, a);
         if (requirement is not null) return requirement;
         if (ProductionYield(building, a) <= 0) return "土地无法产粮，需要恢复肥力";
-        var missing = MissingResources(RequireTown(building.SettlementId).Resources, a.Input);
-        return $"产出：{ResourceStock.Name(a.Output)} {ProductionYield(building, a):0.#} / 批   累计 {building.ProductionBatches} 批\n" + (missing is not null ? missing + "\n等待材料实际运到"
+        var townStock = RequireTown(building.SettlementId);
+        var reserve = _localWorkQueriesActive ? _productionReserves.GetValueOrDefault(townStock.Id) : LocalDevelopmentReserve(townStock);
+        var reserved = AdvancementRules.Resources.Where(k => a.Input.Get(k) > 0 && (reserve?.Get(k) ?? 0) > 0
+            && townStock.Resources.Get(k) < a.Input.Get(k) + reserve!.Get(k)).Select(k => ResourceStock.Name(k) + " " + reserve!.Get(k).ToString("0.#")).ToArray();
+        var missing = MissingResources(townStock.Resources, a.Input);
+        if (a.Output != ResourceKind.Food && townStock.Resources.Get(a.Output) >= 80) missing = $"{ResourceStock.Name(a.Output)}库存已达补货目标 80，暂停新的领料";
+        else if (reserved.Length > 0) missing = "为下一发展项目预留：" + string.Join("、", reserved);
+        return $"产出：{ResourceStock.Name(a.Output)} {ProductionYield(building, a):0.#} / 批   累计 {building.ProductionBatches} 批\n" + (missing is not null ? missing
             : a.Magic ? "需要天赋 ≥25、训练 ≥8 且魔力足够的到场施作者" : "原料可用，等待工人取料并到场加工");
     }
 
@@ -104,7 +113,15 @@ public sealed partial class WorldEngine
             || a.Magic && (person.MagicTalent < 25 || person.MagicTraining < 8 || person.Mana < a.Mana)) return false;
         if (person.Inventory.Get(a.Output) + ProductionYield(building, a) > 1_000_000) return false;
         return MissingResources(person.Inventory, a.Input) is null
-            || _settlements.TryGetValue(building.SettlementId, out var town) && MissingResources(town.Resources, a.Input) is null;
+            || _settlements.TryGetValue(building.SettlementId, out var town) && WarehouseCanSupply(town, person, a);
+    }
+
+    private bool WarehouseCanSupply(Settlement town, Resident person, Advancement a)
+    {
+        if (a.Output != ResourceKind.Food && town.Resources.Get(a.Output) >= 80) return false;
+        if (MissingResources(town.Resources, a.Input) is not null) return false;
+        var reserve = _localWorkQueriesActive ? _productionReserves.GetValueOrDefault(town.Id) : LocalDevelopmentReserve(town);
+        return AdvancementRules.Resources.Where(k => a.Input.Get(k) > 0).All(k => town.Resources.Get(k) + 0.000001 >= Math.Max(0, a.Input.Get(k) - person.Inventory.Get(k)) + (reserve?.Get(k) ?? 0));
     }
 
     private bool ActOnProduction(Resident person, Settlement home)

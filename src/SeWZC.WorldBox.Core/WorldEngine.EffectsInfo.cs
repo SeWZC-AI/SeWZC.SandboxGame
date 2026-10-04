@@ -137,6 +137,16 @@ public sealed partial class WorldEngine
         {
             if (building.Kind == BuildingKind.Academy && town.Tier > SettlementTier.Village) effects.Add(new("城镇组织", $"本地研究效率 ×{1 + EffectiveSettlementRank(town) * .1:0.00}" + (IsSettlementActive(town.Id) ? "" : "，占地不足，加成暂停"), town.Name, Active: IsSettlementActive(town.Id)));
             if (building.Kind == BuildingKind.Farm && HasResearch(town.Id, ResearchKind.Agriculture)) effects.Add(new("农业知识", "农场粮食产出 ×1.35", town.Name));
+            void Knowledge(ResearchKind kind, string description) { if (HasResearch(town.Id, kind)) effects.Add(new(ResearchName(kind), description, town.Name)); }
+            if (building.Kind == BuildingKind.Farm || AdvancementRules.For(building.Kind)?.Output == ResourceKind.Food) Knowledge(ResearchKind.Irrigation, "粮食实际产出 ×1.25");
+            if (building.Kind is BuildingKind.Workshop or BuildingKind.LumberCamp or BuildingKind.Quarry) Knowledge(ResearchKind.Forestry, "材料采集效率 ×1.25");
+            if (building.Kind == BuildingKind.Infirmary) Knowledge(ResearchKind.Medicine, "现场治疗 ×1.50");
+            if (building.Kind == BuildingKind.Academy) { Knowledge(ResearchKind.ScientificMethod, "研究效率 ×1.25"); Knowledge(ResearchKind.ArcaneScholarship, "研究效率 ×1.25"); }
+            if (building.Kind == BuildingKind.ArcaneSanctum) { Knowledge(ResearchKind.ArcaneScholarship, "训练效率 ×1.50"); Knowledge(ResearchKind.ManaAttunement, "魔力恢复 ×1.50"); }
+            if (building.Kind is BuildingKind.Foundry or BuildingKind.DwarvenForge) Knowledge(ResearchKind.EfficientSmelting, "每批合金产出 ×1.25");
+            if (building.Kind == BuildingKind.PowerPlant) Knowledge(ResearchKind.EnergyRecycling, "每批动力单元产出 ×1.50");
+            if (building.Kind is BuildingKind.Crystallizer or BuildingKind.AetherForge) Knowledge(ResearchKind.Leylines, "每批产出 ×1.25");
+            if (AdvancementRules.For(building.Kind) is { } recipe) Knowledge(recipe.Magic ? ResearchKind.MagicalEmpire : ResearchKind.TechnologicalEmpire, "每批实际产出 ×1.25");
             if (building.Kind == BuildingKind.Farm && town.FertilityBoostTicks > 0) effects.Add(new("丰饶", "农场粮食产出 ×1.35", town.Name, town.FertilityBoostTicks));
             if (building.Kind == BuildingKind.Academy && GetLocalPolicy(town.Id) == PolicyKind.Scholarship) effects.Add(new("学术政策", "研究效率 ×1.35", town.Name));
             if (building.Kind == BuildingKind.Farm && GetPolicyProductionMultiplier(town.Id) != 1) effects.Add(new("当地生产政策", $"农场产出 ×{GetPolicyProductionMultiplier(town.Id):0.00}", town.Name));

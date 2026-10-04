@@ -8,10 +8,10 @@ internal static class DevelopmentDiagnostics
     // Runs the actual core without UI timing or edits. Snapshots deliberately copy mutable values.
     public static int Run(string[] args)
     {
-        var positional = args.Where(a => a is not ("--no-disasters" or "--technology" or "--magic-practice")).ToArray();
+        var positional = args.Where(a => a is not ("--no-disasters" or "--technology" or "--magic-practice" or "--arcane-industry" or "--peaceful" or "--require-empire" or "--until-empire")).ToArray();
         if (positional.Length is < 1 or > 4)
         {
-            Console.Error.WriteLine("Usage: --simulate-development <output-directory> [seed=73921] [size=256] [ticks=3600] [--no-disasters]");
+            Console.Error.WriteLine("Usage: --simulate-development <output-directory> [seed=73921] [size=256] [ticks=3600] [--no-disasters] [--peaceful] [--technology|--magic-practice|--arcane-industry] [--require-empire] [--until-empire]");
             return 2;
         }
         var seed = positional.Length > 1 ? int.Parse(positional[1]) : 73921;
@@ -22,30 +22,42 @@ internal static class DevelopmentDiagnostics
         Directory.CreateDirectory(output);
         var engine = WorldEngine.Create(seed, size, size);
         engine.State.NaturalDisasters = !args.Contains("--no-disasters");
-        if (args.Contains("--technology") || args.Contains("--magic-practice"))
-            foreach (var nation in engine.State.Nations) engine.SetDevelopmentFocus(nation.Id, args.Contains("--technology") ? DevelopmentFocus.Technology : DevelopmentFocus.MagicPractice);
+        if (args.Contains("--peaceful")) engine.ConfigureWorld(WorldRules.For(WorldPreset.Flourishing), false, true);
+        if (args.Contains("--technology") || args.Contains("--magic-practice") || args.Contains("--arcane-industry"))
+            foreach (var nation in engine.State.Nations) engine.SetDevelopmentFocus(nation.Id, args.Contains("--technology") ? DevelopmentFocus.Technology : args.Contains("--arcane-industry") ? DevelopmentFocus.ArcaneIndustry : DevelopmentFocus.MagicPractice);
         var samples = new List<object>();
+        var milestones = new Dictionary<int, long>();
         var observedEvents = new Dictionary<int, WorldEvent>();
         var observedDeaths = new Dictionary<int, Resident>();
+        var targetRoute = ResearchRules.Route(args.Contains("--arcane-industry"));
+        long completionTick = -1;
+        int[] CompleteTowns(WorldEngine current) => current.State.Settlements.Where(t => targetRoute.All(k => current.HasResearch(t.Id, k))
+            && AdvancementRules.All.Where(a => a.Magic == args.Contains("--arcane-industry")).All(a => current.State.Society.Buildings.Any(b => b.SettlementId == t.Id && b.Kind == a.Facility && b.ProductionBatches > 0))).Select(t => t.Id).ToArray();
         var elapsed = Stopwatch.StartNew();
         Sample();
         for (var completed = 0; completed < ticks; completed += 120)
         {
             engine.Step(Math.Min(120, ticks - completed));
             Sample();
+            if (completionTick < 0 && CompleteTowns(engine).Length > 0) completionTick = engine.State.Tick;
+            if (args.Contains("--until-empire") && completionTick >= 0 && engine.State.Tick >= completionTick + 1200) break;
         }
         var save = engine.ExportJson();
         try { _ = WorldEngine.ImportJson(save); }
         catch { File.WriteAllText(Path.Combine(output, "invalid.worldbox.json"), save, new UTF8Encoding(false)); throw; }
+        var resumed = WorldEngine.ImportJson(save);
+        engine.Step(24); resumed.Step(24);
+        if (engine.ExportJson() != resumed.ExportJson()) throw new Exception("Final save failed deterministic continuation.");
         File.WriteAllText(Path.Combine(output, "final.worldbox.json"), save, new UTF8Encoding(false));
+        var completeTowns = CompleteTowns(resumed);
         File.WriteAllText(Path.Combine(output, "report.json"), JsonSerializer.Serialize(new
         {
-            seed, size, ticks, disasters = engine.State.NaturalDisasters, elapsedSeconds = elapsed.Elapsed.TotalSeconds,
+            seed, size, ticks, simulatedTicks = engine.State.Tick - 24, completionTick, milestones, completeTowns, deterministicContinuationTicks = 24, requiredResearch = targetRoute.Select(k => k.ToString()).ToArray(), disasters = engine.State.NaturalDisasters, elapsedSeconds = elapsed.Elapsed.TotalSeconds,
             saveBytes = Encoding.UTF8.GetByteCount(save), samples, observedEvents = observedEvents.Values,
             deaths = observedDeaths.Values.Select(r => new { r.Id, cause = r.DeathCause.ToString(), r.DeathTick, r.SettlementId, r.X, r.Y })
         }, new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
         Console.WriteLine($"Report and validated final save: {output}");
-        return 0;
+        return args.Contains("--require-empire") && completeTowns.Length == 0 ? 1 : 0;
 
         void Sample()
         {
@@ -56,14 +68,15 @@ internal static class DevelopmentDiagnostics
             {
                 var people = state.Residents.Where(p => p.SettlementId == town.Id).ToArray();
                 var research = state.Society.Research.First(r => r.SettlementId == town.Id);
+                if (research.Completed.Contains(ResearchKind.TechnologicalEmpire) || research.Completed.Contains(ResearchKind.MagicalEmpire)) milestones.TryAdd(town.Id, state.Tick);
                 return new
                 {
                     town.Id, town.Name, town.NationId, focus = engine.GetDevelopmentFocus(town.Id).ToString(), town.X, town.Y, town.Population,
                     housing = engine.GetHousingCapacity(town.Id), tier = WorldEngine.SettlementTierName(town.Tier), exclusiveLand = engine.GetSettlementArea(town.Id),
-                    stock = new { town.Resources.Food, town.Resources.Water, town.Resources.Wood, town.Resources.Stone, town.Resources.Ore },
+                    stock = town.Resources.Copy(), town.DevelopmentGoal, town.DevelopmentBlocker,
                     policy = engine.GetLocalPolicy(town.Id).ToString(),
-                    hunger = people.Average(p => p.Hunger), thirst = people.Average(p => p.Thirst), health = people.Average(p => p.Health),
-                    fatigue = people.Average(p => p.Agent.Fatigue), children = people.Count(p => p.Age < 14),
+                    hunger = people.Select(p => p.Hunger).DefaultIfEmpty().Average(), thirst = people.Select(p => p.Thirst).DefaultIfEmpty().Average(), health = people.Select(p => p.Health).DefaultIfEmpty().Average(),
+                    fatigue = people.Select(p => p.Agent.Fatigue).DefaultIfEmpty().Average(), children = people.Count(p => p.Age < 14),
                     foodCarried = people.Sum(p => p.Inventory.Food),
                     goals = people.GroupBy(p => p.Agent.Goal.Kind).ToDictionary(g => g.Key.ToString(), g => g.Count()),
                     professions = people.Where(p => p.Age >= 14).GroupBy(p => p.Profession).ToDictionary(g => g.Key.ToString(), g => g.Count()),

@@ -97,14 +97,7 @@ public sealed partial class WorldEngine
         _ => AdvancementRules.For(kind)?.BuildingCost.Copy() ?? throw new ArgumentOutOfRangeException(nameof(kind))
     };
 
-    public static ResourceStock GetResearchCost(ResearchKind kind) => kind switch
-    {
-        ResearchKind.Agriculture => new() { Food = 20, Wood = 15 },
-        ResearchKind.Logistics => new() { Food = 20, Wood = 20, Stone = 10 },
-        ResearchKind.SignalNetwork => new() { Food = 25, Alloy = 8, EnergyCells = 6 },
-        ResearchKind.ArcaneArts => new() { Food = 25, Wood = 15, Ore = 8 },
-        _ => AdvancementRules.For(kind)?.ResearchCost.Copy() ?? throw new ArgumentOutOfRangeException(nameof(kind))
-    };
+    public static ResourceStock GetResearchCost(ResearchKind kind) => ResearchRules.For(kind).Cost.Copy();
 
     public int BuildFacility(int settlementId, BuildingKind kind, int x, int y, BridgeDirection? direction = null, int bridgeLevel = 1) => PlaceFacility(settlementId, kind, x, y, false, direction, bridgeLevel);
 
@@ -127,7 +120,9 @@ public sealed partial class WorldEngine
             CompleteLandImprovement(building);
             EmitVisual(WorldVisualKind.Construction, x, y);
         }
-        if (gift) RegisterBuildingGround(building);
+        // A paid waterfront project starts on unclaimed water beside its owned shore.
+        // Register that site now so ownership gates permit the first construction work.
+        if (gift || IsWaterfrontBuilding(kind)) RegisterBuildingGround(building);
         var projectEvent = AddEvent(WorldEventKind.Construction, gift ? $"玩家向{town.Name}赐予{BuildingName(kind)}；效果受建筑健康、启用与当地条件限制。" : $"{town.Name}备好材料，开始修建{BuildingName(kind)}；居民必须到场施工。", x, y, gift ? EventAction.Gifted : EventAction.Started, town.Id);
         building.Observation.StartEventId = projectEvent.Id;
         ObserveProject(building.Observation, building.ConstructionProgress);
@@ -158,7 +153,7 @@ public sealed partial class WorldEngine
         if (ResearchPrerequisiteError(settlementId, kind) is { } prerequisite) throw new InvalidOperationException(prerequisite);
         Spend(town.Resources, GetResearchCost(kind));
         research.ActiveProject = kind; research.Progress = 0;
-        research.RequiredProgress = AdvancementRules.For(kind) is not null ? 180 : kind is ResearchKind.SignalNetwork or ResearchKind.ArcaneArts ? 100 : 60;
+        research.RequiredProgress = ResearchRules.For(kind).Work;
         var start = AddEvent(WorldEventKind.Research, $"{town.Name}投入材料，开始研究{ResearchName(kind)}。", town.X, town.Y, EventAction.Started, town.Id);
         research.Observation = new ProjectObservation { StartEventId = start.Id, DevelopmentRate = State.Rules.DevelopmentRate };
         ObserveProject(research.Observation, 0);
@@ -290,7 +285,7 @@ public sealed partial class WorldEngine
                 var tile = State.Tiles[Index(building.X, building.Y)];
                 var fertility = tile.Fertility / 100d * (tile.DroughtTicks > 0 ? 0.18 : 1) * (tile.FireTicks > 0 ? 0 : 1);
                 var harvest = 0.5 * effort * fertility * (1 + culture.NatureAffinity * 0.2) * (HasResearch(town.Id, ResearchKind.Agriculture) ? 1.35 : 1)
-                    * (town.FertilityBoostTicks > 0 ? 1.35 : 1) * GetPolicyProductionMultiplier(town.Id);
+                    * (town.FertilityBoostTicks > 0 ? 1.35 : 1) * GetPolicyProductionMultiplier(town.Id) * (HasResearch(town.Id, ResearchKind.Irrigation) ? 1.25 : 1);
                 RecordHarvest(tile, harvest);
                 resident.Inventory.Food = Math.Min(1_000_000, resident.Inventory.Food + harvest);
                 return harvest > 0;
@@ -300,7 +295,7 @@ public sealed partial class WorldEngine
                 var source = FindWorkshopResource(building, resident.Profession);
                 if (source < 0) return false;
                 var sourceTile = State.Tiles[source]; var yields = TerrainRules.For(sourceTile.Terrain);
-                var amount = Math.Min(sourceTile.ResourceAmount, effort * 0.2 * State.Rules.GatheringRate * GatheringTerritoryMultiplier(resident, sourceTile));
+                var amount = Math.Min(sourceTile.ResourceAmount, effort * 0.2 * State.Rules.GatheringRate * (HasResearch(town.Id, ResearchKind.Forestry) ? 1.25 : 1) * GatheringTerritoryMultiplier(resident, sourceTile));
                 sourceTile.ResourceAmount -= amount;
                 if (resident.Profession == Profession.Miner) { resident.Inventory.Stone += amount * yields.StoneYield; resident.Inventory.Ore += amount * yields.OreYield; }
                 else
@@ -314,7 +309,8 @@ public sealed partial class WorldEngine
                 var research = State.Society.Research.First(r => r.SettlementId == town.Id);
                 if (!research.ActiveProject.HasValue) return false;
                 if (research.Observation.Contributors.Count < 32 && !research.Observation.Contributors.Contains(resident.Id)) research.Observation.Contributors.Add(resident.Id);
-                research.Progress += effort * State.Rules.DevelopmentRate * (1 + EffectiveSettlementRank(town) * .1) * (0.75 + culture.Innovation * 0.5) * (GetLocalPolicy(town.Id) == PolicyKind.Scholarship ? 1.35 : 1);
+                research.Progress += effort * State.Rules.DevelopmentRate * (1 + EffectiveSettlementRank(town) * .1) * (0.75 + culture.Innovation * 0.5) * (GetLocalPolicy(town.Id) == PolicyKind.Scholarship ? 1.35 : 1)
+                    * (HasResearch(town.Id, ResearchKind.ScientificMethod) ? 1.25 : 1) * (HasResearch(town.Id, ResearchKind.ArcaneScholarship) ? 1.25 : 1);
                 if (research.Progress >= 8 && resident.Profession == Profession.Builder && !HasTwoLocalWorkers(town.Id, Profession.Scholar))
                     resident.Profession = Profession.Scholar;
                 if (research.Progress >= research.RequiredProgress)
@@ -331,15 +327,15 @@ public sealed partial class WorldEngine
             case BuildingKind.ArcaneSanctum:
                 if (!State.Society.MagicEnabled || town.Resources.Food < 0.03) return false;
                 town.Resources.Food -= 0.03;
-                resident.MagicTraining = Math.Min(100, resident.MagicTraining + effort * State.Rules.MagicRate * (0.05 + resident.MagicTalent / 500) * TerrainRules.For(State.Tiles[Index(resident.X, resident.Y)].Terrain).ManaRate);
+                resident.MagicTraining = Math.Min(100, resident.MagicTraining + effort * State.Rules.MagicRate * (0.05 + resident.MagicTalent / 500) * TerrainRules.For(State.Tiles[Index(resident.X, resident.Y)].Terrain).ManaRate * (HasResearch(town.Id, ResearchKind.ArcaneScholarship) ? 1.5 : 1));
                 if (resident.MagicTraining >= 8 && resident.Profession is Profession.Builder or Profession.Scholar && !HasTwoLocalWorkers(town.Id, Profession.Mage))
                     resident.Profession = Profession.Mage;
-                resident.Mana = Math.Min(100, resident.Mana + 0.15 * effort); return true;
+                resident.Mana = Math.Min(100, resident.Mana + 0.15 * effort * (HasResearch(town.Id, ResearchKind.ManaAttunement) ? 1.5 : 1)); return true;
             case BuildingKind.Infirmary:
                 if (town.Resources.Food < 0.05) return false;
                 var patient = FindLocalWorkPatient(building);
                 if (patient is null) return false;
-                town.Resources.Food -= 0.05; patient.Health = Math.Min(100, patient.Health + 0.45 * effort);
+                town.Resources.Food -= 0.05; patient.Health = Math.Min(100, patient.Health + 0.45 * effort * (HasResearch(town.Id, ResearchKind.Medicine) ? 1.5 : 1));
                 patient.SicknessTicks = Math.Max(0, patient.SicknessTicks - 1); return true;
             case BuildingKind.Waystation:
             case BuildingKind.SignalTower:
@@ -613,7 +609,7 @@ public sealed partial class WorldEngine
         }
         caster.Mana -= cost;
         var power = 0.7 + caster.MagicTalent / 150 + caster.MagicTraining / 250;
-        if (spell == SpellKind.Heal) { recipient!.Health = Math.Min(100, recipient.Health + 22 * power); recipient.SicknessTicks = Math.Max(0, recipient.SicknessTicks - 15); }
+        if (spell == SpellKind.Heal) { recipient!.Health = Math.Min(100, recipient.Health + 22 * power * (HasResearch(caster.SettlementId, ResearchKind.Restoration) ? 1.5 : 1)); recipient.SicknessTicks = Math.Max(0, recipient.SicknessTicks - 15); }
         if (spell == SpellKind.HarvestBlessing) town!.FertilityBoostTicks = Math.Max(town.FertilityBoostTicks, (int)(50 * power));
         if (spell == SpellKind.Shield) town!.ShieldTicks = Math.Max(town.ShieldTicks, (int)(40 * power));
         if (spell == SpellKind.Ember) DamageResident(recipient!, TryAbsorbShieldDamage(recipient!, 18 * power), DeathCause.Magic);
@@ -692,7 +688,7 @@ public sealed partial class WorldEngine
         foreach (var person in State.Residents)
         {
             if (!InBounds(person.X, person.Y) || person.Health <= 0) continue;
-            person.Mana = Math.Min(100, person.Mana + 0.025 * State.Rules.MagicRate * TerrainRules.For(State.Tiles[Index(person.X, person.Y)].Terrain).ManaRate * (0.5 + person.MagicTalent / 100));
+            person.Mana = Math.Min(100, person.Mana + 0.025 * State.Rules.MagicRate * TerrainRules.For(State.Tiles[Index(person.X, person.Y)].Terrain).ManaRate * (0.5 + person.MagicTalent / 100) * (HasResearch(person.SettlementId, ResearchKind.ManaAttunement) ? 1.5 : 1));
             if (person.MagicTalent >= 25 && person.MagicTraining >= 8 && (State.Tick + person.Id) % 12 == 0) TryAutomaticMagic(person);
         }
         // Spread regeneration work across the map using a persisted clock, never wall time.
@@ -755,10 +751,12 @@ public sealed partial class WorldEngine
         if (local.Length < 4) { town.DevelopmentGoal = "恢复当地劳动力"; town.DevelopmentBlocker = "附近可工作的成年人少于 4 人"; return; }
         void Recruit(Profession job)
         {
-            if (local.Any(r => r.Profession == job)) return;
+            var needed = job == Profession.Miner ? Math.Clamp(local.Length / 12, 2, 6) : job == Profession.Mage ? 2 : 1;
+            if (local.Count(r => r.Profession == job) >= needed) return;
             var recruit = local.Where(r => r.Profession is Profession.Builder or Profession.Farmer or Profession.Lumberjack or Profession.Miner or Profession.Scholar
                 && !r.Agent.Goal.PlayerDirected && State.Tick - r.Agent.JobChangedTick >= 120
-                && (r.Profession != Profession.Farmer || local.Count(p => p.Profession == Profession.Farmer) >= 4)
+                && r.Profession != job
+                && (r.Profession == Profession.Farmer ? local.Count(p => p.Profession == Profession.Farmer) >= 4 : local.Count(p => p.Profession == r.Profession) >= 2)
                 && (job != Profession.Mage || r.MagicTalent >= 35))
                 .OrderByDescending(r => r.Agent.Personality.Diligence).ThenBy(r => r.Id).FirstOrDefault();
             if (recruit is null) return;
@@ -770,7 +768,7 @@ public sealed partial class WorldEngine
         if (project.ActiveProject.HasValue && buildings.Any(b => b.Kind == BuildingKind.Academy && b.IsCompleted))
         { Recruit(Profession.Scholar); return; }
         if (State.Society.MagicEnabled && buildings.Any(b => b.Kind == BuildingKind.ArcaneSanctum && b.IsCompleted)) Recruit(Profession.Mage);
-        var lowFood = town.Resources.Food < Math.Max(25, town.Population);
+        var lowFood = town.Resources.Food < 25;
         if (lowFood) Recruit(Profession.Farmer);
         string? blockedGoal = null, blockedReason = null;
         void RememberBlocker(string reason)
@@ -804,14 +802,13 @@ public sealed partial class WorldEngine
         {
             if (buildings.Count(b => b.Kind == BuildingKind.Farm) < Math.Clamp((town.Population + 29) / 30, 1, 8)) { PlanBuilding(BuildingKind.Farm); return; }
             town.DevelopmentGoal = "稳定粮食供给";
-            town.DevelopmentBlocker = $"库存 {town.Resources.Food:0}，目标 {Math.Max(25, town.Population):0}；农民采集并带回粮仓";
+            town.DevelopmentBlocker = $"库存 {town.Resources.Food:0}，目标 25；农民采集并带回粮仓";
             return;
         }
         if (!buildings.Any(b => b.Kind == BuildingKind.Academy)) { PlanBuilding(BuildingKind.Academy); return; }
         foreach (var plan in PendingLocalDevelopment(town, buildings, project))
         {
             var stage = plan.Research is { } researchKind ? AdvancementRules.For(researchKind) : plan.Facility is { } buildingKind ? AdvancementRules.For(buildingKind) : null;
-            var isFoundation = plan.Research is ResearchKind.Agriculture or ResearchKind.Logistics;
             if (plan.Facility is { } facility)
             {
                 if (PlanBuilding(facility)) return;
@@ -827,7 +824,7 @@ public sealed partial class WorldEngine
                 RememberBlocker(missing);
                 if (town.Resources.Wood < GetResearchCost(kind).Wood) Recruit(Profession.Lumberjack);
                 if (town.Resources.Stone < GetResearchCost(kind).Stone || town.Resources.Ore < GetResearchCost(kind).Ore) Recruit(Profession.Miner);
-                if (stage is not null || isFoundation) break;
+                if (AdvancementRules.For(kind) is not null || kind is ResearchKind.Agriculture or ResearchKind.Logistics or ResearchKind.TechnologicalEmpire or ResearchKind.MagicalEmpire) break;
                 continue;
             }
             StartResearch(town.Id, kind); Recruit(Profession.Scholar); town.DevelopmentBlocker = "等待学者到学舍工作"; return;
@@ -853,26 +850,21 @@ public sealed partial class WorldEngine
         var technology = focus is DevelopmentFocus.Technology or DevelopmentFocus.Integrated;
         var magic = State.Society.MagicEnabled && focus is DevelopmentFocus.MagicPractice or DevelopmentFocus.ArcaneIndustry or DevelopmentFocus.Integrated;
         var magicalIndustry = magic && focus is DevelopmentFocus.ArcaneIndustry or DevelopmentFocus.Integrated;
-        // Complete the next usable stage before spending its materials on optional networks.
-        // Natural magic develops practitioners and sanctums without requiring crystal industry.
-        var foundations = magic && !technology
-            ? new[] { ResearchKind.Agriculture, ResearchKind.ArcaneArts, ResearchKind.Logistics }
-            : new[] { ResearchKind.Agriculture, ResearchKind.Logistics };
-        if (!project.ActiveProject.HasValue)
-            foreach (var kind in foundations)
-                if (!HasResearch(town.Id, kind) && ResearchPrerequisiteError(town.Id, kind) is null)
-                    yield return new(null, kind, GetResearchCost(kind));
-        var route = AdvancementRules.All.Where(a => a.Magic ? magicalIndustry : technology).ToArray();
-        foreach (var advancement in route)
+        // Training must be available before the crystal chain consumes the development budget.
+        if (magic && HasResearch(town.Id, ResearchKind.ArcaneArts) && !buildings.Any(b => b.Kind == BuildingKind.ArcaneSanctum))
+            yield return new(BuildingKind.ArcaneSanctum, null, GetBuildingCost(BuildingKind.ArcaneSanctum));
+        foreach (var definition in ResearchRules.All)
         {
-            if (HasResearch(town.Id, advancement.Research))
+            var wanted = definition.Branch == "民生与资源" || (definition.Magic ? magicalIndustry || magic && definition.Kind is ResearchKind.ArcaneArts or ResearchKind.ManaAttunement or ResearchKind.Restoration : technology);
+            if (!wanted) continue;
+            if (HasResearch(town.Id, definition.Kind))
             {
-                if (!buildings.Any(b => b.Kind == advancement.Facility))
+                if (AdvancementRules.For(definition.Kind) is { } advancement && !buildings.Any(b => b.Kind == advancement.Facility))
                     yield return new(advancement.Facility, null, GetBuildingCost(advancement.Facility));
                 continue;
             }
-            if (!project.ActiveProject.HasValue && ResearchPrerequisiteError(town.Id, advancement.Research) is null)
-                yield return new(null, advancement.Research, GetResearchCost(advancement.Research));
+            if (!project.ActiveProject.HasValue && ResearchPrerequisiteError(town.Id, definition.Kind) is null)
+                yield return new(null, definition.Kind, GetResearchCost(definition.Kind));
         }
         var facilities = new[]
         {
@@ -907,7 +899,7 @@ public sealed partial class WorldEngine
     {
         var buildings = State.Society.Buildings.Where(b => b.SettlementId == town.Id).ToArray();
         var project = State.Society.Research.First(r => r.SettlementId == town.Id);
-        if (town.Resources.Food < Math.Max(25, town.Population) || buildings.Any(b => !b.IsCompleted)
+        if (town.Resources.Food < 25 || buildings.Any(b => !b.IsCompleted)
             || project.ActiveProject.HasValue && buildings.Any(b => b.Kind == BuildingKind.Academy && b.IsCompleted)) return new();
         var plans = PendingLocalDevelopment(town, buildings, project)
             .Where(p => p.Facility.HasValue ? State.Rules.Construction : State.Rules.Research).ToArray();
@@ -1012,6 +1004,6 @@ public sealed partial class WorldEngine
     private CultureDefinition RequireCulture(int id) => State.Society.Cultures.FirstOrDefault(c => c.Id == id) ?? throw new ArgumentException("文化不存在。");
     private CultureDefinition GetCulture(int id) => State.Society.Cultures.FirstOrDefault(c => c.Id == id) ?? State.Society.Cultures[0];
     public static string BuildingName(BuildingKind kind) => kind switch { BuildingKind.Shipyard => "船坞", BuildingKind.Dock => "码头", BuildingKind.LumberCamp => "林场", BuildingKind.Quarry => "采石场", BuildingKind.Well => "水井", BuildingKind.Granary => "粮仓", BuildingKind.Housing => "住宅", BuildingKind.Market => "集市", BuildingKind.Watchtower => "瞭望塔", BuildingKind.TownCenter => "城镇中心", BuildingKind.Farm => "农田", BuildingKind.Workshop => "工坊", BuildingKind.Academy => "学舍", BuildingKind.Waystation => "驿站", BuildingKind.SignalTower => "无线信号塔", BuildingKind.Bridge => "桥梁", BuildingKind.MountainPass => "山路", BuildingKind.ArcaneSanctum => "奥术研习所", BuildingKind.Infirmary => "医馆", BuildingKind.AssemblyHall => "议事厅", BuildingKind.TradeGuild => "商贸公会", BuildingKind.SacredGrove => "精灵圣林", BuildingKind.HerbGarden => "草药园", BuildingKind.MiningHall => "矮人矿业工坊", BuildingKind.HuntingCamp => "兽人狩猎营", BuildingKind.WarDrum => "战鼓营", _ => AdvancementRules.For(kind)?.FacilityName ?? kind.ToString() };
-    public static string ResearchName(ResearchKind kind) => kind switch { ResearchKind.Agriculture => "农业改良", ResearchKind.Logistics => "驿路运输", ResearchKind.SignalNetwork => "信号网络", ResearchKind.ArcaneArts => "奥术基础", _ => AdvancementRules.For(kind)?.Name ?? kind.ToString() };
+    public static string ResearchName(ResearchKind kind) => ResearchRules.For(kind).Name;
     public static string PolicyName(PolicyKind kind) => kind switch { PolicyKind.FoodSecurity => "粮食保障", PolicyKind.Defense => "防务优先", PolicyKind.Scholarship => "求知兴学", PolicyKind.PublicHealth => "公共医疗", _ => "均衡发展" };
 }

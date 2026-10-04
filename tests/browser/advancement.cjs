@@ -45,8 +45,12 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
                 await ui.waitFor(s => !s.modalOpen && s.status.startsWith('导入成功'), 'advanced world import', 30000);
                 const before = await ui.save();
                 await ui.click('header-overview'); await ui.click('overview-infrastructure', inspector);
+                await ui.click('research-expand', inspector);
                 assert.match(ui.control(await ui.snapshot(), 'advancement-stage').value, /科技：未来制造.*魔法：以太文明/s);
-                await ui.selectIndex('research-kind', 7, inspector);
+                await ui.click('research-node-AdvancedComputing', inspector);
+                assert.match(ui.control(await ui.snapshot(), 'research-requirements').value, /精密制造中心/);
+                await ui.click('research-node-MagicalEmpire', inspector);
+                assert.match(ui.control(await ui.snapshot(), 'research-requirements').value, /魔法帝国/);
                 assert.equal(digest(await ui.save()), digest(before), 'Reading either route changed the world');
                 await ui.click('building-open', inspector);
                 await ui.selectIndex('building-kind', 10, modal); // Fabricator, ordinary enum picker.
