@@ -232,11 +232,18 @@ public sealed partial class WorldEngine
             "附近鱼群已不足，返岸交付鱼获与舟船", SettlementId: home.Id));
     }
 
+    private static readonly WildlifeKind[] EdibleLandAnimals = AnimalRules.Species
+        .Where(kind => AnimalRules.For(kind).Diet == AnimalDiet.Herbivore).ToArray();
+    private static readonly WildlifeKind[] EdibleWaterAnimals = EdibleLandAnimals
+        .Where(kind => AnimalRules.For(kind).Aquatic).ToArray();
+
     private static WildlifeKind EdibleAnimal(Tile tile, bool aquatic = false)
     {
-        foreach (var kind in AnimalRules.Species)
-            if (AnimalRules.For(kind).Diet == AnimalDiet.Herbivore && (aquatic ? IsWaterTerrain(tile.Terrain) && AnimalRules.For(kind).Aquatic : !IsWaterTerrain(tile.Terrain))
-                && tile.AnimalPopulation(kind) >= .5) return kind;
+        if (aquatic != IsWaterTerrain(tile.Terrain)) return WildlifeKind.None;
+        // Keep enum order and the live population threshold; only immutable
+        // classification is cached, never animal abundance or resident knowledge.
+        foreach (var kind in aquatic ? EdibleWaterAnimals : EdibleLandAnimals)
+            if (tile.AnimalPopulation(kind) >= .5) return kind;
         return WildlifeKind.None;
     }
 

@@ -172,4 +172,4 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 百年研究／生产与法术传承回归位于 `DevelopmentPlanningTests`；诊断入口 `--simulate-development <目录> [种子] [尺寸] [日序] --technology` 或 `--magic-practice` 仅指定国家发展偏好，不赠送物资或知识。普通模式不加方向参数。
 
 
-细分性能调查使用 `python3 scripts/profile-simulation-details.py <新目录>`，在隔离副本中生成整数索引的无分配嵌套计时器，记录方法 inclusive / self 耗时与调用次数，并单独测量通信邻居收集、排序、居民 ID 字典重建／查找。`self` 扣除已计时子方法；inclusive 不能相加。另跑未插桩的相同负载，比较终态存档摘要与探针开销。具体方法内仍未测量的部分保留为残余，不以阶段百分比冒充某一字典操作的成本；短字典查找的计时可能被探针开销主导。
+细分性能调查使用 `python3 scripts/profile-simulation-details.py <新目录>`，在隔离副本中生成整数索引的无分配嵌套计时器，记录方法 inclusive / self 耗时与调用次数，并单独测量通信邻居收集、排序、居民 ID 字典重建／查找；按阶段区分环境观察和通信的共享记忆方法。默认跳过高频叶查询计时，`--deep` 用于调用次数诊断，必须量化额外开销。`self` 扣除已计时子方法；inclusive 不能相加。另跑未插桩的相同负载，比较终态存档摘要与探针开销。具体方法内仍未测量的部分保留为残余，不以阶段百分比冒充某一字典操作的成本；短字典查找的计时可能被探针开销主导。
