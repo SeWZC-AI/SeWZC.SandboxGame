@@ -14,7 +14,7 @@ public sealed partial class MainView
     private void BuildResearchTree(StackPanel panel, Settlement town)
     {
         panel.Children.Add(Text("文明科技树", 17, Mint, true));
-        panel.Children.Add(Named(Button("展开 / 收起科技树视野", () => { _researchExpanded = !_researchExpanded; _expandedInspector = _researchExpanded; ApplyLayout(); }), "research-expand"));
+        panel.Children.Add(Named(Button("展开 / 收起科技树视野", () => { _researchExpanded = !_researchExpanded; _expandedInspector = _researchExpanded; ApplyLayout(); RefreshInspector(); }), "research-expand"));
         panel.Children.Add(Paragraph("点击研究卡片查看用途与投入。箭头标明前置知识；每处聚落同时研究一项。"));
         panel.Children.Add(Named(LiveText(() =>
         {
