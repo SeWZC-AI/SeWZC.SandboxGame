@@ -55,13 +55,13 @@ public sealed class ResearchTreeLayout
             var source = nodes[p]; var target = nodes[d.Kind];
             var from = new Point(source.Center.X, source.Bottom);
             var empire = d.Kind is ResearchKind.TechnologicalEmpire or ResearchKind.MagicalEmpire;
-            var to = new Point(target.Center.X + (index - (d.Prerequisites.Length - 1) / 2d) * (empire ? 13 : 12), target.Top);
+            var to = new Point(target.Center.X + (empire ? 0 : (index - (d.Prerequisites.Length - 1) / 2d) * 12), target.Top);
             Point[] points;
             if (empire)
             {
                 // Every terminal prerequisite owns its column down to the merge.
                 // No perimeter loops: the horizontal merge sits beneath every branch.
-                var merge = target.Top - 10 - index * 4.5;
+                var merge = target.Top - 18;
                 points = [from, new(from.X, merge), new(to.X, merge), to];
             }
             else if (target.Top - source.Top > 120)

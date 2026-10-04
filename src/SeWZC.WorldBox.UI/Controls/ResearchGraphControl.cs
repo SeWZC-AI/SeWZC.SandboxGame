@@ -93,6 +93,12 @@ public sealed class ResearchGraphControl : UserControl
             Canvas.SetLeft(label, (lane.Left + 10) * Zoom); Canvas.SetTop(label, 12 * Zoom);
             _laneLabels.Add(label); _surface.Children.Add(label);
         }
+        foreach (var terminal in Layout.Nodes.Where(n => n.Key is ResearchKind.TechnologicalEmpire or ResearchKind.MagicalEmpire))
+        {
+            var label = new TextBlock { Text = "全部成果汇合", FontSize = 11 * Zoom, Foreground = Brush.Parse("#8EB6C6") };
+            Canvas.SetLeft(label, (terminal.Value.Center.X - 38) * Zoom); Canvas.SetTop(label, (terminal.Value.Top - 38) * Zoom);
+            _laneLabels.Add(label); _surface.Children.Add(label);
+        }
         foreach (var (kind, node) in _nodes)
         {
             node.IsVisible = Layout.Nodes.TryGetValue(kind, out var rect);
@@ -157,13 +163,12 @@ public sealed class ResearchGraphControl : UserControl
             foreach (var lane in owner.Layout.Lanes)
                 context.DrawRectangle(Brush.Parse("#10212D"), null, new Rect(lane.Left, 38, lane.Width, laneBottom - 38), 8, 8);
             // Draw the selected prerequisite path last so crossings remain easy to follow.
-            foreach (var edge in owner.Layout.Edges.OrderBy(e => ancestors.Contains(e.To) && ancestors.Contains(e.From)))
+            foreach (var edge in owner.Layout.Edges.Where(e => !e.EmpireMerge).OrderBy(e => ancestors.Contains(e.To) && ancestors.Contains(e.From)))
             {
                 var selected = owner.ShowFullPath ? ancestors.Contains(edge.To) && ancestors.Contains(edge.From) : edge.To == owner.Selected;
                 var brush = selected ? Path : owner.IsCompleted(edge.From) && owner.IsCompleted(edge.To) ? Done
                     : ResearchRules.For(edge.To).Magic ? Magic : Locked;
-                var pen = new Pen(brush, selected ? 2.4 : edge.EmpireMerge ? 1 : 1.6,
-                    edge.EmpireMerge ? DashStyle.Dash : null);
+                var pen = new Pen(brush, selected ? 2.4 : 1.6);
                 var geometry = new StreamGeometry();
                 using (var path = geometry.Open())
                 {
@@ -177,6 +182,23 @@ public sealed class ResearchGraphControl : UserControl
                 var tip = edge.Points[^1];
                 context.DrawLine(pen, tip, tip + new Vector(-4, -6));
                 context.DrawLine(pen, tip, tip + new Vector(4, -6));
+            }
+            foreach (var merge in owner.Layout.Edges.Where(e => e.EmpireMerge).GroupBy(e => e.To))
+            {
+                var selected = merge.Key == owner.Selected || owner.ShowFullPath && ancestors.Contains(merge.Key);
+                var brush = selected ? Path : owner.IsCompleted(merge.Key) ? Done : Locked;
+                var pen = new Pen(brush, selected ? 1.8 : 1.1, DashStyle.Dash);
+                foreach (var edge in merge)
+                {
+                    context.DrawLine(pen, edge.Points[0], edge.Points[1]);
+                    context.DrawEllipse(brush, null, edge.Points[1], 2.5, 2.5);
+                }
+                var end = merge.First().Points[^1]; var junction = merge.First().Points[^2];
+                context.DrawLine(pen, new Point(merge.Min(e => e.Points[1].X), junction.Y), new Point(merge.Max(e => e.Points[1].X), junction.Y));
+                var stem = new Pen(brush, selected ? 2.4 : 1.6);
+                context.DrawLine(stem, junction, end);
+                context.DrawLine(stem, end, end + new Vector(-4, -6));
+                context.DrawLine(stem, end, end + new Vector(4, -6));
             }
         }
     }
