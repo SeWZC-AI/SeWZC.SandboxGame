@@ -15,6 +15,7 @@ public sealed class ResearchGraphControl : UserControl
     private readonly ScrollViewer _scroll;
     private readonly Connections _connections;
     private readonly Dictionary<ResearchKind, Button> _nodes;
+    private readonly List<TextBlock> _laneLabels = [];
     private Point? _press;
     private Vector _pressOffset;
     private bool _dragging;
@@ -22,12 +23,13 @@ public sealed class ResearchGraphControl : UserControl
     public double Zoom { get; private set; } = 1;
     public Vector Offset => _scroll.Offset;
     public ResearchKind Selected { get; set; }
+    public bool ShowFullPath { get; set; }
     public Func<ResearchKind, bool> IsCompleted { get; set; } = _ => false;
 
     public ResearchGraphControl(Dictionary<ResearchKind, Button> nodes)
     {
         _nodes = nodes;
-        Layout = new(ResearchRules.All);
+        Layout = new(ResearchRules.All.Where(d => ResearchRules.Route(false).Contains(d.Kind)));
         _connections = new Connections(this) { IsHitTestVisible = false };
         _surface.Children.Add(_connections);
         foreach (var node in nodes.Values) _surface.Children.Add(node);
@@ -39,7 +41,13 @@ public sealed class ResearchGraphControl : UserControl
         AddHandler(PointerPressedEvent, BeginDrag, RoutingStrategies.Tunnel);
         AddHandler(PointerMovedEvent, MoveDrag, RoutingStrategies.Tunnel);
         AddHandler(PointerReleasedEvent, EndDrag, RoutingStrategies.Tunnel);
-        AddHandler(PointerCaptureLostEvent, (_, _) => { _press = null; _dragging = false; });
+        AddHandler(PointerCaptureLostEvent, (_, e) =>
+        {
+            // Capturing a dragged node releases its button first. That bubbled event
+            // must not cancel the graph's new capture and truncate the gesture.
+            if (e.Source != this) return;
+            _press = null; _dragging = false;
+        });
         ApplyGeometry();
     }
 
@@ -77,6 +85,14 @@ public sealed class ResearchGraphControl : UserControl
     {
         _surface.Width = _connections.Width = Layout.Size.Width * Zoom;
         _surface.Height = _connections.Height = Layout.Size.Height * Zoom;
+        foreach (var label in _laneLabels) _surface.Children.Remove(label);
+        _laneLabels.Clear();
+        foreach (var lane in Layout.Lanes)
+        {
+            var label = new TextBlock { Text = lane.Name, FontSize = 14 * Zoom, Foreground = Brush.Parse("#8EB6C6") };
+            Canvas.SetLeft(label, (lane.Left + 10) * Zoom); Canvas.SetTop(label, 12 * Zoom);
+            _laneLabels.Add(label); _surface.Children.Add(label);
+        }
         foreach (var (kind, node) in _nodes)
         {
             node.IsVisible = Layout.Nodes.TryGetValue(kind, out var rect);
@@ -96,7 +112,7 @@ public sealed class ResearchGraphControl : UserControl
 
     private void BeginDrag(object? sender, PointerPressedEventArgs e)
     {
-        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+        if (e.Pointer.Type != PointerType.Touch && !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
         if (e.Source is Control c && (c is ScrollBar || c.GetVisualAncestors().Any(a => a is ScrollBar))) return;
         _press = e.GetPosition(this); _pressOffset = _scroll.Offset; _dragging = false;
     }
@@ -130,20 +146,31 @@ public sealed class ResearchGraphControl : UserControl
                 if (!ancestors.Add(kind)) return;
                 foreach (var p in ResearchRules.For(kind).Prerequisites) Visit(p);
             }
-            Visit(owner.Selected);
+            if (owner.ShowFullPath) Visit(owner.Selected);
+            else
+            {
+                ancestors.Add(owner.Selected);
+                foreach (var p in ResearchRules.For(owner.Selected).Prerequisites) ancestors.Add(p);
+            }
             using var scale = context.PushTransform(Matrix.CreateScale(owner.Zoom, owner.Zoom));
+            var laneBottom = owner.Layout.Nodes.Where(n => n.Key is not ResearchKind.TechnologicalEmpire and not ResearchKind.MagicalEmpire).Max(n => n.Value.Bottom) + 16;
+            foreach (var lane in owner.Layout.Lanes)
+                context.DrawRectangle(Brush.Parse("#10212D"), null, new Rect(lane.Left, 38, lane.Width, laneBottom - 38), 8, 8);
             // Draw the selected prerequisite path last so crossings remain easy to follow.
             foreach (var edge in owner.Layout.Edges.OrderBy(e => ancestors.Contains(e.To) && ancestors.Contains(e.From)))
             {
-                var selected = ancestors.Contains(edge.To) && ancestors.Contains(edge.From);
+                var selected = owner.ShowFullPath ? ancestors.Contains(edge.To) && ancestors.Contains(edge.From) : edge.To == owner.Selected;
                 var brush = selected ? Path : owner.IsCompleted(edge.From) && owner.IsCompleted(edge.To) ? Done
                     : ResearchRules.For(edge.To).Magic ? Magic : Locked;
-                var pen = new Pen(brush, selected ? 2.6 : 1.5);
+                var pen = new Pen(brush, selected ? 2.4 : edge.EmpireMerge ? 1 : 1.6,
+                    edge.EmpireMerge ? DashStyle.Dash : null);
                 var geometry = new StreamGeometry();
                 using (var path = geometry.Open())
                 {
                     path.BeginFigure(edge.Points[0], false);
-                    foreach (var point in edge.Points.Skip(1)) path.LineTo(point);
+                    if (!edge.EmpireMerge && edge.Points.Length == 4)
+                        path.CubicBezierTo(edge.Points[1], edge.Points[2], edge.Points[3]);
+                    else foreach (var point in edge.Points.Skip(1)) path.LineTo(point);
                     path.EndFigure(false);
                 }
                 context.DrawGeometry(null, pen, geometry);
