@@ -188,14 +188,13 @@ public sealed partial class WorldEngine
     public static int Lifespan(RaceKind race) => race switch
     { RaceKind.Elf => 180, RaceKind.Dwarf => 120, RaceKind.Orc => 70, _ => 90 };
 
-    public static string SettlementSuffix(int population) => population >= 160 ? "城" : population >= 60 ? "镇" : "村";
-
     private void RefreshSettlementName(Settlement town)
     {
-        if (town.Name.EndsWith(SettlementSuffix(town.Population), StringComparison.Ordinal)) return;
+        var suffix = SettlementTierName(town.Tier);
+        if (town.Name.EndsWith(suffix, StringComparison.Ordinal)) return;
         var stem = town.Name.Length > 0 && town.Name[^1] is '城' or '镇' or '村' ? town.Name[..^1] : town.Name;
-        var name = stem + SettlementSuffix(town.Population);
-        if (State.Settlements.Any(other => other.Id != town.Id && other.Name == name)) name = stem + town.Id + SettlementSuffix(town.Population);
+        var name = stem + suffix;
+        if (State.Settlements.Any(other => other.Id != town.Id && other.Name == name)) name = stem + town.Id + suffix;
         town.Name = name;
     }
 

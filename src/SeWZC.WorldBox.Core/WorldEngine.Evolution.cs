@@ -79,12 +79,13 @@ public sealed partial class WorldEngine
         var construction = State.Society.Buildings.FirstOrDefault(b => b.SettlementId == town.Id && !b.IsCompleted);
         var stage = research.Completed.Count >= 3 ? "区域网络" : research.Completed.Count > 0 ? "专业分工" : town.Resources.Food >= town.Population * 2 ? "积累余粮" : "建立家园";
         if (research.Completed.Any(k => AdvancementRules.For(k) is not null)) stage = GetAdvancementStage(town.Id);
+        if (town.IsExpanding) return new(stage, "扩充为" + SettlementTierName(town.Tier + 1), "居民到城镇中心施工；城镇中心等级独立", town.ExpansionProgress / town.ExpansionRequired);
         if (construction is not null)
             return new(stage, "修建" + BuildingName(construction.Kind), State.Tick - construction.LastWorkedTick > 12 ? "等待工人实际到场；可查看居民任务" : "工人正在现场施工", construction.ConstructionProgress / construction.ConstructionRequired);
         if (research.ActiveProject is { } project)
         {
             var academy = State.Society.Buildings.FirstOrDefault(b => b.SettlementId == town.Id && b.Kind == BuildingKind.Academy && b.IsCompleted);
-            return new(stage, "研究" + ResearchName(project), academy is null ? "需要已建成学院" : State.Tick - academy.LastWorkedTick > 12 ? "等待学者到学院工作" : "学者正在推进研究", research.Progress / Math.Max(1, research.RequiredProgress));
+            return new(stage, "研究" + ResearchName(project), academy is null ? "需要已建成学舍" : State.Tick - academy.LastWorkedTick > 12 ? "等待学者到学舍工作" : "学者正在推进研究", research.Progress / Math.Max(1, research.RequiredProgress));
         }
         return new(stage, town.DevelopmentGoal, town.DevelopmentBlocker, 0);
     }
@@ -95,22 +96,28 @@ public sealed partial class WorldEngine
         if (!Enum.IsDefined(kind)) return "未知的建筑类型";
         if (kind == BuildingKind.TownCenter) return "每处聚落的中心由定居和重建维护，无需另行放置";
         if (!_settlements.TryGetValue(settlementId, out var town)) return "先选择归属聚落";
-        if (!InBounds(x, y) || !BuildingTerrainValid(kind, State.Tiles[Index(x, y)])) return kind == BuildingKind.Bridge ? "桥梁需要河流或浅水" : kind == BuildingKind.MountainPass ? "山路需要山地" : "需要可通行的陆地";
+        if (!InBounds(x, y) || !BuildingTerrainValid(kind, State.Tiles[Index(x, y)])) return IsWaterfrontBuilding(kind) ? "船坞和码头需要水中的近岸地块" : kind == BuildingKind.Bridge ? "桥梁需要河流或浅水" : kind == BuildingKind.MountainPass ? "山路需要山地" : "需要可通行的陆地";
         if (kind == BuildingKind.Bridge && BridgePlacementError(x, y, direction ?? InferBridgeDirection(x, y), bridgeLevel) is { } bridgeError) return bridgeError;
-        var range = kind is BuildingKind.Bridge or BuildingKind.MountainPass ? 24 : 8;
+        var range = kind is BuildingKind.Bridge or BuildingKind.MountainPass ? 24 : Math.Max(8, town.MaxClaimRadius);
         if (Distance(x, y, town.X, town.Y) > range) return $"距归属聚落超过 {range} 格";
         if (kind is BuildingKind.Bridge or BuildingKind.MountainPass && !Directions.Any(d => Walkable(x + d.X, y + d.Y))) return "需要相邻的可通行施工位置，逐段向前建设";
-        if (kind == BuildingKind.Dock && !Directions.Any(d => InBounds(x + d.X, y + d.Y) && State.Tiles[Index(x + d.X, y + d.Y)].Terrain is TerrainType.Water or TerrainType.River or TerrainType.DeepWater or TerrainType.Lake)) return "船坞码头需要紧邻水岸";
+        if (IsWaterfrontBuilding(kind) && !Directions.Any(d => Walkable(x + d.X, y + d.Y)
+            && !IsWaterTerrain(State.Tiles[Index(x + d.X, y + d.Y)].Terrain))) return "需要紧邻自然陆岸，居民从岸边施工和工作";
         var tile = State.Tiles[Index(x, y)];
         if (tile.FireTicks > 0) return "此处正在燃烧";
         if (tile.NationId != 0 && tile.NationId != town.NationId) return "此处属于其他国家";
+        if (tile.ClaimedSettlementId != 0 && tile.ClaimedSettlementId != town.Id) return "此地已由其他城镇独占登记";
+        if (kind == BuildingKind.Well && DailyWaterYield(tile) < .025) return "水井需要湿地或每日供水至少 0.025 的地块";
+        if (kind is BuildingKind.LumberCamp or BuildingKind.Quarry && !Circle(x, y, 1).Any(i => i != Index(x, y)
+            && State.Tiles[i].ResourceAmount > 0 && (kind == BuildingKind.LumberCamp ? State.Tiles[i].Terrain == TerrainType.Forest
+                : TerrainRules.For(State.Tiles[i].Terrain).StoneYield + TerrainRules.For(State.Tiles[i].Terrain).OreYield >= .5))) return "需要紧邻实际森林或石矿资源";
         if (State.Society.Buildings.Count >= MaxBuildings - 256) return "世界建筑数量已达上限";
         if (State.Society.Buildings.Any(b => b.X == x && b.Y == y)) return "此处已有建筑";
         if ((kind == BuildingKind.ArcaneSanctum || AdvancementRules.For(kind)?.Magic == true) && !State.Society.MagicEnabled) return "规则已关闭新的魔法发展";
         if (kind == BuildingKind.SignalTower && (!HasResearch(settlementId, ResearchKind.Electrification) || !HasResearch(settlementId, ResearchKind.SignalNetwork))) return "无线信号塔需要电气化与信号网络";
         if (gift) return null;
         if (kind is BuildingKind.Bridge or BuildingKind.MountainPass && !HasResearch(settlementId, ResearchKind.Logistics)) return "需要先掌握驿路运输";
-        if (kind == BuildingKind.Waystation && !HasResearch(settlementId, ResearchKind.Logistics)) return "当地尚未掌握驿路运输";
+        if (kind is BuildingKind.Waystation or BuildingKind.Dock && !HasResearch(settlementId, ResearchKind.Logistics)) return "当地尚未掌握驿路运输";
         if (kind == BuildingKind.SignalTower && !HasResearch(settlementId, ResearchKind.SignalNetwork)) return "当地尚未掌握信号网络";
         if (kind == BuildingKind.ArcaneSanctum && !HasResearch(settlementId, ResearchKind.ArcaneArts)) return "当地尚未掌握奥术基础";
         if (AdvancementRules.For(kind) is { } advancement && (!HasResearch(settlementId, advancement.Research)
@@ -144,6 +151,13 @@ public sealed partial class WorldEngine
 
     private void DeliverLocalDiscoveries(Resident person, Settlement home)
     {
+        foreach (var site in person.Agent.Memory.Where(f => f.Kind == AgentFactKind.FoundingSite && f.LearnedTick < State.Tick))
+        {
+            var prior = home.PublicKnowledge.FirstOrDefault(f => f.Kind == AgentFactKind.FoundingSite && f.SubjectId == site.SubjectId);
+            if (prior is not null && prior.ObservedTick >= site.ObservedTick) continue;
+            var delivered = CopyAgentFact(site); delivered.LearnedTick = State.Tick; delivered.SourceResidentId = person.Id;
+            AddPublicFact(home, delivered);
+        }
         foreach (var report in person.Agent.Memory.Where(f => f.Kind == AgentFactKind.WarReport && f.LearnedTick < State.Tick).ToArray())
             ReceiveWarReport(home, report);
         if (person.Profession is not (Profession.Messenger or Profession.Trader or Profession.Representative)) return;
@@ -359,7 +373,7 @@ public sealed partial class WorldEngine
         if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > 1)
         { MoveAgentTowards(person, goal.TargetX, goal.TargetY); person.Activity = ResidentActivity.Wandering; return; }
         if (!_settlements.TryGetValue(goal.TargetSettlementId, out var town) || Distance(person.X, person.Y, town.X, town.Y) > 1
-            || town.Resources.Food < 10 || _citizens[town.Id].Count >= town.Housing || IsKnownHostile(person, town.NationId))
+            || town.Resources.Food < 10 || _citizens[town.Id].Count >= GetHousingCapacity(town.Id) || IsKnownHostile(person, town.NationId))
         {
             person.Agent.Goal.Kind = AgentGoalKind.Idle; person.Agent.NextThinkTick = State.Tick; return;
         }

@@ -33,10 +33,25 @@ internal static class VisualFixture
                 river.OtherWildlife = new() { Waterfowl = 2 }; river.Wildlife = WildlifeKind.Fish; river.WildlifePopulation = 5;
             }
         }
+        foreach (var town in engine.State.Settlements)
+        {
+            var wetland = Enumerable.Range(0, engine.State.Tiles.Length).First(i => Math.Abs(i % 64 - town.X) + Math.Abs(i / 64 - town.Y) <= 6
+                && engine.State.Tiles[i].Terrain == TerrainType.Grass && !engine.State.Society.Buildings.Any(b => b.X == i % 64 && b.Y == i / 64));
+            engine.State.Tiles[wetland].Terrain = TerrainType.Wetland;
+            foreach (var kind in new[] { BuildingKind.Dock, BuildingKind.Shipyard, BuildingKind.LumberCamp, BuildingKind.Quarry,
+                BuildingKind.Well, BuildingKind.Granary, BuildingKind.Housing, BuildingKind.Market, BuildingKind.Watchtower })
+            {
+                var site = Enumerable.Range(0, engine.State.Tiles.Length)
+                    .Where(i => engine.FacilityPlacementError(town.Id, kind, i % 64, i / 64, true) is null)
+                    .OrderByDescending(i => engine.BuildingSiteScore(town.Id, kind, i % 64, i / 64)).ThenBy(i => i).First();
+                engine.GrantFacility(town.Id, kind, site % 64, site / 64);
+            }
+            for (var dx = 0; dx <= 3; dx++) engine.BuildRoad(town.Id, town.X + dx, town.Y, 0);
+        }
         engine.ConfigureWorld(engine.State.Rules with { Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false }, false, true);
         engine.Step(2);
         var json = engine.ExportJson(); _ = WorldEngine.ImportJson(json);
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!); File.WriteAllText(path, json);
-        Console.WriteLine($"EXPORTED visual fixture: {path}; four races, 48 workers, damaged waystations, coexisting animals and connected terrain");
+        Console.WriteLine($"EXPORTED visual fixture: {path}; four races, waterfront facilities, specialist buildings, roads, damaged waystations and coexisting animals");
     }
 }

@@ -61,6 +61,9 @@ public sealed partial class WorldEngine
     private void FinishFoundation(Resident person, Settlement town)
     {
         if (!town.FoundationPending || person.X != town.X || person.Y != town.Y || person.Agent.Goal.WorkTicks < 3) return;
+        if (town.Resources.Wood + 1e-6 < VillageFoundingCost.Wood || town.Resources.Stone + 1e-6 < VillageFoundingCost.Stone) return;
+        town.Resources.Wood = Math.Max(0, town.Resources.Wood - VillageFoundingCost.Wood);
+        town.Resources.Stone = Math.Max(0, town.Resources.Stone - VillageFoundingCost.Stone);
         town.FoundationPending = false; ClaimTerritory(town, 4);
         AddFoundingFacility(town, BuildingKind.Farm); AddFoundingFacility(town, BuildingKind.Workshop);
         AddEvent(WorldEventKind.Founding, $"{person.Name}到场驻留后建立{town.Name}，开始实地登记地盘。", town.X, town.Y, EventAction.Completed, town.Id, person.Id);

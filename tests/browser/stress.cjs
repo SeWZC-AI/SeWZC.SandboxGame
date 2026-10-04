@@ -13,7 +13,7 @@ const baseUrl = process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.Sa
 
 (async () => {
     const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
-    assert.equal(fixture.FormatVersion, 10, 'Generate a fixture for the current alpha version');
+    assert.equal(fixture.FormatVersion, 11, 'Generate a fixture for the current alpha version');
     assert.equal(fixture.Width, 256);
     assert(fixture.Residents.length >= 2000, 'Scale scenario must start with at least 2,000 residents');
     fs.mkdirSync(output, { recursive: true });

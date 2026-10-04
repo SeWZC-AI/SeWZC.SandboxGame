@@ -54,6 +54,7 @@ public sealed partial class WorldEngine
     {
         BuildingKind.Bridge => tile.Terrain is TerrainType.River or TerrainType.Water or TerrainType.Lake,
         BuildingKind.MountainPass => tile.Terrain == TerrainType.Mountain,
+        BuildingKind.Dock or BuildingKind.Shipyard => tile.Terrain is TerrainType.River or TerrainType.Water or TerrainType.Lake,
         _ => tile.IsWalkable
     };
 
@@ -76,23 +77,40 @@ public sealed partial class WorldEngine
     private void PlanVisibleCrossing(Resident person, int targetX, int targetY)
     {
         if (!State.Rules.Construction || person.TravelMode != TravelMode.Foot || person.ArmyId != 0 || person.Age < 14
-            || !HasResearch(person.SettlementId, ResearchKind.Logistics)) return;
-        var distance = Distance(person.X, person.Y, targetX, targetY);
+            || !HasResearch(person.SettlementId, ResearchKind.Logistics)
+            || person.Agent.Goal.Kind is AgentGoalKind.Explore or AgentGoalKind.Gather or AgentGoalKind.FetchWater
+            || person.Agent.Goal.TargetSettlementId == 0 && person.Agent.Goal.TargetEntityId == 0) return;
+        if (State.Society.Buildings.Any(b => b.SettlementId == person.SettlementId && (!b.IsCompleted || b.IsUpgrading))) return;
         foreach (var (dx, dy) in Directions)
         {
             var x = person.X + dx; var y = person.Y + dy;
-            if (!InBounds(x, y) || Distance(x, y, targetX, targetY) >= distance) continue;
-            var tile = State.Tiles[Index(x, y)];
-            if (tile.IsWalkable || tile.Terrain is not (TerrainType.River or TerrainType.Water or TerrainType.Lake or TerrainType.Mountain)) continue;
-            if (State.Society.Buildings.Any(b => b.SettlementId == person.SettlementId && !b.IsCompleted)) return;
-            var kind = tile.Terrain == TerrainType.Mountain ? BuildingKind.MountainPass : BuildingKind.Bridge;
+            if (!InBounds(x, y) || Distance(x, y, targetX, targetY) >= Distance(person.X, person.Y, targetX, targetY)) continue;
             var direction = dx != 0 ? BridgeDirection.Horizontal : BridgeDirection.Vertical;
-            var level = kind == BuildingKind.Bridge ? Math.Max(1, (int)State.Tiles[Index(person.X, person.Y)].BridgeLevel) : 1;
+            var first = State.Tiles[Index(x, y)];
+            if (first.Terrain is not (TerrainType.River or TerrainType.Water or TerrainType.Lake) || first.Improvement == LandImprovement.Bridge) continue;
+            // Both banks and every intervening section must be seen and usable on one axis.
+            // A mismatched completed bridge is an obstacle, never a reason to build sideways.
+            var farBank = false; var span = 0; var unfinished = 0;
+            for (var length = 1; length <= 6; length++)
+            {
+                var xx = person.X + dx * length; var yy = person.Y + dy * length;
+                if (!InBounds(xx, yy)) break;
+                var tile = State.Tiles[Index(xx, yy)];
+                if (!IsWaterTerrain(tile.Terrain))
+                { farBank = tile.IsWalkable && tile.FireTicks == 0; break; }
+                if (tile.Terrain == TerrainType.DeepWater || tile.FireTicks > 0
+                    || tile.Improvement == LandImprovement.Bridge && tile.BridgeDirection != direction
+                    || tile.NationId != 0 && tile.NationId != person.NationId) break;
+                span++;
+                if (tile.Improvement != LandImprovement.Bridge) unfinished++;
+            }
+            if (!farBank || span == 0) continue;
+            var level = Math.Clamp(Math.Max((span + 3) / 4, (BridgeShoreDistance(x, y, direction) + 1) / 2), 1, 3);
             var home = _settlements[person.SettlementId];
-            var reserve = LocalDevelopmentReserve(home); var cost = FacilityCost(kind, level);
-            if (AdvancementRules.Resources.Any(k => home.Resources.Get(k) < cost.Get(k) + reserve.Get(k))) return;
-            if (FacilityPlacementError(person.SettlementId, kind, x, y, direction: direction, bridgeLevel: level) is null)
-                BuildFacility(person.SettlementId, kind, x, y, direction, level);
+            var reserve = LocalDevelopmentReserve(home); var cost = FacilityCost(BuildingKind.Bridge, level);
+            if (AdvancementRules.Resources.Any(k => home.Resources.Get(k) < cost.Get(k) * unfinished + reserve.Get(k))) continue;
+            if (FacilityPlacementError(home.Id, BuildingKind.Bridge, x, y, direction: direction, bridgeLevel: level) is not null) continue;
+            BuildFacility(home.Id, BuildingKind.Bridge, x, y, direction, level);
             return;
         }
     }
@@ -182,7 +200,8 @@ public sealed partial class WorldEngine
         }
         var lines = new List<string> { products.Count > 0 ? "可采产出：" + string.Join("、", products) : tile.ResourceAmount < 1 && tile.IsWalkable ? "资源暂已采尽，等待自然恢复" : "此地暂无直接采集产出" };
         lines.Add(IsFreshWater(tile) ? "淡水源：无限供水，需到岸边打水并携带返仓"
-            : $"天然供水 {tile.NaturalWaterYield:0.000000} / 日（不累计）   今日剩余 {AvailableWater(x, y):0.000000}\n供水与肥力独立；水源距离影响仅在生成时计算");
+            : $"每日可取水 {DailyWaterYield(tile):0.###}   今日剩余 {AvailableWater(x, y):0.###}（未取用的水不累积）"
+                + (DailyWaterYield(tile) < .025 ? "\n供水不足一名成年居民每日所需的 0.025，建议到河湖岸边打水" : ""));
         if (tile.ClaimedSettlementId != 0) lines.Add("实际地盘：" + _settlements.GetValueOrDefault(tile.ClaimedSettlementId)?.Name);
         if (tile.IsWalkable) lines.Add($"可采储量 {tile.ResourceAmount:0.#}   肥力 {tile.Fertility}%");
         if (tile.Improvement == LandImprovement.Farmland) lines.Add("耕地：需要居民到场耕作，产物随身运回家园");

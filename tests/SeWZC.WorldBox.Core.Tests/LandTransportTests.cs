@@ -6,7 +6,7 @@ internal static class LandTransportTests
     public static IEnumerable<(string Name, Action Run)> Cases =>
     [
         ("land automatic crossings use visible obstacles and route previews stay read only", AutomaticCrossing),
-        ("transport docks manufacture boats only from carried materials", BoatProduction),
+        ("transport shipyards manufacture boats only from carried materials", BoatProduction),
         ("land distant workers provision a complete gathering trip", DistantGathering),
         ("land research keeps radio modern without a circular power prerequisite", ResearchStages),
         ("land movement distinguishes walking boats aircraft and improved mountains", Traversal),
@@ -70,18 +70,18 @@ internal static class LandTransportTests
         var saved = engine.ExportJson(); engine.PreviewResidentRoute(worker.Id);
         Check(saved == engine.ExportJson(), "Read-only navigation preview started construction.");
         engine.Step();
-        Check(engine.State.Society.Buildings.Any(b => b.Kind == BuildingKind.Bridge && b.X == 15 && b.Y == 16),
-            "A qualified traveller failed to plan a visible crossing.");
+        Check(!engine.State.Society.Buildings.Any(b => b.Kind == BuildingKind.Bridge),
+            "A traveller built a bridge instead of taking the visible land route.");
     }
 
     [UnitTest]
     private static void BoatProduction()
     {
         var (engine, town, worker) = World(); engine.GrantReceivedResearch(town.Id, ResearchKind.Logistics);
-        Check(engine.FacilityPlacementError(town.Id, BuildingKind.Dock, 12, 16) is not null, "Inland dock was accepted.");
-        engine.State.Tiles[16 * 32 + 13].Terrain = TerrainType.Water;
-        var id = engine.GrantFacility(town.Id, BuildingKind.Dock, 12, 16);
-        Hold(engine, worker, 12, 16); worker.Agent.Goal.TargetEntityId = id;
+        Check(engine.FacilityPlacementError(town.Id, BuildingKind.Shipyard, 12, 16) is not null, "Inland dock was accepted.");
+        engine.State.Tiles[16 * 32 + 12].Terrain = TerrainType.Water;
+        var id = engine.GrantFacility(town.Id, BuildingKind.Shipyard, 12, 16);
+        Hold(engine, worker, 11, 16); worker.Agent.Goal.TargetEntityId = id;
         Check(!engine.TryWorkAtBuilding(worker), "Dock remotely consumed warehouse wood.");
         worker.Inventory.Wood = 4;
         Check(engine.TryWorkAtBuilding(worker) && worker.Inventory.Boats == 1 && worker.Inventory.Wood == 0

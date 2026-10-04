@@ -4,13 +4,30 @@ public enum ResourceVisibility { Researched, All, None }
 
 public sealed partial class WorldEngine
 {
+    public static string ProfessionName(Profession job) => job switch
+    {
+        Profession.Child => "孩童", Profession.Farmer => "农民", Profession.Lumberjack => "伐木工",
+        Profession.Miner => "矿工", Profession.Soldier => "战士", Profession.Builder => "建造者",
+        Profession.Trader => "商人", Profession.Messenger => "信使", Profession.Representative => "代表",
+        Profession.Scholar => "学者", Profession.Mage => "法师", _ => "未知职业"
+    };
+
     public bool IsDepositVisible(Tile tile, ResourceVisibility visibility) => tile.Deposit is { } kind
         && (visibility == ResourceVisibility.All || visibility == ResourceVisibility.Researched
             && (tile.DepositDiscovered || DepositResearch(kind) is { } research && State.Society.Research.Any(r => r.Completed.Contains(research))));
 
     public static string BuildingDescription(BuildingKind kind) => kind switch
     {
-        BuildingKind.TownCenter => "聚落的公共中心与家园粮仓。居民在附近领取口粮、交付采收、交流消息；代表在此汇集诉求。定居时建立，受损后可由居民重建。",
+        BuildingKind.TownCenter => "聚落的公共中心与家园粮仓。居民在附近领取口粮、交付采收、交流消息；代表在此汇集诉求。也是付费城镇扩充的施工地点，建筑等级与村、镇、城等级独立。定居时建立，受损后可由居民重建。",
+        BuildingKind.Shipyard => "在近岸水中建造舟船。居民从相邻自然陆岸施工，实地取木材、加工，再携带舟船返仓；需要驿路运输知识。",
+        BuildingKind.Dock => "在近岸水中提供舟船交通服务。居民从陆岸值守；同国舟船在 3 格内的水上速度每级提高 15%，不叠加多个码头。",
+        BuildingKind.LumberCamp => "设在森林边缘，伐木工到场开采相邻实际木材，随身运回家园；资源耗尽时停工。",
+        BuildingKind.Quarry => "设在山地或丘陵矿区旁，矿工到场开采相邻石材和矿石，随身运回家园；资源耗尽时停工。",
+        BuildingKind.Well => "设在湿地或供水充足的陆地。工人到井边取用当地当日供水，携带返仓；与野外取水共享地块额度，干旱会减水。",
+        BuildingKind.Granary => "完工且健康时改善家园补给组织，居民在中心附近休息恢复每级提高 10%；同类建筑取最强。",
+        BuildingKind.Housing => "提供实际住房，每级容纳 20 名居民；完工、健康且启用才计入人口容量。",
+        BuildingKind.Market => "人员到场值守后，在集市 3 格内的居民可与最多相距 3 格的人交换已有消息；消耗少量当地粮食。",
+        BuildingKind.Watchtower => "完工且健康时，为在塔 2 格内的同聚落居民提供观察点；亲眼观察火灾的范围每级增加 1 格。",
         BuildingKind.Farm => "居民到场耕作，将粮食装入随身库存并运回家园。肥力、干旱、农业研究和政策影响收成。",
         BuildingKind.Workshop => "为附近伐木和采矿提供劳动岗位，需要附近存在实际可采材料；材料由劳动者随身携带并运回。",
         BuildingKind.Academy => "到场学者推进当地已经立项的研究。研究需预付材料并满足前置知识，成果通过消息传播。",
@@ -60,9 +77,11 @@ public sealed partial class WorldEngine
         }
         var destination = facility is not null ? BuildingName(facility.Kind)
             : _settlements.GetValueOrDefault(goal.TargetSettlementId)?.Name ?? "目标地块";
+        var workingRange = facility is not null && (!facility.IsCompleted || facility.IsUpgrading
+            || IsWaterfrontBuilding(facility.Kind) || facility.Kind == BuildingKind.TownCenter) ? 1 : goal.TargetEntityId == 0 ? 1 : 0;
         var moving = person.MoveStartedTick + person.MoveDurationTicks > State.Tick
-            || Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > (goal.TargetEntityId == 0 ? 1 : 0);
-        var current = moving ? $"正在前往{destination}（{TravelModeName(person.TravelMode)}）" : goal.Kind switch
+            || Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > workingRange;
+        var current = State.Tick < goal.NavigationRetryTick ? "路线受阻，正在等待通道或重新选择任务" : moving ? $"正在前往{destination}（{TravelModeName(person.TravelMode)}）" : goal.Kind switch
         {
             AgentGoalKind.Explore => exploringRoutes ? "正在实地寻找其他聚落与可通行路线" : "正在实地勘察可采材料",
             AgentGoalKind.Work => facility is null ? person.Profession == Profession.Lumberjack ? "正在采伐木材" : person.Profession == Profession.Miner ? "正在采收石材与矿石" : "正在采收粮食" : facility.IsUpgrading ? "正在升级或改向" + BuildingName(facility.Kind) : facility.IsCompleted ? facility.Kind == BuildingKind.Academy ? "正在研究" + (State.Society.Research.First(r => r.SettlementId == facility.SettlementId).ActiveProject is { } active ? ResearchName(active) : "当地待立项课题") : facility.Kind == BuildingKind.Farm ? "正在农场耕作和采收粮食" : "正在" + BuildingName(facility.Kind) + "执行" + (person.Profession == Profession.Lumberjack ? "伐木任务" : person.Profession == Profession.Miner ? "采矿任务" : "岗位任务") : "正在施工" + BuildingName(facility.Kind),

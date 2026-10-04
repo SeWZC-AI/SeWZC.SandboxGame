@@ -34,12 +34,12 @@ public sealed partial class WorldEngine
         x = index % State.Width; y = index / State.Width;
         count = Math.Clamp(count, 1, Math.Min(200, MaxPopulation - State.Residents.Count));
         var owner = State.Tiles[index].NationId;
-        var settlement = State.Settlements.Where(s => owner > 0 ? s.NationId == owner : Distance(s.X, s.Y, x, y) <= 8).OrderBy(s => Distance(s.X, s.Y, x, y)).FirstOrDefault();
+        var settlement = State.Settlements.Where(s => owner > 0 ? s.NationId == owner : Distance(s.X, s.Y, x, y) < MinimumSettlementDistance).OrderBy(s => Distance(s.X, s.Y, x, y)).FirstOrDefault();
         if (settlement is null)
         {
             if (State.Nations.Count >= 64 || State.Settlements.Count >= 256) return;
             var nation = new Nation { Id = NewId(), FoundingRace = race, Name = NewPlaceName("王国"), ColorArgb = NationColors[State.Nations.Count % NationColors.Length] };
-            settlement = new Settlement { Id = NewId(), Name = NewPlaceName("村"), X = x, Y = y, NationId = nation.Id, Resources = new ResourceStock { Food = count * 4, Water = count * 2, Wood = 25, Stone = 12 } };
+            settlement = new Settlement { Id = NewId(), Name = NewPlaceName("村"), X = x, Y = y, NationId = nation.Id, Resources = new ResourceStock { Food = count * 8, Water = count * 5, Wood = 80, Stone = 45, Ore = 12 } };
             nation.CapitalId = settlement.Id;
             foreach (var other in State.Nations)
             {

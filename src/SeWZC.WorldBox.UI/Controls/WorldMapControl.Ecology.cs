@@ -139,26 +139,4 @@ public sealed partial class WorldMapControl
         RenderedWildlifeCount = _wildlifeDraws.Count;
     }
 
-    private void DrawInfrastructureOverlay(DrawingContext context, WorldState state)
-    {
-        var roadPen = new Pen(MessageBrush, 1.2);
-        var viewport = VisibleTiles(state);
-        for (var y = viewport.Top; y <= viewport.Bottom; y++)
-        for (var x = viewport.Left; x <= viewport.Right; x++)
-        {
-            var i = y * state.Width + x;
-            if (state.Tiles[i].RoadLevel == 0) continue;
-            if (!Visible(new Rect(x * TilePixels, y * TilePixels, TilePixels, TilePixels))) continue;
-            var center = new Point((x + .5) * TilePixels, (y + .5) * TilePixels);
-            context.DrawEllipse(MessageBrush, null, center, 1.2, 1.2);
-            if (x + 1 < state.Width && state.Tiles[i + 1].RoadLevel > 0) context.DrawLine(roadPen, center, new Point(center.X + TilePixels, center.Y));
-            if (y + 1 < state.Height && state.Tiles[i + state.Width].RoadLevel > 0) context.DrawLine(roadPen, center, new Point(center.X, center.Y + TilePixels));
-        }
-        foreach (var b in state.Society.Buildings)
-        {
-            if (!Visible(new Rect(b.X * TilePixels, b.Y * TilePixels - 12, TilePixels, 20))) continue;
-            context.DrawEllipse(null, new Pen(b.Kind == BuildingKind.TownCenter ? MessageBrush : ProgressBrush, 1.2),
-                new Point((b.X + .5) * TilePixels, (b.Y + .5) * TilePixels - 3), 6, 7);
-        }
-    }
 }

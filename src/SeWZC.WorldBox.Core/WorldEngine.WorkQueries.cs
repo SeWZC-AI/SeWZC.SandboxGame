@@ -69,6 +69,9 @@ public sealed partial class WorldEngine
             if (followTarget && resident.Agent.Goal.TargetEntityId != 0 && resident.Agent.Goal.TargetEntityId != building.Id) continue;
             if (building.SettlementId != resident.SettlementId || building.Health <= 0) continue;
             var distance = Distance(resident.X, resident.Y, building.X, building.Y);
+            if (range == 1 && IsWaterfrontBuilding(building.Kind) && (distance != 1
+                || !State.Tiles[Index(resident.X, resident.Y)].IsWalkable
+                || IsWaterTerrain(State.Tiles[Index(resident.X, resident.Y)].Terrain))) continue;
             var workRange = range > 1 && building.Kind is BuildingKind.Bridge or BuildingKind.MountainPass ? 24 : range;
             if (distance > workRange || !BuildingHasWork(building, resident)) continue;
             var priority = WorkPriority(building, resident);

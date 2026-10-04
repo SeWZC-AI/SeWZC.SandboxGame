@@ -153,10 +153,16 @@ internal static class SocietyRegressionTests
 
     private static void ShieldOverlap()
     {
-        var engine = Flat(pair: true, otherX: 24);
+        var engine = Flat(pair: true, otherX: 34);
         var west = engine.State.Settlements[0]; var east = engine.State.Settlements[1];
+        engine.State.Tiles[east.Y * engine.State.Width + east.X].SettlementId = 0;
+        east.X = 24;
+        var centre = engine.State.Tiles[east.Y * engine.State.Width + east.X];
+        centre.SettlementId = east.Id; centre.NationId = east.NationId; centre.ClaimedSettlementId = east.Id;
+        engine.ReconcileSocietyTopology();
         engine.TransferTerritory(east.X, east.Y, west.NationId, 0);
         var caster = engine.State.Residents.First(r => r.SettlementId == east.Id);
+        Hold(caster, east.X, east.Y);
         caster.MagicTraining = 30; caster.MagicTalent = 60; caster.Mana = 100;
         engine.CastSpell(caster.Id, SpellKind.Shield, east.X, east.Y);
         var victim = engine.State.Residents.First(r => r.SettlementId == west.Id);

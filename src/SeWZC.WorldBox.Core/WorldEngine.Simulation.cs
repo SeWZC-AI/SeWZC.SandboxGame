@@ -79,15 +79,20 @@ public sealed partial class WorldEngine
             // Housing and the local planner share a material budget; growth must leave the next
             // school, research or facility able to start when its physical deliveries arrive.
             var developmentReserve = LocalDevelopmentReserve(town);
-            if (citizens.Count > town.Housing * 0.75 && town.Resources.Wood >= 25 + developmentReserve.Wood && town.Resources.Stone >= 8 + developmentReserve.Stone)
+            if (State.Rules.Construction && State.Rules.Expansion && SettlementExpansionError(town.Id) is null
+                && AdvancementRules.Resources.All(k => town.Resources.Get(k) >= SettlementExpansionCost(town.Tier).Get(k) + developmentReserve.Get(k)))
+                ExpandTown(town.Id);
+            if (State.Rules.Construction && citizens.Count > GetHousingCapacity(town.Id) * 0.75
+                && !State.Society.Buildings.Any(b => b.SettlementId == town.Id && (!b.IsCompleted || b.IsUpgrading))
+                && town.Resources.Wood >= 25 + developmentReserve.Wood && town.Resources.Stone >= 8 + developmentReserve.Stone)
             {
-                town.Resources.Wood -= 25; town.Resources.Stone -= 8; town.Housing += 20;
-                town.Level = Math.Min(5, 1 + town.Housing / 70);
+                var site = BestBuildingSite(town, BuildingKind.Housing);
+                if (site >= 0) BuildFacility(town.Id, BuildingKind.Housing, site % State.Width, site / State.Width);
             }
             var adults = citizens.Where(p => p.Age >= 18 && p.Age < (p.Race == RaceKind.Elf ? 100 : 55) && p.Hunger < 30 && p.SicknessTicks == 0).ToArray();
-            if (State.Rules.Births && adults.Length >= 6 && citizens.Count < town.Housing && town.Resources.Food > citizens.Count * 0.8 && State.Residents.Count < MaxPopulation)
+            if (State.Rules.Births && adults.Length >= 6 && citizens.Count < GetHousingCapacity(town.Id) && town.Resources.Food > citizens.Count * 0.8 && State.Residents.Count < MaxPopulation)
             {
-                var births = Math.Min(Math.Max(1, adults.Length / 28), Math.Min(town.Housing - citizens.Count, MaxPopulation - State.Residents.Count));
+                var births = Math.Min(Math.Max(1, adults.Length / 28), Math.Min(GetHousingCapacity(town.Id) - citizens.Count, MaxPopulation - State.Residents.Count));
                 for (var b = 0; b < births; b++)
                 {
                     var child = NewResident(town, adults[RandomInt(adults.Length)].Race, 0);
@@ -95,7 +100,8 @@ public sealed partial class WorldEngine
                 }
                 if (State.Tick % 120 == 0) AddEvent(WorldEventKind.Growth, $"{town.Name}迎来新生儿，人口增至{citizens.Count}。", town.X, town.Y);
             }
-            if (State.Rules.Expansion && State.Tick % 120 == 0 && citizens.Count >= 60 && town.Resources.Food >= 120 && town.Resources.Wood >= 40 + developmentReserve.Wood && State.Settlements.Count < 256)
+            if (State.Rules.Expansion && State.Tick % 120 == 0 && citizens.Count >= 80 && !town.IsExpanding
+                && AdvancementRules.Resources.All(k => town.Resources.Get(k) >= VillageFoundingCost.Get(k) + developmentReserve.Get(k)) && State.Settlements.Count < 256)
                 ExpandSettlement(town, citizens);
         }
     }
@@ -105,26 +111,27 @@ public sealed partial class WorldEngine
         var pioneers = citizens.Where(p => p.ArmyId == 0 && p.Age >= 16 && p.Health >= 60
             && p.Agent.DestinationSettlementId == 0 && Distance(p.X, p.Y, origin.X, origin.Y) <= 3)
             .OrderByDescending(p => p.Agent.Personality.Ambition).ThenBy(p => p.Id).Take(12).ToArray();
-        if (pioneers.Length < 6 || origin.Resources.Food < 80 || origin.Resources.Wood < 20 || origin.Resources.Stone < 5) return;
-        // Founders select a site that somebody in the present party can actually see.
-        var location = Circle(origin.X, origin.Y, 9).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].FireTicks == 0
+        if (pioneers.Length < 6 || MissingResources(origin.Resources, VillageFoundingCost) is not null) return;
+        // A previously observed site must have been reported to the origin before departure.
+        var location = origin.PublicKnowledge.Where(f => f.Kind == AgentFactKind.FoundingSite && f.LearnedTick < State.Tick
+            && State.Tick - f.ObservedTick <= 600 && f.Confidence >= .5 && InBounds(f.X, f.Y))
+            .Select(f => Index(f.X, f.Y)).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].FireTicks == 0
             && !State.Society.Buildings.Any(b => b.X == i % State.Width && b.Y == i / State.Width)
             && State.Tiles[i].Fertility >= 25 && (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == origin.NationId)
-            && Distance(i % State.Width, i / State.Width, origin.X, origin.Y) >= 8
-            && pioneers.Any(p => Distance(p.X, p.Y, i % State.Width, i / State.Width) <= 6)
-            && State.Settlements.All(t => Distance(t.X, t.Y, i % State.Width, i / State.Width) >= 8))
+            && State.Tiles[i].ClaimedSettlementId == 0
+            && Distance(i % State.Width, i / State.Width, origin.X, origin.Y) >= MinimumSettlementDistance
+            && State.Settlements.All(t => Distance(t.X, t.Y, i % State.Width, i / State.Width) >= MinimumSettlementDistance))
             .OrderByDescending(i => State.Tiles[i].Fertility).ThenBy(i => i).FirstOrDefault(-1);
         if (location < 0) return;
         var x = location % State.Width; var y = location / State.Width;
-        var town = new Settlement { Id = NewId(), Name = NewPlaceName("镇"), X = x, Y = y,
+        var town = new Settlement { Id = NewId(), Name = NewPlaceName("村"), X = x, Y = y,
             NationId = origin.NationId, CultureId = origin.CultureId, FoundationPending = true, Resources = new ResourceStock() };
-        origin.Resources.Food -= 80; origin.Resources.Wood -= 20; origin.Resources.Stone -= 5;
+        Spend(origin.Resources, VillageFoundingCost);
         State.Settlements.Add(town); _settlements[town.Id] = town; _citizens[town.Id] = [];
         foreach (var pioneer in pioneers)
         {
-            pioneer.Inventory.Food += 80d / pioneers.Length;
-            pioneer.Inventory.Wood += 20d / pioneers.Length;
-            pioneer.Inventory.Stone += 5d / pioneers.Length;
+            foreach (var resource in AdvancementRules.Resources)
+                pioneer.Inventory.Set(resource, pioneer.Inventory.Get(resource) + VillageFoundingCost.Get(resource) / pioneers.Length);
             pioneer.SettlementId = town.Id;
             var address = new AgentFact { Id = NewId(), Kind = AgentFactKind.SettlementLocation, SubjectId = town.Id, X = x, Y = y,
                 Value = town.NationId, ObservedTick = State.Tick, LearnedTick = State.Tick, OriginResidentId = pioneer.Id,

@@ -35,11 +35,13 @@ public sealed partial class WorldEngine
                 => MissingResources(person.Inventory, recipe.Input) is not null ? ResidentTaskIcon.Pickup : facility.Kind switch
                 {
                     BuildingKind.Foundry => ResidentTaskIcon.Smelt, BuildingKind.PowerPlant => ResidentTaskIcon.Power,
-                    BuildingKind.Fabricator => ResidentTaskIcon.Craft, BuildingKind.Dock => ResidentTaskIcon.Ship,
+                    BuildingKind.Fabricator => ResidentTaskIcon.Craft, BuildingKind.Shipyard => ResidentTaskIcon.Ship,
                     BuildingKind.Airfield => ResidentTaskIcon.Plane, BuildingKind.AutomatedFarm => ResidentTaskIcon.Farm,
                     BuildingKind.Crystallizer => ResidentTaskIcon.Crystal, BuildingKind.RunicGarden => ResidentTaskIcon.Runic,
                     BuildingKind.AetherForge => ResidentTaskIcon.Aether, _ => ResidentTaskIcon.Craft
                 },
+            AgentGoalKind.Work when facility?.Kind == BuildingKind.Well => ResidentTaskIcon.Water,
+            AgentGoalKind.Work when facility?.Kind == BuildingKind.TownCenter => ResidentTaskIcon.Build,
             AgentGoalKind.Work when facility?.Kind == BuildingKind.Farm => ResidentTaskIcon.Farm,
             AgentGoalKind.Work when facility?.Kind == BuildingKind.Academy => ResidentTaskIcon.Research,
             AgentGoalKind.Work when facility?.Kind == BuildingKind.Infirmary => ResidentTaskIcon.Heal,

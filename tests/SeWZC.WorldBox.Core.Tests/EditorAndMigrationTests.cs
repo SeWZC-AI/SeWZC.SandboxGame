@@ -96,7 +96,14 @@ internal static class EditorAndMigrationTests
             person.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = origin.X + 2, TargetY = origin.Y,
                 ReviewTick = 1000, PlayerDirected = true };
         }
-        engine.Step(119);
+        engine.State.Tick = 1;
+        origin.Resources.Water = 200;
+        var scout = engine.State.Residents[0];
+        origin.PublicKnowledge.Add(new AgentFact { Id = engine.State.NextId++, Kind = AgentFactKind.FoundingSite,
+            SubjectId = origin.Id, X = 42, Y = 24, Value = 80, ObservedTick = 0, LearnedTick = 0,
+            OriginResidentId = scout.Id, SourceResidentId = scout.Id, OriginProfession = scout.Profession,
+            Text = "已实际递送的建村勘察报告" });
+        engine.Step(118);
         var positions = engine.State.Residents.ToDictionary(r => r.Id, r => (r.X, r.Y));
         engine.Tick();
         Require(engine.State.Settlements.Count == 2, "The supplied crowded village did not found a new settlement.");

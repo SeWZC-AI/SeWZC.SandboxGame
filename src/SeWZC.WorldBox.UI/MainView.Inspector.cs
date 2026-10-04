@@ -174,9 +174,9 @@ public sealed partial class MainView
         panel.Children.Add(Named(Button("我的关注", () => OpenInspector("watched")), "overview-watched"));
         var borders = Named(new CheckBox { Content = "显示国界", IsChecked = _map.ShowBorders }, "map-borders");
         borders.IsCheckedChanged += (_, _) => { _map.ShowBorders = borders.IsChecked == true; _map.RefreshWorld(); }; panel.Children.Add(borders);
-        var overlay = Named(new ComboBox { ItemsSource = new[] { "地图图层：无", "粮食压力：红色短缺 / 绿色充足", "运输：标记正在实地递送的居民", "通信：运作设施与实际连通聚落", "建设：突出建筑与道路" }, SelectedIndex = _map.Overlay, HorizontalAlignment = HorizontalAlignment.Stretch }, "map-overlay");
+        var overlay = Named(new ComboBox { ItemsSource = new[] { "地图图层：无", "粮食压力：红色短缺 / 绿色充足", "运输：标记正在实地递送的居民", "通信：运作设施与实际连通聚落", "建设：按用途和状态着色建筑与道路" }, SelectedIndex = _map.Overlay, HorizontalAlignment = HorizontalAlignment.Stretch }, "map-overlay");
         overlay.SelectionChanged += (_, _) => { _map.Overlay = Math.Max(0, overlay.SelectedIndex); _map.RefreshWorld(); }; panel.Children.Add(overlay);
-        panel.Children.Add(Named(Button("建筑与道路列表", () => OpenInspector("structures")), "overview-structures"));
+        panel.Children.Add(Named(Button("建筑与道路地图", () => OpenInspector("structures")), "overview-structures"));
         panel.Children.Add(Text("资源显示", 13, Mint));
         var resources = Named(new ComboBox { ItemsSource = new[] { "按最新已研究阶段显示（默认）", "显示全部资源（含未发现矿藏）", "关闭矿藏显示" }, SelectedIndex = (int)_resourceVisibility, HorizontalAlignment = HorizontalAlignment.Stretch }, "map-resources");
         resources.SelectionChanged += (_, _) => { _resourceVisibility = (ResourceVisibility)Math.Max(0, resources.SelectedIndex); _map.ResourceVisibility = _resourceVisibility; _map.RefreshWorld(); }; panel.Children.Add(resources);
@@ -261,18 +261,16 @@ public sealed partial class MainView
     {
         if (_selectedTile is not { } point || point.X < 0 || point.Y < 0 || point.X >= _engine.State.Width || point.Y >= _engine.State.Height) { panel.Children.Add(Paragraph("请先在地图上选择一处位置。")); return; }
         Tile Tile() => _engine.State.Tiles[point.Y * _engine.State.Width + point.X];
-        static string WaterAmount(double amount, string unit = "") => double.IsPositiveInfinity(amount) ? "无限" : $"{amount:0.0000}{unit}";
         panel.Children.Add(LiveText(() => TerrainName(Tile().Terrain), 16, Mint));
-        panel.Children.Add(LiveText(() => _engine.GetTileProductionSummary(point.X, point.Y, _resourceVisibility)));
+        panel.Children.Add(Named(LiveText(() => _engine.GetTileProductionSummary(point.X, point.Y, _resourceVisibility)), "tile-water"));
         panel.Children.Add(Named(Button("安排居民改造此地", () => ShowLandProject(point.X, point.Y)), "tile-improve"));
         panel.Children.Add(Named(Button("编辑此地资源与道路", () => ShowTileEditor(point.X, point.Y)), "tile-edit"));
         LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.X == point.X && b.Y == point.Y), b => b.Id.ToString(),
             b => BuildingLabel(b) + "\n" + BuildingTask(b), OpenBuilding);
-        panel.Children.Add(Named(LiveText(() => $"肥沃度 {Tile().Fertility:0.0} / 100\n每日供水 {WaterAmount(WorldEngine.DailyWaterYield(Tile()), " / 日")}\n今日可取水 {WaterAmount(_engine.AvailableWater(point.X, point.Y))}\n占领聚落：{TownName(Tile().ClaimedSettlementId)}"), "tile-water"));
         var effects = FoldSection(panel, "地块加成与减益", "tile-effects");
         effects.Children.Add(LiveText(() => EffectLabel(_engine.GetTileEffects(point.X, point.Y))));
         var local = FoldSection(panel, "归属与周围环境", "tile-context");
-        local.Children.Add(LiveText(() => $"{NationName(Tile().NationId)}\n{(Tile().RoadLevel > 0 ? $"道路 {Tile().RoadLevel} 级\n" : "")}步行耗时系数 {_engine.GetTerrainMoveCost(point.X, point.Y):0.##}"));
+        local.Children.Add(LiveText(() => $"{NationName(Tile().NationId)}\n{(Tile().RoadLevel > 0 ? $"道路 {Tile().RoadLevel} 级\n" : "")}步行：{(double.IsFinite(_engine.GetTerrainMoveCost(point.X, point.Y)) ? $"耗时系数 {_engine.GetTerrainMoveCost(point.X, point.Y):0.##}" : "无法通行，需桥梁、山路或载具")}"));
         LiveRows(local, () => _engine.State.Conflicts.Where(c => c.SettlementId == Tile().SettlementId || Math.Abs(c.X - point.X) + Math.Abs(c.Y - point.Y) <= 3), c => c.Id.ToString(),
             c => $"{(c.Stage == ConflictStage.Dispute ? "资源争执" : c.Stage == ConflictStage.Confrontation ? "持续对峙" : c.Stage == ConflictStage.Violence ? "局部斗殴" : "已平息")}   {c.Participants.Count} 人   紧张 {c.Tension:0}%");
         var nearby = FoldSection(panel, "附近居民", "tile-residents");

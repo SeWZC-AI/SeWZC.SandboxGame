@@ -75,7 +75,7 @@ public sealed partial class MainView
     }
 
     private string FactLabel(AgentFact fact) => $"{FactKindName(fact.Kind)}\n置信度 {fact.Confidence:P0}\n{fact.Text}\n观察 {DateLabel(fact.ObservedTick)}\n获知 {DateLabel(fact.LearnedTick)}\n消息年龄 {Math.Max(0, _engine.State.Tick - fact.ObservedTick)} 日\n经过 {fact.Hops} 次转述\n来源 {ResidentName(fact.SourceResidentId)}\n地点 {fact.X},{fact.Y}\n值 {fact.Value:F1}";
-    private static string FactKindName(AgentFactKind kind) => kind switch { AgentFactKind.WaterSource => "淡水源位置", AgentFactKind.FoodSupply => "粮食供给", AgentFactKind.Danger => "危险", AgentFactKind.SettlementLocation => "聚落位置", AgentFactKind.ReliefRequest => "救济请求", AgentFactKind.Policy => "政策", AgentFactKind.WarOrder => "战争命令", AgentFactKind.PeaceOrder => "和平命令", AgentFactKind.Culture => "文化", AgentFactKind.Research => "研究", AgentFactKind.TradeExchange => "贸易往来", AgentFactKind.DiplomaticNotice => "外交声明", AgentFactKind.WarReport => "前线战报", _ => "个人记忆" };
+    private static string FactKindName(AgentFactKind kind) => kind switch { AgentFactKind.WaterSource => "取水地点", AgentFactKind.FoundingSite => "建村勘察", AgentFactKind.FoodSupply => "粮食供给", AgentFactKind.Danger => "危险", AgentFactKind.SettlementLocation => "聚落位置", AgentFactKind.ReliefRequest => "救济请求", AgentFactKind.Policy => "政策", AgentFactKind.WarOrder => "战争命令", AgentFactKind.PeaceOrder => "和平命令", AgentFactKind.Culture => "文化", AgentFactKind.Research => "研究", AgentFactKind.TradeExchange => "贸易往来", AgentFactKind.DiplomaticNotice => "外交声明", AgentFactKind.WarReport => "前线战报", _ => "个人记忆" };
 
     private void ShowResidentEditor(int id)
     {

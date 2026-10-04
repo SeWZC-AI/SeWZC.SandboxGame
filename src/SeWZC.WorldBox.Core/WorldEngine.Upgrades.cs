@@ -73,6 +73,7 @@ public sealed partial class WorldEngine
         if (building is null) return "建筑已不存在";
         if (!building.IsCompleted || building.Health < 50) return "需先完工并修复建筑";
         if (building.IsUpgrading) return "已有升级或改向项目";
+        if (building.Kind == BuildingKind.TownCenter && RequireTown(building.SettlementId).IsExpanding) return "中心正在组织城镇扩充，完成后可单独升级建筑";
         if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return "所在地正在燃烧";
         if (direction.HasValue && (building.Kind != BuildingKind.Bridge || direction == building.Direction)) return "只能将桥梁改为另一方向";
         if (!direction.HasValue && building.Level >= 3) return "建筑已达到 3 级";

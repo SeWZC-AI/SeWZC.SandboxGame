@@ -38,7 +38,7 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.waitFor(snapshot => snapshot.worldTick >= initialTick + 4, 'ordinary residents choosing work');
         await ui.paused();
         const baseline = await ui.save();
-        assert.equal(baseline.FormatVersion, 10);
+        assert.equal(baseline.FormatVersion, 11);
         assert.equal(baseline.Width, 256);
         assert.equal(baseline.Nations.length, 4);
         const home = baseline.Settlements[0];
@@ -63,7 +63,7 @@ const stock = (world, id) => town(world, id).Resources;
         assert.equal((await ui.snapshot()).inspector, 'building', 'Back preserves the selected building');
         assert.deepEqual(await ui.save(), baseline, 'Resource choices and detailed observation are read-only');
         await ui.click('inspector-close');
-        passed('size-based settlement names, real centers, building details and resource display without changing resident knowledge');
+        passed('village names, real centers, building details and resource display without changing resident knowledge');
 
         const worker = baseline.Residents.slice(0, 60).find(person => person.Agent.Goal.Kind === 3
             && baseline.Society.Buildings.some(building => building.Id === person.Agent.Goal.TargetEntityId));

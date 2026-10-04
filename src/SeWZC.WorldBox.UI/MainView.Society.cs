@@ -95,6 +95,9 @@ public sealed partial class MainView
         var picker = Named(new ComboBox { ItemsSource = towns.Select(t => $"{t.Name}\n{NationName(t.NationId)}").ToArray(), SelectedIndex = selected, HorizontalAlignment = HorizontalAlignment.Stretch }, "infrastructure-town");
         picker.SelectionChanged += (_, _) => { if (picker.SelectedIndex < 0) return; _inspectorSettlementId = towns[picker.SelectedIndex].Id; InvalidateInspector(); RefreshInspector(true); }; panel.Children.Add(picker);
         panel.Children.Add(WatchControl(ObservedObjectKind.Settlement, town.Id, "settlement-watch"));
+        panel.Children.Add(Named(LiveText(() => _engine.GetSettlementSummary(town.Id)), "town-expansion-summary"));
+        panel.Children.Add(Named(Button("投入城镇扩充", () => RunEdit(() => _engine.ExpandTown(town.Id), "已投入扩充材料，居民将到中心施工")), "town-expand"));
+        panel.Children.Add(LiveText(() => $"住房容量 {_engine.GetHousingCapacity(town.Id)} 人\n新建村庄费用：{StockLabel(WorldEngine.VillageFoundingCost)}\n新村与其他城镇至少相距 {WorldEngine.MinimumSettlementDistance} 格；拓荒者须携物资抵达"));
         panel.Children.Add(LiveText(() => $"{town.Name} #{town.Id}\n实际库存：{StockLabel(town.Resources)}\n居民 {town.Population}\n代表 {ResidentName(town.RepresentativeId)}"));
         panel.Children.Add(LiveText(() => { var d = _engine.GetDevelopment(town.Id); return $"{d.Stage}\n{d.Goal}\n{d.Progress:P0}\n{d.Blocker}\n动荡 {town.Unrest:0}/100"; }, 13, Mint));
         panel.Children.Add(Named(LiveText(() => _engine.GetDevelopmentEstimate(town.Id).Explanation), "development-estimate"));
@@ -142,7 +145,7 @@ public sealed partial class MainView
     private void ShowBuildingEditor(int townId)
     {
         var town = _engine.State.Settlements.FirstOrDefault(t => t.Id == townId); if (town is null) return;
-        var panel = ModalPanel("建造设施", "普通设施位于聚落 8 格内；桥梁、山路可在 24 格内逐段施工，船坞码头须邻水。材料从聚落扣除，居民到场施工。");
+        var panel = ModalPanel("建造设施", "普通设施位于聚落 8 格内；桥梁、山路可在 24 格内逐段施工，船坞与码头须邻水。材料从聚落扣除，居民到场施工。");
         var type = EnumField(panel, "设施类型", BuildingKind.Farm, WorldEngine.BuildingName, "building-kind");
         var direction = EnumField(panel, "桥梁方向", BridgeDirection.Horizontal, WorldEngine.BridgeDirectionName, "building-bridge-direction");
         var level = ObjectField(panel, "桥梁等级", new[] { (1, "1 级：离岸 2 格"), (2, "2 级：离岸 4 格"), (3, "3 级：离岸 6 格") }, 1, "building-bridge-level");
@@ -160,7 +163,7 @@ public sealed partial class MainView
         panel.Children.Add(gift);
         panel.Children.Add(Named(Button("建造设施", () =>
         {
-            try { var xx = Integer(x); var yy = Integer(y); RunEdit(() => { if (gift.IsChecked == true) _engine.GrantFacility(townId, (BuildingKind)type.SelectedItem!, xx, yy, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? (BridgeDirection?)direction.SelectedItem : null, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? Integer(level) : 1); else _engine.BuildFacility(townId, (BuildingKind)type.SelectedItem!, xx, yy, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? (BridgeDirection?)direction.SelectedItem : null, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? Integer(level) : 1); CloseModal(); }, gift.IsChecked == true ? "设施已赐予；实际运营仍需知识、材料与人员" : "设施已立项，继续模拟后居民会施工"); }
+            try { var xx = Integer(x); var yy = Integer(y); RunEdit(() => { if (gift.IsChecked == true) _engine.GrantFacility(townId, (BuildingKind)type.SelectedItem!, xx, yy, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? (BridgeDirection?)direction.SelectedItem : null, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? Integer(level) : 1); else _engine.BuildFacility(townId, (BuildingKind)type.SelectedItem!, xx, yy, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? (BridgeDirection?)direction.SelectedItem : null, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? Integer(level) : 1); CloseModal(); }, gift.IsChecked == true ? "设施已赐予；效果按各建筑的生效条件提供" : "设施已立项，继续模拟后居民会施工"); }
             catch (ArgumentException ex) { SetStatus(FriendlyError(ex)); }
         }), "building-apply"));
         OpenModal(panel);

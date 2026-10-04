@@ -246,6 +246,30 @@ public sealed partial class WorldMapControl
         }
         switch (kind)
         {
+            case BuildingKind.Dock:
+                c.Rect(3, 34, 34, 7, timber); c.Rect(7, 32, 3, 13, metal); c.Rect(29, 32, 3, 13, metal);
+                c.Line(19, 18, 19, 34, timber, 2); c.Rect(21, 20, 10, 7, paper); break;
+            case BuildingKind.Shipyard:
+                c.Rect(3, 34, 34, 9, timber); c.Rect(5, 9, 3, 29, metal); c.Rect(5, 9, 28, 3, metal);
+                c.Line(28, 12, 28, 27, timber); c.Rect(11, 30, 20, 5, roof); c.Line(14, 35, 28, 35, paper, 2); break;
+            case BuildingKind.Well:
+                c.Rect(9, 31, 22, 12, metal); c.Rect(13, 33, 14, 5, 0x467AA6FF);
+                c.Rect(8, 16, 3, 25, timber); c.Rect(29, 16, 3, 25, timber); c.Rect(6, 14, 28, 4, roof);
+                c.Line(20, 18, 20, 35, paper); break;
+            case BuildingKind.Watchtower:
+                c.Rect(10, 8, 20, 13, wall); c.Rect(7, 6, 26, 3, roof); c.Rect(12, 21, 3, 22, timber);
+                c.Rect(25, 21, 3, 22, timber); c.Line(14, 22, 26, 40, timber, 2); c.Rect(17, 11, 6, 6, paper); break;
+            case BuildingKind.LumberCamp:
+                c.Rect(5, 21, 20, 20, wall); c.Rect(3, 18, 24, 4, roof);
+                for (var row = 0; row < 3; row++) c.Rect(24, 32 + row * 4, 13, 3, timber);
+                c.Line(10, 27, 20, 39, timber, 2); c.Rect(6, 25, 10, 4, metal); break;
+            case BuildingKind.Quarry:
+                c.Rect(4, 26, 32, 17, metal); c.Rect(6, 23, 10, 8, wall); c.Rect(23, 21, 12, 12, wall);
+                c.Line(12, 27, 25, 39, timber, 2); c.Line(6, 29, 21, 23, paper, 2); break;
+            case BuildingKind.Market:
+                c.Rect(5, 24, 3, 19, timber); c.Rect(32, 24, 3, 19, timber); c.Rect(4, 37, 32, 5, timber);
+                for (var col = 0; col < 6; col++) c.Rect(2 + col * 6, 16, 6, 9, col % 2 == 0 ? roof : paper);
+                c.Rect(9, 32, 7, 5, green); c.Rect(21, 32, 7, 5, 0xE9A04CFF); break;
             case BuildingKind.Farm: case BuildingKind.AutomatedFarm: case BuildingKind.RunicGarden:
                 c.Rect(3, 24, 34, 20, timber); c.Rect(5, 25, 30, 18, 0x5B7746FF);
                 for (var row = 0; row < 3; row++) { c.Rect(6, 27 + row * 5, 28, 2, green); for (var col = 0; col < 5; col++) c.Line(8 + col * 5, 29 + row * 5, 9 + col * 5, 26 + row * 5, 0xD5BB69FF); }
@@ -277,6 +301,8 @@ public sealed partial class WorldMapControl
                 House();
                 if (kind == BuildingKind.TownCenter) { c.Rect(19, 2, 2, 13, timber); c.Rect(21, 2, 10, 6, roof); c.Rect(16, 25, 10, 8, paper); c.Rect(19, 27, 3, 4, roof); }
                 if (kind == BuildingKind.Workshop) { c.Line(9, 28, 21, 39, timber, 2); c.Rect(5, 25, 10, 5, metal); c.Rect(27, 7, 5, 12, metal); }
+                if (kind == BuildingKind.Granary) { c.Rect(8, 28, 24, 12, 0xC49D57FF); c.Line(12, 32, 28, 32, paper, 2); c.Line(12, 37, 28, 37, paper, 2); }
+                if (kind == BuildingKind.Housing) { c.Rect(8, 26, 9, 7, paper); c.Rect(24, 26, 9, 7, paper); c.Rect(18, 36, 5, 8, roof); }
                 if (kind == BuildingKind.Academy) { c.Rect(10, 25, 20, 11, 0x406B8DFF); c.Rect(12, 26, 16, 8, paper); c.Line(20, 26, 20, 34, timber); }
                 if (kind == BuildingKind.Infirmary) { c.Rect(17, 24, 6, 15, 0xC4514FFF); c.Rect(12, 28, 16, 6, 0xC4514FFF); }
                 if (kind == BuildingKind.Waystation) { c.Rect(32, 14, 2, 30, timber); c.Rect(25, 15, 13, 8, paper); c.Line(25, 15, 31, 19, roof); c.Line(31, 19, 37, 15, roof); }

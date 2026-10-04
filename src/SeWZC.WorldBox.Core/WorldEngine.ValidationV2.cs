@@ -40,6 +40,11 @@ public sealed partial class WorldEngine
         var personality = agent!.Personality;
         CheckV2(Number(personality.Courage, 0, 1) && Number(personality.Diligence, 0, 1) && Number(personality.Sociability, 0, 1) && Number(personality.Ambition, 0, 1) && Number(agent.Fatigue, 0, 100) && Number(agent.SocialNeed, 0, 100), "性格或需求超出范围。");
         var goal = agent.Goal;
+        CheckV2(goal.NavigationTarget >= -1 && goal.NavigationTarget < width * height
+            && goal.NavigationVisited is not null && goal.NavigationVisited.Count <= 256
+            && goal.NavigationVisited.All(i => i >= 0 && i < width * height)
+            && goal.NavigationBestDistance is >= 0 and <= 512 && goal.NavigationWithoutProgress is >= 0 and <= 64
+            && goal.NavigationRetryTick >= 0 && goal.NavigationRetryTick <= tick + 100_000, "寻路记录无效。");
         CheckV2(Enum.IsDefined(goal.Kind) && Coordinates(goal.TargetX, goal.TargetY, width, height) && goal.TargetEntityId >= 0 && goal.TargetSettlementId >= 0 && goal.StartedTick >= 0 && goal.StartedTick <= tick && goal.ReviewTick is >= 0 && goal.ReviewTick <= tick + 100_000 && goal.WorkTicks is >= 0 and <= 1_000_000 && BoundedText(goal.Reason, 400), "目标位置、时间或内容无效。");
         CheckV2(agent.JobChangedTick >= -120 && agent.JobChangedTick <= tick && agent.NextThinkTick >= 0 && agent.NextThinkTick <= tick + 100_000 && agent.LastConversationTick >= 0 && agent.LastConversationTick <= tick && agent.MissionStartedTick >= 0 && agent.MissionStartedTick <= tick && agent.MissionRetryTick >= 0 && agent.MissionRetryTick <= tick + 100_000, "行动调度时间无效。");
         foreach (var fact in agent.Memory!) ValidateFactV2(fact, tick, width, height);

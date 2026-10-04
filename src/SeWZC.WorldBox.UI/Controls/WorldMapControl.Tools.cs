@@ -65,7 +65,7 @@ public sealed partial class WorldMapControl
         _hover = point;
         if (pending) _pendingPlacement = tile;
         var error = PlacementError(tile.X, tile.Y);
-        var detail = ActiveTool.StartsWith("build:") ? GiftBuildings ? "建造方式：直接赐予\n无材料消耗，运营仍需人员" : "建造方式：居民施工\n扣除当地材料后开工"
+        var detail = ActiveTool.StartsWith("build:") ? GiftBuildings ? "建造方式：直接赐予\n无材料消耗，效果仍受建筑运营条件限制" : "建造方式：居民施工\n扣除当地材料后开工"
             : ActiveTool.StartsWith("road:") ? "修建道路\n每格木材：0.5\n每格石材：1"
             : Enum.TryParse<RaceKind>(ActiveTool, out _) ? $"投放 {SpawnCount} 位居民"
             : Enum.TryParse<DisasterKind>(ActiveTool, out _) ? $"单次释放\n范围：{DisasterRadius} 格" : $"绘制范围：{BrushRadius} 格";
@@ -95,7 +95,7 @@ public sealed partial class WorldMapControl
     private void DrawMapOverlay(DrawingContext context, WorldState state)
     {
         if (Overlay == 0) return;
-        if (Overlay == 4) { DrawInfrastructureOverlay(context, state); return; }
+        if (Overlay == 4) { DrawInfrastructureColors(context, state); return; }
         if (Overlay == 1)
         {
             foreach (var town in state.Settlements)
