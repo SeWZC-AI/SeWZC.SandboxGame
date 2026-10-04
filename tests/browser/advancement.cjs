@@ -49,11 +49,13 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
                 assert.match(ui.control(await ui.snapshot(), 'advancement-stage').value, /科技：未来制造.*魔法：以太文明/s);
                 await ui.click('research-route-technology', inspector);
                 await ui.click('research-jump-end', inspector);
+                await ui.click('research-fit', inspector);
                 await ui.point('research-graph', inspector);
                 await ui.click('research-node-AdvancedComputing', inspector);
                 assert.match(ui.control(await ui.snapshot(), 'research-requirements').value, /精密制造中心/);
                 await ui.click('research-route-magic', inspector);
                 await ui.click('research-jump-end', inspector);
+                await ui.click('research-fit', inspector);
                 await ui.point('research-graph', inspector);
                 await ui.click('research-node-MagicalEmpire', inspector);
                 assert.match(ui.control(await ui.snapshot(), 'research-requirements').value, /魔法帝国/);
