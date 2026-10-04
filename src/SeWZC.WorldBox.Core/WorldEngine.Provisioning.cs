@@ -44,7 +44,7 @@ public sealed partial class WorldEngine
 
     // Unlimited supply is a derived query result, never a stored resource amount.
     public static double DailyWaterYield(Tile tile) => IsFreshWater(tile) ? double.PositiveInfinity
-        : (tile.Terrain == TerrainType.Wetland ? 1 : tile.NaturalWaterYield) * (tile.DroughtTicks > 0 ? .2 : 1);
+        : tile.NaturalWaterYield * (tile.DroughtTicks > 0 ? .2 : 1);
 
     private double DrawWater(Resident person, int source, double wanted)
     {
@@ -67,32 +67,36 @@ public sealed partial class WorldEngine
     {
         var reachable = 0;
         // Sources outside the visible circle must have an actually learned address.
-        var bestBank = -1; var bestSource = -1; var bestDistance = int.MaxValue;
+        var bestBank = -1; var bestSource = -1; var bestScore = 0d;
         void Consider(int source)
         {
             if (source < 0 || source >= State.Tiles.Length || !IsWaterSource(State.Tiles[source]) || State.Tiles[source].FireTicks > 0) return;
             var x = source % State.Width; var y = source / State.Width;
-            if (State.Tiles[source].IsWalkable)
+            var available = Math.Min(1, AvailableWater(x, y));
+            if (available <= 0) return;
+            if (RaceTerrainRules.CanWalk(State.Tiles[source], person.Race))
             {
                 var distance = Distance(person.X, person.Y, x, y);
-                if (distance < bestDistance && VisibleSiteReachable(person, source, ref reachable)) { bestDistance = distance; bestBank = source; bestSource = source; }
+                var score = available / (1 + distance * .25);
+                if (score > bestScore && VisibleSiteReachable(person, source, ref reachable)) { bestScore = score; bestBank = source; bestSource = source; }
                 return;
             }
             foreach (var (dx, dy) in Directions)
             {
                 var xx = x + dx; var yy = y + dy;
-                if (!Walkable(xx, yy) || State.Tiles[Index(xx, yy)].FireTicks > 0) continue;
+                if (!Walkable(xx, yy, person.Race) || State.Tiles[Index(xx, yy)].FireTicks > 0) continue;
                 var distance = Distance(person.X, person.Y, xx, yy);
-                if (distance >= bestDistance) continue;
+                var score = available / (1 + distance * .25);
+                if (score <= bestScore) continue;
                 if (!VisibleSiteReachable(person, Index(xx, yy), ref reachable)) continue;
-                bestDistance = distance; bestBank = Index(xx, yy); bestSource = source;
+                bestScore = score; bestBank = Index(xx, yy); bestSource = source;
             }
         }
         foreach (var offset in VisibleResourceOffsets)
         {
             var x = person.X + offset.X; var y = person.Y + offset.Y;
             if (InBounds(x, y)) Consider(Index(x, y));
-            if (bestDistance == 0) break;
+            if (bestScore == 1) break;
         }
         // Distant learned sources can guide later exploration; a daily refill
         // must use a bank reachable within the currently visible terrain.
@@ -101,14 +105,16 @@ public sealed partial class WorldEngine
             var existing = person.Agent.Memory.FirstOrDefault(f => f.Kind == AgentFactKind.WaterSource && f.SubjectId == bestSource + 1);
             if (existing is null || State.Tick - existing.ObservedTick >= 120)
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.WaterSource, bestSource + 1,
-                    bestSource % State.Width, bestSource / State.Width, 1, "实地发现可取水的河湖或湿地"), copy: false);
+                    bestSource % State.Width, bestSource / State.Width, 1, "实地发现可取水的河湖或有供水的陆地"), copy: false);
         }
         return (bestBank, bestSource);
     }
 
     private void AddProvisionChoices(Resident person, Settlement home, List<GoalChoice> choices)
     {
-        if (State.Rules.Thirst && (person.Inventory.Water < .3 || person.Id % 5 == 0 && person.Inventory.Water < WaterReserve(person) + 3))
+        var needsWater = person.Inventory.Water < .3
+            && (person.Thirst >= 10 || DailyWaterYield(State.Tiles[Index(person.X, person.Y)]) < WaterUse(person));
+        if (State.Rules.Thirst && (needsWater || person.Id % 5 == 0 && person.Inventory.Water < WaterReserve(person) + 3))
         {
             var atHome = Distance(person.X, person.Y, home.X, home.Y) <= 1;
             if (atHome && home.Resources.Water >= .3)
@@ -116,11 +122,11 @@ public sealed partial class WorldEngine
             else
             {
                 var water = FindWaterSite(person);
-                if (water.Bank >= 0)
+                if (water.Bank >= 0 && (needsWater || DailyWaterYield(State.Tiles[water.Source]) >= .1))
                     choices.Add(new(AgentGoalKind.FetchWater, water.Bank % State.Width, water.Bank / State.Width,
-                        person.Inventory.Water < .3 ? 65 + person.Thirst : atHome && home.Resources.Water < home.Population * .5 ? 72 : 18,
-                        "前往实际见过的河湖或湿地取水，随身携带并运回家园", EntityId: water.Source + 1));
-                else if (person.Inventory.Water < .3)
+                        needsWater ? 65 + person.Thirst : atHome && home.Resources.Water < home.Population * .5 ? 72 : 18,
+                        "前往实际见过的河湖或有供水的陆地取水，随身携带并运回家园", EntityId: water.Source + 1));
+                else if (needsWater && water.Bank < 0)
                 {
                     if (person.Thirst < 40 && Distance(person.X, person.Y, home.X, home.Y) >= 12
                         && !(person.Agent.Goal.Kind == AgentGoalKind.ReturnHome && State.Tick - person.Agent.Goal.StartedTick > 48))
@@ -135,13 +141,13 @@ public sealed partial class WorldEngine
                     foreach (var offset in VisibleResourceOffsets)
                     {
                         var x = person.X + offset.X; var y = person.Y + offset.Y;
-                        if (!Walkable(x, y) || State.Tiles[Index(x, y)].FireTicks > 0) continue;
+                        if (!Walkable(x, y, person.Race) || State.Tiles[Index(x, y)].FireTicks > 0) continue;
                         var distance = Distance(x, y, person.X + heading.X * 6, person.Y + heading.Y * 6);
                         if (distance < bestDistance && VisibleSiteReachable(person, Index(x, y), ref reachable))
                         { best = Index(x, y); bestDistance = distance; }
                     }
                     if (best >= 0) choices.Add(new(AgentGoalKind.FetchWater, best % State.Width, best / State.Width,
-                        50 + person.Thirst, "沿眼前可通行土地勘察水源；尚未发现河湖或湿地"));
+                        50 + person.Thirst, "沿眼前可通行土地勘察水源；尚未发现河湖或有供水的陆地"));
                 }
             }
         }
@@ -192,20 +198,21 @@ public sealed partial class WorldEngine
             if (!InBounds(x, y)) continue;
             var index = Index(x, y); var tile = State.Tiles[index];
             if (tile.FireTicks > 0) continue;
-            if (tile.IsWalkable && EdibleAnimal(tile) != WildlifeKind.None && VisibleSiteReachable(person, index, ref reachable)) return (index, index, false);
-            if (tile.AnimalPopulation(WildlifeKind.Fish) < .5) continue;
+            if (RaceTerrainRules.CanWalk(tile, person.Race) && !IsWaterTerrain(tile.Terrain) && EdibleAnimal(tile) != WildlifeKind.None && VisibleSiteReachable(person, index, ref reachable)) return (index, index, false);
+            if (EdibleAnimal(tile, aquatic: true) == WildlifeKind.None) continue;
             foreach (var (dx, dy) in Directions)
-                if (Walkable(x + dx, y + dy) && State.Tiles[Index(x + dx, y + dy)].FireTicks == 0
+                if (Walkable(x + dx, y + dy, person.Race) && State.Tiles[Index(x + dx, y + dy)].FireTicks == 0
                     && VisibleSiteReachable(person, Index(x + dx, y + dy), ref reachable))
                     return (Index(x + dx, y + dy), index, true);
         }
         return (-1, -1, false);
     }
 
-    private static WildlifeKind EdibleAnimal(Tile tile)
+    private static WildlifeKind EdibleAnimal(Tile tile, bool aquatic = false)
     {
-        for (var species = 1; species <= (int)WildlifeKind.Waterfowl; species++)
-            if (species != (int)WildlifeKind.Wolf && tile.AnimalPopulation((WildlifeKind)species) >= .5) return (WildlifeKind)species;
+        foreach (var kind in AnimalRules.Species)
+            if (AnimalRules.For(kind).Diet == AnimalDiet.Herbivore && (aquatic ? IsWaterTerrain(tile.Terrain) && AnimalRules.For(kind).Aquatic : !IsWaterTerrain(tile.Terrain))
+                && tile.AnimalPopulation(kind) >= .5) return kind;
         return WildlifeKind.None;
     }
 
@@ -216,9 +223,9 @@ public sealed partial class WorldEngine
             || goal.Kind is not (AgentGoalKind.Hunt or AgentGoalKind.Fish)
             || State.Tick - person.MoveStartedTick < person.MoveDurationTicks
             || Distance(person.X, person.Y, source % State.Width, source / State.Width) > (goal.Kind == AgentGoalKind.Fish ? 1 : 0)) return false;
-        var tile = State.Tiles[source]; var kind = goal.Kind == AgentGoalKind.Fish ? WildlifeKind.Fish : EdibleAnimal(tile);
+        var tile = State.Tiles[source]; var kind = EdibleAnimal(tile, aquatic: goal.Kind == AgentGoalKind.Fish);
         if (kind == WildlifeKind.None || tile.FireTicks > 0) { person.Agent.NextThinkTick = State.Tick; return false; }
-        var yield = kind is WildlifeKind.Deer or WildlifeKind.Boar or WildlifeKind.Goat ? 2 : 1;
+        var yield = AnimalRules.For(kind).BodyMass;
         var amount = Math.Min(tile.AnimalPopulation(kind), .15 * State.Rules.GatheringRate * (person.SicknessTicks > 0 ? .4 : 1));
         amount = Math.Min(amount, (1_000_000 - person.Inventory.Food) / yield);
         tile.SetAnimalPopulation(kind, tile.AnimalPopulation(kind) - amount);

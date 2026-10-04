@@ -2,7 +2,8 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-public enum TerrainType { DeepWater = 0, Water = 1, Sand = 2, Grass = 3, Forest = 4, Mountain = 5, Snow = 6, Hills = 7, Wetland = 8, Desert = 9, River = 10, Tundra = 11, Lake = 12, DryFertile = 13 }
+public enum TerrainType { DeepWater = 0, Water = 1, Sand = 2, Grass = 3, Forest = 4, Mountain = 5, Snow = 6, Hills = 7, Wetland = 8, Desert = 9, River = 10, Tundra = 11, Lake = 12, DryFertile = 13,
+    Stream, LargeRiver, Meadow, Woodland, Rainforest, Savanna, Scrub, Floodplain, AlpineMeadow }
 public enum RaceKind { Human, Elf, Dwarf, Orc }
 public enum Profession { Child, Farmer, Lumberjack, Miner, Soldier, Builder, Trader, Messenger, Representative, Scholar, Mage }
 public enum ResidentActivity { Wandering, Working, Hungry, Marching, Sick, Eating, Resting, Talking, Delivering, Studying, Casting, Fleeing }
@@ -12,7 +13,7 @@ public enum WorldEventKind { Founding, Growth, Trade, Diplomacy, War, Disaster, 
 
 public sealed partial class WorldState
 {
-    [JsonRequired] public int FormatVersion { get; set; } = 11;
+    [JsonRequired] public int FormatVersion { get; set; } = 12;
     public int Seed { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
@@ -35,7 +36,17 @@ public sealed partial class WorldState
 
 public sealed partial class Tile
 {
-    public TerrainType Terrain { get; set; }
+    private TerrainType _terrain;
+    public TerrainType Terrain
+    {
+        get => _terrain;
+        set
+        {
+            if (_terrain == value) return;
+            _terrain = value;
+            if (value is not (TerrainType.Stream or TerrainType.River or TerrainType.LargeRiver)) RiverWidth = 0;
+        }
+    }
     public byte Elevation { get; set; }
     public byte Fertility { get; set; }
     private int _nationId;
@@ -54,7 +65,7 @@ public sealed partial class Tile
     public int FireTicks { get; set; }
     public int DroughtTicks { get; set; }
     [JsonIgnore] public bool IsWalkable => (Terrain == TerrainType.Mountain ? Improvement == LandImprovement.MountainPass
-        : Terrain is TerrainType.Water or TerrainType.River or TerrainType.Lake ? Improvement == LandImprovement.Bridge
+        : Terrain is TerrainType.Water or TerrainType.River or TerrainType.LargeRiver or TerrainType.Lake ? Improvement == LandImprovement.Bridge
         : Terrain != TerrainType.DeepWater);
 }
 

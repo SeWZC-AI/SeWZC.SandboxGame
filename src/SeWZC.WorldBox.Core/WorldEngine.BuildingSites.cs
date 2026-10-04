@@ -21,7 +21,7 @@ public sealed partial class WorldEngine
                 score += Math.Min(1, source.ResourceAmount / 25) * yield * 12;
             }
         if (kind == BuildingKind.Well) score += Math.Min(1, DailyWaterYield(tile)) * 15;
-        if (kind is BuildingKind.SignalTower or BuildingKind.Watchtower) score += tile.Terrain == TerrainType.Hills ? 5 : tile.Elevation / 100d;
+        if (kind is BuildingKind.SignalTower or BuildingKind.Watchtower) score += tile.Terrain is TerrainType.Hills or TerrainType.Mountain ? 5 : 0;
         if (kind == BuildingKind.ArcaneSanctum) score += TerrainRules.For(tile.Terrain).ManaRate * 4;
         foreach (var building in State.Society.Buildings)
         {
@@ -34,7 +34,7 @@ public sealed partial class WorldEngine
 
     private int BestBuildingSite(Settlement town, BuildingKind kind, bool founding = false)
     {
-        var radius = founding ? 6 : Math.Max(8, town.MaxClaimRadius);
+        var radius = founding ? (_creatingDemo ? 3 : 6) : Math.Max(8, town.MaxClaimRadius);
         return Circle(town.X, town.Y, radius)
             .Where(i => FacilityPlacementError(town.Id, kind, i % State.Width, i / State.Width, true) is null
                 && (founding || _citizens[town.Id].Any(p => p.Health > 0 && Distance(p.X, p.Y, i % State.Width, i / State.Width) <= 6)))

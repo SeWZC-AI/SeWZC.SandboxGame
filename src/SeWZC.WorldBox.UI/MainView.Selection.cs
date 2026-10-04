@@ -73,7 +73,7 @@ public sealed partial class MainView
         if (towns.Length == 0) { SetStatus("需要先有聚落与居民。"); return; }
         var terrain = _engine.State.Tiles[y * _engine.State.Width + x].Terrain;
         var kind = terrain == TerrainType.Mountain ? BuildingKind.MountainPass
-            : terrain is TerrainType.River or TerrainType.Water or TerrainType.Lake ? BuildingKind.Bridge : BuildingKind.Farm;
+            : terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Water or TerrainType.Lake ? BuildingKind.Bridge : BuildingKind.Farm;
         var panel = ModalPanel("安排居民改造地块", $"{WorldEngine.BuildingName(kind)}\n位置：{x}, {y}。投入材料后，由居民到场施工；桥梁和山路完工后才可通行。");
         var town = ObjectField(panel, "负责聚落", towns.Select(t => (t.Id, t.Name)), towns[0].Id, "land-town");
         var direction = EnumField(panel, "桥梁方向", BridgeDirection.Horizontal, WorldEngine.BridgeDirectionName, "land-bridge-direction"); direction.IsVisible = kind == BuildingKind.Bridge;

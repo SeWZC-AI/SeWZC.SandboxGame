@@ -63,7 +63,7 @@ var tests = new (string Name, Action Run)[]
 }.Concat(AgentBehaviorTests.Cases).Concat(EditorAndMigrationTests.Cases).Concat(SocietyBehaviorTests.Cases()).Concat(EvolutionTests.Cases).Concat(WorkQueryTests.Cases)
     .Concat(PersistenceRegressionTests.Cases).Concat(SocietyRegressionTests.Cases).Concat(AgentRegressionTests.Cases)
     .Concat(DiplomacyKnowledgeTests.Cases).Concat(StoryTests.Cases).Concat(PresentationWorldTests.Cases)
-    .Concat(TradeRegressionTests.Cases).Concat(AdvancementTests.Cases).Concat(LandTransportTests.Cases).Concat(EcologyAndConflictTests.Cases).Concat(DevelopmentPlanningTests.Cases).Concat(PerformanceBehaviorTests.Cases).Concat(ProvisioningAndClaimsTests.Cases).Concat(SurvivalAndDisasterTests.Cases).Concat(TownInfrastructureTests.Cases).ToArray();
+    .Concat(TradeRegressionTests.Cases).Concat(AdvancementTests.Cases).Concat(LandTransportTests.Cases).Concat(EcologyAndConflictTests.Cases).Concat(DevelopmentPlanningTests.Cases).Concat(PerformanceBehaviorTests.Cases).Concat(ProvisioningAndClaimsTests.Cases).Concat(SurvivalAndDisasterTests.Cases).Concat(TownInfrastructureTests.Cases).Concat(GeographyEcologyTests.Cases).ToArray();
 var filterOption = Array.IndexOf(args, "--filter");
 var suiteOption = Array.IndexOf(args, "--suite");
 var suite = suiteOption < 0 ? "unit" : args.ElementAtOrDefault(suiteOption + 1);
@@ -606,7 +606,7 @@ static void CheckResidents(WorldState state)
     {
         Check(resident.X >= 0 && resident.X < state.Width && resident.Y >= 0 && resident.Y < state.Height,
             $"Resident {resident.Id} is outside the map.");
-        Check(state.Tiles[resident.Y * state.Width + resident.X].IsWalkable,
+        Check(WorldEngine.CanTraverse(state.Tiles[resident.Y * state.Width + resident.X], resident.TravelMode, resident.Race),
             $"Resident {resident.Id} occupies impassable terrain.");
         Check(state.Nations.Any(n => n.Id == resident.NationId), $"Resident {resident.Id} has no nation.");
         Check(state.Settlements.Any(s => s.Id == resident.SettlementId && s.NationId == resident.NationId),

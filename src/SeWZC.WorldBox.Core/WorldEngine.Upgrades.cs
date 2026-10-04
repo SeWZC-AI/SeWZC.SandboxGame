@@ -12,10 +12,10 @@ public sealed partial class WorldEngine
     public static string BridgeDirectionName(BridgeDirection direction) => direction == BridgeDirection.Horizontal ? "左右" : "上下";
     public static int BridgeShoreLimit(int level) => Math.Clamp(level, 1, 3) * 2;
 
-    public bool CanTraverseStep(int fromX, int fromY, int toX, int toY, TravelMode mode)
+    public bool CanTraverseStep(int fromX, int fromY, int toX, int toY, TravelMode mode, RaceKind race = RaceKind.Human)
     {
         if (!InBounds(fromX, fromY) || !InBounds(toX, toY) || Distance(fromX, fromY, toX, toY) != 1
-            || !CanTraverse(State.Tiles[Index(toX, toY)], mode)) return false;
+            || !CanTraverse(State.Tiles[Index(toX, toY)], mode, race)) return false;
         if (mode != TravelMode.Foot) return true;
         var horizontal = fromY == toY;
         var from = State.Tiles[Index(fromX, fromY)]; var to = State.Tiles[Index(toX, toY)];
@@ -43,7 +43,7 @@ public sealed partial class WorldEngine
     public string? BridgePlacementError(int x, int y, BridgeDirection direction, int level = 1)
     {
         if (!Enum.IsDefined(direction) || level is < 1 or > 3) return "桥梁方向或等级无效";
-        if (!InBounds(x, y) || State.Tiles[Index(x, y)].Terrain is not (TerrainType.River or TerrainType.Water or TerrainType.Lake)) return "桥梁需要河流、湖泊或浅水";
+        if (!InBounds(x, y) || State.Tiles[Index(x, y)].Terrain is not (TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Water or TerrainType.Lake)) return "桥梁需要河流、湖泊或浅水";
         if (BridgeShoreDistance(x, y, direction) > BridgeShoreLimit(level)) return $"此方向离自然岸超过 {BridgeShoreLimit(level)} 格，需升级桥梁技术或换址";
         var dx = direction == BridgeDirection.Horizontal ? 1 : 0; var dy = 1 - dx;
         for (var sign = -1; sign <= 1; sign += 2)

@@ -6,6 +6,7 @@ internal static class PerformanceBehaviorTests
     [
         ("ecology updates daily bands and resumes from every phase", DailyEcology),
         ("ecology reads changed food capacity before the next band", CapacityEdits),
+        ("large-map ecology uses sparse cycles and resumes across band boundaries", SparseEcology),
         ("territory totals track edits and rebuild after loading", TerritoryEdits),
         ("buffered saves preserve complete JSON and cancel before returning a partial capture", BufferedSave)
     ];
@@ -16,7 +17,7 @@ internal static class PerformanceBehaviorTests
         engine.State.NaturalDisasters = false;
         foreach (var tile in engine.State.Tiles)
         {
-            tile.Terrain = TerrainType.Grass; tile.Fertility = 100; tile.ResourceAmount = 100;
+            tile.Terrain = TerrainType.Grass; tile.Fertility = 100; tile.ResourceAmount = 100; tile.NaturalWaterYield = .02;
             tile.Wildlife = WildlifeKind.Rabbit; tile.WildlifePopulation = 1; tile.OtherWildlife = default;
         }
         return engine;
@@ -50,6 +51,38 @@ internal static class PerformanceBehaviorTests
         tile.ResourceAmount = 0;
         engine.Step();
         Check(tile.WildlifePopulation > 0 && tile.WildlifePopulation <= 1.76, "Depleted food did not invalidate the cached habitat");
+    }
+
+    private static void SparseEcology()
+    {
+        var engine = WorldEngine.Create(73921, 128, 128, false);
+        engine.State.NaturalDisasters = false;
+        engine.State.Rules.ResourceRegeneration = false;
+        foreach (var tile in engine.State.Tiles)
+        {
+            tile.Terrain = TerrainType.Tundra; tile.Fertility = 100; tile.ResourceAmount = 100;
+            tile.NaturalWaterYield = .02; tile.Wildlife = WildlifeKind.None;
+            tile.WildlifePopulation = 0; tile.OtherWildlife = default;
+        }
+        var early = engine.State.Tiles[64];
+        var late = engine.State.Tiles[127 * 128 + 64];
+        early.Wildlife = late.Wildlife = WildlifeKind.Rabbit;
+        early.WildlifePopulation = late.WildlifePopulation = 1;
+        late.OtherWildlife = new() { SnowLeopard = .1 };
+        Check(engine.WildlifeCycleDays == 64, "Large-map cycle did not scale with its daily work budget");
+        engine.Step();
+        Check(early.WildlifePopulation != 1 && late.WildlifePopulation == 1,
+            "Distant animals were reevaluated before their scheduled turn");
+        engine.Step(61);
+        Check(late.WildlifePopulation == 1 && late.OtherWildlife.SnowLeopard == .1,
+            "Last band changed before its turn");
+        var resumed = WorldEngine.ImportJson(engine.ExportJson());
+        engine.Step(3); resumed.Step(3);
+        Check(engine.ExportJson() == resumed.ExportJson(), "Sparse ecology diverged across its last and first bands");
+        Check(late.WildlifePopulation != 1 && late.OtherWildlife.SnowLeopard != .1,
+            "Sparse updates missed herbivores or species in mask bit 31");
+        Check(engine.State.Tiles.All(t => t.WildlifePopulation >= 0 && t.OtherWildlife.SnowLeopard >= 0),
+            "Coarse predation and migration produced negative stock");
     }
 
     [UnitTest]

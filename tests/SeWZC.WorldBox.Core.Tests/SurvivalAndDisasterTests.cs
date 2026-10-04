@@ -40,7 +40,7 @@ internal static class SurvivalAndDisasterTests
     [UnitTest]
     private static void WetlandWater()
     {
-        var e = Flat(3); var index = 20 * 32 + 20; var wet = e.State.Tiles[index]; wet.Terrain = TerrainType.Wetland;
+        var e = Flat(3); var index = 20 * 32 + 20; var wet = e.State.Tiles[index]; wet.Terrain = TerrainType.Wetland; wet.Rainfall = wet.NaturalWaterYield = 1;
         Check(e.AvailableWater(20, 20) == 1, "Wetland retained only a trace water yield.");
         foreach (var r in e.State.Residents)
         {

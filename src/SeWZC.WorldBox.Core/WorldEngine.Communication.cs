@@ -86,7 +86,8 @@ public sealed partial class WorldEngine
             && _settlements.TryGetValue(person.SettlementId, out var camp) && !camp.FoundationPending
             && Distance(person.X, person.Y, camp.X, camp.Y) >= MinimumSettlementDistance - 6)
         {
-            var site = Circle(person.X, person.Y, 3).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].Fertility >= 40
+            var site = Circle(person.X, person.Y, 3).Where(i => RaceTerrainRules.CanWalk(State.Tiles[i], person.Race)
+                && !IsWaterTerrain(State.Tiles[i].Terrain) && State.Tiles[i].Fertility >= 40
                 && State.Tiles[i].ClaimedSettlementId == 0 && State.Tiles[i].FireTicks == 0
                 && State.Settlements.All(t => Distance(t.X, t.Y, i % State.Width, i / State.Width) >= MinimumSettlementDistance))
                 .OrderByDescending(i => State.Tiles[i].Fertility).ThenBy(i => i).FirstOrDefault(-1);
@@ -198,7 +199,7 @@ public sealed partial class WorldEngine
             if ((State.Tick + sender.Id) % 12 != 0 || State.Tick - sender.Agent.LastConversationTick < 6
                 || sender.Health <= 0) continue;
             _conversationNeighbors.Clear();
-            var conversationRadius = State.Society.Buildings.Any(b => b.Kind == BuildingKind.Market && IsFacilityOperating(b)
+            var conversationRadius = State.Society.Buildings.Any(b => b.Kind is BuildingKind.Market or BuildingKind.TradeGuild or BuildingKind.AssemblyHall && IsFacilityOperating(b)
                 && Distance(sender.X, sender.Y, b.X, b.Y) <= 3) ? 3 : 2;
             foreach (var tile in Circle(sender.X, sender.Y, conversationRadius))
                 for (var at = _conversationHeads[tile]; at != 0; at = _conversationNext[at - 1])

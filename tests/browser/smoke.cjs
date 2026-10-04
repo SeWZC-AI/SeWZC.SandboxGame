@@ -38,7 +38,7 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.waitFor(snapshot => snapshot.worldTick >= initialTick + 4, 'ordinary residents choosing work');
         await ui.paused();
         const baseline = await ui.save();
-        assert.equal(baseline.FormatVersion, 11);
+        assert.equal(baseline.FormatVersion, 12);
         assert.equal(baseline.Width, 256);
         assert.equal(baseline.Nations.length, 4);
         const home = baseline.Settlements[0];
@@ -242,6 +242,7 @@ const stock = (world, id) => town(world, id).Resources;
         const filteredNationId = noNewMagic.Nations[0].Id;
         assert.deepEqual(rowIds(await ui.snapshot()), noNewMagic.Events.filter(item => item.NationId === filteredNationId || item.SecondNationId === filteredNationId).reverse().slice(0, 100).map(item => item.Id));
         await ui.fill('history-search', 'no-event-with-this-text', scroll);
+        await ui.waitFor(snapshot => rowIds(snapshot).length === 0, 'debounced history search results');
         assert.deepEqual(rowIds(await ui.snapshot()), []);
         assert.deepEqual(await ui.save(), noNewMagic, 'Inspecting and filtering must not mutate the world');
         passed('history importance/nation/text filters match real event records and remain read-only');
@@ -266,7 +267,9 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.waitFor(snapshot => !snapshot.modalOpen && snapshot.status.startsWith('导入成功'), 'valid file import', 30000);
         const imported = await ui.save();
         assert.deepEqual(imported, exported, 'Current-format JSON must round-trip all fields, including explicit zero values');
-        for (const invalidVersion of [1, 2, 3, 4, 5, 6, 7, 8, 9, 999]) {
+        // Cover the first alpha, the immediately previous format and an unknown
+        // future format; each rejection must preserve every current-world field.
+        for (const invalidVersion of [1, exported.FormatVersion - 1, 999]) {
             const invalidPath = path.join(output, `invalid-${invalidVersion}.json`);
             fs.writeFileSync(invalidPath, JSON.stringify({ ...exported, FormatVersion: invalidVersion }));
             await importFile(invalidPath);

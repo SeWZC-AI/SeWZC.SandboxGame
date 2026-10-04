@@ -31,6 +31,8 @@ public sealed partial class WorldEngine
         if (person.Thirst > 80) effects.Add(new("缺水", "采集与岗位劳动效率 ×0.75；超过 95 时每日生命 -0.25", "身体状态"));
         if (person.Race == RaceKind.Elf) effects.Add(new("精灵采伐", "野外伐木产出 ×1.20", "种族"));
         if (person.Race == RaceKind.Dwarf) effects.Add(new("矮人采矿", "野外石矿产出 ×1.30", "种族"));
+        var adaptation = RaceTerrainRules.For(person.Race, State.Tiles[Index(person.X, person.Y)].Terrain);
+        effects.Add(new("地形适应", $"{(adaptation.Habitable ? "宜居" : "不宜居")}   地形移动耗时 ×{adaptation.Movement:0.00}   现场生产 ×{adaptation.Productivity:0.00}", "种族与当前地形"));
         effects.Add(new("勤勉", $"野外采集效率 ×{.75 + person.Agent.Personality.Diligence * .5:0.00}", "人格"));
         foreach (var town in State.Settlements)
         {

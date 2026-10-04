@@ -64,6 +64,7 @@ public sealed partial class WorldEngine
         if (!building.IsCompleted) return $"施工：{building.ConstructionProgress / building.ConstructionRequired:P0}   到场工人 {workers}/{building.WorkSlots}";
         if (building.IsUpgrading) return $"{(building.PendingDirection.HasValue ? "改向" : "升级")}：{building.UpgradeProgress:0.#} / {building.UpgradeRequired:0}\n等待居民到场施工";
         if (!building.Enabled) return "已停用";
+        if (!CanBuildRacialFacility(building.SettlementId, building.Kind)) return "缺少该族成年居民，暂停运营";
         if (a is null)
         {
             var town = RequireTown(building.SettlementId);
@@ -84,6 +85,7 @@ public sealed partial class WorldEngine
             };
             return activity + (PassiveFacility(building) || building.Kind is BuildingKind.TownCenter or BuildingKind.Bridge or BuildingKind.MountainPass ? "" : $"\n到场工作 {workers}/{building.WorkSlots} 人");
         }
+        if (!CanBuildRacialFacility(building.SettlementId, building.Kind)) return "缺少该族成年居民，暂停运营";
         var requirement = ProductionRequirement(building, a);
         if (requirement is not null) return requirement;
         if (ProductionYield(building, a) <= 0) return "土地无法产粮，需要恢复肥力";
@@ -94,6 +96,7 @@ public sealed partial class WorldEngine
 
     private bool CanProduce(Building building, Resident person, Advancement a)
     {
+        if (BuildingRace(building.Kind) is { } race && person.Race != race) return false;
         if (ProductionRequirement(building, a) is not null || ProductionYield(building, a) <= 0
             || a.Magic && (person.MagicTalent < 25 || person.MagicTraining < 8 || person.Mana < a.Mana)) return false;
         if (person.Inventory.Get(a.Output) + ProductionYield(building, a) > 1_000_000) return false;

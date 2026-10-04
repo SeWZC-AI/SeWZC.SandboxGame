@@ -263,6 +263,7 @@ public sealed partial class MainView
         Tile Tile() => _engine.State.Tiles[point.Y * _engine.State.Width + point.X];
         panel.Children.Add(LiveText(() => TerrainName(Tile().Terrain), 16, Mint));
         panel.Children.Add(Named(LiveText(() => _engine.GetTileProductionSummary(point.X, point.Y, _resourceVisibility)), "tile-water"));
+        panel.Children.Add(LiveText(() => $"海拔仅用于创世地形生成\n降水供水：{Tile().Rainfall:0.000000} / 格 / 日\n肥沃度：{Tile().Fertility}%"));
         panel.Children.Add(Named(Button("安排居民改造此地", () => ShowLandProject(point.X, point.Y)), "tile-improve"));
         panel.Children.Add(Named(Button("编辑此地资源与道路", () => ShowTileEditor(point.X, point.Y)), "tile-edit"));
         LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.X == point.X && b.Y == point.Y), b => b.Id.ToString(),

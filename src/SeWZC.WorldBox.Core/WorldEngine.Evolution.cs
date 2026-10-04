@@ -97,6 +97,8 @@ public sealed partial class WorldEngine
         if (kind == BuildingKind.TownCenter) return "每处聚落的中心由定居和重建维护，无需另行放置";
         if (!_settlements.TryGetValue(settlementId, out var town)) return "先选择归属聚落";
         if (!InBounds(x, y) || !BuildingTerrainValid(kind, State.Tiles[Index(x, y)])) return IsWaterfrontBuilding(kind) ? "船坞和码头需要水中的近岸地块" : kind == BuildingKind.Bridge ? "桥梁需要河流或浅水" : kind == BuildingKind.MountainPass ? "山路需要山地" : "需要可通行的陆地";
+        if (!CanBuildRacialFacility(settlementId, kind)) return "需要当地有该种族的成年居民";
+        if (kind == BuildingKind.SacredGrove && (!IsForestTerrain(State.Tiles[Index(x, y)].Terrain) || !State.Society.MagicEnabled)) return "精灵圣林需要森林和开放的魔法规则";
         if (kind == BuildingKind.Bridge && BridgePlacementError(x, y, direction ?? InferBridgeDirection(x, y), bridgeLevel) is { } bridgeError) return bridgeError;
         var range = kind is BuildingKind.Bridge or BuildingKind.MountainPass ? 24 : Math.Max(8, town.MaxClaimRadius);
         if (Distance(x, y, town.X, town.Y) > range) return $"距归属聚落超过 {range} 格";
@@ -104,17 +106,19 @@ public sealed partial class WorldEngine
         if (IsWaterfrontBuilding(kind) && !Directions.Any(d => Walkable(x + d.X, y + d.Y)
             && !IsWaterTerrain(State.Tiles[Index(x + d.X, y + d.Y)].Terrain))) return "需要紧邻自然陆岸，居民从岸边施工和工作";
         var tile = State.Tiles[Index(x, y)];
+        if (tile.Terrain == TerrainType.Mountain && kind != BuildingKind.MountainPass && !State.Residents.Any(p => p.SettlementId == settlementId && p.Race == RaceKind.Dwarf && p.Health > 0 && p.Age >= 14)) return "山地建设需要当地成年矮人";
         if (tile.FireTicks > 0) return "此处正在燃烧";
         if (tile.NationId != 0 && tile.NationId != town.NationId) return "此处属于其他国家";
         if (tile.ClaimedSettlementId != 0 && tile.ClaimedSettlementId != town.Id) return "此地已由其他城镇独占登记";
         if (kind == BuildingKind.Well && DailyWaterYield(tile) < .025) return "水井需要湿地或每日供水至少 0.025 的地块";
         if (kind is BuildingKind.LumberCamp or BuildingKind.Quarry && !Circle(x, y, 1).Any(i => i != Index(x, y)
-            && State.Tiles[i].ResourceAmount > 0 && (kind == BuildingKind.LumberCamp ? State.Tiles[i].Terrain == TerrainType.Forest
+            && State.Tiles[i].ResourceAmount > 0 && (kind == BuildingKind.LumberCamp ? IsForestTerrain(State.Tiles[i].Terrain)
                 : TerrainRules.For(State.Tiles[i].Terrain).StoneYield + TerrainRules.For(State.Tiles[i].Terrain).OreYield >= .5))) return "需要紧邻实际森林或石矿资源";
         if (State.Society.Buildings.Count >= MaxBuildings - 256) return "世界建筑数量已达上限";
         if (State.Society.Buildings.Any(b => b.X == x && b.Y == y)) return "此处已有建筑";
         if ((kind == BuildingKind.ArcaneSanctum || AdvancementRules.For(kind)?.Magic == true) && !State.Society.MagicEnabled) return "规则已关闭新的魔法发展";
         if (kind == BuildingKind.SignalTower && (!HasResearch(settlementId, ResearchKind.Electrification) || !HasResearch(settlementId, ResearchKind.SignalNetwork))) return "无线信号塔需要电气化与信号网络";
+        if (!gift && kind == BuildingKind.SacredGrove && !HasResearch(settlementId, ResearchKind.ArcaneArts)) return "需要当地掌握奥术基础";
         if (gift) return null;
         if (kind is BuildingKind.Bridge or BuildingKind.MountainPass && !HasResearch(settlementId, ResearchKind.Logistics)) return "需要先掌握驿路运输";
         if (kind is BuildingKind.Waystation or BuildingKind.Dock && !HasResearch(settlementId, ResearchKind.Logistics)) return "当地尚未掌握驿路运输";

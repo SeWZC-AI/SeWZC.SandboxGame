@@ -4,7 +4,8 @@ namespace SeWZC.WorldBox.Core;
 
 public enum BuildingKind { Farm, Workshop, Academy, Waystation, SignalTower, ArcaneSanctum, Infirmary,
     Foundry, PowerPlant, AutomatedFarm, Fabricator, Crystallizer, RunicGarden, AetherForge, MountainPass, Bridge, Dock, Airfield, TownCenter,
-    Shipyard, LumberCamp, Quarry, Well, Granary, Housing, Market, Watchtower }
+    Shipyard, LumberCamp, Quarry, Well, Granary, Housing, Market, Watchtower,
+    AssemblyHall, TradeGuild, SacredGrove, HerbGarden, DwarvenForge, MiningHall, HuntingCamp, WarDrum }
 public enum ResearchKind { Agriculture, Logistics, SignalNetwork, ArcaneArts,
     Industry, Electrification, Automation, AdvancedComputing, Crystalcraft, RunicEngineering, AetherMastery, Aviation }
 public enum InstitutionKind { Council, Monarchy, GuildCouncil }
@@ -128,6 +129,15 @@ public static class TerrainRules
         TerrainType.Desert => new(1.7, 8, 0.05, 0, 0.3, 0.12, 0.35),
         TerrainType.River => new(double.PositiveInfinity, 80, 0.7, 0, 0.2, 0.03, 1.7),
         TerrainType.Tundra => new(1.8, 20, 0.13, 0.08, 0.3, 0.15, 0.7),
+        TerrainType.Stream => new(2.5, 75, .3, 0, .1, 0, 1.5),
+        TerrainType.LargeRiver => new(double.PositiveInfinity, 80, .7, 0, .2, .03, 1.7),
+        TerrainType.Meadow => new(1, 90, .65, .05, .04, 0, 1.1),
+        TerrainType.Woodland => new(1.3, 65, .4, .45, .08, 0, 1.5),
+        TerrainType.Rainforest => new(2, 85, .5, .9, .03, 0, 2.2),
+        TerrainType.Savanna => new(1.2, 45, .28, .08, .08, 0, .8),
+        TerrainType.Scrub => new(1.4, 25, .12, .12, .25, .08, .6),
+        TerrainType.Floodplain => new(1.2, 95, .7, .12, .03, 0, 1.4),
+        TerrainType.AlpineMeadow => new(1.7, 50, .3, .08, .45, .2, 1.1),
         _ => new(1, 50, 0.2, 0.1, 0.1, 0, 1)
     };
     public static byte Fertility(TerrainType terrain) => For(terrain).Fertility;

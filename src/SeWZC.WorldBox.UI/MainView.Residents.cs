@@ -150,7 +150,7 @@ public sealed partial class MainView
             if (facilities)
                 choices.AddRange(_engine.State.Society.Buildings.Where(building => building.SettlementId == resident.SettlementId
                     && (kind == AgentGoalKind.Work || kind == AgentGoalKind.Study && building.Kind == BuildingKind.Academy
-                        || kind == AgentGoalKind.TrainMagic && building.Kind == BuildingKind.ArcaneSanctum))
+                        || kind == AgentGoalKind.TrainMagic && building.Kind is BuildingKind.ArcaneSanctum or BuildingKind.SacredGrove))
                     .Select(building => new EntityChoice(building.Id, $"{WorldEngine.BuildingName(building.Kind)} #{building.Id}\n{building.X},{building.Y}")));
             else if (sourceGoal)
             {
@@ -158,7 +158,9 @@ public sealed partial class MainView
                 for (var xx = Math.Max(0, resident.X - 6); xx <= Math.Min(_engine.State.Width - 1, resident.X + 6); xx++)
                 {
                     var index = yy * _engine.State.Width + xx; var tile = _engine.State.Tiles[index];
-                    if (kind == AgentGoalKind.FetchWater ? WorldEngine.IsWaterSource(tile) : kind == AgentGoalKind.Fish ? tile.AnimalPopulation(WildlifeKind.Fish) > 0 : tile.WildlifeMask != 0 && tile.IsWalkable)
+                    if (kind == AgentGoalKind.FetchWater ? WorldEngine.IsWaterSource(tile) : kind == AgentGoalKind.Fish
+                        ? WorldEngine.IsWaterTerrain(tile.Terrain) && AnimalRules.Species.Any(s => AnimalRules.For(s).Aquatic && AnimalRules.For(s).Diet == AnimalDiet.Herbivore && tile.AnimalPopulation(s) > 0)
+                        : tile.WildlifeMask != 0 && RaceTerrainRules.CanWalk(tile, resident.Race))
                         choices.Add(new(index + 1, $"{TerrainName(tile.Terrain)} {xx}, {yy}"));
                 }
             }

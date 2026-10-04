@@ -74,6 +74,14 @@ static void ToolPagination()
         if (page < pageCount - 1) Click(view, "tool-page-next");
     }
     Assert(Enum.GetValues<BuildingKind>().Where(k => k != BuildingKind.TownCenter).All(k => found.Contains("build:" + k)) && found.Contains("road:Road"), "Pagination hid a real tool");
+    Call(view, "SetCategory", "terrain"); found.Clear();
+    pageCount = (Enum.GetValues<TerrainType>().Length + 7) / 8;
+    for (var page = 0; page < pageCount; page++)
+    {
+        foreach (var tool in Field<string?[]>(view, "_slotTools")) if (tool is not null) found.Add(tool);
+        if (page < pageCount - 1) Click(view, "tool-page-next");
+    }
+    Assert(Enum.GetValues<TerrainType>().All(t => found.Contains(t.ToString())), "Pagination hid a terrain tool");
     Call(view, "SelectTool", "Human");
     Call(map, "PreviewPlacement", map.GetTileScreenPosition(32, 32), false);
     Assert(!Field<Border>(view, "_placementBar").IsVisible, "Mouse hover opened a shifting option bar");
@@ -347,7 +355,7 @@ static void TileForm()
     Control<NumericUpDown>(view, "tile-fertility").Value = 0;
     Control<NumericUpDown>(view, "tile-road").Value = 3;
     Click(view, "tile-apply");
-    var tile = engine.State.Tiles[32 * 128 + 32];
+    var tile = engine.State.Tiles[32 * engine.State.Width + 32];
     Assert(tile.ResourceAmount == 12.5 && tile.Fertility == 0 && tile.RoadLevel == 3, "Tile form did not commit values");
     Call(view, "ShowTileEditor", 32, 32);
     var before = engine.ExportJson();
@@ -656,11 +664,15 @@ static void MapPickerLifecycle()
 
 static WorldEngine TwoTownWorld(bool largeTotal = false)
 {
-    var engine = WorldEngine.Create(42, 128, 128, false);
+    var engine = WorldEngine.Create(42, 48, 48, false);
+    // These component checks cover residents, facilities and forms. Ecology has
+    // dedicated fixtures; a complete generated food web only enlarges every save.
+    foreach (var tile in engine.State.Tiles)
+    { tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default; }
     engine.PaintTerrain(32, 32, TerrainType.Grass, 5);
-    engine.PaintTerrain(96, 96, TerrainType.Grass, 5);
+    engine.PaintTerrain(44, 44, TerrainType.Grass, 5);
     engine.SpawnResidents(32, 32, RaceKind.Human, 1);
-    engine.SpawnResidents(96, 96, RaceKind.Human, 1);
+    engine.SpawnResidents(44, 44, RaceKind.Human, 1);
     var towns = engine.State.Settlements.ToArray();
     Assert(towns.Length == 2, "Fixture requires two settlements");
     towns[0].Resources = new ResourceStock { Food = largeTotal ? 900_000.25 : 100.2, Wood = 70.125, Stone = 8.3, Ore = 10.4 };

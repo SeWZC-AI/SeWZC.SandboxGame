@@ -14,11 +14,13 @@ public sealed partial class WorldEngine
             tile.Improvement = LandImprovement.None; tile.RoadLevel = 0; tile.BridgeLevel = 0;
             tile.LastHarvestTick = 0; tile.Harvested = 0; SeedDeposit(tile, index % State.Width, index / State.Width);
             tile.Fertility = TerrainRules.Fertility(terrain);
-            tile.NaturalWaterYield = terrain == TerrainType.DryFertile ? .001 : IsWaterTerrain(terrain) ? 0 : .004;
+            tile.NaturalWaterYield = terrain == TerrainType.Wetland ? 1 : terrain == TerrainType.DryFertile ? .001 : IsWaterTerrain(terrain) ? 0 : .004;
+            tile.Rainfall = tile.NaturalWaterYield;
+            tile.RiverWidth = terrain == TerrainType.Stream ? (byte)1 : terrain == TerrainType.River ? (byte)2 : terrain == TerrainType.LargeRiver ? (byte)4 : (byte)0;
             SeedPlants(tile);
             tile.ResourceAmount = 100;
             tile.Elevation = (byte)(terrain switch { TerrainType.DeepWater => 10, TerrainType.Water => 50, TerrainType.Sand => 75, TerrainType.Mountain => 210, TerrainType.Snow => 240, _ => 110 });
-            if (!tile.IsWalkable) { tile.NationId = 0; tile.ClaimedSettlementId = 0; tile.FireTicks = 0; tile.RoadLevel = 0; _burningTiles.Remove(index); }
+            if (!tile.IsWalkable || IsWaterTerrain(tile.Terrain)) { tile.NationId = 0; tile.ClaimedSettlementId = 0; tile.FireTicks = 0; tile.RoadLevel = 0; _burningTiles.Remove(index); }
         }
         _armyPaths.Clear();
         RelocateInvalidEntities();
@@ -29,7 +31,7 @@ public sealed partial class WorldEngine
     {
         if (!Enum.IsDefined(race)) throw new ArgumentOutOfRangeException(nameof(race));
         if (!InBounds(x, y)) return;
-        var index = FindWalkable(x, y, 8);
+        var index = FindWalkable(x, y, 8, race);
         if (index < 0 || State.Residents.Count >= MaxPopulation) return;
         x = index % State.Width; y = index / State.Width;
         count = Math.Clamp(count, 1, Math.Min(200, MaxPopulation - State.Residents.Count));
@@ -60,7 +62,7 @@ public sealed partial class WorldEngine
             {
                 var xx = spawnSites[site] % State.Width + dx; var yy = spawnSites[site] / State.Width + dy;
                 if (!InBounds(xx, yy) || Distance(x, y, xx, yy) > 3
-                    || !CanTraverseStep(spawnSites[site] % State.Width, spawnSites[site] / State.Width, xx, yy, TravelMode.Foot)) continue;
+                    || !CanTraverseStep(spawnSites[site] % State.Width, spawnSites[site] / State.Width, xx, yy, TravelMode.Foot, race)) continue;
                 var next = Index(xx, yy); if (spawnSeen.Add(next)) spawnSites.Add(next);
             }
         for (var i = 0; i < count; i++)
@@ -115,7 +117,7 @@ public sealed partial class WorldEngine
             {
                 var tile = State.Tiles[index];
                 if (!tile.IsWalkable) continue;
-                tile.Terrain = TerrainType.Sand; tile.Improvement = LandImprovement.None; tile.Fertility = 5; tile.ResourceAmount = 0; tile.RoadLevel = 0; tile.BridgeLevel = 0; tile.Plants = default;
+                tile.Terrain = TerrainType.Sand; tile.RiverWidth = 0; tile.Improvement = LandImprovement.None; tile.Fertility = 5; tile.ResourceAmount = 0; tile.RoadLevel = 0; tile.BridgeLevel = 0; tile.Plants = default;
                 tile.FireTicks = 12; _burningTiles.Add(index);
             }
             foreach (var resident in State.Residents.Where(r => Distance(r.X, r.Y, x, y) <= radius))
@@ -211,10 +213,16 @@ public sealed partial class WorldEngine
     {
         foreach (var settlement in State.Settlements.ToArray())
         {
-            if (Walkable(settlement.X, settlement.Y)) continue;
+            var center = State.Tiles[Index(settlement.X, settlement.Y)];
+            if (center.IsWalkable && !IsWaterTerrain(center.Terrain) || center.Terrain == TerrainType.Mountain
+                && _citizens.GetValueOrDefault(settlement.Id)?.Any(p => p.Race == RaceKind.Dwarf && p.Health > 0 && p.Age >= 14) == true)
+            {
+                ClaimTerritory(settlement, 6);
+                continue;
+            }
             State.Tiles[Index(settlement.X, settlement.Y)].SettlementId = 0;
             var position = Circle(settlement.X, settlement.Y, 12)
-                .Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].SettlementId == 0 && !State.Society.Buildings.Any(b => b.X == i % State.Width && b.Y == i / State.Width) && (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == settlement.NationId))
+                .Where(i => State.Tiles[i].IsWalkable && !IsWaterTerrain(State.Tiles[i].Terrain) && State.Tiles[i].SettlementId == 0 && !State.Society.Buildings.Any(b => b.X == i % State.Width && b.Y == i / State.Width) && (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == settlement.NationId))
                 .OrderBy(i => Distance(i % State.Width, i / State.Width, settlement.X, settlement.Y))
                 .FirstOrDefault(-1);
             if (position >= 0)
@@ -228,10 +236,10 @@ public sealed partial class WorldEngine
         }
         foreach (var resident in State.Residents)
         {
-            if (CanTraverse(State.Tiles[Index(resident.X, resident.Y)], resident.TravelMode)) continue;
-            var position = FindWalkable(resident.X, resident.Y, 10);
+            if (CanTraverse(State.Tiles[Index(resident.X, resident.Y)], resident.TravelMode, resident.Race)) continue;
+            var position = FindWalkable(resident.X, resident.Y, 10, resident.Race);
             if (position >= 0) { resident.X = position % State.Width; resident.Y = position / State.Width; DamageResident(resident, 15, DeathCause.TerrainChange); }
-            else DamageResident(resident, resident.Health, State.Tiles[Index(resident.X, resident.Y)].Terrain is TerrainType.Water or TerrainType.River or TerrainType.DeepWater or TerrainType.Lake ? DeathCause.Drowning : DeathCause.TerrainChange);
+            else DamageResident(resident, resident.Health, IsWaterTerrain(State.Tiles[Index(resident.X, resident.Y)].Terrain) ? DeathCause.Drowning : DeathCause.TerrainChange);
         }
         ArchiveDeadResidents();
         foreach (var army in State.Armies.ToArray())

@@ -6,7 +6,7 @@ internal static class VisualFixture
     {
         var engine = WorldEngine.Create(73, 64, 64, false);
         foreach (var tile in engine.State.Tiles)
-        { tile.Terrain = TerrainType.Grass; tile.ResourceAmount = 100; tile.Fertility = 90; tile.Wildlife = WildlifeKind.Rabbit; tile.WildlifePopulation = 4; tile.OtherWildlife = new() { Deer = 1 }; }
+        { tile.Terrain = TerrainType.Grass; tile.Rainfall = tile.NaturalWaterYield = .03; tile.ResourceAmount = 100; tile.Fertility = 90; tile.Wildlife = WildlifeKind.Rabbit; tile.WildlifePopulation = 4; tile.OtherWildlife = new() { Deer = 1 }; }
         var positions = new[] { (16, 16), (40, 16), (16, 40), (40, 40) };
         foreach (var race in Enum.GetValues<RaceKind>())
         {
@@ -40,6 +40,14 @@ internal static class VisualFixture
             engine.State.Tiles[wetland].Terrain = TerrainType.Wetland;
             foreach (var kind in new[] { BuildingKind.Dock, BuildingKind.Shipyard, BuildingKind.LumberCamp, BuildingKind.Quarry,
                 BuildingKind.Well, BuildingKind.Granary, BuildingKind.Housing, BuildingKind.Market, BuildingKind.Watchtower })
+            {
+                var site = Enumerable.Range(0, engine.State.Tiles.Length)
+                    .Where(i => engine.FacilityPlacementError(town.Id, kind, i % 64, i / 64, true) is null)
+                    .OrderByDescending(i => engine.BuildingSiteScore(town.Id, kind, i % 64, i / 64)).ThenBy(i => i).First();
+                engine.GrantFacility(town.Id, kind, site % 64, site / 64);
+            }
+            var race = engine.State.Nations.Single(n => n.Id == town.NationId).FoundingRace;
+            foreach (var kind in Enum.GetValues<BuildingKind>().Where(k => WorldEngine.BuildingRace(k) == race))
             {
                 var site = Enumerable.Range(0, engine.State.Tiles.Length)
                     .Where(i => engine.FacilityPlacementError(town.Id, kind, i % 64, i / 64, true) is null)

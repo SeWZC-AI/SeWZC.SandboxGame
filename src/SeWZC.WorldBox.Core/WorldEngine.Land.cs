@@ -2,11 +2,11 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    public static bool CanTraverse(Tile tile, TravelMode mode) => mode switch
+    public static bool CanTraverse(Tile tile, TravelMode mode, RaceKind race = RaceKind.Human) => mode switch
     {
         TravelMode.Aircraft => true,
-        TravelMode.Boat => tile.IsWalkable || tile.Terrain is TerrainType.River or TerrainType.Water or TerrainType.DeepWater or TerrainType.Lake,
-        _ => tile.IsWalkable
+        TravelMode.Boat => tile.IsWalkable || tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Water or TerrainType.DeepWater or TerrainType.Lake,
+        _ => RaceTerrainRules.CanWalk(tile, race)
     };
 
     public static string ImprovementName(LandImprovement kind) => kind switch
@@ -18,7 +18,7 @@ public sealed partial class WorldEngine
     private void SeedDeposit(Tile tile, int x, int y)
     {
         tile.Deposit = null; tile.DepositAmount = 0; tile.DepositDiscovered = false;
-        if (tile.Terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.River or TerrainType.Lake) return;
+        if (tile.Terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Lake) return;
         var hash = unchecked((uint)(x * 374761393 + y * 668265263 + State.Seed * 31 + 937));
         hash = (hash ^ (hash >> 13)) * 1274126177;
         tile.Deposit = (hash % 43) switch { 0 or 1 => ResourceKind.Coal, 2 => ResourceKind.Oil, 3 => ResourceKind.RareEarth, _ => null };
@@ -37,7 +37,7 @@ public sealed partial class WorldEngine
             while (queue.TryDequeue(out var index))
             {
                 if (++count > 32)
-                { State.Tiles[index].Terrain = TerrainType.Hills; State.Tiles[index].Fertility = TerrainRules.Fertility(TerrainType.Hills); }
+                { State.Tiles[index].Terrain = TerrainType.Hills; }
                 foreach (var (dx, dy) in Directions)
                 {
                     var x = index % State.Width + dx; var y = index / State.Width + dy;
@@ -52,10 +52,11 @@ public sealed partial class WorldEngine
 
     private static bool BuildingTerrainValid(BuildingKind kind, Tile tile) => kind switch
     {
-        BuildingKind.Bridge => tile.Terrain is TerrainType.River or TerrainType.Water or TerrainType.Lake,
+        BuildingKind.Bridge => tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Water or TerrainType.Lake,
         BuildingKind.MountainPass => tile.Terrain == TerrainType.Mountain,
-        BuildingKind.Dock or BuildingKind.Shipyard => tile.Terrain is TerrainType.River or TerrainType.Water or TerrainType.Lake,
-        _ => tile.IsWalkable
+        BuildingKind.SacredGrove => IsForestTerrain(tile.Terrain),
+        BuildingKind.Dock or BuildingKind.Shipyard => tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Water or TerrainType.Lake,
+        _ => !IsWaterTerrain(tile.Terrain) && (tile.IsWalkable || tile.Terrain == TerrainType.Mountain)
     };
 
     private void CompleteLandImprovement(Building building)
@@ -64,7 +65,7 @@ public sealed partial class WorldEngine
         if (building.Kind is BuildingKind.Farm or BuildingKind.AutomatedFarm or BuildingKind.RunicGarden)
         {
             tile.Improvement = LandImprovement.Farmland;
-            if (tile.Terrain == TerrainType.Forest) tile.Terrain = TerrainType.Grass;
+            if (IsForestTerrain(tile.Terrain)) tile.Terrain = TerrainType.Grass;
         }
         else if (building.Kind == BuildingKind.MountainPass)
         { tile.Improvement = LandImprovement.MountainPass; tile.RoadLevel = (byte)building.Level; }
@@ -87,7 +88,7 @@ public sealed partial class WorldEngine
             if (!InBounds(x, y) || Distance(x, y, targetX, targetY) >= Distance(person.X, person.Y, targetX, targetY)) continue;
             var direction = dx != 0 ? BridgeDirection.Horizontal : BridgeDirection.Vertical;
             var first = State.Tiles[Index(x, y)];
-            if (first.Terrain is not (TerrainType.River or TerrainType.Water or TerrainType.Lake) || first.Improvement == LandImprovement.Bridge) continue;
+            if (first.Terrain is not (TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Water or TerrainType.Lake) || first.Improvement == LandImprovement.Bridge) continue;
             // Both banks and every intervening section must be seen and usable on one axis.
             // A mismatched completed bridge is an obstacle, never a reason to build sideways.
             var farBank = false; var span = 0; var unfinished = 0;
@@ -203,6 +204,14 @@ public sealed partial class WorldEngine
             : $"每日可取水 {DailyWaterYield(tile):0.###}   今日剩余 {AvailableWater(x, y):0.###}（未取用的水不累积）"
                 + (DailyWaterYield(tile) < .025 ? "\n供水不足一名成年居民每日所需的 0.025，建议到河湖岸边打水" : ""));
         if (tile.ClaimedSettlementId != 0) lines.Add("实际地盘：" + _settlements.GetValueOrDefault(tile.ClaimedSettlementId)?.Name);
+        lines.Add($"生成海拔 {tile.Elevation} / 255   降水 {tile.Rainfall:0.000000} / 格 / 日");
+        lines.Add($"河湖补水 {Math.Max(0, tile.NaturalWaterYield - tile.Rainfall):0.000000} / 日");
+        if (tile.RiverWidth > 0) lines.Add($"水道宽度 {tile.RiverWidth} 格；{(tile.Terrain == TerrainType.Stream ? "小溪可减速步行" : "需桥梁或舟船通行")}");
+        foreach (var race in Enum.GetValues<RaceKind>())
+        {
+            var adaptation = RaceTerrainRules.For(race, tile.Terrain);
+            lines.Add($"{RaceNames[(int)race]}：{(adaptation.Habitable ? "宜居" : "不宜居")}   {(RaceTerrainRules.CanWalk(tile, race) ? "可步行" : "需通道或载具")}   地形生产 ×{adaptation.Productivity:0.00}");
+        }
         if (tile.IsWalkable) lines.Add($"可采储量 {tile.ResourceAmount:0.#}   肥力 {tile.Fertility}%");
         if (tile.Improvement == LandImprovement.Farmland) lines.Add("耕地：需要居民到场耕作，产物随身运回家园");
         if (tile.FireTicks > 0) lines.Add($"正在燃烧：剩余 {tile.FireTicks} 日，暂停生产");
@@ -213,10 +222,10 @@ public sealed partial class WorldEngine
         if (tile.Harvested > 0) lines.Add($"累计采收 {tile.Harvested:0.#}   最近劳动距今 {Math.Max(0, State.Tick - tile.LastHarvestTick)} 日");
         var plants = PlantResources.At(tile).ToArray();
         if (plants.Length > 0) lines.Add("植物：" + string.Join("、", plants.Select(p => $"{PlantResources.Name(p.Kind)} 覆盖 {p.Cover:P0}")) + "（共享可采储量）");
-        for (var species = 1; species <= (int)WildlifeKind.Fish; species++)
+        for (var species = 1; species < AnimalRules.SpeciesCount; species++)
         {
             var speciesKind = (WildlifeKind)species; var population = tile.AnimalPopulation(speciesKind);
-            if (population > 0) lines.Add($"野生动物：{WildlifeName(speciesKind)}   数量 {population:0.0} / 容量 {WildlifeCapacity(tile, speciesKind):0.0}");
+            if (population > 0) lines.Add($"野生动物：{WildlifeName(speciesKind)}（{AnimalRules.For(speciesKind).Size switch { AnimalSize.Small => "小型", AnimalSize.Medium => "中型", _ => "大型" }}{(AnimalRules.For(speciesKind).Diet == AnimalDiet.Carnivore ? "食肉" : "食草")}）   数量 {population:0.0} / 容量 {WildlifeCapacity(tile, speciesKind):0.0}");
         }
         return string.Join("\n", lines);
     }
