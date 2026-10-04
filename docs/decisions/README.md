@@ -30,9 +30,10 @@
 | [0022](0022-geography-races-and-food-web.md) | 地理、种族适应与食物链 | 采用 |
 | [0023](0023-connected-town-work-and-fishing.md) | 连续城镇领地、稳定任务与真实捕鱼 | 采用 |
 | [0024](0024-territory-activation-and-simulation-decisions.md) | 城镇生效面积、资源来源与可执行任务 | 采用 |
-| [0025](0025-research-trees-and-empire-simulation.md) | 科技树、帝国研究与实物发展预算 | 采用；卡片呈现被 0026 替代 |
+| [0025](0025-research-trees-and-empire-simulation.md) | 科技树、帝国研究与实物发展预算 | 部分采用；帝国项目被 0028 替代 |
 | [0026](0026-connected-research-graph.md) | 有真实依赖连线的科技树 | 采用；混排与外围连线被 0027 替代 |
-| [0027](0027-readable-research-branches.md) | 两条帝国路线分别成树，支线独占位置 | 采用 |
+| [0027](0027-readable-research-branches.md) | 两条帝国路线分别成树，支线独占位置 | 部分采用；帝国汇合被 0028 替代 |
+| [0028](0028-civilization-outcomes-and-research-gameplay.md) | 文明结果与研究解锁玩法 | 采用 |
 
 ## 何时新增或替代
 
@@ -67,5 +68,3 @@
 ```
 
 只记录对未来修改有用的理由，避免复制全部代码、产品清单或聊天过程。
-
-- [0028：文明结果与研究解锁玩法](0028-civilization-outcomes-and-research-gameplay.md)

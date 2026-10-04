@@ -13,12 +13,14 @@ fs.mkdirSync(output, { recursive: true });
     try {
         for (const mobile of [false, true]) {
             const label = mobile ? 'mobile' : 'desktop';
+            if (process.env.WORLDBOX_GAMEPLAY_CASES && !process.env.WORLDBOX_GAMEPLAY_CASES.split(',').includes(label)) continue;
             const context = await browser.newContext({ viewport: mobile ? { width: 390, height: 844 } : { width: 1440, height: 1040 }, hasTouch: mobile, isMobile: mobile });
             const page = await context.newPage(), ui = new UiDriver(page, { touch: mobile });
             const errors = observeBrowserErrors(page);
             try {
                 await page.goto(testUrl(baseUrl)); await ui.ready(); await ui.paused();
                 const world = await ui.save(); assert.equal(world.FormatVersion, 14);
+                world.Tick = Math.max(1, world.Tick); // No person is midway through a tick-zero movement.
                 const town = world.Settlements[0], person = world.Residents.find(r => r.SettlementId === town.Id);
                 Object.assign(town.Resources, { Food: 1000, Water: 1000, Wood: 1000, Stone: 1000, Alloy: 1000, Crystals: 1000, Medicine: 100 });
                 const research = world.Society.Research.find(r => r.SettlementId === town.Id);
