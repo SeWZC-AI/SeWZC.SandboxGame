@@ -184,7 +184,7 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 
 研究图、说明、成本和前置统一维护在 `ResearchRules.cs`，每批生产配方仍由 `AdvancementRules.cs` 负责。新增知识的效果需进入实际采收、生产、训练等规则及对应效果展示，不能只新增界面节点。矿工材料目标是保存状态；生产预算缓存只在居民阶段存在，退出阶段必须清空。
 
-科技树布局只属于 UI。节点位置与每条实际依赖的线路由 `ResearchTreeLayout` 生成；`ResearchGraphControl` 保留拖动、缩放与定位，周期刷新不替换节点或复位视野。Headless 检查两条帝国树与共同基础的连接覆盖、节点重叠、线路穿越和终点不绕外围；浏览器 `research-trees.cjs` 使用交付 ZIP 中的真实存档，检查节点上的鼠标／真实触摸横向与纵向拖动、缩放、完整概览与存档不变性。触屏回归须固定同一手势的触点编号，可用 `WORLDBOX_RESEARCH_CASES=technology-mobile,magic-mobile` 聚焦失败场景；默认执行桌面／触屏共四个场景。核心规则未变的图形修正无需重跑帝国模拟。
+科技树布局只属于 UI。节点位置与每条实际依赖的线路由 `ResearchTreeLayout` 生成；`ResearchGraphControl` 保留拖动、缩放与定位，周期刷新不替换节点或复位视野。Headless 检查两条研究树与共同基础的连接覆盖、节点重叠、线路穿越和终点不绕外围；浏览器 `research-trees.cjs` 使用交付 ZIP 中的真实存档，检查节点上的鼠标／真实触摸横向与纵向拖动、缩放、完整概览与存档不变性。触屏回归须固定同一手势的触点编号，可用 `WORLDBOX_RESEARCH_CASES=technology-mobile,magic-mobile` 聚焦失败场景；默认执行桌面／触屏共四个场景。核心规则未变的图形修正无需重跑帝国模拟。
 
 复现完整自主科技路线：
 
@@ -193,3 +193,10 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 ```
 
 将 `--technology` 替换为 `--arcane-industry` 可运行魔法帝国路线。`--require-empire` 失败时返回非零，要求同一聚落完整掌握路线并有各配套设施真实生产记录；`--until-empire` 达标后继续 1,200 日再保存。报告记录实际推进日数、首次达标、各采样、死亡原因和 24 日保存续演校验。繁荣规则场景与默认战争／灾害世界的结果须分别说明。
+
+
+### 格式 14 研究玩法扩展
+
+`WorldEngine.ResearchGameplay.cs` 负责文明条件、公共服务、新岗位、铁路、折跃与射击，`WorldEngine.KnowledgeQueries.cs` 负责逐日派生知识索引。研究声明的建筑／职业／法术与操作入口由 `MainView.ResearchActions.cs` 执行正常编辑命令，不能在测试桥中添加修改入口。可变保存字段必须同步验证；枚举槽 18、23 为已删除的错误帝国项目，不得复用。
+
+完整模拟以 `GetCivilizationProgress` 为同一判据，必须检查配套设施的健康、停用、领地、完成状态及真实首批记录。`ResearchGameplayTests` 验证新机制的成本、范围、交战知识、拒绝时不变和保存续演；浏览器 `research-gameplay.cjs` 在桌面／触屏走实际岗位、建造、铁路、折跃与法术入口，`research-trees.cjs` 导入当前交付 ZIP 检查图形与只读行为。新增内容不能仅依赖 enum 数量测试。

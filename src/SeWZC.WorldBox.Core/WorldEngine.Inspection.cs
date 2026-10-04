@@ -9,7 +9,9 @@ public sealed partial class WorldEngine
         Profession.Child => "孩童", Profession.Farmer => "农民", Profession.Lumberjack => "伐木工",
         Profession.Miner => "矿工", Profession.Soldier => "战士", Profession.Builder => "建造者",
         Profession.Trader => "商人", Profession.Messenger => "信使", Profession.Representative => "代表",
-        Profession.Fisher => "渔民", Profession.Scholar => "学者", Profession.Mage => "法师", _ => "未知职业"
+        Profession.Fisher => "渔民", Profession.Scholar => "学者", Profession.Mage => "法师",
+        Profession.Engineer => "工程师", Profession.Physician => "医师", Profession.Firefighter => "消防员", Profession.Ranger => "游击射手",
+        Profession.Archivist => "文献师", Profession.Battlemage => "战斗法师", Profession.Surveyor => "测绘员", Profession.Gardener => "园艺师", _ => "未知职业"
     };
 
     public bool IsDepositVisible(Tile tile, ResourceVisibility visibility) => tile.Deposit is { } kind
@@ -18,6 +20,7 @@ public sealed partial class WorldEngine
 
     public static string BuildingDescription(BuildingKind kind) => kind switch
     {
+        >= BuildingKind.Reservoir when AdvancementRules.For(kind) is null => ResearchRules.Unlocking(kind)?.Effect ?? "",
         BuildingKind.AssemblyHall => "人类议事厅：当地有成年的人类可建。人类到场携带粮水值守，为两格内居民缓解社交需求，并为附近居民提供三格当面交流范围。",
         BuildingKind.TradeGuild => "人类商贸公会：人类携带粮水到场值守，为三格内本地商人提高行走速度 15%，并提供三格当面交流范围。升级提高服务效率。",
         BuildingKind.SacredGrove => "精灵圣林：保留森林，需要奥术基础和开放魔法规则。精灵携带粮水到场训练，每单位劳动提高训练 0.1、恢复魔力 0.3。",
@@ -79,6 +82,7 @@ public sealed partial class WorldEngine
             var missing = new[] { ResearchKind.Electrification, ResearchKind.SignalNetwork }.Where(k => !HasResearch(town.Id, k)).Select(ResearchName).ToArray();
             if (missing.Length > 0) return "缺少本地研究：" + string.Join("、", missing);
         }
+        if (b.Kind >= BuildingKind.Reservoir) return ExpansionFacilityStatus(b);
         if (b.Kind == BuildingKind.Academy)
         {
             var research = State.Society.Research.First(r => r.SettlementId == town.Id);

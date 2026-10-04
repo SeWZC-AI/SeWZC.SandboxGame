@@ -11,27 +11,32 @@ public sealed partial class WorldEngine
         {
             State.Tick++;
             Reindex();
-            UpdateDisasters();
-            TickWildlife();
-            TickPlants();
-            UpdateResidents();
-            UpdateAgentNeedsAndActions();
-            UpdateLocalCommunication();
-            TickSociety();
-            TickDiplomacy();
-            TickLocalConflicts();
-            TickMigrationAndSecession();
-            Reindex();
-            if (State.Tick % 12 == 0) GrowSettlements();
-            if (State.Tick % 30 == 0) RefreshTerritoryClaims();
-            UpdateArmies();
-            ArchiveDeadResidents();
-            Reindex();
-            foreach (var settlement in State.Settlements.Where(s => _citizens[s.Id].Count == 0).ToArray()) RemoveSettlement(settlement, "居民离散，聚落成为遗址");
-            RemoveEmptyNations();
-            ReconcileSocietyTopology();
-            RefreshTotals();
-            ObserveProjects();
+            BeginKnowledgeQueries();
+            try
+            {
+                UpdateDisasters();
+                TickWildlife();
+                TickPlants();
+                UpdateResidents();
+                UpdateAgentNeedsAndActions();
+                UpdateLocalCommunication();
+                TickSociety();
+                TickDiplomacy();
+                TickLocalConflicts();
+                TickMigrationAndSecession();
+                Reindex();
+                if (State.Tick % 12 == 0) GrowSettlements();
+                if (State.Tick % 30 == 0) RefreshTerritoryClaims();
+                UpdateArmies();
+                ArchiveDeadResidents();
+                Reindex();
+                foreach (var settlement in State.Settlements.Where(s => _citizens[s.Id].Count == 0).ToArray()) RemoveSettlement(settlement, "居民离散，聚落成为遗址");
+                RemoveEmptyNations();
+                ReconcileSocietyTopology();
+                RefreshTotals();
+                ObserveProjects();
+            }
+            finally { EndKnowledgeQueries(); }
         }
     }
 
@@ -42,6 +47,7 @@ public sealed partial class WorldEngine
         stock.Alloy = Math.Clamp(stock.Alloy, 0, 1_000_000); stock.EnergyCells = Math.Clamp(stock.EnergyCells, 0, 1_000_000);
         stock.Crystals = Math.Clamp(stock.Crystals, 0, 1_000_000);
         foreach (var kind in MineralAndVehicleResources) stock.Set(kind, Math.Clamp(stock.Get(kind), 0, 1_000_000));
+        stock.Tools = Math.Clamp(stock.Tools, 0, 1_000_000); stock.Medicine = Math.Clamp(stock.Medicine, 0, 1_000_000); stock.Ammunition = Math.Clamp(stock.Ammunition, 0, 1_000_000);
     }
 
     private void UpdateResidents()

@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-public enum ResourceKind { Food, Wood, Stone, Ore, Alloy, EnergyCells, Crystals, Coal, Oil, RareEarth, Boats, Aircraft, Water }
+public enum ResourceKind { Food, Wood, Stone, Ore, Alloy, EnergyCells, Crystals, Coal, Oil, RareEarth, Boats, Aircraft, Water, Tools, Medicine, Ammunition }
 
 public sealed partial class ResourceStock
 {
@@ -16,13 +16,17 @@ public sealed partial class ResourceStock
     [JsonRequired] public double RareEarth { get; set; }
     [JsonRequired] public double Boats { get; set; }
     [JsonRequired] public double Aircraft { get; set; }
+    [JsonRequired] public double Tools { get; set; }
+    [JsonRequired] public double Medicine { get; set; }
+    [JsonRequired] public double Ammunition { get; set; }
 
     public double Get(ResourceKind kind) => kind switch
     {
         ResourceKind.Water => Water, ResourceKind.Food => Food, ResourceKind.Wood => Wood, ResourceKind.Stone => Stone,
         ResourceKind.Ore => Ore, ResourceKind.Alloy => Alloy, ResourceKind.EnergyCells => EnergyCells,
         ResourceKind.Crystals => Crystals, ResourceKind.Coal => Coal, ResourceKind.Oil => Oil,
-        ResourceKind.RareEarth => RareEarth, ResourceKind.Boats => Boats, ResourceKind.Aircraft => Aircraft, _ => throw new ArgumentOutOfRangeException(nameof(kind))
+        ResourceKind.RareEarth => RareEarth, ResourceKind.Boats => Boats, ResourceKind.Aircraft => Aircraft,
+        ResourceKind.Tools => Tools, ResourceKind.Medicine => Medicine, ResourceKind.Ammunition => Ammunition, _ => throw new ArgumentOutOfRangeException(nameof(kind))
     };
     public void Set(ResourceKind kind, double value)
     {
@@ -41,23 +45,31 @@ public sealed partial class ResourceStock
             case ResourceKind.RareEarth: RareEarth = value; break;
             case ResourceKind.Boats: Boats = value; break;
             case ResourceKind.Aircraft: Aircraft = value; break;
+            case ResourceKind.Tools: Tools = value; break;
+            case ResourceKind.Medicine: Medicine = value; break;
+            case ResourceKind.Ammunition: Ammunition = value; break;
             default: throw new ArgumentOutOfRangeException(nameof(kind));
         }
     }
     public ResourceStock Copy() => new() { Water = Water, Food = Food, Wood = Wood, Stone = Stone, Ore = Ore,
-        Alloy = Alloy, EnergyCells = EnergyCells, Crystals = Crystals, Coal = Coal, Oil = Oil, RareEarth = RareEarth, Boats = Boats, Aircraft = Aircraft };
+        Alloy = Alloy, EnergyCells = EnergyCells, Crystals = Crystals, Coal = Coal, Oil = Oil, RareEarth = RareEarth, Boats = Boats, Aircraft = Aircraft,
+        Tools = Tools, Medicine = Medicine, Ammunition = Ammunition };
     public static string Name(ResourceKind kind) => kind switch
     {
         ResourceKind.Water => "饮水", ResourceKind.Food => "粮食", ResourceKind.Wood => "木材", ResourceKind.Stone => "石材",
         ResourceKind.Ore => "矿石", ResourceKind.Alloy => "合金", ResourceKind.EnergyCells => "动力单元",
         ResourceKind.Crystals => "魔晶", ResourceKind.Coal => "煤", ResourceKind.Oil => "石油",
-        ResourceKind.RareEarth => "稀土", ResourceKind.Boats => "舟船", ResourceKind.Aircraft => "运输机", _ => kind.ToString()
+        ResourceKind.RareEarth => "稀土", ResourceKind.Boats => "舟船", ResourceKind.Aircraft => "运输机",
+        ResourceKind.Tools => "工具", ResourceKind.Medicine => "药品", ResourceKind.Ammunition => "弹药", _ => kind.ToString()
     };
 }
 
 public sealed record Advancement(ResearchKind Research, string Name, string Stage, bool Magic,
     ResearchKind[] Prerequisites, ResourceStock ResearchCost, BuildingKind Facility, string FacilityName,
-    ResourceStock BuildingCost, ResourceStock Input, ResourceKind Output, double Yield, double Mana = 0);
+    ResourceStock BuildingCost, ResourceStock Input, ResourceKind Output, double Yield, double Mana = 0)
+{
+    public IReadOnlyList<ResourceKind> InputResources { get; } = Array.AsReadOnly(Enum.GetValues<ResourceKind>().Where(k => Input.Get(k) > 0).ToArray());
+}
 
 /// <summary>Both routes share physical production and research rules, but neither requires the other route.</summary>
 public static class AdvancementRules
@@ -88,7 +100,19 @@ public static class AdvancementRules
             new() { Wood = 20, Stone = 20, Crystals = 10 }, new() { Crystals = 1 }, ResourceKind.Food, 8, 2),
         new(ResearchKind.AetherMastery, "高阶以太工艺", "以太文明", true, [ResearchKind.RunicEngineering],
             new() { Food = 60, Stone = 30, Crystals = 25 }, BuildingKind.AetherForge, "以太转化炉",
-            new() { Stone = 40, Ore = 15, Crystals = 20 }, new() { Stone = 2, Crystals = 2 }, ResourceKind.Ore, 4, 8)
+            new() { Stone = 40, Ore = 15, Crystals = 20 }, new() { Stone = 2, Crystals = 2 }, ResourceKind.Ore, 4, 8),
+        new(ResearchKind.Pharmacology, "药物制备", "公共卫生", false, [ResearchKind.Medicine, ResearchKind.Education],
+            new() { Food = 35, Wood = 15, Ore = 5 }, BuildingKind.Apothecary, "药房",
+            new() { Wood = 20, Stone = 15 }, new() { Food = 1, Wood = 1 }, ResourceKind.Medicine, 3),
+        new(ResearchKind.Toolmaking, "机械工具", "机械工程", false, [ResearchKind.MechanicalEngineering, ResearchKind.EfficientSmelting],
+            new() { Food = 35, Alloy = 8 }, BuildingKind.MachineWorkshop, "机械工场",
+            new() { Stone = 20, Alloy = 10 }, new() { Alloy = 1, Wood = 1 }, ResourceKind.Tools, 4),
+        new(ResearchKind.Ballistics, "弹道学", "工程军备", false, [ResearchKind.Industry, ResearchKind.Cartography],
+            new() { Food = 35, Alloy = 8, Coal = 5 }, BuildingKind.Arsenal, "军械厂",
+            new() { Wood = 20, Stone = 20, Alloy = 8 }, new() { Alloy = 1, Coal = 1 }, ResourceKind.Ammunition, 8),
+        new(ResearchKind.Alchemy, "炼金药剂", "奥术与修复", true, [ResearchKind.Crystalcraft, ResearchKind.Pharmacology],
+            new() { Food = 35, Crystals = 8 }, BuildingKind.AlchemyLab, "炼金实验室",
+            new() { Stone = 25, Crystals = 8 }, new() { Food = 1, Crystals = .5 }, ResourceKind.Medicine, 6, 4)
     });
     private static readonly IReadOnlyDictionary<ResearchKind, Advancement> ByResearch = All.ToDictionary(a => a.Research);
     private static readonly IReadOnlyDictionary<BuildingKind, Advancement> ByBuilding = All.ToDictionary(a => a.Facility);

@@ -31,6 +31,9 @@ public sealed partial class WorldEngine
         CheckV2(person.Agent.MaterialPriority is null or ResourceKind.Ore or ResourceKind.Stone or ResourceKind.Coal or ResourceKind.Oil or ResourceKind.RareEarth, "采矿材料目标无效。");
         CheckV2(Enum.IsDefined(person.DeathCause) && person.DeathTick >= 0 && person.DeathTick <= tick, "死亡记录无效。");
         CheckV2(person.DiseaseImmuneUntilTick >= 0 && person.DiseaseImmuneUntilTick <= tick + 180, "疾病恢复免疫时间无效。");
+        CheckV2(Number(person.Armor, 0, 100) && Number(person.PersonalWard, 0, 100)
+            && person.FrozenUntilTick >= 0 && person.FrozenUntilTick <= tick + 12
+            && person.LastRangedAttackTick >= -100 && person.LastRangedAttackTick <= tick, "装备、个人结界或战斗时刻无效。");
         CheckV2(Number(person.Age, 0, 1000) && Number(person.Health, 0, 100) && Number(person.Hunger, 0, 100) && Number(person.Thirst, 0, 100) && Number(person.Mana, 0, 1000) && Number(person.MagicTalent, 0, 100) && Number(person.MagicTraining, 0, 100) && person.SicknessTicks is >= 0 and <= 10_000, "生命或魔法数值无效。");
         CheckV2(Coordinates(person.X, person.Y, width, height) && Coordinates(person.FromX, person.FromY, width, height) && person.MoveStartedTick >= 0 && person.MoveStartedTick <= tick && person.MoveDurationTicks is >= 1 and <= 100, "移动位置或时间无效。");
         CheckV2(person.Inventory is not null && AdvancementRules.Resources.All(kind => Number(person.Inventory.Get(kind), 0, 1_000_000)), "背包数值无效。");

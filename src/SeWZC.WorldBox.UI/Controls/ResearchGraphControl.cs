@@ -60,7 +60,7 @@ public sealed class ResearchGraphControl : UserControl
     public void SetZoom(double zoom)
     {
         var center = (_scroll.Offset + new Vector(_scroll.Viewport.Width / 2, _scroll.Viewport.Height / 2)) / Zoom;
-        Zoom = Math.Clamp(zoom, .2, 1.5);
+        Zoom = Math.Clamp(zoom, .12, 1.5);
         ApplyGeometry();
         _scroll.Offset = center * Zoom - new Vector(_scroll.Viewport.Width / 2, _scroll.Viewport.Height / 2);
     }
@@ -91,12 +91,6 @@ public sealed class ResearchGraphControl : UserControl
         {
             var label = new TextBlock { Text = lane.Name, FontSize = 14 * Zoom, Foreground = Brush.Parse("#8EB6C6") };
             Canvas.SetLeft(label, (lane.Left + 10) * Zoom); Canvas.SetTop(label, 12 * Zoom);
-            _laneLabels.Add(label); _surface.Children.Add(label);
-        }
-        foreach (var terminal in Layout.Nodes.Where(n => n.Key is ResearchKind.TechnologicalEmpire or ResearchKind.MagicalEmpire))
-        {
-            var label = new TextBlock { Text = "全部成果汇合", FontSize = 11 * Zoom, Foreground = Brush.Parse("#8EB6C6") };
-            Canvas.SetLeft(label, (terminal.Value.Center.X - 38) * Zoom); Canvas.SetTop(label, (terminal.Value.Top - 38) * Zoom);
             _laneLabels.Add(label); _surface.Children.Add(label);
         }
         foreach (var (kind, node) in _nodes)
@@ -162,11 +156,11 @@ public sealed class ResearchGraphControl : UserControl
                 foreach (var p in ResearchRules.For(owner.Selected).Prerequisites) ancestors.Add(p);
             }
             using var scale = context.PushTransform(Matrix.CreateScale(owner.Zoom, owner.Zoom));
-            var laneBottom = owner.Layout.Nodes.Where(n => n.Key is not ResearchKind.TechnologicalEmpire and not ResearchKind.MagicalEmpire).Max(n => n.Value.Bottom) + 16;
+            var laneBottom = owner.Layout.Nodes.Max(n => n.Value.Bottom) + 16;
             foreach (var lane in owner.Layout.Lanes)
                 context.DrawRectangle(Brush.Parse("#10212D"), null, new Rect(lane.Left, 38, lane.Width, laneBottom - 38), 8, 8);
             // Draw the selected prerequisite path last so crossings remain easy to follow.
-            foreach (var edge in owner.Layout.Edges.Where(e => !e.EmpireMerge).OrderBy(e => ancestors.Contains(e.To) && ancestors.Contains(e.From)))
+            foreach (var edge in owner.Layout.Edges.OrderBy(e => ancestors.Contains(e.To) && ancestors.Contains(e.From)))
             {
                 var selected = owner.ShowFullPath ? ancestors.Contains(edge.To) && ancestors.Contains(edge.From) : edge.To == owner.Selected;
                 var brush = selected ? Path : owner.IsCompleted(edge.From) && owner.IsCompleted(edge.To) ? Done
@@ -176,7 +170,7 @@ public sealed class ResearchGraphControl : UserControl
                 using (var path = geometry.Open())
                 {
                     path.BeginFigure(edge.Points[0], false);
-                    if (!edge.EmpireMerge && edge.Points.Length == 4)
+                    if (edge.Points.Length == 4)
                         path.CubicBezierTo(edge.Points[1], edge.Points[2], edge.Points[3]);
                     else foreach (var point in edge.Points.Skip(1)) path.LineTo(point);
                     path.EndFigure(false);
@@ -185,23 +179,6 @@ public sealed class ResearchGraphControl : UserControl
                 var tip = edge.Points[^1];
                 context.DrawLine(pen, tip, tip + new Vector(-4, -6));
                 context.DrawLine(pen, tip, tip + new Vector(4, -6));
-            }
-            foreach (var merge in owner.Layout.Edges.Where(e => e.EmpireMerge).GroupBy(e => e.To))
-            {
-                var selected = merge.Key == owner.Selected || owner.ShowFullPath && ancestors.Contains(merge.Key);
-                var brush = selected ? Path : owner.IsCompleted(merge.Key) ? Done : Locked;
-                var pen = new Pen(brush, selected ? 1.8 : 1.1, DashStyle.Dash);
-                foreach (var edge in merge)
-                {
-                    context.DrawLine(pen, edge.Points[0], edge.Points[1]);
-                    context.DrawEllipse(brush, null, edge.Points[1], 2.5, 2.5);
-                }
-                var end = merge.First().Points[^1]; var junction = merge.First().Points[^2];
-                context.DrawLine(pen, new Point(merge.Min(e => e.Points[1].X), junction.Y), new Point(merge.Max(e => e.Points[1].X), junction.Y));
-                var stem = new Pen(brush, selected ? 2.4 : 1.6);
-                context.DrawLine(stem, junction, end);
-                context.DrawLine(stem, end, end + new Vector(-4, -6));
-                context.DrawLine(stem, end, end + new Vector(4, -6));
             }
         }
     }

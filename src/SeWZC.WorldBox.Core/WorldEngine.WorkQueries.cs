@@ -66,6 +66,8 @@ public sealed partial class WorldEngine
         Building? selected = null;
         var bestPriority = 0;
         var bestDistance = 0;
+        var preferSpecialty = resident.Profession is Profession.Physician or Profession.Archivist or Profession.Surveyor or Profession.Firefighter or Profession.Gardener
+            && ExpansionJobHasNearbyWork(resident);
         foreach (var building in buildings)
         {
             if (followTarget && resident.Agent.Goal.TargetEntityId != 0 && resident.Agent.Goal.TargetEntityId != building.Id) continue;
@@ -79,7 +81,7 @@ public sealed partial class WorldEngine
             if (range > 1 && distance <= 6 && !VisibleWorkSiteReachable(resident, building.X, building.Y,
                 !building.IsCompleted || building.IsUpgrading || IsWaterfrontBuilding(building.Kind) || building.Kind == BuildingKind.TownCenter)) continue;
             if (range > 1 && resident.Agent.Goal.NavigationTarget == Index(building.X, building.Y) && State.Tick < resident.Agent.Goal.NavigationRetryTick) continue;
-            var priority = WorkPriority(building, resident);
+            var priority = WorkPriority(building, resident, preferSpecialty);
             if (selected is not null && !(priority < bestPriority || priority == bestPriority
                 && (preferNearest && distance < bestDistance
                     || (!preferNearest || distance == bestDistance) && building.Id < selected.Id))) continue;

@@ -10,7 +10,7 @@ public sealed partial class MainView
     private int _inspectorSettlementId;
     private string CultureName(int id) => _engine.State.Society.Cultures.FirstOrDefault(c => c.Id == id)?.Name ?? $"文化 #{id}";
     private static string InstitutionName(InstitutionKind value) => value switch { InstitutionKind.Council => "居民议事会", InstitutionKind.Monarchy => "君主制", _ => "行会议会" };
-    private static string SpellName(SpellKind value) => value switch { SpellKind.Heal => "治疗", SpellKind.HarvestBlessing => "丰饶祝福", SpellKind.Shield => "守护结界", _ => "战斗火花" };
+    private static string SpellName(SpellKind value) => WorldEngine.SpellName(value);
 
     private void BuildNationInspector(StackPanel panel)
     {
@@ -132,11 +132,13 @@ public sealed partial class MainView
         panel.Children.Add(Button(communications ? "查看建设与研究" : "查看聚落通信与已知消息", () => OpenInspector(communications ? "infrastructure" : "communication")));
     }
 
-    private void ShowBuildingEditor(int townId)
+    private void ShowBuildingEditor(int townId) => ShowBuildingSelectionEditor(townId, BuildingKind.Farm);
+
+    private void ShowBuildingSelectionEditor(int townId, BuildingKind initialKind)
     {
         var town = _engine.State.Settlements.FirstOrDefault(t => t.Id == townId); if (town is null) return;
         var panel = ModalPanel("建造设施", "选择设施和目标地块。安排施工会扣除当地材料，等待居民到场完成。");
-        var type = EnumField(panel, "设施类型", BuildingKind.Farm, WorldEngine.BuildingName, "building-kind");
+        var type = EnumField(panel, "设施类型", initialKind, WorldEngine.BuildingName, "building-kind");
         var bridgeOptions = Named(new StackPanel { Spacing = 10 }, "building-bridge-options"); panel.Children.Add(bridgeOptions);
         var direction = EnumField(bridgeOptions, "桥梁方向", BridgeDirection.Horizontal, WorldEngine.BridgeDirectionName, "building-bridge-direction");
         var level = ObjectField(bridgeOptions, "桥梁等级", new[] { (1, "1 级：离岸 2 格"), (2, "2 级：离岸 4 格"), (3, "3 级：离岸 6 格") }, 1, "building-bridge-level");
@@ -187,17 +189,21 @@ public sealed partial class MainView
         }), "building-apply"));
         OpenModal(panel);
     }
-    private void ShowSpellEditor()
+    private void ShowSpellEditor() => ShowSpellSelectionEditor(SpellKind.Heal);
+
+    private void ShowSpellSelectionEditor(SpellKind initialSpell)
     {
         var casters = _engine.State.Residents.Where(r => r.Age >= 14).OrderByDescending(r => r.MagicTraining).ThenBy(r => r.Id).ToArray();
         if (casters.Length == 0) { SetStatus("当前世界没有成年居民。"); return; }
         _paused = true; _map.IsSimulationPaused = true;
         var panel = ModalPanel("施放魔法", "需要天赋至少 25、训练至少 8，目标在施法者 4 格内。治疗寻找本国伤病居民；丰饶与护盾作用于本国聚落；战斗火花只对交战敌人生效。");
         var caster = Named(new ComboBox { ItemsSource = casters.Select(r => $"{r.Name}\n天赋{r.MagicTalent:F0} 训练{r.MagicTraining:F0} 魔力{r.Mana:F0}").ToArray(), SelectedIndex = Math.Max(0, Array.FindIndex(casters, r => r.Id == _selectedResidentId)), HorizontalAlignment = HorizontalAlignment.Stretch }, "spell-caster"); panel.Children.Add(caster);
-        var spell = EnumField(panel, "法术", SpellKind.Heal, SpellName, "spell-kind");
+        var spell = EnumField(panel, "法术", initialSpell, SpellName, "spell-kind");
         var initial = casters[caster.SelectedIndex];
         var x = Field(panel, "目标 X", _selectedTile?.X ?? initial.X, "spell-x"); var y = Field(panel, "目标 Y", _selectedTile?.Y ?? initial.Y, "spell-y");
-        var cost = Paragraph("基础魔力：治疗 16\n丰饶 25\n护盾 22\n火花 20；种族适性可降低消耗。"); panel.Children.Add(cost);
+        panel.Children.Add(Named(LiveText(() => "基础魔力：" + WorldEngine.SpellManaCost((SpellKind)spell.SelectedItem!).ToString("0")
+            + "\n" + (_engine.SpellUnlockError(casters[caster.SelectedIndex].Id, (SpellKind)spell.SelectedItem!) ?? "当地已具备施法知识")
+            + "\n寒冰箭冻结目标 6 日；连锁闪电至多攻击 3 名已知敌人；唤雨解除 2 格内干旱与火势；个人符文护盾会在受击时消耗。"), "spell-requirements"));
         panel.Children.Add(Named(Button("施放法术", () =>
         {
             try { var xx = Integer(x); var yy = Integer(y); RunEdit(() => { _engine.CastSpell(casters[caster.SelectedIndex].Id, (SpellKind)spell.SelectedItem!, xx, yy); CloseModal(); }, "法术已生效，消耗已从施法者魔力扣除"); }

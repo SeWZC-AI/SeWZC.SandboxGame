@@ -10,7 +10,7 @@ public enum PersonalExperienceKind { Neutral, Hardship, Achievement, Kindness, B
 public sealed partial class WorldState
 {
     [JsonRequired]
-    public int SimulationVersion { get; set; } = 13;
+    public int SimulationVersion { get; set; } = 14;
     public SocietyState Society { get; set; } = new();
     public List<PendingMessage> PendingMessages { get; set; } = [];
     public List<Resident> ArchivedResidents { get; set; } = [];

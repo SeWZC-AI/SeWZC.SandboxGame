@@ -1,7 +1,14 @@
 namespace SeWZC.WorldBox.Core;
 
 public sealed record ResearchDefinition(ResearchKind Kind, string Name, string Branch, string Stage,
-    bool Magic, ResearchKind[] Prerequisites, ResourceStock Cost, double Work, string Effect);
+    bool Magic, ResearchKind[] Prerequisites, ResourceStock Cost, double Work, string Effect,
+    BuildingKind[]? Buildings = null, Profession[]? Professions = null, SpellKind[]? Spells = null, string? Action = null)
+{
+    public bool Shared => Branch is "民生与资源" or "城建与公共卫生" or "知识与勘察";
+    public IReadOnlyList<BuildingKind> UnlockedBuildings => Buildings ?? [];
+    public IReadOnlyList<Profession> UnlockedProfessions => Professions ?? [];
+    public IReadOnlyList<SpellKind> UnlockedSpells => Spells ?? [];
+}
 
 /// <summary>The tree, commands and autonomous planner use the same knowledge graph.</summary>
 public static class ResearchRules
@@ -30,20 +37,55 @@ public static class ResearchRules
         From(ResearchKind.RunicEngineering, "符文与以太"),
         new(ResearchKind.Leylines, "地脉共鸣", "符文与以太", "符文文明", true, [ResearchKind.RunicEngineering, ResearchKind.ManaAttunement], new() { Food = 40, Stone = 20, Crystals = 10 }, 150, "魔晶凝炼室及以太转化炉每批实际产量增加 25%。"),
         From(ResearchKind.AetherMastery, "符文与以太"),
-        new(ResearchKind.TechnologicalEmpire, "科技帝国", "帝国成果", "科技帝国", false,
-            [ResearchKind.AdvancedComputing, ResearchKind.Aviation, ResearchKind.EfficientSmelting, ResearchKind.EnergyRecycling, ResearchKind.ScientificMethod, ResearchKind.Irrigation, ResearchKind.Forestry, ResearchKind.Medicine],
-            new() { Food = 60, Alloy = 30, EnergyCells = 30, RareEarth = 5 }, 240, "科技生产设施每批实际产量增加 25%；文明达到科技帝国阶段。"),
-        new(ResearchKind.MagicalEmpire, "魔法帝国", "帝国成果", "魔法帝国", true,
-            [ResearchKind.AetherMastery, ResearchKind.Leylines, ResearchKind.ArcaneScholarship, ResearchKind.Restoration, ResearchKind.Irrigation, ResearchKind.Forestry],
-            new() { Food = 60, Stone = 30, Crystals = 30 }, 240, "魔法生产设施每批实际产量增加 25%；文明达到魔法帝国阶段。")
+        new(ResearchKind.CivilEngineering, "土木水利", "城建与公共卫生", "城建", false, [ResearchKind.Irrigation, ResearchKind.Logistics],
+            new() { Food = 30, Wood = 15, Stone = 15 }, 100, "解锁蓄水站。水务工人到实际水源取水，仍与野外取水共享每日额度。", [BuildingKind.Reservoir]),
+        new(ResearchKind.Education, "公共教育", "知识与勘察", "教育", false, [ResearchKind.Logistics],
+            new() { Food = 30, Wood = 20 }, 100, "解锁图书馆与文献师，现场传授当地已有研究；知识仍需人员或通信送达异地。", [BuildingKind.Library], [Profession.Archivist]),
+        From(ResearchKind.Pharmacology, "城建与公共卫生"),
+        new(ResearchKind.Sanitation, "临床与防疫", "城建与公共卫生", "公共卫生", false, [ResearchKind.Pharmacology, ResearchKind.CivilEngineering],
+            new() { Food = 35, Wood = 15, Stone = 20 }, 120, "解锁医院和医师。医师领取真实药品，治疗现场患者并建立短期疾病免疫。", [BuildingKind.Hospital], [Profession.Physician]),
+        new(ResearchKind.FireEngineering, "消防工程", "城建与公共卫生", "消防", false, [ResearchKind.CivilEngineering],
+            new() { Food = 30, Wood = 15, Stone = 15 }, 100, "解锁消防站和消防员。补充随身用水、扑救近处火灾，并修复受损建筑。", [BuildingKind.FireStation], [Profession.Firefighter]),
+        new(ResearchKind.Cartography, "实地测绘", "知识与勘察", "勘察", false, [ResearchKind.Education, ResearchKind.Forestry],
+            new() { Food = 30, Wood = 15, Stone = 10 }, 100, "解锁勘测所和测绘员。现场发现水源、城镇与危险，形成有观察时间的报告。", [BuildingKind.SurveyOffice], [Profession.Surveyor]),
+        new(ResearchKind.MechanicalEngineering, "机械工程", "工业与能源", "机械", false, [ResearchKind.Industry, ResearchKind.ScientificMethod],
+            new() { Food = 35, Alloy = 5, Ore = 8 }, 120, "解锁工程师。工程师携带并消耗机械工具，加快实际施工；无工具时按普通工人劳动。", Professions: [Profession.Engineer]),
+        From(ResearchKind.Toolmaking, "工业与能源"),
+        From(ResearchKind.Ballistics, "工程军备"),
+        new(ResearchKind.ProtectiveEquipment, "防护装备", "工程军备", "军备", false, [ResearchKind.Ballistics, ResearchKind.Toolmaking],
+            new() { Food = 35, Alloy = 10 }, 120, "解锁装备工坊。到场居民领取实物合金制成护甲；受击时防护值逐次耗损。", [BuildingKind.Armory]),
+        new(ResearchKind.RailTransport, "轨道交通", "运输与计算", "近现代", false, [ResearchKind.MechanicalEngineering, ResearchKind.Logistics],
+            new() { Food = 40, Alloy = 12 }, 140, "解锁铺设铁路命令：花费石材和合金，升级己方已修道路，使陆地居民沿轨道移动更快。", Action: "铺设铁路"),
+        new(ResearchKind.Observation, "光学观测", "知识与通信", "近现代", false, [ResearchKind.Cartography, ResearchKind.SignalNetwork],
+            new() { Food = 35, Alloy = 8, EnergyCells = 5 }, 120, "勘测所观测范围由 4 格扩展至 6 格，山体仍遮挡视线；报告可经已值守信号塔传递。"),
+        new(ResearchKind.Elementalism, "元素塑形", "元素与结界", "元素魔法", true, [ResearchKind.ManaAttunement],
+            new() { Food = 35, Crystals = 5 }, 120, "解锁寒冰箭。攻击可见且已知交战的敌人，使其短暂冻结，期间无法移动。", Spells: [SpellKind.FrostBolt]),
+        new(ResearchKind.Warding, "符文守卫", "元素与结界", "结界", true, [ResearchKind.RunicEngineering, ResearchKind.Restoration],
+            new() { Food = 40, Stone = 20, Crystals = 10 }, 150, "解锁结界塔和符文护盾。消耗个人魔力与随身魔晶，给塔旁居民施加可耗损的个人护盾。", [BuildingKind.WardTower], Spells: [SpellKind.RuneWard]),
+        From(ResearchKind.Alchemy, "奥术与修复"),
+        new(ResearchKind.NatureBinding, "自然契约", "奥术与修复", "自然魔法", true, [ResearchKind.Restoration, ResearchKind.Forestry],
+            new() { Food = 35, Stone = 15, Crystals = 8 }, 120, "解锁共生林苑、园艺师和唤雨。用水、魔力恢复真实树木覆盖，雨水解除近处干旱并压制火势。", [BuildingKind.GroveSanctuary], [Profession.Gardener], [SpellKind.RainCall]),
+        new(ResearchKind.SpatialMagic, "空间折跃", "符文与以太", "空间魔法", true, [ResearchKind.AetherMastery, ResearchKind.Leylines],
+            new() { Food = 50, Stone = 25, Crystals = 20 }, 180, "解锁折跃门与传送命令。两座同国、可运营的门相距至多 24 格；本人到门旁，消耗 30 魔力和 2 份随身魔晶，连同背包抵达目标门。", [BuildingKind.Waygate], Action: "使用折跃门"),
+        new(ResearchKind.BattleMagic, "战场法术", "元素与结界", "战斗魔法", true, [ResearchKind.Elementalism, ResearchKind.Warding],
+            new() { Food = 45, Stone = 20, Crystals = 15 }, 160, "解锁风暴尖塔、战斗法师和连锁闪电。需要现场施法者、实际魔力和魔晶，仅攻击已知敌军。", [BuildingKind.StormSpire], [Profession.Battlemage], [SpellKind.ChainLightning])
     });
     private static readonly IReadOnlyDictionary<ResearchKind, ResearchDefinition> ByKind = All.ToDictionary(r => r.Kind);
     public static ResearchDefinition For(ResearchKind kind) => ByKind.TryGetValue(kind, out var value) ? value : throw new ArgumentOutOfRangeException(nameof(kind));
-    public static IReadOnlyList<ResearchKind> Route(bool magic) => All.Where(r => r.Magic == magic || r.Branch == "民生与资源").Select(r => r.Kind).ToArray();
+    private static readonly IReadOnlyList<ResearchKind> TechnologyRoute = Array.AsReadOnly(All.Where(r => !r.Magic || r.Shared).Select(r => r.Kind).ToArray());
+    private static readonly IReadOnlyList<ResearchKind> MagicRoute = Array.AsReadOnly(All.Where(r => r.Magic || r.Shared).Select(r => r.Kind).ToArray());
+    public static IReadOnlyList<ResearchKind> Route(bool magic) => magic ? MagicRoute : TechnologyRoute;
+    private static readonly IReadOnlyDictionary<BuildingKind, ResearchDefinition> ByBuilding = All.SelectMany(r => r.UnlockedBuildings.Select(k => (Kind: k, Definition: r))).ToDictionary(p => p.Kind, p => p.Definition);
+    private static readonly IReadOnlyDictionary<Profession, ResearchDefinition> ByProfession = All.SelectMany(r => r.UnlockedProfessions.Select(k => (Kind: k, Definition: r))).ToDictionary(p => p.Kind, p => p.Definition);
+    private static readonly IReadOnlyDictionary<SpellKind, ResearchDefinition> BySpell = All.SelectMany(r => r.UnlockedSpells.Select(k => (Kind: k, Definition: r))).ToDictionary(p => p.Kind, p => p.Definition);
+    public static ResearchDefinition? Unlocking(BuildingKind kind) => ByBuilding.GetValueOrDefault(kind);
+    public static ResearchDefinition? Unlocking(Profession kind) => ByProfession.GetValueOrDefault(kind);
+    public static ResearchDefinition? Unlocking(SpellKind kind) => BySpell.GetValueOrDefault(kind);
     private static ResearchDefinition From(ResearchKind kind, string branch)
     {
         var a = AdvancementRules.For(kind)!;
         return new(kind, a.Name, branch, a.Stage, a.Magic, a.Prerequisites, a.ResearchCost, 180,
-            "解锁" + a.FacilityName + "。\n" + WorldEngine.ProductionRecipe(a.Facility));
+            "解锁" + a.FacilityName + "。\n" + WorldEngine.ProductionRecipe(a.Facility), [a.Facility],
+            kind == ResearchKind.Ballistics ? [Profession.Ranger] : null);
     }
 }

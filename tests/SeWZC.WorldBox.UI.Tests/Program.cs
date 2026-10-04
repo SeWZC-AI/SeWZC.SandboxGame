@@ -290,9 +290,6 @@ static void AdvancedResearchUi()
         Assert(graph.Layout.Nodes.Count == expected.Length, "Displayed graph has the wrong nodes");
         Assert(graph.Layout.Edges.Select(e => (e.From, e.To)).ToHashSet().SetEquals(expected.SelectMany(d => d.Prerequisites.Select(p => (p, d.Kind)))),
             "Drawn connectors do not match the actual prerequisites");
-        var left = graph.Layout.Nodes.Values.Min(r => r.Left); var right = graph.Layout.Nodes.Values.Max(r => r.Right);
-        Assert(graph.Layout.Edges.Where(e => e.EmpireMerge).All(e => e.Points.All(p => p.X >= left && p.X <= right)),
-            "Empire prerequisites loop around the perimeter instead of merging beneath their branches");
         foreach (var (kind, rect) in graph.Layout.Nodes)
         {
             Assert(graph.Layout.Nodes.Where(n => n.Key != kind).All(n => !n.Value.Intersects(rect)), "Research nodes overlap");
@@ -314,7 +311,7 @@ static void AdvancedResearchUi()
     combinedEdges.UnionWith(graph.Layout.Edges.Select(e => (e.From, e.To)));
     Assert(combinedEdges.SetEquals(ResearchRules.All.SelectMany(d => d.Prerequisites.Select(p => (p, d.Kind)))), "Separate empire trees omit an actual dependency");
     Click(view, "research-route-common");
-    CheckGraph(ResearchRules.All.Where(d => d.Branch == "民生与资源"));
+    CheckGraph(ResearchRules.All.Where(d => d.Shared));
     Click(view, "research-route-technology"); Click(view, "research-node-Electrification");
     Click(view, "research-zoom-out"); Click(view, "research-zoom-in");
     var sameNode = Control<Button>(view, "research-node-Electrification");

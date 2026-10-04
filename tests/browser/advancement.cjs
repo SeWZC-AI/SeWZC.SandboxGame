@@ -22,7 +22,7 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
             const errors = observeBrowserErrors(page);
             try {
                 await page.goto(testUrl(baseUrl)); await ui.ready(); await ui.paused();
-                const world = await ui.save(); assert.equal(world.FormatVersion, 13);
+                const world = await ui.save(); assert.equal(world.FormatVersion, 14);
                 const town = world.Settlements[0];
                 Object.assign(town.Resources, { Food: 1000, Wood: 1000, Stone: 1000, Ore: 1000, Alloy: 100, EnergyCells: 100, Crystals: 100,
                     Coal: 30, Oil: 20, RareEarth: 10, Boats: 2, Aircraft: 1 });
@@ -48,17 +48,15 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
                 await ui.click('research-expand', inspector);
                 assert.match(ui.control(await ui.snapshot(), 'advancement-stage').value, /科技：未来制造.*魔法：以太文明/s);
                 await ui.click('research-route-technology', inspector);
-                await ui.click('research-jump-end', inspector);
                 await ui.click('research-fit', inspector);
                 await ui.point('research-graph', inspector);
                 await ui.click('research-node-AdvancedComputing', inspector);
                 assert.match(ui.control(await ui.snapshot(), 'research-requirements').value, /精密制造中心/);
                 await ui.click('research-route-magic', inspector);
-                await ui.click('research-jump-end', inspector);
                 await ui.click('research-fit', inspector);
                 await ui.point('research-graph', inspector);
-                await ui.click('research-node-MagicalEmpire', inspector);
-                assert.match(ui.control(await ui.snapshot(), 'research-requirements').value, /魔法帝国/);
+                await ui.click('research-node-AetherMastery', inspector);
+                assert.match(ui.control(await ui.snapshot(), 'research-requirements').value, /以太转化炉/);
                 assert.equal(digest(await ui.save()), digest(before), 'Reading either route changed the world');
                 await ui.click('building-open', inspector);
                 await ui.selectIndex('building-kind', 10, modal); // Fabricator, ordinary enum picker.
@@ -85,7 +83,7 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
                 await ui.waitFor(s => !s.modalOpen && s.paused, 'loaded paused world', 30000);
                 assert.equal(digest(await ui.save()), digest(saved), 'Advanced stocks, research and facilities changed after restore');
                 await errors.assertHealthy(`advancement ${label}`);
-                console.log(`PASS advancement ${label}: independent routes, real gift/construction, resources and format-13 restore`);
+                console.log(`PASS advancement ${label}: independent routes, real gift/construction, resources and format-14 restore`);
             } catch (error) {
                 await page.screenshot({ path: path.join(output, `advancement-${label}-failure.png`) });
                 fs.writeFileSync(path.join(output, `advancement-${label}-failure.json`), JSON.stringify(await ui.snapshot(), null, 2));

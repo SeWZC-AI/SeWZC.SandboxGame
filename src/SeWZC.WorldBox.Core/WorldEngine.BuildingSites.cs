@@ -73,6 +73,9 @@ public sealed partial class WorldEngine
                 score += Math.Min(1, source.ResourceAmount / 25) * yield * 12;
             }
         if (kind == BuildingKind.Well) score += Math.Min(1, DailyWaterYield(tile)) * 15;
+        if (kind == BuildingKind.Reservoir)
+            score += Circle(x, y, 1).Where(i => i == Index(x, y) || IsFreshWater(State.Tiles[i]))
+                .Select(i => Math.Min(3, DailyWaterYield(State.Tiles[i])) * 20).DefaultIfEmpty().Max();
         if (kind is BuildingKind.SignalTower or BuildingKind.Watchtower) score += tile.Terrain is TerrainType.Hills or TerrainType.Mountain ? 5 : 0;
         if (kind == BuildingKind.ArcaneSanctum) score += TerrainRules.For(tile.Terrain).ManaRate * 4;
         foreach (var building in State.Society.Buildings)

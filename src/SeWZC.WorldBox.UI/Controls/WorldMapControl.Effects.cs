@@ -79,6 +79,9 @@ public sealed partial class WorldMapControl
             var brush = e.Kind switch
             {
                 WorldVisualKind.Heal or WorldVisualKind.Harvest => HealingBrush,
+                WorldVisualKind.Frost or WorldVisualKind.Rain => Brush(0xFF95DEEA),
+                WorldVisualKind.Lightning => Brush(0xFFE9EEA9),
+                WorldVisualKind.Waygate => ArcaneBrush,
                 WorldVisualKind.Shield or WorldVisualKind.Plague => ArcaneBrush,
                 WorldVisualKind.Drought or WorldVisualKind.Logging or WorldVisualKind.Construction => CargoBrush,
                 _ => FlameInner
@@ -90,7 +93,21 @@ public sealed partial class WorldMapControl
                 context.DrawLine(new Pen(brush, e.Kind == WorldVisualKind.Ember ? 2 : .8), source, end);
                 context.DrawEllipse(brush, null, end, 1.8, 1.8);
             }
-            if (e.Kind == WorldVisualKind.Battle)
+            if (e.Kind == WorldVisualKind.Rain)
+            {
+                for (var i = 0; i < 12; i++)
+                {
+                    var drop = center + new Vector((i % 4 - 1.5) * 8, (i / 4 - 1) * 7 + p * 15 - 12);
+                    context.DrawLine(new Pen(brush, .8), drop, drop + new Vector(-2, 4));
+                }
+            }
+            else if (e.Kind == WorldVisualKind.Lightning)
+            {
+                context.DrawLine(new Pen(brush, 1.4), center + new Vector(0, -14), center + new Vector(-4, -2));
+                context.DrawLine(new Pen(brush, 1.4), center + new Vector(-4, -2), center + new Vector(4, -2));
+                context.DrawLine(new Pen(brush, 1.4), center + new Vector(4, -2), center + new Vector(0, 10));
+            }
+            else if (e.Kind == WorldVisualKind.Battle)
             {
                 var spread = 3 + p * 5;
                 context.DrawLine(new Pen(StoneBrush, 1.5), center + new Vector(-spread, -spread), center + new Vector(spread, spread));
@@ -133,6 +150,9 @@ public sealed partial class WorldMapControl
         var scale = resident.Age < 14 ? .7 : 1;
         context.DrawEllipse(ShadowBrush, null, new Point(x, y + 2.2), 1.6 * scale, .4 * scale);
         context.DrawImage(ResidentIcon(resident.Race, resident.Profession, pose), new Rect(x - 3.2 * scale, y + 2.2 - 8 * scale, 6.4 * scale, 8 * scale));
+        if (resident.PersonalWard > 0) context.DrawEllipse(null, new Pen(ArcaneBrush, .35), new Point(x, y - 1.5), 4 * scale, 5 * scale);
+        if (resident.FrozenUntilTick > (Engine?.State.Tick ?? 0))
+            context.DrawRectangle(null, new Pen(Brush(0xFF95DEEA), .6), new Rect(x - 3.5 * scale, y - 6 * scale, 7 * scale, 8 * scale), 1, 1);
         DrawActivityBadge(context, resident, x + 2.7, y - 5.5, moving);
     }
 

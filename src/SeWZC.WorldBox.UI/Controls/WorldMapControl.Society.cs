@@ -27,7 +27,7 @@ public sealed partial class WorldMapControl
 
     private static double BuildingHeight(BuildingKind kind) => kind switch
     {
-        BuildingKind.SignalTower or BuildingKind.Watchtower => 16, BuildingKind.TownCenter or BuildingKind.PowerPlant => 13,
+        BuildingKind.SignalTower or BuildingKind.Watchtower or BuildingKind.StormSpire or BuildingKind.WardTower or BuildingKind.Waygate => 16, BuildingKind.TownCenter or BuildingKind.PowerPlant => 13,
         BuildingKind.Academy or BuildingKind.Foundry or BuildingKind.AetherForge => 12,
         BuildingKind.Farm or BuildingKind.AutomatedFarm => 6.4,
         BuildingKind.Bridge => 8, BuildingKind.Dock => 6, BuildingKind.MountainPass => 4, _ => 9.6
@@ -103,7 +103,8 @@ public sealed partial class WorldMapControl
     private bool TryApplyConstructionTool(string tool, (int X, int Y) tile, out bool edited)
     {
         edited = false;
-        var isRoad = tool.Equals("Road", StringComparison.OrdinalIgnoreCase);
+        var isRail = tool.Equals("Rail", StringComparison.OrdinalIgnoreCase);
+        var isRoad = isRail || tool.Equals("Road", StringComparison.OrdinalIgnoreCase);
         var isBuilding = ActiveTool.StartsWith("build:", StringComparison.OrdinalIgnoreCase) &&
                          Enum.TryParse<BuildingKind>(tool, true, out _);
         if (!isRoad && !isBuilding) return false;
@@ -118,7 +119,7 @@ public sealed partial class WorldMapControl
         {
             if (_lastPaint is null) WorldEditing?.Invoke(this, EventArgs.Empty);
             if (isRoad)
-                Stroke(tile, (x, y) => Engine.BuildRoad(SelectedSettlementId, x, y, 0));
+                Stroke(tile, (x, y) => { if (isRail) Engine.BuildRail(SelectedSettlementId, x, y, 0); else Engine.BuildRoad(SelectedSettlementId, x, y, 0); });
             else
             {
                 var kind = Enum.Parse<BuildingKind>(tool, true);

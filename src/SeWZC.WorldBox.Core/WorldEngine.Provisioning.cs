@@ -18,6 +18,14 @@ public sealed partial class WorldEngine
         available = Math.Max(Math.Min(home.Resources.Water, WaterUse(person)), home.Resources.Water - home.Population * .03);
         var water = State.Rules.Thirst ? Math.Min(available, Math.Max(0, WaterReserve(person) - person.Inventory.Water)) : 0;
         home.Resources.Water -= water; person.Inventory.Water += water;
+        void TakeJobSupply(ResourceKind kind, double target)
+        {
+            var take = Math.Min(home.Resources.Get(kind), Math.Max(0, target - person.Inventory.Get(kind)));
+            home.Resources.Set(kind, home.Resources.Get(kind) - take); person.Inventory.Set(kind, person.Inventory.Get(kind) + take);
+        }
+        if (person.Profession == Profession.Engineer) TakeJobSupply(ResourceKind.Tools, .5);
+        if (person.Profession == Profession.Physician) TakeJobSupply(ResourceKind.Medicine, 2);
+        if (person.Profession == Profession.Ranger) TakeJobSupply(ResourceKind.Ammunition, 8);
     }
 
     private void DrinkCarriedWater(Resident person)

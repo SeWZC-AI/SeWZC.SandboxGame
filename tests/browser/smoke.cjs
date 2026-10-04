@@ -38,7 +38,7 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.waitFor(snapshot => snapshot.worldTick >= initialTick + 4, 'ordinary residents choosing work');
         await ui.paused();
         const baseline = await ui.save();
-        assert.equal(baseline.FormatVersion, 13);
+        assert.equal(baseline.FormatVersion, 14);
         assert.equal(baseline.Width, 256);
         assert.equal(baseline.Nations.length, 4);
         const home = baseline.Settlements[0];

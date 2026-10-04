@@ -83,7 +83,7 @@ public sealed partial class WorldMapControl
             Profession.Fisher => 0x679FAEFFu, Profession.Farmer => 0x87A55EFFu, Profession.Lumberjack => 0xB16842FFu, Profession.Miner => 0x687B91FFu,
             Profession.Builder => 0xD0A552FFu, Profession.Mage => 0x8E6CADFFu, Profession.Soldier => 0x8397A5FFu,
             Profession.Scholar => 0x527AABFFu, Profession.Messenger => 0xB56666FFu, Profession.Trader => 0x7F7656FFu,
-            Profession.Representative => 0xE0C078FFu, _ => 0x78928CFFu
+            Profession.Engineer => 0xE9B94DFFu, Profession.Physician => 0xE7ECEAFFu, Profession.Firefighter => 0xD25848FFu, Profession.Ranger => 0x597F5CFFu, Profession.Archivist => 0xA17C50FFu, Profession.Battlemage => 0x7655BAFFu, Profession.Surveyor => 0x63B4BAFFu, Profession.Gardener => 0x67A85AFFu, Profession.Representative => 0xE0C078FFu, _ => 0x78928CFFu
         };
         const uint wood = 0x63472FFF, metal = 0xC6D4D4FF, paper = 0xFFF0C8FF;
         var headY = race == RaceKind.Dwarf ? 13 : race == RaceKind.Elf ? 6 : 9;
@@ -111,6 +111,18 @@ public sealed partial class WorldMapControl
                 c.Line(23, 31, 29 + swing / 2, 16 + swing, wood, 2); c.Rect(25 + swing / 2, 14 + swing, 6, 5, metal); c.Rect(30 + swing / 2, 15 + swing, 1, 4, paper); break;
             case Profession.Miner:
                 c.Line(23, 32, 27 + swing / 2, 16 + swing, wood, 2); c.Line(22 + swing / 2, 14 + swing, 30, 17 + swing, metal, 2); c.Rect(left - 1, headY - 2, width + 2, 3, 0xD1AE51FF); c.Rect(15, headY, 3, 2, paper); break;
+            case Profession.Engineer:
+                c.Rect(left - 1, headY - 3, width + 2, 4, 0xE5B64FFF); c.Rect(24, 21, 4, 11, metal); c.Rect(22, 19, 8, 3, metal); c.Rect(25, 18, 2, 4, wood); break;
+            case Profession.Physician:
+                c.Rect(left, 24, width, 5, paper); c.Rect(24, 26, 6, 8, 0xE2DFCAFF); c.Rect(26, 26, 2, 8, 0xBD4949FF); c.Rect(24, 29, 6, 2, 0xBD4949FF); break;
+            case Profession.Firefighter:
+                c.Rect(left - 2, headY - 3, width + 4, 4, 0xD85244FF); c.Rect(24, 25, 6, 9, metal); c.Rect(25, 25, 4, 3, 0x63B4D0FF); break;
+            case Profession.Ranger:
+                c.Line(26, 16, 29, 24, wood, 2); c.Line(29, 24, 26, 33, wood, 2); c.Line(26, 16, 26, 33, paper); c.Line(22, 24, 31, 24, metal); break;
+            case Profession.Surveyor:
+                c.Line(23, 24, 30, 19, metal, 3); c.Rect(29, 17, 2, 4, paper); c.Rect(22, 27, 7, 7, paper); c.Line(23, 29, 28, 32, wood); break;
+            case Profession.Gardener:
+                c.Line(27, 20, 27, 32, wood); c.Rect(24, 18, 6, 6, 0x57A25CFF); c.Rect(24, 26, 6, 7, metal); break;
             case Profession.Builder:
                 c.Rect(left - 1, headY - 3, width + 2, 4, 0xE5B64FFF); c.Line(25, 29, 27 + swing, 20 + swing, wood, 2); c.Rect(24 + swing, 18 + swing, 6, 3, metal); break;
             case Profession.Fisher:
@@ -120,9 +132,13 @@ public sealed partial class WorldMapControl
                 c.Line(25, 33, 29 + swing / 2, 20 + swing, wood); c.Rect(23 + swing / 2, 19 + swing, 7, 2, metal); break;
             case Profession.Soldier:
                 c.Rect(left - 1, headY - 3, width + 2, 5, metal); c.Rect(5, 22, 6, 10, 0x526D81FF); c.Rect(7, 23, 2, 8, metal); c.Rect(27, 17, 2, 15, metal); c.Rect(24, 28, 7, 2, wood); break;
+            case Profession.Battlemage:
+                c.Rect(left - 1, headY - 3, width + 2, 4, metal); c.Rect(5, 23, 6, 9, 0x7854AEFF); c.Line(28, 15, 28, 34, wood, 2); c.Rect(26, 11, 5, 6, 0x9EE2E7FF); break;
             case Profession.Mage:
                 for (var row = 0; row < 9; row++) c.Rect(15 - row / 2, headY - 9 + row, 2 + row, 1, 0x8162A1FF);
                 c.Line(28, 34, 28, 13, wood, 2); c.Rect(26, 10, 5, 5, 0xC7ABE6FF); c.Rect(28, 10, 1, 2, paper); break;
+            case Profession.Archivist:
+                c.Rect(21, 23, 9, 9, 0xA17C50FF); c.Rect(23, 24, 6, 7, paper); c.Rect(24, 27, 5, 1, wood); break;
             case Profession.Scholar:
                 c.Rect(left + 1, headY + 4, width - 2, 3, wood); c.Rect(left + 2, headY + 5, 2, 1, paper);
                 c.Rect(21, 23, 9, 9, 0x355F8AFF); c.Rect(23, 24, 6, 7, paper); c.Line(26, 24, 26, 30, wood); break;
@@ -248,6 +264,30 @@ public sealed partial class WorldMapControl
         }
         switch (kind)
         {
+            case BuildingKind.Reservoir:
+                c.Rect(4, 30, 32, 13, metal); c.Rect(7, 32, 26, 8, 0x548DB5FF); c.Line(9, 35, 29, 35, paper); c.Rect(27, 16, 5, 14, wall); break;
+            case BuildingKind.Hospital:
+                House(); c.Rect(17, 24, 6, 14, 0xBD4949FF); c.Rect(12, 28, 16, 6, 0xBD4949FF); c.Rect(6, 8, 5, 15, metal); break;
+            case BuildingKind.Apothecary: case BuildingKind.AlchemyLab:
+                House(); c.Rect(16, 25, 8, 3, metal); c.Rect(14, 28, 12, 12, kind == BuildingKind.AlchemyLab ? 0xB68CD2FFu : 0x70B58AFFu); c.Rect(15, 28, 10, 3, paper); break;
+            case BuildingKind.FireStation:
+                House(); c.Rect(4, 12, 6, 28, 0xB75449FF); c.Rect(7, 17, 2, 2, paper); c.Rect(11, 32, 5, 8, metal); c.Rect(12, 32, 3, 3, 0x63B4D0FF); break;
+            case BuildingKind.Library:
+                House(); for (var row = 27; row < 39; row += 4) { c.Rect(9, row, 22, 3, timber); for (var x = 10; x < 30; x += 3) c.Rect(x, row, 2, 2, paper); } break;
+            case BuildingKind.SurveyOffice:
+                House(); c.Line(23, 15, 34, 8, metal, 4); c.Rect(32, 5, 5, 5, paper); c.Line(27, 13, 27, 26, timber, 2); break;
+            case BuildingKind.MachineWorkshop:
+                House(); c.Rect(10, 26, 20, 12, metal); c.Rect(17, 24, 6, 16, timber); c.Rect(12, 29, 16, 6, timber); c.Rect(18, 30, 4, 4, paper); break;
+            case BuildingKind.Arsenal:
+                House(); c.Line(10, 33, 26, 26, metal, 4); c.Rect(8, 31, 5, 8, timber); c.Rect(24, 25, 8, 4, metal); break;
+            case BuildingKind.Armory:
+                House(); c.Rect(14, 26, 12, 13, metal); c.Rect(17, 24, 6, 4, metal); c.Rect(17, 30, 6, 7, 0x5C788AFF); break;
+            case BuildingKind.WardTower: case BuildingKind.StormSpire:
+                c.Rect(13, 15, 14, 28, wall); c.Rect(10, 12, 20, 5, 0x795CA8FF); c.Rect(17, 4, 6, 13, kind == BuildingKind.WardTower ? 0xA99BD7FFu : 0x86D2E3FFu); c.Line(20, 5, 16, 12, paper); c.Line(16, 12, 23, 12, paper); break;
+            case BuildingKind.GroveSanctuary:
+                c.Rect(6, 36, 28, 7, timber); c.Rect(18, 10, 4, 28, timber); c.Rect(8, 8, 24, 15, green); c.Rect(4, 16, 32, 10, 0x5CA372FF); c.Rect(17, 19, 7, 7, 0xB49BDBFF); break;
+            case BuildingKind.Waygate:
+                c.Rect(6, 16, 7, 27, metal); c.Rect(27, 16, 7, 27, metal); c.Rect(10, 10, 20, 8, metal); c.Rect(13, 18, 14, 25, 0x6655A5FF); c.Rect(16, 21, 8, 20, 0x9D8AD2FF); c.Rect(18, 25, 4, 14, 0xCEE9EDFF); break;
             case BuildingKind.Dock:
                 c.Rect(3, 34, 34, 7, timber); c.Rect(7, 32, 3, 13, metal); c.Rect(29, 32, 3, 13, metal);
                 c.Line(19, 18, 19, 34, timber, 2); c.Rect(21, 20, 10, 7, paper); break;
