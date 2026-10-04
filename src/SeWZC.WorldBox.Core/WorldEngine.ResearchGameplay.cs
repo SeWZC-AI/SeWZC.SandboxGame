@@ -65,7 +65,7 @@ public sealed partial class WorldEngine
     public static string ProfessionDescription(Profession job) => job switch
     {
         Profession.Engineer => "施工时消耗工具，提升现场施工效率；也可参与机械生产。",
-        Profession.Physician => "到医院领取药品，治疗医院 3 格内的伤病居民并建立短期免疫。",
+        Profession.Physician => "把随身药品运至医院，治疗医院 3 格内的伤病居民并建立短期免疫。",
         Profession.Firefighter => "从消防站补充实际用水；扑救眼前火灾并用石材修复附近受损设施。",
         Profession.Ranger => "携带弹药，对 4 格内已知交战敌军射击；每次耗 1 弹药，间隔至少 3 日，山体遮挡。",
         Profession.Archivist => "在图书馆把当地已有研究传授给现场居民，知识经正常递送继续传播。",
@@ -100,6 +100,7 @@ public sealed partial class WorldEngine
     {
         var town = RequireTown(settlementId);
         if (!HasResearch(settlementId, ResearchKind.RailTransport)) throw new InvalidOperationException("需要先掌握轨道交通");
+        if (ResearchPrerequisiteError(settlementId, ResearchKind.RailTransport) is { } prerequisite) throw new InvalidOperationException(prerequisite);
         if (!InBounds(x, y) || radius is < 0 or > 4 || Distance(x, y, town.X, town.Y) > 24) throw new ArgumentException("铁路须位于聚落 24 格内，笔刷半径为 0–4");
         var tiles = Circle(x, y, radius).Where(i => State.Tiles[i].NationId == town.NationId
             && State.Tiles[i].IsWalkable && !IsWaterTerrain(State.Tiles[i].Terrain) && State.Tiles[i].RoadLevel == 1).ToArray();
@@ -114,6 +115,7 @@ public sealed partial class WorldEngine
     {
         if (!_settlements.TryGetValue(settlementId, out var town)) return "先选择负责铺轨的聚落";
         if (!HasResearch(settlementId, ResearchKind.RailTransport)) return "需要先掌握轨道交通";
+        if (ResearchPrerequisiteError(settlementId, ResearchKind.RailTransport) is { } prerequisite) return prerequisite;
         if (!InBounds(x, y) || radius is < 0 or > 4 || Distance(x, y, town.X, town.Y) > 24) return "目标须在聚落 24 格内";
         var count = Circle(x, y, radius).Count(i => State.Tiles[i].NationId == town.NationId && State.Tiles[i].IsWalkable
             && !IsWaterTerrain(State.Tiles[i].Terrain) && State.Tiles[i].RoadLevel == 1);
@@ -209,7 +211,7 @@ public sealed partial class WorldEngine
             BuildingKind.Hospital => person.Profession == Profession.Physician && FindLocalWorkPatient(b, true) is not null
                 && (person.Inventory.Medicine >= .25 || RequireTown(b.SettlementId).Resources.Medicine >= .25),
             BuildingKind.FireStation => person.Profession == Profession.Firefighter && (person.Inventory.Water < 5 && RequireTown(b.SettlementId).Resources.Water >= .5
-                || State.Society.Buildings.Any(other => other.SettlementId == b.SettlementId && other.Health < 100 && other.Health > 0 && Distance(other.X, other.Y, b.X, b.Y) <= 4)),
+                || RepairTargetForStation(b) is not null && (person.Inventory.Stone >= .5 || RequireTown(b.SettlementId).Resources.Stone >= .5)),
             BuildingKind.Library => person.Profession == Profession.Archivist && State.Tick - b.LastServiceTick >= 12,
             BuildingKind.SurveyOffice => person.Profession == Profession.Surveyor && State.Tick - b.LastServiceTick >= 12,
             BuildingKind.Armory => person.Armor < 30 && RequireTown(b.SettlementId).Resources.Alloy >= 2,
@@ -261,7 +263,6 @@ public sealed partial class WorldEngine
                 }
                 break;
             case BuildingKind.FireStation:
-                if (Supply(ResourceKind.Water, 5, .5)) done = true;
                 var damaged = State.Society.Buildings.Where(other => other.SettlementId == b.SettlementId && other.Health is > 0 and < 100
                     && Distance(person.X, person.Y, other.X, other.Y) <= 1 && State.Tiles[Index(other.X, other.Y)].FireTicks == 0).OrderBy(other => other.Health).ThenBy(other => other.Id).FirstOrDefault();
                 if (damaged is not null && Supply(ResourceKind.Stone, .1))
@@ -372,6 +373,24 @@ public sealed partial class WorldEngine
         var b = FindBuilding(goal.TargetEntityId);
         if (b is null || b.Kind < BuildingKind.Reservoir || !b.IsCompleted || b.IsUpgrading || AdvancementRules.For(b.Kind) is not null) return false;
         if (!ExpansionFacilityHasWork(b, person)) { person.Agent.NextThinkTick = State.Tick; return true; }
+        if (b.Kind == BuildingKind.FireStation && RepairTargetForStation(b) is { } repair
+            && (person.Inventory.Stone >= .5 || home.Resources.Stone >= .5))
+        {
+            if (person.Inventory.Stone < .5)
+            {
+                goal.TargetX = home.X; goal.TargetY = home.Y; goal.Reason = "返仓领取实际石材，运至受损设施维修";
+                if (Distance(person.X, person.Y, home.X, home.Y) > 1) { MoveAgentTowards(person, home.X, home.Y); return true; }
+                var take = Math.Min(home.Resources.Stone, 1 - person.Inventory.Stone);
+                home.Resources.Stone -= take; person.Inventory.Stone += take;
+            }
+            goal.TargetX = repair.X; goal.TargetY = repair.Y; goal.Reason = "携带石材，步行至消防站附近的受损设施维修";
+            if (Distance(person.X, person.Y, repair.X, repair.Y) > 1) { MoveAgentTowards(person, repair.X, repair.Y); return true; }
+            if (State.Tick - person.MoveStartedTick < person.MoveDurationTicks) return true;
+            RepairBuilding(person.Id, repair.Id);
+            if (repair.Id != b.Id) { b.ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1); b.LastServiceTick = State.Tick; }
+            person.Activity = ResidentActivity.Working;
+            return true;
+        }
         var minimum = b.Kind switch { BuildingKind.Hospital => .25, BuildingKind.Armory => 2d, BuildingKind.WardTower => .25,
             BuildingKind.StormSpire => .5, BuildingKind.GroveSanctuary => .75, BuildingKind.FireStation => 5.5, _ => 0 };
         if (ExpansionSupply(b.Kind) is { } supply && person.Inventory.Get(supply.Kind) + .000001 < minimum)
@@ -389,4 +408,10 @@ public sealed partial class WorldEngine
         { person.Agent.Goal = new() { Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, TargetSettlementId = home.Id, Reason = "蓄水站取水后亲自运回粮仓" }; person.Agent.NextThinkTick = State.Tick + 30; }
         return true;
     }
+
+    private Building? RepairTargetForStation(Building station) => State.Society.Buildings
+        .Where(other => other.SettlementId == station.SettlementId && other.Health is > 0 and < 100
+            && BuildingGroundOwned(other) && Distance(other.X, other.Y, station.X, station.Y) <= 4
+            && State.Tiles[Index(other.X, other.Y)].FireTicks == 0 && ClearSignalLine(station.X, station.Y, other.X, other.Y))
+        .OrderBy(other => other.Health).ThenBy(other => other.Id).FirstOrDefault();
 }

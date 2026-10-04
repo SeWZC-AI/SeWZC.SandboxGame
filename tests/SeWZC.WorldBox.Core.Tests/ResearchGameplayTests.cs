@@ -15,7 +15,8 @@ internal static class ResearchGameplayTests
         ("new professions, consumables and combat state survive validated continuation", Persistence)
         ,("water stations share natural quotas and groves restore real vegetation", EcologyServices),
         ("specialists keep staffed services and trained veterans retain their roles", Specialists),
-        ("alternative factories can commission one real batch despite existing stocks", Commissioning)
+        ("alternative factories can commission one real batch despite existing stocks", Commissioning),
+        ("firefighters physically haul stone and repair beyond the station entrance", FireService)
     ];
 
     private static (WorldEngine E, Settlement Town, Resident Person) World()
@@ -47,6 +48,27 @@ internal static class ResearchGameplayTests
     private static void Check(bool valid, string message) { if (!valid) throw new Exception(message); }
     private static void Reject(Action action)
     { try { action(); } catch (InvalidOperationException) { return; } throw new Exception("Invalid action was accepted."); }
+
+    [UnitTest]
+    private static void FireService()
+    {
+        var (e, town, p) = World(); var station = Facility(e, town, BuildingKind.FireStation); var damaged = Facility(e, town, BuildingKind.Farm);
+        Check(Math.Abs(station.X - damaged.X) + Math.Abs(station.Y - damaged.Y) is > 1 and <= 4, "Repair fixture must require real travel");
+        damaged.Health = 55; p.Profession = Profession.Firefighter; p.Inventory = new() { Food = 2, Water = 6 };
+        Work(p, station); p.Agent.Goal.PlayerDirected = true; p.Agent.Goal.StartedTick = e.State.Tick; p.Agent.Goal.ReviewTick = e.State.Tick + 200;
+        for (var i = 0; i < 80; i++)
+        {
+            var repairs = damaged.ServiceActions; e.Step();
+            if (damaged.ServiceActions > repairs)
+                Check(Math.Abs(p.X - damaged.X) + Math.Abs(p.Y - damaged.Y) <= 1, "Repair happened before personnel physically arrived");
+        }
+        Check(damaged.Health == 100 && damaged.ServiceActions >= 5 && station.ServiceActions >= 5, "Station crew did not haul materials and repair actual distant damage");
+        Check(p.Inventory.Stone <= 1, "Station crew failed to use bounded personal materials");
+        var count = station.ServiceActions; Work(p, station); p.Inventory.Water = 6;
+        Check(!e.TryWorkAtBuilding(p) && station.ServiceActions == count, "Idle readiness counted as actual service");
+        station.Health = 90; p.Inventory.Stone = 1; p.Agent.Goal.PlayerDirected = true; e.Step();
+        Check(station.Health == 100 && station.ServiceActions == count + 1, "Repairing the station itself counted one service twice");
+    }
 
     [UnitTest]
     private static void Commissioning()
@@ -194,6 +216,10 @@ internal static class ResearchGameplayTests
         e.BuildRail(town.Id, 8, 8, 0);
         Check(tile.RoadLevel == 2 && town.Resources.Alloy == alloy - .5 && town.Resources.Stone == stone - 1
             && e.GetTerrainMoveCost(8, 8) < oldCost, "Rail was cosmetic or material-free");
+        tile.RoadLevel = 1; e.State.Society.Research.Single().Completed.Remove(ResearchKind.MechanicalEngineering);
+        var blocked = e.ExportJson(); Reject(() => e.BuildRail(town.Id, 8, 8, 0));
+        Check(e.ExportJson() == blocked, "Received rail knowledge bypassed its missing prerequisites");
+        e.GrantReceivedResearch(town.Id, ResearchKind.MechanicalEngineering);
         var b = Facility(e, town, BuildingKind.Hospital); b.Health = 40; p.Profession = Profession.Engineer; p.Inventory.Stone = 1; Work(p, b);
         e.RepairBuilding(p.Id, b.Id); Check(b.Health == 50 && p.Inventory.Stone == .5, "Repair did not consume actual carried stone");
     }
