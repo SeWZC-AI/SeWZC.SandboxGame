@@ -26,13 +26,17 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                 await page.goto(testUrl(baseUrl)); await ui.ready(); await ui.paused();
                 const filename = path.join(output, 'saves', `${route}-empire.worldbox.json`);
                 const expected = JSON.parse(fs.readFileSync(filename, 'utf8'));
+                const report = JSON.parse(fs.readFileSync(path.join(output, 'saves', 'simulation-results.json'), 'utf8'));
+                const saveDigest = createHash('sha256').update(fs.readFileSync(filename)).digest('hex');
+                const run = report.runs.find(r => r.route === route && r.saveSha256 === saveDigest);
+                assert(run, 'Delivered save does not match its actual simulation report');
                 await ui.click('header-storage'); const chooser = page.waitForEvent('filechooser');
                 await ui.click('storage-import', modal); await (await chooser).setFiles(filename);
                 await ui.waitFor(s => !s.modalOpen && s.status.startsWith('导入成功'), 'delivered empire save import', 60000);
                 const before = await ui.save();
                 assert.equal(digest(before), digest(expected), 'Import changed the delivered simulated world');
                 await ui.click('header-overview'); await ui.click('overview-infrastructure', inspector);
-                const completedTown = expected.Settlements.findIndex(t => expected.Society.Research.find(r => r.SettlementId === t.Id).Completed.length >= (route === 'technology' ? 26 : 25));
+                const completedTown = expected.Settlements.findIndex(t => run.completeTowns.includes(t.Id));
                 assert(completedTown >= 0, 'Delivered world has no completed research route');
                 await ui.selectIndex('infrastructure-town', completedTown, inspector);
                 await ui.click('research-expand', inspector);
@@ -74,6 +78,8 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                 await showGraph();
                 snapshot = await ui.snapshot();
                 const beforePan = snapshot.researchGraph;
+                const panX = beforePan.offsetX < 50 ? -44 : 44;
+                const panY = beforePan.offsetY < 50 ? -88 : 88;
                 // Start on a real button: its lost capture must not truncate the graph drag.
                 const start = await ui.point(`research-node-${endpoint}`, inspector);
                 if (mobile) {
@@ -81,14 +87,14 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                     const touch = point => ({ ...point, id: 1, radiusX: 2, radiusY: 2, force: 1 });
                     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [touch(start)] });
                     for (let i = 1; i <= 8; i++) {
-                        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [touch({ x: start.x - i * 5.5, y: start.y + i * 11 })] });
+                        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [touch({ x: start.x + i * panX / 8, y: start.y + i * panY / 8 })] });
                         await page.waitForTimeout(25);
                     }
                     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
                     await cdp.detach();
                 } else {
                     await page.mouse.move(start.x, start.y); await page.mouse.down();
-                    await page.mouse.move(start.x - 44, start.y + 88, { steps: 8 }); await page.mouse.up();
+                    await page.mouse.move(start.x + panX, start.y + panY, { steps: 8 }); await page.mouse.up();
                 }
                 await page.waitForTimeout(250);
                 snapshot = await ui.snapshot();

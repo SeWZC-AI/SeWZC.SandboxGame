@@ -192,8 +192,9 @@ const stock = (world, id) => town(world, id).Resources;
         const funded = await ui.save();
         await ui.openOverview();
         await ui.click('overview-infrastructure', scroll);
-        await ui.click('research-start', scroll);
-        assert.match((await ui.snapshot()).status, /学舍|学院/);
+        const researchView = await ui.snapshot();
+        assert.equal(ui.control(researchView, 'research-start').enabled, false);
+        assert.match(ui.control(researchView, 'research-requirements').value, /学舍|学院/);
         const blockedResearch = await ui.save();
         assert.deepEqual(blockedResearch.Society.Research, funded.Society.Research);
         assert.deepEqual(stock(blockedResearch, home.Id), stock(funded, home.Id));
@@ -202,7 +203,7 @@ const stock = (world, id) => town(world, id).Resources;
         const buildIndex = funded.Tiles.findIndex((tile, index) => {
             const x = index % funded.Width; const y = Math.floor(index / funded.Width);
             return ![0, 1, 5, 10].includes(value(tile, 'Terrain')) && Math.abs(x - home.X) + Math.abs(y - home.Y) <= 4 &&
-                (!tile.NationId || tile.NationId === home.NationId) && !funded.Society.Buildings.some(item => item.X === x && item.Y === y);
+                value(tile, 'ClaimedSettlementId') === home.Id && !funded.Society.Buildings.some(item => item.X === x && item.Y === y);
         });
         assert(buildIndex >= 0);
         await ui.fill('building-x', buildIndex % funded.Width, modal);
@@ -307,7 +308,7 @@ const stock = (world, id) => town(world, id).Resources;
         const site = beforeGift.Tiles.findIndex((tile, index) => {
             const x = index % beforeGift.Width, y = Math.floor(index / beforeGift.Width);
             return ![0, 1, 5, 10].includes(tile.Terrain) && Math.abs(x - town.X) + Math.abs(y - town.Y) <= 7
-                && (!tile.NationId || tile.NationId === town.NationId)
+                && value(tile, 'ClaimedSettlementId') === town.Id
                 && !beforeGift.Society.Buildings.some(b => b.X === x && b.Y === y);
         });
         assert(site >= 0);

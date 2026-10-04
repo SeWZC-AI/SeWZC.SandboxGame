@@ -55,7 +55,9 @@ class UiDriver {
             assert(viewport.visible, `Scroll viewport is hidden: ${scroll}`);
             const canvas = await this.page.locator('#out canvas.avalonia-canvas').boundingBox();
             assert(canvas, 'Avalonia canvas has no visible bounds');
-            const center = { x: canvas.x + viewport.x + viewport.width / 2, y: canvas.y + viewport.y + viewport.height / 2 };
+            // Stay in the outer viewport's margin: a research graph in its center
+            // consumes wheels for zooming and cannot scroll an outer heading into view.
+            const center = { x: canvas.x + viewport.x + 3, y: canvas.y + viewport.y + viewport.height / 2 };
             await this.page.mouse.move(center.x, center.y);
             await this.page.mouse.wheel(0, Math.sign(control.y - (viewport.y + viewport.height / 2)) * 250);
             await this.page.waitForTimeout(120);
