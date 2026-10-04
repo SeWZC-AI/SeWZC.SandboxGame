@@ -118,6 +118,7 @@ internal static class SurvivalAndDisasterTests
         e.State.Rules.FireSpread = false; e.Step(25);
         Check(e.State.Tiles[4 * 32 + 4].FireTicks > 0, "A fire disappeared in a few days without firefighting.");
         var town = e.State.Settlements.Single();
+        TestLand.ClaimAllTowns(e);
         var farmId = e.GrantFacility(town.Id, BuildingKind.Farm, 20, 20);
         var academyId = e.GrantFacility(town.Id, BuildingKind.Academy, 21, 19);
         var farm = e.State.Society.Buildings.Single(b => b.Id == farmId);

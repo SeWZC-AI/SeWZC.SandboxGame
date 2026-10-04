@@ -3,6 +3,7 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     public static bool IsWaterfrontBuilding(BuildingKind kind) => kind is BuildingKind.Dock or BuildingKind.Shipyard;
+    public static bool IsPublicInfrastructure(BuildingKind kind) => kind is BuildingKind.Bridge or BuildingKind.MountainPass;
     private static bool IsMaterialFacility(BuildingKind kind) => kind is BuildingKind.Workshop or BuildingKind.LumberCamp or BuildingKind.Quarry;
 
     public double BuildingSiteScore(int settlementId, BuildingKind kind, int x, int y)
@@ -36,10 +37,15 @@ public sealed partial class WorldEngine
     {
         var radius = founding ? (_creatingDemo ? 3 : 6) : Math.Max(8, town.MaxClaimRadius);
         return Circle(town.X, town.Y, radius)
-            .Where(i => FacilityPlacementError(town.Id, kind, i % State.Width, i / State.Width, true) is null
+            .Where(i => FacilityPlacementError(town.Id, kind, i % State.Width, i / State.Width, true, founding: founding) is null
                 && (founding || _citizens[town.Id].Any(p => p.Health > 0 && Distance(p.X, p.Y, i % State.Width, i / State.Width) <= 6)))
             .OrderByDescending(i => BuildingSiteScore(town.Id, kind, i % State.Width, i / State.Width)).ThenBy(i => i).FirstOrDefault(-1);
     }
+
+    private bool BuildingGroundOwned(Building building) => IsPublicInfrastructure(building.Kind)
+        || State.Tiles[Index(building.X, building.Y)].ClaimedSettlementId == building.SettlementId
+        && _settlements.TryGetValue(building.SettlementId, out var town)
+        && State.Tiles[Index(building.X, building.Y)].NationId == town.NationId;
 
     private bool PassiveFacility(Building building) => building.Kind is BuildingKind.Housing or BuildingKind.Granary or BuildingKind.Watchtower;
 

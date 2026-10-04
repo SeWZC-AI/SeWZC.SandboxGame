@@ -91,7 +91,7 @@ public sealed partial class WorldEngine
     private Profession AssignProfession()
     {
         var roll = RandomInt(100);
-        return roll < 45 ? Profession.Farmer : roll < 63 ? Profession.Lumberjack : roll < 78 ? Profession.Miner : roll < 85 ? Profession.Builder : roll < 90 ? Profession.Trader : roll < 94 ? Profession.Messenger : roll < 97 ? Profession.Scholar : roll < 99 ? Profession.Mage : Profession.Representative;
+        return roll < 45 ? Profession.Farmer : roll < 63 ? Profession.Lumberjack : roll < 78 ? Profession.Miner : roll < 85 ? Profession.Builder : roll < 90 ? Profession.Trader : roll < 91 ? Profession.Messenger : roll < 97 ? Profession.Scholar : roll < 99 ? Profession.Mage : Profession.Representative;
     }
 
     public void TriggerDisaster(int x, int y, DisasterKind kind, int radius = 5)

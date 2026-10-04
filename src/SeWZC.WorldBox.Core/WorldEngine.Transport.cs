@@ -10,10 +10,10 @@ public sealed partial class WorldEngine
     {
         if (person.TravelMode != TravelMode.Foot || Distance(person.X, person.Y, home.X, home.Y) > 1) return;
         var distance = Distance(home.X, home.Y, person.Agent.Goal.TargetX, person.Agent.Goal.TargetY);
-        if (distance < 6) return;
+        if (distance < 6 && person.Agent.Goal.Kind != AgentGoalKind.Fish) return;
         // Reserve an entire out-and-back flight at takeoff. No remote warehouse supplies fuel en route.
         var fuel = Math.Max(1, distance * .04);
-        if (HasResearch(home.Id, ResearchKind.Aviation) && HasResearch(home.Id, ResearchKind.Electrification)
+        if (person.Agent.Goal.Kind != AgentGoalKind.Fish && HasResearch(home.Id, ResearchKind.Aviation) && HasResearch(home.Id, ResearchKind.Electrification)
             && home.Resources.Aircraft >= 1 && home.Resources.Oil >= fuel)
         {
             home.Resources.Aircraft--; person.Inventory.Aircraft++;

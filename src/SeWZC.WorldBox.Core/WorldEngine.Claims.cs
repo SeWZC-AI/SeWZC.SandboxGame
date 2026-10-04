@@ -71,10 +71,68 @@ public sealed partial class WorldEngine
 
     private void RegisterBuildingGround(Building building)
     {
+        if (IsPublicInfrastructure(building.Kind)) return;
         if (!_settlements.TryGetValue(building.SettlementId, out var town) || town.FoundationPending) return;
         var tile = State.Tiles[Index(building.X, building.Y)];
         if (tile.NationId != 0 && tile.NationId != town.NationId) return;
+        if (tile.ClaimedSettlementId != 0 && tile.ClaimedSettlementId != town.Id) return;
+        if (tile.ClaimedSettlementId == 0 && !Directions.Any(d => InBounds(building.X + d.X, building.Y + d.Y)
+            && State.Tiles[Index(building.X + d.X, building.Y + d.Y)].ClaimedSettlementId == town.Id)) return;
         tile.NationId = town.NationId;
         if (tile.ClaimedSettlementId == 0) tile.ClaimedSettlementId = town.Id;
+    }
+
+    private long _connectedClaimsRevision = -1;
+    private readonly Queue<int> _claimQueue = new();
+    private int[] _connectedClaims = [];
+
+    // Rebuild only after ownership/claim edits, never once per resident.
+    private void ReconcileConnectedClaims()
+    {
+        _territoryCounts.Bind(State.Tiles);
+        foreach (var town in State.Settlements)
+        {
+            if (town.FoundationPending) continue;
+            var root = Index(town.X, town.Y);
+            State.Tiles[root].NationId = town.NationId; State.Tiles[root].ClaimedSettlementId = town.Id;
+        }
+        if (_connectedClaimsRevision == _territoryCounts.Revision) return;
+        if (_connectedClaims.Length != State.Tiles.Length) _connectedClaims = new int[State.Tiles.Length];
+        FillConnectedClaims(State, _connectedClaims, _claimQueue);
+        for (var i = 0; i < State.Tiles.Length; i++)
+            if (_connectedClaims[i] == 0 && (State.Tiles[i].ClaimedSettlementId != 0 || State.Tiles[i].NationId != 0))
+            { State.Tiles[i].ClaimedSettlementId = 0; State.Tiles[i].NationId = 0; }
+        _connectedClaimsRevision = _territoryCounts.Revision;
+    }
+
+    private static void FillConnectedClaims(WorldState state, int[] connected, Queue<int> queue)
+    {
+        Array.Clear(connected); queue.Clear();
+        foreach (var town in state.Settlements)
+        {
+            if (town.FoundationPending) continue;
+            var root = town.Y * state.Width + town.X;
+            if (state.Tiles[root].ClaimedSettlementId != town.Id || state.Tiles[root].NationId != town.NationId) continue;
+            connected[root] = town.Id; queue.Enqueue(root);
+            while (queue.TryDequeue(out var current))
+            foreach (var (dx, dy) in Directions)
+            {
+                var x = current % state.Width + dx; var y = current / state.Width + dy;
+                if (x < 0 || y < 0 || x >= state.Width || y >= state.Height) continue;
+                var next = y * state.Width + x; var tile = state.Tiles[next];
+                if (connected[next] != 0 || tile.ClaimedSettlementId != town.Id || tile.NationId != town.NationId) continue;
+                if (IsWaterTerrain(state.Tiles[current].Terrain) && IsWaterTerrain(tile.Terrain)) continue;
+                connected[next] = town.Id; queue.Enqueue(next);
+            }
+        }
+    }
+
+    private static void ValidateConnectedClaims(WorldState state)
+    {
+        var connected = new int[state.Tiles.Length];
+        FillConnectedClaims(state, connected, new());
+        for (var i = 0; i < state.Tiles.Length; i++)
+            if ((state.Tiles[i].NationId != 0 || state.Tiles[i].ClaimedSettlementId != 0) && connected[i] == 0)
+                throw new ArgumentException("无效存档：占领区域须登记给城镇并与中心相连。");
     }
 }

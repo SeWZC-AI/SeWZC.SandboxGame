@@ -48,6 +48,7 @@ public sealed partial class WorldEngine
         }
         ReconcileSocietyTopology();
         RefreshLocalRepresentatives();
+        BalanceLocalWorkforce();
     }
 
     private int InitialCulture(int x, int y)
@@ -139,8 +140,7 @@ public sealed partial class WorldEngine
         var town = RequireTown(settlementId);
         if (!InBounds(x, y) || Distance(x, y, town.X, town.Y) > 24) throw new ArgumentException("道路须位于聚落周边 24 格内。");
         if (radius is < 0 or > 4) throw new ArgumentOutOfRangeException(nameof(radius), "道路笔刷半径须在 0 到 4 之间。");
-        var tiles = Circle(x, y, radius).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].RoadLevel == 0
-            && (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == town.NationId)).ToArray();
+        var tiles = Circle(x, y, radius).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].RoadLevel == 0).ToArray();
         if (tiles.Length == 0) throw new InvalidOperationException("笔刷内没有可修建道路的土地。");
         Spend(town.Resources, new ResourceStock { Wood = tiles.Length * 0.5, Stone = tiles.Length });
         foreach (var index in tiles) State.Tiles[index].RoadLevel = 1;
@@ -219,7 +219,7 @@ public sealed partial class WorldEngine
 
     private bool BuildingHasWork(Building building, Resident resident)
     {
-        if (!building.Enabled || resident.Age < 14 || resident.ArmyId != 0 || resident.Health <= 0) return false;
+        if (!BuildingGroundOwned(building) || !building.Enabled || resident.Age < 14 || resident.ArmyId != 0 || resident.Health <= 0) return false;
         if (building.LastWorkedTick == State.Tick && building.Workers.Count >= building.WorkSlots && !building.Workers.Contains(resident.Id)) return false;
         if (!building.IsCompleted || building.IsUpgrading) return true;
         if (building.Health < 50 || State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return false;
@@ -414,7 +414,7 @@ public sealed partial class WorldEngine
         return false;
     }
 
-    private bool IsFacilityOperating(Building building) => building.Enabled && building.IsCompleted && !building.IsUpgrading && building.Health >= 50 && BuildingTerrainValid(building.Kind, State.Tiles[Index(building.X, building.Y)])
+    private bool IsFacilityOperating(Building building) => BuildingGroundOwned(building) && building.Enabled && building.IsCompleted && !building.IsUpgrading && building.Health >= 50 && BuildingTerrainValid(building.Kind, State.Tiles[Index(building.X, building.Y)])
         && State.Tiles[Index(building.X, building.Y)].FireTicks == 0 && (PassiveFacility(building) || building.Kind is BuildingKind.TownCenter or BuildingKind.Bridge or BuildingKind.MountainPass || building.LastWorkedTick >= State.Tick - 12
         && State.Residents.Any(r => building.Workers.Contains(r.Id) && r.SettlementId == building.SettlementId && r.Health > 0 && (BuildingRace(building.Kind) is not { } race || r.Race == race && r.Age >= 14) && Distance(r.X, r.Y, building.X, building.Y) <= 1));
     private bool ClearSignalLine(int x0, int y0, int x1, int y1)
@@ -642,6 +642,7 @@ public sealed partial class WorldEngine
     public void ReconcileSocietyTopology()
     {
         EnsureTownCenters();
+        ReconcileConnectedClaims();
         var townIds = State.Settlements.Select(s => s.Id).ToHashSet(); var nationIds = State.Nations.Select(n => n.Id).ToHashSet();
         State.Society.Buildings.RemoveAll(b => !townIds.Contains(b.SettlementId) || !BuildingTerrainValid(b.Kind, State.Tiles[Index(b.X, b.Y)]) || b.Health <= 0 && b.Kind != BuildingKind.TownCenter);
         State.Society.Research.RemoveAll(r => !townIds.Contains(r.SettlementId));
@@ -655,7 +656,7 @@ public sealed partial class WorldEngine
 
     public void TickSociety()
     {
-        if (State.Tick % 30 == 0) RefreshLocalRepresentatives();
+        if (State.Tick % 30 == 0) { RefreshLocalRepresentatives(); BalanceLocalWorkforce(); }
         var townIds = State.Settlements.Select(s => s.Id).ToHashSet(); var nationIds = State.Nations.Select(n => n.Id).ToHashSet();
         State.Society.Research.RemoveAll(r => !townIds.Contains(r.SettlementId));
         State.Society.Policies.RemoveAll(p => !townIds.Contains(p.SettlementId));

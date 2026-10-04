@@ -134,7 +134,7 @@ internal static class AgentBehaviorTests
             engine.State.Rules.Hunger = engine.State.Rules.Thirst = false;
             engine.SpawnResidents(10, 10, RaceKind.Human, 1);
             engine.State.Society.Buildings.Clear();
-            foreach (var tile in engine.State.Tiles) { tile.Fertility = 0; tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default; }
+            foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Floodplain; tile.Fertility = 0; tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default; }
             foreach (var site in resources) engine.State.Tiles[site.Y * engine.State.Width + site.X].Fertility = site.Fertility;
             var person = engine.State.Residents.Single();
             person.Profession = Profession.Farmer; person.Age = 60; person.Inventory.Food = 1.2;
@@ -146,7 +146,7 @@ internal static class AgentBehaviorTests
             Require(person.Agent.Goal.Kind == kind && person.Agent.Goal.TargetX == targetX && person.Agent.Goal.TargetY == targetY,
                 $"Resource choice changed: {person.Agent.Goal.Kind} at {person.Agent.Goal.TargetX},{person.Agent.Goal.TargetY}; expected {kind} at {targetX},{targetY}.");
         }
-        // Center score 4 equals a distance-four yield-1 site: original row order selects the northern tile.
+        // Floodplain has full food yield. Original row order breaks the equal score.
         Choose(20, 20, [(20, 20, 50), (20, 16, 100)], AgentGoalKind.Gather, 20, 16);
         Choose(0, 0, [(1, 0, 100), (0, 1, 100)], AgentGoalKind.Gather, 1, 0);
         // (6,1) is outside the radius-six circle even though its Manhattan distance is seven.

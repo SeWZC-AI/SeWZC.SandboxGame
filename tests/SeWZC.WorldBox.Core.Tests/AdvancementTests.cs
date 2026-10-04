@@ -31,6 +31,7 @@ internal static class AdvancementTests
             Hold(engine, person, town.X, town.Y);
         }
         var worker = engine.State.Residents.Last(); worker.Profession = Profession.Builder;
+        TestLand.ClaimAllTowns(engine);
         return (engine, town, worker);
     }
 

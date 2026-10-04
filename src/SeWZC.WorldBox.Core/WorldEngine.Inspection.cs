@@ -9,7 +9,7 @@ public sealed partial class WorldEngine
         Profession.Child => "孩童", Profession.Farmer => "农民", Profession.Lumberjack => "伐木工",
         Profession.Miner => "矿工", Profession.Soldier => "战士", Profession.Builder => "建造者",
         Profession.Trader => "商人", Profession.Messenger => "信使", Profession.Representative => "代表",
-        Profession.Scholar => "学者", Profession.Mage => "法师", _ => "未知职业"
+        Profession.Fisher => "渔民", Profession.Scholar => "学者", Profession.Mage => "法师", _ => "未知职业"
     };
 
     public bool IsDepositVisible(Tile tile, ResourceVisibility visibility) => tile.Deposit is { } kind

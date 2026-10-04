@@ -6,6 +6,8 @@ internal sealed class TerritoryCounts
 {
     private readonly Dictionary<int, int> _counts = [];
     private Tile[]? _tiles;
+    public long Revision { get; private set; }
+    public void InvalidateClaims() => Revision++;
 
     public void Bind(Tile[] tiles)
     {
@@ -13,7 +15,7 @@ internal sealed class TerritoryCounts
         if (_tiles is not null)
             foreach (var tile in _tiles)
                 if (ReferenceEquals(tile.TerritoryCounts, this)) tile.TerritoryCounts = null;
-        _tiles = tiles; _counts.Clear();
+        _tiles = tiles; _counts.Clear(); Revision++;
         foreach (var tile in tiles)
         {
             tile.TerritoryCounts = this;
@@ -25,6 +27,7 @@ internal sealed class TerritoryCounts
 
     public void Change(int previous, int next)
     {
+        Revision++;
         if (previous != 0) _counts[previous] = _counts.GetValueOrDefault(previous) - 1;
         if (next != 0) _counts[next] = _counts.GetValueOrDefault(next) + 1;
     }

@@ -177,6 +177,7 @@ public sealed partial class WorldEngine
 
     private void RefreshTotals()
     {
+        ReconcileConnectedClaims();
         _territoryCounts.Bind(State.Tiles);
         foreach (var nation in State.Nations) { nation.Population = 0; nation.Territory = _territoryCounts.Get(nation.Id); nation.Resources = new ResourceStock(); }
         foreach (var settlement in State.Settlements)

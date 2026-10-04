@@ -91,7 +91,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>Read-only validation shared by the map preview and the committing command.</summary>
-    public string? FacilityPlacementError(int settlementId, BuildingKind kind, int x, int y, bool gift = false, BridgeDirection? direction = null, int bridgeLevel = 1)
+    public string? FacilityPlacementError(int settlementId, BuildingKind kind, int x, int y, bool gift = false, BridgeDirection? direction = null, int bridgeLevel = 1, bool founding = false)
     {
         if (!Enum.IsDefined(kind)) return "未知的建筑类型";
         if (kind == BuildingKind.TownCenter) return "每处聚落的中心由定居和重建维护，无需另行放置";
@@ -108,8 +108,18 @@ public sealed partial class WorldEngine
         var tile = State.Tiles[Index(x, y)];
         if (tile.Terrain == TerrainType.Mountain && kind != BuildingKind.MountainPass && !State.Residents.Any(p => p.SettlementId == settlementId && p.Race == RaceKind.Dwarf && p.Health > 0 && p.Age >= 14)) return "山地建设需要当地成年矮人";
         if (tile.FireTicks > 0) return "此处正在燃烧";
-        if (tile.NationId != 0 && tile.NationId != town.NationId) return "此处属于其他国家";
-        if (tile.ClaimedSettlementId != 0 && tile.ClaimedSettlementId != town.Id) return "此地已由其他城镇独占登记";
+        if (!IsPublicInfrastructure(kind))
+        {
+            if (tile.NationId != 0 && tile.NationId != town.NationId) return "此处属于其他国家";
+            if (tile.ClaimedSettlementId != 0 && tile.ClaimedSettlementId != town.Id) return "此地已由其他城镇独占登记";
+            if (IsWaterfrontBuilding(kind))
+            {
+                if (!Directions.Any(d => InBounds(x + d.X, y + d.Y) && !IsWaterTerrain(State.Tiles[Index(x + d.X, y + d.Y)].Terrain)
+                    && State.Tiles[Index(x + d.X, y + d.Y)].ClaimedSettlementId == town.Id)) return "需要紧邻本城镇已占领的陆岸";
+            }
+            else if (tile.ClaimedSettlementId != town.Id && !(founding && CanClaimTile(town, Index(x, y), RaceKind.Dwarf)))
+                return "请先实地占领此地，再建造建筑";
+        }
         if (kind == BuildingKind.Well && DailyWaterYield(tile) < .025) return "水井需要湿地或每日供水至少 0.025 的地块";
         if (kind is BuildingKind.LumberCamp or BuildingKind.Quarry && !Circle(x, y, 1).Any(i => i != Index(x, y)
             && State.Tiles[i].ResourceAmount > 0 && (kind == BuildingKind.LumberCamp ? IsForestTerrain(State.Tiles[i].Terrain)
@@ -147,8 +157,7 @@ public sealed partial class WorldEngine
         if (!_settlements.TryGetValue(settlementId, out var town)) return "先选择负责修路的聚落";
         if (!InBounds(x, y) || Distance(x, y, town.X, town.Y) > 24) return "距聚落超过 24 格";
         if (radius is < 0 or > 4) return "道路范围无效";
-        var count = Circle(x, y, radius).Count(i => State.Tiles[i].IsWalkable && State.Tiles[i].RoadLevel == 0
-            && (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == town.NationId));
+        var count = Circle(x, y, radius).Count(i => State.Tiles[i].IsWalkable && State.Tiles[i].RoadLevel == 0);
         if (count == 0) return "此处不可修路，或已有道路";
         return MissingResources(town.Resources, new ResourceStock { Wood = count * .5, Stone = count });
     }

@@ -34,6 +34,7 @@ internal static class SocietyRegressionTests
             town.Resources = new ResourceStock { Food = 1000, Wood = 1000, Stone = 1000, Ore = 1000 };
             foreach (var resident in engine.State.Residents.Where(r => r.SettlementId == town.Id)) Hold(resident, town.X, town.Y);
         }
+        TestLand.ClaimAllTowns(engine);
         return engine;
     }
 

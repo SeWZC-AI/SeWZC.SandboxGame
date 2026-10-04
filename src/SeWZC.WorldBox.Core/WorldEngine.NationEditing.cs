@@ -23,10 +23,29 @@ public sealed partial class WorldEngine
         if (!InBounds(x, y)) return;
         radius = Math.Clamp(radius, 0, 32);
         var indexes = Circle(x, y, radius).ToHashSet();
-        foreach (var index in indexes)
-            if (State.Tiles[index].IsWalkable)
-            { State.Tiles[index].NationId = nationId; State.Tiles[index].ClaimedSettlementId = 0; }
         foreach (var town in State.Settlements.Where(s => s.NationId != nationId && indexes.Contains(Index(s.X, s.Y))).ToArray()) TransferSettlementOwnership(town, nationId);
+        foreach (var index in indexes)
+            if (State.Tiles[index].NationId != nationId && State.Tiles[index].SettlementId == 0)
+            { State.Tiles[index].NationId = 0; State.Tiles[index].ClaimedSettlementId = 0; }
+        ReconcileConnectedClaims();
+        // Paint may extend a town's existing edge; a remote brush cannot create a floating enclave.
+        foreach (var town in State.Settlements.Where(t => t.NationId == nationId && !t.FoundationPending).OrderBy(t => t.Id))
+        {
+            var queue = new Queue<int>(); var seen = new HashSet<int>();
+            var root = Index(town.X, town.Y); queue.Enqueue(root); seen.Add(root);
+            while (queue.TryDequeue(out var current))
+            foreach (var (dx, dy) in Directions)
+            {
+                var xx = current % State.Width + dx; var yy = current / State.Width + dy;
+                if (!InBounds(xx, yy)) continue;
+                var next = Index(xx, yy); var tile = State.Tiles[next];
+                if (seen.Contains(next) || !tile.IsWalkable || IsWaterTerrain(tile.Terrain)
+                    || tile.ClaimedSettlementId != 0 && tile.ClaimedSettlementId != town.Id) continue;
+                if (tile.ClaimedSettlementId != town.Id && !indexes.Contains(next)) continue;
+                tile.NationId = nationId; tile.ClaimedSettlementId = town.Id;
+                seen.Add(next); queue.Enqueue(next);
+            }
+        }
         _armyPaths.Clear(); _armyTargets.Clear();
         Reindex(); RemoveEmptyNations(); InitializeSociety(); RefreshTotals();
         AddEvent(WorldEventKind.Editor, $"{nation.Name}的领土边界已调整，圈内聚落随领土转属。", x, y);

@@ -94,6 +94,7 @@ internal static class GeographyEcologyTests
         tile.Terrain = TerrainType.Mountain;
         Check(e.CanTraverseStep(16, 16, 17, 16, TravelMode.Foot, RaceKind.Dwarf) && !e.CanTraverseStep(16, 16, 17, 16, TravelMode.Foot, RaceKind.Human), "Dwarf mountain adaptation is absent");
         e.SpawnResidents(17, 16, RaceKind.Dwarf, 1);
+        TestLand.ClaimAllTowns(e);
         Check(e.State.Residents.Single().SettlementId != 0, "Dwarf mountain founding failed");
         e.PaintTerrain(17, 16, TerrainType.Mountain, 0);
         var town = e.State.Settlements.Single();
@@ -140,6 +141,7 @@ internal static class GeographyEcologyTests
     private static void RainwaterWork()
     {
         var e = Flat(); e.SpawnResidents(16, 16, RaceKind.Human, 6);
+        TestLand.ClaimAllTowns(e);
         var town = e.State.Settlements.Single(); town.Resources.Water = 0; town.Resources.Food = 300;
         foreach (var person in e.State.Residents) { person.Inventory.Water = 0; person.Profession = Profession.Builder; }
         e.State.Rules.Hunger = e.State.Rules.Thirst = e.State.Rules.Construction = true;
@@ -172,8 +174,10 @@ internal static class GeographyEcologyTests
     private static void RacialFacilities()
     {
         var e = Flat(); e.SpawnResidents(16, 16, RaceKind.Human, 1); var town = e.State.Settlements.Single();
+        TestLand.ClaimAllTowns(e);
         Check(e.FacilityPlacementError(town.Id, BuildingKind.WarDrum, 20, 16, true) is not null, "Absent race unlocks building");
         e.SpawnResidents(16, 16, RaceKind.Orc, 1); var orc = e.State.Residents.Single(p => p.Race == RaceKind.Orc); orc.Age = 25;
+        TestLand.ClaimAllTowns(e);
         var id = e.GrantFacility(town.Id, BuildingKind.WarDrum, 20, 16); var building = e.State.Society.Buildings.Single(b => b.Id == id);
         var human = e.State.Residents.Single(p => p.Race == RaceKind.Human); human.X = 20; human.Y = 16; human.Age = 25;
         human.Agent.Goal = new() { Kind = AgentGoalKind.Work, TargetEntityId = id }; human.Inventory.Food = human.Inventory.Water = 1;
@@ -182,6 +186,7 @@ internal static class GeographyEcologyTests
         orc.Inventory.Food = orc.Inventory.Water = 1; human.Agent.Fatigue = 40;
         Check(e.TryWorkAtBuilding(orc) && human.Agent.Fatigue < 40 && orc.Inventory.Food < 1, "Onsite racial service lacks physical inputs or effects");
         e.SpawnResidents(16, 16, RaceKind.Elf, 1);
+        TestLand.ClaimAllTowns(e);
         e.State.Tiles[18 * 32 + 18].Terrain = TerrainType.Forest;
         e.GrantFacility(town.Id, BuildingKind.SacredGrove, 18, 18);
         Check(e.State.Tiles[18 * 32 + 18].Terrain == TerrainType.Forest, "Sacred grove destroys its own forest habitat");
@@ -214,6 +219,7 @@ internal static class GeographyEcologyTests
         var garden = Add(BuildingKind.HerbGarden); Arrive(elf, garden); human.X = garden.X; human.Y = garden.Y; human.Health = 60; human.SicknessTicks = 10;
         Check(e.TryWorkAtBuilding(elf) && human.Health > 60 && human.SicknessTicks == 9, "Herb garden does not treat a nearby real patient");
         e.SpawnResidents(16, 16, RaceKind.Dwarf, 1); var dwarf = e.State.Residents.Single(p => p.Race == RaceKind.Dwarf); dwarf.Age = 25;
+        TestLand.ClaimAllTowns(e);
         var mine = Add(BuildingKind.MiningHall); var rock = e.State.Tiles[mine.Y * 32 + mine.X + 1]; rock.Terrain = TerrainType.Hills; rock.ResourceAmount = 100;
         Arrive(dwarf, mine); var stone = dwarf.Inventory.Stone; var ore = dwarf.Inventory.Ore;
         Check(e.TryWorkAtBuilding(dwarf) && rock.ResourceAmount < 100 && dwarf.Inventory.Stone > stone && dwarf.Inventory.Ore > ore,
@@ -226,6 +232,7 @@ internal static class GeographyEcologyTests
     private static void Forge()
     {
         var e = Flat(); e.SpawnResidents(16, 16, RaceKind.Dwarf, 1); var town = e.State.Settlements.Single();
+        TestLand.ClaimAllTowns(e);
         e.State.Society.Research.Single().Completed = [ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Industry];
         var id = e.GrantFacility(town.Id, BuildingKind.DwarvenForge, 20, 16); var dwarf = e.State.Residents.Single(); dwarf.Age = 25;
         dwarf.X = 20; dwarf.Y = 16; dwarf.Inventory.Wood = dwarf.Inventory.Ore = 2;

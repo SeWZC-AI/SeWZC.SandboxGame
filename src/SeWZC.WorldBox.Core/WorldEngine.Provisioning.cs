@@ -113,7 +113,7 @@ public sealed partial class WorldEngine
     private void AddProvisionChoices(Resident person, Settlement home, List<GoalChoice> choices)
     {
         var needsWater = person.Inventory.Water < .3
-            && (person.Thirst >= 10 || DailyWaterYield(State.Tiles[Index(person.X, person.Y)]) < WaterUse(person));
+            && (person.Thirst >= 10 || AvailableWater(person.X, person.Y) < WaterUse(person));
         if (State.Rules.Thirst && (needsWater || person.Id % 5 == 0 && person.Inventory.Water < WaterReserve(person) + 3))
         {
             var atHome = Distance(person.X, person.Y, home.X, home.Y) <= 1;
@@ -159,11 +159,12 @@ public sealed partial class WorldEngine
             && person.Inventory.Food < FoodUse(person) * daysHome)
             choices.Add(new(AgentGoalKind.ReturnHome, home.X, home.Y, 85, "口粮接近保守返程需求，先实地返仓补给", SettlementId: home.Id));
         if (person.Age < 14) return;
-        var wildlife = person.Profession == Profession.Farmer || person.Hunger > 20 && person.Inventory.Food < .3 ? FindHarvestableWildlife(person) : (-1, -1, false);
+        AddBoatFishingChoice(person, home, choices);
+        var wildlife = person.Profession is Profession.Farmer or Profession.Fisher || person.Hunger > 20 && person.Inventory.Food < .3 ? FindHarvestableWildlife(person) : (-1, -1, false);
         if (wildlife.Item1 >= 0)
             choices.Add(new(wildlife.Item3 ? AgentGoalKind.Fish : AgentGoalKind.Hunt,
                 wildlife.Item1 % State.Width, wildlife.Item1 / State.Width,
-                (person.Inventory.Food < .3 && person.Hunger > 20 ? 100 : person.Profession == Profession.Farmer ? 43 : 14)
+                (person.Inventory.Food < .3 && person.Hunger > 20 ? 100 : person.Profession is Profession.Farmer or Profession.Fisher ? 43 : 14)
                     + (person.Inventory.Food < .3 ? person.Hunger : 0),
                 wildlife.Item3 ? "在眼前水岸捕鱼，鱼群数量会实际减少" : "在眼前栖息地狩猎，将食物携带返乡",
                 EntityId: wildlife.Item2 + 1));
@@ -206,6 +207,29 @@ public sealed partial class WorldEngine
                     return (Index(x + dx, y + dy), index, true);
         }
         return (-1, -1, false);
+    }
+
+    private void AddBoatFishingChoice(Resident person, Settlement home, List<GoalChoice> choices)
+    {
+        if (person.Profession != Profession.Fisher || person.Age < 14
+            || person.TravelMode != TravelMode.Boat && !(Distance(person.X, person.Y, home.X, home.Y) <= 1
+                && HasResearch(home.Id, ResearchKind.Logistics) && home.Resources.Boats >= 1)) return;
+        var reachable = 0; var best = -1; var score = double.NegativeInfinity;
+        foreach (var offset in VisibleResourceOffsets)
+        {
+            var x = person.X + offset.X; var y = person.Y + offset.Y;
+            if (!InBounds(x, y)) continue;
+            var index = Index(x, y); var tile = State.Tiles[index];
+            var animal = EdibleAnimal(tile, aquatic: true);
+            if (animal == WildlifeKind.None || tile.FireTicks > 0) continue;
+            var value = Math.Min(4, tile.AnimalPopulation(animal)) * AnimalRules.For(animal).BodyMass - offset.Distance * .5;
+            if (value > score && VisibleSiteReachable(person, index, ref reachable, TravelMode.Boat))
+            { best = index; score = value; }
+        }
+        if (best >= 0) choices.Add(new(AgentGoalKind.Fish, best % State.Width, best / State.Width, 60,
+            "领取家园舟船，前往眼前鱼群捕鱼，装满后返岸交付鱼获与舟船", EntityId: best + 1));
+        else if (person.TravelMode == TravelMode.Boat) choices.Add(new(AgentGoalKind.ReturnHome, home.X, home.Y, 90,
+            "附近鱼群已不足，返岸交付鱼获与舟船", SettlementId: home.Id));
     }
 
     private static WildlifeKind EdibleAnimal(Tile tile, bool aquatic = false)

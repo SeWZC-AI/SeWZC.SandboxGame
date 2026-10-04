@@ -11,6 +11,7 @@ internal static class VisualFixture
         foreach (var race in Enum.GetValues<RaceKind>())
         {
             var (x, y) = positions[(int)race]; engine.SpawnResidents(x, y, race, 12);
+            TestLand.ClaimAllTowns(engine);
             var town = engine.State.Settlements.Last();
             var people = engine.State.Residents.Where(r => r.SettlementId == town.Id).ToArray();
             for (var i = 0; i < people.Length; i++)

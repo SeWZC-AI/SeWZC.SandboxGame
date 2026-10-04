@@ -149,6 +149,7 @@ internal static class StoryTests
     private static void Estimates()
     {
         var engine = Flat(false); var town = engine.State.Settlements[0];
+        TestLand.ClaimAllTowns(engine);
         var id = engine.BuildFacility(town.Id, BuildingKind.Farm, town.X + 1, town.Y);
         var building = engine.State.Society.Buildings.Single(b => b.Id == id);
         var worker = engine.State.Residents[0]; worker.Profession = Profession.Builder;
@@ -169,6 +170,7 @@ internal static class StoryTests
     private static void ProjectStories()
     {
         var engine = Flat(false); var town = engine.State.Settlements[0];
+        TestLand.ClaimAllTowns(engine);
         var id = engine.BuildFacility(town.Id, BuildingKind.Academy, town.X + 1, town.Y);
         var building = engine.State.Society.Buildings.Single(b => b.Id == id);
         var worker = engine.State.Residents[0]; worker.Profession = Profession.Builder; worker.Agent.Goal.TargetEntityId = id;

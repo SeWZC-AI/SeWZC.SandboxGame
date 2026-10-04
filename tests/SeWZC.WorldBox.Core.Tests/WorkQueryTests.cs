@@ -19,6 +19,7 @@ internal static class WorkQueryTests
             Peace = false, Migration = false, Secession = false
         }, false, false);
         engine.SpawnResidents(16, 32, RaceKind.Human, 6);
+        TestLand.ClaimAllTowns(engine);
         return engine;
     }
 
@@ -78,6 +79,7 @@ internal static class WorkQueryTests
     private static void MedicalMembership()
     {
         var engine = Flat(); engine.SpawnResidents(48, 32, RaceKind.Elf, 6);
+        TestLand.ClaimAllTowns(engine);
         var home = engine.State.Settlements[0]; var destination = engine.State.Settlements[1];
         foreach (var town in engine.State.Settlements) { town.Resources.Food = 500; town.Housing = 100; }
         foreach (var resident in engine.State.Residents)

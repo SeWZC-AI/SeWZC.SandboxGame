@@ -22,7 +22,12 @@ public sealed partial class Resident
 
 public sealed partial class Tile
 {
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int ClaimedSettlementId { get; set; }
+    private int _claimedSettlementId;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int ClaimedSettlementId
+    {
+        get => _claimedSettlementId;
+        set { if (_claimedSettlementId == value) return; _claimedSettlementId = value; TerritoryCounts?.InvalidateClaims(); }
+    }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public BridgeDirection BridgeDirection { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public byte BridgeLevel { get; set; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public long WaterDrawTick { get; set; }
