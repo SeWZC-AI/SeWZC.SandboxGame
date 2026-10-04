@@ -36,6 +36,11 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                 await ui.selectIndex('infrastructure-town', completedTown, inspector);
                 await ui.click('research-expand', inspector);
                 const endpoint = route === 'technology' ? 'TechnologicalEmpire' : 'MagicalEmpire';
+                assert.equal((await ui.snapshot()).researchGraph.nodes, 24);
+                assert.equal((await ui.snapshot()).researchGraph.edges, 39);
+                await ui.click(`research-route-${route}`, inspector);
+                await ui.click('research-jump-end', inspector);
+                const graphPoint = await ui.point('research-graph', inspector);
                 await ui.click(`research-node-${endpoint}`, inspector);
                 let snapshot = await ui.snapshot();
                 assert.match(ui.control(snapshot, 'research-selected').value, route === 'technology' ? /科技帝国/ : /魔法帝国/);
@@ -43,12 +48,44 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                 assert.equal(ui.control(snapshot, 'research-start').enabled, false);
                 assert(!snapshot.controls.some(c => c.id === 'research-kind'), 'Research still uses a dropdown');
                 assert.equal(snapshot.controls.filter(c => c.id.startsWith('research-node-')).length, 24);
-                await ui.point('research-selected', inspector);
+                assert.equal(snapshot.researchGraph.nodes, route === 'technology' ? 15 : 14);
+                const beforePan = snapshot.researchGraph;
+                const graph = ui.control(snapshot, 'research-graph');
+                const start = { x: graphPoint.x - graph.width / 2 + 25, y: graphPoint.y - 80 };
+                if (mobile) {
+                    const cdp = await context.newCDPSession(page);
+                    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+                    for (let i = 1; i <= 8; i++) {
+                        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: start.x, y: start.y + i * 11 }] });
+                        await page.waitForTimeout(25);
+                    }
+                    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+                    await cdp.detach();
+                } else {
+                    await page.mouse.move(start.x, start.y); await page.mouse.down();
+                    await page.mouse.move(start.x, start.y + 88, { steps: 8 }); await page.mouse.up();
+                }
+                await page.waitForTimeout(250);
+                snapshot = await ui.snapshot();
+                assert(Math.abs(snapshot.researchGraph.offsetY - beforePan.offsetY) > 30, 'Dragging did not pan the actual tree');
+                assert.match(ui.control(snapshot, 'research-selected').value, route === 'technology' ? /科技帝国/ : /魔法帝国/);
+                await ui.click('research-zoom-out', inspector);
+                assert((await ui.snapshot()).researchGraph.zoom < beforePan.zoom, 'Zoom did not change tree geometry');
+                await ui.click('research-zoom-in', inspector);
+                if (!mobile) {
+                    await ui.click('research-route-all', inspector);
+                    await ui.click('research-fit', inspector);
+                } else await ui.click('research-focus', inspector);
+                await ui.point('research-graph', inspector);
+                snapshot = await ui.snapshot();
+                await page.waitForTimeout(1200);
+                const refreshed = await ui.snapshot();
+                assert.deepEqual(refreshed.researchGraph, snapshot.researchGraph, 'Timed refresh reset the tree viewport');
                 await page.screenshot({ path: path.join(output, `${label}.png`) });
                 assert.equal(digest(await ui.save()), digest(before), 'Reading or expanding the technology tree changed the world');
                 await errors.assertHealthy(`real empire tree ${label}`);
-                fs.writeFileSync(path.join(output, `${label}.json`), JSON.stringify({ tick: before.Tick, population: before.Residents.length, nodes: 24, stage: endpoint, errors: [] }, null, 2));
-                console.log(`PASS ${label}: actual final save import, 24 nodes, endpoint status, responsive view, read-only tree`);
+                fs.writeFileSync(path.join(output, `${label}.json`), JSON.stringify({ tick: before.Tick, population: before.Residents.length, graph: snapshot.researchGraph, stage: endpoint, errors: [] }, null, 2));
+                console.log(`PASS ${label}: actual save import, connected research graph, pan, zoom, endpoint status and read-only view`);
             } catch (error) {
                 await page.screenshot({ path: path.join(output, `${label}-failure.png`) });
                 fs.writeFileSync(path.join(output, `${label}-failure.json`), JSON.stringify(await ui.snapshot(), null, 2));
