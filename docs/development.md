@@ -184,7 +184,7 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 
 研究图、说明、成本和前置统一维护在 `ResearchRules.cs`，每批生产配方仍由 `AdvancementRules.cs` 负责。新增知识的效果需进入实际采收、生产、训练等规则及对应效果展示，不能只新增界面节点。矿工材料目标是保存状态；生产预算缓存只在居民阶段存在，退出阶段必须清空。
 
-科技树布局只属于 UI。节点位置与每条实际依赖的线路由 `ResearchTreeLayout` 生成；`ResearchGraphControl` 保留拖动、缩放与定位，周期刷新不替换节点或复位视野。Headless 检查全树与两条路线的连接覆盖、节点重叠和线路穿越；浏览器 `research-trees.cjs` 使用交付 ZIP 中的真实存档，检查鼠标／真实触摸事件的拖动、缩放、完整概览与存档不变性。核心规则未变的图形修正无需重跑帝国模拟。
+科技树布局只属于 UI。节点位置与每条实际依赖的线路由 `ResearchTreeLayout` 生成；`ResearchGraphControl` 保留拖动、缩放与定位，周期刷新不替换节点或复位视野。Headless 检查两条帝国树与共同基础的连接覆盖、节点重叠、线路穿越和终点不绕外围；浏览器 `research-trees.cjs` 使用交付 ZIP 中的真实存档，检查节点上的鼠标／真实触摸横向与纵向拖动、缩放、完整概览与存档不变性。触屏回归须固定同一手势的触点编号，可用 `WORLDBOX_RESEARCH_CASES=technology-mobile,magic-mobile` 聚焦失败场景；默认执行桌面／触屏共四个场景。核心规则未变的图形修正无需重跑帝国模拟。
 
 复现完整自主科技路线：
 
