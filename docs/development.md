@@ -39,6 +39,7 @@
 | 时代路线、配方与加工运输 | Core 中 `AdvancementRules.cs`、`WorldEngine.Advancement.cs`；UI 中 `MainView.Society.cs` | `AdvancementTests.cs`、`tests/browser/advancement.cjs` |
 | 地块改造、矿藏与载具 | Core 中 `WorldEngine.Land.cs`、`WorldEngine.Transport.cs`、`WorldState.Land.cs`；UI 中 `MainView.Selection.cs`、`WorldMapControl.Transport.cs` | `LandTransportTests.cs`、`tests/browser/land.cjs` |
 | 制度、文化、研究、建设与魔法 | Core 中 `WorldEngine.Society.cs`、`SocietyRules.cs` | [SocietyBehaviorTests.cs](../tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs) |
+| 科技树的节点、连线与视野 | UI 中 `MainView.Research.cs`、`Controls/ResearchTreeLayout.cs`、`Controls/ResearchGraphControl.cs` | `AdvancedResearchUi`、`tests/browser/research-trees.cjs` |
 | 城镇扩充、设施选址与建设地图 | Core 中 `WorldEngine.Towns.cs`、`BuildingSites.cs`、`Claims.cs`；UI 中 `MainView.Buildings.cs`、`WorldMapControl.Infrastructure.cs` | [TownInfrastructureTests.cs](../tests/SeWZC.WorldBox.Core.Tests/TownInfrastructureTests.cs)、[infrastructure.cjs](../tests/browser/infrastructure.cjs) |
 | 角色编辑、存档校验 | Core 中 `WorldEngine.ResidentEditing.cs`、`WorldEngine.ValidationV2.cs`、`WorldEngine.Persistence.cs`、`WorldJsonContext.cs` | [EditorAndMigrationTests.cs](../tests/SeWZC.WorldBox.Core.Tests/EditorAndMigrationTests.cs)、`Program.cs`；文件名不表示支持旧存档迁移 |
 | 界面、工具与表单 | [UI](../src/SeWZC.WorldBox.UI/) 中 `MainView*.cs` | [smoke.cjs](../tests/browser/smoke.cjs)、[mobile-smoke.cjs](../tests/browser/mobile-smoke.cjs) |
@@ -181,7 +182,9 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 
 ### 帝国研究与存档模拟
 
-研究图、说明、成本和前置统一维护在 `ResearchRules.cs`，每批生产配方仍由 `AdvancementRules.cs` 负责。新增知识的效果需进入实际采收、生产、训练等规则及对应效果展示，不能只新增卡片。矿工材料目标是保存状态；生产预算缓存只在居民阶段存在，退出阶段必须清空。
+研究图、说明、成本和前置统一维护在 `ResearchRules.cs`，每批生产配方仍由 `AdvancementRules.cs` 负责。新增知识的效果需进入实际采收、生产、训练等规则及对应效果展示，不能只新增界面节点。矿工材料目标是保存状态；生产预算缓存只在居民阶段存在，退出阶段必须清空。
+
+科技树布局只属于 UI。节点位置与每条实际依赖的线路由 `ResearchTreeLayout` 生成；`ResearchGraphControl` 保留拖动、缩放与定位，周期刷新不替换节点或复位视野。Headless 检查全树与两条路线的连接覆盖、节点重叠和线路穿越；浏览器 `research-trees.cjs` 使用交付 ZIP 中的真实存档，检查鼠标／真实触摸事件的拖动、缩放、完整概览与存档不变性。核心规则未变的图形修正无需重跑帝国模拟。
 
 复现完整自主科技路线：
 

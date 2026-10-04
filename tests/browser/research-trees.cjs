@@ -40,8 +40,8 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                 assert(mobile ? expandedGraph.width <= 390 : expandedGraph.width > expanded.width * .95,
                     'Expanded tree did not use the available screen width');
                 const endpoint = route === 'technology' ? 'TechnologicalEmpire' : 'MagicalEmpire';
-                assert.equal((await ui.snapshot()).researchGraph.nodes, 24);
-                assert.equal((await ui.snapshot()).researchGraph.edges, 39);
+                assert.equal((await ui.snapshot()).researchGraph.nodes, 15);
+                assert.equal((await ui.snapshot()).researchGraph.edges, 23);
                 await ui.click(`research-route-${route}`, inspector);
                 await ui.click('research-jump-end', inspector);
                 await ui.point('research-graph', inspector);
@@ -62,7 +62,7 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                         const s = await ui.snapshot(), g = ui.control(s, 'research-graph'), v = ui.control(s, inspector.scroll);
                         const delta = g.y < v.y + 10 ? g.y - v.y - 10 : g.y + g.height > v.y + v.height - 10 ? g.y + g.height - v.y - v.height + 10 : 0;
                         if (Math.abs(delta) < 2) break;
-                        await page.mouse.move(v.x + 3, v.y + 25); await page.mouse.wheel(0, delta);
+                        await page.mouse.move(v.x + v.width / 2, v.y + 25); await page.mouse.wheel(0, delta);
                         await page.waitForTimeout(150);
                     }
                     return ui.point('research-graph', inspector);
@@ -92,14 +92,20 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                 await ui.click('research-zoom-out', inspector);
                 assert((await ui.snapshot()).researchGraph.zoom < beforePan.zoom, 'Zoom did not change tree geometry');
                 await ui.click('research-zoom-in', inspector);
-                if (!mobile) {
-                    await ui.click('research-route-all', inspector);
-                    await ui.click('research-fit', inspector);
-                } else await ui.click('research-focus', inspector);
+                await ui.click('research-fit', inspector);
                 await showGraph();
                 snapshot = await ui.snapshot();
-                if (!mobile) assert(snapshot.controls.filter(c => c.id.startsWith('research-node-')).every(c => c.visible),
+                assert.equal(snapshot.controls.filter(c => c.id.startsWith('research-node-') && c.visible).length, route === 'technology' ? 15 : 14,
                     'Fit-to-tree overview clips a research node');
+                const readableBranch = route === 'technology' ? 'Industry' : 'Crystalcraft';
+                await ui.click(`research-node-${readableBranch}`, inspector);
+                assert.match(ui.control(await ui.snapshot(), 'research-path-caption').value, route === 'technology' ? /农业改良、驿路运输/ : /奥术基础/);
+                if (mobile) {
+                    while ((await ui.snapshot()).researchGraph.zoom < .95) await ui.click('research-zoom-in', inspector);
+                    await ui.click('research-focus', inspector);
+                }
+                await showGraph();
+                snapshot = await ui.snapshot();
                 await page.waitForTimeout(1200);
                 const refreshed = await ui.snapshot();
                 assert.deepEqual(refreshed.researchGraph, snapshot.researchGraph, 'Timed refresh reset the tree viewport');

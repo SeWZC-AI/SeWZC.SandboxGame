@@ -10,14 +10,14 @@ namespace SeWZC.WorldBox.UI;
 public sealed partial class MainView
 {
     private bool _researchExpanded;
-    private string _researchRoute = "all";
+    private string _researchRoute = "technology";
     private ResearchKind _selectedResearch = ResearchKind.Agriculture;
 
     private void BuildResearchTree(StackPanel panel, Settlement town)
     {
-        panel.Children.Add(Text("文明科技树", 17, Mint, true));
+        panel.Children.Add(LiveText(() => _researchRoute == "magic" ? "魔法帝国研究树" : _researchRoute == "common" ? "两条路线的共同基础" : "科技帝国研究树", 17, Mint));
         panel.Children.Add(Named(Button("展开 / 收起科技树视野", () => { _researchExpanded = !_researchExpanded; _expandedInspector = _researchExpanded; ApplyLayout(); RefreshInspector(); }), "research-expand"));
-        panel.Children.Add(Paragraph("从根部向下发展。连线连接前置知识与后续研究；点击节点查看用途与投入，拖动空白处移动视野。"));
+        panel.Children.Add(Paragraph("从上向下发展，每条支线占据独立位置。实线箭头指向后续研究，虚线在帝国终点汇合；终点需要全部支线成果。"));
         panel.Children.Add(Named(LiveText(() =>
         {
             var r = _engine.State.Society.Research.First(x => x.SettlementId == town.Id);
@@ -38,7 +38,7 @@ public sealed partial class MainView
         {
             var content = new StackPanel { Spacing = 2 };
             content.Children.Add(Text(definition.Name, 13, null, true));
-            content.Children.Add(Text(definition.Branch, 11, Muted));
+            content.Children.Add(Text(definition.Kind is ResearchKind.TechnologicalEmpire or ResearchKind.MagicalEmpire ? "支线全部完成后汇合" : definition.Branch, 11, Muted));
             content.Children.Add(Named(LiveText(() =>
             {
                 var r = _engine.State.Society.Research.First(x => x.SettlementId == town.Id);
@@ -63,15 +63,21 @@ public sealed partial class MainView
         }
         var graph = Named(new ResearchGraphControl(nodes) { Height = _isCompact ? 380 : 560,
             IsCompleted = kind => _engine.HasResearch(town.Id, kind), Selected = _selectedResearch }, "research-graph");
-        IEnumerable<ResearchDefinition> Route() => _researchRoute == "all" ? ResearchRules.All
+        IEnumerable<ResearchDefinition> Route() => _researchRoute == "common" ? ResearchRules.All.Where(d => d.Branch == "民生与资源")
             : ResearchRules.All.Where(d => ResearchRules.Route(_researchRoute == "magic").Contains(d.Kind));
         graph.ShowRoute(Route());
         var tabs = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = 4 };
-        var routes = new[] { ("全部枝干", "all"), ("科技帝国", "technology"), ("魔法帝国", "magic") };
+        var routes = new[] { ("科技帝国", "technology"), ("魔法帝国", "magic"), ("共同基础", "common") };
         for (var i = 0; i < routes.Length; i++)
         {
             var (label, route) = routes[i];
-            var tab = Named(Button(label, () => { _researchRoute = route; graph.ShowRoute(Route()); RefreshInspector(); }), "research-route-" + route);
+            var tab = Named(Button(label, () =>
+            {
+                _researchRoute = route; graph.ShowRoute(Route());
+                if (!graph.Layout.Nodes.ContainsKey(_selectedResearch))
+                    _selectedResearch = route == "magic" ? ResearchKind.ArcaneArts : ResearchKind.Agriculture;
+                graph.Focus(_selectedResearch); RefreshInspector();
+            }), "research-route-" + route);
             tab.HorizontalAlignment = HorizontalAlignment.Stretch; tab.Padding = new Thickness(4, 5);
             _inspectorUpdates.Add(() => tab.BorderBrush = _researchRoute == route ? Mint : Line);
             Grid.SetColumn(tab, i); tabs.Children.Add(tab);
@@ -83,14 +89,19 @@ public sealed partial class MainView
         tools.Children.Add(Named(LiveText(() => $"{graph.Zoom:P0}", 11, Muted), "research-zoom"));
         tools.Children.Add(Named(Button("全树", () => { graph.Fit(); RefreshInspector(); }), "research-fit"));
         tools.Children.Add(Named(Button("定位所选", () => graph.Focus(_selectedResearch)), "research-focus"));
-        tools.Children.Add(Named(Button("帝国终点", () =>
+        var pathButton = Named(Button("完整路径", () => { graph.ShowFullPath = !graph.ShowFullPath; RefreshInspector(); }), "research-full-path");
+        tools.Children.Add(pathButton);
+        _inspectorUpdates.Add(() => { pathButton.Content = graph.ShowFullPath ? "只看直接前置" : "完整路径"; pathButton.BorderBrush = graph.ShowFullPath ? Mint : Line; });
+        var endpointButton = Named(Button("帝国终点", () =>
         {
             _selectedResearch = _researchRoute == "magic" ? ResearchKind.MagicalEmpire : ResearchKind.TechnologicalEmpire;
             graph.Focus(_selectedResearch); RefreshInspector();
-        }), "research-jump-end"));
+        }), "research-jump-end");
+        tools.Children.Add(endpointButton);
+        _inspectorUpdates.Add(() => endpointButton.IsEnabled = _researchRoute != "common");
         panel.Children.Add(tools);
-        panel.Children.Add(new TextBlock { Text = "绿色 已掌握   青色 可研究   紫色 魔法   金色 所选前置路径", FontSize = 11,
-            Foreground = Muted, TextWrapping = TextWrapping.Wrap });
+        panel.Children.Add(Named(LiveText(() => "所选：" + WorldEngine.ResearchName(_selectedResearch) + "\n直接前置："
+            + (ResearchRules.For(_selectedResearch).Prerequisites.Length == 0 ? "根部研究，无前置" : string.Join("、", ResearchRules.For(_selectedResearch).Prerequisites.Select(WorldEngine.ResearchName))), 12, Muted), "research-path-caption"));
         panel.Children.Add(new Border { Child = graph, BorderBrush = Line, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8), ClipToBounds = true });
         _inspectorUpdates.Add(() =>
         {
