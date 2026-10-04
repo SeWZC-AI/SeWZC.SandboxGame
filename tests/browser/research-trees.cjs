@@ -6,7 +6,7 @@ const { createHash } = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const { UiDriver, testUrl } = require('./ui-driver.cjs');
 const { chromiumLaunchOptions, observeBrowserErrors } = require('./browser-support.cjs');
-const output = path.resolve(process.env.WORLDBOX_ARTIFACT_DIR || 'artifacts/research-tree-browser-tests');
+const output = path.resolve(process.env.WORLDBOX_ARTIFACT_DIR || 'artifacts/browser-tests');
 const baseUrl = process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.SandboxGame/';
 const modal = { scroll: 'modal-scroll' }, inspector = { scroll: 'inspector-scroll' };
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
