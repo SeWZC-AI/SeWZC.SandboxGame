@@ -46,6 +46,11 @@ public static class AnimalRules
         new("北极熊", AnimalSize.Large, AnimalDiet.Carnivore, Cold, 25, 0.003),
         new("雪豹", AnimalSize.Medium, AnimalDiet.Carnivore, Cold | High, 15, 0.001),
     ];
+    private static readonly WildlifeKind[] EdibleLandAnimals = Species
+        .Where(kind => For(kind).Diet == AnimalDiet.Herbivore).ToArray();
+    private static readonly WildlifeKind[] EdibleWaterAnimals = EdibleLandAnimals
+        .Where(kind => For(kind).Aquatic).ToArray();
+    internal static ReadOnlySpan<WildlifeKind> EdibleAnimals(bool aquatic) => aquatic ? EdibleWaterAnimals : EdibleLandAnimals;
     private static readonly WildlifeKind[][] Prey = Enumerable.Range(0, SpeciesCount)
         .Select(i => Species.Where(p => CanPreyOn((WildlifeKind)i, p)).ToArray()).ToArray();
     internal static ReadOnlySpan<WildlifeKind> PreyFor(WildlifeKind predator) => Prey[(int)predator];

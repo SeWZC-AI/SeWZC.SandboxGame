@@ -9,7 +9,8 @@ internal static class PerformanceBehaviorTests
         ("large-map ecology uses sparse cycles and resumes across band boundaries", SparseEcology),
         ("territory totals track edits and rebuild after loading", TerritoryEdits),
         ("buffered saves preserve complete JSON and cancel before returning a partial capture", BufferedSave),
-        ("ecological value equality covers every saved field and preserves default omission", EcologicalValueEquality)
+        ("ecological value equality covers every saved field and preserves default omission", EcologicalValueEquality),
+        ("edible animals reflect edits ecology and cold save restoration", EdibleAnimals)
     ];
 
     private static WorldEngine Flat()
@@ -26,6 +27,60 @@ internal static class PerformanceBehaviorTests
 
     private static void Check(bool valid, string message)
     { if (!valid) throw new InvalidOperationException(message); }
+
+    [UnitTest]
+    private static void EdibleAnimals()
+    {
+        var query = typeof(WorldEngine).GetMethod("EdibleAnimal", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+            .CreateDelegate<Func<Tile, bool, WildlifeKind>>();
+        var tile = new Tile { Terrain = TerrainType.Grass, Wildlife = WildlifeKind.Deer, WildlifePopulation = .5,
+            OtherWildlife = new() { Rabbit = .49, Boar = 1, Fish = 2 } };
+        void Expect(WildlifeKind expected, bool water = false) => Check(query(tile, water) == expected, "Stale edible animal after changing populations or terrain");
+        Expect(WildlifeKind.Deer); Expect(WildlifeKind.Deer);
+        tile.WildlifePopulation = .49; Expect(WildlifeKind.Boar);
+        tile.OtherWildlife = new() { Rabbit = .5, Boar = 1, Fish = 2 }; Expect(WildlifeKind.Rabbit);
+        tile.Wildlife = WildlifeKind.Rabbit; Expect(WildlifeKind.Boar); // The primary population overrides a duplicate secondary field.
+        tile.WildlifePopulation = .5; Expect(WildlifeKind.Rabbit);
+        tile.Terrain = TerrainType.Lake; Expect(WildlifeKind.None); Expect(WildlifeKind.Fish, true);
+        tile.OtherWildlife = new() { Fish = .49, SeaCow = .5, Shark = 3 }; Expect(WildlifeKind.SeaCow, true);
+        tile.OtherWildlife = default; Expect(WildlifeKind.None, true);
+        tile.Terrain = TerrainType.Grass; Expect(WildlifeKind.Rabbit); Expect(WildlifeKind.None, true);
+        tile.WildlifePopulation = 0; Expect(WildlifeKind.None);
+
+        var engine = Flat();
+        WildlifeKind Reference(Tile current, bool water)
+        {
+            if (water != WorldEngine.IsWaterTerrain(current.Terrain)) return WildlifeKind.None;
+            foreach (var kind in AnimalRules.Species)
+                if (AnimalRules.For(kind).Diet == AnimalDiet.Herbivore && (!water || AnimalRules.For(kind).Aquatic)
+                    && current.AnimalPopulation(kind) >= .5) return kind;
+            return WildlifeKind.None;
+        }
+        foreach (var kind in AnimalRules.Species)
+        {
+            tile = engine.State.Tiles[(int)kind]; tile.Wildlife = kind; tile.WildlifePopulation = .5;
+            var others = new WildlifePopulations { Fish = .5, SeaCow = 1, SnowLeopard = 2 };
+            others.Set(kind, 0); tile.OtherWildlife = others;
+            foreach (var terrain in new[] { TerrainType.Grass, TerrainType.Lake })
+            {
+                tile.Terrain = terrain;
+                foreach (var water in new[] { false, true }) Check(query(tile, water) == Reference(tile, water), "Species order or diet changed");
+            }
+        }
+        var beforeQueries = engine.ExportJson();
+        void Verify(WorldEngine current)
+        {
+            foreach (var t in current.State.Tiles)
+                foreach (var water in new[] { false, true }) Check(query(t, water) == Reference(t, water), "Ecology left a stale edible result");
+        }
+        Verify(engine); Check(engine.ExportJson() == beforeQueries, "Animal queries changed saved state");
+        var resumed = WorldEngine.ImportJson(beforeQueries); Verify(resumed);
+        for (var day = 0; day < 12; day++)
+        {
+            engine.Step(); resumed.Step(); Verify(engine);
+        }
+        Check(engine.ExportJson() == resumed.ExportJson(), "Warm and restored animal caches diverged");
+    }
 
     [UnitTest]
     private static void EcologicalValueEquality()

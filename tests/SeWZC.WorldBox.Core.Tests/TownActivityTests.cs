@@ -13,10 +13,26 @@ internal static class TownActivityTests
         ("local conversations preserve ID-ranked recipients across neighborhood orders", ConversationRecipients),
         ("shared visible paths react immediately to fire bridges terrain and travel mode", VisiblePathChanges),
         ("shore fishers retain sources seven steps away beside reachable banks", FishingBoundary),
+        ("successive hunters and fishers see exhausted prey immediately", ExhaustedPrey),
         ("fishers borrow a real boat fish offshore and return catch through a saved journey", BoatFishing)
     ];
 
     private static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
+    private static void ExhaustedPrey()
+    {
+        var e = Flat(); var person = e.State.Residents.Single(); var tile = e.State.Tiles[person.Y * 32 + person.X];
+        person.Age = 20; person.MoveStartedTick = -100; person.MoveDurationTicks = 1;
+        person.Agent.Goal = new() { Kind = AgentGoalKind.Hunt, TargetEntityId = person.Y * 32 + person.X + 1 };
+        tile.Wildlife = WildlifeKind.Rabbit; tile.WildlifePopulation = .5; tile.OtherWildlife = new() { Deer = .5 };
+        Check(e.TryHarvestWildlife(person) && tile.WildlifePopulation < .5 && tile.OtherWildlife.Deer == .5, "First hunter did not consume the first prey");
+        Check(e.TryHarvestWildlife(person) && tile.OtherWildlife.Deer < .5, "Next hunter used an exhausted cached prey");
+        Check(!e.TryHarvestWildlife(person), "Hunters continued after all eligible prey was depleted");
+        tile = e.State.Tiles[person.Y * 32 + person.X + 1]; tile.Terrain = TerrainType.Water;
+        tile.Wildlife = WildlifeKind.Fish; tile.WildlifePopulation = .5; tile.OtherWildlife = new() { GrassCarp = .5 };
+        person.Agent.Goal = new() { Kind = AgentGoalKind.Fish, TargetEntityId = person.Y * 32 + person.X + 2 };
+        Check(e.TryHarvestWildlife(person) && tile.WildlifePopulation < .5 && tile.OtherWildlife.GrassCarp == .5, "First fisher did not consume the first fish");
+        Check(e.TryHarvestWildlife(person) && tile.OtherWildlife.GrassCarp < .5 && !e.TryHarvestWildlife(person), "Next fisher retained exhausted fish");
+    }
     private static WorldEngine Flat(int population = 1)
     {
         var e = WorldEngine.Create(123, 32, 32, false);

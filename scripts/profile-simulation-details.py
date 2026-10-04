@@ -102,7 +102,6 @@ source = communication.read_text()
 regions = [
     ("Communication.GatherNearbyResidents", "            foreach (var tile in Circle(sender.X, sender.Y, conversationRadius))", "            if (_conversationNeighbors.Count == 0) continue;"),
     ("Communication.SelectNearbyResidentByIdRank", "            var recipient = SelectConversationRecipient(", "            var facts = SelectMessageFacts(sender, relay: false);"),
-    ("Communication.RebuildResidentIdDictionary", "        people.Clear();\n        foreach (var person in State.Residents) people.Add(person.Id, person);", "        // Delivery happens before"),
 ]
 for name, start, end in regions:
     if source.count(start) != 1 or source.count(end) != 1:
@@ -111,17 +110,17 @@ for name, start, end in regions:
     first = source.index(start); last = source.index(end, first)
     source = source[:first] + f"        var detailRegion{index} = SimulationDetailProbe.Enter({index});\n" + source[first:last] + f"        detailRegion{index}.Dispose();\n" + source[last:]
 
-index = len(names); names.append("Communication.ResidentIdDictionaryLookup")
-source = source.replace("people.TryGetValue(message.RecipientId, out var recipient)", "ProfileResidentLookup(people, message.RecipientId, out var recipient)")
-source = source.replace("people.TryGetValue(message.SenderId, out var stationSender)", "ProfileResidentLookup(people, message.SenderId, out var stationSender)")
-source = source.replace("    private void UpdateLocalCommunication()", f"""    private static bool ProfileResidentLookup(Dictionary<int, Resident> people, int id, out Resident recipient)
-    {{
-        using var detailScope = SimulationDetailProbe.Enter({index});
-        return people.TryGetValue(id, out recipient!);
-    }}
-
-    private void UpdateLocalCommunication()""")
 communication.write_text(source)
+
+# Count cache reuse without adding a timer to each very frequent tile lookup.
+ecology = core / "WorldState.Ecology.cs"
+source = ecology.read_text()
+hit = "        if (cached != byte.MaxValue) return (WildlifeKind)cached;"
+if source.count(hit) != 1:
+    raise SystemExit("Edible animal cache changed: review scan region")
+source = source.replace(hit, "        if (SimulationDetailProbe.Enabled) SimulationDetailProbe.EdibleAnimalQueries++;\n" + hit
+    + "\n        if (SimulationDetailProbe.Enabled) SimulationDetailProbe.EdiblePopulationScans++;")
+ecology.write_text(source)
 quoted_names = ", ".join('"' + name + '"' for name in names)
 (core / "SimulationDetailProbe.cs").write_text("""using System.Diagnostics;
 namespace SeWZC.WorldBox.Core;
@@ -129,6 +128,7 @@ public static class SimulationDetailProbe
 {
     public static bool Enabled;
     public static int Stage;
+    public static long EdibleAnimalQueries, EdiblePopulationScans;
     private static readonly string[] Names = [NAMES];
     private static readonly long[] Inclusive = new long[Names.Length], Self = new long[Names.Length], Calls = new long[Names.Length];
     private static readonly long[] StageSelf = new long[20 * Names.Length], StageCalls = new long[20 * Names.Length];
@@ -152,7 +152,7 @@ public static class SimulationDetailProbe
             Depth--; if (Depth > 0) Children[Depth - 1] += elapsed;
         }
     }
-    public static void Reset() { Array.Clear(Inclusive); Array.Clear(Self); Array.Clear(Calls); Array.Clear(StageSelf); Array.Clear(StageCalls); Depth = 0; }
+    public static void Reset() { Array.Clear(Inclusive); Array.Clear(Self); Array.Clear(Calls); Array.Clear(StageSelf); Array.Clear(StageCalls); Depth = 0; EdibleAnimalQueries = EdiblePopulationScans = 0; }
     public static object[] Snapshot() => Names.Select((name, i) => (object)new
     {
         name, inclusiveMs = Inclusive[i] * 1000d / Stopwatch.Frequency,
@@ -165,6 +165,6 @@ public static class SimulationDetailProbe
 driver = destination / "tests/SeWZC.WorldBox.Core.Tests/SimulationPerformance.cs"
 source = driver.read_text().replace("            SimulationStageProbe.Reset();", "            SimulationStageProbe.Reset();\n            SimulationDetailProbe.Reset();\n            SimulationDetailProbe.Enabled = true;")
 source = source.replace("            SimulationStageProbe.Enabled = false;", "            SimulationStageProbe.Enabled = false;\n            SimulationDetailProbe.Enabled = false;")
-source = source.replace("                stages = SimulationStageProbe.Snapshot(),", "                stages = SimulationStageProbe.Snapshot(),\n                details = SimulationDetailProbe.Snapshot(),")
+source = source.replace("                stages = SimulationStageProbe.Snapshot(),", "                stages = SimulationStageProbe.Snapshot(),\n                details = SimulationDetailProbe.Snapshot(),\n                edibleAnimalQueries = SimulationDetailProbe.EdibleAnimalQueries,\n                ediblePopulationScans = SimulationDetailProbe.EdiblePopulationScans,")
 driver.write_text(source)
 print(driver.parent)

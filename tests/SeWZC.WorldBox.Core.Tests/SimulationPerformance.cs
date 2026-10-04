@@ -44,6 +44,8 @@ internal static class SimulationPerformance
             var durations = new double[ticks];
             var allocations = new long[ticks];
             var gcBefore = Enumerable.Range(0, 3).Select(GC.CollectionCount).ToArray();
+            using var process = Process.GetCurrentProcess();
+            var cpuBefore = process.TotalProcessorTime;
             var total = Stopwatch.GetTimestamp();
             for (var tick = 0; tick < ticks; tick++)
             {
@@ -54,6 +56,8 @@ internal static class SimulationPerformance
                 allocations[tick] = GC.GetAllocatedBytesForCurrentThread() - allocated;
             }
             var elapsed = Stopwatch.GetElapsedTime(total).TotalMilliseconds;
+            process.Refresh();
+            var cpuMs = (process.TotalProcessorTime - cpuBefore).TotalMilliseconds;
             var collections = Enumerable.Range(0, 3).Select(i => GC.CollectionCount(i) - gcBefore[i]).ToArray();
             var ordered = durations.Order().ToArray();
             double Percentile(double p) => ordered[Math.Clamp((int)Math.Ceiling(p * ticks) - 1, 0, ticks - 1)];
@@ -69,6 +73,7 @@ internal static class SimulationPerformance
             measurements.Add(new
             {
                 repetition, elapsedMs = elapsed, meanMs = durations.Average(),
+                processCpuMs = cpuMs, processCpuMsPerTick = cpuMs / ticks,
                 medianMs = Percentile(.5), p95Ms = Percentile(.95), maxMs = ordered[^1],
                 allocatedBytesPerTick = allocations.Average(), gcCollections = collections,
                 finalTick = engine.State.Tick, finalPopulation = engine.State.Population,
