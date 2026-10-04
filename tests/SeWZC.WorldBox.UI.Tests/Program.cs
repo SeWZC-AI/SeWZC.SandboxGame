@@ -27,6 +27,7 @@ var tests = new (string Name, Action Test)[]
     ("Tall buildings keep the plot behind clickable and roofs still select their footprint", BuildingOcclusion),
     ("Highlight controls stay disabled on reopening and guide omits simulation from inspection", HighlightControls),
     ("Building details control the actual facility and list real roads", BuildingControls),
+    ("Town centers open town information and mobile expansion fills available height", TownInformationAndMobileHeight),
     ("Map resources and resident plans remain read-only during inspection", DetailedInspection),
     ("Map objects select quietly and details require the explicit view button", QuietSelection),
     ("Advanced research choices show separate prerequisites and commit only valid projects", AdvancedResearchUi),
@@ -66,6 +67,31 @@ foreach (var (name, test) in tests)
 }
 Console.WriteLine($"{tests.Length - failures}/{tests.Length} UI checks passed in {suiteClock.Elapsed.TotalSeconds:F2} s");
 return failures == 0 ? 0 : 1;
+
+static void TownInformationAndMobileHeight()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var before = engine.ExportJson();
+    void Layout()
+    {
+        view.Arrange(new Rect(0, 0, 390, 844));
+        var body = Field<Grid>(view, "_body");
+        body.Measure(new Size(390, 774)); body.Arrange(new Rect(0, 0, 390, 774));
+        Call(view, "ApplyLayout");
+        body.Measure(new Size(390, 774)); body.Arrange(new Rect(0, 0, 390, 774));
+    }
+    var center = engine.State.Society.Buildings.First(b => b.Kind == BuildingKind.TownCenter);
+    Call(view, "OpenBuilding", center); Layout();
+    Assert(Control<TextBlock>(view, "center-town-summary").Text!.Contains("城镇生效"), "Center omitted the town status");
+    Click(view, "center-town-info"); Layout();
+    Assert(Field<int>(view, "_inspectorSettlementId") == center.SettlementId && Control<TextBlock>(view, "town-expansion-summary").Text!.Contains("独占陆地"), "Center opened another town or omitted its details");
+    var collapsed = Control<Border>(view, "inspector-panel").Bounds.Height;
+    Click(view, "inspector-expand"); Layout();
+    var expanded = Control<Border>(view, "inspector-panel").Bounds.Height;
+    Assert(expanded > 500 && expanded > collapsed * 1.6, $"Mobile panel only grew from {collapsed} to {expanded}");
+    Click(view, "inspector-expand"); Layout();
+    Assert(Control<Border>(view, "inspector-panel").Bounds.Height < expanded, "Collapsing retained the expanded height");
+    Assert(engine.ExportJson() == before, "Town navigation or panel expansion changed the world");
+}
 
 static void ToolPagination()
 {
@@ -216,7 +242,7 @@ static void DetailedInspection()
     var engine = TwoTownWorld(); var view = View(engine); var person = engine.State.Residents[0]; var before = engine.ExportJson();
     Call(view, "OpenResident", person.Id);
     var text = string.Join("\n", view.GetLogicalDescendants().OfType<TextBlock>().Select(t => t.Text));
-    Assert(text.Contains("体力") && text.Contains("预期寿命") && text.Contains("现在：") && text.Contains("后续："), "Resident omits current status and future actions");
+    Assert(text.Contains("体力") && text.Contains("预期寿命") && text.Contains("当前任务：") && text.Contains("当前劳作：") && text.Contains("后续："), "Resident omits current status and future actions");
     Call(view, "OpenInspector", "overview", true); Control<ComboBox>(view, "map-resources").SelectedIndex = 1;
     Assert(Map(view).ResourceVisibility == ResourceVisibility.All && engine.ExportJson() == before, "Resource visibility edits simulation knowledge");
 }

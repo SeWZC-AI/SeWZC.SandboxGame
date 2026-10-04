@@ -21,7 +21,7 @@ public sealed partial class MainView
         input.DetachedFromVisualTree += (_, _) => timer.Stop();
     }
 
-    private string ResidentTask(Resident person) => _engine.GetResidentActionSummary(person.Id).Split('\n')[0].Replace("现在：", "");
+    private string ResidentTask(Resident person) => _engine.GetResidentTaskSummary(person.Id);
     private string BuildingTask(Building building) => !building.IsCompleted ? $"施工 {building.ConstructionProgress / building.ConstructionRequired:P0}"
         : !building.Enabled ? "已停用" : _engine.GetProductionStatus(building.Id).Split('\n')[0];
 }

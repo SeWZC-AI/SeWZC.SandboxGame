@@ -84,14 +84,14 @@ public sealed partial class WorldEngine
             case BuildingKind.MiningHall:
                 var source = FindWorkshopResource(building, Profession.Miner); if (source < 0) return false;
                 var tile = State.Tiles[source]; var yields = TerrainRules.For(tile.Terrain);
-                var amount = Math.Min(tile.ResourceAmount, .3 * effort * State.Rules.GatheringRate);
+                var amount = Math.Min(tile.ResourceAmount, .3 * effort * State.Rules.GatheringRate * GatheringTerritoryMultiplier(person, tile));
                 tile.ResourceAmount -= amount; person.Inventory.Stone += amount * yields.StoneYield; person.Inventory.Ore += amount * yields.OreYield;
                 CapResources(person.Inventory);
                 RecordHarvest(tile, amount * (yields.StoneYield + yields.OreYield)); return true;
             case BuildingKind.HuntingCamp:
                 var ground = State.Tiles[Index(person.X, person.Y)]; var prey = EdibleAnimal(ground);
                 if (prey == WildlifeKind.None) return false;
-                var caught = Math.Min(ground.AnimalPopulation(prey), .25 * effort * State.Rules.GatheringRate);
+                var caught = Math.Min(ground.AnimalPopulation(prey), .25 * effort * State.Rules.GatheringRate * GatheringTerritoryMultiplier(person, ground));
                 ground.SetAnimalPopulation(prey, ground.AnimalPopulation(prey) - caught);
                 var food = caught * AnimalRules.For(prey).BodyMass;
                 person.Inventory.Food = Math.Min(1_000_000, person.Inventory.Food + food); RecordHarvest(ground, food); return true;

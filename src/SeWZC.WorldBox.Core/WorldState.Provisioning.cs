@@ -6,6 +6,8 @@ public enum BridgeDirection { Horizontal, Vertical }
 
 public sealed partial class Building
 {
+    public string PlanningReason { get; set; } = "";
+    public string SiteReason { get; set; } = "";
     [JsonRequired] public int Level { get; set; } = 1;
     public double UpgradeProgress { get; set; }
     public double UpgradeRequired { get; set; }

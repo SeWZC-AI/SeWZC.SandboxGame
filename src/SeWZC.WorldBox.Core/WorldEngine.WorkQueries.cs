@@ -74,6 +74,9 @@ public sealed partial class WorldEngine
                 || IsWaterTerrain(State.Tiles[Index(resident.X, resident.Y)].Terrain))) continue;
             var workRange = range > 1 && building.Kind is BuildingKind.Bridge or BuildingKind.MountainPass ? 24 : range;
             if (distance > workRange || !BuildingHasWork(building, resident)) continue;
+            if (range > 1 && distance <= 6 && !VisibleWorkSiteReachable(resident, building.X, building.Y,
+                !building.IsCompleted || building.IsUpgrading || IsWaterfrontBuilding(building.Kind) || building.Kind == BuildingKind.TownCenter)) continue;
+            if (range > 1 && resident.Agent.Goal.NavigationTarget == Index(building.X, building.Y) && State.Tick < resident.Agent.Goal.NavigationRetryTick) continue;
             var priority = WorkPriority(building, resident);
             if (selected is not null && !(priority < bestPriority || priority == bestPriority
                 && (preferNearest && distance < bestDistance

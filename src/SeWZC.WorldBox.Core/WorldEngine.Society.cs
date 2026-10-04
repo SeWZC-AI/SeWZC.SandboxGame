@@ -220,9 +220,10 @@ public sealed partial class WorldEngine
     private bool BuildingHasWork(Building building, Resident resident)
     {
         if (!BuildingGroundOwned(building) || !building.Enabled || resident.Age < 14 || resident.ArmyId != 0 || resident.Health <= 0) return false;
+        if (building.Health < 50 || State.Tiles[Index(building.X, building.Y)].FireTicks > 0
+            || !BuildingTerrainValid(building.Kind, State.Tiles[Index(building.X, building.Y)])) return false;
         if (building.LastWorkedTick == State.Tick && building.Workers.Count >= building.WorkSlots && !building.Workers.Contains(resident.Id)) return false;
         if (!building.IsCompleted || building.IsUpgrading) return true;
-        if (building.Health < 50 || State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return false;
         if (BuildingRace(building.Kind) is { } race && resident.Race != race) return false;
         if (AdvancementRules.For(building.Kind) is { } production) return CanProduce(building, resident, production);
         if (BuildingRace(building.Kind) is not null) return RacialBuildingHasWork(building, resident);
@@ -284,7 +285,7 @@ public sealed partial class WorldEngine
         {
             case BuildingKind.TownCenter: return WorkOnTownExpansion(town, effort / building.Efficiency);
             case BuildingKind.Well:
-                return resident.X == building.X && resident.Y == building.Y && DrawWater(resident, Index(building.X, building.Y), Math.Min(1, effort)) > 0;
+                return resident.X == building.X && resident.Y == building.Y && DrawWater(resident, Index(building.X, building.Y), Math.Min(1, effort) * GatheringTerritoryMultiplier(resident, State.Tiles[Index(building.X, building.Y)])) > 0;
             case BuildingKind.Farm:
                 var tile = State.Tiles[Index(building.X, building.Y)];
                 var fertility = tile.Fertility / 100d * (tile.DroughtTicks > 0 ? 0.18 : 1) * (tile.FireTicks > 0 ? 0 : 1);
@@ -299,7 +300,7 @@ public sealed partial class WorldEngine
                 var source = FindWorkshopResource(building, resident.Profession);
                 if (source < 0) return false;
                 var sourceTile = State.Tiles[source]; var yields = TerrainRules.For(sourceTile.Terrain);
-                var amount = Math.Min(sourceTile.ResourceAmount, effort * 0.2 * State.Rules.GatheringRate);
+                var amount = Math.Min(sourceTile.ResourceAmount, effort * 0.2 * State.Rules.GatheringRate * GatheringTerritoryMultiplier(resident, sourceTile));
                 sourceTile.ResourceAmount -= amount;
                 if (resident.Profession == Profession.Miner) { resident.Inventory.Stone += amount * yields.StoneYield; resident.Inventory.Ore += amount * yields.OreYield; }
                 else
@@ -313,7 +314,7 @@ public sealed partial class WorldEngine
                 var research = State.Society.Research.First(r => r.SettlementId == town.Id);
                 if (!research.ActiveProject.HasValue) return false;
                 if (research.Observation.Contributors.Count < 32 && !research.Observation.Contributors.Contains(resident.Id)) research.Observation.Contributors.Add(resident.Id);
-                research.Progress += effort * State.Rules.DevelopmentRate * (1 + (int)town.Tier * .1) * (0.75 + culture.Innovation * 0.5) * (GetLocalPolicy(town.Id) == PolicyKind.Scholarship ? 1.35 : 1);
+                research.Progress += effort * State.Rules.DevelopmentRate * (1 + EffectiveSettlementRank(town) * .1) * (0.75 + culture.Innovation * 0.5) * (GetLocalPolicy(town.Id) == PolicyKind.Scholarship ? 1.35 : 1);
                 if (research.Progress >= 8 && resident.Profession == Profession.Builder && !HasTwoLocalWorkers(town.Id, Profession.Scholar))
                     resident.Profession = Profession.Scholar;
                 if (research.Progress >= research.RequiredProgress)
@@ -384,7 +385,7 @@ public sealed partial class WorldEngine
         var bonus = 1d;
         foreach (var town in State.Settlements)
             if (town.NationId == nationId && Distance(x, y, town.X, town.Y) <= 3)
-                bonus = Math.Max(bonus, 1 + (int)town.Tier * .15);
+                bonus = Math.Max(bonus, 1 + EffectiveSettlementRank(town) * .15);
         foreach (var building in State.Society.Buildings)
             if (building.Kind == BuildingKind.Waystation && IsFacilityOperating(building)
                 && _settlements.TryGetValue(building.SettlementId, out var town) && town.NationId == nationId && Distance(x, y, building.X, building.Y) <= 3)
@@ -793,8 +794,9 @@ public sealed partial class WorldEngine
                 return false;
             }
             var position = BestBuildingSite(town, kind);
-            if (position < 0) { RememberBlocker("附近没有符合条件的建筑用地"); return false; }
-            BuildFacility(town.Id, kind, position % State.Width, position / State.Width);
+            if (position < 0) { RememberBlocker("附近没有用途合适且施工可达的占领地，需先勘察或登记地盘"); Recruit(Profession.Builder); return false; }
+            var reason = BuildingPurpose(town, kind);
+            BuildPlannedFacility(town, kind, position % State.Width, position / State.Width, reason);
             Recruit(Profession.Builder); town.DevelopmentBlocker = "材料已备齐，等待工人到场";
             return true;
         }
@@ -946,7 +948,8 @@ public sealed partial class WorldEngine
                 && building.ProductionBatches is >= 0 and <= 1_000_000_000
                 && building.WorkSlots is > 0 and <= 20 && building.Workers is not null && building.Workers.Count <= building.WorkSlots
                 && building.Workers.Distinct().Count() == building.Workers.Count && building.Workers.All(residents.Contains)
-                && building.LastWorkedTick >= -100 && building.LastWorkedTick <= state.Tick, "设施状态或引用无效。");
+                && building.LastWorkedTick >= -100 && building.LastWorkedTick <= state.Tick
+                && Text(building.PlanningReason, 512) && Text(building.SiteReason, 512), "设施状态或引用无效。");
         var researchTowns = new HashSet<int>();
         foreach (var research in society.Research!)
             Need(research is not null && towns.ContainsKey(research.SettlementId) && researchTowns.Add(research.SettlementId)

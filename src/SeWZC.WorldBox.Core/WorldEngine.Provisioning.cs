@@ -170,14 +170,17 @@ public sealed partial class WorldEngine
                 EntityId: wildlife.Item2 + 1));
         var claim = VisibleClaimSite(person, home);
         if (claim >= 0) choices.Add(new(AgentGoalKind.ClaimLand, claim % State.Width, claim / State.Width,
-            25 + person.Agent.Personality.Ambition * 8, "实际前往相邻边界地块，登记城镇地盘", SettlementId: home.Id));
+            (IsSettlementActive(home.Id) ? SettlementNeedsClaimArea(home) ? 58 : home.IsExpanding ? 52 : 25 : 70) + person.Agent.Personality.Ambition * 8,
+            !IsSettlementActive(home.Id) ? $"城镇占地 {GetSettlementArea(home.Id)}/{SettlementActivationArea} 格，加成尚未生效，先实地登记领地"
+                : SettlementNeedsClaimArea(home) ? $"升级面积 {GetSettlementArea(home.Id)}/{GetSettlementExpansionArea(home.Id)} 格，先实地登记相邻领地"
+                : "实际前往可达的相邻边界地块，登记城镇地盘", SettlementId: home.Id));
     }
 
     public bool TryFetchWater(Resident person)
     {
         if (person.Agent.Goal.Kind != AgentGoalKind.FetchWater || person.Health <= 0) return false;
         var source = person.Agent.Goal.TargetEntityId - 1;
-        var amount = DrawWater(person, source, Math.Min(1, WaterReserve(person) + 3 - person.Inventory.Water));
+        var amount = DrawWater(person, source, Math.Min(source >= 0 && source < State.Tiles.Length ? GatheringTerritoryMultiplier(person, State.Tiles[source]) : 0, WaterReserve(person) + 3 - person.Inventory.Water));
         if (source < 0 || amount <= 0)
         {
             // Continue each outward leg; rotating after every arrival only
@@ -252,7 +255,7 @@ public sealed partial class WorldEngine
         var tile = State.Tiles[source]; var kind = EdibleAnimal(tile, aquatic: goal.Kind == AgentGoalKind.Fish);
         if (kind == WildlifeKind.None || tile.FireTicks > 0) { person.Agent.NextThinkTick = State.Tick; return false; }
         var yield = AnimalRules.For(kind).BodyMass;
-        var amount = Math.Min(tile.AnimalPopulation(kind), .15 * State.Rules.GatheringRate * (person.SicknessTicks > 0 ? .4 : 1));
+        var amount = Math.Min(tile.AnimalPopulation(kind), .15 * State.Rules.GatheringRate * GatheringCondition(person) * GatheringTerritoryMultiplier(person, tile));
         amount = Math.Min(amount, (1_000_000 - person.Inventory.Food) / yield);
         tile.SetAnimalPopulation(kind, tile.AnimalPopulation(kind) - amount);
         person.Inventory.Food += amount * yield; RecordHarvest(tile, amount * yield);

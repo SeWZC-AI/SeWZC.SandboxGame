@@ -89,11 +89,12 @@ public sealed partial class WorldEngine
             var site = Circle(person.X, person.Y, 3).Where(i => RaceTerrainRules.CanWalk(State.Tiles[i], person.Race)
                 && !IsWaterTerrain(State.Tiles[i].Terrain) && State.Tiles[i].Fertility >= 40
                 && State.Tiles[i].ClaimedSettlementId == 0 && State.Tiles[i].FireTicks == 0
+                && FoundingSiteSuitable(i, [person.Race])
                 && State.Settlements.All(t => Distance(t.X, t.Y, i % State.Width, i / State.Width) >= MinimumSettlementDistance))
                 .OrderByDescending(i => State.Tiles[i].Fertility).ThenBy(i => i).FirstOrDefault(-1);
             if (site >= 0 && !person.Agent.Memory.Any(f => f.Kind == AgentFactKind.FoundingSite && State.Tick - f.ObservedTick < 120))
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.FoundingSite, camp.Id, site % State.Width, site / State.Width,
-                    State.Tiles[site].Fertility, "亲眼勘察到符合间距的建村地块，需带回报告"), copy: false);
+                    State.Tiles[site].Fertility, $"亲眼勘察到符合间距、周围有至少 {SettlementActivationArea} 格可用陆地的建村地块，肥力 {State.Tiles[site].Fertility}/100，需带回报告"), copy: false);
         }
         foreach (var town in State.Settlements)
         {
@@ -291,7 +292,7 @@ public sealed partial class WorldEngine
 
     private List<AgentFact> SelectMessageFacts(Resident sender, bool relay)
     {
-        var rank = _settlements.TryGetValue(sender.SettlementId, out var home) && Distance(sender.X, sender.Y, home.X, home.Y) <= 3 ? (int)home.Tier : 0;
+        var rank = _settlements.TryGetValue(sender.SettlementId, out var home) && Distance(sender.X, sender.Y, home.X, home.Y) <= 3 ? EffectiveSettlementRank(home) : 0;
         var capacity = relay ? 3 : 3 + rank * 2;
         var selected = new List<AgentFact>(capacity);
         foreach (var fact in sender.Agent.Memory)

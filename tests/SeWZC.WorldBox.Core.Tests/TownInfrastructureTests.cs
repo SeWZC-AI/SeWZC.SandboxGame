@@ -62,10 +62,12 @@ internal static class TownInfrastructureTests
         e.UpgradeBuilding(center.Id, true); e.UpgradeBuilding(center.Id, true);
         Check(town.Tier == SettlementTier.Village && town.Name.EndsWith('村'), "Center or population granted a town tier.");
         Check(e.SettlementExpansionError(town.Id)?.Contains("独占陆地") == true, "Shared national territory bypassed exclusive area.");
-        Claim(e, town, 36);
+        town.MaxClaimRadius = 10;
+        var requiredArea = e.GetSettlementExpansionArea(town.Id);
+        Claim(e, town, requiredArea);
         var bridgedWater = e.State.Tiles.First(t => t.ClaimedSettlementId == town.Id);
         bridgedWater.Terrain = TerrainType.River; bridgedWater.Improvement = LandImprovement.Bridge;
-        Check(e.GetSettlementArea(town.Id) == 35, "A water bridge counted as exclusive expansion land.");
+        Check(e.GetSettlementArea(town.Id) == requiredArea - 1 && e.SettlementExpansionError(town.Id) is not null, "A water bridge counted as exclusive expansion land.");
         bridgedWater.Terrain = TerrainType.Grass; bridgedWater.Improvement = LandImprovement.None;
         var wood = town.Resources.Wood;
         e.ExpandTown(town.Id);
@@ -205,6 +207,7 @@ internal static class TownInfrastructureTests
             Check(bridges.Length == 1 && bridges[0].X == 13 && bridges[0].Y == 16
                 && bridges[0].Direction == BridgeDirection.Horizontal, "A known blocked home route failed to plan the connecting axis.");
             var bridge = bridges[0]; Hold(e, worker, AgentGoalKind.Work, 14, 16, bridge.Id);
+            Check(bridge.PlanningReason.Contains("两岸") && bridge.SiteReason.Contains("实际任务"), "Bridge omitted its construction purpose and route evidence.");
             e.Step(80);
             Check(bridge.IsCompleted && e.CanTraverseStep(14, 16, 13, 16, TravelMode.Foot)
                 && e.CanTraverseStep(13, 16, 12, 16, TravelMode.Foot), "Actual bridge work did not open both banks.");
