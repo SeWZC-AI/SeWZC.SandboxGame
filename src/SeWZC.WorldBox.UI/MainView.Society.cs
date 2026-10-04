@@ -105,21 +105,7 @@ public sealed partial class MainView
         panel.Children.Add(Named(Button("定位聚落并开始建设", () => { _map.SelectedSettlementId = town.Id; SetCategory("build"); _map.FocusTile(town.X, town.Y); _mobilePanel = false; ApplyLayout(); }), "infrastructure-build"));
         if (!communications)
         {
-            panel.Children.Add(Text("研究\n当地掌握的知识", 12, Mint));
-            panel.Children.Add(LiveText(() =>
-            {
-                var research = _engine.State.Society.Research.FirstOrDefault(r => r.SettlementId == town.Id);
-                return research is null ? "尚无研究记录" : $"已掌握：{(research.Completed.Count == 0 ? "暂无" : string.Join("、", research.Completed.Select(WorldEngine.ResearchName)))}\n{(research.ActiveProject is { } project ? $"正在研究：{WorldEngine.ResearchName(project)}\n进度：{research.Progress:F1}/{research.RequiredProgress:F0}\n{_engine.GetCompletionEstimate(research.Observation, research.Progress, research.RequiredProgress).Explanation}" : "暂无研究项目")}";
-            }));
-            var researchPicker = EnumField(panel, "选择研究", ResearchKind.Agriculture, WorldEngine.ResearchName, "research-kind");
-            panel.Children.Add(Named(LiveText(() => researchPicker.SelectedItem is ResearchKind kind
-                ? "投入材料：" + StockLabel(WorldEngine.GetResearchCost(kind)) + "\n" + WorldEngine.ResearchDescription(kind)
-                    + "\n" + (_engine.ResearchPrerequisiteError(town.Id, kind) ?? "前置知识与魔法规则已满足")
-                    + "\n" + (WorldEngine.MissingResources(town.Resources, WorldEngine.GetResearchCost(kind)) ?? "研究材料充足")
-                : "请选择研究项目"), "research-requirements"));
-            researchPicker.SelectionChanged += (_, _) => RefreshInspector();
-            panel.Children.Add(Named(Button("投入研究", () => RunEdit(() => _engine.StartResearch(town.Id, (ResearchKind)researchPicker.SelectedItem!), "研究已立项，需居民到学舍工作后推进")), "research-start"));
-            panel.Children.Add(Paragraph("每处聚落同时研究一项。投入材料立项后，居民须到已建成的学舍工作，研究才会推进；科技与魔法可以并行发展。"));
+            BuildResearchTree(panel, town);
             panel.Children.Add(Text("设施\n施工与工作人员", 12, Mint));
             LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.SettlementId == town.Id).OrderBy(b => b.Id), b => b.Id.ToString(), b => $"{WorldEngine.BuildingName(b.Kind)} #{b.Id}\n{b.X},{b.Y}\n{(b.IsCompleted ? "已建成" : $"施工 {b.ConstructionProgress:F1}/{b.ConstructionRequired:F0}")}\n健康 {b.Health:F0}\n{(b.IsCompleted ? "" : _engine.GetCompletionEstimate(b.Observation, b.ConstructionProgress, b.ConstructionRequired).Explanation + "\n")}工作岗位 {b.Workers.Count}/{b.WorkSlots}\n最近工作 {DateLabel(b.LastWorkedTick)}", OpenBuilding);
             panel.Children.Add(Named(Button("查看设施成本与建造", () => ShowBuildingEditor(town.Id)), "building-open"));

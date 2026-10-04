@@ -207,6 +207,7 @@ internal static class EcologyAndConflictTests
         var town = engine.State.Settlements.Single(); var person = engine.State.Residents.Single(); person.Age = 25;
         foreach (var knowledge in new[] { ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Industry }) engine.GrantReceivedResearch(town.Id, knowledge);
         foreach (var kind in AdvancementRules.Resources) town.Resources.Set(kind, 100);
+        town.Resources.Alloy = 0; // The assigned foundry has an actual unmet output demand.
         var factory = engine.GrantFacility(town.Id, BuildingKind.Foundry, 20, 16);
         person.X = person.FromX = 18; person.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Work, TargetEntityId = factory, TargetX = 20, TargetY = 16 };
         var before = engine.ExportJson(); Require(engine.GetResidentActionSummary(person.Id).Contains("仓库取料"), "Factory work described the wrong current destination");

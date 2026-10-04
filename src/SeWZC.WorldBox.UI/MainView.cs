@@ -344,7 +344,7 @@ public sealed partial class MainView : UserControl
         _version.IsVisible = Bounds.Width >= 600;
         _headerStats.IsVisible = Bounds.Width >= 760;
         _rail.IsVisible = false;
-        _body.ColumnDefinitions = new ColumnDefinitions(_mobilePanel && !_isCompact ? "0,*,320" : "0,*,0");
+        _body.ColumnDefinitions = new ColumnDefinitions(_mobilePanel && !_isCompact ? (_inspectorMode == "infrastructure" && _researchExpanded ? "0,*,720" : "0,*,320") : "0,*,0");
         _inspector.IsVisible = _mobilePanel;
         Grid.SetColumn(_inspector, _isCompact ? 1 : 2);
         _inspector.Width = _isCompact ? Math.Max(280, Bounds.Width - 12) : double.NaN;

@@ -80,6 +80,12 @@ internal static class AdvancementTests
             var academy = Facility(engine, town, BuildingKind.Academy);
             void Supply(ResourceStock cost)
             {
+                if (Math.Abs(worker.X - town.X) + Math.Abs(worker.Y - town.Y) > 1)
+                {
+                    worker.Agent.Goal = new() { Kind = AgentGoalKind.ReturnHome, TargetX = town.X, TargetY = town.Y,
+                        StartedTick = engine.State.Tick, PlayerDirected = true, ReviewTick = engine.State.Tick + 1000 };
+                    for (var tick = 0; tick < 100 && Math.Abs(worker.X - town.X) + Math.Abs(worker.Y - town.Y) > 1; tick++) engine.Step();
+                }
                 foreach (var resource in AdvancementRules.Resources.Where(r => town.Resources.Get(r) + .000001 < cost.Get(r)))
                 {
                     var producer = engine.State.Society.Buildings.First(b => b.SettlementId == town.Id && AdvancementRules.For(b.Kind)?.Output == resource);
@@ -93,9 +99,19 @@ internal static class AdvancementTests
                     Check(town.Resources.Get(resource) + .000001 >= cost.Get(resource), "Physical production never supplied " + resource);
                 }
             }
-            foreach (var a in AdvancementRules.All.Where(a => a.Magic == magic))
+            foreach (var definition in ResearchRules.All.Where(r => ResearchRules.Route(magic).Contains(r.Kind)))
             {
-                if (a.Research == ResearchKind.Aviation) engine.GrantReceivedResearch(town.Id, ResearchKind.SignalNetwork);
+                if (engine.HasResearch(town.Id, definition.Kind)) continue;
+                if (AdvancementRules.For(definition.Kind) is not { } a)
+                {
+                    Supply(definition.Cost);
+                    Hold(engine, worker, academy.X, academy.Y); worker.Agent.Goal.TargetEntityId = academy.Id;
+                    engine.StartResearch(town.Id, definition.Kind);
+                    for (var tick = 0; tick < 1000 && !engine.HasResearch(town.Id, definition.Kind); tick++)
+                    { engine.Step(); engine.TryWorkAtBuilding(worker); }
+                    Check(engine.HasResearch(town.Id, definition.Kind), "Research never completed: " + definition.Kind);
+                    continue;
+                }
                 Supply(a.ResearchCost);
                 Hold(engine, worker, academy.X, academy.Y); worker.Agent.Goal.TargetEntityId = academy.Id;
                 engine.StartResearch(town.Id, a.Research);
@@ -113,7 +129,7 @@ internal static class AdvancementTests
                 Check(building.IsCompleted, "Advanced facility did not complete through real labor.");
                 Hold(engine, worker, town.X, town.Y);
             }
-            Check(engine.HasResearch(town.Id, magic ? ResearchKind.AetherMastery : ResearchKind.AdvancedComputing), "Final era was not reached.");
+            Check(ResearchRules.Route(magic).All(k => engine.HasResearch(town.Id, k)), "The full empire research route was not completed.");
             Check(AdvancementRules.All.Where(a => a.Magic != magic).All(a => !engine.HasResearch(town.Id, a.Research)), "One route silently granted the other route.");
             var saved = WorldEngine.ImportJson(engine.ExportJson()); engine.Step(20); saved.Step(20);
             Check(engine.ExportJson() == saved.ExportJson(), "Final-era state did not resume deterministically.");
@@ -188,7 +204,7 @@ internal static class AdvancementTests
         var (engine, town, worker) = World();
         engine.SpawnResidents(town.X, town.Y, RaceKind.Human, 6);
         foreach (var person in engine.State.Residents) { person.Age = 25; Hold(engine, person, town.X, town.Y); }
-        foreach (var kind in new[] { ResearchKind.Agriculture, ResearchKind.Logistics }) Know(engine, town, kind);
+        foreach (var kind in new[] { ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Irrigation, ResearchKind.Forestry, ResearchKind.Medicine, ResearchKind.ScientificMethod }) engine.GrantReceivedResearch(town.Id, kind);
         Facility(engine, town, BuildingKind.Academy); Facility(engine, town, BuildingKind.Waystation);
         engine.ConfigureWorld(engine.State.Rules with { Research = true, Construction = true }, false, false);
         engine.Step(60);

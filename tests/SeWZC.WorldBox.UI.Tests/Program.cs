@@ -277,10 +277,12 @@ static void AdvancedResearchUi()
     var before = engine.ExportJson();
     Assert(Control<TextBlock>(view, "research-requirements").Text?.Contains("投入材料：") == true,
         "Initial research selection hid its cost and conditions");
-    Control<ComboBox>(view, "research-kind").SelectedItem = ResearchKind.Electrification;
+    Click(view, "research-node-Electrification");
     Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("动力工厂") == true), "Research choice has no concrete unlock description");
-    Click(view, "research-start");
-    Assert(engine.ExportJson() == before, "Missing prerequisites allowed research or consumed resources");
+    Assert(!Control<Button>(view, "research-start").IsEnabled, "Locked research has an enabled submit button");
+    Assert(engine.ExportJson() == before, "Inspecting the research tree changed the world");
+    Assert(!view.GetLogicalDescendants().OfType<ComboBox>().Any(c => AutomationProperties.GetAutomationId(c) == "research-kind"), "Tree still uses a research dropdown");
+    Assert(ResearchRules.All.All(r => view.GetLogicalDescendants().OfType<Button>().Any(b => AutomationProperties.GetAutomationId(b) == "research-node-" + r.Kind)), "Tree omits research branches");
     engine.GrantReceivedResearch(town.Id, ResearchKind.Industry);
     engine.GrantReceivedResearch(town.Id, ResearchKind.SignalNetwork);
     Call(view, "RefreshInspector", false);

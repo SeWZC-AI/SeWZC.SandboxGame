@@ -7,7 +7,9 @@ public enum BuildingKind { Farm, Workshop, Academy, Waystation, SignalTower, Arc
     Shipyard, LumberCamp, Quarry, Well, Granary, Housing, Market, Watchtower,
     AssemblyHall, TradeGuild, SacredGrove, HerbGarden, DwarvenForge, MiningHall, HuntingCamp, WarDrum }
 public enum ResearchKind { Agriculture, Logistics, SignalNetwork, ArcaneArts,
-    Industry, Electrification, Automation, AdvancedComputing, Crystalcraft, RunicEngineering, AetherMastery, Aviation }
+    Industry, Electrification, Automation, AdvancedComputing, Crystalcraft, RunicEngineering, AetherMastery, Aviation,
+    Irrigation, Forestry, Medicine, ScientificMethod, EfficientSmelting, EnergyRecycling, TechnologicalEmpire,
+    ManaAttunement, Restoration, ArcaneScholarship, Leylines, MagicalEmpire }
 public enum InstitutionKind { Council, Monarchy, GuildCouncil }
 public enum PolicyKind { Balanced, FoodSecurity, Defense, Scholarship, PublicHealth }
 public enum SpellKind { Heal, HarvestBlessing, Shield, Ember }

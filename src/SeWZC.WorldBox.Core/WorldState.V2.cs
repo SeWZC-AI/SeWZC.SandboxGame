@@ -106,6 +106,7 @@ public sealed class AgentState
     public long MissionStartedTick { get; set; }
     public long MissionRetryTick { get; set; }
     [JsonRequired] public int ExplorationHeading { get; set; }
+    public ResourceKind? MaterialPriority { get; set; }
     public long JobChangedTick { get; set; } = -120;
 }
 

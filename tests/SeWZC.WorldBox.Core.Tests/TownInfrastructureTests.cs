@@ -99,6 +99,21 @@ internal static class TownInfrastructureTests
     [UnitTest]
     private static void Waterfront()
     {
+        foreach (var kind in new[] { BuildingKind.Dock, BuildingKind.Shipyard })
+        {
+            var paid = Flat(); var home = paid.State.Settlements.Single();
+            paid.GrantReceivedResearch(home.Id, ResearchKind.Logistics);
+            var water = paid.State.Tiles[16 * 32 + 15]; water.Terrain = TerrainType.River; water.NationId = water.ClaimedSettlementId = 0;
+            var id = paid.BuildFacility(home.Id, kind, 15, 16);
+            var project = paid.State.Society.Buildings.Single(b => b.Id == id);
+            var builder = paid.State.Residents.Single(); builder.Age = 25;
+            Hold(paid, builder, AgentGoalKind.Work, 14, 16, id);
+            Check(project.ConstructionProgress == 0 && water.ClaimedSettlementId == home.Id, "Paid waterfront project was gifted or not registered");
+            paid.State.Tick++;
+            Check(paid.TryWorkAtBuilding(builder) && project.ConstructionProgress > 0, "Ownership gate prevented paid construction on unclaimed water");
+            var restored = WorldEngine.ImportJson(paid.ExportJson()); paid.Step(60); restored.Step(60);
+            Check(project.IsCompleted && paid.ExportJson() == restored.ExportJson(), "Paid waterfront construction failed completion or saved continuation");
+        }
         var e = Flat(); var town = e.State.Settlements.Single(); e.GrantReceivedResearch(town.Id, ResearchKind.Logistics);
         Check(e.FacilityPlacementError(town.Id, BuildingKind.Shipyard, 15, 16, true) is not null, "Dry shipyard was accepted.");
         e.State.Tiles[16 * 32 + 15].Terrain = TerrainType.River;

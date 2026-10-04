@@ -176,6 +176,8 @@ public sealed partial class WorldEngine
         if (goal.NavigationTarget >= 0 && State.Tick < goal.NavigationRetryTick) return false;
         if (State.Rules.Hunger && Distance(person.X, person.Y, home.X, home.Y) > 1 && person.Hunger < 20
             && person.Inventory.Food < FoodUse(person) * (Distance(person.X, person.Y, home.X, home.Y) * 4 + 12)) return false;
+        if (goal.Kind == AgentGoalKind.Work && goal.TargetEntityId == 0 && person.Profession == Profession.Miner
+            && person.Agent.MaterialPriority is not null && FindVisibleResourceSite(person, Profession.Miner) < 0 && VisibleDepositSite(person) < 0) return false;
         if (goal.Kind == AgentGoalKind.Gather || goal.Kind == AgentGoalKind.Work && goal.TargetEntityId == 0)
             return ResourceSiteYield(Index(goal.TargetX, goal.TargetY), goal.Kind == AgentGoalKind.Gather ? Profession.Farmer : person.Profession) > 0;
         if (goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic)
@@ -186,6 +188,12 @@ public sealed partial class WorldEngine
     private void ChooseAgentGoal(Resident person, Settlement home, bool interrupted)
     {
         var agent = person.Agent;
+        if (person.Profession == Profession.Miner && Distance(person.X, person.Y, home.X, home.Y) <= 1)
+            agent.MaterialPriority = home.Resources.Ore < LocalDevelopmentReserve(home).Ore ? ResourceKind.Ore
+                : HasResearch(home.Id, ResearchKind.Industry) && home.Resources.Coal < 8 ? ResourceKind.Coal
+                : HasResearch(home.Id, ResearchKind.Electrification) && home.Resources.Oil < 8 ? ResourceKind.Oil
+                : HasResearch(home.Id, ResearchKind.AdvancedComputing) && home.Resources.RareEarth < 8 ? ResourceKind.RareEarth
+                : home.Resources.Ore < 30 ? ResourceKind.Ore : home.Resources.Stone < 30 ? ResourceKind.Stone : null;
         var personality = agent.Personality;
         var choices = _goalChoices;
         choices.Clear();
@@ -298,9 +306,9 @@ public sealed partial class WorldEngine
                 kind == AgentGoalKind.Study ? "附近有可参与的研究设施，前往学习" : kind == AgentGoalKind.TrainMagic ? "附近有可训练的魔法设施" : "附近有实际施工或生产工作", EntityId: work.Id));
         }
         if (person.Age >= 14 && person.Profession is Profession.Lumberjack or Profession.Miner
-            && (person.Profession == Profession.Lumberjack ? FindVisibleResourceSite(person, Profession.Lumberjack) < 0 : depositSite < 0)
+            && (person.Profession == Profession.Lumberjack ? FindVisibleResourceSite(person, Profession.Lumberjack) < 0 : depositSite < 0 && FindVisibleResourceSite(person, Profession.Miner) < 0)
             && (Distance(person.X, person.Y, home.X, home.Y) <= 1 && (person.Profession == Profession.Lumberjack ? home.Resources.Wood < 60
-                : HasResearch(home.Id, ResearchKind.Industry) && home.Resources.Coal < 8 || HasResearch(home.Id, ResearchKind.Electrification) && home.Resources.Oil < 8
+                : agent.MaterialPriority is not null || HasResearch(home.Id, ResearchKind.Industry) && home.Resources.Coal < 8 || HasResearch(home.Id, ResearchKind.Electrification) && home.Resources.Oil < 8
                     || HasResearch(home.Id, ResearchKind.AdvancedComputing) && home.Resources.RareEarth < 8) || agent.Goal.Kind == AgentGoalKind.Explore))
         {
             var offsets = new (int X, int Y)[] { (6, 0), (4, 4), (0, 6), (-4, 4), (-6, 0), (-4, -4), (0, -6), (4, -4) };
@@ -309,7 +317,7 @@ public sealed partial class WorldEngine
                 .OrderBy(i => Distance(i % State.Width, i / State.Width, person.X + heading.X, person.Y + heading.Y)).FirstOrDefault(-1);
             if (site >= 0 && Distance(person.X, person.Y, home.X, home.Y) < 24)
                 choices.Add(new(AgentGoalKind.Explore, site % State.Width, site / State.Width, 62,
-                    person.Profession == Profession.Lumberjack ? "在家园看到木材短缺，眼前没有可采森林，沿可见陆地寻找下一处材料来源" : "在家园看到生产燃料不足，沿可见陆地寻找当前知识能够开采的矿藏"));
+                    person.Profession == Profession.Lumberjack ? "在家园看到木材短缺，眼前没有可采森林，沿可见陆地寻找下一处材料来源" : "在家园看到石材、矿石或生产燃料不足，沿可见陆地寻找可开采材料"));
             else { agent.ExplorationHeading = (agent.ExplorationHeading + 3) % 8; choices.Add(new(AgentGoalKind.ReturnHome, home.X, home.Y, 70, "勘察距离已达口粮范围，先返回家园补给", null, home.Id)); }
         }
         if (agent.SocialNeed > 35 && _citizens[home.Id].Count > 1)
@@ -372,6 +380,7 @@ public sealed partial class WorldEngine
 
     private int FindVisibleResourceSite(Resident person, Profession profession)
     {
+        if (profession == Profession.Miner && person.Agent.MaterialPriority is ResourceKind.Coal or ResourceKind.Oil or ResourceKind.RareEarth) return -1;
         var reachable = 0;
         var best = -1; var bestScore = double.NegativeInfinity;
         foreach (var offset in VisibleResourceOffsets)
@@ -386,6 +395,9 @@ public sealed partial class WorldEngine
             if (!RaceTerrainRules.CanWalk(tile, person.Race) || tile.FireTicks > 0) continue;
             var productivity = ResourceSiteYield(index, profession) * GatheringTerritoryMultiplier(person, tile);
             if (productivity <= 0) continue;
+            if (profession == Profession.Miner && person.Agent.MaterialPriority == ResourceKind.Ore
+                && TerrainRules.For(tile.Terrain).OreYield <= 0
+                && !Directions.Any(d => InBounds(x + d.X, y + d.Y) && State.Tiles[Index(x + d.X, y + d.Y)] is { Terrain: TerrainType.Mountain, ResourceAmount: > 0 })) continue;
             if (profession == Profession.Farmer && State.Rules.Hunger && person.Hunger > 20
                 && .7 * productivity * RaceTerrainRules.For(person.Race, tile.Terrain).Productivity * GatheringCondition(person) * (.75 + person.Agent.Personality.Diligence * .5) * State.Rules.GatheringRate < FoodUse(person)) continue;
             var score = productivity * 8 - offset.Distance;
@@ -572,7 +584,8 @@ public sealed partial class WorldEngine
             return;
         }
         var productivity = RaceTerrainRules.For(person.Race, tile.Terrain).Productivity * GatheringCondition(person)
-            * (0.75 + person.Agent.Personality.Diligence * 0.5) * State.Rules.GatheringRate;
+            * (0.75 + person.Agent.Personality.Diligence * 0.5) * State.Rules.GatheringRate
+            * (profession is Profession.Lumberjack or Profession.Miner && HasResearch(person.SettlementId, ResearchKind.Forestry) ? 1.25 : 1);
         if (profession == Profession.Farmer)
         {
             var amount = Math.Min(tile.ResourceAmount, 0.7 * ResourceSiteYield(index, profession) * productivity * AgentFoodPolicyMultiplier(person) * GatheringTerritoryMultiplier(person, tile));

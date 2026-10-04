@@ -13,6 +13,7 @@ public sealed partial class WorldEngine
     private Building? FindBuilding(int id) => id == 0 ? null : _localWorkQueriesActive
         ? _workBuildingsById.GetValueOrDefault(id) : State.Society.Buildings.FirstOrDefault(b => b.Id == id);
     private readonly Dictionary<int, SettlementResearch> _localResearch = [];
+    private readonly Dictionary<int, ResourceStock> _productionReserves = [];
 
     private static List<T> LocalWorkGroup<T>(Dictionary<int, List<T>> groups, List<List<T>> buffers, int settlementId)
     {
@@ -35,11 +36,12 @@ public sealed partial class WorldEngine
         foreach (var resident in State.Residents)
             LocalWorkGroup(_localWorkResidents, _localWorkResidentBuffers, resident.SettlementId).Add(resident);
         _localWorkQueriesActive = true;
+        foreach (var town in State.Settlements) _productionReserves[town.Id] = LocalDevelopmentReserve(town);
     }
 
     private void EndLocalWorkQueries()
     {
-        _localWorkQueriesActive = false; _localResearch.Clear(); _workBuildingsById.Clear();
+        _localWorkQueriesActive = false; _localResearch.Clear(); _workBuildingsById.Clear(); _productionReserves.Clear();
         foreach (var group in _localWorkBuildings.Values) group.Clear();
         foreach (var group in _localWorkResidents.Values) group.Clear();
         _localWorkBuildings.Clear();
