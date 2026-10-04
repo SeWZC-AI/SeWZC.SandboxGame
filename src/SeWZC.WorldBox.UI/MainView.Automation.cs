@@ -5,6 +5,7 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.VisualTree;
+using SeWZC.WorldBox.UI.Controls;
 
 namespace SeWZC.WorldBox.UI;
 
@@ -61,6 +62,7 @@ public sealed partial class MainView
         UiAutomationPoint? residentPoint = _map.TryGetResidentScreenPosition(_selectedResidentId, out var rendered)
             ? new UiAutomationPoint { X = mapPosition.X + rendered.X, Y = mapPosition.Y + rendered.Y }
             : null;
+        var graph = this.GetVisualDescendants().OfType<ResearchGraphControl>().FirstOrDefault();
         var snapshot = new UiAutomationSnapshot
         {
             Ready = _ready, Paused = _paused, Saving = _saving, SaveCaptureActive = _saveCapture is not null, EditCaptureActive = _prepareEditTask is not null, Speed = _speed, ActiveTool = _map.ActiveTool,
@@ -74,6 +76,12 @@ public sealed partial class MainView
             ToolsOpen = _toolsOpen, InspectorOpen = _mobilePanel, PendingPlacement = _map.HasPendingPlacement,
             ToolSlots = _slotTools.ToArray(),
             Controls = controls,
+            ResearchGraph = graph is null ? null : new UiAutomationResearchGraph
+            {
+                Nodes = graph.Layout.Nodes.Count, Edges = graph.Layout.Edges.Count, Zoom = graph.Zoom,
+                OffsetX = graph.Offset.X, OffsetY = graph.Offset.Y,
+                ContentWidth = graph.Layout.Size.Width * graph.Zoom, ContentHeight = graph.Layout.Size.Height * graph.Zoom
+            },
             Map = new UiAutomationMap
             {
                 X = mapPosition.X, Y = mapPosition.Y, Width = _map.Bounds.Width, Height = _map.Bounds.Height,
@@ -87,6 +95,7 @@ public sealed partial class MainView
 
 internal sealed class UiAutomationSnapshot
 {
+    public UiAutomationResearchGraph? ResearchGraph { get; init; }
     public int RenderedPlantCount { get; init; }
     public int RenderedBuildingLabelCount { get; init; }
     public int RenderedWildlifeCount { get; init; }
@@ -118,6 +127,17 @@ internal sealed class UiAutomationSnapshot
     public List<UiAutomationControl> Controls { get; init; } = [];
     public string?[] ToolSlots { get; init; } = [];
     public UiAutomationMap Map { get; init; } = new();
+}
+
+internal sealed class UiAutomationResearchGraph
+{
+    public int Nodes { get; init; }
+    public int Edges { get; init; }
+    public double Zoom { get; init; }
+    public double OffsetX { get; init; }
+    public double OffsetY { get; init; }
+    public double ContentWidth { get; init; }
+    public double ContentHeight { get; init; }
 }
 
 internal sealed class UiAutomationControl

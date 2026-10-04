@@ -283,6 +283,38 @@ static void AdvancedResearchUi()
     Assert(engine.ExportJson() == before, "Inspecting the research tree changed the world");
     Assert(!view.GetLogicalDescendants().OfType<ComboBox>().Any(c => AutomationProperties.GetAutomationId(c) == "research-kind"), "Tree still uses a research dropdown");
     Assert(ResearchRules.All.All(r => view.GetLogicalDescendants().OfType<Button>().Any(b => AutomationProperties.GetAutomationId(b) == "research-node-" + r.Kind)), "Tree omits research branches");
+    var graph = Control<ResearchGraphControl>(view, "research-graph");
+    void CheckGraph(IEnumerable<ResearchDefinition> definitions)
+    {
+        var expected = definitions.ToArray();
+        Assert(graph.Layout.Nodes.Count == expected.Length, "Displayed graph has the wrong nodes");
+        Assert(graph.Layout.Edges.Select(e => (e.From, e.To)).ToHashSet().SetEquals(expected.SelectMany(d => d.Prerequisites.Select(p => (p, d.Kind)))),
+            "Drawn connectors do not match the actual prerequisites");
+        foreach (var (kind, rect) in graph.Layout.Nodes)
+        {
+            Assert(graph.Layout.Nodes.Where(n => n.Key != kind).All(n => !n.Value.Intersects(rect)), "Research nodes overlap");
+            foreach (var edge in graph.Layout.Edges)
+            for (var i = 1; i < edge.Points.Length; i++)
+            {
+                var a = edge.Points[i - 1]; var b = edge.Points[i];
+                var crosses = a.X == b.X
+                    ? a.X > rect.Left && a.X < rect.Right && Math.Min(a.Y, b.Y) < rect.Bottom && Math.Max(a.Y, b.Y) > rect.Top
+                    : a.Y > rect.Top && a.Y < rect.Bottom && Math.Min(a.X, b.X) < rect.Right && Math.Max(a.X, b.X) > rect.Left;
+                Assert(!crosses, "A prerequisite connector passes through a research node");
+            }
+        }
+    }
+    CheckGraph(ResearchRules.All);
+    Click(view, "research-route-technology");
+    CheckGraph(ResearchRules.All.Where(d => ResearchRules.Route(false).Contains(d.Kind)));
+    Click(view, "research-route-magic");
+    CheckGraph(ResearchRules.All.Where(d => ResearchRules.Route(true).Contains(d.Kind)));
+    Click(view, "research-route-all");
+    Click(view, "research-zoom-out"); Click(view, "research-zoom-in");
+    var sameNode = Control<Button>(view, "research-node-Electrification");
+    Call(view, "RefreshInspector", false);
+    Assert(ReferenceEquals(sameNode, Control<Button>(view, "research-node-Electrification")) && engine.ExportJson() == before,
+        "Refreshing, filtering or zooming the graph changed the world or replaced its nodes");
     view.Arrange(new Rect(0, 0, 390, 844)); Call(view, "ApplyLayout");
     Click(view, "research-expand");
     Assert((Control<Button>(view, "inspector-expand").Content as TextBlock)?.Text == "收起", "Compact tree expansion left its header action stale");
