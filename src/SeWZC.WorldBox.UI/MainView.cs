@@ -222,6 +222,7 @@ public sealed partial class MainView : UserControl
         _shell = shell; shell.IsEnabled = false;
         var root = new Grid(); root.Children.Add(shell); root.Children.Add(_modal); Content = root;
         SizeChanged += (_, _) => ApplyLayout();
+        _body.SizeChanged += (_, _) => ApplyLayout();
         _map.SizeChanged += (_, _) => UpdateToolBarSize();
         KeyDown += OnKeyDown;
         _timer.Tick += OnTick;
@@ -347,7 +348,9 @@ public sealed partial class MainView : UserControl
         _inspector.IsVisible = _mobilePanel;
         Grid.SetColumn(_inspector, _isCompact ? 1 : 2);
         _inspector.Width = _isCompact ? Math.Max(280, Bounds.Width - 12) : double.NaN;
-        _inspector.MaxHeight = _isCompact ? Math.Max(140, Math.Min(430, _body.Bounds.Height * (_expandedInspector ? .84 : .44))) : double.PositiveInfinity;
+        var inspectorSpace = Math.Max(140, _body.Bounds.Height - 92);
+        _inspector.MaxHeight = _isCompact ? (_expandedInspector ? inspectorSpace : Math.Min(430, inspectorSpace * .48)) : double.PositiveInfinity;
+        _inspector.Height = _isCompact && _expandedInspector ? inspectorSpace : double.NaN;
         _inspector.VerticalAlignment = _isCompact ? VerticalAlignment.Bottom : VerticalAlignment.Stretch;
         _inspector.Margin = _isCompact ? new Thickness(6, 6, 6, 80) : new Thickness(0);
         _inspector.HorizontalAlignment = HorizontalAlignment.Right;

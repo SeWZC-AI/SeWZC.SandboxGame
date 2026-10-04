@@ -87,7 +87,7 @@ public sealed partial class WorldEngine
                 && town.Resources.Wood >= 25 + developmentReserve.Wood && town.Resources.Stone >= 8 + developmentReserve.Stone)
             {
                 var site = BestBuildingSite(town, BuildingKind.Housing);
-                if (site >= 0) BuildFacility(town.Id, BuildingKind.Housing, site % State.Width, site / State.Width);
+                if (site >= 0) BuildPlannedFacility(town, BuildingKind.Housing, site % State.Width, site / State.Width, BuildingPurpose(town, BuildingKind.Housing));
             }
             var adults = citizens.Where(p => p.Age >= 18 && p.Age < (p.Race == RaceKind.Elf ? 100 : 55) && p.Hunger < 30 && p.SicknessTicks == 0).ToArray();
             if (State.Rules.Births && adults.Length >= 6 && citizens.Count < GetHousingCapacity(town.Id) && town.Resources.Food > citizens.Count * 0.8 && State.Residents.Count < MaxPopulation)
@@ -120,6 +120,7 @@ public sealed partial class WorldEngine
             && !State.Society.Buildings.Any(b => b.X == i % State.Width && b.Y == i / State.Width)
             && State.Tiles[i].Fertility >= 25 && (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == origin.NationId)
             && State.Tiles[i].ClaimedSettlementId == 0
+            && FoundingSiteSuitable(i, pioneers.Select(p => p.Race).Distinct().ToArray())
             && Distance(i % State.Width, i / State.Width, origin.X, origin.Y) >= MinimumSettlementDistance
             && State.Settlements.All(t => Distance(t.X, t.Y, i % State.Width, i / State.Width) >= MinimumSettlementDistance))
             .OrderByDescending(i => State.Tiles[i].Fertility).ThenBy(i => i).FirstOrDefault(-1);
@@ -139,12 +140,21 @@ public sealed partial class WorldEngine
                 OriginProfession = pioneer.Profession, SourceResidentId = pioneer.Id, Text = "拓荒队商定的新家园，物资必须亲自带到" };
             RememberAgentFact(pioneer, address);
             pioneer.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome, TargetX = x, TargetY = y, TargetSettlementId = town.Id,
-                StartedTick = State.Tick, Reason = "背负原聚落提供的粮木石，步行建立新家园", PlayerDirected = true, ReviewTick = State.Tick + 150 };
+                StartedTick = State.Tick, Reason = $"原聚落人口 {citizens.Count}，为拓荒扩展家园；已收到建村勘察报告，选址 {x}, {y} 肥力 {State.Tiles[location].Fertility}/100，周围有可登记陆地，背负粮木石步行建立新家园", PlayerDirected = true, ReviewTick = State.Tick + 150 };
             citizens.Remove(pioneer); _citizens[town.Id].Add(pioneer);
         }
         State.Tiles[location].SettlementId = town.Id; ClaimTerritory(town, 4);
         InitializeSociety();
         AddEvent(WorldEventKind.Growth, $"{_nations[origin.NationId].Name}派出 {pioneers.Length} 名成年人，携物资前往{town.Name}；仓库等待实物抵达。", x, y);
+    }
+
+    private bool FoundingSiteSuitable(int index, RaceKind[] races)
+    {
+        var x = index % State.Width; var y = index / State.Width;
+        // The crew must be able to establish the minimum footprint, rather
+        // than settling on a fertile single tile surrounded by unusable land.
+        return Circle(x, y, 3).Count(i => !IsWaterTerrain(State.Tiles[i].Terrain) && State.Tiles[i].FireTicks == 0
+            && State.Tiles[i].ClaimedSettlementId == 0 && races.All(race => RaceTerrainRules.CanWalk(State.Tiles[i], race))) >= SettlementActivationArea;
     }
 
     private void UpdateDisasters()

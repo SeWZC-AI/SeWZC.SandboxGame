@@ -146,8 +146,8 @@ internal static class AgentBehaviorTests
             Require(person.Agent.Goal.Kind == kind && person.Agent.Goal.TargetX == targetX && person.Agent.Goal.TargetY == targetY,
                 $"Resource choice changed: {person.Agent.Goal.Kind} at {person.Agent.Goal.TargetX},{person.Agent.Goal.TargetY}; expected {kind} at {targetX},{targetY}.");
         }
-        // Floodplain has full food yield. Original row order breaks the equal score.
-        Choose(20, 20, [(20, 20, 50), (20, 16, 100)], AgentGoalKind.Gather, 20, 16);
+        // Both sources are outside town land: half yield preserves a tie over two steps.
+        Choose(20, 20, [(20, 20, 50), (20, 18, 100)], AgentGoalKind.Gather, 20, 18);
         Choose(0, 0, [(1, 0, 100), (0, 1, 100)], AgentGoalKind.Gather, 1, 0);
         // (6,1) is outside the radius-six circle even though its Manhattan distance is seven.
         Choose(20, 20, [(26, 21, 100)], AgentGoalKind.ReturnHome, 10, 10);

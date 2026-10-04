@@ -31,10 +31,14 @@ public sealed partial class WorldEngine
         var active = 0;
         foreach (var resident in _citizens[town.Id])
             if (resident.Id != person.Id && resident.Agent.Goal.Kind == AgentGoalKind.ClaimLand && ++active >= 2) return -1;
+        var reachable = 0;
         foreach (var offset in VisibleResourceOffsets)
         {
             var x = person.X + offset.X; var y = person.Y + offset.Y;
-            if (InBounds(x, y) && CanClaimTile(town, Index(x, y), person.Race)) return Index(x, y);
+            if (InBounds(x, y) && CanClaimTile(town, Index(x, y), person.Race)
+                && !_citizens[town.Id].Any(r => r.Id != person.Id && r.Agent.Goal.Kind == AgentGoalKind.ClaimLand
+                    && r.Agent.Goal.TargetX == x && r.Agent.Goal.TargetY == y)
+                && VisibleSiteReachable(person, Index(x, y), ref reachable)) return Index(x, y);
         }
         return -1;
     }

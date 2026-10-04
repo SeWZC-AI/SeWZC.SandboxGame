@@ -15,10 +15,10 @@ public sealed partial class WorldEngine
     {
         if (!_settlements.TryGetValue(person.SettlementId, out var home) || Distance(person.X, person.Y, home.X, home.Y) > 1) return 1;
         IEnumerable<Building>? buildings = _localWorkQueriesActive ? _localWorkBuildings.GetValueOrDefault(home.Id) : State.Society.Buildings;
-        var bonus = (1 + (int)home.Tier * .1) * GranaryRestBonus(home.Id);
+        var bonus = (1 + EffectiveSettlementRank(home) * .1) * GranaryRestBonus(home.Id);
         if (buildings is null) return bonus;
         foreach (var building in buildings)
-            if (building.SettlementId == home.Id && building.Kind == BuildingKind.TownCenter && building.Level > 1 && IsFacilityOperating(building)) return bonus * building.Efficiency;
+            if (building.SettlementId == home.Id && building.Kind == BuildingKind.TownCenter && building.Level > 1 && IsSettlementActive(home.Id) && IsFacilityOperating(building)) return bonus * building.Efficiency;
         return bonus;
     }
 
@@ -34,6 +34,8 @@ public sealed partial class WorldEngine
         var adaptation = RaceTerrainRules.For(person.Race, State.Tiles[Index(person.X, person.Y)].Terrain);
         effects.Add(new("地形适应", $"{(adaptation.Habitable ? "宜居" : "不宜居")}   地形移动耗时 ×{adaptation.Movement:0.00}   现场生产 ×{adaptation.Productivity:0.00}", "种族与当前地形"));
         effects.Add(new("勤勉", $"野外采集效率 ×{.75 + person.Agent.Personality.Diligence * .5:0.00}", ""));
+        if (GatheringTerritoryMultiplier(person, State.Tiles[Index(person.X, person.Y)]) < 1)
+            effects.Add(new("领地外采集", $"食物、木材、石矿、矿藏、狩猎、捕鱼与取水速度 ×{OutsideTerritoryGatheringMultiplier:0.00}", "资源来源未登记给本城镇"));
         foreach (var town in State.Settlements)
         {
             if (town.NationId != person.NationId || Distance(town.X, town.Y, person.X, person.Y) > 5) continue;
@@ -91,6 +93,8 @@ public sealed partial class WorldEngine
         };
         if (AdvancementRules.For(building.Kind) is { Magic: true })
             effect += "\n施作者要求：天赋至少 25、训练至少 8，并携带本批原料与所需魔力";
+        if (building.Kind == BuildingKind.TownCenter && !IsSettlementActive(building.SettlementId))
+            effect = $"仓库领取补给、交付物资与建村施工仍可使用；城镇等级及中心等级的休息加成暂停，需独占陆地 {GetSettlementArea(building.SettlementId)}/{SettlementActivationArea} 格";
         if (BuildingRace(building.Kind) is not null && AdvancementRules.For(building.Kind) is null)
         {
             var input = RacialWorkInput(building.Kind);
@@ -131,7 +135,7 @@ public sealed partial class WorldEngine
         }
         if (_settlements.TryGetValue(building.SettlementId, out var town))
         {
-            if (building.Kind == BuildingKind.Academy && town.Tier > SettlementTier.Village) effects.Add(new("城镇组织", $"本地研究效率 ×{1 + (int)town.Tier * .1:0.00}", town.Name));
+            if (building.Kind == BuildingKind.Academy && town.Tier > SettlementTier.Village) effects.Add(new("城镇组织", $"本地研究效率 ×{1 + EffectiveSettlementRank(town) * .1:0.00}" + (IsSettlementActive(town.Id) ? "" : "，占地不足，加成暂停"), town.Name, Active: IsSettlementActive(town.Id)));
             if (building.Kind == BuildingKind.Farm && HasResearch(town.Id, ResearchKind.Agriculture)) effects.Add(new("农业知识", "农场粮食产出 ×1.35", town.Name));
             if (building.Kind == BuildingKind.Farm && town.FertilityBoostTicks > 0) effects.Add(new("丰饶", "农场粮食产出 ×1.35", town.Name, town.FertilityBoostTicks));
             if (building.Kind == BuildingKind.Academy && GetLocalPolicy(town.Id) == PolicyKind.Scholarship) effects.Add(new("学术政策", "研究效率 ×1.35", town.Name));

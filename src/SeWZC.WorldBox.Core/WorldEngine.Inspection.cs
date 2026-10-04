@@ -116,11 +116,70 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Editor, $"玩家{(finish ? "赐予完工" : "修复")}{BuildingName(building.Kind)}。", building.X, building.Y);
     }
 
+    public string GetResidentTaskSummary(int id)
+    {
+        var person = GetResident(id);
+        if (person is null || person.Health <= 0) return "已离世，保留生平记录";
+        var goal = person.Agent.Goal;
+        var building = goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic ? FindBuilding(goal.TargetEntityId) : null;
+        var home = _settlements.GetValueOrDefault(person.SettlementId);
+        var destination = _settlements.GetValueOrDefault(goal.TargetSettlementId)?.Name ?? "目标聚落";
+        if (building is not null)
+        {
+            var name = BuildingName(building.Kind);
+            if (!building.IsCompleted) return "建造" + name;
+            if (building.IsUpgrading) return (building.PendingDirection.HasValue ? "改造桥梁方向" : "升级" + name);
+            if (building.Kind == BuildingKind.TownCenter) return "在城镇中心扩充为" + (home is null ? "下一等级" : SettlementTierName(home.Tier + 1));
+            if (AdvancementRules.For(building.Kind) is { } recipe) return "在" + name + "生产" + ResourceStock.Name(recipe.Output);
+            return building.Kind switch
+            {
+                BuildingKind.Farm => "在农田耕作并收获粮食",
+                BuildingKind.Workshop or BuildingKind.LumberCamp or BuildingKind.Quarry or BuildingKind.MiningHall => "在" + name + (person.Profession == Profession.Lumberjack ? "采伐木材" : "采收石材与矿石"),
+                BuildingKind.Academy => "在学舍研究" + (State.Society.Research.FirstOrDefault(r => r.SettlementId == building.SettlementId)?.ActiveProject is { } research ? ResearchName(research) : "待立项课题"),
+                BuildingKind.Well => "在水井打水并运回家园",
+                BuildingKind.Infirmary or BuildingKind.HerbGarden => "治疗附近同聚落伤病居民",
+                BuildingKind.ArcaneSanctum or BuildingKind.SacredGrove => "训练魔法并恢复魔力",
+                BuildingKind.HuntingCamp => "在狩猎营捕获食草动物",
+                BuildingKind.WarDrum => "击鼓恢复附近居民体力与军队士气",
+                BuildingKind.AssemblyHall => "组织附近居民交流，缓解社交需求",
+                BuildingKind.TradeGuild or BuildingKind.Market => "值守" + name + "，协助附近居民交流与贸易",
+                BuildingKind.Waystation or BuildingKind.Dock or BuildingKind.SignalTower => "值守" + name + "，支持实际交通与通信",
+                _ => "在" + name + "工作"
+            };
+        }
+        return goal.Kind switch
+        {
+            AgentGoalKind.Work => person.Profession == Profession.Lumberjack ? "采伐木材并带回家园" : person.Profession == Profession.Miner ? "开采石矿或已发现矿藏并带回家园" : "采收粮食并带回家园",
+            AgentGoalKind.Gather => "采集野生食物并带回家园",
+            AgentGoalKind.FetchWater => goal.TargetEntityId > 0 ? "到已发现的水源打水并带回家园" : "实地勘察可用水源",
+            AgentGoalKind.Hunt => "狩猎可食动物并带回家园",
+            AgentGoalKind.Fish => person.TravelMode == TravelMode.Boat ? "乘舟捕鱼并带回鱼获与舟船" : "到鱼群附近捕鱼并带回家园",
+            AgentGoalKind.ClaimLand => "到场驻留登记" + (home?.Name ?? "家园") + "的相邻领地",
+            AgentGoalKind.Eat => "返回家园领取口粮和饮水",
+            AgentGoalKind.Rest => "返回家园休息恢复体力",
+            AgentGoalKind.ReturnHome => home?.FoundationPending == true ? "携带建村物资抵达新家园并驻留建村" : "返回家园交付产物并补充粮水",
+            AgentGoalKind.Socialize => "在家园与居民当面交流消息",
+            AgentGoalKind.Trade => "前往" + destination + "交换并交付货物",
+            AgentGoalKind.DeliverMessage => "将携带的消息实际送达" + destination,
+            AgentGoalKind.Petition => "将已有诉求报告递送至" + destination,
+            AgentGoalKind.Explore => person.Profession is Profession.Trader or Profession.Messenger or Profession.Representative ? "勘察聚落与可通行路线" : "勘察本职可采材料",
+            AgentGoalKind.ExtinguishFire => "携带实际饮水扑灭附近火势",
+            AgentGoalKind.Migrate => "步行迁居至" + destination,
+            AgentGoalKind.March => "执行实际收到的军令",
+            AgentGoalKind.Flee => "离开附近危险区域",
+            AgentGoalKind.Study => "寻找可参与的研究课题",
+            AgentGoalKind.TrainMagic => "寻找可参与的魔法训练",
+            _ => "评估需求与附近可执行工作"
+        };
+    }
+
     public string GetResidentActionSummary(int id)
     {
         var person = GetResident(id);
         if (person is null || person.Health <= 0) return "已离世，保留生平记录";
         var goal = person.Agent.Goal;
+        var task = GetResidentTaskSummary(id);
+        var taskHeader = $"当前任务：{task}\n任务地点：{goal.TargetX}, {goal.TargetY}\n";
         var exploringRoutes = goal.Kind == AgentGoalKind.Explore && person.Profession is Profession.Trader or Profession.Messenger or Profession.Representative;
         var facility = goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic ? State.Society.Buildings.FirstOrDefault(b => b.Id == goal.TargetEntityId) : null;
         if (goal.Kind == AgentGoalKind.Work && facility is { IsCompleted: true } && facility.SettlementId == person.SettlementId
@@ -132,19 +191,18 @@ public sealed partial class WorldEngine
             var action = !CanProduce(facility, person, recipe) ? "当前加工条件未满足：" + GetProductionStatus(facility.Id)
                 : travelling ? pickingUp ? "正在返回" + home.Name + "的仓库取料" : "正在携带原料前往" + BuildingName(facility.Kind)
                 : pickingUp ? "已到家园仓库，准备领取实际原料" : "已抵达" + BuildingName(facility.Kind) + "，正在加工" + ResourceStock.Name(recipe.Output);
-            return $"现在：{action}\n后续：{(pickingUp ? "领取原料后运至设施加工，再" : "完成加工后")}" +
+            return taskHeader + $"当前劳作：{action}\n后续：{(pickingUp ? "领取原料后运至设施加工，再" : "完成加工后")}" +
                 $"将{ResourceStock.Name(recipe.Output)}亲自运回家园入库\n行动依据：{goal.Reason}";
         }
         var destination = facility is not null ? BuildingName(facility.Kind)
             : _settlements.GetValueOrDefault(goal.TargetSettlementId)?.Name ?? "目标地块";
-        var workingRange = facility is not null && (!facility.IsCompleted || facility.IsUpgrading
-            || IsWaterfrontBuilding(facility.Kind) || facility.Kind == BuildingKind.TownCenter) ? 1 : goal.TargetEntityId == 0 ? 1 : 0;
+        var workingRange = AgentInteractionRange(person, _settlements.GetValueOrDefault(person.SettlementId));
         var moving = person.MoveStartedTick + person.MoveDurationTicks > State.Tick
             || Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > workingRange;
-        var current = State.Tick < goal.NavigationRetryTick ? "路线受阻，正在等待通道或重新选择任务" : moving ? $"正在前往{destination}（{TravelModeName(person.TravelMode)}）" : goal.Kind switch
+        var current = State.Tick < goal.NavigationRetryTick ? "路线受阻，正在等待通道或重新选择任务" : moving ? $"正在前往{destination}执行“{task}”（{TravelModeName(person.TravelMode)}），到场后开始劳动" : goal.Kind switch
         {
             AgentGoalKind.Explore => exploringRoutes ? "正在实地寻找其他聚落与可通行路线" : "正在实地勘察可采材料",
-            AgentGoalKind.Work => facility is null ? person.Profession == Profession.Lumberjack ? "正在采伐木材" : person.Profession == Profession.Miner ? "正在采收石材与矿石" : "正在采收粮食" : facility.IsUpgrading ? "正在升级或改向" + BuildingName(facility.Kind) : facility.IsCompleted ? facility.Kind == BuildingKind.Academy ? "正在研究" + (State.Society.Research.First(r => r.SettlementId == facility.SettlementId).ActiveProject is { } active ? ResearchName(active) : "当地待立项课题") : facility.Kind == BuildingKind.Farm ? "正在农场耕作和采收粮食" : "正在" + BuildingName(facility.Kind) + "执行" + (person.Profession == Profession.Lumberjack ? "伐木任务" : person.Profession == Profession.Miner ? "采矿任务" : "岗位任务") : "正在施工" + BuildingName(facility.Kind),
+            AgentGoalKind.Work => facility is null ? person.Profession == Profession.Lumberjack ? "正在采伐木材" : person.Profession == Profession.Miner ? "正在采收石材与矿石或已发现矿藏" : "正在采收粮食" : "正在" + task,
             AgentGoalKind.ExtinguishFire => "正在火场边缘持续用水扑救", AgentGoalKind.ClaimLand => "正在实地登记城镇地盘", AgentGoalKind.FetchWater => "正在河湖或湿地打水或实地勘察水源",
             AgentGoalKind.Hunt => "正在狩猎，实际消耗当地动物数量", AgentGoalKind.Fish => "正在岸边捕鱼，实际消耗鱼群数量",
             AgentGoalKind.Gather => "正在采集可食资源", AgentGoalKind.Eat => "正在家园领取口粮",
@@ -155,6 +213,8 @@ public sealed partial class WorldEngine
             AgentGoalKind.Migrate => "正在步行迁往新家园", AgentGoalKind.March => "正在执行实际收到的军令",
             _ => "正在重新选择可执行任务"
         };
+        if (!moving && facility is not null && !BuildingHasWork(facility, person))
+            current = "现场劳动受阻：" + (GetBuildingDetailStatus(facility.Id) is { Length: > 0 } status ? status : "岗位已满或当前角色不满足劳动条件");
         var next = goal.Kind switch
         {
             AgentGoalKind.Explore => exploringRoutes ? "发现聚落后记下实际位置，再按已知消息选择拜访或运输；口粮不足时返乡补给" : "看到材料后实地采集；勘察距离达到补给范围时先返乡",
@@ -165,6 +225,6 @@ public sealed partial class WorldEngine
             AgentGoalKind.Rest => "恢复体力后重新评估可执行工作",
             _ => "完成当前任务后，按自身需求、可见岗位与已知消息重新选择"
         };
-        return $"现在：{current}\n后续：{next}\n行动依据：{goal.Reason}";
+        return taskHeader + $"当前劳作：{current}\n后续：{next}\n行动依据：{goal.Reason}";
     }
 }

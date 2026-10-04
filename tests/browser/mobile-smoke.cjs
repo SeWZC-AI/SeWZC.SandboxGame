@@ -47,6 +47,16 @@ const viewport = page => page.evaluate(() => ({
         const bottom = ui.control(start, 'event-spotlight').y;
         assert((bottom - start.map.y) / start.height >= .75, 'At least 75% of mobile height must be unobstructed map');
         const before = await ui.save();
+        await ui.click('header-overview');
+        const foldedInspector = ui.control(await ui.snapshot(), 'inspector-panel');
+        await ui.click('inspector-expand');
+        const expandedInspector = ui.control(await ui.snapshot(), 'inspector-panel');
+        assert(expandedInspector.height > 500 && expandedInspector.height > foldedInspector.height * 1.6,
+            'Expanded mobile information must use most of the available height');
+        await page.screenshot({ path: path.join(output, 'mobile-expanded-information.png') });
+        await ui.click('inspector-expand');
+        await ui.click('inspector-close');
+        assert.deepEqual(await ui.save(), before, 'Expanding information must not alter the paused world');
         const zoomBaseline = await ui.snapshot();
         const fixedChrome = chromeLayout(ui, zoomBaseline);
         const fixedViewport = await viewport(page);

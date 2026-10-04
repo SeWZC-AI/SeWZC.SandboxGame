@@ -30,6 +30,24 @@ fs.mkdirSync(output, { recursive: true });
                 const structures = async () => { await ui.openOverview(); await ui.click('overview-structures', { scroll: 'inspector-scroll' }); };
                 const screenshot = async name => page.screenshot({ path: path.join(output, `${device}-${name}.png`) });
                 await structures();
+                const center = before.Society.Buildings.find(b => b.Kind === 18);
+                await ui.selectIndex('structures-town', before.Settlements.findIndex(t => t.Id === center.SettlementId) + 1, { scroll: 'inspector-scroll' });
+                await ui.selectIndex('structures-building-kind', 19, { scroll: 'inspector-scroll' });
+                await ui.click(`building-row-${center.Id}`, { scroll: 'inspector-scroll' });
+                assert.match(ui.control(await ui.snapshot(), 'center-town-summary').value, /独占陆地.*城镇生效/s);
+                await ui.click('center-town-info', { scroll: 'inspector-scroll' });
+                let townInfo = await ui.waitFor(s => s.inspector === 'infrastructure', 'town center information link');
+                assert.equal(ui.control(townInfo, 'infrastructure-town').value, String(before.Settlements.findIndex(t => t.Id === center.SettlementId)));
+                assert.match(ui.control(townInfo, 'town-expansion-summary').value, /独占陆地/);
+                if (mobile) {
+                    await ui.click('inspector-expand');
+                    assert(ui.control(await ui.snapshot(), 'inspector-panel').height > 500);
+                }
+                await screenshot('town-information');
+                if (mobile) await ui.click('inspector-expand');
+                await structures();
+                await ui.selectIndex('structures-town', 0, { scroll: 'inspector-scroll' });
+                await ui.selectIndex('structures-building-kind', 0, { scroll: 'inspector-scroll' });
                 await ui.click('map-highlights-off', { scroll: 'inspector-scroll' });
                 assert.equal(ui.control(await ui.snapshot(), 'map-overlay').value, '0');
                 await structures();

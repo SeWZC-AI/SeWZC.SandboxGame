@@ -229,8 +229,8 @@ internal static class AgentRegressionTests
             Check(miner.Agent.Goal.Kind == AgentGoalKind.Work && miner.X == 20 && miner.Y == 20,
                 "The miner did not choose the visible adjacent deposit from a walkable work site.");
             if (localStock > 0)
-                Check(site.ResourceAmount == 0 && mountain.ResourceAmount == 100
-                    && Math.Abs(miner.Inventory.Stone + miner.Inventory.Ore - localStock) < 0.000001,
+                Check(site.ResourceAmount < localStock && mountain.ResourceAmount == 100
+                    && Math.Abs(miner.Inventory.Stone + miner.Inventory.Ore - (localStock - site.ResourceAmount)) < 0.000001,
                     "The miner skipped the remaining local deposit before mining the adjacent mountain.");
             else Check(mountain.ResourceAmount < 100, "An exhausted work site prevented mining the stocked adjacent mountain.");
 

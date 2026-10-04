@@ -98,9 +98,9 @@ internal static class ProvisioningAndClaimsTests
             foreach (var r in e.State.Residents)
             {
                 Hold(e, r, AgentGoalKind.FetchWater, 16, 16, source + 1);
-                Check(e.TryFetchWater(r) && r.Inventory.Water == 1, "A nearby carrier could not collect a finite load.");
+                Check(e.TryFetchWater(r) && r.Inventory.Water == e.GetGatheringTerritoryMultiplier(r.Id, 17, 16), "A nearby carrier could not collect a finite load at the territorial rate.");
             }
-            Check(e.State.Residents.Sum(r => r.Inventory.Water) == 6 && double.IsPositiveInfinity(e.AvailableWater(17, 16)),
+            Check(e.State.Residents.Sum(r => r.Inventory.Water) == 6 * e.GetGatheringTerritoryMultiplier(e.State.Residents[0].Id, 17, 16) && double.IsPositiveInfinity(e.AvailableWater(17, 16)),
                 "The shared daily quota or drought still depleted fresh water.");
             var carrier = e.State.Residents[0]; var collected = carrier.Inventory.Water;
             Hold(e, carrier, AgentGoalKind.FetchWater, 15, 16, source + 1);

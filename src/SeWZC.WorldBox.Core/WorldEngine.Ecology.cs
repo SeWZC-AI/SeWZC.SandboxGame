@@ -74,7 +74,9 @@ public sealed partial class WorldEngine
         var elapsed = cycle / 6d;
         var growthRate = Math.Min(.25, .018 * elapsed);
         var deathRate = Math.Min(.65, 1 - Math.Pow(.88, elapsed));
-        var predationRate = .035 * elapsed;
+        // Births are bounded for a long revisit interval. Scale predation with
+        // that same effective interval rather than letting it outgrow renewal.
+        var predationRate = .035 * (growthRate / .018);
         var migrationRate = Math.Min(.5, .20 * elapsed);
         // Snapshot only a compact band and its four-neighbour apron. Each day's
         // growth, consumption and migrations see one initial population state.

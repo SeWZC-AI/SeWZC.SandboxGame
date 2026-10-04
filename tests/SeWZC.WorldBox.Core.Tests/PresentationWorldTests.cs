@@ -33,6 +33,8 @@ internal static class PresentationWorldTests
         var tile = engine.State.Tiles[22 * engine.State.Width + 22]; tile.Terrain = TerrainType.Forest; tile.ResourceAmount = .1;
         var wood = resident.Inventory.Wood;
         Invoke(engine, "GatherActualResources", resident, Profession.Lumberjack);
+        // This plot is outside the footprint, so depletion now takes two work turns.
+        if (tile.ResourceAmount > 0) Invoke(engine, "GatherActualResources", resident, Profession.Lumberjack);
         Check(tile.Terrain == TerrainType.Grass && tile.ResourceAmount == 0, "Exhausted logging did not clear forest");
         Check(Math.Abs(resident.Inventory.Wood - wood - .1) < .00001, "Harvest created or lost wood");
         Check(engine.GetVisualsAfter(0).Any(v => v.Kind == WorldVisualKind.Logging), "No real logging notification");
