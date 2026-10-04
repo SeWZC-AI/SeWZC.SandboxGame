@@ -30,7 +30,8 @@ public sealed partial class WorldEngine
     public static string ProductionRecipe(BuildingKind kind)
     {
         var a = AdvancementRules.For(kind);
-        return a is null ? "" : $"每批原料：{AdvancementRules.Stock(a.Input)}{(a.Mana > 0 ? $"\n施作者魔力消耗：{a.Mana:0}" : "")}\n每批产出：{ResourceStock.Name(a.Output)} {a.Yield:0}\n工人先到粮仓取料，现场加工后实地运回；农业产出仍受肥力与干旱影响。";
+        return a is null ? "" : $"每批原料：{AdvancementRules.Stock(a.Input)}{(a.Mana > 0 ? $"\n施作者魔力消耗：{a.Mana:0}" : "")}\n每批基础产出：{ResourceStock.Name(a.Output)} {a.Yield:0.##}\n工人领料、现场加工，再将产物运回仓库。"
+            + (a.Output == ResourceKind.Food ? "粮食产量受肥力与干旱影响。" : "");
     }
 
     private string? ProductionRequirement(Building building, Advancement a)
