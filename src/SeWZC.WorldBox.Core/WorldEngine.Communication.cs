@@ -11,7 +11,7 @@ public sealed partial class WorldEngine
     private int[] _conversationNext = [];
     private readonly List<AgentFact> _observedReports = [];
     private readonly List<AgentFact> _missionAddresses = [];
-    private static readonly IComparer<Resident> ResidentIdOrder = Comparer<Resident>.Create((first, second) => first.Id.CompareTo(second.Id));
+    private static readonly Comparison<Resident> ResidentIdOrder = (first, second) => first.Id.CompareTo(second.Id);
 
     private AgentFact MakeAgentFact(Resident observer, AgentFactKind kind, int subject, int x, int y, double value, string text) => new()
     {
@@ -234,7 +234,8 @@ public sealed partial class WorldEngine
         {
             if (right - left < 16 || budget-- == 0)
             {
-                _conversationNeighbors.Sort(left, right - left + 1, ResidentIdOrder);
+                System.Runtime.InteropServices.CollectionsMarshal.AsSpan(_conversationNeighbors)
+                    .Slice(left, right - left + 1).Sort(ResidentIdOrder);
                 return _conversationNeighbors[rank];
             }
             var first = _conversationNeighbors[left].Id; var middle = _conversationNeighbors[(left + right) / 2].Id;
