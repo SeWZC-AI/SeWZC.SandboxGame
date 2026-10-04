@@ -750,3 +750,21 @@ alpha 修复后的裁剪发布和静态资源检查通过。Chromium 桌面 1440
 本地 `deploy-smoke.cjs` 通过带 `98154d4` 修订标记的子路径产物，检查实际渲染、时间推进、IndexedDB 保存和刷新恢复，26.59 秒；所有浏览器场景没有非预期错误或软件渲染回退。本记录不声称已经检查公网 Pages 部署。完整 Actions 回归矩阵新增 `research-trees`，使用仓库中的同一交付存档 ZIP。
 
 推送时 GitHub 的私人邮箱保护拒绝原始提交，随后仅将本次未发布提交的作者／提交者邮箱改为账号的 GitHub 隐私邮箱。上述两项实现提交的 Git tree 均与验收修订完全相同，代码、存档和测试结果未变；本地浏览器产物仍保留实际验收时的修订标记。
+
+## 2026-10-04：科技树更正为可读的独立支线图
+
+最终验收的游戏源码与裁剪浏览器产物：`bd67a9303e44686a5479064761db13158e0043fb`；时代发展脚本的视野适配提交：`d3ac7e37dd5c4a3e0155f78ca4156b4b0ecd96b9`。后者只修改浏览器测试，不修改游戏源码。基线为 `b9e901b5dba427e1998d5fbc66db19c00854c2e3`，Core 与交付存档均未变化。
+
+环境：Linux 云工作区，.NET SDK 10.0.401、Avalonia 12.1.3、Release，Chromium 151.0.7922.173、Playwright 1.57.0。真实浏览器加载 `/SeWZC.SandboxGame/` 子路径的静态 WebAssembly 产物；桌面 1440×1040，触屏模拟 390×844。触屏结果不等于真实手机、Safari 或 Firefox 验收。
+
+- Release 构建 0 警告、0 错误；67/67 单元、37/37 Headless UI，快速入口合计 **5.15 秒**。结构检查覆盖科技 15 个节点／23 条关系、魔法 14／19、共同基础 5／3，两条路线的并集恰好为 24 个节点／39 条真实依赖。节点不重叠、线路不穿过节点，帝国前置不在外围绕行。
+- `research-trees.cjs` 按触屏与桌面分别运行并汇总，四个场景均通过。每次导入交付 ZIP 内的实际帝国存档，验证已掌握终点、禁用重复投入、真实节点点选、节点上的连续横向与纵向拖动、缩放、完整概览与定时刷新保留视野。观察与过滤前后的整个保存 JSON 保持一致。
+- 首版触屏平移只移动第一步：图接管指针后，Avalonia 的嵌套滚动手势识别仍能重新捕获。开始拖动时调用 `PreventGestureRecognition`，并区分按钮交出捕获与图自身失去捕获；以固定触点编号的 CDP 触摸序列复验两条路线，均通过。仅将事件设为 `Handled` 不足以阻止手势识别。
+- `advancement.cjs` 桌面／触屏均通过两线查看、真实赠送与付费施工、进阶库存、IndexedDB 刷新和格式 13 完整恢复。所有浏览器场景无非预期错误或渲染回退诊断。
+
+原先混排全树与外围长连接的画面被用户指出难读，本次改为独立路线、固定支线、实线研究关系与单条虚线成果汇合，默认只强调直接前置。[ADR-0027](decisions/0027-readable-research-branches.md) 记录原因。实际新截图：
+
+- 科技树：[桌面](images/research-branches-technology-desktop-20261004.png)、[触屏](images/research-branches-technology-mobile-20261004.png)
+- 魔法树：[桌面](images/research-branches-magic-desktop-20261004.png)、[触屏](images/research-branches-magic-mobile-20261004.png)
+
+本次只改呈现和输入，没有重跑或修改此前的帝国模拟。原 [双帝国存档 ZIP](saves/empire-saves-20261004.zip) 与交付副本仍相同，SHA-256 为 `b691c89f4736dfcbb3144d980551ba5cbb9eba9f55fddd8c065412f639b08f65`；新界面已经实际导入两份存档并验证观察不变性。以上记录的是本地验收，不声称已经检查公网 Pages 部署。
