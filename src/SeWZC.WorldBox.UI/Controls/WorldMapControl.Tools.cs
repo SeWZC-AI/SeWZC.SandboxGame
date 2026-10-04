@@ -48,6 +48,7 @@ public sealed partial class WorldMapControl
         if (x < 0 || y < 0 || x >= Engine.State.Width || y >= Engine.State.Height) return "请选择世界范围内的地点";
         if (ActiveTool.StartsWith("build:") && Enum.TryParse<BuildingKind>(ActiveTool[6..], out var kind))
             return Engine.FacilityPlacementError(SelectedSettlementId, kind, x, y, GiftBuildings, kind == BuildingKind.Bridge ? ConstructionBridgeDirection : null, kind == BuildingKind.Bridge ? ConstructionBridgeLevel : 1);
+        if (ActiveTool == "road:Rail") return Engine.RailPlacementError(SelectedSettlementId, x, y, 0);
         if (ActiveTool.StartsWith("road:")) return Engine.RoadPlacementError(SelectedSettlementId, x, y, 0);
         var tile = Engine.State.Tiles[y * Engine.State.Width + x];
         if (Enum.TryParse<RaceKind>(ActiveTool, out _) && !tile.IsWalkable) return "居民需要可通行的陆地";

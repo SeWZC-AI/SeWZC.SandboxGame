@@ -32,30 +32,33 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                 const before = await ui.save();
                 assert.equal(digest(before), digest(expected), 'Import changed the delivered simulated world');
                 await ui.click('header-overview'); await ui.click('overview-infrastructure', inspector);
-                const completedTown = expected.Settlements.findIndex(t => expected.Society.Research.find(r => r.SettlementId === t.Id).Completed.includes(route === 'technology' ? 18 : 23));
-                assert(completedTown >= 0, 'Delivered world has no empire knowledge');
+                const completedTown = expected.Settlements.findIndex(t => expected.Society.Research.find(r => r.SettlementId === t.Id).Completed.length >= (route === 'technology' ? 26 : 25));
+                assert(completedTown >= 0, 'Delivered world has no completed research route');
                 await ui.selectIndex('infrastructure-town', completedTown, inspector);
                 await ui.click('research-expand', inspector);
                 const expanded = await ui.snapshot();
                 const expandedGraph = ui.control(expanded, 'research-graph');
                 assert(mobile ? expandedGraph.width <= 390 : expandedGraph.width > expanded.width * .95,
                     'Expanded tree did not use the available screen width');
-                const endpoint = route === 'technology' ? 'TechnologicalEmpire' : 'MagicalEmpire';
-                assert.equal((await ui.snapshot()).researchGraph.nodes, 15);
-                assert.equal((await ui.snapshot()).researchGraph.edges, 23);
+                const endpoint = route === 'technology' ? 'AdvancedComputing' : 'AetherMastery';
+                assert.equal((await ui.snapshot()).researchGraph.nodes, 26);
+                assert.equal((await ui.snapshot()).researchGraph.edges, 37);
                 await ui.click(`research-route-${route}`, inspector);
-                await ui.click('research-jump-end', inspector);
+                await ui.click('research-development', inspector);
+                assert.match(ui.control(await ui.snapshot(), 'civilization-progress').value, /已达到/);
+                assert.match(ui.control(await ui.snapshot(), 'civilization-requirements').value, /无须另行研究/);
+                await ui.click('research-fit', inspector);
                 await ui.point('research-graph', inspector);
                 await ui.click(`research-node-${endpoint}`, inspector);
                 let snapshot = await ui.snapshot();
-                assert.match(ui.control(snapshot, 'research-selected').value, route === 'technology' ? /科技帝国/ : /魔法帝国/);
+                assert.match(ui.control(snapshot, 'research-selected').value, route === 'technology' ? /先进计算与制造/ : /高阶以太工艺/);
                 assert.equal(ui.control(snapshot, `research-state-${endpoint}`).value, '已掌握');
                 assert.equal(ui.control(snapshot, 'research-start').enabled, false);
                 assert(!snapshot.controls.some(c => c.id === 'research-kind'), 'Research still uses a dropdown');
-                assert.equal(snapshot.controls.filter(c => c.id.startsWith('research-node-')).length, 24);
-                assert.equal(snapshot.researchGraph.nodes, route === 'technology' ? 15 : 14);
+                assert.equal(snapshot.controls.filter(c => c.id.startsWith('research-node-')).length, 40);
+                assert.equal(snapshot.researchGraph.nodes, route === 'technology' ? 26 : 25);
                 // Enlarge even a fully fitting route so panning has real overflow to move.
-                await ui.click('research-zoom-in', inspector); await ui.click('research-zoom-in', inspector);
+                while ((await ui.snapshot()).researchGraph.zoom < 1.3) await ui.click('research-zoom-in', inspector);
                 await ui.click('research-focus', inspector);
                 async function showGraph() {
                     await ui.point('research-graph', inspector);
@@ -92,14 +95,14 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                 assert(Math.abs(snapshot.researchGraph.offsetY - beforePan.offsetY) > 30,
                     'Dragging did not pan the actual tree: ' + JSON.stringify({ before: beforePan, after: snapshot.researchGraph }));
                 assert(Math.abs(snapshot.researchGraph.offsetX - beforePan.offsetX) > 25, 'Dragging did not move between branch columns');
-                assert.match(ui.control(snapshot, 'research-selected').value, route === 'technology' ? /科技帝国/ : /魔法帝国/);
+                assert.match(ui.control(snapshot, 'research-selected').value, route === 'technology' ? /先进计算与制造/ : /高阶以太工艺/);
                 await ui.click('research-zoom-out', inspector);
                 assert((await ui.snapshot()).researchGraph.zoom < beforePan.zoom, 'Zoom did not change tree geometry');
                 await ui.click('research-zoom-in', inspector);
                 await ui.click('research-fit', inspector);
                 await showGraph();
                 snapshot = await ui.snapshot();
-                assert.equal(snapshot.controls.filter(c => c.id.startsWith('research-node-') && c.visible).length, route === 'technology' ? 15 : 14,
+                assert.equal(snapshot.controls.filter(c => c.id.startsWith('research-node-') && c.visible).length, route === 'technology' ? 26 : 25,
                     'Fit-to-tree overview clips a research node');
                 const readableBranch = route === 'technology' ? 'Industry' : 'Crystalcraft';
                 await ui.click(`research-node-${readableBranch}`, inspector);

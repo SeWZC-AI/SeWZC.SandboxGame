@@ -19,7 +19,7 @@ fs.mkdirSync(output, { recursive: true });
                 await page.goto(testUrl(process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.SandboxGame/'));
                 await ui.ready(); await ui.paused();
                 const generated = await ui.save();
-                assert.equal(generated.FormatVersion, 13);
+                assert.equal(generated.FormatVersion, 14);
                 assert.equal(generated.Settlements.length, 4);
                 assert(generated.Tiles.every(t => Number.isFinite(t.rain) && t.rain >= 0));
                 assert(generated.Tiles.some(t => t.RiverWidth === 1));

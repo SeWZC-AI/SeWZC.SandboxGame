@@ -5,14 +5,20 @@ namespace SeWZC.WorldBox.Core;
 public enum BuildingKind { Farm, Workshop, Academy, Waystation, SignalTower, ArcaneSanctum, Infirmary,
     Foundry, PowerPlant, AutomatedFarm, Fabricator, Crystallizer, RunicGarden, AetherForge, MountainPass, Bridge, Dock, Airfield, TownCenter,
     Shipyard, LumberCamp, Quarry, Well, Granary, Housing, Market, Watchtower,
-    AssemblyHall, TradeGuild, SacredGrove, HerbGarden, DwarvenForge, MiningHall, HuntingCamp, WarDrum }
+    AssemblyHall, TradeGuild, SacredGrove, HerbGarden, DwarvenForge, MiningHall, HuntingCamp, WarDrum,
+    Reservoir, Hospital, Apothecary, FireStation, Library, SurveyOffice, MachineWorkshop, Arsenal, Armory,
+    AlchemyLab, WardTower, StormSpire, GroveSanctuary, Waygate }
 public enum ResearchKind { Agriculture, Logistics, SignalNetwork, ArcaneArts,
     Industry, Electrification, Automation, AdvancedComputing, Crystalcraft, RunicEngineering, AetherMastery, Aviation,
-    Irrigation, Forestry, Medicine, ScientificMethod, EfficientSmelting, EnergyRecycling, TechnologicalEmpire,
-    ManaAttunement, Restoration, ArcaneScholarship, Leylines, MagicalEmpire }
+    Irrigation, Forestry, Medicine, ScientificMethod, EfficientSmelting, EnergyRecycling,
+    // 18 and 23 were incorrectly assigned to civilization outcomes. They are reserved.
+    ManaAttunement = 19, Restoration, ArcaneScholarship, Leylines,
+    CivilEngineering = 24, Sanitation, Pharmacology, FireEngineering, Education, Cartography,
+    MechanicalEngineering, Toolmaking, Ballistics, ProtectiveEquipment, RailTransport, Observation,
+    Elementalism, Warding, Alchemy, NatureBinding, SpatialMagic, BattleMagic }
 public enum InstitutionKind { Council, Monarchy, GuildCouncil }
 public enum PolicyKind { Balanced, FoodSecurity, Defense, Scholarship, PublicHealth }
-public enum SpellKind { Heal, HarvestBlessing, Shield, Ember }
+public enum SpellKind { Heal, HarvestBlessing, Shield, Ember, FrostBolt, ChainLightning, RainCall, RuneWard }
 
 public sealed class SocietyState
 {
@@ -38,6 +44,8 @@ public sealed class CultureDefinition
 public sealed partial class Building
 {
     [JsonRequired] public int ProductionBatches { get; set; }
+    [JsonRequired] public int ServiceActions { get; set; }
+    [JsonRequired] public long LastServiceTick { get; set; } = -100;
     [JsonRequired] public bool Enabled { get; set; } = true;
     public ProjectObservation Observation { get; set; } = new();
     public int Id { get; set; }

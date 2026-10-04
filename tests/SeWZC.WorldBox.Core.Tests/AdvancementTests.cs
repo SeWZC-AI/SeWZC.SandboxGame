@@ -130,7 +130,7 @@ internal static class AdvancementTests
                 Hold(engine, worker, town.X, town.Y);
             }
             Check(ResearchRules.Route(magic).All(k => engine.HasResearch(town.Id, k)), "The full empire research route was not completed.");
-            Check(AdvancementRules.All.Where(a => a.Magic != magic).All(a => !engine.HasResearch(town.Id, a.Research)), "One route silently granted the other route.");
+            Check(AdvancementRules.All.Where(a => a.Magic != magic && !ResearchRules.For(a.Research).Shared).All(a => !engine.HasResearch(town.Id, a.Research)), "One route silently granted the other route.");
             var saved = WorldEngine.ImportJson(engine.ExportJson()); engine.Step(20); saved.Step(20);
             Check(engine.ExportJson() == saved.ExportJson(), "Final-era state did not resume deterministically.");
         }

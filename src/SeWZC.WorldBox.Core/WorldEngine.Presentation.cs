@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-public enum WorldVisualKind { Fire, Drought, Plague, Meteor, Battle, Heal, Harvest, Shield, Ember, Logging, Construction }
+public enum WorldVisualKind { Fire, Drought, Plague, Meteor, Battle, Heal, Harvest, Shield, Ember, Logging, Construction, Frost, Lightning, Rain, Waygate }
 public readonly record struct WorldVisual(long Sequence, WorldVisualKind Kind, int X, int Y, int Radius, int FromX, int FromY);
 public readonly record struct RoutePoint(int X, int Y);
 

@@ -20,6 +20,7 @@ public sealed partial class MainView
         panel.Children.Add(LiveText(() => Current().Health <= 0 ? $"逝世时间：{DateLabel(Current().DeathTick)}\n死亡原因：{WorldEngine.DeathCauseName(Current().DeathCause)}" : ""));
         panel.Children.Add(LiveText(() => $"生命 {Current().Health:0} / 100   体力 {100 - Current().Agent.Fatigue:0} / 100   饥饿 {Current().Hunger:0}%   口渴 {Current().Thirst:0}%"));
         panel.Children.Add(LiveText(() => _engine.GetResidentActionSummary(id)));
+        BuildResearchResidentActions(panel, resident);
         if (resident.Health > 0)
         {
             var quick = new WrapPanel { Orientation = Orientation.Horizontal };

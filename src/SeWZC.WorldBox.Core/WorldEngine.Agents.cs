@@ -125,7 +125,7 @@ public sealed partial class WorldEngine
                 if ((!directed && (State.Tick >= person.Agent.NextThinkTick || person.Agent.Goal.Kind == AgentGoalKind.Idle)) || emergency)
                     ChooseAgentGoal(person, home, emergency && directed);
                 // Position records a committed destination; work and delivery wait for arrival.
-                if (State.Tick - person.MoveStartedTick < person.MoveDurationTicks) continue;
+                if (State.Tick - person.MoveStartedTick < person.MoveDurationTicks || person.FrozenUntilTick > State.Tick) continue;
                 ActOnAgentGoal(person, home);
             }
         }
@@ -159,6 +159,14 @@ public sealed partial class WorldEngine
         home.Resources.Crystals += person.Inventory.Crystals; person.Inventory.Crystals = 0;
         foreach (var kind in MineralAndVehicleResources)
         { if (kind == ResourceKind.Water) continue; home.Resources.Set(kind, home.Resources.Get(kind) + person.Inventory.Get(kind)); person.Inventory.Set(kind, 0); }
+        foreach (var kind in new[] { ResourceKind.Tools, ResourceKind.Medicine, ResourceKind.Ammunition })
+        {
+            var reserve = person.Profession == Profession.Engineer && kind == ResourceKind.Tools ? .5
+                : person.Profession == Profession.Physician && kind == ResourceKind.Medicine ? 2
+                : person.Profession == Profession.Ranger && kind == ResourceKind.Ammunition ? 8 : 0;
+            var amount = Math.Max(0, person.Inventory.Get(kind) - reserve);
+            home.Resources.Set(kind, home.Resources.Get(kind) + amount); person.Inventory.Set(kind, person.Inventory.Get(kind) - amount);
+        }
         person.TravelMode = TravelMode.Foot;
         if (person.Agent.Goal.Kind == AgentGoalKind.ReturnHome && person.Agent.DestinationSettlementId == 0)
             person.Agent.MissionOriginSettlementId = 0;
@@ -174,6 +182,9 @@ public sealed partial class WorldEngine
             || State.Rules.Thirst && person.Inventory.Water < WaterUse(person) && AvailableWater(person.X, person.Y) < WaterUse(person)
             || person.Inventory.Wood + person.Inventory.Stone + person.Inventory.Ore >= 3) return false;
         if (goal.NavigationTarget >= 0 && State.Tick < goal.NavigationRetryTick) return false;
+        if (goal.Kind == AgentGoalKind.Work && person.Profession is Profession.Physician or Profession.Archivist or Profession.Surveyor or Profession.Firefighter or Profession.Gardener
+            && FindBuilding(goal.TargetEntityId) is { } current && PreferredExpansionJob(current.Kind) != person.Profession
+            && ExpansionJobHasNearbyWork(person)) return false;
         if (State.Rules.Hunger && Distance(person.X, person.Y, home.X, home.Y) > 1 && person.Hunger < 20
             && person.Inventory.Food < FoodUse(person) * (Distance(person.X, person.Y, home.X, home.Y) * 4 + 12)) return false;
         if (goal.Kind == AgentGoalKind.Work && goal.TargetEntityId == 0 && person.Profession == Profession.Miner
@@ -237,7 +248,7 @@ public sealed partial class WorldEngine
             && (person.Thirst < 40 || person.Inventory.Water >= .3)
             && FindBuilding(agent.Goal.TargetEntityId) is { } factory && factory.SettlementId == home.Id
             && AdvancementRules.For(factory.Kind) is { } recipe && CanProduce(factory, person, recipe)
-            && MissingResources(person.Inventory, recipe.Input) is null)
+            && HasProductionInputs(person.Inventory, recipe))
         { agent.NextThinkTick = State.Tick + 12; return; }
         if (agent.Goal.Kind == AgentGoalKind.Explore && choices.Count == 0 && person.Hunger < 65 && agent.Fatigue < 60
             && (person.Thirst < 40 || person.Inventory.Water >= .3)
@@ -297,10 +308,11 @@ public sealed partial class WorldEngine
             if (site >= 0) choices.Add(new(AgentGoalKind.Work, site % State.Width, site / State.Width,
                 58 + personality.Diligence * 12, person.Profession == Profession.Lumberjack ? "看见可采木材，前往伐木" : "看见矿石露头，前往开采"));
         }
-        if (person.Age >= 14 && person.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner or Profession.Builder or Profession.Scholar or Profession.Mage
+        if (person.Age >= 14 && (person.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner or Profession.Builder or Profession.Scholar or Profession.Mage || person.Profession >= Profession.Engineer)
             && FindLocalWorkTarget(person) is { } work)
         {
-            var kind = AdvancementRules.For(work.Kind) is not null ? AgentGoalKind.Work : person.Profession == Profession.Scholar ? AgentGoalKind.Study : person.Profession == Profession.Mage ? AgentGoalKind.TrainMagic : AgentGoalKind.Work;
+            var kind = work.Kind == BuildingKind.Academy && person.Profession == Profession.Scholar ? AgentGoalKind.Study
+                : work.Kind is BuildingKind.ArcaneSanctum or BuildingKind.SacredGrove && person.Profession is Profession.Mage or Profession.Battlemage ? AgentGoalKind.TrainMagic : AgentGoalKind.Work;
             choices.Add(new(kind, work.X, work.Y, 42 + personality.Diligence * 12
                 + (person.Profession == Profession.Farmer && foodFact is { Value: < 12 } ? 18 * AgentFactReliability(foodFact) : 0),
                 kind == AgentGoalKind.Study ? "附近有可参与的研究设施，前往学习" : kind == AgentGoalKind.TrainMagic ? "附近有可训练的魔法设施" : "附近有实际施工或生产工作", EntityId: work.Id));
@@ -451,12 +463,17 @@ public sealed partial class WorldEngine
         while (head < tail)
         {
             var current = _localMoveQueue[head++];
+            var currentX = current.Index % State.Width; var currentY = current.Index / State.Width;
+            var from = State.Tiles[current.Index];
             foreach (var (dx, dy) in Directions)
             {
-                var x = current.Index % State.Width + dx; var y = current.Index / State.Width + dy;
-                if (!CanTraverseStep(current.Index % State.Width, current.Index / State.Width, x, y, mode, person.Race)
-                    || Distance(person.X, person.Y, x, y) > 6 || State.Tiles[Index(x, y)].FireTicks > 0) continue;
+                var x = currentX + dx; var y = currentY + dy;
+                if (!InBounds(x, y) || Distance(person.X, person.Y, x, y) > 6) continue;
                 var index = Index(x, y); if (_localMoveVisited[index] == search) continue;
+                var to = State.Tiles[index]; var horizontal = dy == 0;
+                if (to.FireTicks > 0 || !CanTraverse(to, mode, person.Race)
+                    || mode == TravelMode.Foot && (from.Improvement == LandImprovement.Bridge && horizontal != (from.BridgeDirection == BridgeDirection.Horizontal)
+                        || to.Improvement == LandImprovement.Bridge && horizontal != (to.BridgeDirection == BridgeDirection.Horizontal))) continue;
                 _localMoveVisited[index] = search; _localMoveQueue[tail++] = (index, -1, current.Depth + 1);
             }
         }
@@ -488,7 +505,7 @@ public sealed partial class WorldEngine
             ActOnAgentMission(person, home);
             return;
         }
-        if (ActOnProduction(person, home) || ActOnRacialWork(person, home)) return;
+        if (ActOnBuildingRepair(person, home) || ActOnProduction(person, home) || ActOnRacialWork(person, home) || ActOnExpansionFacility(person, home)) return;
         if (goal.Kind == AgentGoalKind.Fish) PrepareJourneyTransport(person, home);
         var interactionRange = AgentInteractionRange(person, home);
         if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > interactionRange || !CanTraverse(State.Tiles[Index(person.X, person.Y)], person.TravelMode, person.Race))
@@ -615,7 +632,7 @@ public sealed partial class WorldEngine
     /// <summary>Moves one grid cell using only terrain within six visible cells; no unsaved navigation cache.</summary>
     private bool MoveAgentTowards(Resident person, int targetX, int targetY)
     {
-        if (!InBounds(targetX, targetY) || person.X == targetX && person.Y == targetY) return false;
+        if (person.FrozenUntilTick > State.Tick || !InBounds(targetX, targetY) || person.X == targetX && person.Y == targetY) return false;
         if (State.Tick - person.MoveStartedTick < person.MoveDurationTicks) return false;
         if (person.Agent.Goal.NavigationTarget == Index(targetX, targetY) && State.Tick < person.Agent.Goal.NavigationRetryTick) return false;
         var bestStep = SelectAgentStep(person, targetX, targetY);

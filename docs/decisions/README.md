@@ -67,3 +67,5 @@
 ```
 
 只记录对未来修改有用的理由，避免复制全部代码、产品清单或聊天过程。
+
+- [0028：文明结果与研究解锁玩法](0028-civilization-outcomes-and-research-gameplay.md)

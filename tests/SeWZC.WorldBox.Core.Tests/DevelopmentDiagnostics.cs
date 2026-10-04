@@ -31,8 +31,7 @@ internal static class DevelopmentDiagnostics
         var observedDeaths = new Dictionary<int, Resident>();
         var targetRoute = ResearchRules.Route(args.Contains("--arcane-industry"));
         long completionTick = -1;
-        int[] CompleteTowns(WorldEngine current) => current.State.Settlements.Where(t => targetRoute.All(k => current.HasResearch(t.Id, k))
-            && AdvancementRules.All.Where(a => a.Magic == args.Contains("--arcane-industry")).All(a => current.State.Society.Buildings.Any(b => b.SettlementId == t.Id && b.Kind == a.Facility && b.ProductionBatches > 0))).Select(t => t.Id).ToArray();
+        int[] CompleteTowns(WorldEngine current) => current.State.Settlements.Where(t => current.GetCivilizationProgress(t.Id, args.Contains("--arcane-industry")).Achieved).Select(t => t.Id).ToArray();
         var elapsed = Stopwatch.StartNew();
         Sample();
         for (var completed = 0; completed < ticks; completed += 120)
@@ -68,12 +67,12 @@ internal static class DevelopmentDiagnostics
             {
                 var people = state.Residents.Where(p => p.SettlementId == town.Id).ToArray();
                 var research = state.Society.Research.First(r => r.SettlementId == town.Id);
-                if (research.Completed.Contains(ResearchKind.TechnologicalEmpire) || research.Completed.Contains(ResearchKind.MagicalEmpire)) milestones.TryAdd(town.Id, state.Tick);
+                if (engine.GetCivilizationProgress(town.Id, args.Contains("--arcane-industry")).Achieved) milestones.TryAdd(town.Id, state.Tick);
                 return new
                 {
                     town.Id, town.Name, town.NationId, focus = engine.GetDevelopmentFocus(town.Id).ToString(), town.X, town.Y, town.Population,
                     housing = engine.GetHousingCapacity(town.Id), tier = WorldEngine.SettlementTierName(town.Tier), exclusiveLand = engine.GetSettlementArea(town.Id),
-                    stock = town.Resources.Copy(), town.DevelopmentGoal, town.DevelopmentBlocker,
+                    stock = town.Resources.Copy(), town.DevelopmentGoal, town.DevelopmentBlocker, civilization = engine.GetCivilizationProgress(town.Id, args.Contains("--arcane-industry")),
                     policy = engine.GetLocalPolicy(town.Id).ToString(),
                     hunger = people.Select(p => p.Hunger).DefaultIfEmpty().Average(), thirst = people.Select(p => p.Thirst).DefaultIfEmpty().Average(), health = people.Select(p => p.Health).DefaultIfEmpty().Average(),
                     fatigue = people.Select(p => p.Agent.Fatigue).DefaultIfEmpty().Average(), children = people.Count(p => p.Age < 14),
@@ -84,7 +83,7 @@ internal static class DevelopmentDiagnostics
                         completed = research.Completed.Select(k => k.ToString()).ToArray() },
                     buildings = state.Society.Buildings.Where(b => b.SettlementId == town.Id).Select(b => new
                     {
-                        kind = b.Kind.ToString(), b.X, b.Y, b.ConstructionProgress, b.ConstructionRequired, b.LastWorkedTick, b.ProductionBatches
+                        kind = b.Kind.ToString(), b.X, b.Y, b.ConstructionProgress, b.ConstructionRequired, b.LastWorkedTick, b.ProductionBatches, b.ServiceActions
                     }).ToArray()
                 };
             }).ToArray();

@@ -18,9 +18,11 @@ public sealed partial class WorldEngine
 
     public string GetAdvancementStage(int settlementId)
     {
-        string Stage(bool magic) => HasResearch(settlementId, magic ? ResearchKind.MagicalEmpire : ResearchKind.TechnologicalEmpire)
+        string Stage(bool magic) => GetCivilizationProgress(settlementId, magic).Achieved
             ? magic ? "魔法帝国" : "科技帝国"
-            : AdvancementRules.All.LastOrDefault(a => a.Magic == magic && HasResearch(settlementId, a.Research))?.Stage
+            : (magic ? new[] { ResearchKind.AetherMastery, ResearchKind.RunicEngineering, ResearchKind.Crystalcraft }
+                : new[] { ResearchKind.AdvancedComputing, ResearchKind.Aviation, ResearchKind.Automation, ResearchKind.Electrification, ResearchKind.Industry })
+                .Where(k => HasResearch(settlementId, k)).Select(k => AdvancementRules.For(k)?.Stage).FirstOrDefault()
                 ?? (magic ? HasResearch(settlementId, ResearchKind.ArcaneArts) ? "基础奥术" : "未发展" : "古代");
         return $"科技：{Stage(false)}\n魔法：{Stage(true)}";
     }
@@ -47,8 +49,7 @@ public sealed partial class WorldEngine
 
     private double ProductionYield(Building building, Advancement a)
     {
-        var multiplier = (HasResearch(building.SettlementId, a.Magic ? ResearchKind.MagicalEmpire : ResearchKind.TechnologicalEmpire) ? 1.25 : 1)
-            * (a.Output == ResourceKind.Food && HasResearch(building.SettlementId, ResearchKind.Irrigation) ? 1.25 : 1)
+        var multiplier = (a.Output == ResourceKind.Food && HasResearch(building.SettlementId, ResearchKind.Irrigation) ? 1.25 : 1)
             * (building.Kind is BuildingKind.Foundry or BuildingKind.DwarvenForge && HasResearch(building.SettlementId, ResearchKind.EfficientSmelting) ? 1.25 : 1)
             * (building.Kind == BuildingKind.PowerPlant && HasResearch(building.SettlementId, ResearchKind.EnergyRecycling) ? 1.5 : 1)
             * (building.Kind is BuildingKind.Crystallizer or BuildingKind.AetherForge && HasResearch(building.SettlementId, ResearchKind.Leylines) ? 1.25 : 1);
@@ -100,7 +101,7 @@ public sealed partial class WorldEngine
         var reserved = AdvancementRules.Resources.Where(k => a.Input.Get(k) > 0 && (reserve?.Get(k) ?? 0) > 0
             && townStock.Resources.Get(k) < a.Input.Get(k) + reserve!.Get(k)).Select(k => ResourceStock.Name(k) + " " + reserve!.Get(k).ToString("0.#")).ToArray();
         var missing = MissingResources(townStock.Resources, a.Input);
-        if (a.Output != ResourceKind.Food && townStock.Resources.Get(a.Output) >= 80) missing = $"{ResourceStock.Name(a.Output)}库存已达补货目标 80，暂停新的领料";
+        if (building.ProductionBatches > 0 && a.Output != ResourceKind.Food && townStock.Resources.Get(a.Output) >= 80) missing = $"{ResourceStock.Name(a.Output)}库存已达补货目标 80，暂停新的领料";
         else if (reserved.Length > 0) missing = "为下一发展项目预留：" + string.Join("、", reserved);
         return $"产出：{ResourceStock.Name(a.Output)} {ProductionYield(building, a):0.#} / 批   累计 {building.ProductionBatches} 批\n" + (missing is not null ? missing
             : a.Magic ? "需要天赋 ≥25、训练 ≥8 且魔力足够的到场施作者" : "原料可用，等待工人取料并到场加工");
@@ -112,16 +113,31 @@ public sealed partial class WorldEngine
         if (ProductionRequirement(building, a) is not null || ProductionYield(building, a) <= 0
             || a.Magic && (person.MagicTalent < 25 || person.MagicTraining < 8 || person.Mana < a.Mana)) return false;
         if (person.Inventory.Get(a.Output) + ProductionYield(building, a) > 1_000_000) return false;
-        return MissingResources(person.Inventory, a.Input) is null
-            || _settlements.TryGetValue(building.SettlementId, out var town) && WarehouseCanSupply(town, person, a);
+        return HasProductionInputs(person.Inventory, a)
+            || _settlements.TryGetValue(building.SettlementId, out var town) && WarehouseCanSupply(town, person, a, building.ProductionBatches == 0);
     }
 
-    private bool WarehouseCanSupply(Settlement town, Resident person, Advancement a)
+    private bool WarehouseCanSupply(Settlement town, Resident person, Advancement a, bool commissioning)
     {
-        if (a.Output != ResourceKind.Food && town.Resources.Get(a.Output) >= 80) return false;
-        if (MissingResources(town.Resources, a.Input) is not null) return false;
+        if (!commissioning && a.Output != ResourceKind.Food && town.Resources.Get(a.Output) >= 80) return false;
         var reserve = _localWorkQueriesActive ? _productionReserves.GetValueOrDefault(town.Id) : LocalDevelopmentReserve(town);
-        return AdvancementRules.Resources.Where(k => a.Input.Get(k) > 0).All(k => town.Resources.Get(k) + 0.000001 >= Math.Max(0, a.Input.Get(k) - person.Inventory.Get(k)) + (reserve?.Get(k) ?? 0));
+        for (var i = 0; i < a.InputResources.Count; i++)
+        {
+            var k = a.InputResources[i];
+            var available = town.Resources.Get(k) + .000001;
+            if (available < a.Input.Get(k) || available < Math.Max(0, a.Input.Get(k) - person.Inventory.Get(k)) + (reserve?.Get(k) ?? 0)) return false;
+        }
+        return true;
+    }
+
+    private static bool HasProductionInputs(ResourceStock stock, Advancement recipe)
+    {
+        for (var i = 0; i < recipe.InputResources.Count; i++)
+        {
+            var kind = recipe.InputResources[i];
+            if (stock.Get(kind) + .000001 < recipe.Input.Get(kind)) return false;
+        }
+        return true;
     }
 
     private bool ActOnProduction(Resident person, Settlement home)
@@ -136,7 +152,7 @@ public sealed partial class WorldEngine
             goal.Reason = GetProductionStatus(building.Id); person.Agent.NextThinkTick = State.Tick + 1;
             return true;
         }
-        if (MissingResources(person.Inventory, a.Input) is not null)
+        if (!HasProductionInputs(person.Inventory, a))
         {
             goal.TargetX = home.X; goal.TargetY = home.Y;
             goal.Reason = "前往家园取料，亲自运至" + BuildingName(building.Kind);
@@ -166,7 +182,7 @@ public sealed partial class WorldEngine
 
     private bool Produce(Building building, Resident person, Advancement a)
     {
-        if (!CanProduce(building, person, a) || MissingResources(person.Inventory, a.Input) is not null) return false;
+        if (!CanProduce(building, person, a) || !HasProductionInputs(person.Inventory, a)) return false;
         Spend(person.Inventory, a.Input);
         person.Mana -= a.Mana;
         person.Inventory.Set(a.Output, person.Inventory.Get(a.Output) + ProductionYield(building, a));

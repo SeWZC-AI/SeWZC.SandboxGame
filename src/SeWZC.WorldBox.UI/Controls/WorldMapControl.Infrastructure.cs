@@ -21,8 +21,8 @@ public sealed partial class WorldMapControl
         BuildingKind.TownCenter => 0xFFF5EFCD,
         BuildingKind.Farm or BuildingKind.AutomatedFarm or BuildingKind.RunicGarden => 0xFF83D67B,
         BuildingKind.Dock or BuildingKind.Shipyard or BuildingKind.Bridge or BuildingKind.MountainPass or BuildingKind.Waystation or BuildingKind.Airfield => 0xFF65C8FA,
-        BuildingKind.Academy or BuildingKind.SignalTower or BuildingKind.ArcaneSanctum => 0xFFB99AFE,
-        BuildingKind.Housing or BuildingKind.Granary or BuildingKind.Well or BuildingKind.Market or BuildingKind.Infirmary or BuildingKind.Watchtower => 0xFF64DFCB,
+        BuildingKind.Academy or BuildingKind.SignalTower or BuildingKind.ArcaneSanctum or BuildingKind.Library or BuildingKind.SurveyOffice or BuildingKind.WardTower or BuildingKind.StormSpire or BuildingKind.Waygate or BuildingKind.AlchemyLab => 0xFFB99AFE,
+        BuildingKind.Housing or BuildingKind.Granary or BuildingKind.Well or BuildingKind.Market or BuildingKind.Infirmary or BuildingKind.Watchtower or BuildingKind.Reservoir or BuildingKind.Hospital or BuildingKind.FireStation or BuildingKind.GroveSanctuary => 0xFF64DFCB,
         _ => 0xFFF6A86A
     };
 

@@ -26,6 +26,17 @@ public sealed partial class WorldEngine
                 var recruit = adults.FirstOrDefault(r => r.Profession == Profession.Farmer && Available(r));
                 if (recruit is not null) Change(recruit, Profession.Fisher);
             }
+            if (adults.Length < 20) continue;
+            foreach (var job in Enum.GetValues<Profession>().Where(j => j >= Profession.Engineer))
+            {
+                var unlock = ResearchRules.Unlocking(job);
+                if (unlock is null || !HasResearch(town.Id, unlock.Kind) || adults.Any(r => r.Profession == job)) continue;
+                var recruit = adults.Where(r => r.Profession is Profession.Farmer or Profession.Builder or Profession.Scholar or Profession.Mage
+                    && Available(r) && adults.Count(p => p.Profession == r.Profession) > (r.Profession == Profession.Farmer ? 4 : 2)
+                    && (job is not (Profession.Battlemage or Profession.Gardener) || r.MagicTalent >= 35))
+                    .OrderByDescending(r => r.Agent.Personality.Diligence).ThenBy(r => r.Id).FirstOrDefault();
+                if (recruit is not null) Change(recruit, job);
+            }
         }
         bool Available(Resident person) => !person.Agent.Goal.PlayerDirected && person.Agent.DestinationSettlementId == 0
             && person.TravelMode == TravelMode.Foot && (State.Tick == 0 || State.Tick - person.Agent.JobChangedTick >= 120);

@@ -6,7 +6,7 @@ internal static class ResearchTreeTests
     public static IEnumerable<(string Name, Action Run)> Cases =>
     [
         ("research graph covers every project without cycles or cross-route dependencies", Graph),
-        ("empire knowledge changes physical production and survives deterministic saving", Production),
+        ("real research changes physical production and survives deterministic saving", Production),
         ("production preserves the next research budget instead of consuming its ore", ResearchBudget)
     ];
 
@@ -24,7 +24,7 @@ internal static class ResearchTreeTests
         foreach (var magic in new[] { false, true })
         {
             var route = ResearchRules.Route(magic);
-            Require(route.Contains(magic ? ResearchKind.MagicalEmpire : ResearchKind.TechnologicalEmpire), "Route has no empire endpoint");
+            Require(!route.Any(k => ResearchRules.For(k).Name.Contains("帝国")), "Civilization outcome is still a research project");
             Require(route.All(k => ResearchRules.For(k).Prerequisites.All(route.Contains)), "Route depends on the other route");
         }
     }
@@ -55,10 +55,9 @@ internal static class ResearchTreeTests
     {
         var (engine, town, worker, foundry) = World();
         engine.GrantReceivedResearch(town.Id, ResearchKind.EfficientSmelting);
-        engine.GrantReceivedResearch(town.Id, ResearchKind.TechnologicalEmpire);
         worker.Inventory = new() { Coal = 1, Ore = 2 };
         Require(engine.TryWorkAtBuilding(worker), "Qualified worker did not produce");
-        Require(worker.Inventory.Coal == 0 && worker.Inventory.Ore == 0 && worker.Inventory.Alloy == 1.5625, "Empire bonus changed physical inputs or failed to improve yield");
+        Require(worker.Inventory.Coal == 0 && worker.Inventory.Ore == 0 && worker.Inventory.Alloy == 1.25, "Smelting research changed physical inputs or failed to improve yield");
         Require(foundry.ProductionBatches == 1 && town.Resources.Alloy == 100, "Production bypassed personal transport");
         worker.Agent.MaterialPriority = ResourceKind.Ore;
         var save = engine.ExportJson(); var resumed = WorldEngine.ImportJson(save);
@@ -66,7 +65,7 @@ internal static class ResearchTreeTests
         var bad = JsonNode.Parse(save)!; bad["Residents"]![0]!["Agent"]!["MaterialPriority"] = (int)ResourceKind.Aircraft;
         try { WorldEngine.ImportJson(bad.ToJsonString()); throw new Exception("Invalid mining priority accepted"); } catch (ArgumentException) { }
         engine.Step(12); resumed.Step(12);
-        Require(engine.ExportJson() == resumed.ExportJson(), "Empire knowledge failed deterministic continuation");
+        Require(engine.ExportJson() == resumed.ExportJson(), "Research failed deterministic continuation");
     }
 
     [UnitTest]

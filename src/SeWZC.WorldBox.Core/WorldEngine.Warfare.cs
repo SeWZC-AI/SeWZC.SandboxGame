@@ -67,7 +67,8 @@ public sealed partial class WorldEngine
                 State.Armies.Add(army);
                 foreach (var resident in recruits.Take(count))
                 {
-                    resident.ArmyId = army.Id; resident.Profession = Profession.Soldier;
+                    resident.ArmyId = army.Id;
+                    if (resident.Profession is not (Profession.Ranger or Profession.Battlemage)) resident.Profession = Profession.Soldier;
                     resident.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.March, TargetX = capital.X, TargetY = capital.Y, StartedTick = State.Tick, Reason = "听到当地征召，步行前往集结点" };
                     RememberAgentFact(resident, order);
                 }
@@ -156,6 +157,16 @@ public sealed partial class WorldEngine
                 continue;
             }
             var opponent = State.Armies.FirstOrDefault(a => a.Id != army.Id && a.NationId == army.TargetNationId && Distance(army.X, army.Y, a.X, a.Y) <= 2);
+            foreach (var ranger in soldiers.Where(p => p.Profession == Profession.Ranger))
+            {
+                if (depot is not null && Distance(ranger.X, ranger.Y, depot.X, depot.Y) <= 1)
+                {
+                    var ammo = Math.Min(depot.Resources.Ammunition, Math.Max(0, 8 - ranger.Inventory.Ammunition));
+                    depot.Resources.Ammunition -= ammo; ranger.Inventory.Ammunition += ammo;
+                }
+                var enemy = LocalHostile(ranger, ranger.X, ranger.Y, 4);
+                if (enemy is not null && RangedAttackError(ranger.Id, enemy.Id) is null) RangedAttack(ranger.Id, enemy.Id);
+            }
             if (opponent is not null)
             {
                 army.Status = "交战";
@@ -273,7 +284,8 @@ public sealed partial class WorldEngine
         foreach (var soldier in veterans)
         {
             RecordLife(soldier, "结束军旅任务，恢复平民生活。", homecoming);
-            soldier.ArmyId = 0; soldier.Profession = AssignProfession();
+            soldier.ArmyId = 0;
+            if (soldier.Profession is not (Profession.Ranger or Profession.Battlemage)) soldier.Profession = AssignProfession();
             if (_settlements.TryGetValue(soldier.SettlementId, out var home))
                 soldier.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, TargetSettlementId = home.Id, StartedTick = State.Tick, ReviewTick = State.Tick + 200, PlayerDirected = true, Reason = "退伍后步行返回家园" };
         }

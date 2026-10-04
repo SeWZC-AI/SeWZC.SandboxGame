@@ -176,7 +176,7 @@ internal static class PersistenceRegressionTests
         relation.FirstOpinion = 0; relation.SecondOpinion = 0; relation.Opinion = 0;
         foreach (var army in engine.State.Armies) army.LastOrderFactId = 0;
         var saved = JsonNode.Parse(engine.ExportJson())!;
-        Require(saved["FormatVersion"]!.GetValue<int>() == 13 && saved["SimulationVersion"]!.GetValue<int>() == 13,
+        Require(saved["FormatVersion"]!.GetValue<int>() == 14 && saved["SimulationVersion"]!.GetValue<int>() == 14,
             "New worlds did not explicitly save both current version fields.");
         Require(saved["Diplomacies"]![0]!["FirstOpinion"]?.GetValue<int>() == 0
             && saved["Diplomacies"]![0]!["SecondOpinion"]?.GetValue<int>() == 0

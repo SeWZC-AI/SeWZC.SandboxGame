@@ -126,10 +126,12 @@ public sealed partial class WorldEngine
                 : TerrainRules.For(State.Tiles[i].Terrain).StoneYield + TerrainRules.For(State.Tiles[i].Terrain).OreYield >= .5))) return "需要紧邻实际森林或石矿资源";
         if (State.Society.Buildings.Count >= MaxBuildings - 256) return "世界建筑数量已达上限";
         if (State.Society.Buildings.Any(b => b.X == x && b.Y == y)) return "此处已有建筑";
-        if ((kind == BuildingKind.ArcaneSanctum || AdvancementRules.For(kind)?.Magic == true) && !State.Society.MagicEnabled) return "规则已关闭新的魔法发展";
+        if ((kind == BuildingKind.ArcaneSanctum || AdvancementRules.For(kind)?.Magic == true || ResearchRules.Unlocking(kind)?.Magic == true) && !State.Society.MagicEnabled) return "规则已关闭新的魔法发展";
         if (kind == BuildingKind.SignalTower && (!HasResearch(settlementId, ResearchKind.Electrification) || !HasResearch(settlementId, ResearchKind.SignalNetwork))) return "无线信号塔需要电气化与信号网络";
         if (!gift && kind == BuildingKind.SacredGrove && !HasResearch(settlementId, ResearchKind.ArcaneArts)) return "需要当地掌握奥术基础";
         if (gift) return null;
+        if (ResearchRules.Unlocking(kind) is { } unlock && (!HasResearch(settlementId, unlock.Kind)
+            || unlock.Prerequisites.Any(p => !HasResearch(settlementId, p)))) return "当地尚未掌握" + unlock.Name + "及其前置";
         if (kind is BuildingKind.Bridge or BuildingKind.MountainPass && !HasResearch(settlementId, ResearchKind.Logistics)) return "需要先掌握驿路运输";
         if (kind is BuildingKind.Waystation or BuildingKind.Dock && !HasResearch(settlementId, ResearchKind.Logistics)) return "当地尚未掌握驿路运输";
         if (kind == BuildingKind.SignalTower && !HasResearch(settlementId, ResearchKind.SignalNetwork)) return "当地尚未掌握信号网络";
@@ -150,6 +152,8 @@ public sealed partial class WorldEngine
     public int GrantFacility(int settlementId, BuildingKind kind, int x, int y, BridgeDirection? direction = null, int bridgeLevel = 1) => PlaceFacility(settlementId, kind, x, y, true, direction, bridgeLevel);
 
     public bool IsBuildingOperational(Building building) => IsFacilityOperating(building)
+        && (ResearchRules.Unlocking(building.Kind) is not { } unlock || HasResearch(building.SettlementId, unlock.Kind)
+            && unlock.Prerequisites.All(p => HasResearch(building.SettlementId, p)))
         && (building.Kind != BuildingKind.SignalTower || HasResearch(building.SettlementId, ResearchKind.SignalNetwork) && HasResearch(building.SettlementId, ResearchKind.Electrification));
 
     public string? RoadPlacementError(int settlementId, int x, int y, int radius = 0)
