@@ -80,12 +80,20 @@ public sealed partial class MainView
     {
         var building = _engine.State.Society.Buildings.FirstOrDefault(b => b.Id == id);
         if (building is null) return;
+        if (!reorient && building.Level >= 3)
+        {
+            var completed = ModalPanel("升级建筑", $"{BuildingLabel(building)}已达到最高等级（3 级）。");
+            completed.Children.Add(Named(Button("关闭", CloseModal), "upgrade-close"));
+            OpenModal(completed); return;
+        }
         var direction = reorient ? (BridgeDirection?)(building.Direction == BridgeDirection.Horizontal ? BridgeDirection.Vertical : BridgeDirection.Horizontal) : null;
         var panel = ModalPanel(reorient ? "改造桥梁方向" : "升级建筑", reorient
-            ? $"{WorldEngine.BridgeDirectionName(building.Direction)} → {WorldEngine.BridgeDirectionName(direction!.Value)}。只允许所选轴向通行。"
-            : $"{BuildingLabel(building)}：{building.Level} 级 → {building.Level + 1} 级。升级期间暂停运营，居民到场施工后生效。");
-        panel.Children.Add(Paragraph("材料：" + StockLabel(WorldEngine.GetUpgradeCost(building, reorient))));
-        panel.Children.Add(LiveText(() => _engine.BuildingUpgradeError(id, direction: direction) ?? "材料与条件满足，可安排施工"));
+            ? $"{WorldEngine.BridgeDirectionName(building.Direction)} → {WorldEngine.BridgeDirectionName(direction!.Value)}。施工期间仍沿原方向通行，完工后改向。"
+            : $"{BuildingLabel(building)}：{building.Level} 级 → {building.Level + 1} 级。"
+                + (building.Kind == BuildingKind.Bridge ? "施工期间保留原通道，完工后提高离岸上限。" : "升级期间暂停运营，居民到场施工后生效。"));
+        panel.Children.Add(Paragraph("施工材料：" + StockLabel(WorldEngine.GetUpgradeCost(building, reorient))));
+        panel.Children.Add(Named(LiveText(() => "居民施工：" + (_engine.BuildingUpgradeError(id, direction: direction) ?? "材料与条件满足，投入后等待居民到场施工")), "upgrade-paid-status"));
+        panel.Children.Add(Named(LiveText(() => "直接赐予：" + (_engine.BuildingUpgradeError(id, true, direction) ?? "可立即完成，不扣施工材料")), "upgrade-gift-status"));
         panel.Children.Add(Named(Button("安排居民施工", () => RunEdit(() => { _engine.UpgradeBuilding(id, direction: direction); CloseModal(); }, "项目已开始，等待居民到场施工")), "upgrade-apply"));
         panel.Children.Add(Named(Button("直接赐予完成", () => RunEdit(() => { _engine.UpgradeBuilding(id, true, direction); CloseModal(); }, "建筑改造已完成")), "upgrade-gift"));
         OpenModal(panel);
