@@ -72,6 +72,7 @@ public sealed partial class MainView
                 }, 17, null, true));
                 var back = IconButton("back", GoBack, "返回上一处", "inspector-back"); Grid.SetColumn(back, 1); header.Children.Add(back);
                 var expand = Named(Button(_expandedInspector ? "收起" : "展开", () => { _expandedInspector = !_expandedInspector; InvalidateInspector(); ApplyLayout(); RefreshInspector(); }), "inspector-expand");
+                expand.Content = LiveText(() => _expandedInspector ? "收起" : "展开", 11);
                 expand.IsVisible = _isCompact; Grid.SetColumn(expand, 2); header.Children.Add(expand);
                 var close = IconButton("close", CloseInspector, "关闭详情，返回地图", "inspector-close");
                 Grid.SetColumn(close, 3); header.Children.Add(close); _inspectorNavigation.Children.Clear(); _inspectorNavigation.Children.Add(header);

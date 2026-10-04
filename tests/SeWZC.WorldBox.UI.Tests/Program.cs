@@ -283,6 +283,9 @@ static void AdvancedResearchUi()
     Assert(engine.ExportJson() == before, "Inspecting the research tree changed the world");
     Assert(!view.GetLogicalDescendants().OfType<ComboBox>().Any(c => AutomationProperties.GetAutomationId(c) == "research-kind"), "Tree still uses a research dropdown");
     Assert(ResearchRules.All.All(r => view.GetLogicalDescendants().OfType<Button>().Any(b => AutomationProperties.GetAutomationId(b) == "research-node-" + r.Kind)), "Tree omits research branches");
+    view.Arrange(new Rect(0, 0, 390, 844)); Call(view, "ApplyLayout");
+    Click(view, "research-expand");
+    Assert((Control<Button>(view, "inspector-expand").Content as TextBlock)?.Text == "收起", "Compact tree expansion left its header action stale");
     engine.GrantReceivedResearch(town.Id, ResearchKind.Industry);
     engine.GrantReceivedResearch(town.Id, ResearchKind.SignalNetwork);
     Call(view, "RefreshInspector", false);

@@ -125,7 +125,7 @@ jobs:
       fail-fast: false
       matrix:
         # Keep normal pushes and PRs short; the manual option retains every regression.
-        suite: ${{ fromJSON(inputs.full_regression == true && '["deploy-smoke", "smoke", "mobile-smoke", "motion", "stories", "effects", "advancement", "land", "details", "saving"]' || '["deploy-smoke"]') }}
+        suite: ${{ fromJSON(inputs.full_regression == true && '["deploy-smoke", "smoke", "mobile-smoke", "motion", "stories", "effects", "advancement", "research-trees", "land", "details", "saving"]' || '["deploy-smoke"]') }}
     steps:
       - uses: actions/checkout@v4
 

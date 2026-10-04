@@ -32,12 +32,12 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
                 for (let y = town.Y - 6; y <= town.Y + 6; y++) for (let x = town.X - 6; x <= town.X + 6; x++) {
                     if (x < 0 || y < 0 || x >= world.Width || y >= world.Height) continue;
                     const t = world.Tiles[y * world.Width + x];
-                    if (t.SettlementId && t.SettlementId !== town.Id) continue;
+                    if (t.ClaimedSettlementId !== town.Id) continue;
                     t.Terrain = 3; t.Fertility = 100; t.FireTicks = 0; t.NationId = town.NationId;
                 }
                 const at = [];
                 for (let y = town.Y - 3; y <= town.Y + 3; y++) for (let x = town.X - 3; x <= town.X + 3; x++)
-                    if (x >= 0 && y >= 0 && x < world.Width && y < world.Height && !world.Society.Buildings.some(b => b.X === x && b.Y === y)) at.push({ x, y });
+                    if (x >= 0 && y >= 0 && x < world.Width && y < world.Height && world.Tiles[y * world.Width + x].ClaimedSettlementId === town.Id && !world.Society.Buildings.some(b => b.X === x && b.Y === y)) at.push({ x, y });
                 const filename = path.join(output, `advancement-${label}.json`);
                 fs.writeFileSync(filename, JSON.stringify(world));
                 await ui.click('header-storage'); const chooser = page.waitForEvent('filechooser');

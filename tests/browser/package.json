@@ -14,7 +14,8 @@
     "test:advancement": "node advancement.cjs",
     "test:land": "node land.cjs",
     "test:infrastructure": "node infrastructure.cjs",
-    "test:geography": "node geography.cjs"
+    "test:geography": "node geography.cjs",
+    "test:research-trees": "node research-trees.cjs"
   },
   "devDependencies": {
     "playwright": "1.57.0"
