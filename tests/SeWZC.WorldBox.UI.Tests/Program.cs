@@ -22,6 +22,7 @@ var tests = new (string Name, Action Test)[]
     ("Save capture suspends stepping and continuing map strokes cancel it", SaveCaptureBoundary),
     ("Paged tools expose every building and keep previews outside toolbar layout", ToolPagination),
     ("Building damage stays visible without expanding secondary details", BuildingDamage),
+    ("Building details show concrete effects and blockers without boilerplate", BuildingDetailCopy),
     ("Tall buildings keep the plot behind clickable and roofs still select their footprint", BuildingOcclusion),
     ("Highlight controls stay disabled on reopening and guide omits simulation from inspection", HighlightControls),
     ("Building details control the actual facility and list real roads", BuildingControls),
@@ -165,12 +166,46 @@ static void BuildingDamage()
     var engine = TwoTownWorld(); var view = View(engine); var building = engine.State.Society.Buildings.First(b => b.Kind == BuildingKind.Workshop);
     building.Health = 23; Call(view, "OpenBuilding", building);
     var health = Control<TextBlock>(view, "building-health");
-    Assert(health.Text!.Contains("23") && health.Text.Contains("低于 50") && !health.GetLogicalAncestors().OfType<Expander>().Any(), "Damage magnitude and operational threshold are hidden");
+    var status = Control<TextBlock>(view, "building-status");
+    Assert(health.Text!.Contains("23") && status.Text!.Contains("低于 50") && !status.GetLogicalAncestors().OfType<Expander>().Any(), "Damage magnitude and operational threshold are hidden");
     Click(view, "building-repair"); Call(view, "RefreshInspector", false);
     Assert(health.Text!.Contains("100 / 100"), "Repair did not refresh the visible health");
     var button = Control<Button>(view, "building-repair");
     Assert(button.HorizontalContentAlignment == Avalonia.Layout.HorizontalAlignment.Center && button.VerticalContentAlignment == Avalonia.Layout.VerticalAlignment.Center, "Action label is not centred");
     Assert(button.Margin.Left >= 2 && button.Margin.Right >= 2, "Adjacent wrap buttons touch each other");
+}
+
+static void BuildingDetailCopy()
+{
+    var engine = TwoTownWorld(); var b = engine.State.Society.Buildings.First(b => b.Kind == BuildingKind.Workshop);
+    b.Kind = BuildingKind.Watchtower; b.Level = 1; b.Health = 100;
+    var before = engine.ExportJson(); var view = View(engine); Call(view, "OpenBuilding", b);
+    var effects = Control<TextBlock>(view, "building-effects").Text!;
+    Assert(effects.Contains("同聚落") && effects.Contains("3 至 4 格") && effects.Contains("无需工作人员"), "Watchtower effect lost scope or numerical benefit");
+    Assert(!effects.Contains("来源") && !effects.Contains("健康") && !effects.Contains("耐火"), "Primary effects repeat obvious sources or maintenance facts");
+    Assert(Control<TextBlock>(view, "building-next-level").Text!.Contains("4 至 5 格"), "Next level omitted the actual change");
+    Assert(!Control<TextBlock>(view, "building-next-level").Text!.Contains("未生效"), "Preview is incorrectly reported as a blocked effect");
+    Assert(!Control<TextBlock>(view, "building-status").IsVisible, "A functioning passive building displays a redundant status");
+    Assert(engine.ExportJson() == before, "Inspection changed the world");
+    b.Enabled = false; Call(view, "RefreshInspector", false);
+    Assert(Control<TextBlock>(view, "building-status").Text!.Contains("恢复运营"), "Disabled building omitted the corrective action");
+    b.Enabled = true; b.Health = 23; Call(view, "RefreshInspector", false);
+    Assert(Control<TextBlock>(view, "building-status").Text!.Contains("至少 50"), "Damage omitted the operational threshold");
+    b.Health = 100; engine.State.Tiles[b.Y * engine.State.Width + b.X].FireTicks = 9;
+    Assert(engine.GetBuildingDetailStatus(b.Id).Contains("剩余 9 日"), "Fire blocker omitted remaining time");
+    engine.State.Tiles[b.Y * engine.State.Width + b.X].FireTicks = 0;
+    b.Kind = BuildingKind.SignalTower;
+    Assert(engine.GetBuildingDetailStatus(b.Id).Contains("电气化") && engine.GetBuildingDetailStatus(b.Id).Contains("信号网络"), "Signal tower omitted specific missing research");
+    foreach (var kind in Enum.GetValues<BuildingKind>())
+    {
+        b.Kind = kind;
+        var text = string.Join("\n", engine.GetBuildingEffects(b.Id));
+        Assert(!text.Contains("需要完工、健康与运营条件") && !text.Contains("来源：升级完工后"), "Generic conditions survived for " + kind);
+        if (WorldEngine.BuildingRace(kind) is not null && kind != BuildingKind.DwarvenForge)
+            Assert(!text.Contains("每批加工产出"), "Non-manufacturing racial facility describes a fictitious product");
+    }
+    engine.State.Tiles[b.Y * engine.State.Width + b.X].ClaimedSettlementId = 0;
+    Assert(engine.GetBuildingDetailStatus(b.Id).Contains("占领区域"), "Lost town ground has no concrete operating blocker");
 }
 
 static void DetailedInspection()

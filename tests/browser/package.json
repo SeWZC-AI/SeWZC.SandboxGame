@@ -2,6 +2,7 @@
   "name": "sewzc-worldbox-browser-tests",
   "private": true,
   "scripts": {
+    "test:building-details": "node building-details.cjs",
     "test:building-copy": "node building-copy.cjs",
     "test:deploy": "node deploy-smoke.cjs",
     "test": "node smoke.cjs",
