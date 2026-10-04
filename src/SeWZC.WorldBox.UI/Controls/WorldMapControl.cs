@@ -310,7 +310,7 @@ public sealed partial class WorldMapControl : Control
                 var tile = state.Tiles[y * state.Width + x];
                 // Resources change this image only when a forest becomes a stump.
                 // Animal and plant quantities belong to the separate ecology layer.
-                terrainHash = unchecked((terrainHash ^ ((uint)tile.Terrain + (tile.DroughtTicks > 0 ? 16u : 0u) + (uint)tile.RoadLevel * 64 + (tile.Terrain == TerrainType.Forest && tile.ResourceAmount < 25 ? 256u : 0u) + (uint)tile.Elevation * 2048)) * 16777619);
+                terrainHash = unchecked((terrainHash ^ ((uint)tile.Terrain + (tile.DroughtTicks > 0 ? 16u : 0u) + (uint)tile.RoadLevel * 64 + (WorldEngine.IsForestTerrain(tile.Terrain) && tile.ResourceAmount < 25 ? 256u : 0u))) * 16777619);
                 territoryHash = unchecked((territoryHash ^ (uint)tile.NationId) * 16777619);
                 containsTerritory |= tile.NationId != 0 && x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles;
                 if (x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles && tile.FireTicks > 0)
@@ -398,6 +398,15 @@ public sealed partial class WorldMapControl : Control
             TerrainType.Lake => 0x559BA8FF,
             TerrainType.DryFertile => 0xA3A66BFF,
             TerrainType.Tundra => 0x99A88CFF,
+            TerrainType.Stream => 0x65A6A0FF,
+            TerrainType.LargeRiver => 0x347FA0FF,
+            TerrainType.Meadow => 0x8FAF65FF,
+            TerrainType.Woodland => 0x77926AFF,
+            TerrainType.Rainforest => 0x356F52FF,
+            TerrainType.Savanna => 0xB0A767FF,
+            TerrainType.Scrub => 0x929164FF,
+            TerrainType.Floodplain => 0x78A679FF,
+            TerrainType.AlpineMeadow => 0xA0AF7BFF,
             _ => 0x719262FF
         };
         if (tile.DroughtTicks > 0 && tile.Terrain is TerrainType.Grass or TerrainType.Forest or TerrainType.Sand or TerrainType.Hills or TerrainType.Wetland)
@@ -406,11 +415,11 @@ public sealed partial class WorldMapControl : Control
         canvas.Rect(px, py, 8, 8, color);
         var nx = (int)((noise >> 5) % 6) + 1;
         var ny = (int)((noise >> 10) % 6) + 1;
-        if (tile.Terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.River or TerrainType.Lake)
+        if (WorldEngine.IsWaterTerrain(tile.Terrain))
         {
             if (noise % 7 == 0) canvas.Rect(px + nx - 1, py + ny, 3, 1, PixelCanvas.Shade(color, 11));
             bool LandAt(int tx, int ty) => tx >= 0 && tx < state.Width && ty >= 0 && ty < state.Height &&
-                state.Tiles[ty * state.Width + tx].Terrain is not TerrainType.DeepWater and not TerrainType.Water and not TerrainType.River and not TerrainType.Lake;
+                !WorldEngine.IsWaterTerrain(state.Tiles[ty * state.Width + tx].Terrain);
             const uint coast = 0x74A29AFF;
             if (LandAt(x, y - 1)) canvas.Rect(px, py, 8, 1, coast);
             if (LandAt(x - 1, y)) canvas.Rect(px, py, 1, 8, coast);
@@ -421,7 +430,7 @@ public sealed partial class WorldMapControl : Control
             if (LandAt(x, y - 1) && LandAt(x + 1, y)) canvas.Rect(px + 6, py, 2, 2, coast);
             if (LandAt(x, y + 1) && LandAt(x - 1, y)) canvas.Rect(px, py + 6, 2, 2, coast);
             if (LandAt(x, y + 1) && LandAt(x + 1, y)) canvas.Rect(px + 6, py + 6, 2, 2, coast);
-            if (tile.Terrain == TerrainType.River)
+            if (tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver)
             {
                 var horizontal = !LandAt(x - 1, y) || !LandAt(x + 1, y);
                 canvas.Line(px + 2, py + 3, px + (horizontal ? 6 : 2), py + (horizontal ? 3 : 6), PixelCanvas.Shade(color, 16));
@@ -442,16 +451,16 @@ public sealed partial class WorldMapControl : Control
             if (RidgeAt(x + 1, y)) canvas.Line(px + 4, py + 2, px + 7, py + 4, light);
             if (RidgeAt(x, y - 1)) canvas.Line(px + 4, py, px + 4, py + 2, light);
             if (RidgeAt(x, y + 1)) canvas.Line(px + 4, py + 2, px + 4, py + 7, dark);
-            if (tile.Elevation > 210) canvas.Rect(px + 3, py + 1, 3, 2, 0xDEE5D5FF);
+            if (tile.Terrain == TerrainType.Mountain && noise % 4 == 0) canvas.Rect(px + 3, py + 1, 3, 2, 0xDEE5D5FF);
             return;
         }
         canvas.Rect(px + nx, py + ny, noise % 2 == 0 ? 2 : 1, 1, PixelCanvas.Shade(color, -10));
-        if (tile.Terrain == TerrainType.Forest && tile.ResourceAmount < 25)
+        if (WorldEngine.IsForestTerrain(tile.Terrain) && tile.ResourceAmount < 25)
         {
             canvas.Rect(px + 3, py + 4, 2, 3, 0x755A3DFF);
             canvas.Rect(px + 2, py + 4, 4, 1, 0xC3A174FF);
         }
-        else if (tile.Terrain == TerrainType.Forest)
+        else if (WorldEngine.IsForestTerrain(tile.Terrain))
         {
             var shift = (int)(noise % 2);
             if (noise % 3 == 0)

@@ -32,7 +32,7 @@ public sealed partial class WorldEngine
         if (!_settlements.TryGetValue(id, out var town)) return 0;
         // Count exclusively registered plots in the local footprint, never a nation's shared total.
         return Circle(town.X, town.Y, 17).Count(i => State.Tiles[i].ClaimedSettlementId == id
-            && State.Tiles[i].NationId == town.NationId && State.Tiles[i].IsWalkable && !IsWaterTerrain(State.Tiles[i].Terrain));
+            && State.Tiles[i].NationId == town.NationId && (State.Tiles[i].IsWalkable || State.Tiles[i].Terrain == TerrainType.Mountain) && !IsWaterTerrain(State.Tiles[i].Terrain));
     }
 
     public string? SettlementExpansionError(int id)

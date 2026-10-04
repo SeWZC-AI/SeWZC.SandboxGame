@@ -37,24 +37,22 @@ public sealed partial class WorldEngine
         var engine = new WorldEngine(state);
         engine.GenerateTerrain();
         engine.GenerateLakesAndWater();
+        var demoSites = demo ? engine.PrepareDemoSites() : [];
         foreach (var tile in state.Tiles) engine.SeedPlants(tile);
         engine.SeedWildlife();
         if (demo)
         {
+            engine._creatingDemo = true;
             for (var race = 0; race < 4; race++)
             {
-                var x = width / 2 + (race % 2 == 0 ? -1 : 1) * Math.Clamp((int)(width * .06), 10, 16);
-                var y = height / 2 + (race < 2 ? -1 : 1) * Math.Clamp((int)(height * .06), 10, 16);
-                // Demo settlements start within travelling distance on land that can feed them.
-                // This chooses initial conditions, not knowledge granted to the inhabitants.
-                var location = engine.Circle(x, y, 20).Where(i => state.Tiles[i].IsWalkable && state.Tiles[i].Fertility >= 50
-                    && TerrainRules.For(state.Tiles[i].Terrain).FoodYield >= .35
-                    && engine.Circle(i % width, i / width, 6).Any(source => IsWaterSource(state.Tiles[source]))
-                    && state.Tiles[i].NationId == 0 && state.Settlements.All(t => Distance(t.X, t.Y, i % width, i / width) >= 16))
-                    .OrderBy(i => Distance(x, y, i % width, i / width)).FirstOrDefault(-1);
-                if (location < 0) location = engine.FindWalkable(x, y, Math.Max(width, height));
-                if (location >= 0) engine.SpawnResidents(location % width, location / width, (RaceKind)race, 36);
+                var location = demoSites[race];
+                engine.SpawnResidents(location % width, location / width, (RaceKind)race, 36);
+                var town = state.Settlements.Single(t => t.X == location % width && t.Y == location / width);
+                foreach (var i in engine.Circle(town.X, town.Y, 3))
+                { state.Tiles[i].NationId = town.NationId; state.Tiles[i].ClaimedSettlementId = town.Id; }
+
             }
+            engine._creatingDemo = false;
             engine.AddEvent(WorldEventKind.Founding, "四个种族抵达这片大陆。河流、粮食与山脉将塑造他们的命运。");
         }
         engine.InitializeSociety();
@@ -86,8 +84,9 @@ public sealed partial class WorldEngine
     private double RandomDouble() => RandomUInt() / 4294967296d;
     private bool InBounds(int x, int y) => x >= 0 && y >= 0 && x < State.Width && y < State.Height;
     private int Index(int x, int y) => y * State.Width + x;
-    private bool Walkable(int x, int y) => InBounds(x, y) && State.Tiles[Index(x, y)].IsWalkable;
+    private bool Walkable(int x, int y, RaceKind race = RaceKind.Human) => InBounds(x, y) && RaceTerrainRules.CanWalk(State.Tiles[Index(x, y)], race);
     private static int Distance(int ax, int ay, int bx, int by) => Math.Abs(ax - bx) + Math.Abs(ay - by);
+    private bool _creatingDemo;
     private int NewId() => State.NextId++;
     private WorldEvent AddEvent(WorldEventKind kind, string message, int x = -1, int y = -1, EventAction action = EventAction.General, int settlementId = 0, int residentId = 0, int causeEventId = 0, int evidenceFactId = 0)
     {
@@ -127,20 +126,20 @@ public sealed partial class WorldEngine
         while (State.ArchivedResidents.Count > 256) State.ArchivedResidents.RemoveAt(0);
     }
 
-    private int FindWalkable(int x, int y, int radius)
+    private int FindWalkable(int x, int y, int radius, RaceKind race = RaceKind.Human)
     {
-        if (Walkable(x, y)) return Index(x, y);
+        if (Walkable(x, y, race)) return Index(x, y);
         for (var r = 1; r <= radius; r++)
         {
             for (var dx = -r; dx <= r; dx++)
             {
-                if (Walkable(x + dx, y - r)) return Index(x + dx, y - r);
-                if (Walkable(x + dx, y + r)) return Index(x + dx, y + r);
+                if (Walkable(x + dx, y - r, race)) return Index(x + dx, y - r);
+                if (Walkable(x + dx, y + r, race)) return Index(x + dx, y + r);
             }
             for (var dy = -r + 1; dy < r; dy++)
             {
-                if (Walkable(x - r, y + dy)) return Index(x - r, y + dy);
-                if (Walkable(x + r, y + dy)) return Index(x + r, y + dy);
+                if (Walkable(x - r, y + dy, race)) return Index(x - r, y + dy);
+                if (Walkable(x + r, y + dy, race)) return Index(x + r, y + dy);
             }
         }
         return -1;
@@ -157,14 +156,9 @@ public sealed partial class WorldEngine
             var broad = Noise(x / (State.Width * 0.16), y / (State.Height * 0.16), 0);
             var fine = Noise(x / 7.0, y / 7.0, 71);
             var elevation = 0.75 - radial * 0.58 + (broad - 0.5) * 0.48 + (fine - 0.5) * 0.10;
-            var moisture = Noise(x / 15.0, y / 15.0, 311);
-            var terrain = elevation < 0.20 ? TerrainType.DeepWater : elevation < 0.27 ? TerrainType.Water : elevation < 0.31 ? TerrainType.Sand : elevation > 0.76 ? TerrainType.Snow : elevation > 0.70 ? TerrainType.Mountain : elevation > 0.57 ? TerrainType.Hills : Math.Abs(ny) > 0.64 ? TerrainType.Tundra : moisture < 0.29 ? TerrainType.Desert : moisture > 0.72 && elevation < 0.43 ? TerrainType.Wetland : moisture > 0.54 ? TerrainType.Forest : TerrainType.Grass;
-            if (elevation is > 0.30 and < 0.61 && Math.Abs(nx - 0.22 * Math.Sin(ny * 7 + State.Seed * 0.003)) < 0.014)
-                terrain = TerrainType.River;
-            State.Tiles[Index(x, y)] = new Tile { Terrain = terrain, Elevation = (byte)Math.Clamp(elevation * 255, 0, 255), Fertility = TerrainRules.Fertility(terrain), ResourceAmount = terrain is TerrainType.Desert or TerrainType.Sand ? 55 : terrain == TerrainType.Wetland ? 150 : 100 };
-            SeedDeposit(State.Tiles[Index(x, y)], x, y);
+            State.Tiles[Index(x, y)] = new Tile { Terrain = elevation < .20 ? TerrainType.DeepWater : elevation < .27 ? TerrainType.Water : TerrainType.Grass,
+                Elevation = (byte)Math.Clamp(elevation * 255, 0, 255) };
         }
-        LimitMountainRanges();
     }
 
     private double Noise(double x, double y, int salt)

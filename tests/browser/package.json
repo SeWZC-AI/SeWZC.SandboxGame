@@ -11,7 +11,8 @@
     "test:effects": "node effects.cjs",
     "test:advancement": "node advancement.cjs",
     "test:land": "node land.cjs",
-    "test:infrastructure": "node infrastructure.cjs"
+    "test:infrastructure": "node infrastructure.cjs",
+    "test:geography": "node geography.cjs"
   },
   "devDependencies": {
     "playwright": "1.57.0"

@@ -263,14 +263,14 @@ public sealed partial class WorldMapControl
                 c.Rect(5, 21, 20, 20, wall); c.Rect(3, 18, 24, 4, roof);
                 for (var row = 0; row < 3; row++) c.Rect(24, 32 + row * 4, 13, 3, timber);
                 c.Line(10, 27, 20, 39, timber, 2); c.Rect(6, 25, 10, 4, metal); break;
-            case BuildingKind.Quarry:
+            case BuildingKind.MiningHall: case BuildingKind.Quarry:
                 c.Rect(4, 26, 32, 17, metal); c.Rect(6, 23, 10, 8, wall); c.Rect(23, 21, 12, 12, wall);
                 c.Line(12, 27, 25, 39, timber, 2); c.Line(6, 29, 21, 23, paper, 2); break;
-            case BuildingKind.Market:
+            case BuildingKind.AssemblyHall: case BuildingKind.TradeGuild: case BuildingKind.Market:
                 c.Rect(5, 24, 3, 19, timber); c.Rect(32, 24, 3, 19, timber); c.Rect(4, 37, 32, 5, timber);
                 for (var col = 0; col < 6; col++) c.Rect(2 + col * 6, 16, 6, 9, col % 2 == 0 ? roof : paper);
                 c.Rect(9, 32, 7, 5, green); c.Rect(21, 32, 7, 5, 0xE9A04CFF); break;
-            case BuildingKind.Farm: case BuildingKind.AutomatedFarm: case BuildingKind.RunicGarden:
+            case BuildingKind.HerbGarden: case BuildingKind.HuntingCamp: case BuildingKind.Farm: case BuildingKind.AutomatedFarm: case BuildingKind.RunicGarden:
                 c.Rect(3, 24, 34, 20, timber); c.Rect(5, 25, 30, 18, 0x5B7746FF);
                 for (var row = 0; row < 3; row++) { c.Rect(6, 27 + row * 5, 28, 2, green); for (var col = 0; col < 5; col++) c.Line(8 + col * 5, 29 + row * 5, 9 + col * 5, 26 + row * 5, 0xD5BB69FF); }
                 if (kind == BuildingKind.AutomatedFarm) { c.Rect(5, 19, 30, 3, metal); c.Rect(7, 19, 2, 23, metal); c.Rect(31, 19, 2, 23, metal); }
@@ -282,14 +282,14 @@ public sealed partial class WorldMapControl
                 c.Rect(3, 29, 34, 12, metal); c.Line(3, 31, 36, 31, paper); c.Line(3, 39, 36, 39, paper); break;
             case BuildingKind.SignalTower:
                 c.Rect(12, 17, 16, 27, metal); c.Rect(8, 16, 24, 4, roof); c.Rect(18, 4, 3, 13, timber); c.Line(10, 5, 28, 5, paper); c.Line(13, 9, 25, 9, paper); c.Rect(18, 35, 4, 9, timber); break;
-            case BuildingKind.ArcaneSanctum: case BuildingKind.Crystallizer: case BuildingKind.AetherForge:
+            case BuildingKind.SacredGrove: case BuildingKind.WarDrum: case BuildingKind.ArcaneSanctum: case BuildingKind.Crystallizer: case BuildingKind.AetherForge:
                 c.Rect(5, 37, 30, 7, metal); c.Rect(10, 21, 20, 16, wall);
                 for (var y = 7; y < 25; y++) { var half = y < 16 ? (y - 5) / 2 : (27 - y) / 2; c.Rect(20 - half, y, half * 2, 1, 0xA67DC3FF); }
                 c.Line(20, 9, 20, 23, paper);
                 if (kind != BuildingKind.ArcaneSanctum) { c.Rect(5, 21, 4, 16, roof); c.Rect(31, 21, 4, 16, roof); }
                 if (kind == BuildingKind.AetherForge) { c.Rect(3, 10, 3, 27, metal); c.Rect(34, 10, 3, 27, metal); }
                 break;
-            case BuildingKind.Foundry: case BuildingKind.PowerPlant: case BuildingKind.Fabricator:
+            case BuildingKind.DwarvenForge: case BuildingKind.Foundry: case BuildingKind.PowerPlant: case BuildingKind.Fabricator:
                 House(); c.Rect(28, 6, 6, 24, metal); c.Rect(27, 4, 8, 3, timber);
                 c.Rect(9, 31, 9, 10, kind == BuildingKind.Foundry ? 0xE9A04CFFu : 0x6594ACFFu);
                 if (kind == BuildingKind.PowerPlant) { c.Line(18, 24, 14, 30, paper, 2); c.Line(14, 30, 21, 30, paper, 2); c.Line(21, 30, 17, 36, paper, 2); }

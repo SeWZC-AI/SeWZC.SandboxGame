@@ -24,7 +24,7 @@ fs.mkdirSync(output, { recursive: true });
                 await (await picker).setFiles(fixture);
                 await ui.waitFor(s => !s.modalOpen && s.status.includes('导入'), 'infrastructure import', 60000);
                 const before = await ui.save();
-                assert.equal(before.FormatVersion, 11);
+                assert.equal(before.FormatVersion, 12);
                 assert(before.Society.Buildings.some(b => b.Kind === 19), 'Fixture lacks the new shipyard');
                 assert(before.Society.Buildings.some(b => b.Kind === 24), 'Fixture lacks real housing');
                 const structures = async () => { await ui.openOverview(); await ui.click('overview-structures', { scroll: 'inspector-scroll' }); };

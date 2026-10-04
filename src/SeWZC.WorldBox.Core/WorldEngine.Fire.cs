@@ -19,8 +19,8 @@ public sealed partial class WorldEngine
     {
         var fuel = tile.Terrain switch
         {
-            TerrainType.Forest => .8 * Math.Clamp(tile.ResourceAmount / 25, 0, 1),
-            TerrainType.Grass or TerrainType.DryFertile => .3 * Math.Clamp(tile.ResourceAmount / 25, 0, 1),
+            TerrainType.Forest or TerrainType.Woodland or TerrainType.Rainforest => .8 * Math.Clamp(tile.ResourceAmount / 25, 0, 1),
+            TerrainType.Grass or TerrainType.DryFertile or TerrainType.Meadow or TerrainType.Savanna or TerrainType.Scrub or TerrainType.AlpineMeadow or TerrainType.Floodplain => .3 * Math.Clamp(tile.ResourceAmount / 25, 0, 1),
             TerrainType.Hills or TerrainType.Tundra => .15 * Math.Clamp(tile.ResourceAmount / 25, 0, 1),
             TerrainType.Wetland when tile.DroughtTicks > 0 => .12,
             _ => 0
@@ -62,7 +62,7 @@ public sealed partial class WorldEngine
     {
         var tile = State.Tiles[index]; tile.FireTicks = 0; _burningTiles.Remove(index);
         if (!exhausted || TerrainFlammability(tile) <= 0) return;
-        if (tile.Terrain == TerrainType.Forest) tile.Terrain = TerrainType.Grass;
+        if (IsForestTerrain(tile.Terrain)) tile.Terrain = TerrainType.Grass;
         tile.Plants = default; tile.ResourceAmount *= .25;
         tile.Fertility = (byte)Math.Max(5, tile.Fertility - 10);
     }

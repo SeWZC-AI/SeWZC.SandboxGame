@@ -40,7 +40,7 @@ fs.mkdirSync(output, { recursive: true });
                 await page.screenshot({ path: path.join(output, `wetland-${mobile ? 'mobile' : 'desktop'}.png`) });
                 await ui.click('inspector-close');
                 await ui.tool('disaster', 'Fire'); await place(64, 64);
-                let saved = await ui.save(); assert.equal(saved.FormatVersion, 11);
+                let saved = await ui.save(); assert.equal(saved.FormatVersion, 12);
                 assert.equal(saved.Tiles[64 * 128 + 64].FireTicks, 0, 'Normal wetland ignited');
                 const before = saved.Tiles.filter(t => t.FireTicks > 0).length;
                 await ui.tool('terrain', 'Forest'); await place(48, 48);

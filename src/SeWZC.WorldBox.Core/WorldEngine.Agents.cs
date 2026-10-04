@@ -13,6 +13,7 @@ public sealed partial class WorldEngine
     private int _visibleAccessResident, _visibleAccessOrigin, _visibleAccessSearch;
     private long _visibleAccessTick;
     private TravelMode _visibleAccessMode;
+    private RaceKind _visibleAccessRace;
 
     private static (int X, int Y, int Distance)[] CreateVisibleResourceOffsets()
     {
@@ -67,7 +68,7 @@ public sealed partial class WorldEngine
                     if ((State.Tick + person.Id) % 16 == 0) ObserveAgentEnvironment(person);
                     continue;
                 }
-                var arrivedHome = Distance(person.X, person.Y, home.X, home.Y) <= 1 && Walkable(person.X, person.Y)
+                var arrivedHome = Distance(person.X, person.Y, home.X, home.Y) <= 1 && Walkable(person.X, person.Y, person.Race)
                     && State.Tick - person.MoveStartedTick >= person.MoveDurationTicks;
                 if (arrivedHome)
                 {
@@ -156,7 +157,9 @@ public sealed partial class WorldEngine
         }
         if (agent.Goal.Kind is AgentGoalKind.ClaimLand or AgentGoalKind.FetchWater or AgentGoalKind.Hunt or AgentGoalKind.Fish
             && choices.Count == 0 && State.Tick - agent.Goal.StartedTick < 48 && person.Hunger < 20 && person.Thirst < 60
-            && (agent.Goal.Kind != AgentGoalKind.ClaimLand || CanClaimTile(home, Index(agent.Goal.TargetX, agent.Goal.TargetY)))
+            && (agent.Goal.Kind != AgentGoalKind.ClaimLand || CanClaimTile(home, Index(agent.Goal.TargetX, agent.Goal.TargetY), person.Race))
+            && (agent.Goal.Kind != AgentGoalKind.FetchWater || person.Thirst >= 10
+                || agent.Goal.TargetEntityId > 0 && DailyWaterYield(State.Tiles[agent.Goal.TargetEntityId - 1]) >= .1)
             && person.Inventory.Food < TravelReserve(person) + 2 && person.Inventory.Water < WaterReserve(person) + 2)
         { agent.NextThinkTick = State.Tick + 12; return; }
         if (agent.Goal.Kind == AgentGoalKind.Migrate && choices.Count == 0 && State.Tick - agent.Goal.StartedTick < 360
@@ -316,7 +319,7 @@ public sealed partial class WorldEngine
             if (!InBounds(x, y)) continue;
             var index = Index(x, y);
             var tile = State.Tiles[index];
-            if (!tile.IsWalkable || tile.FireTicks > 0) continue;
+            if (!RaceTerrainRules.CanWalk(tile, person.Race) || tile.FireTicks > 0) continue;
             var productivity = ResourceSiteYield(index, profession);
             if (productivity <= 0) continue;
             if (profession == Profession.Farmer && State.Rules.Hunger && person.Hunger > 20
@@ -335,10 +338,10 @@ public sealed partial class WorldEngine
         if (profession == Profession.Farmer)
             return tile.ResourceAmount > 0 && tile.IsWalkable
                 ? Math.Min(1, TerrainRules.For(tile.Terrain).FoodYield / .5) * tile.Fertility / 100d * (tile.DroughtTicks > 0 ? 0.15 : 1) : 0;
-        if (profession == Profession.Lumberjack) return tile.ResourceAmount > 0 && tile.Terrain == TerrainType.Forest ? 1 : 0;
+        if (profession == Profession.Lumberjack) return tile.ResourceAmount > 0 && IsForestTerrain(tile.Terrain) ? 1 : 0;
         if (profession == Profession.Miner)
         {
-            if (tile.ResourceAmount > 0 && tile.Terrain is TerrainType.Hills or TerrainType.Snow) return 1;
+            if (tile.ResourceAmount > 0 && tile.Terrain is TerrainType.Hills or TerrainType.Snow or TerrainType.Mountain or TerrainType.AlpineMeadow) return 1;
             var x = index % State.Width; var y = index / State.Width;
             foreach (var (dx, dy) in Directions)
                 if (InBounds(x + dx, y + dy) && State.Tiles[Index(x + dx, y + dy)] is { Terrain: TerrainType.Mountain, ResourceAmount: > 0 }) return 1;
@@ -350,13 +353,13 @@ public sealed partial class WorldEngine
     {
         var start = Index(person.X, person.Y);
         if (_visibleAccessSearch != 0 && _visibleAccessSearch == _localMoveSearch && _visibleAccessResident == person.Id
-            && _visibleAccessOrigin == start && _visibleAccessTick == State.Tick && _visibleAccessMode == person.TravelMode)
+            && _visibleAccessOrigin == start && _visibleAccessTick == State.Tick && _visibleAccessMode == person.TravelMode && _visibleAccessRace == person.Race)
             return _visibleAccessSearch;
         if (_localMoveVisited.Length != State.Tiles.Length) _localMoveVisited = new int[State.Tiles.Length];
         if (_localMoveSearch == int.MaxValue) { Array.Clear(_localMoveVisited); _localMoveSearch = 0; }
         var search = ++_localMoveSearch;
         _visibleAccessResident = person.Id; _visibleAccessOrigin = start; _visibleAccessTick = State.Tick;
-        _visibleAccessMode = person.TravelMode; _visibleAccessSearch = search;
+        _visibleAccessMode = person.TravelMode; _visibleAccessRace = person.Race; _visibleAccessSearch = search;
         _localMoveVisited[start] = search; var head = 0; var tail = 1;
         _localMoveQueue[0] = (start, -1, 0);
         while (head < tail)
@@ -365,7 +368,7 @@ public sealed partial class WorldEngine
             foreach (var (dx, dy) in Directions)
             {
                 var x = current.Index % State.Width + dx; var y = current.Index / State.Width + dy;
-                if (!CanTraverseStep(current.Index % State.Width, current.Index / State.Width, x, y, person.TravelMode)
+                if (!CanTraverseStep(current.Index % State.Width, current.Index / State.Width, x, y, person.TravelMode, person.Race)
                     || State.Tiles[Index(x, y)].FireTicks > 0) continue;
                 var index = Index(x, y); if (_localMoveVisited[index] == search) continue;
                 _localMoveVisited[index] = search; _localMoveQueue[tail++] = (index, -1, current.Depth + 1);
@@ -379,7 +382,7 @@ public sealed partial class WorldEngine
         var x = index % State.Width; var y = index / State.Width;
         var distance = Distance(person.X, person.Y, x, y);
         if (distance == 0) return true;
-        if (distance == 1) return CanTraverseStep(person.X, person.Y, x, y, person.TravelMode);
+        if (distance == 1) return CanTraverseStep(person.X, person.Y, x, y, person.TravelMode, person.Race);
         if (distance > 6) return false;
         if (search == 0) search = MarkVisibleReachable(person);
         return _localMoveVisited[index] == search;
@@ -397,9 +400,9 @@ public sealed partial class WorldEngine
             ActOnAgentMission(person, home);
             return;
         }
-        if (ActOnProduction(person, home)) return;
+        if (ActOnProduction(person, home) || ActOnRacialWork(person, home)) return;
         var interactionRange = home.FoundationPending && goal.Kind == AgentGoalKind.ReturnHome ? 0 : goal.Kind == AgentGoalKind.ExtinguishFire ? 1 : goal.Kind is AgentGoalKind.FetchWater or AgentGoalKind.Hunt or AgentGoalKind.Fish or AgentGoalKind.ClaimLand ? 0 : goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest or AgentGoalKind.ReturnHome or AgentGoalKind.Socialize ? 1 : goal.TargetEntityId != 0 && FindBuilding(goal.TargetEntityId) is { } project && (!project.IsCompleted || project.IsUpgrading || IsWaterfrontBuilding(project.Kind) || project.Kind == BuildingKind.TownCenter) ? 1 : 0;
-        if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > interactionRange || !Walkable(person.X, person.Y))
+        if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > interactionRange || !Walkable(person.X, person.Y, person.Race))
         {
             if (MoveAgentTowards(person, goal.TargetX, goal.TargetY)) person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + 0.15);
             person.Activity = goal.Kind == AgentGoalKind.Flee ? ResidentActivity.Fleeing : ResidentActivity.Wandering;
@@ -479,7 +482,7 @@ public sealed partial class WorldEngine
             person.Agent.NextThinkTick = State.Tick + 1;
             return;
         }
-        var productivity = GatheringCondition(person)
+        var productivity = RaceTerrainRules.For(person.Race, tile.Terrain).Productivity * GatheringCondition(person)
             * (0.75 + person.Agent.Personality.Diligence * 0.5) * State.Rules.GatheringRate;
         if (profession == Profession.Farmer)
         {
@@ -531,8 +534,9 @@ public sealed partial class WorldEngine
         var terrain = State.Tiles[bestStep];
         var speed = person.TravelMode == TravelMode.Aircraft ? 2
             : person.TravelMode == TravelMode.Boat && !terrain.IsWalkable ? 1.5 * BoatTravelMultiplier(xNext, yNext, person.NationId)
-            : person.Agent.DestinationSettlementId == 0 ? 1 / GetTerrainMoveCost(xNext, yNext)
-            : MessageTravelMultiplier(xNext, yNext, person.NationId);
+            : person.Agent.DestinationSettlementId == 0 ? 1 / GetTerrainMoveCost(xNext, yNext, person.Race)
+            : MessageTravelMultiplier(xNext, yNext, person.NationId, person.Race);
+        speed *= RacialTravelBonus(person, xNext, yNext);
         var duration = Math.Clamp((int)Math.Round(2 / Math.Max(0.1, speed)), 1, 8);
         person.FromX = person.X; person.FromY = person.Y;
         person.X = bestStep % State.Width; person.Y = bestStep / State.Width;
@@ -563,7 +567,7 @@ public sealed partial class WorldEngine
         foreach (var (dx, dy) in Directions)
         {
             var x = person.X + dx; var y = person.Y + dy;
-            if (CanTraverseStep(person.X, person.Y, x, y, person.TravelMode)
+            if (CanTraverseStep(person.X, person.Y, x, y, person.TravelMode, person.Race)
                 && (person.TravelMode == TravelMode.Aircraft || State.Tiles[Index(x, y)].FireTicks == 0)
                 && Distance(x, y, targetX, targetY) < Distance(person.X, person.Y, targetX, targetY)
                 && !goal.NavigationVisited.Contains(Index(x, y))) return Index(x, y);
@@ -582,7 +586,7 @@ public sealed partial class WorldEngine
             foreach (var (dx, dy) in Directions)
             {
                 var x = current.Index % State.Width + dx; var y = current.Index / State.Width + dy;
-                if (!CanTraverseStep(current.Index % State.Width, current.Index / State.Width, x, y, person.TravelMode)
+                if (!CanTraverseStep(current.Index % State.Width, current.Index / State.Width, x, y, person.TravelMode, person.Race)
                     || person.TravelMode != TravelMode.Aircraft && State.Tiles[Index(x, y)].FireTicks > 0) continue;
                 var index = Index(x, y); if (_localMoveVisited[index] == search) continue;
                 _localMoveVisited[index] = search;

@@ -190,7 +190,7 @@ internal static class ProvisioningAndClaimsTests
         e.PaintTerrain(12, 19, TerrainType.Wetland, 0);
         foreach (var kind in Enum.GetValues<BuildingKind>())
         {
-            if (kind is BuildingKind.Bridge or BuildingKind.MountainPass || e.State.Society.Buildings.Any(b => b.Kind == kind)) continue;
+            if (!e.CanBuildRacialFacility(town.Id, kind) || kind is BuildingKind.Bridge or BuildingKind.MountainPass || e.State.Society.Buildings.Any(b => b.Kind == kind)) continue;
             var site = Enumerable.Range(0, e.State.Tiles.Length).FirstOrDefault(i => e.FacilityPlacementError(town.Id, kind, i % 32, i / 32, true) is null, -1);
             Check(site >= 0, "Fixture has no suitable terrain for " + kind);
             e.GrantFacility(town.Id, kind, site % 32, site / 32);
@@ -207,6 +207,7 @@ internal static class ProvisioningAndClaimsTests
     private static void Migration()
     {
         var e = Flat(1); var origin = e.State.Tiles[16 * 32 + 20]; var target = e.State.Tiles[16 * 32 + 21];
+        origin.NaturalWaterYield = target.NaturalWaterYield = .02;
         origin.Wildlife = target.Wildlife = WildlifeKind.Rabbit; origin.WildlifePopulation = 200; target.WildlifePopulation = 20;
         e.Step(6);
         Check(target.WildlifePopulation > 20, "Over-capacity habitat blocked fast migration.");

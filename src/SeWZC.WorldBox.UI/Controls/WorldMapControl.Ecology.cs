@@ -60,11 +60,11 @@ public sealed partial class WorldMapControl
         var color = kind switch
         {
             WildlifeKind.Fish => 0x86CEDBFFu, WildlifeKind.Waterfowl => 0xE2EBDBFFu, WildlifeKind.Wolf => 0xB1B9BAFFu,
-            WildlifeKind.Boar => 0xA8805FFFu, WildlifeKind.Goat => 0xD9D1B5FFu, WildlifeKind.Deer => 0xDCB578FFu, _ => 0xEBDABDFFu
+            WildlifeKind.Boar => 0xA8805FFFu, WildlifeKind.Goat => 0xD9D1B5FFu, WildlifeKind.Deer => 0xDCB578FFu, _ => AnimalRules.For(kind).Diet == AnimalDiet.Carnivore ? 0xB39179FFu : 0xCCB285FFu
         };
         void Box(double x, double y, double w, double h) => canvas.Rect((int)((x + 4) * 4), (int)((y + 4) * 4), Math.Max(1, (int)(w * 4)), Math.Max(1, (int)(h * 4)), color);
         Box(-2.5, -1.1, 4, 1.9); Box(1, -2, 1.5, 1.5);
-        if (kind == WildlifeKind.Fish) { Box(-3.5, -1.7, 1, 3); Box(-.7, -2, 1, 1); }
+        if (AnimalRules.For(kind).Aquatic && kind != WildlifeKind.Waterfowl) { Box(-3.5, -1.7, 1, 3); Box(-.7, -2, 1, 1); }
         else if (kind == WildlifeKind.Waterfowl) { Box(-1, -2, 1.8, .7); color = 0xE1B952FF; Box(2, -1.8, 1.5, .5); }
         else
         {
@@ -72,9 +72,15 @@ public sealed partial class WorldMapControl
             if (kind == WildlifeKind.Rabbit) { Box(1.1, -4, .5, 2); Box(2, -3.6, .5, 1.6); }
             else if (kind == WildlifeKind.Deer) { Box(.8, -3.5, .4, 1.5); Box(2, -3.5, .4, 1.5); Box(.2, -3.4, 2.8, .4); Box(.1, -4, .4, 1); Box(2.6, -4, .4, 1); }
             else if (kind == WildlifeKind.Goat) { color = 0x877565FF; Box(1, -3.6, .4, 1.5); Box(2, -3.6, .4, 1.5); Box(.8, -3.6, 1.5, .4); color = 0xEAE1CCFF; Box(1.5, -.6, .6, 1.2); }
-            else if (kind == WildlifeKind.Wolf) { Box(1, -3, .6, 1); Box(-3.5, -1.3, 1.2, .5); }
+            else if (kind is WildlifeKind.Wolf or WildlifeKind.Fox or WildlifeKind.Fennec or WildlifeKind.Jackal or WildlifeKind.Lion or WildlifeKind.SnowLeopard) { Box(1, -3, .6, 1); Box(-3.5, -1.3, 1.2, .5); }
             else if (kind == WildlifeKind.Boar) { Box(2.2, -1.2, 1, .6); Box(-3.2, -.7, .8, .4); }
         }
+        if (kind is WildlifeKind.Bison or WildlifeKind.Yak or WildlifeKind.MuskOx) { color = 0x695644FF; Box(-2, -2, 2.5, 1); Box(.8, -2.8, .5, .8); Box(2, -2.8, .5, .8); }
+        if (kind == WildlifeKind.Camel) { Box(-1.8, -2.4, 1.3, 1.5); Box(-.1, -2.4, 1.3, 1.5); }
+        if (kind is WildlifeKind.Bear or WildlifeKind.PolarBear) { Box(-2.7, -1.5, 4.5, 2.5); Box(1, -2.7, .7, .7); Box(2, -2.7, .7, .7); }
+        if (kind == WildlifeKind.Shark) { Box(-.4, -3.2, .6, 1.5); }
+        if (kind is WildlifeKind.SeaTurtle or WildlifeKind.SeaCow or WildlifeKind.Manatee) { color = 0x68AA99FF; Box(-1.5, -.2, .8, 2); Box(.5, -.2, .8, 2); }
+        if (AnimalRules.For(kind).Diet == AnimalDiet.Carnivore) { color = 0xD98768FF; Box(2, -.5, .6, .6); }
         color = 0x354139FF; Box(1.8, -1.7, .3, .3);
         icon = MakeBitmap(canvas, opaque: false); _animalIcons[kind] = icon; return icon;
     }
@@ -107,21 +113,24 @@ public sealed partial class WorldMapControl
                     }
                     if (ShowWildlife)
                     {
-                        var slot = 0;
-                        for (var species = 1; species <= (int)WildlifeKind.Fish; species++)
+                        var slot = 0; var shownGroups = 0;
+                        for (var species = 1; species < AnimalRules.SpeciesCount; species++)
                         {
                             var kind = (WildlifeKind)species; var population = tile.AnimalPopulation(kind);
                             if (population < .25) continue;
+                            var group = (int)AnimalRules.For(kind).Size * 2 + (int)AnimalRules.For(kind).Diet;
+                            if ((shownGroups & (1 << group)) != 0) continue;
+                            shownGroups |= 1 << group;
                             var scale = .25 + .75 * Math.Clamp(population / Math.Max(1, WorldEngine.WildlifeCapacity(tile, kind)), 0, 1);
-                            var size = 2.8 * scale;
+                            var size = (AnimalRules.For(kind).Size == AnimalSize.Large ? 3.2 : AnimalRules.For(kind).Size == AnimalSize.Small ? 2.2 : 2.8) * scale;
                             var cx = (x + .25 + slot % 3 * .28) * TilePixels; var cy = (y + .76 - slot / 3 * .3) * TilePixels;
                             _wildlifeDraws.Add((AnimalIcon(kind), new Rect(cx - size / 2, cy - size / 2, size, size)));
                             slot++;
                         }
                     }
-                    if (tile.Terrain == TerrainType.River && _waterStreams.Count < 120)
+                    if (tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver && _waterStreams.Count < 120)
                     {
-                        var vertical = y + 1 < state.Height && state.Tiles[(y + 1) * state.Width + x].Terrain == TerrainType.River;
+                        var vertical = y + 1 < state.Height && state.Tiles[(y + 1) * state.Width + x].Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver;
                         _waterStreams.Add((new Point((x + .3) * TilePixels, (y + .3) * TilePixels), new Point((x + (vertical ? .3 : .8)) * TilePixels, (y + (vertical ? .8 : .3)) * TilePixels)));
                     }
                 }

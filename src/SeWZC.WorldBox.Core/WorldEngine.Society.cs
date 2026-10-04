@@ -72,6 +72,10 @@ public sealed partial class WorldEngine
     public static ResourceStock GetBuildingCost(BuildingKind kind) => kind switch
     {
         BuildingKind.TownCenter => new() { Wood = 12, Stone = 3 },
+        BuildingKind.AssemblyHall or BuildingKind.TradeGuild => new() { Food = 15, Wood = 30, Stone = 20 },
+        BuildingKind.SacredGrove or BuildingKind.HerbGarden => new() { Food = 20, Wood = 25, Stone = 15 },
+        BuildingKind.MiningHall => new() { Wood = 20, Stone = 35, Ore = 8 },
+        BuildingKind.HuntingCamp or BuildingKind.WarDrum => new() { Food = 15, Wood = 25, Stone = 10 },
         BuildingKind.Farm => new() { Wood = 12, Stone = 3 },
         BuildingKind.Workshop => new() { Wood = 18, Stone = 10 },
         BuildingKind.Academy => new() { Food = 20, Wood = 30, Stone = 15 },
@@ -118,7 +122,7 @@ public sealed partial class WorldEngine
         if (gift)
         {
             building.ConstructionProgress = building.ConstructionRequired;
-            if (tile.Terrain == TerrainType.Forest) { tile.Terrain = TerrainType.Grass; tile.ResourceAmount = 0; }
+            if (IsForestTerrain(tile.Terrain) && !PreserveBuildingForest(kind)) { tile.Terrain = TerrainType.Grass; tile.ResourceAmount = 0; }
             CompleteLandImprovement(building);
             EmitVisual(WorldVisualKind.Construction, x, y);
         }
@@ -219,7 +223,9 @@ public sealed partial class WorldEngine
         if (building.LastWorkedTick == State.Tick && building.Workers.Count >= building.WorkSlots && !building.Workers.Contains(resident.Id)) return false;
         if (!building.IsCompleted || building.IsUpgrading) return true;
         if (building.Health < 50 || State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return false;
+        if (BuildingRace(building.Kind) is { } race && resident.Race != race) return false;
         if (AdvancementRules.For(building.Kind) is { } production) return CanProduce(building, resident, production);
+        if (BuildingRace(building.Kind) is not null) return RacialBuildingHasWork(building, resident);
         return building.Kind switch
         {
             BuildingKind.Workshop => FindWorkshopResource(building, resident.Profession) >= 0,
@@ -260,7 +266,7 @@ public sealed partial class WorldEngine
             if (building.IsCompleted)
             {
                 var ground = State.Tiles[Index(building.X, building.Y)];
-                if (ground.Terrain == TerrainType.Forest) { ground.Terrain = TerrainType.Grass; ground.ResourceAmount = 0; }
+                if (IsForestTerrain(ground.Terrain) && !PreserveBuildingForest(building.Kind)) { ground.Terrain = TerrainType.Grass; ground.ResourceAmount = 0; }
                 CompleteLandImprovement(building);
                 EmitVisual(WorldVisualKind.Construction, building.X, building.Y);
                 var complete = AddEvent(WorldEventKind.Construction, $"{town.Name}的{BuildingName(building.Kind)}竣工。", building.X, building.Y,
@@ -271,7 +277,8 @@ public sealed partial class WorldEngine
             return true;
         }
         if (production is not null) return Produce(building, resident, production);
-        effort *= building.Efficiency;
+        effort *= building.Efficiency * RaceTerrainRules.For(resident.Race, State.Tiles[Index(building.X, building.Y)].Terrain).Productivity;
+        if (BuildingRace(building.Kind) is not null) return WorkRacialBuilding(building, resident, effort);
         var culture = GetCulture(resident.CultureId);
         switch (building.Kind)
         {
@@ -358,21 +365,22 @@ public sealed partial class WorldEngine
         return best;
     }
 
-    public double GetTerrainMoveCost(int x, int y)
+    public double GetTerrainMoveCost(int x, int y, RaceKind race = RaceKind.Human)
     {
         if (!InBounds(x, y)) return double.PositiveInfinity;
         var tile = State.Tiles[Index(x, y)];
-        if (tile.Improvement == LandImprovement.MountainPass && tile.Terrain == TerrainType.Mountain) return 3.5 / (1 + Math.Max(0, tile.RoadLevel - 1) * .25);
-        if (tile.Improvement == LandImprovement.Bridge && tile.Terrain is TerrainType.River or TerrainType.Water or TerrainType.Lake) return 1.2 / (1 + Math.Max(0, tile.BridgeLevel - 1) * .25);
-        var cost = TerrainRules.MovementCost(tile.Terrain);
+        if (tile.Improvement == LandImprovement.MountainPass && tile.Terrain == TerrainType.Mountain) return race == RaceKind.Dwarf ? Math.Min(2, 3.5 / (1 + Math.Max(0, tile.RoadLevel - 1) * .25)) : 3.5 / (1 + Math.Max(0, tile.RoadLevel - 1) * .25);
+        if (tile.Improvement == LandImprovement.Bridge && tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Water or TerrainType.Lake) return 1.2 / (1 + Math.Max(0, tile.BridgeLevel - 1) * .25);
+        var cost = race == RaceKind.Dwarf && tile.Terrain == TerrainType.Mountain ? 2.5 : TerrainRules.MovementCost(tile.Terrain);
+        cost *= RaceTerrainRules.For(race, tile.Terrain).Movement;
         if (!double.IsFinite(cost)) return cost;
         return tile.RoadLevel > 0 ? Math.Max(0.65, cost * 0.55) : cost;
     }
 
-    public double MessageTravelMultiplier(int x, int y, int nationId)
+    public double MessageTravelMultiplier(int x, int y, int nationId, RaceKind race = RaceKind.Human)
     {
         if (!InBounds(x, y)) return 0;
-        var speed = 1 / GetTerrainMoveCost(x, y);
+        var speed = 1 / GetTerrainMoveCost(x, y, race);
         var bonus = 1d;
         foreach (var town in State.Settlements)
             if (town.NationId == nationId && Distance(x, y, town.X, town.Y) <= 3)
@@ -408,7 +416,7 @@ public sealed partial class WorldEngine
 
     private bool IsFacilityOperating(Building building) => building.Enabled && building.IsCompleted && !building.IsUpgrading && building.Health >= 50 && BuildingTerrainValid(building.Kind, State.Tiles[Index(building.X, building.Y)])
         && State.Tiles[Index(building.X, building.Y)].FireTicks == 0 && (PassiveFacility(building) || building.Kind is BuildingKind.TownCenter or BuildingKind.Bridge or BuildingKind.MountainPass || building.LastWorkedTick >= State.Tick - 12
-        && State.Residents.Any(r => building.Workers.Contains(r.Id) && r.SettlementId == building.SettlementId && r.Health > 0 && Distance(r.X, r.Y, building.X, building.Y) <= 1));
+        && State.Residents.Any(r => building.Workers.Contains(r.Id) && r.SettlementId == building.SettlementId && r.Health > 0 && (BuildingRace(building.Kind) is not { } race || r.Race == race && r.Age >= 14) && Distance(r.X, r.Y, building.X, building.Y) <= 1));
     private bool ClearSignalLine(int x0, int y0, int x1, int y1)
     {
         var steps = Math.Max(Math.Abs(x1 - x0), Math.Abs(y1 - y0));
@@ -881,6 +889,11 @@ public sealed partial class WorldEngine
         };
         foreach (var (kind, needed) in facilities)
             if (needed && !buildings.Any(b => b.Kind == kind)) yield return new(kind, null, GetBuildingCost(kind));
+        foreach (var kind in Enum.GetValues<BuildingKind>())
+            if (BuildingRace(kind) is not null && CanBuildRacialFacility(town.Id, kind) && !buildings.Any(b => b.Kind == kind)
+                && (kind != BuildingKind.DwarvenForge || HasResearch(town.Id, ResearchKind.Industry))
+                && (kind != BuildingKind.SacredGrove || magic && HasResearch(town.Id, ResearchKind.ArcaneArts)))
+                yield return new(kind, null, GetBuildingCost(kind));
         if (project.ActiveProject.HasValue) yield break;
         foreach (var kind in technology ? new[] { ResearchKind.SignalNetwork }.Concat(magic ? new[] { ResearchKind.ArcaneArts } : []) : [])
             if (!HasResearch(town.Id, kind) && ResearchPrerequisiteError(town.Id, kind) is null)
@@ -994,7 +1007,7 @@ public sealed partial class WorldEngine
     private Nation RequireNation(int id) => _nations.TryGetValue(id, out var nation) ? nation : throw new ArgumentException("国家不存在。");
     private CultureDefinition RequireCulture(int id) => State.Society.Cultures.FirstOrDefault(c => c.Id == id) ?? throw new ArgumentException("文化不存在。");
     private CultureDefinition GetCulture(int id) => State.Society.Cultures.FirstOrDefault(c => c.Id == id) ?? State.Society.Cultures[0];
-    public static string BuildingName(BuildingKind kind) => kind switch { BuildingKind.Shipyard => "船坞", BuildingKind.Dock => "码头", BuildingKind.LumberCamp => "林场", BuildingKind.Quarry => "采石场", BuildingKind.Well => "水井", BuildingKind.Granary => "粮仓", BuildingKind.Housing => "住宅", BuildingKind.Market => "集市", BuildingKind.Watchtower => "瞭望塔", BuildingKind.TownCenter => "城镇中心", BuildingKind.Farm => "农田", BuildingKind.Workshop => "工坊", BuildingKind.Academy => "学舍", BuildingKind.Waystation => "驿站", BuildingKind.SignalTower => "无线信号塔", BuildingKind.Bridge => "桥梁", BuildingKind.MountainPass => "山路", BuildingKind.ArcaneSanctum => "奥术研习所", BuildingKind.Infirmary => "医馆", _ => AdvancementRules.For(kind)?.FacilityName ?? kind.ToString() };
+    public static string BuildingName(BuildingKind kind) => kind switch { BuildingKind.Shipyard => "船坞", BuildingKind.Dock => "码头", BuildingKind.LumberCamp => "林场", BuildingKind.Quarry => "采石场", BuildingKind.Well => "水井", BuildingKind.Granary => "粮仓", BuildingKind.Housing => "住宅", BuildingKind.Market => "集市", BuildingKind.Watchtower => "瞭望塔", BuildingKind.TownCenter => "城镇中心", BuildingKind.Farm => "农田", BuildingKind.Workshop => "工坊", BuildingKind.Academy => "学舍", BuildingKind.Waystation => "驿站", BuildingKind.SignalTower => "无线信号塔", BuildingKind.Bridge => "桥梁", BuildingKind.MountainPass => "山路", BuildingKind.ArcaneSanctum => "奥术研习所", BuildingKind.Infirmary => "医馆", BuildingKind.AssemblyHall => "议事厅", BuildingKind.TradeGuild => "商贸公会", BuildingKind.SacredGrove => "精灵圣林", BuildingKind.HerbGarden => "草药园", BuildingKind.MiningHall => "矮人矿业工坊", BuildingKind.HuntingCamp => "兽人狩猎营", BuildingKind.WarDrum => "战鼓营", _ => AdvancementRules.For(kind)?.FacilityName ?? kind.ToString() };
     public static string ResearchName(ResearchKind kind) => kind switch { ResearchKind.Agriculture => "农业改良", ResearchKind.Logistics => "驿路运输", ResearchKind.SignalNetwork => "信号网络", ResearchKind.ArcaneArts => "奥术基础", _ => AdvancementRules.For(kind)?.Name ?? kind.ToString() };
     public static string PolicyName(PolicyKind kind) => kind switch { PolicyKind.FoodSecurity => "粮食保障", PolicyKind.Defense => "防务优先", PolicyKind.Scholarship => "求知兴学", PolicyKind.PublicHealth => "公共医疗", _ => "均衡发展" };
 }

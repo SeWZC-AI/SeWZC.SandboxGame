@@ -38,7 +38,7 @@ internal static class EcologyAndConflictTests
     {
         var engine = WorldEngine.Create(82, 32, 32, false);
         foreach (var tile in engine.State.Tiles)
-        { tile.Terrain = TerrainType.Grass; tile.Fertility = 100; tile.ResourceAmount = 100; tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default; tile.Plants = new PlantCoverage { Grass = .6 }; tile.NaturalWaterYield = .001; }
+        { tile.Terrain = TerrainType.Grass; tile.Fertility = 100; tile.ResourceAmount = 100; tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default; tile.Plants = new PlantCoverage { Grass = .6 }; tile.NaturalWaterYield = .02; }
         engine.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false, Construction = false,
             Research = false, Expansion = false, Trade = false, Wars = false, Alliances = false, Migration = false, Secession = false }, false, false);
         return engine;

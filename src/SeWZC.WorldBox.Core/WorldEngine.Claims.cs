@@ -12,15 +12,15 @@ public sealed partial class WorldEngine
         tile.NationId = town.NationId; tile.ClaimedSettlementId = town.Id;
     }
 
-    private bool CanClaimTile(Settlement town, int index)
+    private bool CanClaimTile(Settlement town, int index, RaceKind race)
     {
         var tile = State.Tiles[index]; var x = index % State.Width; var y = index / State.Width;
-        if (!tile.IsWalkable || tile.FireTicks > 0 || tile.ClaimedSettlementId != 0
+        if (!RaceTerrainRules.CanWalk(tile, race) || IsWaterTerrain(tile.Terrain) || tile.FireTicks > 0 || tile.ClaimedSettlementId != 0
             || tile.NationId != 0 && tile.NationId != town.NationId
             || Distance(town.X, town.Y, x, y) > town.MaxClaimRadius) return false;
         foreach (var (dx, dy) in Directions)
             if (InBounds(x + dx, y + dy) && State.Tiles[Index(x + dx, y + dy)].ClaimedSettlementId == town.Id
-                && CanTraverseStep(x + dx, y + dy, x, y, TravelMode.Foot)) return true;
+                && CanTraverseStep(x + dx, y + dy, x, y, TravelMode.Foot, race)) return true;
         return false;
     }
 
@@ -34,7 +34,7 @@ public sealed partial class WorldEngine
         foreach (var offset in VisibleResourceOffsets)
         {
             var x = person.X + offset.X; var y = person.Y + offset.Y;
-            if (InBounds(x, y) && CanClaimTile(town, Index(x, y))) return Index(x, y);
+            if (InBounds(x, y) && CanClaimTile(town, Index(x, y), person.Race)) return Index(x, y);
         }
         return -1;
     }
@@ -47,7 +47,7 @@ public sealed partial class WorldEngine
             || person.X != person.Agent.Goal.TargetX || person.Y != person.Agent.Goal.TargetY) return false;
         var index = Index(person.X, person.Y);
         if (State.Residents.Any(r => r.Id != person.Id && r.Health > 0 && r.SettlementId != town.Id && r.X == person.X && r.Y == person.Y)) return false;
-        if (!CanClaimTile(town, index)) { person.Agent.NextThinkTick = State.Tick; return false; }
+        if (!CanClaimTile(town, index, person.Race)) { person.Agent.NextThinkTick = State.Tick; return false; }
         if (person.Agent.Goal.WorkTicks < 3) return true;
         var tile = State.Tiles[index]; tile.NationId = town.NationId; tile.ClaimedSettlementId = town.Id;
         person.Agent.NextThinkTick = State.Tick;

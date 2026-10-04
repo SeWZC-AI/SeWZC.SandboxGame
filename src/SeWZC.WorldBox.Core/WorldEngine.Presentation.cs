@@ -19,7 +19,7 @@ public sealed partial class WorldEngine
 
     private void FinishLogging(Tile tile, int x, int y)
     {
-        if (tile.Terrain != TerrainType.Forest || tile.ResourceAmount > .000001) return;
+        if (!IsForestTerrain(tile.Terrain) || tile.ResourceAmount > .000001) return;
         tile.Terrain = TerrainType.Grass;
         tile.ResourceAmount = 0;
         tile.Fertility = TerrainRules.Fertility(TerrainType.Grass);

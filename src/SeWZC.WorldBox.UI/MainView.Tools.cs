@@ -63,7 +63,8 @@ public sealed partial class MainView
 
     private ToolChoice[] ToolChoices(string category) => category switch
     {
-        "terrain" => [new("Grass", "草地", "#8CAC69"), new("Forest", "森林", "#427D61"), new("Sand", "沙地", "#E6D09A"), new("Mountain", "山脉", "#9DABB0"), new("Water", "浅海", "#4A9CBA"), new("DeepWater", "深海", "#28556F"), new("Snow", "雪原", "#D4E8E7"), new("Hills", "丘陵", "#92905E"), new("Wetland", "湿地", "#58887D"), new("Desert", "荒漠", "#CEAE75"), new("River", "河流", "#428E9C"), new("Tundra", "苔原", "#99A88C"), new("Lake", "湖泊", "#559BA8"), new("DryFertile", "旱原", "#A3A66B")],
+        "terrain" => [new("Grass", "草地", "#8CAC69"), new("Forest", "森林", "#427D61"), new("Sand", "沙地", "#E6D09A"), new("Mountain", "山脉", "#9DABB0"), new("Water", "浅海", "#4A9CBA"), new("DeepWater", "深海", "#28556F"), new("Snow", "雪原", "#D4E8E7"), new("Hills", "丘陵", "#92905E"), new("Wetland", "湿地", "#58887D"), new("Desert", "荒漠", "#CEAE75"), new("River", "河流", "#428E9C"), new("Tundra", "苔原", "#99A88C"), new("Lake", "湖泊", "#559BA8"), new("DryFertile", "旱原", "#A3A66B"),
+            new("Stream", "小溪", "#64A8B2"), new("LargeRiver", "江", "#397D99"), new("Meadow", "草甸", "#A8BE75"), new("Woodland", "疏林", "#73966B"), new("Rainforest", "雨林", "#35694F"), new("Savanna", "稀树草原", "#B4AB6B"), new("Scrub", "灌丛", "#9B9D72"), new("Floodplain", "河漫滩", "#85AF81"), new("AlpineMeadow", "高山草甸", "#91A992")],
         "life" => [new("Human", "人类", "#DEBC85"), new("Elf", "精灵", "#90C599"), new("Dwarf", "矮人", "#BE9785"), new("Orc", "兽人", "#A9B768")],
         "disaster" => [new("Fire", "火灾", "#F0A065"), new("Drought", "干旱", "#D8C180"), new("Plague", "疫病", "#B194C7"), new("Meteor", "陨石", "#EC8758")],
         "build" => BuildToolChoices(),

@@ -15,6 +15,7 @@ internal static class TownInfrastructureTests
         ("automatic bridges require a real destination, visible banks and whole-span materials", BridgePlanning),
         ("new villages respect spacing and arrive with useful initial supplies", StartingSupplies),
         ("twelve pioneers finish a foundation after delivering fractional building materials", FoundationDelivery),
+        ("pioneers reject a walkable stream and found on reported dry ground", StreamFoundation),
         ("new town and navigation state rejects corrupt saves", InvalidState)
     ];
 
@@ -139,6 +140,7 @@ internal static class TownInfrastructureTests
         var wood = worker.Inventory.Wood;
         Check(e.TryWorkAtBuilding(worker) && worker.Inventory.Wood > wood, "Forest-edge camp failed actual harvesting.");
         e.State.Tiles[18 * 32 + 16].Terrain = TerrainType.Wetland;
+        e.State.Tiles[18 * 32 + 16].NaturalWaterYield = 1;
         var well = e.GrantFacility(town.Id, BuildingKind.Well, 16, 18);
         Hold(e, worker, AgentGoalKind.Work, 16, 18, well); e.State.Tick++;
         Check(e.TryWorkAtBuilding(worker) && e.AvailableWater(16, 18) < 1, "Well invented water instead of sharing the local quota.");
@@ -232,6 +234,25 @@ internal static class TownInfrastructureTests
         e.Step(8);
         Check(!town.FoundationPending && town.Resources.Wood >= 0 && town.Resources.Stone >= 0,
             "Rounding of physically delivered pioneer shares prevented foundation completion.");
+        _ = WorldEngine.ImportJson(e.ExportJson());
+    }
+
+    [UnitTest]
+    private static void StreamFoundation()
+    {
+        var e = Flat(80); var home = e.State.Settlements.Single(); e.State.Tick = 119;
+        home.Resources = new() { Food = 10000, Water = 1000, Wood = 1000, Stone = 1000, Ore = 100 };
+        foreach (var person in e.State.Residents) { person.Age = 30; Hold(e, person, AgentGoalKind.Rest, home.X, home.Y); }
+        var creek = e.State.Tiles[16 * 32 + 28]; creek.Terrain = TerrainType.Stream; creek.Fertility = 100;
+        foreach (var y in new[] { 16, 15 })
+            home.PublicKnowledge.Add(new AgentFact { Id = e.State.NextId++, Kind = AgentFactKind.FoundingSite,
+                SubjectId = home.Id, X = 28, Y = y, ObservedTick = 1, LearnedTick = 1,
+                OriginResidentId = e.State.Residents[0].Id, SourceResidentId = e.State.Residents[0].Id,
+                OriginProfession = e.State.Residents[0].Profession, Confidence = 1, Text = "已带回的建村勘察" });
+        e.State.Rules.Expansion = true; e.Step();
+        var founded = e.State.Settlements.Single(t => t.Id != home.Id);
+        Check(founded.X == 28 && founded.Y == 15 && founded.FoundationPending,
+            "Walking through a creek incorrectly permits building a village in its water");
         _ = WorldEngine.ImportJson(e.ExportJson());
     }
 

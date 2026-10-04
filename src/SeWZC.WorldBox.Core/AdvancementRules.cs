@@ -95,7 +95,9 @@ public static class AdvancementRules
     public static Advancement? For(ResearchKind kind) => ByResearch.GetValueOrDefault(kind);
     private static readonly Advancement DockRecipe = new(ResearchKind.Logistics, "造船", "古代", false, [], new(),
         BuildingKind.Shipyard, "船坞", new() { Wood = 35, Stone = 20 }, new() { Wood = 4 }, ResourceKind.Boats, 1);
-    public static Advancement? For(BuildingKind kind) => kind == BuildingKind.Shipyard ? DockRecipe : ByBuilding.GetValueOrDefault(kind);
+    private static readonly Advancement DwarvenRecipe = new(ResearchKind.Industry, "矮人工艺", "工业", false, [ResearchKind.Agriculture, ResearchKind.Logistics], new(),
+        BuildingKind.DwarvenForge, "矮人锻炉", new() { Wood = 30, Stone = 40, Ore = 15 }, new() { Wood = 2, Ore = 2 }, ResourceKind.Alloy, 1.5);
+    public static Advancement? For(BuildingKind kind) => kind == BuildingKind.DwarvenForge ? DwarvenRecipe : kind == BuildingKind.Shipyard ? DockRecipe : ByBuilding.GetValueOrDefault(kind);
     public static string Stock(ResourceStock stock) => string.Join("   ", Resources.Where(k => stock.Get(k) > 0)
         .Select(k => $"{ResourceStock.Name(k)} {stock.Get(k):0.#}"));
 }

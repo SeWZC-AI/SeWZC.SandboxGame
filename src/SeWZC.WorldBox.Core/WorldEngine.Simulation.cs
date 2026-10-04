@@ -115,7 +115,8 @@ public sealed partial class WorldEngine
         // A previously observed site must have been reported to the origin before departure.
         var location = origin.PublicKnowledge.Where(f => f.Kind == AgentFactKind.FoundingSite && f.LearnedTick < State.Tick
             && State.Tick - f.ObservedTick <= 600 && f.Confidence >= .5 && InBounds(f.X, f.Y))
-            .Select(f => Index(f.X, f.Y)).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].FireTicks == 0
+            .Select(f => Index(f.X, f.Y)).Where(i => !IsWaterTerrain(State.Tiles[i].Terrain)
+            && pioneers.All(p => RaceTerrainRules.CanWalk(State.Tiles[i], p.Race)) && State.Tiles[i].FireTicks == 0
             && !State.Society.Buildings.Any(b => b.X == i % State.Width && b.Y == i / State.Width)
             && State.Tiles[i].Fertility >= 25 && (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == origin.NationId)
             && State.Tiles[i].ClaimedSettlementId == 0
