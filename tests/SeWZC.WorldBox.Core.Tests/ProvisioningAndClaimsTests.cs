@@ -7,7 +7,7 @@ internal static class ProvisioningAndClaimsTests
     [
         ("claims require actual arrival and three days while population only raises the ceiling", Claims),
         ("an idle builder autonomously claims visible land after occupied production slots", AutonomousClaim),
-        ("water is drawn locally with a shared daily allowance and carried to the warehouse", Water),
+        ("river and lake water is unlimited but requires local collection and transport", Water),
         ("hunting and fishing consume actual populations and cannot harvest remotely", Harvest),
         ("bridges enforce both endpoints' axes and natural shore limits through upgrades", Bridges),
         ("paid upgrades require actual labor and survive mid-project saves", Upgrades),
@@ -86,22 +86,37 @@ internal static class ProvisioningAndClaimsTests
 
     private static void Water()
     {
-        var e = Flat(6); var home = e.State.Settlements.Single(); var source = 16 * 32 + 17;
-        var river = e.State.Tiles[source]; river.Terrain = TerrainType.River; river.NaturalWaterYield = 0; river.Plants = default;
-        foreach (var r in e.State.Residents)
+        foreach (var terrain in new[] { TerrainType.River, TerrainType.Lake })
         {
-            Hold(e, r, AgentGoalKind.FetchWater, 16, 16, source + 1);
-            Check(e.TryFetchWater(r) == (river.WaterDrawn < 4 || r.Inventory.Water > 0), "Unexpected draw result.");
+            var e = Flat(6); var source = 16 * 32 + 17;
+            var water = e.State.Tiles[source]; water.Terrain = terrain; water.NaturalWaterYield = 0; water.Plants = default;
+            // Current-format saves may still contain the former four-unit quota.
+            water.WaterDrawTick = e.State.Tick; water.WaterDrawn = terrain == TerrainType.River ? 4 : 0; water.DroughtTicks = 12;
+            foreach (var r in e.State.Residents) Hold(e, r, AgentGoalKind.Rest, 16, 16);
+            e = WorldEngine.ImportJson(e.ExportJson());
+            var home = e.State.Settlements.Single();
+            foreach (var r in e.State.Residents)
+            {
+                Hold(e, r, AgentGoalKind.FetchWater, 16, 16, source + 1);
+                Check(e.TryFetchWater(r) && r.Inventory.Water == 1, "A nearby carrier could not collect a finite load.");
+            }
+            Check(e.State.Residents.Sum(r => r.Inventory.Water) == 6 && double.IsPositiveInfinity(e.AvailableWater(17, 16)),
+                "The shared daily quota or drought still depleted fresh water.");
+            var carrier = e.State.Residents[0]; var collected = carrier.Inventory.Water;
+            Hold(e, carrier, AgentGoalKind.FetchWater, 15, 16, source + 1);
+            Check(!e.TryFetchWater(carrier) && carrier.Inventory.Water == collected, "Water was collected away from the bank.");
+            Hold(e, carrier, AgentGoalKind.FetchWater, 16, 16, source + 1); carrier.MoveStartedTick = e.State.Tick;
+            Check(!e.TryFetchWater(carrier) && carrier.Inventory.Water == collected, "Water was collected before arrival.");
+            foreach (var r in e.State.Residents) Hold(e, r, AgentGoalKind.Rest, r.X, r.Y);
+            carrier.Inventory.Water = 5;
+            var before = home.Resources.Water; Hold(e, carrier, AgentGoalKind.ReturnHome, home.X, home.Y);
+            e.Step(); Check(home.Resources.Water > before && carrier.Inventory.Water > 0, "Water was not physically returned with a travel reserve.");
+            Check(double.IsPositiveInfinity(e.AvailableWater(17, 16)), "Fresh water became finite on the next day.");
+            var trace = e.AvailableWater(2, 2);
+            var resumed = WorldEngine.ImportJson(e.ExportJson()); e.Step(120); resumed.Step(120);
+            Check(e.ExportJson() == resumed.ExportJson(), "Unlimited water failed current-format saving and deterministic resume.");
+            Check(e.AvailableWater(2, 2) == trace, "Unused trace water accumulated.");
         }
-        Check(Math.Abs(e.State.Residents.Sum(r => r.Inventory.Water) - 4) < 1e-9 && e.AvailableWater(17, 16) == 0,
-            "Several carriers exceeded the shared daily source yield.");
-        foreach (var r in e.State.Residents) Hold(e, r, AgentGoalKind.Rest, r.X, r.Y);
-        var carrier = e.State.Residents[0]; carrier.Inventory.Water = 5;
-        var before = home.Resources.Water; Hold(e, carrier, AgentGoalKind.ReturnHome, home.X, home.Y);
-        e.Step(); Check(home.Resources.Water > before && carrier.Inventory.Water > 0, "Water was not physically returned with a travel reserve.");
-        Check(e.AvailableWater(17, 16) == 4, "River water failed to renew on the next day.");
-        var trace = e.AvailableWater(2, 2); e.Step(120);
-        Check(e.AvailableWater(2, 2) == trace, "Unused trace water accumulated.");
     }
 
     [UnitTest]
