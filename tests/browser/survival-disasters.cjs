@@ -50,8 +50,24 @@ fs.mkdirSync(output, { recursive: true });
                 assert(saved.Tiles[48 * 128 + 48].FireTicks >= 60, 'Fire retained a very short burn duration');
                 assert(saved.Tiles.filter(t => t.FireTicks > 0).length - before <= 3, 'A fire brush instantly ignited many tiles');
                 await page.screenshot({ path: path.join(output, `local-fire-${mobile ? 'mobile' : 'desktop'}.png`) });
-                await diagnostics.assertHealthy('terrain naming, wetland supply and gradual fire');
-                console.log(`PASS ${mobile ? 'mobile' : 'desktop'}: 旱原, wetland daily quota, wet ground and local ignition`);
+                for (const [terrain, code] of [['River', 10], ['Lake', 12]]) {
+                    await ui.tool('terrain', terrain); await place(64, 64);
+                    await ui.clickTile(64, 64); await ui.click('selection-view');
+                    const details = ui.control(await ui.snapshot(), 'tile-water').value;
+                    assert.match(details, /每日供水 无限/); assert.match(details, /今日可取水 无限/);
+                    assert(!details.includes('Infinity'), 'An internal infinity value leaked into the inspector');
+                    await ui.point('tile-water', inspector);
+                    await page.screenshot({ path: path.join(output, `${terrain.toLowerCase()}-water-${mobile ? 'mobile' : 'desktop'}.png`) });
+                    await ui.click('inspector-close');
+                    assert.equal((await ui.save()).Tiles[64 * 128 + 64].Terrain, code, 'Fresh-water placement or saving failed');
+                }
+                await page.reload({ waitUntil: 'domcontentloaded' }); await ui.ready(); await ui.paused();
+                await ui.clickTile(64, 64); await ui.click('selection-view');
+                assert.match(ui.control(await ui.snapshot(), 'tile-water').value, /今日可取水 无限/);
+                await ui.click('inspector-close');
+                assert.equal((await ui.save()).Tiles[64 * 128 + 64].Terrain, 12, 'Unlimited lake water did not survive browser reload');
+                await diagnostics.assertHealthy('terrain naming, finite wetland supply, unlimited fresh water and gradual fire');
+                console.log(`PASS ${mobile ? 'mobile' : 'desktop'}: 旱原, wetland quota, unlimited rivers and lakes with reload, wet ground and local ignition`);
             } finally { await context.close(); }
         }
     } finally { await browser.close(); }

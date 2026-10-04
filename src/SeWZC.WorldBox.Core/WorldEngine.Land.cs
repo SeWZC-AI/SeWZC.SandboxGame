@@ -181,7 +181,7 @@ public sealed partial class WorldEngine
             if (ResourceSiteYield(Index(x, y), Profession.Miner) > 0) products.Add("石材、矿石");
         }
         var lines = new List<string> { products.Count > 0 ? "可采产出：" + string.Join("、", products) : tile.ResourceAmount < 1 && tile.IsWalkable ? "资源暂已采尽，等待自然恢复" : "此地暂无直接采集产出" };
-        lines.Add(IsFreshWater(tile) ? "淡水源：可在岸边打水，现场取水有每日流量限制"
+        lines.Add(IsFreshWater(tile) ? "淡水源：无限供水，需到岸边打水并携带返仓"
             : $"天然供水 {tile.NaturalWaterYield:0.000000} / 日（不累计）   今日剩余 {AvailableWater(x, y):0.000000}\n供水与肥力独立；水源距离影响仅在生成时计算");
         if (tile.ClaimedSettlementId != 0) lines.Add("实际地盘：" + _settlements.GetValueOrDefault(tile.ClaimedSettlementId)?.Name);
         if (tile.IsWalkable) lines.Add($"可采储量 {tile.ResourceAmount:0.#}   肥力 {tile.Fertility}%");

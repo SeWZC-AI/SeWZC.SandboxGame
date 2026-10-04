@@ -42,7 +42,8 @@ public sealed partial class WorldEngine
         return Math.Max(0, supply - (tile.WaterDrawTick == State.Tick ? tile.WaterDrawn : 0));
     }
 
-    public static double DailyWaterYield(Tile tile) => IsFreshWater(tile) ? 4
+    // Unlimited supply is a derived query result, never a stored resource amount.
+    public static double DailyWaterYield(Tile tile) => IsFreshWater(tile) ? double.PositiveInfinity
         : (tile.Terrain == TerrainType.Wetland ? 1 : tile.NaturalWaterYield) * (tile.DroughtTicks > 0 ? .2 : 1);
 
     private double DrawWater(Resident person, int source, double wanted)
@@ -52,8 +53,12 @@ public sealed partial class WorldEngine
         var tile = State.Tiles[source];
         var amount = Math.Min(Math.Max(0, wanted), AvailableWater(source % State.Width, source / State.Width));
         amount = Math.Min(amount, 1_000_000 - person.Inventory.Water);
-        if (tile.WaterDrawTick != State.Tick) { tile.WaterDrawTick = State.Tick; tile.WaterDrawn = 0; }
-        tile.WaterDrawn += amount; person.Inventory.Water += amount;
+        if (!IsFreshWater(tile))
+        {
+            if (tile.WaterDrawTick != State.Tick) { tile.WaterDrawTick = State.Tick; tile.WaterDrawn = 0; }
+            tile.WaterDrawn += amount;
+        }
+        person.Inventory.Water += amount;
         if (amount > .05) RecordHarvest(tile, amount);
         return amount;
     }

@@ -261,13 +261,14 @@ public sealed partial class MainView
     {
         if (_selectedTile is not { } point || point.X < 0 || point.Y < 0 || point.X >= _engine.State.Width || point.Y >= _engine.State.Height) { panel.Children.Add(Paragraph("请先在地图上选择一处位置。")); return; }
         Tile Tile() => _engine.State.Tiles[point.Y * _engine.State.Width + point.X];
+        static string WaterAmount(double amount, string unit = "") => double.IsPositiveInfinity(amount) ? "无限" : $"{amount:0.0000}{unit}";
         panel.Children.Add(LiveText(() => TerrainName(Tile().Terrain), 16, Mint));
         panel.Children.Add(LiveText(() => _engine.GetTileProductionSummary(point.X, point.Y, _resourceVisibility)));
         panel.Children.Add(Named(Button("安排居民改造此地", () => ShowLandProject(point.X, point.Y)), "tile-improve"));
         panel.Children.Add(Named(Button("编辑此地资源与道路", () => ShowTileEditor(point.X, point.Y)), "tile-edit"));
         LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.X == point.X && b.Y == point.Y), b => b.Id.ToString(),
             b => BuildingLabel(b) + "\n" + BuildingTask(b), OpenBuilding);
-        panel.Children.Add(Named(LiveText(() => $"肥沃度 {Tile().Fertility:0.0} / 100\n每日供水 {WorldEngine.DailyWaterYield(Tile()):0.0000} / 日\n今日可取水 {_engine.AvailableWater(point.X, point.Y):0.0000}\n占领聚落：{TownName(Tile().ClaimedSettlementId)}"), "tile-water"));
+        panel.Children.Add(Named(LiveText(() => $"肥沃度 {Tile().Fertility:0.0} / 100\n每日供水 {WaterAmount(WorldEngine.DailyWaterYield(Tile()), " / 日")}\n今日可取水 {WaterAmount(_engine.AvailableWater(point.X, point.Y))}\n占领聚落：{TownName(Tile().ClaimedSettlementId)}"), "tile-water"));
         var effects = FoldSection(panel, "地块加成与减益", "tile-effects");
         effects.Children.Add(LiveText(() => EffectLabel(_engine.GetTileEffects(point.X, point.Y))));
         var local = FoldSection(panel, "归属与周围环境", "tile-context");
