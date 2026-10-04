@@ -36,10 +36,10 @@ public sealed partial class MainView
     {
         var id = _selectedBuildingId;
         Building? Current() => _engine.State.Society.Buildings.FirstOrDefault(b => b.Id == id);
-        if (Current() is not { } building) { panel.Children.Add(Paragraph("建筑已毁坏或被移除，可在建筑与道路列表查看其他设施。")); return; }
+        if (Current() is not { } building) { panel.Children.Add(Paragraph("建筑已被移除，可在建筑与道路列表查看其他设施。")); return; }
         panel.Children.Add(LiveText(() => Current() is { } b ? BuildingLabel(b) : "建筑已不存在", 18, Mint));
         panel.Children.Add(Named(LiveText(() => Current() is { } b ? $"建筑生命 {b.Health:0.#} / 100" +
-            (b.Health <= 0 ? "   已损毁" : b.Health < 50 ? "   低于 50，暂停工作" : b.Health < 100 ? "   有损伤，仍可工作" : "   结构完好") : "建筑已不存在"), "building-health"));
+            (b.Health <= 0 ? "   已损毁" : b.Health < 50 ? "   低于 50，暂停工作" : b.Health < 100 ? "   有损伤，未达停工阈值" : "   结构完好") : "建筑已不存在"), "building-health"));
         panel.Children.Add(Paragraph(WorldEngine.BuildingDescription(building.Kind)));
         panel.Children.Add(Named(LiveText(() => Current() is { } b ? $"等级 {b.Level} / 3" +
             (b.IsUpgrading ? $"\n{(b.PendingDirection.HasValue ? "改向" : "升级")}施工 {b.UpgradeProgress:0.0} / {b.UpgradeRequired:0}" : "") : ""), "building-level"));

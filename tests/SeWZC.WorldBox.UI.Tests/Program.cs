@@ -179,12 +179,17 @@ static void AdvancedResearchUi()
     engine.GrantFacility(town.Id, BuildingKind.Academy, town.X + 2, town.Y + 2);
     var view = View(engine); Call(view, "OpenInspector", "infrastructure", true);
     var before = engine.ExportJson();
+    Assert(Control<TextBlock>(view, "research-requirements").Text?.Contains("投入材料：") == true,
+        "Initial research selection hid its cost and conditions");
     Control<ComboBox>(view, "research-kind").SelectedItem = ResearchKind.Electrification;
     Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("动力工厂") == true), "Research choice has no concrete unlock description");
     Click(view, "research-start");
     Assert(engine.ExportJson() == before, "Missing prerequisites allowed research or consumed resources");
     engine.GrantReceivedResearch(town.Id, ResearchKind.Industry);
     engine.GrantReceivedResearch(town.Id, ResearchKind.SignalNetwork);
+    Call(view, "RefreshInspector", false);
+    Assert(Control<TextBlock>(view, "research-requirements").Text?.Contains("前置知识与魔法规则已满足") == true,
+        "Research requirements stayed stale after receiving prerequisite knowledge");
     Click(view, "research-start");
     Assert(engine.State.Society.Research.Single(r => r.SettlementId == town.Id).ActiveProject == ResearchKind.Electrification,
         "Valid advanced research did not start through the ordinary UI");
@@ -200,7 +205,13 @@ static void AdvancedResourcesUi()
     Click(view, "nation-apply");
     Assert(stocks.SequenceEqual(engine.State.Settlements.Select(t => (t.Resources.Alloy, t.Resources.EnergyCells, t.Resources.Crystals))), "Rename changed advanced resource distribution");
     Call(view, "ShowBuildingEditor", town.Id);
+    Assert(Control<TextBlock>(view, "building-requirements").Text?.Contains(WorldEngine.BuildingDescription(BuildingKind.Farm)) == true,
+        "Initial building selection hid its purpose");
+    Assert(!Control<StackPanel>(view, "building-bridge-options").IsVisible, "Farm editor showed unrelated bridge fields");
+    Control<ComboBox>(view, "building-kind").SelectedItem = BuildingKind.Bridge;
+    Assert(Control<StackPanel>(view, "building-bridge-options").IsVisible, "Bridge editor hid direction and level");
     Control<ComboBox>(view, "building-kind").SelectedItem = BuildingKind.Fabricator;
+    Assert(!Control<StackPanel>(view, "building-bridge-options").IsVisible, "Changing facility left bridge fields visible");
     Control<NumericUpDown>(view, "building-x").Value = town.X + 2; Control<NumericUpDown>(view, "building-y").Value = town.Y + 2;
     Control<CheckBox>(view, "building-gift").IsChecked = true;
     Click(view, "building-apply");

@@ -67,7 +67,7 @@ public sealed partial class MainView
                 var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto") };
                 header.Children.Add(Text(_inspectorMode switch
                 {
-                    "watched" => "我的关注", "story" => "人物故事", "event" => "事件与后果", "resident" => "居民档案", "residents" => "大地上的居民", "nation" => "国家与文明", "nations" => "文明国家",
+                    "watched" => "我的关注", "story" => "人物故事", "event" => "事件与后果", "resident" => "居民档案", "residents" => "居民列表", "nation" => "国家与文明", "nations" => "国家列表",
                     "building" => "建筑详情", "structures" => "建筑与道路", "history" => "世界编年史", "tile" => "地块详情", "rules" => "世界规则", "infrastructure" => "建设与运输", "communication" => "消息与通信", _ => "世界概览"
                 }, 17, null, true));
                 var back = IconButton("back", GoBack, "返回上一处", "inspector-back"); Grid.SetColumn(back, 1); header.Children.Add(back);
@@ -170,15 +170,14 @@ public sealed partial class MainView
     {
         panel.Children.Add(LiveText(() => $"{_engine.State.Population:N0} 位居民\n{_engine.State.Nations.Count} 个国家", 19, Mint));
         panel.Children.Add(LiveText(() => $"{DateLabel(_engine.State.Tick)}\n{_engine.State.Settlements.Count} 处聚落\n种子 {_engine.State.Seed}"));
-        panel.Children.Add(Paragraph("关注国家、聚落或居民，持续追踪它们的发展与转折。"));
         panel.Children.Add(Named(Button("我的关注", () => OpenInspector("watched")), "overview-watched"));
         var borders = Named(new CheckBox { Content = "显示国界", IsChecked = _map.ShowBorders }, "map-borders");
         borders.IsCheckedChanged += (_, _) => { _map.ShowBorders = borders.IsChecked == true; _map.RefreshWorld(); }; panel.Children.Add(borders);
         var overlay = Named(new ComboBox { ItemsSource = new[] { "地图图层：无", "粮食压力：红色短缺 / 绿色充足", "运输：标记正在实地递送的居民", "通信：运作设施与实际连通聚落", "建设：按用途和状态着色建筑与道路" }, SelectedIndex = _map.Overlay, HorizontalAlignment = HorizontalAlignment.Stretch }, "map-overlay");
         overlay.SelectionChanged += (_, _) => { _map.Overlay = Math.Max(0, overlay.SelectedIndex); _map.RefreshWorld(); }; panel.Children.Add(overlay);
         panel.Children.Add(Named(Button("建筑与道路地图", () => OpenInspector("structures")), "overview-structures"));
-        panel.Children.Add(Text("资源显示", 13, Mint));
-        var resources = Named(new ComboBox { ItemsSource = new[] { "按最新已研究阶段显示（默认）", "显示全部资源（含未发现矿藏）", "关闭矿藏显示" }, SelectedIndex = (int)_resourceVisibility, HorizontalAlignment = HorizontalAlignment.Stretch }, "map-resources");
+        panel.Children.Add(Text("矿藏显示", 13, Mint));
+        var resources = Named(new ComboBox { ItemsSource = new[] { "已发现或已有聚落掌握开采技术", "全部矿藏（含未发现）", "关闭矿藏显示" }, SelectedIndex = (int)_resourceVisibility, HorizontalAlignment = HorizontalAlignment.Stretch }, "map-resources");
         resources.SelectionChanged += (_, _) => { _resourceVisibility = (ResourceVisibility)Math.Max(0, resources.SelectedIndex); _map.ResourceVisibility = _resourceVisibility; _map.RefreshWorld(); }; panel.Children.Add(resources);
         foreach (var kind in new[] { ResourceKind.Coal, ResourceKind.Oil, ResourceKind.RareEarth })
         {
@@ -192,7 +191,7 @@ public sealed partial class MainView
         var names = Named(new CheckBox { Content = "近景显示建筑名称", IsChecked = _map.ShowBuildingNames }, "map-building-names");
         names.IsCheckedChanged += (_, _) => { _map.ShowBuildingNames = names.IsChecked == true; _map.InvalidateVisual(); }; panel.Children.Add(names);
         var legend = FoldSection(panel, "图例与资源说明", "map-legend");
-        legend.Children.Add(Paragraph("资源图标：黑色为煤，蓝色为石油，紫色为稀土。动植物在 3 倍近景显示，同格可以有多种动物；标记随数量或植被覆盖缩放，占地格宽度最多 35%。植物对应现有可采储量。"));
+        legend.Children.Add(Paragraph("矿藏：黑色为煤，蓝色为石油，紫色为稀土。显示设置只改变你看到的内容，不会让居民获得开采知识。\n放大到 3 倍可见动植物；图标越大，动物越多或植被越密。同格可有多种动物，植物对应当地可采资源。"));
         legend.Children.Add(Paragraph("工作标记在 5 倍近景显示。图标表示实际任务，图标下的短线表示正在移动；查看角色可见具体设施、材料与后续步骤。"));
         var tasks = new WrapPanel { Orientation = Orientation.Horizontal };
         foreach (var icon in Enum.GetValues<ResidentTaskIcon>())
@@ -263,7 +262,6 @@ public sealed partial class MainView
         Tile Tile() => _engine.State.Tiles[point.Y * _engine.State.Width + point.X];
         panel.Children.Add(LiveText(() => TerrainName(Tile().Terrain), 16, Mint));
         panel.Children.Add(Named(LiveText(() => _engine.GetTileProductionSummary(point.X, point.Y, _resourceVisibility)), "tile-water"));
-        panel.Children.Add(LiveText(() => $"海拔仅用于创世地形生成\n降水供水：{Tile().Rainfall:0.000000} / 格 / 日\n肥沃度：{Tile().Fertility}%"));
         panel.Children.Add(Named(Button("安排居民改造此地", () => ShowLandProject(point.X, point.Y)), "tile-improve"));
         panel.Children.Add(Named(Button("编辑此地资源与道路", () => ShowTileEditor(point.X, point.Y)), "tile-edit"));
         LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.X == point.X && b.Y == point.Y), b => b.Id.ToString(),
@@ -271,6 +269,7 @@ public sealed partial class MainView
         var effects = FoldSection(panel, "地块加成与减益", "tile-effects");
         effects.Children.Add(LiveText(() => EffectLabel(_engine.GetTileEffects(point.X, point.Y))));
         var local = FoldSection(panel, "归属与周围环境", "tile-context");
+        local.Children.Add(Paragraph("海拔仅用于生成地形，不额外影响移动、劳动或通信。"));
         local.Children.Add(LiveText(() => $"{NationName(Tile().NationId)}\n{(Tile().RoadLevel > 0 ? $"道路 {Tile().RoadLevel} 级\n" : "")}步行：{(double.IsFinite(_engine.GetTerrainMoveCost(point.X, point.Y)) ? $"耗时系数 {_engine.GetTerrainMoveCost(point.X, point.Y):0.##}" : "无法通行，需桥梁、山路或载具")}"));
         LiveRows(local, () => _engine.State.Conflicts.Where(c => c.SettlementId == Tile().SettlementId || Math.Abs(c.X - point.X) + Math.Abs(c.Y - point.Y) <= 3), c => c.Id.ToString(),
             c => $"{(c.Stage == ConflictStage.Dispute ? "资源争执" : c.Stage == ConflictStage.Confrontation ? "持续对峙" : c.Stage == ConflictStage.Violence ? "局部斗殴" : "已平息")}   {c.Participants.Count} 人   紧张 {c.Tension:0}%");

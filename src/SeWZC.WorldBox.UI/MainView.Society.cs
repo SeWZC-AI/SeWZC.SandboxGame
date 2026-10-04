@@ -35,9 +35,8 @@ public sealed partial class MainView
         panel.Children.Add(Paragraph("决策取决于代表与信使实际送达的议题。下方聚落库存是上帝视角事实，不代表首都已知这些变化。"));
         LiveRows(panel, () => _engine.State.Settlements.Where(t => t.NationId == nation.Id).OrderBy(t => t.Id), t => t.Id.ToString(), t =>
         {
-            var policy = _engine.State.Society.Policies.FirstOrDefault(p => p.SettlementId == t.Id);
             var development = _engine.GetDevelopment(t.Id);
-            return $"{t.Name}\n{t.Population} 人\n{development.Stage}\n{development.Goal}\n{development.Progress:P0}\n{development.Blocker}\n{_engine.GetDevelopmentEstimate(t.Id).Explanation}\n{StockLabel(t.Resources)}";
+            return $"{t.Name}   人口 {t.Population}\n阶段：{development.Stage}\n目标：{development.Goal}\n进度：{development.Progress:P0}\n{development.Blocker}\n{_engine.GetDevelopmentEstimate(t.Id).Explanation}\n库存：{StockLabel(t.Resources)}";
         }, t => { _inspectorSettlementId = t.Id; OpenInspector("infrastructure"); });
         panel.Children.Add(Text("居民构成与文化传播", 12, Mint));
         panel.Children.Add(LiveText(() => string.Join("\n", _engine.State.Residents.Where(r => r.NationId == nation.Id).GroupBy(r => r.CultureId).Select(g => $"{CultureName(g.Key)}：{g.Count()} 人"))));
@@ -97,9 +96,10 @@ public sealed partial class MainView
         panel.Children.Add(WatchControl(ObservedObjectKind.Settlement, town.Id, "settlement-watch"));
         panel.Children.Add(Named(LiveText(() => _engine.GetSettlementSummary(town.Id)), "town-expansion-summary"));
         panel.Children.Add(Named(Button("投入城镇扩充", () => RunEdit(() => _engine.ExpandTown(town.Id), "已投入扩充材料，居民将到中心施工")), "town-expand"));
-        panel.Children.Add(LiveText(() => $"住房容量 {_engine.GetHousingCapacity(town.Id)} 人\n新建村庄费用：{StockLabel(WorldEngine.VillageFoundingCost)}\n新村与其他城镇至少相距 {WorldEngine.MinimumSettlementDistance} 格；拓荒者须携物资抵达"));
-        panel.Children.Add(LiveText(() => $"{town.Name} #{town.Id}\n实际库存：{StockLabel(town.Resources)}\n居民 {town.Population}\n代表 {ResidentName(town.RepresentativeId)}"));
-        panel.Children.Add(LiveText(() => { var d = _engine.GetDevelopment(town.Id); return $"{d.Stage}\n{d.Goal}\n{d.Progress:P0}\n{d.Blocker}\n动荡 {town.Unrest:0}/100"; }, 13, Mint));
+        panel.Children.Add(LiveText(() => $"人口 {town.Population} / 住房容量 {_engine.GetHousingCapacity(town.Id)}\n实际库存：{StockLabel(town.Resources)}\n代表：{ResidentName(town.RepresentativeId)}"));
+        var founding = FoldSection(panel, "另建村庄的条件", "town-founding");
+        founding.Children.Add(Paragraph($"投入：{StockLabel(WorldEngine.VillageFoundingCost)}\n新村与其他城镇至少相距 {WorldEngine.MinimumSettlementDistance} 格。居民先勘察并带回报告，拓荒队再携物资抵达、驻留建村。"));
+        panel.Children.Add(LiveText(() => { var d = _engine.GetDevelopment(town.Id); return $"阶段：{d.Stage}\n目标：{d.Goal}\n进度：{d.Progress:P0}\n{d.Blocker}\n动荡 {town.Unrest:0}/100"; }, 13, Mint));
         panel.Children.Add(Named(LiveText(() => _engine.GetDevelopmentEstimate(town.Id).Explanation), "development-estimate"));
         panel.Children.Add(Named(LiveText(() => _engine.GetAdvancementStage(town.Id)), "advancement-stage"));
         panel.Children.Add(Named(Button("定位聚落并开始建设", () => { _map.SelectedSettlementId = town.Id; SetCategory("build"); _map.FocusTile(town.X, town.Y); _mobilePanel = false; ApplyLayout(); }), "infrastructure-build"));
@@ -109,13 +109,17 @@ public sealed partial class MainView
             panel.Children.Add(LiveText(() =>
             {
                 var research = _engine.State.Society.Research.FirstOrDefault(r => r.SettlementId == town.Id);
-                return research is null ? "尚无研究记录" : $"已掌握：{string.Join("、", research.Completed.Select(WorldEngine.ResearchName))}\n{(research.ActiveProject is { } project ? $"正在研究 {WorldEngine.ResearchName(project)}\n{research.Progress:F1}/{research.RequiredProgress:F0}\n{_engine.GetCompletionEstimate(research.Observation, research.Progress, research.RequiredProgress).Explanation}" : "暂无研究项目")}";
+                return research is null ? "尚无研究记录" : $"已掌握：{(research.Completed.Count == 0 ? "暂无" : string.Join("、", research.Completed.Select(WorldEngine.ResearchName)))}\n{(research.ActiveProject is { } project ? $"正在研究：{WorldEngine.ResearchName(project)}\n进度：{research.Progress:F1}/{research.RequiredProgress:F0}\n{_engine.GetCompletionEstimate(research.Observation, research.Progress, research.RequiredProgress).Explanation}" : "暂无研究项目")}";
             }));
             var researchPicker = EnumField(panel, "选择研究", ResearchKind.Agriculture, WorldEngine.ResearchName, "research-kind");
-            var cost = Paragraph(StockLabel(WorldEngine.GetResearchCost(ResearchKind.Agriculture))); panel.Children.Add(cost);
-            researchPicker.SelectionChanged += (_, _) => { if (researchPicker.SelectedItem is ResearchKind kind) cost.Text = "投入材料：" + StockLabel(WorldEngine.GetResearchCost(kind)) + "\n" + WorldEngine.ResearchDescription(kind) + "\n" + (_engine.ResearchPrerequisiteError(town.Id, kind) ?? "研究前置已满足"); };
+            panel.Children.Add(Named(LiveText(() => researchPicker.SelectedItem is ResearchKind kind
+                ? "投入材料：" + StockLabel(WorldEngine.GetResearchCost(kind)) + "\n" + WorldEngine.ResearchDescription(kind)
+                    + "\n" + (_engine.ResearchPrerequisiteError(town.Id, kind) ?? "前置知识与魔法规则已满足")
+                    + "\n" + (WorldEngine.MissingResources(town.Resources, WorldEngine.GetResearchCost(kind)) ?? "研究材料充足")
+                : "请选择研究项目"), "research-requirements"));
+            researchPicker.SelectionChanged += (_, _) => RefreshInspector();
             panel.Children.Add(Named(Button("投入研究", () => RunEdit(() => _engine.StartResearch(town.Id, (ResearchKind)researchPicker.SelectedItem!), "研究已立项，需居民到学舍工作后推进")), "research-start"));
-            panel.Children.Add(Paragraph("科技与魔法可并存，前置与动力来源各自独立。研究需要学舍、到场人员及当地材料；新魔法发展受世界规则限制。"));
+            panel.Children.Add(Paragraph("每处聚落同时研究一项。投入材料立项后，居民须到已建成的学舍工作，研究才会推进；科技与魔法可以并行发展。"));
             panel.Children.Add(Text("设施\n施工与工作人员", 12, Mint));
             LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.SettlementId == town.Id).OrderBy(b => b.Id), b => b.Id.ToString(), b => $"{WorldEngine.BuildingName(b.Kind)} #{b.Id}\n{b.X},{b.Y}\n{(b.IsCompleted ? "已建成" : $"施工 {b.ConstructionProgress:F1}/{b.ConstructionRequired:F0}")}\n健康 {b.Health:F0}\n{(b.IsCompleted ? "" : _engine.GetCompletionEstimate(b.Observation, b.ConstructionProgress, b.ConstructionRequired).Explanation + "\n")}工作岗位 {b.Workers.Count}/{b.WorkSlots}\n最近工作 {DateLabel(b.LastWorkedTick)}", OpenBuilding);
             panel.Children.Add(Named(Button("查看设施成本与建造", () => ShowBuildingEditor(town.Id)), "building-open"));
@@ -129,7 +133,7 @@ public sealed partial class MainView
         panel.Children.Add(Text("通信覆盖与连通\n当前实际状态", 12, Mint));
         panel.Children.Add(Paragraph("同国在运作的信号塔通过视线连通；1 级接入 12 格、塔间 24 格，每级增加 4／8 格；塔间取较低等级。山脉阻挡。设施需要工作人员、足够健康且未着火。道路与驿站改变实际信使行程。"));
         LiveRows(panel, () => _engine.State.Settlements.Where(t => t.NationId == town.NationId && t.Id != town.Id).OrderBy(t => t.Id), t => t.Id.ToString(), t => _engine.CanRelayInformation(town.Id, t.Id, out var ticks) ? $"{town.Name} ↔ {t.Name}\n信号连通\n预计 {ticks} 日" : $"{town.Name} ↔ {t.Name}\n信号未连通\n依赖居民实际携带消息", t => _map.FocusTile(t.X, t.Y));
-        panel.Children.Add(LiveText(() => $"等待投递消息 {_engine.State.PendingMessages.Count} 条\n聚落公开知识 {town.PublicKnowledge.Count} 条\n已递送报告 {_engine.State.Society.Reports.Count(r => r.RecipientSettlementId == town.Id)} 条"));
+        panel.Children.Add(LiveText(() => $"全世界待投递消息 {_engine.State.PendingMessages.Count} 条\n本聚落公开知识 {town.PublicKnowledge.Count} 条\n本聚落已收到报告 {_engine.State.Society.Reports.Count(r => r.RecipientSettlementId == town.Id)} 条"));
         if (communications)
         {
             panel.Children.Add(Text("聚落已知消息\n与实际世界可能不同步", 12, Mint));
@@ -145,21 +149,31 @@ public sealed partial class MainView
     private void ShowBuildingEditor(int townId)
     {
         var town = _engine.State.Settlements.FirstOrDefault(t => t.Id == townId); if (town is null) return;
-        var panel = ModalPanel("建造设施", "普通设施位于聚落 8 格内；桥梁、山路可在 24 格内逐段施工，船坞与码头须邻水。材料从聚落扣除，居民到场施工。");
+        var panel = ModalPanel("建造设施", "选择设施和目标地块。安排施工会扣除当地材料，等待居民到场完成。");
         var type = EnumField(panel, "设施类型", BuildingKind.Farm, WorldEngine.BuildingName, "building-kind");
-        var direction = EnumField(panel, "桥梁方向", BridgeDirection.Horizontal, WorldEngine.BridgeDirectionName, "building-bridge-direction");
-        var level = ObjectField(panel, "桥梁等级", new[] { (1, "1 级：离岸 2 格"), (2, "2 级：离岸 4 格"), (3, "3 级：离岸 6 格") }, 1, "building-bridge-level");
-        var cost = Paragraph("材料：" + StockLabel(WorldEngine.GetBuildingCost(BuildingKind.Farm))); panel.Children.Add(cost);
+        var bridgeOptions = Named(new StackPanel { Spacing = 10 }, "building-bridge-options"); panel.Children.Add(bridgeOptions);
+        var direction = EnumField(bridgeOptions, "桥梁方向", BridgeDirection.Horizontal, WorldEngine.BridgeDirectionName, "building-bridge-direction");
+        var level = ObjectField(bridgeOptions, "桥梁等级", new[] { (1, "1 级：离岸 2 格"), (2, "2 级：离岸 4 格"), (3, "3 级：离岸 6 格") }, 1, "building-bridge-level");
+        var cost = Named(Paragraph(""), "building-requirements"); panel.Children.Add(cost);
         void RefreshCost()
         {
+            bridgeOptions.IsVisible = type.SelectedItem is BuildingKind.Bridge;
             if (type.SelectedItem is BuildingKind kind)
-                cost.Text = "材料：" + StockLabel(WorldEngine.FacilityCost(kind, kind == BuildingKind.Bridge ? Integer(level) : 1)) + "\n" + (AdvancementRules.For(kind) is { } a ? "运营需要：" + WorldEngine.ResearchName(a.Research) + "及其前置\n" : "") + WorldEngine.ProductionRecipe(kind);
+                cost.Text = DisplayFormat.Text("施工材料：" + StockLabel(WorldEngine.FacilityCost(kind, kind == BuildingKind.Bridge ? Integer(level) : 1))
+                    + $"\n选址：距聚落中心不超过 {(kind is BuildingKind.Bridge or BuildingKind.MountainPass ? 24 : Math.Max(8, town.MaxClaimRadius))} 格。"
+                    + (WorldEngine.IsWaterfrontBuilding(kind) ? "须建在紧邻自然陆岸的水域。" : "")
+                    + "\n" + (AdvancementRules.For(kind) is { } a ? "运营需要：" + WorldEngine.ResearchName(a.Research) + "及其前置\n" : "")
+                    + (kind is BuildingKind.Waystation or BuildingKind.Bridge or BuildingKind.MountainPass or BuildingKind.Dock ? "建设知识：驿路运输。\n"
+                        : kind == BuildingKind.ArcaneSanctum ? "建设知识：奥术基础，且须开启魔法发展。\n" : "")
+                    + (WorldEngine.BuildingRace(kind) is { } race ? $"种族条件：本聚落须有成年{RaceName(race)}，由同族成年人运营。\n" : "")
+                    + WorldEngine.BuildingDescription(kind));
         }
         type.SelectionChanged += (_, _) => RefreshCost();
         level.SelectionChanged += (_, _) => RefreshCost();
-        panel.Children.Add(Paragraph($"{town.Name}库存：{StockLabel(town.Resources)}\n驿站需要驿路运输；无线信号塔需要电气化与信号网络；奥术研习所需要奥术基础及开放魔法发展。"));
+        RefreshCost();
+        panel.Children.Add(Paragraph($"{town.Name}库存：{StockLabel(town.Resources)}"));
         var x = Field(panel, "目标 X", _selectedTile?.X ?? town.X + 1, "building-x"); var y = Field(panel, "目标 Y", _selectedTile?.Y ?? town.Y, "building-y");
-        var gift = Named(new CheckBox { Content = Text("直接赐予完工设施（运营知识与原料仍需具备）", 12), IsChecked = false }, "building-gift");
+        var gift = Named(new CheckBox { Content = Text("直接赐予完工（不扣施工材料，仍需运营条件）", 12), IsChecked = false }, "building-gift");
         panel.Children.Add(gift);
         panel.Children.Add(Named(Button("建造设施", () =>
         {

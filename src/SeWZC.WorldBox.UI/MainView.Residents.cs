@@ -82,7 +82,7 @@ public sealed partial class MainView
         var resident = _engine.GetResident(id); if (resident is null) return;
         var archived = _engine.State.ArchivedResidents.Any(person => person.Id == id);
         _paused = true; _map.IsSimulationPaused = true; RefreshUi();
-        var panel = ModalPanel("编辑居民档案", "变更先统一校验，再应用到暂停中的世界。姓名与属性可编辑；编号、当前动作、移动插值由模拟维护。归属通过居住聚落确定。");
+        var panel = ModalPanel("编辑居民档案", "世界已暂停。修改后点击应用生效；迁居会改变国家归属。当前任务请在档案的目标编辑中调整。");
         var identity = new StackPanel { Spacing = 10 }; var condition = new StackPanel { Spacing = 10 }; var belonging = new StackPanel { Spacing = 10 }; var magic = new StackPanel { Spacing = 10 }; var possessions = new StackPanel { Spacing = 10 };
         var tabs = Named(new TabControl { ItemsSource = new[] { Named(new TabItem { Header = Text("身份", 12), Content = identity }, "resident-tab-identity"), Named(new TabItem { Header = Text("生理", 12), Content = condition }, "resident-tab-condition"), Named(new TabItem { Header = Text("归属", 12), Content = belonging }, "resident-tab-belonging"), Named(new TabItem { Header = Text("魔法", 12), Content = magic }, "resident-tab-magic"), Named(new TabItem { Header = Text("物品", 12), Content = possessions }, "resident-tab-possessions") }, SelectedIndex = 0 }, "resident-editor-tabs");
         panel.Children.Add(tabs);
