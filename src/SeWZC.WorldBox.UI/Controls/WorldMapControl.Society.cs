@@ -27,10 +27,10 @@ public sealed partial class WorldMapControl
 
     private static double BuildingHeight(BuildingKind kind) => kind switch
     {
-        BuildingKind.SignalTower => 16, BuildingKind.TownCenter or BuildingKind.PowerPlant => 13,
+        BuildingKind.SignalTower or BuildingKind.Watchtower => 16, BuildingKind.TownCenter or BuildingKind.PowerPlant => 13,
         BuildingKind.Academy or BuildingKind.Foundry or BuildingKind.AetherForge => 12,
         BuildingKind.Farm or BuildingKind.AutomatedFarm => 6.4,
-        BuildingKind.Bridge => 8, BuildingKind.MountainPass => 4, _ => 9.6
+        BuildingKind.Bridge => 8, BuildingKind.Dock => 6, BuildingKind.MountainPass => 4, _ => 9.6
     };
 
     private static Rect BuildingBounds(Building building)

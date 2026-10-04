@@ -398,7 +398,7 @@ public sealed partial class WorldEngine
             return;
         }
         if (ActOnProduction(person, home)) return;
-        var interactionRange = home.FoundationPending && goal.Kind == AgentGoalKind.ReturnHome ? 0 : goal.Kind == AgentGoalKind.ExtinguishFire ? 1 : goal.Kind is AgentGoalKind.FetchWater or AgentGoalKind.Hunt or AgentGoalKind.Fish or AgentGoalKind.ClaimLand ? 0 : goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest or AgentGoalKind.ReturnHome or AgentGoalKind.Socialize ? 1 : goal.TargetEntityId != 0 && FindBuilding(goal.TargetEntityId) is { } project && (!project.IsCompleted || project.IsUpgrading) ? 1 : 0;
+        var interactionRange = home.FoundationPending && goal.Kind == AgentGoalKind.ReturnHome ? 0 : goal.Kind == AgentGoalKind.ExtinguishFire ? 1 : goal.Kind is AgentGoalKind.FetchWater or AgentGoalKind.Hunt or AgentGoalKind.Fish or AgentGoalKind.ClaimLand ? 0 : goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest or AgentGoalKind.ReturnHome or AgentGoalKind.Socialize ? 1 : goal.TargetEntityId != 0 && FindBuilding(goal.TargetEntityId) is { } project && (!project.IsCompleted || project.IsUpgrading || IsWaterfrontBuilding(project.Kind) || project.Kind == BuildingKind.TownCenter) ? 1 : 0;
         if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > interactionRange || !Walkable(person.X, person.Y))
         {
             if (MoveAgentTowards(person, goal.TargetX, goal.TargetY)) person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + 0.15);
@@ -456,8 +456,8 @@ public sealed partial class WorldEngine
                 person.Agent.Fatigue = Math.Max(0, person.Agent.Fatigue - .4);
                 break;
             case AgentGoalKind.ReturnHome:
-                FinishFoundation(person, home);
                 TransferPersonalProduction(person, home);
+                FinishFoundation(person, home);
                 person.Activity = ResidentActivity.Resting;
                 person.Agent.Fatigue = Math.Max(0, person.Agent.Fatigue - 0.8 * HomeRestMultiplier(person));
                 person.Agent.NextThinkTick = home.FoundationPending ? State.Tick + 4 : State.Tick + 1;
@@ -510,85 +510,91 @@ public sealed partial class WorldEngine
     {
         if (!InBounds(targetX, targetY) || person.X == targetX && person.Y == targetY) return false;
         if (State.Tick - person.MoveStartedTick < person.MoveDurationTicks) return false;
-        PlanVisibleCrossing(person, targetX, targetY);
+        if (person.Agent.Goal.NavigationTarget == Index(targetX, targetY) && State.Tick < person.Agent.Goal.NavigationRetryTick) return false;
         var bestStep = SelectAgentStep(person, targetX, targetY);
-        if (bestStep < 0) return false;
+        if (State.Rules.Construction && person.TravelMode == TravelMode.Foot && HasResearch(person.SettlementId, ResearchKind.Logistics)
+            && Distance(person.X, person.Y, targetX, targetY) <= 6 && !IsWaterfrontBuilding(FindBuilding(person.Agent.Goal.TargetEntityId)?.Kind ?? BuildingKind.Farm))
+        {
+            var visible = MarkVisibleReachable(person);
+            if (_localMoveVisited[Index(targetX, targetY)] != visible) PlanVisibleCrossing(person, targetX, targetY);
+        }
+        if (bestStep < 0)
+        {
+            PlanVisibleCrossing(person, targetX, targetY);
+            person.Agent.Goal.NavigationRetryTick = State.Tick + 24;
+            person.Agent.Goal.Reason = "可见范围内没有可用路线，等待通道或重新选择任务";
+            if (!person.Agent.Goal.PlayerDirected)
+            { person.Agent.Goal.ReviewTick = State.Tick; person.Agent.NextThinkTick = State.Tick; }
+            return false;
+        }
         var xNext = bestStep % State.Width; var yNext = bestStep / State.Width;
         var terrain = State.Tiles[bestStep];
         var speed = person.TravelMode == TravelMode.Aircraft ? 2
-            : person.TravelMode == TravelMode.Boat && !terrain.IsWalkable ? 1.5
+            : person.TravelMode == TravelMode.Boat && !terrain.IsWalkable ? 1.5 * BoatTravelMultiplier(xNext, yNext, person.NationId)
             : person.Agent.DestinationSettlementId == 0 ? 1 / GetTerrainMoveCost(xNext, yNext)
             : MessageTravelMultiplier(xNext, yNext, person.NationId);
         var duration = Math.Clamp((int)Math.Round(2 / Math.Max(0.1, speed)), 1, 8);
         person.FromX = person.X; person.FromY = person.Y;
         person.X = bestStep % State.Width; person.Y = bestStep / State.Width;
         person.MoveStartedTick = State.Tick; person.MoveDurationTicks = duration;
+        var remaining = Distance(person.X, person.Y, targetX, targetY);
+        if (remaining < person.Agent.Goal.NavigationBestDistance)
+        { person.Agent.Goal.NavigationBestDistance = remaining; person.Agent.Goal.NavigationWithoutProgress = 0; }
+        else person.Agent.Goal.NavigationWithoutProgress = Math.Min(64, person.Agent.Goal.NavigationWithoutProgress + 1);
         return true;
     }
 
     private int SelectAgentStep(Resident person, int targetX, int targetY)
     {
-        var startDistance = Distance(person.X, person.Y, targetX, targetY);
-        var bestStep = -1;
-        var bestDistance = startDistance;
-        var previous = Index(person.FromX, person.FromY);
+        var goal = person.Agent.Goal;
+        var target = Index(targetX, targetY); var start = Index(person.X, person.Y);
+        if (goal.NavigationTarget != target)
+        {
+            goal.NavigationTarget = target; goal.NavigationVisited.Clear();
+            goal.NavigationBestDistance = Distance(person.X, person.Y, targetX, targetY);
+            goal.NavigationWithoutProgress = 0; goal.NavigationRetryTick = 0;
+        }
+        if (State.Tick < goal.NavigationRetryTick) return -1;
+        if (!goal.NavigationVisited.Contains(start))
+        {
+            if (goal.NavigationVisited.Count >= 256) return -1;
+            goal.NavigationVisited.Add(start);
+        }
         foreach (var (dx, dy) in Directions)
         {
             var x = person.X + dx; var y = person.Y + dy;
-            if (!CanTraverseStep(person.X, person.Y, x, y, person.TravelMode) || person.TravelMode != TravelMode.Aircraft && State.Tiles[Index(x, y)].FireTicks > 0) continue;
-            var distance = Distance(x, y, targetX, targetY);
-            if (distance > bestDistance || distance == bestDistance && (bestStep < 0 || bestStep != previous)) continue;
-            bestDistance = distance; bestStep = Index(x, y);
+            if (CanTraverseStep(person.X, person.Y, x, y, person.TravelMode)
+                && (person.TravelMode == TravelMode.Aircraft || State.Tiles[Index(x, y)].FireTicks == 0)
+                && Distance(x, y, targetX, targetY) < Distance(person.X, person.Y, targetX, targetY)
+                && !goal.NavigationVisited.Contains(Index(x, y))) return Index(x, y);
         }
-        if (bestStep == previous && (person.FromX != targetX || person.FromY != targetY))
-        { bestStep = -1; bestDistance = startDistance; }
-        if (bestStep < 0)
+        // Search only the six-cell visible horizon. Completed bridges use exactly
+        // the same directional edges here, in movement and in army pathfinding.
+        if (_localMoveVisited.Length != State.Tiles.Length) _localMoveVisited = new int[State.Tiles.Length];
+        if (_localMoveSearch == int.MaxValue) { Array.Clear(_localMoveVisited); _localMoveSearch = 0; }
+        var search = ++_localMoveSearch;
+        _localMoveVisited[start] = search; var head = 0; var tail = 1;
+        _localMoveQueue[0] = (start, -1, 0);
+        var bestStep = -1; var bestScore = double.PositiveInfinity;
+        while (head < tail)
         {
-            // A bounded local search can walk around visible obstacles without revealing remote terrain.
-            var start = Index(person.X, person.Y);
-            if (_localMoveVisited.Length != State.Tiles.Length) _localMoveVisited = new int[State.Tiles.Length];
-            if (_localMoveSearch == int.MaxValue) { Array.Clear(_localMoveVisited); _localMoveSearch = 0; }
-            var search = ++_localMoveSearch;
-            _localMoveVisited[start] = search;
-            var head = 0; var tail = 1;
-            _localMoveQueue[0] = (start, -1, 0);
-            while (head < tail)
-            {
-                var current = _localMoveQueue[head++];
-                if (current.Depth >= 6) continue;
-                foreach (var (dx, dy) in Directions)
-                {
-                    var x = current.Index % State.Width + dx; var y = current.Index / State.Width + dy;
-                    if (!CanTraverseStep(current.Index % State.Width, current.Index / State.Width, x, y, person.TravelMode) || person.TravelMode != TravelMode.Aircraft && State.Tiles[Index(x, y)].FireTicks > 0) continue;
-                    var index = Index(x, y);
-                    if (current.First < 0 && index == previous) continue;
-                    if (_localMoveVisited[index] == search) continue;
-                    _localMoveVisited[index] = search;
-                    var first = current.First < 0 ? index : current.First;
-                    var distance = Distance(x, y, targetX, targetY);
-                    if (distance < bestDistance) { bestDistance = distance; bestStep = first; }
-                    _localMoveQueue[tail++] = (index, first, current.Depth + 1);
-                }
-            }
-        }
-        if (bestStep < 0)
-        {
-            // When the visible horizon cannot yet improve distance, follow an obstacle edge instead
-            // of oscillating between the last two cells or standing still across a small lake.
-            var bestAny = -1; var bestForward = -1;
-            var bestAnyScore = int.MinValue; var bestForwardScore = int.MinValue;
+            var current = _localMoveQueue[head++]; if (current.Depth >= 6) continue;
             foreach (var (dx, dy) in Directions)
             {
-                var x = person.X + dx; var y = person.Y + dy;
-                if (!CanTraverseStep(person.X, person.Y, x, y, person.TravelMode) || person.TravelMode != TravelMode.Aircraft && State.Tiles[Index(x, y)].FireTicks > 0) continue;
-                var index = Index(x, y);
-                var score = dx * (targetX - person.X) + dy * (targetY - person.Y);
-                if (score > bestAnyScore) { bestAny = index; bestAnyScore = score; }
-                if (index != previous && score > bestForwardScore) { bestForward = index; bestForwardScore = score; }
+                var x = current.Index % State.Width + dx; var y = current.Index / State.Width + dy;
+                if (!CanTraverseStep(current.Index % State.Width, current.Index / State.Width, x, y, person.TravelMode)
+                    || person.TravelMode != TravelMode.Aircraft && State.Tiles[Index(x, y)].FireTicks > 0) continue;
+                var index = Index(x, y); if (_localMoveVisited[index] == search) continue;
+                _localMoveVisited[index] = search;
+                var first = current.First < 0 ? index : current.First;
+                if (index == target) return first;
+                var score = Distance(x, y, targetX, targetY) + (current.Depth + 1) * .05;
+                if (!goal.NavigationVisited.Contains(index) && score < bestScore)
+                { bestStep = first; bestScore = score; }
+                _localMoveQueue[tail++] = (index, first, current.Depth + 1);
             }
-            bestStep = bestForward >= 0 ? bestForward : bestAny;
         }
-        return bestStep;
+        return goal.NavigationWithoutProgress >= 64 ? -1 : bestStep;
     }
 
     private double AgentFoodPolicyMultiplier(Resident person)

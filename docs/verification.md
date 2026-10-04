@@ -1,5 +1,26 @@
 # 构建与验证记录
 
+## 2026-10-04：城镇扩充、设施选址、导航与建设地图
+
+首先拉取 `origin/main`，确认最新基线为 `1d99a25da8b85376f4c1dcf94561f91d950a430c`；推送前再次拉取也无新增提交。以下检查在该基线加本轮修改的提交前工作区执行，线上部署结果需另行核对；最终生产源码 SHA-256 为 `279ecd93f3a2288da116fb0b50a35c49577b543f30277cec6bc0682fdd545511`（88 文件）。摘要按 `src/` 相对路径排序 `.cs/.csproj/.axaml/.js/.html/.css`，排除 `bin/obj`，依次输入路径 UTF-8、NUL 和原始字节。环境为 Debian 13 / Linux x64、.NET SDK 10.0.401 / Runtime 10.0.12、Avalonia 12.1.3、Node 24.19.0、Playwright 1.57.0、Chromium 151.0.7922.173。
+
+- 最终 Release 构建通过，0 警告、0 错误。快速检查 **44/44 核心单元 + 34/34 Headless UI，6.75 秒**，包含两个进程启动。
+- 最终核心集成 **107/107，20.21 秒**；长程 **5/5，84.13 秒**。两个默认 256×256 科技世界（种子 73921、42）分别在第 3／4 年出现实际工业生产，继续运行百年并通过确定续演；六个生成世界的自然开局五年均无饥饿或脱水死亡。
+- 新核心回归覆盖付费扩充、独占面积及排除水中桥段、中心建筑等级独立、城级施工中途续演、水中船坞与码头分别从岸上造船／值守、缺粮失败不刷新码头加成、资源与肥力选址、同国邻居不可共用地块、水井共享实际额度、健康住宅容量及迁入接纳、建村距离／补给、12 人分摊材料后的实际建村，以及非法新增状态拒绝。导航回归覆盖错误轴向、受阻有界停止、探索不造桥、实际返乡目的地的连接轴向与付费施工、预算不足不建桥、保存后继续移动一致。
+- Headless UI 覆盖新增建筑工具分页、建设页面立即启用地图颜色、观察不改世界，以及替换／撤销世界清除旧城镇筛选。
+- 最终裁剪 WebAssembly 发布与静态资源检查通过，在 `/SeWZC.SandboxGame/` 子路径串行通过 **五套**真实 Chromium 检查：`infrastructure`、`visuals`、`smoke`、`mobile-smoke`、`survival-disasters`。建设图层在桌面及 390×844 触屏验证实际画面随城镇／类型筛选和显示开关变化、道路名单与只读保存；外观检查验证四种族造型、严重损伤、紧凑详情和生态图标。完整操作覆盖真实笔刷、材料扣除、编辑撤销、IndexedDB 保存、文件导入导出、刷新恢复、拖动／捏合和旋转。河湖“无限”说明、湿地日额度和局部起火同样在桌面／触屏通过。
+
+无非预期页面、控制台或渲染诊断错误；手机建设地图、筛选与详情截图已人工核对。日志、源摘要、当前格式视觉夹具及截图保存在本地忽略目录 `artifacts/town-verification/`。本地 HTML revision 标记为基线 `1d99a25`，生产源码摘要用于识别本轮验证的源码。格式及模拟版本升至 **11**，旧 alpha 世界需新建，不提供迁移。
+
+新增设施地图检查可在已经发布并启动静态预览后复现：
+
+```bash
+dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --export-visual-fixture artifacts/town-verification/visual.worldbox.json
+CHROMIUM_EXECUTABLE=/usr/bin/chromium WORLDBOX_BASE_URL=http://127.0.0.1:8080/SeWZC.SandboxGame/ node tests/browser/infrastructure.cjs artifacts/town-verification/visual.worldbox.json
+```
+
+本轮没有进行浏览器大人口性能对照、Firefox／Safari、真实 Android／iOS 或公网部署验收；上述模拟及浏览器功能结果不能换算为帧率，也不保证任意灾害或地理条件下完成全部发展。规则、工程参数与取舍见 [产品约定](product.md#城镇扩充设施选址与建设地图2026-10-04格式-11) 和 [ADR-0021](decisions/0021-town-expansion-and-infrastructure.md)。
+
 ## 2026-10-04：河湖无限供水
 
 从干净工作区拉取远端 `main`，确认最新基线仍为 `f5186beaa51209ffa8fdaa2e9d0ec20753c64185`；推送前再次拉取也无新增提交。本节记录该基线加本轮修改。生产源码 SHA-256 为 `1918fb2fd4c965a87489f301bd5910a160d8ed19b20b92db9b7c0e847e695c8a`（84 文件），生产与测试为 `3d0d5c110edfb9b2754920fce5710873335ac89ea71fadd5ecfa0e13a0121016`（129 文件），采用下文实地占地验证的相对路径、NUL、原始字节摘要口径。环境沿用 Debian 13 / x64、.NET SDK 10.0.401 / Runtime 10.0.12、Chromium 151.0.7922.173、Node 24.19.0、Playwright 1.57.0。

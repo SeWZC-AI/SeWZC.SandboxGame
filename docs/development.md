@@ -39,6 +39,7 @@
 | 时代路线、配方与加工运输 | Core 中 `AdvancementRules.cs`、`WorldEngine.Advancement.cs`；UI 中 `MainView.Society.cs` | `AdvancementTests.cs`、`tests/browser/advancement.cjs` |
 | 地块改造、矿藏与载具 | Core 中 `WorldEngine.Land.cs`、`WorldEngine.Transport.cs`、`WorldState.Land.cs`；UI 中 `MainView.Selection.cs`、`WorldMapControl.Transport.cs` | `LandTransportTests.cs`、`tests/browser/land.cjs` |
 | 制度、文化、研究、建设与魔法 | Core 中 `WorldEngine.Society.cs`、`SocietyRules.cs` | [SocietyBehaviorTests.cs](../tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs) |
+| 城镇扩充、设施选址与建设地图 | Core 中 `WorldEngine.Towns.cs`、`BuildingSites.cs`、`Claims.cs`；UI 中 `MainView.Buildings.cs`、`WorldMapControl.Infrastructure.cs` | [TownInfrastructureTests.cs](../tests/SeWZC.WorldBox.Core.Tests/TownInfrastructureTests.cs)、[infrastructure.cjs](../tests/browser/infrastructure.cjs) |
 | 角色编辑、存档校验 | Core 中 `WorldEngine.ResidentEditing.cs`、`WorldEngine.ValidationV2.cs`、`WorldEngine.Persistence.cs`、`WorldJsonContext.cs` | [EditorAndMigrationTests.cs](../tests/SeWZC.WorldBox.Core.Tests/EditorAndMigrationTests.cs)、`Program.cs`；文件名不表示支持旧存档迁移 |
 | 界面、工具与表单 | [UI](../src/SeWZC.WorldBox.UI/) 中 `MainView*.cs` | [smoke.cjs](../tests/browser/smoke.cjs)、[mobile-smoke.cjs](../tests/browser/mobile-smoke.cjs) |
 | 地图、命中与运动 | [Controls](../src/SeWZC.WorldBox.UI/Controls/) 中 `WorldMapControl*.cs`、`EntityMotionTrack.cs` | [motion.cjs](../tests/browser/motion.cjs)、触屏检查 |

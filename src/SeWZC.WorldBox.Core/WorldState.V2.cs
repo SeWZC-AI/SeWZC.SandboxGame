@@ -4,13 +4,13 @@ namespace SeWZC.WorldBox.Core;
 
 public enum EventImportance { Routine, Notable, Major, Historic }
 public enum AgentGoalKind { Idle, Eat, Gather, Work, Rest, Flee, Socialize, DeliverMessage, Trade, Petition, Study, TrainMagic, March, ReturnHome, Migrate, Explore, ClaimLand, FetchWater, Hunt, Fish, ExtinguishFire }
-public enum AgentFactKind { FoodSupply, Danger, SettlementLocation, ReliefRequest, Policy, WarOrder, PeaceOrder, Culture, Research, Personal, TradeExchange, DiplomaticNotice, WarReport, WaterSource }
+public enum AgentFactKind { FoodSupply, Danger, SettlementLocation, ReliefRequest, Policy, WarOrder, PeaceOrder, Culture, Research, Personal, TradeExchange, DiplomaticNotice, WarReport, WaterSource, FoundingSite }
 public enum PersonalExperienceKind { Neutral, Hardship, Achievement, Kindness, Betrayal, Learning }
 
 public sealed partial class WorldState
 {
     [JsonRequired]
-    public int SimulationVersion { get; set; } = 10;
+    public int SimulationVersion { get; set; } = 11;
     public SocietyState Society { get; set; } = new();
     public List<PendingMessage> PendingMessages { get; set; } = [];
     public List<Resident> ArchivedResidents { get; set; } = [];
@@ -111,6 +111,11 @@ public sealed class AgentState
 
 public sealed class AgentGoal
 {
+    public int NavigationTarget { get; set; } = -1;
+    public List<int> NavigationVisited { get; set; } = [];
+    public int NavigationBestDistance { get; set; }
+    public int NavigationWithoutProgress { get; set; }
+    public long NavigationRetryTick { get; set; }
     public int EvidenceFactId { get; set; }
     public int CauseEventId { get; set; }
     public AgentGoalKind Kind { get; set; }

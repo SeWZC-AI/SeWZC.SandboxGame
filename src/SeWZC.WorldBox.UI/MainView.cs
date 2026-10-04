@@ -53,7 +53,7 @@ public sealed partial class MainView : UserControl
     private readonly TextBlock _date = Text("", 13);
     private readonly TextBlock _population = Text("", 13, Mint);
     private readonly TextBlock _status = Text("正在唤醒世界…", 11, Muted);
-    private readonly TextBlock _version = Text("众生纪元  v0.3", 10, Muted);
+    private readonly TextBlock _version = Text("众生纪元  alpha", 10, Muted);
     private readonly TextBlock _simulationStatus = Text("世界正在演化", 11, Mint);
     private readonly Button _play;
     private TextBlock? _modalFeedback;
@@ -323,7 +323,7 @@ public sealed partial class MainView : UserControl
         _saveCapture?.Cancel();
         CancelMapPick();
         _engine = WorldEngine.ImportJson(_checkpoint); _checkpoint = null; _paused = true;
-        ClearMapSelection(); _selectedTile = null; _selectedNationId = 0; _selectedResidentId = 0; _inspectorMode = "overview"; InvalidateInspector();
+        ClearMapSelection(); ResetInfrastructureFilters(); _selectedTile = null; _selectedNationId = 0; _selectedResidentId = 0; _inspectorMode = "overview"; InvalidateInspector();
         _map.Engine = _engine; _map.IsSimulationPaused = true; _map.RefreshWorld(); UpdateToolContext(); RefreshUi(true); SetStatus("已恢复到本轮编辑之前");
     }
     private void UpdateSpeedButtons()
@@ -511,7 +511,7 @@ public sealed partial class MainView : UserControl
     {
         _saveCapture?.Cancel();
         CancelMapPick();
-        ClearMapSelection(); _checkpoint ??= _engine.ExportJson(); _engine = engine; _paused = true; _accumulator = 0; _selectedTile = null; _selectedNationId = 0;
+        ClearMapSelection(); ResetInfrastructureFilters(); _checkpoint ??= _engine.ExportJson(); _engine = engine; _paused = true; _accumulator = 0; _selectedTile = null; _selectedNationId = 0;
         _lastStepMilliseconds = _lastMapRefreshMilliseconds = 0;
         _allowAutosave = true;
         _inspectorMode = "overview"; _selectedResidentId = 0; _navigation.Clear(); _watched.Clear(); _historyWatchedOnly = false; _eventDetailId = 0; InvalidateInspector();
@@ -687,7 +687,7 @@ public sealed partial class MainView : UserControl
     }
     private static string RaceName(RaceKind race) => race switch { RaceKind.Human => "人类", RaceKind.Elf => "精灵", RaceKind.Dwarf => "矮人", _ => "兽人" };
     private static string TerrainName(TerrainType terrain) => terrain switch { TerrainType.DeepWater => "深海", TerrainType.Water => "浅海", TerrainType.Sand => "沙地", TerrainType.Grass => "草地", TerrainType.Forest => "森林", TerrainType.Mountain => "山脉", TerrainType.Snow => "雪原", TerrainType.Hills => "丘陵", TerrainType.Wetland => "湿地", TerrainType.Desert => "荒漠", TerrainType.River => "河流", TerrainType.Lake => "湖泊", TerrainType.DryFertile => "旱原", _ => "苔原" };
-    private static string ProfessionName(Profession job) => job switch { Profession.Child => "孩童", Profession.Farmer => "农民", Profession.Lumberjack => "伐木工", Profession.Miner => "矿工", Profession.Soldier => "战士", Profession.Builder => "建造者", Profession.Trader => "商人", Profession.Messenger => "信使", Profession.Representative => "代表", Profession.Scholar => "学者", _ => "法师" };
+    private static string ProfessionName(Profession job) => WorldEngine.ProfessionName(job);
     private static string ActivityName(ResidentActivity activity) => activity switch { ResidentActivity.Wandering => "探索土地", ResidentActivity.Working => "正在工作", ResidentActivity.Hungry => "寻找食物", ResidentActivity.Marching => "正在行军", ResidentActivity.Sick => "正在养病", ResidentActivity.Eating => "正在进食", ResidentActivity.Resting => "正在休息", ResidentActivity.Talking => "交换消息", ResidentActivity.Delivering => "执行运输", ResidentActivity.Studying => "正在学习", ResidentActivity.Casting => "正在施法", _ => "躲避危险" };
 
 }

@@ -239,6 +239,7 @@ public sealed partial class WorldMapControl : Control
                 }
             }
             DrawLabels(context, state);
+            DrawInfrastructureLegend(context);
             DrawSelection(context);
             DrawPlacementHint(context);
             DrawResidentSelection(context);

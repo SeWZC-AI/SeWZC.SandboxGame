@@ -32,7 +32,8 @@ public sealed partial class WorldEngine
     public static double BuildingFlammability(Building building) => (building.Kind switch
     {
         BuildingKind.MountainPass => 0,
-        BuildingKind.Farm or BuildingKind.Waystation or BuildingKind.Dock or BuildingKind.Bridge => .8,
+        BuildingKind.Farm or BuildingKind.Waystation or BuildingKind.Dock or BuildingKind.Shipyard or BuildingKind.LumberCamp or BuildingKind.Granary or BuildingKind.Housing or BuildingKind.Market or BuildingKind.Watchtower or BuildingKind.Bridge => .8,
+        BuildingKind.Well or BuildingKind.Quarry => .15,
         BuildingKind.Workshop or BuildingKind.TownCenter => .6,
         BuildingKind.Academy or BuildingKind.Infirmary or BuildingKind.RunicGarden => .35,
         _ => .15

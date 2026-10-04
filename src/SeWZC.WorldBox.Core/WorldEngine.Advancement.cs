@@ -16,7 +16,7 @@ public sealed partial class WorldEngine
     public static string ResearchDescription(ResearchKind kind)
     {
         var a = AdvancementRules.For(kind);
-        return a is null ? kind == ResearchKind.SignalNetwork ? "阶段：近现代\n前置：电气化\n解锁无线信号塔通信。" : kind == ResearchKind.Logistics ? "古代交通：解锁驿站、桥梁、山路和船坞码头；舟船由居民制造并实际运回。" : "在已建成学舍由实际到场人员推进。"
+        return a is null ? kind == ResearchKind.SignalNetwork ? "阶段：近现代\n前置：电气化\n解锁无线信号塔通信。" : kind == ResearchKind.Logistics ? "古代交通：解锁驿站、桥梁、山路和船坞与码头；舟船由居民制造并实际运回。" : "在已建成学舍由实际到场人员推进。"
             : $"路线：{(a.Magic ? "魔法" : "科技")}\n阶段：{a.Stage}\n前置：{string.Join("、", a.Prerequisites.Select(ResearchName))}\n解锁设施：{a.FacilityName}\n{ProductionRecipe(a.Facility)}";
     }
 
@@ -67,6 +67,8 @@ public sealed partial class WorldEngine
         if (a is null)
         {
             var town = RequireTown(building.SettlementId);
+            if (building.Kind == BuildingKind.TownCenter && town.IsExpanding)
+                return $"组织城镇扩充：{town.ExpansionProgress:0.#} / {town.ExpansionRequired:0}\n到场工人 {workers}/{building.WorkSlots}";
             var research = State.Society.Research.First(r => r.SettlementId == town.Id);
             var activity = building.Kind switch
             {
@@ -80,7 +82,7 @@ public sealed partial class WorldEngine
                 BuildingKind.Waystation => "功能：值守驿站，改善附近信使通行",
                 _ => BuildingDescription(building.Kind)
             };
-            return activity + (building.Kind is BuildingKind.TownCenter or BuildingKind.Bridge or BuildingKind.MountainPass ? "" : $"\n到场工作 {workers}/{building.WorkSlots} 人");
+            return activity + (PassiveFacility(building) || building.Kind is BuildingKind.TownCenter or BuildingKind.Bridge or BuildingKind.MountainPass ? "" : $"\n到场工作 {workers}/{building.WorkSlots} 人");
         }
         var requirement = ProductionRequirement(building, a);
         if (requirement is not null) return requirement;

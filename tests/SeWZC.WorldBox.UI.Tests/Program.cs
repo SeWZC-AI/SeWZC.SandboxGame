@@ -67,10 +67,11 @@ static void ToolPagination()
     var engine = TwoTownWorld(); var view = View(engine); var map = Map(view); var before = engine.ExportJson();
     Call(view, "SetCategory", "build");
     var found = new HashSet<string>();
-    for (var page = 0; page < 3; page++)
+    var pageCount = (Enum.GetValues<BuildingKind>().Length + 7) / 8;
+    for (var page = 0; page < pageCount; page++)
     {
         foreach (var tool in Field<string?[]>(view, "_slotTools")) if (tool is not null) found.Add(tool);
-        if (page < 2) Click(view, "tool-page-next");
+        if (page < pageCount - 1) Click(view, "tool-page-next");
     }
     Assert(Enum.GetValues<BuildingKind>().Where(k => k != BuildingKind.TownCenter).All(k => found.Contains("build:" + k)) && found.Contains("road:Road"), "Pagination hid a real tool");
     Call(view, "SelectTool", "Human");
@@ -90,7 +91,11 @@ static void BuildingControls()
     Assert(!engine.TryWorkAtBuilding(engine.State.Residents[0]), "Stopped workshop still performed work");
     Click(view, "building-toggle"); Assert(building.Enabled, "Building did not resume");
     engine.BuildRoad(engine.State.Settlements[0].Id, 35, 32, 0);
-    Call(view, "OpenInspector", "structures", true); Control<ComboBox>(view, "structures-kind").SelectedIndex = 1;
+    var saved = engine.ExportJson();
+    Call(view, "OpenInspector", "structures", true);
+    Assert(Map(view).Overlay == 4, "Structures page did not activate map colors");
+    Assert(engine.ExportJson() == saved, "Activating infrastructure colors changed the simulation");
+    Control<ComboBox>(view, "structures-kind").SelectedIndex = 1;
     Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("道路 1 级") == true), "Road listing omitted actual road");
 }
 
@@ -598,17 +603,21 @@ static void ReplaceWorldPlacement()
     var view = View(big);
     var map = Map(view);
     Preview(map, 80, 200);
+    map.InfrastructureTownId = 999; map.InfrastructureKind = BuildingKind.Housing;
     var small = WorldEngine.Create(42, 128, 128, false);
     Call(view, "ReplaceWorld", small);
     Assert(!map.HasPendingPlacement, "Replacing the world must remove old pending placement");
+    Assert(map.InfrastructureTownId == 0 && map.InfrastructureKind is null, "Old town filters hid buildings in the replacement world");
     Assert(!Field<Border>(view, "_placementBar").IsVisible, "The old confirmation bar must disappear");
     var before = small.ExportJson();
     map.ConfirmPlacement();
     Assert(small.ExportJson() == before, "A late confirmation must not affect the replacement world");
 
     Preview(map, 10, 10);
+    map.InfrastructureTownId = 999; map.InfrastructureKind = BuildingKind.Housing;
     Call(view, "RestoreCheckpoint");
     Assert(map.Engine!.State.Width == 256 && !map.HasPendingPlacement, "Undoing world replacement must also clear pending placement");
+    Assert(map.InfrastructureTownId == 0 && map.InfrastructureKind is null, "Undo kept a filter for the discarded world");
 }
 
 static void PlacementBounds()

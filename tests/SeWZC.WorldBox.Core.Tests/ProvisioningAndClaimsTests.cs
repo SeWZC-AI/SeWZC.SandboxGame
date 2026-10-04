@@ -184,10 +184,15 @@ internal static class ProvisioningAndClaimsTests
         var research = e.State.Society.Research.Single(); research.Completed = Enum.GetValues<ResearchKind>().ToList();
         foreach (var kind in AdvancementRules.Resources) town.Resources.Set(kind, 10_000);
         e.PaintTerrain(18, 16, TerrainType.River, 0);
+        e.PaintTerrain(20, 16, TerrainType.River, 0);
+        e.PaintTerrain(14, 20, TerrainType.Forest, 0);
+        e.PaintTerrain(18, 20, TerrainType.Hills, 0);
+        e.PaintTerrain(12, 19, TerrainType.Wetland, 0);
         foreach (var kind in Enum.GetValues<BuildingKind>())
         {
             if (kind is BuildingKind.Bridge or BuildingKind.MountainPass || e.State.Society.Buildings.Any(b => b.Kind == kind)) continue;
-            var site = Enumerable.Range(0, e.State.Tiles.Length).First(i => e.FacilityPlacementError(town.Id, kind, i % 32, i / 32, true) is null);
+            var site = Enumerable.Range(0, e.State.Tiles.Length).FirstOrDefault(i => e.FacilityPlacementError(town.Id, kind, i % 32, i / 32, true) is null, -1);
+            Check(site >= 0, "Fixture has no suitable terrain for " + kind);
             e.GrantFacility(town.Id, kind, site % 32, site / 32);
         }
         var farm = e.State.Society.Buildings.First(b => b.Kind == BuildingKind.Farm);

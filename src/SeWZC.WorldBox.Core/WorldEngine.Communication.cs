@@ -82,6 +82,18 @@ public sealed partial class WorldEngine
 
     private void ObserveAgentEnvironment(Resident person)
     {
+        if (State.Rules.Expansion && person.Profession is Profession.Builder or Profession.Messenger or Profession.Trader
+            && _settlements.TryGetValue(person.SettlementId, out var camp) && !camp.FoundationPending
+            && Distance(person.X, person.Y, camp.X, camp.Y) >= MinimumSettlementDistance - 6)
+        {
+            var site = Circle(person.X, person.Y, 3).Where(i => State.Tiles[i].IsWalkable && State.Tiles[i].Fertility >= 40
+                && State.Tiles[i].ClaimedSettlementId == 0 && State.Tiles[i].FireTicks == 0
+                && State.Settlements.All(t => Distance(t.X, t.Y, i % State.Width, i / State.Width) >= MinimumSettlementDistance))
+                .OrderByDescending(i => State.Tiles[i].Fertility).ThenBy(i => i).FirstOrDefault(-1);
+            if (site >= 0 && !person.Agent.Memory.Any(f => f.Kind == AgentFactKind.FoundingSite && State.Tick - f.ObservedTick < 120))
+                RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.FoundingSite, camp.Id, site % State.Width, site / State.Width,
+                    State.Tiles[site].Fertility, "亲眼勘察到符合间距的建村地块，需带回报告"), copy: false);
+        }
         foreach (var town in State.Settlements)
         {
             if (Distance(person.X, person.Y, town.X, town.Y) > 3) continue;
@@ -117,7 +129,11 @@ public sealed partial class WorldEngine
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.ReliefRequest,
                     town.Id, town.X, town.Y, person.Hunger, $"亲历饥饿 {person.Hunger:0}，家园粮少，请求救济"), copy: false);
         }
-        var dangerIndex = Circle(person.X, person.Y, 3).Where(i => State.Tiles[i].FireTicks > 0)
+        var observationRadius = 3;
+        foreach (var tower in State.Society.Buildings)
+            if (tower.SettlementId == person.SettlementId && tower.Kind == BuildingKind.Watchtower && IsFacilityOperating(tower)
+                && Distance(person.X, person.Y, tower.X, tower.Y) <= 2) observationRadius = Math.Max(observationRadius, 3 + tower.Level);
+        var dangerIndex = Circle(person.X, person.Y, observationRadius).Where(i => State.Tiles[i].FireTicks > 0)
             .OrderBy(i => Distance(person.X, person.Y, i % State.Width, i / State.Width)).FirstOrDefault(-1);
         if (dangerIndex >= 0)
             RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.Danger,
@@ -182,7 +198,9 @@ public sealed partial class WorldEngine
             if ((State.Tick + sender.Id) % 12 != 0 || State.Tick - sender.Agent.LastConversationTick < 6
                 || sender.Health <= 0) continue;
             _conversationNeighbors.Clear();
-            foreach (var tile in Circle(sender.X, sender.Y, 2))
+            var conversationRadius = State.Society.Buildings.Any(b => b.Kind == BuildingKind.Market && IsFacilityOperating(b)
+                && Distance(sender.X, sender.Y, b.X, b.Y) <= 3) ? 3 : 2;
+            foreach (var tile in Circle(sender.X, sender.Y, conversationRadius))
                 for (var at = _conversationHeads[tile]; at != 0; at = _conversationNext[at - 1])
                 {
                     var neighbor = State.Residents[at - 1];
@@ -232,19 +250,19 @@ public sealed partial class WorldEngine
 
     private List<AgentFact> SelectMessageFacts(Resident sender, bool relay)
     {
-        AgentFact? first = null, second = null, third = null;
+        var rank = _settlements.TryGetValue(sender.SettlementId, out var home) && Distance(sender.X, sender.Y, home.X, home.Y) <= 3 ? (int)home.Tier : 0;
+        var capacity = relay ? 3 : 3 + rank * 2;
+        var selected = new List<AgentFact>(capacity);
         foreach (var fact in sender.Agent.Memory)
         {
             if (fact.LearnedTick >= State.Tick || fact.Confidence <= (relay ? 0.25 : 0.15) || !relay && fact.Hops >= 12) continue;
-            if (first is null || MessageFactPrecedes(fact, first, relay)) { third = second; second = first; first = fact; }
-            else if (second is null || MessageFactPrecedes(fact, second, relay)) { third = second; second = fact; }
-            else if (third is null || MessageFactPrecedes(fact, third, relay)) third = fact;
+            var at = 0;
+            while (at < selected.Count && !MessageFactPrecedes(fact, selected[at], relay)) at++;
+            if (at >= capacity) continue;
+            selected.Insert(at, fact);
+            if (selected.Count > capacity) selected.RemoveAt(capacity);
         }
-        var selected = new List<AgentFact>(3);
-        if (first is not null) selected.Add(CopyAgentFact(first));
-        if (second is not null) selected.Add(CopyAgentFact(second));
-        if (third is not null) selected.Add(CopyAgentFact(third));
-        return selected;
+        return selected.Select(CopyAgentFact).ToList();
     }
 
     private static bool MessageFactPrecedes(AgentFact candidate, AgentFact current, bool relay)

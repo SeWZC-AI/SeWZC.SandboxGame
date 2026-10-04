@@ -10,6 +10,14 @@ public sealed partial class MainView
     private int _structurePage;
     private bool _listRoads;
     private string _structureSearch = "";
+    private int _structuresTownId;
+    private BuildingKind? _structuresBuildingKind;
+
+    private void ResetInfrastructureFilters()
+    {
+        _structuresTownId = 0; _structuresBuildingKind = null; _structurePage = 0; _structureSearch = "";
+        _map.InfrastructureTownId = 0; _map.InfrastructureKind = null;
+    }
 
     private string BuildingLabel(Building building)
     {
@@ -85,6 +93,26 @@ public sealed partial class MainView
 
     private void BuildStructuresInspector(StackPanel panel)
     {
+        if (!_engine.State.Settlements.Any(t => t.Id == _structuresTownId)) _structuresTownId = 0;
+        _map.InfrastructureTownId = _structuresTownId; _map.InfrastructureKind = _structuresBuildingKind;
+        _map.Overlay = 4; _map.RefreshWorld();
+        panel.Children.Add(Paragraph("地图已启用建设图层。颜色表示设施用途，黄色地块表示道路；仅显示可步行连通的道路连接。"));
+        panel.Children.Add(Paragraph("绿：农业   蓝：交通   紫：知识与通信\n橙：材料与工业   青：公共设施   白：中心\n金黄：施工或升级   红：严重受损   灰：停用"));
+        panel.Children.Add(Named(Button("收起面板查看地图", CloseInspector), "structures-map"));
+        var towns = _engine.State.Settlements.OrderBy(t => t.Id).ToArray();
+        var townFilter = Named(new ComboBox { ItemsSource = new[] { "全部城镇" }.Concat(towns.Select(t => t.Name)).ToArray(),
+            SelectedIndex = Math.Max(0, Array.FindIndex(towns, t => t.Id == _structuresTownId) + 1), HorizontalAlignment = HorizontalAlignment.Stretch }, "structures-town");
+        townFilter.SelectionChanged += (_, _) => { _structuresTownId = townFilter.SelectedIndex > 0 ? towns[townFilter.SelectedIndex - 1].Id : 0;
+            _map.InfrastructureTownId = _structuresTownId; _structurePage = 0; InvalidateInspector(); RefreshInspector(); _map.RefreshWorld(); }; panel.Children.Add(townFilter);
+        var kinds = Enum.GetValues<BuildingKind>();
+        var kindFilter = Named(new ComboBox { ItemsSource = new[] { "全部建筑种类" }.Concat(kinds.Select(WorldEngine.BuildingName)).ToArray(),
+            SelectedIndex = _structuresBuildingKind is { } selectedKind ? Array.IndexOf(kinds, selectedKind) + 1 : 0, HorizontalAlignment = HorizontalAlignment.Stretch }, "structures-building-kind");
+        kindFilter.SelectionChanged += (_, _) => { _structuresBuildingKind = kindFilter.SelectedIndex > 0 ? kinds[kindFilter.SelectedIndex - 1] : null;
+            _map.InfrastructureKind = _structuresBuildingKind; _structurePage = 0; InvalidateInspector(); RefreshInspector(); _map.RefreshWorld(); }; panel.Children.Add(kindFilter);
+        var showBuildings = Named(new CheckBox { Content = "地图显示建筑", IsChecked = _map.HighlightBuildings }, "structures-show-buildings");
+        showBuildings.IsCheckedChanged += (_, _) => { _map.HighlightBuildings = showBuildings.IsChecked == true; _map.RefreshWorld(); }; panel.Children.Add(showBuildings);
+        var showRoads = Named(new CheckBox { Content = "地图显示道路", IsChecked = _map.HighlightRoads }, "structures-show-roads");
+        showRoads.IsCheckedChanged += (_, _) => { _map.HighlightRoads = showRoads.IsChecked == true; _map.RefreshWorld(); }; panel.Children.Add(showRoads);
         var mode = Named(new ComboBox { ItemsSource = new[] { "建筑", "道路地块" }, SelectedIndex = _listRoads ? 1 : 0,
             HorizontalAlignment = HorizontalAlignment.Stretch }, "structures-kind");
         mode.SelectionChanged += (_, _) => { _listRoads = mode.SelectedIndex == 1; _structurePage = 0; InvalidateInspector(); RefreshInspector(); }; panel.Children.Add(mode);
@@ -99,8 +127,11 @@ public sealed partial class MainView
             if (sampledTick == _engine.State.Tick && sampledEventId == latestEventId && sampledSearch == _structureSearch) return;
             sampledTick = _engine.State.Tick; sampledEventId = latestEventId; sampledSearch = _structureSearch;
             if (_listRoads) roadRows = Enumerable.Range(0, _engine.State.Tiles.Length)
-                .Where(i => _engine.State.Tiles[i].RoadLevel > 0 && Matches(NationName(_engine.State.Tiles[i].NationId))).ToArray();
-            else buildingRows = _engine.State.Society.Buildings.OrderBy(b => b.Id).Where(b => Matches(BuildingLabel(b) + TownName(b.SettlementId))).ToArray();
+                .Where(i => _engine.State.Tiles[i].RoadLevel > 0 && (_structuresTownId == 0 || _engine.State.Tiles[i].ClaimedSettlementId == _structuresTownId)
+                    && Matches(NationName(_engine.State.Tiles[i].NationId) + TownName(_engine.State.Tiles[i].ClaimedSettlementId))).ToArray();
+            else buildingRows = _engine.State.Society.Buildings.OrderBy(b => b.SettlementId).ThenBy(b => b.Kind).ThenBy(b => b.Id)
+                .Where(b => (_structuresTownId == 0 || b.SettlementId == _structuresTownId) && (!_structuresBuildingKind.HasValue || b.Kind == _structuresBuildingKind)
+                    && Matches(BuildingLabel(b) + TownName(b.SettlementId) + NationName(_engine.State.Settlements.First(t => t.Id == b.SettlementId).NationId))).ToArray();
         }
         _inspectorUpdates.Add(SampleRows); SampleRows();
         IEnumerable<Building> Buildings() => buildingRows;
@@ -113,7 +144,7 @@ public sealed partial class MainView
         _inspectorUpdates.Add(() => _structurePage = Math.Clamp(_structurePage, 0, Math.Max(0, (Count() - 1) / 20)));
         if (_listRoads)
             LiveRows(panel, () => Roads().Skip(_structurePage * 20).Take(20), i => i.ToString(),
-                i => $"道路 {_engine.State.Tiles[i].RoadLevel} 级\n位置 {i % _engine.State.Width}, {i / _engine.State.Width}\n归属：{NationName(_engine.State.Tiles[i].NationId)}\n步行耗时系数 {_engine.GetTerrainMoveCost(i % _engine.State.Width, i / _engine.State.Width):0.##}",
+                i => $"{(_engine.State.Tiles[i].Improvement == LandImprovement.Bridge ? "桥梁 " + WorldEngine.BridgeDirectionName(_engine.State.Tiles[i].BridgeDirection) : "道路")} {_engine.State.Tiles[i].RoadLevel} 级\n位置 {i % _engine.State.Width}, {i / _engine.State.Width}\n归属：{TownName(_engine.State.Tiles[i].ClaimedSettlementId)}\n步行耗时系数 {_engine.GetTerrainMoveCost(i % _engine.State.Width, i / _engine.State.Width):0.##}",
                 i => { _selectedTile = (i % _engine.State.Width, i / _engine.State.Width); _map.FocusTile(_selectedTile.Value.X, _selectedTile.Value.Y); OpenInspector("tile"); });
         else LiveRows(panel, () => Buildings().Skip(_structurePage * 20).Take(20), b => b.Id.ToString(),
             b => $"{BuildingLabel(b)}   {TownName(b.SettlementId)}\n{BuildingTask(b)}", OpenBuilding);

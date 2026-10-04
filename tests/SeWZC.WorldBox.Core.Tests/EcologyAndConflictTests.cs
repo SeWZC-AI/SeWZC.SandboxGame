@@ -5,7 +5,7 @@ internal static class EcologyAndConflictTests
 {
     public static IEnumerable<(string Name, Action Run)> Cases =>
     [
-        ("settlements resize names and keep a real center through relocation", Centers),
+        ("settlements retain their paid tier and keep a real center through relocation", Centers),
         ("ecology grows toward habitat capacity, migrates and survives save resume", Ecology),
         ("multiple species share land, migrate into occupied habitats and persist", Coexistence),
         ("ecology animals in unsuitable or overpopulated land decline gradually", Decline),
@@ -49,8 +49,8 @@ internal static class EcologyAndConflictTests
     {
         var engine = Empty(); engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         var town = engine.State.Settlements.Single(); Require(town.Name.EndsWith('村'), "Small settlement is not a village");
-        engine.SpawnResidents(16, 16, RaceKind.Human, 59); Require(town.Name.EndsWith('镇'), "Town name did not grow with population");
-        engine.SpawnResidents(16, 16, RaceKind.Human, 100); Require(town.Name.EndsWith('城'), "City name did not grow with population");
+        engine.SpawnResidents(16, 16, RaceKind.Human, 59); Require(town.Name.EndsWith('村'), "Population bypassed paid town expansion");
+        engine.SpawnResidents(16, 16, RaceKind.Human, 100); Require(town.Name.EndsWith('村'), "Population bypassed paid city expansion");
         var center = engine.State.Society.Buildings.Single(b => b.Kind == BuildingKind.TownCenter && b.SettlementId == town.Id);
         engine.PaintTerrain(16, 16, TerrainType.Water, 0);
         Require(center.X == town.X && center.Y == town.Y && engine.State.Society.Buildings.Contains(center), "Relocated settlement lost its real center");

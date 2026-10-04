@@ -25,8 +25,10 @@ fs.mkdirSync(output, { recursive: true });
                 for (let i = 0; i < stations.length; i++) {
                     const station = stations[i]; await ui.openOverview(); await ui.click('overview-structures', { scroll: 'inspector-scroll' });
                     await ui.fill('structures-search', '驿站', { scroll: 'inspector-scroll' });
-                    await ui.waitFor(s => s.controls.some(c => c.id === `building-row-${station.Id}`), 'filtered station');
+                    await ui.waitFor(s => s.controls.filter(c => c.id.startsWith('building-row-')).length === stations.length
+                        && s.controls.some(c => c.id === `building-row-${station.Id}`), 'settled station search');
                     await ui.click(`building-row-${station.Id}`, { scroll: 'inspector-scroll' });
+                    await ui.waitFor(s => s.inspector === 'building' && s.controls.some(c => c.id === 'building-health'), 'opened building details');
                     let s = await ui.snapshot(); const health = ui.control(s, 'building-health');
                     assert(health.visible && health.value.includes('23 / 100') && health.value.includes('低于 50'), 'Damage and consequences must be visible outside the fold');
                     assert.equal(ui.control(s, 'building-condition').value, 'False');

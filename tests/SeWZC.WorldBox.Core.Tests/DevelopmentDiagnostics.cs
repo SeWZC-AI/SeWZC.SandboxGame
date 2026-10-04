@@ -58,7 +58,8 @@ internal static class DevelopmentDiagnostics
                 var research = state.Society.Research.First(r => r.SettlementId == town.Id);
                 return new
                 {
-                    town.Id, town.Name, town.NationId, focus = engine.GetDevelopmentFocus(town.Id).ToString(), town.X, town.Y, town.Population, town.Housing, town.Level,
+                    town.Id, town.Name, town.NationId, focus = engine.GetDevelopmentFocus(town.Id).ToString(), town.X, town.Y, town.Population,
+                    housing = engine.GetHousingCapacity(town.Id), tier = WorldEngine.SettlementTierName(town.Tier), exclusiveLand = engine.GetSettlementArea(town.Id),
                     stock = new { town.Resources.Food, town.Resources.Water, town.Resources.Wood, town.Resources.Stone, town.Resources.Ore },
                     policy = engine.GetLocalPolicy(town.Id).ToString(),
                     hunger = people.Average(p => p.Hunger), thirst = people.Average(p => p.Thirst), health = people.Average(p => p.Health),
