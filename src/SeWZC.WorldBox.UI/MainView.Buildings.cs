@@ -38,19 +38,16 @@ public sealed partial class MainView
         Building? Current() => _engine.State.Society.Buildings.FirstOrDefault(b => b.Id == id);
         if (Current() is not { } building) { panel.Children.Add(Paragraph("建筑已被移除，可在建筑与道路列表查看其他设施。")); return; }
         panel.Children.Add(LiveText(() => Current() is { } b ? BuildingLabel(b) : "建筑已不存在", 18, Mint));
-        panel.Children.Add(Named(LiveText(() => Current() is { } b ? $"建筑生命 {b.Health:0.#} / 100" +
-            (b.Health <= 0 ? "   已损毁" : b.Health < 50 ? "   低于 50，暂停工作" : b.Health < 100 ? "   有损伤，未达停工阈值" : "   结构完好") : "建筑已不存在"), "building-health"));
-        panel.Children.Add(Paragraph(WorldEngine.BuildingDescription(building.Kind)));
+        panel.Children.Add(Named(LiveText(() => Current() is { } b ? $"建筑生命 {b.Health:0.#} / 100" : "建筑已不存在"), "building-health"));
         panel.Children.Add(Named(LiveText(() => Current() is { } b ? $"等级 {b.Level} / 3" +
             (b.IsUpgrading ? $"\n{(b.PendingDirection.HasValue ? "改向" : "升级")}施工 {b.UpgradeProgress:0.0} / {b.UpgradeRequired:0}" : "") : ""), "building-level"));
-        panel.Children.Add(Text("提供的加成与生效条件", 13, Mint));
-        panel.Children.Add(Named(LiveText(() => EffectLabel(_engine.GetBuildingEffects(id))), "building-effects"));
-        panel.Children.Add(LiveText(() => Current() is not { } b ? "建筑已不存在" :
-            !b.IsCompleted ? $"施工：{b.ConstructionProgress:0.0} / {b.ConstructionRequired:0}\n" + _engine.GetProductionStatus(b.Id)
-            : _engine.GetProductionStatus(b.Id)));
-        var condition = FoldSection(panel, "建筑状态与工作记录", "building-condition");
+        panel.Children.Add(Named(LiveText(() => _engine.GetBuildingDetailStatus(id)), "building-status"));
+        panel.Children.Add(Named(LiveText(() => EffectLabel(_engine.GetBuildingEffects(id).Where(e => e.Name is not ("建筑耐火" or "下一级")).ToArray())), "building-effects"));
+        panel.Children.Add(Named(LiveText(() => string.Join("\n", _engine.GetBuildingEffects(id).Where(e => e.Name == "下一级"))), "building-next-level"));
+        var condition = FoldSection(panel, "位置、耐火与工作记录", "building-condition");
         condition.Children.Add(LiveText(() => Current() is not { } b ? "建筑已不存在" :
-            $"聚落：{TownName(b.SettlementId)}\n最近工作：{DateLabel(b.LastWorkedTick)}   累计加工 {b.ProductionBatches} 批"));
+            $"聚落：{TownName(b.SettlementId)}\n位置：{b.X}, {b.Y}" + (b.LastWorkedTick >= 0 ? $"\n最近工作：{DateLabel(b.LastWorkedTick)}" : "")));
+        condition.Children.Add(LiveText(() => string.Join("\n", _engine.GetBuildingEffects(id).Where(e => e.Name == "建筑耐火"))));
         var actions = new WrapPanel { Orientation = Orientation.Horizontal };
         panel.Children.Add(actions);
         actions.Children.Add(Named(Button("定位建筑", () => { if (Current() is { } b) _map.FocusTile(b.X, b.Y); CloseInspector(); }), "building-locate"));
@@ -67,9 +64,12 @@ public sealed partial class MainView
             }), "building-toggle");
             _inspectorUpdates.Add(() => toggle.Content = Current()?.Enabled == true ? "停用建筑" : "恢复运营"); actions.Children.Add(toggle);
         }
-        panel.Children.Add(Text("实际到场工作人员", 13, Mint));
-        LiveRows(panel, () => Current() is { } b ? _engine.State.Residents.Where(r => b.Workers.Contains(r.Id) && _engine.State.Tick - b.LastWorkedTick <= 1) : [],
-            r => r.Id.ToString(), r => r.Name + "   " + ProfessionName(r.Profession) + "\n" + ResidentTask(r), r => OpenResident(r.Id));
+        IEnumerable<Resident> OnSiteWorkers() => Current() is { } b ? _engine.State.Residents.Where(r => b.Workers.Contains(r.Id)
+            && _engine.State.Tick - b.LastWorkedTick <= 1 && r.SettlementId == b.SettlementId
+            && r.Health > 0 && Math.Abs(r.X - b.X) + Math.Abs(r.Y - b.Y) <= 1) : [];
+        condition.Children.Add(LiveText(() => OnSiteWorkers().Any() ? "到场工作人员" : "", 13, Mint));
+        LiveRows(condition, OnSiteWorkers, r => r.Id.ToString(),
+            r => r.Name + "   " + ProfessionName(r.Profession) + "\n" + ResidentTask(r), r => OpenResident(r.Id));
         panel.Children.Add(Button("查看归属聚落", () => { _inspectorSettlementId = building.SettlementId; OpenInspector("infrastructure"); }));
         panel.Children.Add(Named(Button("查看所在土地", () => { _selectedTile = (building.X, building.Y); OpenInspector("tile"); }), "building-ground"));
     }

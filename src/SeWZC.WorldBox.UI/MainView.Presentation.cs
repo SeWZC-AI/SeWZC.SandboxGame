@@ -30,5 +30,6 @@ public sealed partial class MainView
 // Normalize only presentation, keeping every saved name and event untouched.
 internal static class DisplayFormat
 {
-    internal static string Text(string value) => value.Replace('\u00B7', ' ').Replace('\u2022', ' ');
+    internal static string Text(string value) => value.Replace('\u00B7', ' ').Replace('\u2022', ' ')
+        .Replace("→", "至").Replace("↔", "与"); // The bundled font has no arrow glyphs.
 }
