@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.UI.Controls;
@@ -96,7 +97,7 @@ public sealed class ResearchGraphControl : UserControl
     private void BeginDrag(object? sender, PointerPressedEventArgs e)
     {
         if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
-        if (e.Source is Control c && c is ScrollBar) return;
+        if (e.Source is Control c && (c is ScrollBar || c.GetVisualAncestors().Any(a => a is ScrollBar))) return;
         _press = e.GetPosition(this); _pressOffset = _scroll.Offset; _dragging = false;
     }
 

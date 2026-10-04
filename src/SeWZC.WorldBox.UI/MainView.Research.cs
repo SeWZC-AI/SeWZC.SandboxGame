@@ -78,8 +78,8 @@ public sealed partial class MainView
         }
         panel.Children.Add(tabs);
         var tools = new WrapPanel { Orientation = Orientation.Horizontal };
-        tools.Children.Add(Named(Button("−", () => { graph.SetZoom(graph.Zoom - .15); RefreshInspector(); }), "research-zoom-out"));
-        tools.Children.Add(Named(Button("＋", () => { graph.SetZoom(graph.Zoom + .15); RefreshInspector(); }), "research-zoom-in"));
+        tools.Children.Add(Named(Button("缩小", () => { graph.SetZoom(graph.Zoom - .15); RefreshInspector(); }), "research-zoom-out"));
+        tools.Children.Add(Named(Button("放大", () => { graph.SetZoom(graph.Zoom + .15); RefreshInspector(); }), "research-zoom-in"));
         tools.Children.Add(Named(LiveText(() => $"{graph.Zoom:P0}", 11, Muted), "research-zoom"));
         tools.Children.Add(Named(Button("全树", () => { graph.Fit(); RefreshInspector(); }), "research-fit"));
         tools.Children.Add(Named(Button("定位所选", () => graph.Focus(_selectedResearch)), "research-focus"));
@@ -89,7 +89,8 @@ public sealed partial class MainView
             graph.Focus(_selectedResearch); RefreshInspector();
         }), "research-jump-end"));
         panel.Children.Add(tools);
-        panel.Children.Add(Text("绿色 已掌握   青色 可研究   紫色 魔法   金色 所选前置路径", 11, Muted));
+        panel.Children.Add(new TextBlock { Text = "绿色 已掌握   青色 可研究   紫色 魔法   金色 所选前置路径", FontSize = 11,
+            Foreground = Muted, TextWrapping = TextWrapping.Wrap });
         panel.Children.Add(new Border { Child = graph, BorderBrush = Line, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8), ClipToBounds = true });
         _inspectorUpdates.Add(() =>
         {

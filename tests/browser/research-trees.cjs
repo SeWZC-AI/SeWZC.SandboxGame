@@ -35,12 +35,16 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                 assert(completedTown >= 0, 'Delivered world has no empire knowledge');
                 await ui.selectIndex('infrastructure-town', completedTown, inspector);
                 await ui.click('research-expand', inspector);
+                const expanded = await ui.snapshot();
+                const expandedGraph = ui.control(expanded, 'research-graph');
+                assert(mobile ? expandedGraph.width <= 390 : expandedGraph.width > expanded.width * .95,
+                    'Expanded tree did not use the available screen width');
                 const endpoint = route === 'technology' ? 'TechnologicalEmpire' : 'MagicalEmpire';
                 assert.equal((await ui.snapshot()).researchGraph.nodes, 24);
                 assert.equal((await ui.snapshot()).researchGraph.edges, 39);
                 await ui.click(`research-route-${route}`, inspector);
                 await ui.click('research-jump-end', inspector);
-                const graphPoint = await ui.point('research-graph', inspector);
+                await ui.point('research-graph', inspector);
                 await ui.click(`research-node-${endpoint}`, inspector);
                 let snapshot = await ui.snapshot();
                 assert.match(ui.control(snapshot, 'research-selected').value, route === 'technology' ? /科技帝国/ : /魔法帝国/);
@@ -49,6 +53,22 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                 assert(!snapshot.controls.some(c => c.id === 'research-kind'), 'Research still uses a dropdown');
                 assert.equal(snapshot.controls.filter(c => c.id.startsWith('research-node-')).length, 24);
                 assert.equal(snapshot.researchGraph.nodes, route === 'technology' ? 15 : 14);
+                // Enlarge even a fully fitting route so panning has real overflow to move.
+                await ui.click('research-zoom-in', inspector); await ui.click('research-zoom-in', inspector);
+                await ui.click('research-focus', inspector);
+                async function showGraph() {
+                    await ui.point('research-graph', inspector);
+                    for (let i = 0; i < 6; i++) {
+                        const s = await ui.snapshot(), g = ui.control(s, 'research-graph'), v = ui.control(s, inspector.scroll);
+                        const delta = g.y < v.y + 10 ? g.y - v.y - 10 : g.y + g.height > v.y + v.height - 10 ? g.y + g.height - v.y - v.height + 10 : 0;
+                        if (Math.abs(delta) < 2) break;
+                        await page.mouse.move(v.x + 3, v.y + 25); await page.mouse.wheel(0, delta);
+                        await page.waitForTimeout(150);
+                    }
+                    return ui.point('research-graph', inspector);
+                }
+                const graphPoint = await showGraph();
+                snapshot = await ui.snapshot();
                 const beforePan = snapshot.researchGraph;
                 const graph = ui.control(snapshot, 'research-graph');
                 const start = { x: graphPoint.x - graph.width / 2 + 25, y: graphPoint.y - 80 };
@@ -76,8 +96,10 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
                     await ui.click('research-route-all', inspector);
                     await ui.click('research-fit', inspector);
                 } else await ui.click('research-focus', inspector);
-                await ui.point('research-graph', inspector);
+                await showGraph();
                 snapshot = await ui.snapshot();
+                if (!mobile) assert(snapshot.controls.filter(c => c.id.startsWith('research-node-')).every(c => c.visible),
+                    'Fit-to-tree overview clips a research node');
                 await page.waitForTimeout(1200);
                 const refreshed = await ui.snapshot();
                 assert.deepEqual(refreshed.researchGraph, snapshot.researchGraph, 'Timed refresh reset the tree viewport');
