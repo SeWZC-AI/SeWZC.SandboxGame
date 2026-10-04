@@ -77,7 +77,7 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
                 await ui.waitFor(s => !s.modalOpen && s.paused, 'loaded paused world', 30000);
                 assert.equal(digest(await ui.save()), digest(saved), 'Advanced stocks, research and facilities changed after restore');
                 await errors.assertHealthy(`advancement ${label}`);
-                console.log(`PASS advancement ${label}: independent routes, real gift/construction, resources and format-8 restore`);
+                console.log(`PASS advancement ${label}: independent routes, real gift/construction, resources and format-13 restore`);
             } catch (error) {
                 await page.screenshot({ path: path.join(output, `advancement-${label}-failure.png`) });
                 fs.writeFileSync(path.join(output, `advancement-${label}-failure.json`), JSON.stringify(await ui.snapshot(), null, 2));
