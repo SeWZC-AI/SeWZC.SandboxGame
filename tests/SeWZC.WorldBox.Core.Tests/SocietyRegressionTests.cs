@@ -16,9 +16,9 @@ internal static class SocietyRegressionTests
         if (!value) throw new InvalidOperationException(message);
     }
 
-    private static WorldEngine Flat(int population = 24, bool pair = false, bool reverseFounding = false, int otherX = 36)
+    private static WorldEngine Flat(int population = 24, bool pair = false, bool reverseFounding = false, int otherX = 36, int size = 64)
     {
-        var engine = WorldEngine.Create(223, 64, 64, false);
+        var engine = WorldEngine.Create(223, size, size, false);
         foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 80; tile.ResourceAmount = 100; }
         engine.ConfigureWorld(new WorldRules
         {
@@ -183,7 +183,7 @@ internal static class SocietyRegressionTests
     [UnitTest]
     private static void FractionalMaterials()
     {
-        var engine = Flat(); var town = engine.State.Settlements.Single();
+        var engine = Flat(size: 32); var town = engine.State.Settlements.Single();
         engine.ConfigureWorld(engine.State.Rules with { Construction = true }, false, false);
         town.Resources.Wood = 30 - 0.0000001; town.Resources.Stone = 15;
         Check(engine.FacilityPlacementError(town.Id, BuildingKind.Academy, 18, 24) is null,
@@ -193,13 +193,13 @@ internal static class SocietyRegressionTests
             "Autonomous construction rejected an accepted cost or left a negative inventory.");
         _ = WorldEngine.ImportJson(engine.ExportJson());
 
-        var research = Flat(); town = research.State.Settlements.Single();
+        var research = Flat(size: 32); town = research.State.Settlements.Single();
         research.GrantFacility(town.Id, BuildingKind.Academy, 18, 24);
         town.Resources.Food = 20 - 0.0000001; town.Resources.Wood = 15 - 0.0000001;
         research.StartResearch(town.Id, ResearchKind.Agriculture);
         Check(town.Resources.Food == 0 && town.Resources.Wood == 0, "Research spending uses a different material tolerance.");
 
-        var insufficient = Flat(); town = insufficient.State.Settlements.Single();
+        var insufficient = Flat(size: 32); TestLand.ClearWildlife(insufficient); town = insufficient.State.Settlements.Single();
         town.Resources.Wood = 30 - 0.00001; town.Resources.Stone = 15;
         var before = insufficient.ExportJson();
         Check(insufficient.FacilityPlacementError(town.Id, BuildingKind.Academy, 18, 24) is not null,

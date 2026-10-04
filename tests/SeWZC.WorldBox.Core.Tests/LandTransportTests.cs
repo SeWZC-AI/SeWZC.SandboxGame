@@ -241,7 +241,7 @@ internal static class LandTransportTests
     [UnitTest]
     private static void Persistence()
     {
-        var (engine, _, worker) = World(); var json = engine.ExportJson();
+        var (engine, _, worker) = World(); TestLand.ClearWildlife(engine); var json = engine.ExportJson();
         foreach (var mutate in new Action<JsonNode>[] {
             r => r["Tiles"]![0]!["DepositAmount"] = -1,
             r => r["Tiles"]![0]!["Improvement"] = 3,

@@ -79,11 +79,29 @@ source = re.sub(r"(            var probe(\d+)_\d+ = SimulationStageProbe.Begin\(
                 lambda m: f"            SimulationDetailProbe.Stage = {m.group(2)};\n" + m.group(1), source)
 simulation.write_text(source)
 
+# Separate cache lookup/marking from the actual six-step traversal. Calls to
+# BFS are misses; lookup calls minus BFS calls are shared-cache hits.
+agents = core / "WorldEngine.Agents.cs"
+source = agents.read_text()
+lookup = "        if (cache.TryMark(slot, key, State.Tick, revision, _localMoveVisited, search)) return search;"
+if source.count(lookup) != 1:
+    raise SystemExit("Reachability changed: review shared-cache lookup")
+index = len(names); names.append("Reachability.SharedCacheLookupAndMark")
+source = source.replace(lookup, f"""        bool detailCacheHit;
+        using (SimulationDetailProbe.Enter({index}))
+            detailCacheHit = cache.TryMark(slot, key, State.Tick, revision, _localMoveVisited, search);
+        if (detailCacheHit) return search;""")
+first = source.index("        _localMoveVisited[start] = search; var head = 0; var tail = 1;", source.index("    private int MarkVisibleReachable("))
+last = source.index("        cache.Store(slot, key, State.Tick, revision, _localMoveQueue, tail);", first)
+index = len(names); names.append("Reachability.BreadthFirstSearch")
+source = source[:first] + f"        var detailBfs = SimulationDetailProbe.Enter({index});\n" + source[first:last] + "        detailBfs.Dispose();\n" + source[last:]
+agents.write_text(source)
+
 communication = core / "WorldEngine.Communication.cs"
 source = communication.read_text()
 regions = [
     ("Communication.GatherNearbyResidents", "            foreach (var tile in Circle(sender.X, sender.Y, conversationRadius))", "            if (_conversationNeighbors.Count == 0) continue;"),
-    ("Communication.SortNearbyResidentsById", "            _conversationNeighbors.Sort(ResidentIdOrder);", "            var recipient = _conversationNeighbors["),
+    ("Communication.SelectNearbyResidentByIdRank", "            var recipient = SelectConversationRecipient(", "            var facts = SelectMessageFacts(sender, relay: false);"),
     ("Communication.RebuildResidentIdDictionary", "        people.Clear();\n        foreach (var person in State.Residents) people.Add(person.Id, person);", "        // Delivery happens before"),
 ]
 for name, start, end in regions:

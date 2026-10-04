@@ -82,7 +82,7 @@ python3 scripts/run-fast-tests.py
 dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --suite integration
 ```
 
-核心测试采用可执行测试程序，默认运行聚焦单个命令、查询或规则的单元检查。测试作者应控制夹具和检查范围，使单元与 Headless UI 快速检查合计不超过 **10 秒**（含进程启动，不含编译／还原）。快速脚本直接运行已构建的程序并报告耗时，不设置硬超时或按耗时判失败；测试失败仍返回非零。可通过 `WORLDBOX_DOTNET` 指定 SDK 路径；不能以 `dotnet test` 代替。
+核心测试采用可执行测试程序，默认运行聚焦单个命令、查询或规则的单元检查。测试作者应控制夹具和检查范围，使单元与 Headless UI 快速检查合计明显低于 **10 秒**，为运行波动留出余量（含进程启动，不含编译／还原）。快速脚本直接运行已构建的程序并报告耗时，不设置硬超时或按耗时判失败；测试失败仍返回非零。可通过 `WORLDBOX_DOTNET` 指定 SDK 路径；不能以 `dotnet test` 代替。
 
 跨系统模拟与保存续演放在 `--suite integration`。混合编辑随机回归、五种子 6,000 tick 战争、大世界发展放在 `--suite long`；`--suite all` 执行全部核心检查，`--list` 可查看所选套件。集成与长程检查保留原断言与规模，日常 CI 不执行；修改相应机制时本地运行，或手动运行 Actions 并勾选 `full_regression`。
 

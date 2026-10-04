@@ -387,7 +387,8 @@ static void Disasters()
 [UnitTest]
 static void NationEditing()
 {
-    var engine = FlatWorld();
+    var engine = FlatWorld(32);
+    TestLand.ClearWildlife(engine);
     engine.SpawnResidents(20, 20, RaceKind.Human, 12);
     var nation = engine.State.Nations.Single();
     engine.RenameNation(nation.Id, "海岚共同体");
@@ -527,9 +528,9 @@ static void War()
     CheckResidents(engine.State);
 }
 
-static WorldEngine FlatWorld()
+static WorldEngine FlatWorld(int size = 64)
 {
-    var engine = WorldEngine.Create(1234, 64, 64, false);
+    var engine = WorldEngine.Create(1234, size, size, false);
     engine.State.NaturalDisasters = false;
     foreach (var tile in engine.State.Tiles)
     {

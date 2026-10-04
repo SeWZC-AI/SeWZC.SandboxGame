@@ -11,7 +11,7 @@ public sealed partial class WorldEngine
     private int[] _conversationNext = [];
     private readonly List<AgentFact> _observedReports = [];
     private readonly List<AgentFact> _missionAddresses = [];
-    private static readonly Comparison<Resident> ResidentIdOrder = (first, second) => first.Id.CompareTo(second.Id);
+    private static readonly IComparer<Resident> ResidentIdOrder = Comparer<Resident>.Create((first, second) => first.Id.CompareTo(second.Id));
 
     private AgentFact MakeAgentFact(Resident observer, AgentFactKind kind, int subject, int x, int y, double value, string text) => new()
     {
@@ -208,8 +208,7 @@ public sealed partial class WorldEngine
                     if (neighbor.Id != sender.Id && neighbor.Health > 0) _conversationNeighbors.Add(neighbor);
                 }
             if (_conversationNeighbors.Count == 0) continue;
-            _conversationNeighbors.Sort(ResidentIdOrder);
-            var recipient = _conversationNeighbors[(int)((State.Tick / 12 + sender.Id) % _conversationNeighbors.Count)];
+            var recipient = SelectConversationRecipient((int)((State.Tick / 12 + sender.Id) % _conversationNeighbors.Count));
             var facts = SelectMessageFacts(sender, relay: false);
             if (facts.Count > 0 && State.PendingMessages.Count < MaxPopulation * 2)
                 State.PendingMessages.Add(new PendingMessage { SenderId = sender.Id, RecipientId = recipient.Id, DeliverTick = State.Tick + 1, Facts = facts });
@@ -223,6 +222,46 @@ public sealed partial class WorldEngine
         // Keep capacities, but do not retain residents that may die in the following warfare phase.
         people.Clear();
         _conversationNeighbors.Clear();
+    }
+
+    private Resident SelectConversationRecipient(int rank)
+    {
+        // Keep exactly the old ID-sorted recipient without sorting every other
+        // neighbor. Bound adversarial partitions with the original sort.
+        var left = 0; var right = _conversationNeighbors.Count - 1;
+        var budget = 2 * System.Numerics.BitOperations.Log2((uint)_conversationNeighbors.Count);
+        while (left < right)
+        {
+            if (right - left < 16 || budget-- == 0)
+            {
+                _conversationNeighbors.Sort(left, right - left + 1, ResidentIdOrder);
+                return _conversationNeighbors[rank];
+            }
+            var first = _conversationNeighbors[left].Id; var middle = _conversationNeighbors[(left + right) / 2].Id;
+            var last = _conversationNeighbors[right].Id;
+            var pivot = first < middle ? (middle < last ? middle : Math.Max(first, last))
+                : (first < last ? first : Math.Max(middle, last));
+            var lower = left; var at = left; var upper = right;
+            while (at <= upper)
+            {
+                var id = _conversationNeighbors[at].Id;
+                if (id < pivot)
+                {
+                    (_conversationNeighbors[lower], _conversationNeighbors[at]) = (_conversationNeighbors[at], _conversationNeighbors[lower]);
+                    lower++; at++;
+                }
+                else if (id > pivot)
+                {
+                    (_conversationNeighbors[at], _conversationNeighbors[upper]) = (_conversationNeighbors[upper], _conversationNeighbors[at]);
+                    upper--;
+                }
+                else at++;
+            }
+            if (rank < lower) right = lower - 1;
+            else if (rank > upper) left = upper + 1;
+            else return _conversationNeighbors[rank];
+        }
+        return _conversationNeighbors[rank];
     }
 
     private void RelayKnownAgentMessages()

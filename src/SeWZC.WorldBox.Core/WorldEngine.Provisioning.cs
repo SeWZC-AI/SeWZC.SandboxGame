@@ -195,11 +195,14 @@ public sealed partial class WorldEngine
         var reachable = 0;
         foreach (var offset in VisibleResourceOffsets)
         {
+            // A shore fisher can reach a bank six steps away beside a fish
+            // source seven steps away. Land prey itself must be within six.
+            if (offset.Distance > 7) break;
             var x = person.X + offset.X; var y = person.Y + offset.Y;
             if (!InBounds(x, y)) continue;
             var index = Index(x, y); var tile = State.Tiles[index];
             if (tile.FireTicks > 0) continue;
-            if (RaceTerrainRules.CanWalk(tile, person.Race) && !IsWaterTerrain(tile.Terrain) && EdibleAnimal(tile) != WildlifeKind.None && VisibleSiteReachable(person, index, ref reachable)) return (index, index, false);
+            if (offset.Distance <= 6 && RaceTerrainRules.CanWalk(tile, person.Race) && !IsWaterTerrain(tile.Terrain) && EdibleAnimal(tile) != WildlifeKind.None && VisibleSiteReachable(person, index, ref reachable)) return (index, index, false);
             if (EdibleAnimal(tile, aquatic: true) == WildlifeKind.None) continue;
             foreach (var (dx, dy) in Directions)
                 if (Walkable(x + dx, y + dy, person.Race) && State.Tiles[Index(x + dx, y + dy)].FireTicks == 0
@@ -217,6 +220,7 @@ public sealed partial class WorldEngine
         var reachable = 0; var best = -1; var score = double.NegativeInfinity;
         foreach (var offset in VisibleResourceOffsets)
         {
+            if (offset.Distance > 6) break;
             var x = person.X + offset.X; var y = person.Y + offset.Y;
             if (!InBounds(x, y)) continue;
             var index = Index(x, y); var tile = State.Tiles[index];

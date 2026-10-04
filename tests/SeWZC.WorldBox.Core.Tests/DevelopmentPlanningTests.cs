@@ -13,7 +13,11 @@ internal static class DevelopmentPlanningTests
     [UnitTest]
     private static void DirectionPersistence()
     {
-        var engine = WorldEngine.Create(42, 32, 32);
+        var engine = WorldEngine.Create(42, 32, 32, false);
+        foreach (var tile in engine.State.Tiles) tile.Terrain = TerrainType.Grass;
+        TestLand.ClearWildlife(engine);
+        engine.SpawnResidents(8, 16, RaceKind.Human, 1);
+        engine.SpawnResidents(24, 16, RaceKind.Orc, 1);
         var nation = engine.State.Nations[0];
         engine.SetDevelopmentFocus(nation.Id, DevelopmentFocus.Technology);
         var saved = engine.ExportJson();

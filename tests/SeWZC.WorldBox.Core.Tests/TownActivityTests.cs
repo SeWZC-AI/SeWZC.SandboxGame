@@ -10,6 +10,9 @@ internal static class TownActivityTests
         ("terrain harvesting differentiates forests food and mineral composition", TerrainHarvest),
         ("local workforce keeps messengers scarce and representatives local", Workforce),
         ("workers finish useful tasks and rest before choosing another destination", TaskCommitment),
+        ("local conversations preserve ID-ranked recipients across neighborhood orders", ConversationRecipients),
+        ("shared visible paths react immediately to fire bridges terrain and travel mode", VisiblePathChanges),
+        ("shore fishers retain sources seven steps away beside reachable banks", FishingBoundary),
         ("fishers borrow a real boat fish offshore and return catch through a saved journey", BoatFishing)
     ];
 
@@ -131,5 +134,87 @@ internal static class TownActivityTests
         }
         Check(fishedOffshore && returned && fish.WildlifePopulation < 12, $"Fishing failed: offshore={fishedOffshore}, returned={returned}, fish={fish.WildlifePopulation}, profession={person.Profession}, xy={person.X},{person.Y}, goal={person.Agent.Goal.Kind}, boats={town.Resources.Boats}/{person.Inventory.Boats}, food={town.Resources.Food}/{initialFood}/{person.Inventory.Food}");
         Check(e.ExportJson() == resumed.ExportJson(), "Boat fishing diverged after saving at sea");
+    }
+
+    [UnitTest]
+    private static void ConversationRecipients()
+    {
+        foreach (var size in new[] { 2, 7, 31, 128 })
+        foreach (var order in new[] { 0, 1, 2 })
+        {
+            var e = Flat(size);
+            e.State.Residents = order switch
+            {
+                1 => e.State.Residents.OrderByDescending(r => r.Id).ToList(),
+                2 => e.State.Residents.OrderBy(r => unchecked((uint)r.Id * 2654435761u)).ToList(),
+                _ => e.State.Residents.OrderBy(r => r.Id).ToList()
+            };
+            foreach (var person in e.State.Residents)
+            {
+                person.X = person.FromX = 12; person.Y = person.FromY = 16; person.Age = 30; person.Profession = Profession.Farmer;
+                person.Agent.Goal.TargetX = 12; person.Agent.Goal.TargetY = 16;
+                person.Agent.Memory.Add(new() { Id = e.State.NextId++, Kind = AgentFactKind.Personal, SubjectId = person.Id,
+                    OriginResidentId = person.Id, SourceResidentId = person.Id, Text = "A remembered personal event", Confidence = 1 });
+            }
+            for (var tick = 1; tick <= 12; tick++)
+            {
+                e.State.Tick = tick - 1; e.State.PendingMessages.Clear();
+                foreach (var person in e.State.Residents) person.Agent.LastConversationTick = -100;
+                var expected = e.State.Residents.Where(r => (tick + r.Id) % 12 == 0).Select(sender =>
+                {
+                    var neighbors = e.State.Residents.Where(r => r.Id != sender.Id).OrderBy(r => r.Id).ToArray();
+                    return (sender.Id, neighbors[(tick / 12 + sender.Id) % neighbors.Length].Id);
+                }).ToArray();
+                e.Step();
+                var actual = e.State.PendingMessages.Where(m => m.TargetSettlementId == 0 && m.DeliverTick == tick + 1)
+                    .Select(m => (m.SenderId, m.RecipientId)).ToArray();
+                Check(expected.SequenceEqual(actual), $"Conversation recipients changed for size {size}, order {order}, tick {tick}");
+            }
+        }
+    }
+
+    [UnitTest]
+    private static void VisiblePathChanges()
+    {
+        var e = Flat();
+        foreach (var tile in e.State.Tiles) { tile.Terrain = TerrainType.DeepWater; tile.ResourceAmount = 0; }
+        for (var x = 10; x <= 14; x++) e.State.Tiles[10 * 32 + x].Terrain = TerrainType.Grass;
+        var target = 10 * 32 + 14; e.State.Tiles[target].ResourceAmount = 10;
+        var barrier = e.State.Tiles[10 * 32 + 12];
+        var first = new Resident { Id = 900, X = 10, Y = 10, Race = RaceKind.Human };
+        var other = new Resident { Id = 901, X = 11, Y = 10, Race = RaceKind.Human };
+        var query = typeof(WorldEngine).GetMethod("FindVisibleResourceSite", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        int Site(Resident person) => (int)query.Invoke(e, [person, Profession.Farmer])!;
+        void Expect(int site, string reason)
+        {
+            Check(Site(first) == site, reason);
+            _ = Site(other); // Evict the last-search stamp, then exercise the shared cache.
+            Check(Site(new Resident { Id = 902, X = first.X, Y = first.Y, Race = first.Race, TravelMode = first.TravelMode }) == site, reason + " for another resident");
+        }
+        Expect(target, "Open corridor became unreachable");
+        barrier.FireTicks = 2; Expect(-1, "New fire did not block cached route");
+        barrier.FireTicks = 0; Expect(target, "Extinguished fire kept blocking route");
+        barrier.Terrain = TerrainType.River; Expect(-1, "River retained dry-land route");
+        barrier.Improvement = LandImprovement.Bridge; Expect(target, "Completed horizontal bridge was ignored");
+        barrier.BridgeDirection = BridgeDirection.Vertical; Expect(-1, "Bridge reorientation retained old route");
+        first.TravelMode = TravelMode.Boat; Expect(target, "Boat reused foot-only bridge restriction");
+        first.TravelMode = TravelMode.Foot; barrier.Improvement = LandImprovement.None;
+        barrier.Terrain = TerrainType.Mountain; Expect(-1, "Human reused an invalid mountain route");
+        first.Race = RaceKind.Dwarf; Expect(target, "Dwarf reused human mountain restriction");
+        first.Race = RaceKind.Human; barrier.Improvement = LandImprovement.MountainPass; Expect(target, "Completed mountain pass was ignored");
+        e.State.Tiles = e.State.Tiles.Select(t => new Tile { Terrain = t.Terrain, ResourceAmount = t.ResourceAmount, Fertility = 100 }).ToArray();
+        Expect(-1, "Replacement grid reused an old mountain pass");
+    }
+
+    [UnitTest]
+    private static void FishingBoundary()
+    {
+        var e = Flat(); var person = e.State.Residents.Single(); person.X = 10; person.Y = 10;
+        var fish = e.State.Tiles[14 * 32 + 13]; // Euclidean visible, Manhattan distance seven.
+        fish.Terrain = TerrainType.Water; fish.Wildlife = WildlifeKind.Fish; fish.WildlifePopulation = 5;
+        var query = typeof(WorldEngine).GetMethod("FindHarvestableWildlife", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!;
+        var result = ((int Site, int Source, bool Fishing))query.Invoke(e, [person])!;
+        Check(result.Fishing && result.Source == 14 * 32 + 13
+            && Math.Abs(result.Site % 32 - 10) + Math.Abs(result.Site / 32 - 10) == 6, "Pruning removed a visible fish source beside a reachable bank");
     }
 }
