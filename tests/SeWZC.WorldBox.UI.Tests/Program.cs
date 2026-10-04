@@ -105,6 +105,18 @@ static void BuildingControls()
     Assert(engine.ExportJson() == saved, "Activating infrastructure colors changed the simulation");
     Control<ComboBox>(view, "structures-kind").SelectedIndex = 1;
     Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("道路 1 级") == true), "Road listing omitted actual road");
+    var town = engine.State.Settlements.First(t => t.Id == building.SettlementId);
+    town.Resources.Wood = town.Resources.Stone = 0;
+    Call(view, "ShowBuildingUpgrade", building.Id, false);
+    Assert(Control<TextBlock>(view, "upgrade-paid-status").Text!.Contains("缺"), "Upgrade omitted material shortage");
+    Assert(Control<TextBlock>(view, "upgrade-gift-status").Text!.Contains("不扣施工材料"), "Gift inherited paid material requirements");
+    Call(view, "CloseModal");
+    building.Level = 3;
+    Call(view, "ShowBuildingUpgrade", building.Id, false);
+    Assert(!view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("→ 4 级") == true), "Maximum-level upgrade promised level four");
+    Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("已达到最高等级") == true), "Upgrade omitted maximum level restriction");
+    Assert(!view.GetLogicalDescendants().OfType<Button>().Any(b => Avalonia.Automation.AutomationProperties.GetAutomationId(b) is "upgrade-apply" or "upgrade-gift"), "Maximum level retained unusable actions");
+    Click(view, "upgrade-close");
 }
 
 static void BuildingOcclusion()
@@ -213,7 +225,14 @@ static void AdvancedResourcesUi()
     Control<ComboBox>(view, "building-kind").SelectedItem = BuildingKind.Fabricator;
     Assert(!Control<StackPanel>(view, "building-bridge-options").IsVisible, "Changing facility left bridge fields visible");
     Control<NumericUpDown>(view, "building-x").Value = town.X + 2; Control<NumericUpDown>(view, "building-y").Value = town.Y + 2;
+    Assert(Control<TextBlock>(view, "building-placement-status").Text!.Contains("尚未掌握"), "Construction preview omitted missing knowledge");
     Control<CheckBox>(view, "building-gift").IsChecked = true;
+    Assert(Control<TextBlock>(view, "building-placement-status").Text!.Contains("可直接赐予"), "Gift preview retained paid construction restrictions");
+    var beforePreview = engine.ExportJson();
+    Control<NumericUpDown>(view, "building-x").Value = town.X; Control<NumericUpDown>(view, "building-y").Value = town.Y;
+    Assert(Control<TextBlock>(view, "building-placement-status").Text!.Contains("已有建筑"), "Preview did not follow edited coordinates");
+    Assert(engine.ExportJson() == beforePreview, "Construction preview changed the world");
+    Control<NumericUpDown>(view, "building-x").Value = town.X + 2; Control<NumericUpDown>(view, "building-y").Value = town.Y + 2;
     Click(view, "building-apply");
     var factory = engine.State.Society.Buildings.Single(b => b.Kind == BuildingKind.Fabricator);
     Assert(factory.IsCompleted && engine.GetProductionStatus(factory.Id).Contains("知识"), "Gift bypassed operating prerequisites");

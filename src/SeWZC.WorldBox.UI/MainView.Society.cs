@@ -175,6 +175,25 @@ public sealed partial class MainView
         var x = Field(panel, "目标 X", _selectedTile?.X ?? town.X + 1, "building-x"); var y = Field(panel, "目标 Y", _selectedTile?.Y ?? town.Y, "building-y");
         var gift = Named(new CheckBox { Content = Text("直接赐予完工（不扣施工材料，仍需运营条件）", 12), IsChecked = false }, "building-gift");
         panel.Children.Add(gift);
+        var placement = Named(Paragraph(""), "building-placement-status"); panel.Children.Add(placement);
+        void RefreshPlacement()
+        {
+            try
+            {
+                var kind = (BuildingKind)type.SelectedItem!;
+                var error = _engine.FacilityPlacementError(townId, kind, Integer(x), Integer(y), gift.IsChecked == true,
+                    kind == BuildingKind.Bridge ? (BridgeDirection?)direction.SelectedItem : null, kind == BuildingKind.Bridge ? Integer(level) : 1);
+                placement.Text = DisplayFormat.Text(error is not null ? "暂不能建造：" + error
+                    : gift.IsChecked == true ? "可直接赐予完工；运营仍需满足设施条件" : "可安排施工；提交后扣除材料，等待居民到场");
+            }
+            catch (ArgumentException) { placement.Text = "请填写有效的整数坐标与桥梁等级。"; }
+        }
+        type.SelectionChanged += (_, _) => RefreshPlacement();
+        direction.SelectionChanged += (_, _) => RefreshPlacement();
+        level.SelectionChanged += (_, _) => RefreshPlacement();
+        x.ValueChanged += (_, _) => RefreshPlacement(); y.ValueChanged += (_, _) => RefreshPlacement();
+        gift.IsCheckedChanged += (_, _) => RefreshPlacement();
+        RefreshPlacement();
         panel.Children.Add(Named(Button("建造设施", () =>
         {
             try { var xx = Integer(x); var yy = Integer(y); RunEdit(() => { if (gift.IsChecked == true) _engine.GrantFacility(townId, (BuildingKind)type.SelectedItem!, xx, yy, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? (BridgeDirection?)direction.SelectedItem : null, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? Integer(level) : 1); else _engine.BuildFacility(townId, (BuildingKind)type.SelectedItem!, xx, yy, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? (BridgeDirection?)direction.SelectedItem : null, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? Integer(level) : 1); CloseModal(); }, gift.IsChecked == true ? "设施已赐予；效果按各建筑的生效条件提供" : "设施已立项，继续模拟后居民会施工"); }
