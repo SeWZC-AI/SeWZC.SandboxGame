@@ -65,6 +65,10 @@ jobs:
         if: inputs.full_regression == true
         run: dotnet tests/SeWZC.WorldBox.Core.Tests/bin/Release/net10.0/SeWZC.WorldBox.Core.Tests.dll --export-browser-fixture artifacts/save-fixture/world.worldbox.json
 
+      - name: Prepare research fixtures
+        if: inputs.full_regression == true
+        run: python3 scripts/prepare-research-fixtures.py
+
       - name: Upload save fixture
         if: inputs.full_regression == true
         uses: actions/upload-artifact@v4
@@ -135,7 +139,7 @@ jobs:
           path: artifacts/browser-preview/SeWZC.SandboxGame
 
       - uses: actions/download-artifact@v4
-        if: matrix.suite == 'saving'
+        if: matrix.suite == 'saving' || matrix.suite == 'research-trees'
         with:
           name: worldbox-save-fixture
           path: artifacts/save-fixture

@@ -3,7 +3,6 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { createHash } = require('node:crypto');
-const { execFileSync } = require('node:child_process');
 const { UiDriver, testUrl } = require('./ui-driver.cjs');
 const { chromiumLaunchOptions, observeBrowserErrors } = require('./browser-support.cjs');
 const output = path.resolve(process.env.WORLDBOX_ARTIFACT_DIR || 'artifacts/browser-tests');
@@ -11,7 +10,7 @@ const baseUrl = process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.Sa
 const modal = { scroll: 'modal-scroll' }, inspector = { scroll: 'inspector-scroll' };
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 fs.mkdirSync(output, { recursive: true });
-execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-saves-20261005.zip'), path.join(output, 'saves')]);
+const fixtures = path.resolve(process.env.WORLDBOX_EMPIRE_FIXTURE_DIR || 'artifacts/save-fixture/empires');
 
 (async () => {
     const browser = await chromium.launch(chromiumLaunchOptions());
@@ -24,9 +23,9 @@ execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-
             const errors = observeBrowserErrors(page);
             try {
                 await page.goto(testUrl(baseUrl)); await ui.ready(); await ui.paused();
-                const filename = path.join(output, 'saves', `${route}-empire.worldbox.json`);
+                const filename = path.join(fixtures, `${route}-empire.worldbox.json`);
                 const expected = JSON.parse(fs.readFileSync(filename, 'utf8'));
-                const report = JSON.parse(fs.readFileSync(path.join(output, 'saves', 'simulation-results.json'), 'utf8'));
+                const report = JSON.parse(fs.readFileSync(path.join(fixtures, 'simulation-results.json'), 'utf8'));
                 const saveDigest = createHash('sha256').update(fs.readFileSync(filename)).digest('hex');
                 const run = report.runs.find(r => r.route === route && r.saveSha256 === saveDigest);
                 assert(run, 'Delivered save does not match its actual simulation report');
