@@ -44,6 +44,7 @@ fs.mkdirSync(output, { recursive: true });
                     const preview = ui.control(await ui.snapshot(),'selection-name').value;
                     assert.match(preview,/^[^\n]+（[\d.]+\/[\d.]+）$/);
                     assert.doesNotMatch(preview,/可采|野生食物|浆果|嫩叶|位置|份/);
+                    if (terrain === 'AlpineMeadow') await page.screenshot({path:path.join(output,`selection-preview-${mobile?'mobile':'desktop'}.png`)});
                     await ui.click('selection-view');
                     const detail = ui.control(await ui.snapshot(),'tile-water').value;
                     assert.equal((detail.match(/供水量/g) || []).length,1);
