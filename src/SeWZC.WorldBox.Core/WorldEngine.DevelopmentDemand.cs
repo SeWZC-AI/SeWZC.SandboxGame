@@ -2,24 +2,31 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private sealed record LocalDemand(Settlement Town, Resident[] Adults, Building[] Buildings, bool Defense, bool Patients,
+    private sealed record LocalDemand(Settlement Town, Resident[] Adults, IReadOnlyList<Building> Buildings, bool Defense, bool Patients,
         bool Water, bool Coast, bool Timber, bool Stone, bool Contacts, bool MagicTalent, bool Roads);
 
-    private LocalDemand InspectLocalDemand(Settlement town, Building[] buildings)
+    private LocalDemand InspectLocalDemand(Settlement town, IReadOnlyList<Building> buildings)
     {
         var residents = _localWorkQueriesActive ? _localWorkResidents.GetValueOrDefault(town.Id) : _citizens.GetValueOrDefault(town.Id);
         var adults = residents?.Where(p => p.SettlementId == town.Id && p.Age >= 14 && p.Health > 0 && p.ArmyId == 0
             && Distance(p.X, p.Y, town.X, town.Y) <= 6).ToArray() ?? [];
         var defense = GetLocalPolicy(town.Id) == PolicyKind.Defense || adults.Any(p => p.Agent.Memory.Any(f => f.Kind is AgentFactKind.WarOrder or AgentFactKind.Danger
             && f.Value > 0 && State.Tick - f.ObservedTick < 120 && AgentFactReliability(f) >= .5));
-        var area = Circle(town.X, town.Y, 6).Select(i => State.Tiles[i]).ToArray();
+        var coast = false; var timber = false; var stone = false; var roads = false;
+        foreach (var index in Circle(town.X, town.Y, 6))
+        {
+            var tile = State.Tiles[index];
+            coast |= !coast && IsFreshWater(tile) && tile.AnimalPopulation(WildlifeKind.Fish) + tile.AnimalPopulation(WildlifeKind.GrassCarp) >= .2;
+            timber |= !timber && IsForestTerrain(tile.Terrain) && tile.ResourceAmount >= 10;
+            stone |= !stone && TerrainRules.For(tile.Terrain).StoneYield + TerrainRules.For(tile.Terrain).OreYield > 0 && tile.ResourceAmount >= 10;
+            roads |= tile.NationId == town.NationId && tile.RoadLevel > 0;
+            if (coast && timber && stone && roads) break;
+        }
         return new(town, adults, buildings, defense, adults.Any(p => p.Health < 90 || p.SicknessTicks > 0),
             State.Rules.Thirst && (town.Resources.Water < Math.Max(2, town.Population * .5) || adults.Any(p => p.Thirst > 20)),
-            area.Any(t => IsFreshWater(t) && t.AnimalPopulation(WildlifeKind.Fish) + t.AnimalPopulation(WildlifeKind.GrassCarp) >= .2),
-            area.Any(t => IsForestTerrain(t.Terrain) && t.ResourceAmount >= 10),
-            area.Any(t => TerrainRules.For(t.Terrain).StoneYield + TerrainRules.For(t.Terrain).OreYield > 0 && t.ResourceAmount >= 10),
+            coast, timber, stone,
             adults.Any(p => p.Agent.Memory.Any(f => f.Kind == AgentFactKind.SettlementLocation && f.SubjectId != town.Id && AgentFactReliability(f) >= .5)),
-            adults.Any(p => p.MagicTalent >= 35), area.Any(t => t.NationId == town.NationId && t.RoadLevel > 0));
+            adults.Any(p => p.MagicTalent >= 35), roads);
     }
 
     private bool FacilityNeeded(LocalDemand d, BuildingKind kind)

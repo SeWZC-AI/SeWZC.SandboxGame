@@ -301,10 +301,11 @@ public sealed partial class WorldEngine
             var at = 0;
             while (at < selected.Count && !MessageFactPrecedes(fact, selected[at], relay)) at++;
             if (at >= capacity) continue;
+            if (selected.Count == capacity) selected.RemoveAt(capacity - 1);
             selected.Insert(at, fact);
-            if (selected.Count > capacity) selected.RemoveAt(capacity);
         }
-        return selected.Select(CopyAgentFact).ToList();
+        for (var i = 0; i < selected.Count; i++) selected[i] = CopyAgentFact(selected[i]);
+        return selected;
     }
 
     private static bool MessageFactPrecedes(AgentFact candidate, AgentFact current, bool relay)

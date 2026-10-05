@@ -57,16 +57,15 @@ start = simulation.index("    public void Step(")
 end = simulation.index("    private static void CapResources", start)
 step = simulation[start:end]
 for name, statement in stages:
-    line = "            " + statement + "\n"
     expected = 3 if name == "Reindex" else 1
-    if step.count(line) != expected:
+    if sum(line.strip() == statement for line in step.splitlines()) != expected:
         raise SystemExit(f"Step changed: expected {expected} occurrences of {name}; review probes before running.")
 # Separate local names for repeated calls, aggregate them into one stage.
 counts = {}
 instrumented = []
 for line in step.splitlines(keepends=True):
     match = next(((i, name) for i, (name, statement) in enumerate(stages)
-                  if line == "            " + statement + "\n"), None)
+                  if line.strip() == statement), None)
     if match is None:
         instrumented.append(line)
         continue
@@ -74,8 +73,9 @@ for line in step.splitlines(keepends=True):
     call = counts.get(name, 0)
     counts[name] = call + 1
     local = f"probe{index}_{call}"
-    instrumented.extend([f"            var {local} = SimulationStageProbe.Begin();\n", line,
-                         f"            SimulationStageProbe.End({index}, {local});\n"])
+    indent = line[:len(line) - len(line.lstrip())]
+    instrumented.extend([f"{indent}var {local} = SimulationStageProbe.Begin();\n", line,
+                         f"{indent}SimulationStageProbe.End({index}, {local});\n"])
 
 shutil.copytree(root / "src/SeWZC.WorldBox.Core", destination / "src/SeWZC.WorldBox.Core",
                 ignore=shutil.ignore_patterns("bin", "obj"))

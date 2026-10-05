@@ -112,45 +112,48 @@ public sealed partial class WorldEngine
         for (var i = snapshotFirst; i < snapshotLast; i++)
         {
             var tile = tiles[i]; var local = i - snapshotFirst; var mask = tile.WildlifeMask; var pressure = 0d; var offset = local * AnimalRules.SpeciesCount;
+            // Keep habitat slots tied to map indices, not the moving band's origin.
+            // Adjacent days share their apron and can retain its expensive capacities.
+            var habitatSlot = i % bufferTiles; var capacityOffset = habitatSlot * AnimalRules.SpeciesCount;
             tile.OtherWildlife.CopyTo(_wildlifePopulations.AsSpan(offset, AnimalRules.SpeciesCount));
             _wildlifePopulations[offset + (int)tile.Wildlife] = tile.WildlifePopulation;
             _wildlifeMasks[local] = mask;
             // Above 100 resources, food availability is already saturated.
             var habitat = new WildlifeHabitat(tile.Terrain, Math.Clamp(tile.ResourceAmount / 100, 0, 1), tile.Fertility, tile.Improvement,
                 tile.SettlementId != 0, tile.DroughtTicks > 0, tile.FireTicks > 0, tile.NaturalWaterYield, tile.Plants, true);
-            if (_wildlifeHabitats[local] != habitat)
+            if (_wildlifeHabitats[habitatSlot] != habitat)
             {
-                _wildlifeHabitats[local] = habitat;
-                _wildlifeHerbivoreKinds[local] = 0;
-                Array.Clear(_wildlifeReplacement, offset, AnimalRules.SpeciesCount);
-                AnimalRules.FillCapacities(tile, _wildlifeCapacities.AsSpan(offset, AnimalRules.SpeciesCount), _wildlifePreyCompetitors.AsSpan(offset, AnimalRules.SpeciesCount));
+                _wildlifeHabitats[habitatSlot] = habitat;
+                _wildlifeHerbivoreKinds[habitatSlot] = 0;
+                Array.Clear(_wildlifeReplacement, capacityOffset, AnimalRules.SpeciesCount);
+                AnimalRules.FillCapacities(tile, _wildlifeCapacities.AsSpan(capacityOffset, AnimalRules.SpeciesCount), _wildlifePreyCompetitors.AsSpan(capacityOffset, AnimalRules.SpeciesCount));
                 for (var species = 1; species < AnimalRules.SpeciesCount; species++)
-                    if (_wildlifeCapacities[offset + species] > 0 && AnimalRules.For((WildlifeKind)species).Diet == AnimalDiet.Herbivore) _wildlifeHerbivoreKinds[local]++;
+                    if (_wildlifeCapacities[capacityOffset + species] > 0 && AnimalRules.For((WildlifeKind)species).Diet == AnimalDiet.Herbivore) _wildlifeHerbivoreKinds[habitatSlot]++;
                 // At every carrying capacity, herbivore renewal exactly replaces
                 // the sustainable predator consumption computed from the same food web.
                 foreach (var predator in AnimalRules.Species)
                 {
                     var definition = AnimalRules.For(predator);
-                    if (definition.Diet != AnimalDiet.Carnivore || _wildlifeCapacities[offset + (int)predator] <= 0) continue;
+                    if (definition.Diet != AnimalDiet.Carnivore || _wildlifeCapacities[capacityOffset + (int)predator] <= 0) continue;
                     var biomass = 0d; var share = 0d;
                     foreach (var prey in AnimalRules.PreyFor(predator))
                     {
-                        var mass = _wildlifeCapacities[offset + (int)prey] * AnimalRules.For(prey).BodyMass;
-                        biomass += mass; share += mass / _wildlifePreyCompetitors[offset + (int)prey];
+                        var mass = _wildlifeCapacities[capacityOffset + (int)prey] * AnimalRules.For(prey).BodyMass;
+                        biomass += mass; share += mass / _wildlifePreyCompetitors[capacityOffset + (int)prey];
                     }
                     if (biomass == 0) continue;
-                    var capacity = Math.Min(_wildlifeCapacities[offset + (int)predator], share * .12 / definition.BodyMass);
+                    var capacity = Math.Min(_wildlifeCapacities[capacityOffset + (int)predator], share * .12 / definition.BodyMass);
                     var rate = capacity * definition.BodyMass * predationRate / biomass;
-                    _wildlifeReplacement[offset + (int)predator] = rate;
-                    _wildlifePredatorLimits[offset + (int)predator] = capacity;
+                    _wildlifeReplacement[capacityOffset + (int)predator] = rate;
+                    _wildlifePredatorLimits[capacityOffset + (int)predator] = capacity;
                 }
             }
             while (mask != 0)
             {
-                var species = NextWildlife(ref mask); var capacity = _wildlifeCapacities[offset + species];
+                var species = NextWildlife(ref mask); var capacity = _wildlifeCapacities[capacityOffset + species];
                 if (capacity > 0 && AnimalRules.For((WildlifeKind)species).Diet == AnimalDiet.Herbivore) pressure += _wildlifePopulations[offset + species] / capacity;
             }
-            _wildlifePressure[local] = pressure / Math.Max(1, (int)_wildlifeHerbivoreKinds[local]);
+            _wildlifePressure[local] = pressure / Math.Max(1, (int)_wildlifeHerbivoreKinds[habitatSlot]);
         }
         Span<int> neighbours = stackalloc int[4];
         Span<double> preyLosses = stackalloc double[AnimalRules.SpeciesCount];
@@ -161,6 +164,7 @@ public sealed partial class WorldEngine
         {
             var x = i % State.Width; var y = i / State.Width; var local = i - snapshotFirst;
             var offset = local * AnimalRules.SpeciesCount; var mask = _wildlifeMasks[local];
+            var capacityOffset = i % bufferTiles * AnimalRules.SpeciesCount;
             if (mask == 0) continue;
             preyLosses.Clear(); preyRenewal.Clear();
             var count = 0;
@@ -178,9 +182,9 @@ public sealed partial class WorldEngine
                 foreach (var prey in AnimalRules.PreyFor(kind))
                     {
                     var mass = _wildlifePopulations[offset + (int)prey] * AnimalRules.For(prey).BodyMass;
-                    biomass += mass; sharedBiomass += mass / _wildlifePreyCompetitors[offset + (int)prey];
+                    biomass += mass; sharedBiomass += mass / _wildlifePreyCompetitors[capacityOffset + (int)prey];
                 }
-                predatorCapacities[species] = Math.Min(_wildlifeCapacities[offset + species], sharedBiomass * .12 / animal.BodyMass);
+                predatorCapacities[species] = Math.Min(_wildlifeCapacities[capacityOffset + species], sharedBiomass * .12 / animal.BodyMass);
                 var population = _wildlifePopulations[offset + species];
                 var capacity = predatorCapacities[species];
                 var normalGrowth = capacity > 0 ? Math.Max(-population * deathRate, growthRate * population * (1 - population / capacity)) : -population * deathRate;
@@ -191,19 +195,19 @@ public sealed partial class WorldEngine
                 predatorSurvivors[species] = Math.Max(0, population + normalGrowth) * Math.Pow(fed, .75);
                 if (biomass <= 0) continue;
                 var consumption = predatorSurvivors[species] * animal.BodyMass * predationRate / biomass;
-                var limit = _wildlifePredatorLimits[offset + species];
-                var renewalRate = limit > 0 ? _wildlifeReplacement[offset + species] * Math.Min(1, predatorSurvivors[species] / limit) : 0;
+                var limit = _wildlifePredatorLimits[capacityOffset + species];
+                var renewalRate = limit > 0 ? _wildlifeReplacement[capacityOffset + species] * Math.Min(1, predatorSurvivors[species] / limit) : 0;
                 foreach (var prey in AnimalRules.PreyFor(kind))
                 {
                     preyLosses[(int)prey] += _wildlifePopulations[offset + (int)prey] * consumption;
-                    preyRenewal[(int)prey] += _wildlifeCapacities[offset + (int)prey] * renewalRate;
+                    preyRenewal[(int)prey] += _wildlifeCapacities[capacityOffset + (int)prey] * renewalRate;
                 }
             }
             while (mask != 0)
             {
                 var species = NextWildlife(ref mask); var kind = (WildlifeKind)species; var animal = AnimalRules.For(kind);
                 var population = _wildlifePopulations[offset + species];
-                var capacity = animal.Diet == AnimalDiet.Carnivore ? predatorCapacities[species] : _wildlifeCapacities[offset + species];
+                var capacity = animal.Diet == AnimalDiet.Carnivore ? predatorCapacities[species] : _wildlifeCapacities[capacityOffset + species];
                 var density = capacity > 0 ? population / capacity : 0;
                 var growth = capacity > 0 ? Math.Max(-population * deathRate, growthRate * population
                     * (1 - density - .35 * Math.Max(0, _wildlifePressure[local] - 1))) : -population * deathRate;
@@ -217,14 +221,15 @@ public sealed partial class WorldEngine
                 {
                     var next = neighbours[n]; var targetLocal = next - snapshotFirst;
                     var targetOffset = targetLocal * AnimalRules.SpeciesCount + species;
+                    var targetCapacityOffset = next % bufferTiles * AnimalRules.SpeciesCount;
                     var creek = tiles[next].Terrain == TerrainType.Stream && !animal.Aquatic;
-                    if (_wildlifeCapacities[targetOffset] <= 0 && !creek) continue;
-                    var targetCapacity = _wildlifeCapacities[targetOffset];
+                    if (_wildlifeCapacities[targetCapacityOffset + species] <= 0 && !creek) continue;
+                    var targetCapacity = _wildlifeCapacities[targetCapacityOffset + species];
                     if (animal.Diet == AnimalDiet.Carnivore && targetCapacity > 0)
                     {
                         var preyMass = 0d;
                         foreach (var prey in AnimalRules.PreyFor(kind))
-                            preyMass += _wildlifePopulations[targetLocal * AnimalRules.SpeciesCount + (int)prey] * AnimalRules.For(prey).BodyMass / _wildlifePreyCompetitors[targetLocal * AnimalRules.SpeciesCount + (int)prey];
+                            preyMass += _wildlifePopulations[targetLocal * AnimalRules.SpeciesCount + (int)prey] * AnimalRules.For(prey).BodyMass / _wildlifePreyCompetitors[targetCapacityOffset + (int)prey];
                         targetCapacity = Math.Min(targetCapacity, preyMass * .12 / animal.BodyMass);
                     }
                     if (targetCapacity <= 0 && !creek) continue;

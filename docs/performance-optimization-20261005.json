@@ -1,0 +1,2668 @@
+{
+  "recordedAtUtc": "2026-10-05T13:29:24.849839+00:00",
+  "manifest": {
+    "sdk": "10.0.401",
+    "runtime": "10.0.12",
+    "browserThreads": false,
+    "browserAot": false,
+    "cpuQuota": "400000 100000",
+    "sourceHashDefinition": "SHA256 of sorted src/**/*.cs excluding bin/obj; each repository-relative POSIX path, NUL, file bytes, NUL.",
+    "os": "Debian 13 / Linux x64",
+    "node": "22.23.3",
+    "playwright": "1.57.0",
+    "chromium": "151.0.7922.173",
+    "nativeServerGc": false,
+    "default.worldbox.json": {
+      "sha256": "7cbb4093184095cabe5dce1e9020a28606aae3a4be952bcc595e7528c3453b26",
+      "bytes": 26741888,
+      "tick": 1,
+      "population": 144,
+      "seed": 73921
+    },
+    "baseCommit": "eb25a63e3c2767789fee1b07a7f54d20debf8876",
+    "state": "uncommitted working tree",
+    "sourceSha256": "3a425a1c480086fcd1004dba8c2e717e7f3bd9d1bce85c4af54fe49c739ba006",
+    "sourceFiles": 94,
+    "baselineSourceSha256": "24124a9f0c69dc5de9ca434770f2124500501265e9941023568f8f98f206093f",
+    "baselineSourceFiles": 93,
+    "nativeProcessorCount": 4,
+    "revisionMetaLimitation": "Published revision identifies the base commit. Source fingerprint and binary hashes identify this uncommitted optimized build."
+  },
+  "target": {
+    "oneSpeedTicksPerSecond": 5,
+    "fiveSpeedTicksPerSecond": 25,
+    "fiveSpeedTotalMsPerTick": 40
+  },
+  "fixtures": {
+    "default": {
+      "path": "artifacts/performance-five-speed-20261005/production/default.worldbox.json",
+      "sha256": "7cbb4093184095cabe5dce1e9020a28606aae3a4be952bcc595e7528c3453b26",
+      "bytes": 26741888,
+      "seed": 73921,
+      "width": 256,
+      "height": 256,
+      "tick": 1,
+      "residents": 144,
+      "formatVersion": 15
+    },
+    "pressure": {
+      "path": "artifacts/performance-five-speed-20261005/large.worldbox.json",
+      "sha256": "b9034a4774efd2b5b61909df515b5b833728215c5b3e6a419df981cc135b1924",
+      "bytes": 31133692,
+      "seed": 451,
+      "width": 256,
+      "height": 256,
+      "tick": 0,
+      "residents": 2000,
+      "formatVersion": 15
+    }
+  },
+  "nativePairs": [
+    {
+      "phase": "early",
+      "before": {
+        "rawFile": "artifacts/performance-optimization-20261005/before-early.json",
+        "timestampUtc": "2026-10-05T12:18:20.0393309+00:00",
+        "framework": ".NET 10.0.12",
+        "os": "Debian GNU/Linux 13 (trixie)",
+        "architecture": "X64",
+        "processorCount": 4,
+        "serverGc": false,
+        "seed": 451,
+        "width": 256,
+        "height": 256,
+        "initialPopulation": 2000,
+        "initialNations": 16,
+        "wars": 8,
+        "terrain": "flat grass",
+        "naturalDisasters": false,
+        "warmupTicks": 60,
+        "measuredTicks": 120,
+        "repetitions": 3,
+        "limitation": "Native simulation only. Timings exclude generation, warmup, serialization, UI and browser execution. Sampling adds overhead; use a separate untraced run for timing.",
+        "measurements": [
+          {
+            "repetition": 0,
+            "elapsedMs": 843.5337,
+            "meanMs": 7.0283358333333315,
+            "processCpuMs": 1163.618,
+            "processCpuMsPerTick": 9.696816666666667,
+            "medianMs": 5.9715,
+            "p95Ms": 11.3433,
+            "maxMs": 34.6184,
+            "allocatedBytesPerTick": 2125129.1333333333,
+            "gcCollections": [
+              15,
+              1,
+              0
+            ],
+            "finalTick": 180,
+            "finalPopulation": 2035,
+            "nations": 16,
+            "armies": 16,
+            "rememberedFacts": 15456,
+            "saveBytes": 44669082,
+            "saveWithinLimit": true,
+            "saveSha256": "E0B62C3205FF62F2135F4B19D446582821B249D8D526EECA7E1F9AC462EF2005"
+          },
+          {
+            "repetition": 1,
+            "elapsedMs": 702.2554,
+            "meanMs": 5.851710833333334,
+            "processCpuMs": 711.366,
+            "processCpuMsPerTick": 5.92805,
+            "medianMs": 5.1794,
+            "p95Ms": 9.2626,
+            "maxMs": 17.1453,
+            "allocatedBytesPerTick": 2125575.2666666666,
+            "gcCollections": [
+              16,
+              3,
+              0
+            ],
+            "finalTick": 180,
+            "finalPopulation": 2035,
+            "nations": 16,
+            "armies": 16,
+            "rememberedFacts": 15456,
+            "saveBytes": 44669082,
+            "saveWithinLimit": true,
+            "saveSha256": "E0B62C3205FF62F2135F4B19D446582821B249D8D526EECA7E1F9AC462EF2005"
+          },
+          {
+            "repetition": 2,
+            "elapsedMs": 668.2679,
+            "meanMs": 5.5684525,
+            "processCpuMs": 678.548,
+            "processCpuMsPerTick": 5.654566666666667,
+            "medianMs": 4.9549,
+            "p95Ms": 9.382,
+            "maxMs": 13.5803,
+            "allocatedBytesPerTick": 2125577.8666666667,
+            "gcCollections": [
+              15,
+              1,
+              0
+            ],
+            "finalTick": 180,
+            "finalPopulation": 2035,
+            "nations": 16,
+            "armies": 16,
+            "rememberedFacts": 15456,
+            "saveBytes": 44669082,
+            "saveWithinLimit": true,
+            "saveSha256": "E0B62C3205FF62F2135F4B19D446582821B249D8D526EECA7E1F9AC462EF2005"
+          }
+        ]
+      },
+      "after": {
+        "rawFile": "artifacts/performance-optimization-20261005/after-early-final.json",
+        "timestampUtc": "2026-10-05T12:47:43.5150274+00:00",
+        "framework": ".NET 10.0.12",
+        "os": "Debian GNU/Linux 13 (trixie)",
+        "architecture": "X64",
+        "processorCount": 4,
+        "serverGc": false,
+        "seed": 451,
+        "width": 256,
+        "height": 256,
+        "initialPopulation": 2000,
+        "initialNations": 16,
+        "wars": 8,
+        "terrain": "flat grass",
+        "naturalDisasters": false,
+        "warmupTicks": 60,
+        "measuredTicks": 120,
+        "repetitions": 3,
+        "limitation": "Native simulation only. Timings exclude generation, warmup, serialization, UI and browser execution. Sampling adds overhead; use a separate untraced run for timing.",
+        "measurements": [
+          {
+            "repetition": 0,
+            "elapsedMs": 701.7767,
+            "meanMs": 5.846490833333332,
+            "processCpuMs": 879.895,
+            "processCpuMsPerTick": 7.332458333333333,
+            "medianMs": 5.0721,
+            "p95Ms": 9.1395,
+            "maxMs": 32.1041,
+            "allocatedBytesPerTick": 1774609.0666666667,
+            "gcCollections": [
+              12,
+              1,
+              0
+            ],
+            "finalTick": 180,
+            "finalPopulation": 2035,
+            "nations": 16,
+            "armies": 16,
+            "rememberedFacts": 15456,
+            "saveBytes": 44669082,
+            "saveWithinLimit": true,
+            "saveSha256": "E0B62C3205FF62F2135F4B19D446582821B249D8D526EECA7E1F9AC462EF2005"
+          },
+          {
+            "repetition": 1,
+            "elapsedMs": 621.2196,
+            "meanMs": 5.176305000000001,
+            "processCpuMs": 629.933,
+            "processCpuMsPerTick": 5.249441666666667,
+            "medianMs": 4.5309,
+            "p95Ms": 8.8051,
+            "maxMs": 13.9299,
+            "allocatedBytesPerTick": 1775464.4666666666,
+            "gcCollections": [
+              13,
+              2,
+              0
+            ],
+            "finalTick": 180,
+            "finalPopulation": 2035,
+            "nations": 16,
+            "armies": 16,
+            "rememberedFacts": 15456,
+            "saveBytes": 44669082,
+            "saveWithinLimit": true,
+            "saveSha256": "E0B62C3205FF62F2135F4B19D446582821B249D8D526EECA7E1F9AC462EF2005"
+          },
+          {
+            "repetition": 2,
+            "elapsedMs": 625.2558,
+            "meanMs": 5.209998333333331,
+            "processCpuMs": 635.191,
+            "processCpuMsPerTick": 5.293258333333333,
+            "medianMs": 4.6421,
+            "p95Ms": 8.2918,
+            "maxMs": 15.4314,
+            "allocatedBytesPerTick": 1775461.8666666667,
+            "gcCollections": [
+              12,
+              2,
+              0
+            ],
+            "finalTick": 180,
+            "finalPopulation": 2035,
+            "nations": 16,
+            "armies": 16,
+            "rememberedFacts": 15456,
+            "saveBytes": 44669082,
+            "saveWithinLimit": true,
+            "saveSha256": "E0B62C3205FF62F2135F4B19D446582821B249D8D526EECA7E1F9AC462EF2005"
+          }
+        ]
+      },
+      "aggregate": {
+        "beforeMeanMsPerDay": 6.149499722222222,
+        "afterMeanMsPerDay": 5.410931388888888,
+        "elapsedReductionPercent": 12.010218175380949,
+        "beforeKiBPerDay": 2075.612717013889,
+        "afterKiBPerDay": 1733.5727213541666,
+        "allocationReductionPercent": 16.47898920911427,
+        "identicalFullSaveSha256": "E0B62C3205FF62F2135F4B19D446582821B249D8D526EECA7E1F9AC462EF2005"
+      }
+    },
+    {
+      "phase": "late",
+      "before": {
+        "rawFile": "artifacts/performance-optimization-20261005/before-late.json",
+        "timestampUtc": "2026-10-05T12:19:01.2658656+00:00",
+        "framework": ".NET 10.0.12",
+        "os": "Debian GNU/Linux 13 (trixie)",
+        "architecture": "X64",
+        "processorCount": 4,
+        "serverGc": false,
+        "seed": 451,
+        "width": 256,
+        "height": 256,
+        "initialPopulation": 2000,
+        "initialNations": 16,
+        "wars": 8,
+        "terrain": "flat grass",
+        "naturalDisasters": false,
+        "warmupTicks": 600,
+        "measuredTicks": 120,
+        "repetitions": 3,
+        "limitation": "Native simulation only. Timings exclude generation, warmup, serialization, UI and browser execution. Sampling adds overhead; use a separate untraced run for timing.",
+        "measurements": [
+          {
+            "repetition": 0,
+            "elapsedMs": 1790.8309,
+            "meanMs": 14.922033333333328,
+            "processCpuMs": 1805.374,
+            "processCpuMsPerTick": 15.044783333333333,
+            "medianMs": 13.4377,
+            "p95Ms": 21.8768,
+            "maxMs": 23.8043,
+            "allocatedBytesPerTick": 3733261.2666666666,
+            "gcCollections": [
+              27,
+              6,
+              0
+            ],
+            "finalTick": 720,
+            "finalPopulation": 2311,
+            "nations": 16,
+            "armies": 0,
+            "rememberedFacts": 36344,
+            "saveBytes": 58495700,
+            "saveWithinLimit": true,
+            "saveSha256": "E28B149DA00E3A1E0AF93B9B589A27C393EB307F21DF560DD85164C15EB447EA"
+          },
+          {
+            "repetition": 1,
+            "elapsedMs": 1877.1361,
+            "meanMs": 15.642061666666661,
+            "processCpuMs": 1878.265,
+            "processCpuMsPerTick": 15.652208333333334,
+            "medianMs": 14.3461,
+            "p95Ms": 23.5838,
+            "maxMs": 25.3551,
+            "allocatedBytesPerTick": 3733253.3333333335,
+            "gcCollections": [
+              26,
+              5,
+              0
+            ],
+            "finalTick": 720,
+            "finalPopulation": 2311,
+            "nations": 16,
+            "armies": 0,
+            "rememberedFacts": 36344,
+            "saveBytes": 58495700,
+            "saveWithinLimit": true,
+            "saveSha256": "E28B149DA00E3A1E0AF93B9B589A27C393EB307F21DF560DD85164C15EB447EA"
+          },
+          {
+            "repetition": 2,
+            "elapsedMs": 1782.5149,
+            "meanMs": 14.85360583333333,
+            "processCpuMs": 1784.78,
+            "processCpuMsPerTick": 14.873166666666666,
+            "medianMs": 13.4092,
+            "p95Ms": 22.5864,
+            "maxMs": 24.9951,
+            "allocatedBytesPerTick": 3733252.8,
+            "gcCollections": [
+              26,
+              5,
+              0
+            ],
+            "finalTick": 720,
+            "finalPopulation": 2311,
+            "nations": 16,
+            "armies": 0,
+            "rememberedFacts": 36344,
+            "saveBytes": 58495700,
+            "saveWithinLimit": true,
+            "saveSha256": "E28B149DA00E3A1E0AF93B9B589A27C393EB307F21DF560DD85164C15EB447EA"
+          }
+        ]
+      },
+      "after": {
+        "rawFile": "artifacts/performance-optimization-20261005/after-late-final.json",
+        "timestampUtc": "2026-10-05T12:48:18.6501723+00:00",
+        "framework": ".NET 10.0.12",
+        "os": "Debian GNU/Linux 13 (trixie)",
+        "architecture": "X64",
+        "processorCount": 4,
+        "serverGc": false,
+        "seed": 451,
+        "width": 256,
+        "height": 256,
+        "initialPopulation": 2000,
+        "initialNations": 16,
+        "wars": 8,
+        "terrain": "flat grass",
+        "naturalDisasters": false,
+        "warmupTicks": 600,
+        "measuredTicks": 120,
+        "repetitions": 3,
+        "limitation": "Native simulation only. Timings exclude generation, warmup, serialization, UI and browser execution. Sampling adds overhead; use a separate untraced run for timing.",
+        "measurements": [
+          {
+            "repetition": 0,
+            "elapsedMs": 1474.3608,
+            "meanMs": 12.28489083333333,
+            "processCpuMs": 1489.543,
+            "processCpuMsPerTick": 12.412858333333332,
+            "medianMs": 11.0392,
+            "p95Ms": 19.2627,
+            "maxMs": 27.1373,
+            "allocatedBytesPerTick": 2122005.4,
+            "gcCollections": [
+              15,
+              3,
+              0
+            ],
+            "finalTick": 720,
+            "finalPopulation": 2311,
+            "nations": 16,
+            "armies": 0,
+            "rememberedFacts": 36344,
+            "saveBytes": 58495700,
+            "saveWithinLimit": true,
+            "saveSha256": "E28B149DA00E3A1E0AF93B9B589A27C393EB307F21DF560DD85164C15EB447EA"
+          },
+          {
+            "repetition": 1,
+            "elapsedMs": 1588.7148,
+            "meanMs": 13.238622499999998,
+            "processCpuMs": 1590.546,
+            "processCpuMsPerTick": 13.25455,
+            "medianMs": 12.1095,
+            "p95Ms": 20.3816,
+            "maxMs": 26.5183,
+            "allocatedBytesPerTick": 2122001.1333333333,
+            "gcCollections": [
+              15,
+              2,
+              0
+            ],
+            "finalTick": 720,
+            "finalPopulation": 2311,
+            "nations": 16,
+            "armies": 0,
+            "rememberedFacts": 36344,
+            "saveBytes": 58495700,
+            "saveWithinLimit": true,
+            "saveSha256": "E28B149DA00E3A1E0AF93B9B589A27C393EB307F21DF560DD85164C15EB447EA"
+          },
+          {
+            "repetition": 2,
+            "elapsedMs": 1423.0225,
+            "meanMs": 11.857942499999991,
+            "processCpuMs": 1425.004,
+            "processCpuMsPerTick": 11.875033333333333,
+            "medianMs": 10.8367,
+            "p95Ms": 19.5225,
+            "maxMs": 24.8779,
+            "allocatedBytesPerTick": 2122001.1333333333,
+            "gcCollections": [
+              15,
+              2,
+              0
+            ],
+            "finalTick": 720,
+            "finalPopulation": 2311,
+            "nations": 16,
+            "armies": 0,
+            "rememberedFacts": 36344,
+            "saveBytes": 58495700,
+            "saveWithinLimit": true,
+            "saveSha256": "E28B149DA00E3A1E0AF93B9B589A27C393EB307F21DF560DD85164C15EB447EA"
+          }
+        ]
+      },
+      "aggregate": {
+        "beforeMeanMsPerDay": 15.139233611111106,
+        "afterMeanMsPerDay": 12.460485277777773,
+        "elapsedReductionPercent": 17.694081498070847,
+        "beforeKiBPerDay": 3645.7576171875,
+        "afterKiBPerDay": 2072.268120659722,
+        "allocationReductionPercent": 43.15946537723037,
+        "identicalFullSaveSha256": "E28B149DA00E3A1E0AF93B9B589A27C393EB307F21DF560DD85164C15EB447EA"
+      }
+    }
+  ],
+  "focusedNativeProbes": [
+    {
+      "version": "historical-baseline-probe",
+      "rawFile": "artifacts/performance-five-speed-20261005/late-reserve-details.json",
+      "timestampUtc": "2026-10-05T11:14:28.5445793+00:00",
+      "meanMsPerDay": 15.629385833333338,
+      "details": {
+        "ActOnAgentGoal": {
+          "selfMsPerDay": 0.49335292083333326,
+          "inclusiveMsPerDay": 1.9102306541666667,
+          "callsPerDay": 1887.1333333333334
+        },
+        "ActOnProduction": {
+          "selfMsPerDay": 0.07100995416666667,
+          "inclusiveMsPerDay": 0.07100995416666667,
+          "callsPerDay": 1876.325
+        },
+        "ActOnRacialWork": {
+          "selfMsPerDay": 0.08403450833333334,
+          "inclusiveMsPerDay": 0.09954611666666667,
+          "callsPerDay": 1876.325
+        },
+        "AddAgentMissionChoices": {
+          "selfMsPerDay": 0.04499814583333333,
+          "inclusiveMsPerDay": 0.046498008333333334,
+          "callsPerDay": 437.7916666666667
+        },
+        "AddBoatFishingChoice": {
+          "selfMsPerDay": 0.005081379166666666,
+          "inclusiveMsPerDay": 0.005081379166666666,
+          "callsPerDay": 144.05
+        },
+        "AddProvisionChoices": {
+          "selfMsPerDay": 0.2941853291666667,
+          "inclusiveMsPerDay": 2.1176353875,
+          "callsPerDay": 437.7916666666667
+        },
+        "AgentFoodPolicyMultiplier": {
+          "selfMsPerDay": 0.018101491666666667,
+          "inclusiveMsPerDay": 0.018101491666666667,
+          "callsPerDay": 70.75833333333334
+        },
+        "BalanceLocalWorkforce": {
+          "selfMsPerDay": 0.007716841666666667,
+          "inclusiveMsPerDay": 0.007716841666666667,
+          "callsPerDay": 0.03333333333333333
+        },
+        "BeginLocalWorkQueries": {
+          "selfMsPerDay": 0.13148531666666666,
+          "inclusiveMsPerDay": 1.5210037833333334,
+          "callsPerDay": 1.0
+        },
+        "BuildingHasWork": {
+          "selfMsPerDay": 0.2744576833333333,
+          "inclusiveMsPerDay": 0.2913769666666666,
+          "callsPerDay": 2304.891666666667
+        },
+        "CanProduce": {
+          "selfMsPerDay": 0.0,
+          "inclusiveMsPerDay": 0.0,
+          "callsPerDay": 0.0
+        },
+        "ChooseAgentGoal": {
+          "selfMsPerDay": 0.5412241541666667,
+          "inclusiveMsPerDay": 6.161558629166667,
+          "callsPerDay": 628.7666666666667
+        },
+        "Communication.GatherNearbyResidents": {
+          "selfMsPerDay": 0.121685225,
+          "inclusiveMsPerDay": 0.121685225,
+          "callsPerDay": 194.30833333333334
+        },
+        "Communication.SelectNearbyResidentByIdRank": {
+          "selfMsPerDay": 0.16711301666666667,
+          "inclusiveMsPerDay": 0.16711301666666667,
+          "callsPerDay": 180.4
+        },
+        "EndLocalWorkQueries": {
+          "selfMsPerDay": 0.0068837375,
+          "inclusiveMsPerDay": 0.0068837375,
+          "callsPerDay": 1.0
+        },
+        "ExchangeCulture": {
+          "selfMsPerDay": 0.006578708333333333,
+          "inclusiveMsPerDay": 0.006578708333333333,
+          "callsPerDay": 180.4
+        },
+        "FindHarvestableWildlife": {
+          "selfMsPerDay": 0.47167749999999997,
+          "inclusiveMsPerDay": 0.4830875375,
+          "callsPerDay": 124.98333333333333
+        },
+        "FindLocalWorkBuilding": {
+          "selfMsPerDay": 0.27033683750000004,
+          "inclusiveMsPerDay": 0.5951892375,
+          "callsPerDay": 661.6083333333333
+        },
+        "FindVisibleResourceSite": {
+          "selfMsPerDay": 1.482014304166667,
+          "inclusiveMsPerDay": 1.5042952208333333,
+          "callsPerDay": 389.21666666666664
+        },
+        "FindWaterSite": {
+          "selfMsPerDay": 0.7907292458333333,
+          "inclusiveMsPerDay": 0.8848731666666667,
+          "callsPerDay": 275.6
+        },
+        "FindWorkshopResource": {
+          "selfMsPerDay": 0.019041283333333332,
+          "inclusiveMsPerDay": 0.019041283333333332,
+          "callsPerDay": 104.55833333333334
+        },
+        "GatherActualResources": {
+          "selfMsPerDay": 0.02787285,
+          "inclusiveMsPerDay": 0.04197045,
+          "callsPerDay": 72.53333333333333
+        },
+        "GrowSettlements": {
+          "selfMsPerDay": 0.08020437500000001,
+          "inclusiveMsPerDay": 0.24315169166666667,
+          "callsPerDay": 0.08333333333333333
+        },
+        "InspectLocalDemand": {
+          "selfMsPerDay": 0.6863690708333333,
+          "inclusiveMsPerDay": 0.6863690708333333,
+          "callsPerDay": 32.80833333333333
+        },
+        "LatestAgentFact": {
+          "selfMsPerDay": 0.22420774166666665,
+          "inclusiveMsPerDay": 0.22420774166666665,
+          "callsPerDay": 1007.175
+        },
+        "LocalDevelopmentReserve": {
+          "selfMsPerDay": 1.9420284166666666,
+          "inclusiveMsPerDay": 2.617141083333333,
+          "callsPerDay": 48.71666666666667
+        },
+        "MarkVisibleReachable": {
+          "selfMsPerDay": 0.07571579583333334,
+          "inclusiveMsPerDay": 0.8134309250000001,
+          "callsPerDay": 644.9
+        },
+        "MoveAgentTowards": {
+          "selfMsPerDay": 0.601184025,
+          "inclusiveMsPerDay": 1.0005174041666667,
+          "callsPerDay": 407.3
+        },
+        "ObserveAgentEnvironment": {
+          "selfMsPerDay": 0.5547406208333333,
+          "inclusiveMsPerDay": 0.8037523083333333,
+          "callsPerDay": 146.43333333333334
+        },
+        "ObserveProjects": {
+          "selfMsPerDay": 0.0036661416666666667,
+          "inclusiveMsPerDay": 0.0036661416666666667,
+          "callsPerDay": 1.0
+        },
+        "PlanLocalDevelopment": {
+          "selfMsPerDay": 0.04622964583333333,
+          "inclusiveMsPerDay": 0.18442705416666666,
+          "callsPerDay": 0.5
+        },
+        "PrepareJourneyTransport": {
+          "selfMsPerDay": 0.0004870916666666667,
+          "inclusiveMsPerDay": 0.0004870916666666667,
+          "callsPerDay": 10.658333333333333
+        },
+        "ProductiveGoalContinues": {
+          "selfMsPerDay": 0.144847525,
+          "inclusiveMsPerDay": 0.14730139583333332,
+          "callsPerDay": 628.7166666666667
+        },
+        "ProvisionAtHome": {
+          "selfMsPerDay": 0.10013208333333333,
+          "inclusiveMsPerDay": 0.10013208333333333,
+          "callsPerDay": 1148.6166666666666
+        },
+        "Reachability.BreadthFirstSearch": {
+          "selfMsPerDay": 0.6975462708333333,
+          "inclusiveMsPerDay": 0.6975462708333333,
+          "callsPerDay": 280.8666666666667
+        },
+        "Reachability.SharedCacheLookupAndMark": {
+          "selfMsPerDay": 0.04016885833333333,
+          "inclusiveMsPerDay": 0.04016885833333333,
+          "callsPerDay": 379.81666666666666
+        },
+        "ReceiveSocietyReport": {
+          "selfMsPerDay": 0.36253855,
+          "inclusiveMsPerDay": 0.3630853416666666,
+          "callsPerDay": 222.29166666666666
+        },
+        "ReconcileConnectedClaims": {
+          "selfMsPerDay": 0.6106946291666666,
+          "inclusiveMsPerDay": 0.6106946291666666,
+          "callsPerDay": 2.2083333333333335
+        },
+        "ReconcileSocietyTopology": {
+          "selfMsPerDay": 0.1143943,
+          "inclusiveMsPerDay": 0.5998861041666667,
+          "callsPerDay": 1.0
+        },
+        "RefreshLocalRepresentatives": {
+          "selfMsPerDay": 0.0016829791666666668,
+          "inclusiveMsPerDay": 0.0016829791666666668,
+          "callsPerDay": 0.03333333333333333
+        },
+        "RelayKnownAgentMessages": {
+          "selfMsPerDay": 0.07576968333333335,
+          "inclusiveMsPerDay": 0.07576968333333335,
+          "callsPerDay": 1.0
+        },
+        "RememberAgentFact": {
+          "selfMsPerDay": 0.23296087083333333,
+          "inclusiveMsPerDay": 0.23296087083333333,
+          "callsPerDay": 1295.7416666666666
+        },
+        "SelectAgentStep": {
+          "selfMsPerDay": 0.08269462500000001,
+          "inclusiveMsPerDay": 0.08269462500000001,
+          "callsPerDay": 407.3
+        },
+        "SelectMessageFacts": {
+          "selfMsPerDay": 0.4700856125,
+          "inclusiveMsPerDay": 0.4700856125,
+          "callsPerDay": 180.4
+        },
+        "TickPlants": {
+          "selfMsPerDay": 0.06079604583333333,
+          "inclusiveMsPerDay": 0.06079604583333333,
+          "callsPerDay": 1.0
+        },
+        "TickWildlife": {
+          "selfMsPerDay": 0.8941448041666666,
+          "inclusiveMsPerDay": 0.8941448041666666,
+          "callsPerDay": 1.0
+        },
+        "TransferPersonalProduction": {
+          "selfMsPerDay": 0.3047965583333333,
+          "inclusiveMsPerDay": 0.3047965583333333,
+          "callsPerDay": 1132.225
+        },
+        "TryWorkAtBuilding": {
+          "selfMsPerDay": 0.104485575,
+          "inclusiveMsPerDay": 0.17979955,
+          "callsPerDay": 129.16666666666666
+        },
+        "VisibleClaimSite": {
+          "selfMsPerDay": 0.09942503750000001,
+          "inclusiveMsPerDay": 0.1051137125,
+          "callsPerDay": 277.84166666666664
+        },
+        "WildlifeCapacity": {
+          "selfMsPerDay": 0.0,
+          "inclusiveMsPerDay": 0.0,
+          "callsPerDay": 0.0
+        }
+      },
+      "stateSha256": [
+        "E28B149DA00E3A1E0AF93B9B589A27C393EB307F21DF560DD85164C15EB447EA"
+      ]
+    },
+    {
+      "version": "optimized-probe",
+      "rawFile": "artifacts/performance-optimization-20261005/after-details.json",
+      "timestampUtc": "2026-10-05T13:09:37.2457789+00:00",
+      "meanMsPerDay": 15.836772916666664,
+      "details": {
+        "ActOnAgentGoal": {
+          "selfMsPerDay": 0.5984014583333334,
+          "inclusiveMsPerDay": 2.15418135,
+          "callsPerDay": 1887.1333333333334
+        },
+        "ActOnProduction": {
+          "selfMsPerDay": 0.072625,
+          "inclusiveMsPerDay": 0.072625,
+          "callsPerDay": 1876.325
+        },
+        "ActOnRacialWork": {
+          "selfMsPerDay": 0.0806894625,
+          "inclusiveMsPerDay": 0.103500625,
+          "callsPerDay": 1876.325
+        },
+        "AddAgentMissionChoices": {
+          "selfMsPerDay": 0.04801151666666667,
+          "inclusiveMsPerDay": 0.05004695833333333,
+          "callsPerDay": 437.7916666666667
+        },
+        "AddBoatFishingChoice": {
+          "selfMsPerDay": 0.0063338875,
+          "inclusiveMsPerDay": 0.0063338875,
+          "callsPerDay": 144.05
+        },
+        "AddProvisionChoices": {
+          "selfMsPerDay": 0.33062387499999996,
+          "inclusiveMsPerDay": 2.552345541666667,
+          "callsPerDay": 437.7916666666667
+        },
+        "AgentFoodPolicyMultiplier": {
+          "selfMsPerDay": 0.022427141666666667,
+          "inclusiveMsPerDay": 0.022427141666666667,
+          "callsPerDay": 70.75833333333334
+        },
+        "BalanceLocalWorkforce": {
+          "selfMsPerDay": 0.010330804166666667,
+          "inclusiveMsPerDay": 0.010330804166666667,
+          "callsPerDay": 0.03333333333333333
+        },
+        "BeginLocalWorkQueries": {
+          "selfMsPerDay": 0.19243464166666666,
+          "inclusiveMsPerDay": 0.9902714791666667,
+          "callsPerDay": 1.0
+        },
+        "BuildingHasWork": {
+          "selfMsPerDay": 0.2835929833333334,
+          "inclusiveMsPerDay": 0.30578762916666663,
+          "callsPerDay": 2304.891666666667
+        },
+        "CanProduce": {
+          "selfMsPerDay": 0.0,
+          "inclusiveMsPerDay": 0.0,
+          "callsPerDay": 0.0
+        },
+        "ChooseAgentGoal": {
+          "selfMsPerDay": 0.6330557375,
+          "inclusiveMsPerDay": 5.70194845,
+          "callsPerDay": 628.7666666666667
+        },
+        "Communication.GatherNearbyResidents": {
+          "selfMsPerDay": 0.156244675,
+          "inclusiveMsPerDay": 0.156244675,
+          "callsPerDay": 194.30833333333334
+        },
+        "Communication.SelectNearbyResidentByIdRank": {
+          "selfMsPerDay": 0.18413885416666667,
+          "inclusiveMsPerDay": 0.18413885416666667,
+          "callsPerDay": 180.4
+        },
+        "EndLocalWorkQueries": {
+          "selfMsPerDay": 0.009259929166666665,
+          "inclusiveMsPerDay": 0.009259929166666665,
+          "callsPerDay": 1.0
+        },
+        "ExchangeCulture": {
+          "selfMsPerDay": 0.0079125875,
+          "inclusiveMsPerDay": 0.0079125875,
+          "callsPerDay": 180.4
+        },
+        "FindHarvestableWildlife": {
+          "selfMsPerDay": 0.5289492583333334,
+          "inclusiveMsPerDay": 0.5428604708333334,
+          "callsPerDay": 124.98333333333333
+        },
+        "FindLocalWorkBuilding": {
+          "selfMsPerDay": 0.363812225,
+          "inclusiveMsPerDay": 0.7100070916666666,
+          "callsPerDay": 661.6083333333333
+        },
+        "FindVisibleResourceSite": {
+          "selfMsPerDay": 0.7021887583333334,
+          "inclusiveMsPerDay": 0.7355819125,
+          "callsPerDay": 332.75
+        },
+        "FindWaterSite": {
+          "selfMsPerDay": 1.0195275666666668,
+          "inclusiveMsPerDay": 1.1449534624999997,
+          "callsPerDay": 275.6
+        },
+        "FindWorkshopResource": {
+          "selfMsPerDay": 0.02418514166666667,
+          "inclusiveMsPerDay": 0.02418514166666667,
+          "callsPerDay": 104.55833333333334
+        },
+        "GatherActualResources": {
+          "selfMsPerDay": 0.0322524875,
+          "inclusiveMsPerDay": 0.050330704166666664,
+          "callsPerDay": 72.53333333333333
+        },
+        "GrowSettlements": {
+          "selfMsPerDay": 0.10058509583333333,
+          "inclusiveMsPerDay": 0.22650789166666666,
+          "callsPerDay": 0.08333333333333333
+        },
+        "InspectLocalDemand": {
+          "selfMsPerDay": 0.9698220124999999,
+          "inclusiveMsPerDay": 0.9698220124999999,
+          "callsPerDay": 32.80833333333333
+        },
+        "LatestAgentFact": {
+          "selfMsPerDay": 0.30275528333333335,
+          "inclusiveMsPerDay": 0.30275528333333335,
+          "callsPerDay": 1007.175
+        },
+        "LocalDevelopmentReserve": {
+          "selfMsPerDay": 0.5602646,
+          "inclusiveMsPerDay": 1.5171606625,
+          "callsPerDay": 48.71666666666667
+        },
+        "MarkVisibleReachable": {
+          "selfMsPerDay": 0.08128860833333333,
+          "inclusiveMsPerDay": 1.0471568041666666,
+          "callsPerDay": 642.8916666666667
+        },
+        "MoveAgentTowards": {
+          "selfMsPerDay": 0.5894874791666667,
+          "inclusiveMsPerDay": 1.1003561541666664,
+          "callsPerDay": 407.3
+        },
+        "ObserveAgentEnvironment": {
+          "selfMsPerDay": 0.8327457791666667,
+          "inclusiveMsPerDay": 1.1398548083333333,
+          "callsPerDay": 146.43333333333334
+        },
+        "ObserveProjects": {
+          "selfMsPerDay": 0.003981116666666667,
+          "inclusiveMsPerDay": 0.003981116666666667,
+          "callsPerDay": 1.0
+        },
+        "PlanLocalDevelopment": {
+          "selfMsPerDay": 0.08117731249999999,
+          "inclusiveMsPerDay": 0.24044460416666666,
+          "callsPerDay": 0.5
+        },
+        "PrepareJourneyTransport": {
+          "selfMsPerDay": 0.00050265,
+          "inclusiveMsPerDay": 0.00050265,
+          "callsPerDay": 10.658333333333333
+        },
+        "ProductiveGoalContinues": {
+          "selfMsPerDay": 0.24590389166666668,
+          "inclusiveMsPerDay": 0.24909801250000002,
+          "callsPerDay": 628.7166666666667
+        },
+        "ProvisionAtHome": {
+          "selfMsPerDay": 0.08174827083333333,
+          "inclusiveMsPerDay": 0.08174827083333333,
+          "callsPerDay": 1148.6166666666666
+        },
+        "Reachability.BreadthFirstSearch": {
+          "selfMsPerDay": 0.9224543125,
+          "inclusiveMsPerDay": 0.9224543125,
+          "callsPerDay": 280.8666666666667
+        },
+        "Reachability.SharedCacheLookupAndMark": {
+          "selfMsPerDay": 0.043413883333333333,
+          "inclusiveMsPerDay": 0.043413883333333333,
+          "callsPerDay": 379.81666666666666
+        },
+        "ReceiveSocietyReport": {
+          "selfMsPerDay": 0.41351364583333333,
+          "inclusiveMsPerDay": 0.4143372041666667,
+          "callsPerDay": 222.29166666666666
+        },
+        "ReconcileConnectedClaims": {
+          "selfMsPerDay": 0.7471024374999999,
+          "inclusiveMsPerDay": 0.7471024374999999,
+          "callsPerDay": 2.2083333333333335
+        },
+        "ReconcileSocietyTopology": {
+          "selfMsPerDay": 0.10874579583333333,
+          "inclusiveMsPerDay": 0.7104768333333332,
+          "callsPerDay": 1.0
+        },
+        "RefreshLocalRepresentatives": {
+          "selfMsPerDay": 0.0018615083333333334,
+          "inclusiveMsPerDay": 0.0018615083333333334,
+          "callsPerDay": 0.03333333333333333
+        },
+        "RelayKnownAgentMessages": {
+          "selfMsPerDay": 0.15280497916666666,
+          "inclusiveMsPerDay": 0.15280497916666666,
+          "callsPerDay": 1.0
+        },
+        "RememberAgentFact": {
+          "selfMsPerDay": 0.30380552083333334,
+          "inclusiveMsPerDay": 0.30380552083333334,
+          "callsPerDay": 1295.7416666666666
+        },
+        "SelectAgentStep": {
+          "selfMsPerDay": 0.09135841666666668,
+          "inclusiveMsPerDay": 0.09135841666666668,
+          "callsPerDay": 407.3
+        },
+        "SelectMessageFacts": {
+          "selfMsPerDay": 0.7324011749999999,
+          "inclusiveMsPerDay": 0.7324011749999999,
+          "callsPerDay": 180.4
+        },
+        "TickPlants": {
+          "selfMsPerDay": 0.0665134625,
+          "inclusiveMsPerDay": 0.0665134625,
+          "callsPerDay": 1.0
+        },
+        "TickWildlife": {
+          "selfMsPerDay": 0.6043969541666667,
+          "inclusiveMsPerDay": 0.6043969541666667,
+          "callsPerDay": 1.0
+        },
+        "TransferPersonalProduction": {
+          "selfMsPerDay": 0.3193509083333333,
+          "inclusiveMsPerDay": 0.3193509083333333,
+          "callsPerDay": 1132.225
+        },
+        "TryWorkAtBuilding": {
+          "selfMsPerDay": 0.09133444583333333,
+          "inclusiveMsPerDay": 0.21076007916666667,
+          "callsPerDay": 129.16666666666666
+        },
+        "VisibleClaimSite": {
+          "selfMsPerDay": 0.0974571625,
+          "inclusiveMsPerDay": 0.10349262916666667,
+          "callsPerDay": 277.84166666666664
+        },
+        "WildlifeCapacity": {
+          "selfMsPerDay": 0.0,
+          "inclusiveMsPerDay": 0.0,
+          "callsPerDay": 0.0
+        }
+      },
+      "stateSha256": [
+        "E28B149DA00E3A1E0AF93B9B589A27C393EB307F21DF560DD85164C15EB447EA"
+      ]
+    }
+  ],
+  "browser": [
+    {
+      "version": "baseline",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-before/default-far-5.json",
+      "name": "default-far-5",
+      "speed": 5,
+      "baseUrl": "http://127.0.0.1:8080/before/",
+      "population": 144,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 8,
+      "tickAfter": 291,
+      "elapsedMs": 15035.200000000186,
+      "ticksPerSecond": 18.822496541449166,
+      "longTasks": {
+        "count": 2,
+        "totalMs": 202,
+        "meanMs": 101,
+        "p50Ms": 86,
+        "p95Ms": 116,
+        "maxMs": 116
+      },
+      "frameGaps": {
+        "count": 385,
+        "totalMs": 15032.8,
+        "meanMs": 39.04623376623376,
+        "p50Ms": 49.89999999999782,
+        "p95Ms": 66.70000000000073,
+        "maxMs": 116.59999999999854
+      },
+      "gapsOver100ms": 2,
+      "managed": {},
+      "metricDelta": {
+        "TaskDuration": 15787.384999999998,
+        "ScriptDuration": 10353.220000000001,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 24.802
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 3.3359375,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {}
+    },
+    {
+      "version": "baseline",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-before/large-far-5.json",
+      "name": "large-far-5",
+      "speed": 5,
+      "baseUrl": "http://127.0.0.1:8080/before/",
+      "population": 2000,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 5,
+      "tickAfter": 99,
+      "elapsedMs": 15138.200000000186,
+      "ticksPerSecond": 6.209456870697893,
+      "longTasks": {
+        "count": 124,
+        "totalMs": 12143,
+        "meanMs": 97.9274193548387,
+        "p50Ms": 105,
+        "p95Ms": 137,
+        "maxMs": 179
+      },
+      "frameGaps": {
+        "count": 98,
+        "totalMs": 14966.099999999999,
+        "meanMs": 152.71530612244896,
+        "p50Ms": 150,
+        "p95Ms": 200.09999999999854,
+        "maxMs": 233.29999999999927
+      },
+      "gapsOver100ms": 93,
+      "managed": {},
+      "metricDelta": {
+        "TaskDuration": 16993.06,
+        "ScriptDuration": 13199.814,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 9.067
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 3.3359375,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {}
+    },
+    {
+      "version": "optimized",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-final/default-far-5.json",
+      "name": "default-far-5",
+      "speed": 5,
+      "baseUrl": "http://127.0.0.1:8080/final/",
+      "population": 144,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 19,
+      "tickAfter": 392,
+      "elapsedMs": 15033.899999999441,
+      "ticksPerSecond": 24.810594722594526,
+      "longTasks": {
+        "count": 38,
+        "totalMs": 2589,
+        "meanMs": 68.13157894736842,
+        "p50Ms": 65,
+        "p95Ms": 102,
+        "maxMs": 103
+      },
+      "frameGaps": {
+        "count": 296,
+        "totalMs": 15082.699999999999,
+        "meanMs": 50.95506756756756,
+        "p50Ms": 50,
+        "p95Ms": 116.59999999999854,
+        "maxMs": 166.70000000000073
+      },
+      "gapsOver100ms": 25,
+      "managed": {},
+      "metricDelta": {
+        "TaskDuration": 15839.497,
+        "ScriptDuration": 11432.34,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 21.554
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 3.3359375,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {}
+    },
+    {
+      "version": "optimized",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-final/large-far-5.json",
+      "name": "large-far-5",
+      "speed": 5,
+      "baseUrl": "http://127.0.0.1:8080/final/",
+      "population": 2000,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 7,
+      "tickAfter": 127,
+      "elapsedMs": 15115.400000000373,
+      "ticksPerSecond": 7.938923217380753,
+      "longTasks": {
+        "count": 133,
+        "totalMs": 10919,
+        "meanMs": 82.09774436090225,
+        "p50Ms": 80,
+        "p95Ms": 104,
+        "maxMs": 222
+      },
+      "frameGaps": {
+        "count": 124,
+        "totalMs": 15099.399999999998,
+        "meanMs": 121.76935483870966,
+        "p50Ms": 133.29999999999927,
+        "p95Ms": 200,
+        "maxMs": 266.7000000000007
+      },
+      "gapsOver100ms": 104,
+      "managed": {},
+      "metricDelta": {
+        "TaskDuration": 17139.073,
+        "ScriptDuration": 13172.453000000001,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 10.14
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 3.3359375,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {}
+    },
+    {
+      "version": "optimized",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-final-other/default-far-1.json",
+      "name": "default-far-1",
+      "speed": 1,
+      "baseUrl": "http://127.0.0.1:8080/final/",
+      "population": 144,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 1,
+      "tickAfter": 77,
+      "elapsedMs": 15031.300000000745,
+      "ticksPerSecond": 5.056116237450935,
+      "longTasks": {
+        "count": 3,
+        "totalMs": 197,
+        "meanMs": 65.66666666666667,
+        "p50Ms": 60,
+        "p95Ms": 85,
+        "maxMs": 85
+      },
+      "frameGaps": {
+        "count": 726,
+        "totalMs": 14982.7,
+        "meanMs": 20.63732782369146,
+        "p50Ms": 16.700000000000728,
+        "p95Ms": 33.400000000001455,
+        "maxMs": 99.90000000000146
+      },
+      "gapsOver100ms": 0,
+      "managed": {},
+      "metricDelta": {
+        "TaskDuration": 9811.207999999999,
+        "ScriptDuration": 5191.036,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 20.977
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 3.3359375,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {}
+    },
+    {
+      "version": "optimized",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-final-other/default-near-5.json",
+      "name": "default-near-5",
+      "speed": 5,
+      "baseUrl": "http://127.0.0.1:8080/final/",
+      "population": 144,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 13,
+      "tickAfter": 392,
+      "elapsedMs": 15114.099999999627,
+      "ticksPerSecond": 25.075922482980086,
+      "longTasks": {
+        "count": 10,
+        "totalMs": 629,
+        "meanMs": 62.9,
+        "p50Ms": 64,
+        "p95Ms": 74,
+        "maxMs": 74
+      },
+      "frameGaps": {
+        "count": 421,
+        "totalMs": 15032.8,
+        "meanMs": 35.707363420427555,
+        "p50Ms": 33.30000000000291,
+        "p95Ms": 66.69999999999709,
+        "maxMs": 83.40000000000146
+      },
+      "gapsOver100ms": 0,
+      "managed": {},
+      "metricDelta": {
+        "TaskDuration": 15705.754,
+        "ScriptDuration": 11870.795999999998,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 24.29
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 71.28825599999982,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {}
+    },
+    {
+      "version": "optimized",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-final-other/large-far-1.json",
+      "name": "large-far-1",
+      "speed": 1,
+      "baseUrl": "http://127.0.0.1:8080/final/",
+      "population": 2000,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 2,
+      "tickAfter": 77,
+      "elapsedMs": 15044.700000001118,
+      "ticksPerSecond": 4.985144270074806,
+      "longTasks": {
+        "count": 92,
+        "totalMs": 7852,
+        "meanMs": 85.34782608695652,
+        "p50Ms": 82,
+        "p95Ms": 125,
+        "maxMs": 260
+      },
+      "frameGaps": {
+        "count": 246,
+        "totalMs": 14982.6,
+        "meanMs": 60.90487804878049,
+        "p50Ms": 33.400000000001455,
+        "p95Ms": 149.90000000000146,
+        "maxMs": 316.7000000000007
+      },
+      "gapsOver100ms": 70,
+      "managed": {},
+      "metricDelta": {
+        "TaskDuration": 14669.663,
+        "ScriptDuration": 9905.727,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 12.942
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 3.3359375,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {}
+    },
+    {
+      "version": "optimized",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-final-other/large-near-5.json",
+      "name": "large-near-5",
+      "speed": 5,
+      "baseUrl": "http://127.0.0.1:8080/final/",
+      "population": 2000,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 5,
+      "tickAfter": 164,
+      "elapsedMs": 15076.599999999627,
+      "ticksPerSecond": 10.546144356154832,
+      "longTasks": {
+        "count": 158,
+        "totalMs": 11988,
+        "meanMs": 75.87341772151899,
+        "p50Ms": 73,
+        "p95Ms": 104,
+        "maxMs": 199
+      },
+      "frameGaps": {
+        "count": 172,
+        "totalMs": 14999.5,
+        "meanMs": 87.2063953488372,
+        "p50Ms": 83.5,
+        "p95Ms": 166.70000000000073,
+        "maxMs": 216.70000000000073
+      },
+      "gapsOver100ms": 80,
+      "managed": {},
+      "metricDelta": {
+        "TaskDuration": 16360.559000000003,
+        "ScriptDuration": 14217.307,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 11.244
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 71.28825600000027,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {}
+    },
+    {
+      "version": "optimized",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-final-other/large-auto-5.json",
+      "name": "large-auto-5",
+      "speed": 5,
+      "baseUrl": "http://127.0.0.1:8080/final/",
+      "population": 2000,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 8,
+      "tickAfter": 254,
+      "elapsedMs": 38143.70000000112,
+      "ticksPerSecond": 6.449295689720525,
+      "longTasks": {
+        "count": 331,
+        "totalMs": 26643,
+        "meanMs": 80.49244712990937,
+        "p50Ms": 80,
+        "p95Ms": 120,
+        "maxMs": 232
+      },
+      "frameGaps": {
+        "count": 566,
+        "totalMs": 38081.8,
+        "meanMs": 67.28233215547704,
+        "p50Ms": 16.700000000004366,
+        "p95Ms": 200,
+        "maxMs": 266.59999999999854
+      },
+      "gapsOver100ms": 208,
+      "managed": {},
+      "metricDelta": {
+        "TaskDuration": 39140.581000000006,
+        "ScriptDuration": 31155.534,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 20.866
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 3.3359375,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {}
+    },
+    {
+      "version": "optimized-repeat",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-final-repeat/default-far-5.json",
+      "name": "default-far-5",
+      "speed": 5,
+      "baseUrl": "http://127.0.0.1:8080/final/",
+      "population": 144,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 16,
+      "tickAfter": 389,
+      "elapsedMs": 15038.099999999627,
+      "ticksPerSecond": 24.803665356661362,
+      "longTasks": {
+        "count": 34,
+        "totalMs": 2278,
+        "meanMs": 67,
+        "p50Ms": 58,
+        "p95Ms": 124,
+        "maxMs": 133
+      },
+      "frameGaps": {
+        "count": 305,
+        "totalMs": 14966.1,
+        "meanMs": 49.06918032786886,
+        "p50Ms": 50,
+        "p95Ms": 83.40000000000146,
+        "maxMs": 183.29999999999927
+      },
+      "gapsOver100ms": 12,
+      "managed": {},
+      "metricDelta": {
+        "TaskDuration": 15981.212,
+        "ScriptDuration": 11254.086000000001,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 20.198
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 3.3359375,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {}
+    },
+    {
+      "version": "optimized-repeat",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-final-repeat/large-far-5.json",
+      "name": "large-far-5",
+      "speed": 5,
+      "baseUrl": "http://127.0.0.1:8080/final/",
+      "population": 2000,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 7,
+      "tickAfter": 122,
+      "elapsedMs": 15072.699999999255,
+      "ticksPerSecond": 7.629688111619397,
+      "longTasks": {
+        "count": 134,
+        "totalMs": 11252,
+        "meanMs": 83.97014925373135,
+        "p50Ms": 83,
+        "p95Ms": 113,
+        "maxMs": 230
+      },
+      "frameGaps": {
+        "count": 115,
+        "totalMs": 14966.1,
+        "meanMs": 130.14000000000001,
+        "p50Ms": 133.29999999999927,
+        "p95Ms": 216.60000000000218,
+        "maxMs": 266.7000000000007
+      },
+      "gapsOver100ms": 101,
+      "managed": {},
+      "metricDelta": {
+        "TaskDuration": 17017.219,
+        "ScriptDuration": 13228.933,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 9.458
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 3.3359375,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {}
+    },
+    {
+      "version": "optimized-probe",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-probe/default-far-5.json",
+      "name": "default-far-5",
+      "speed": 5,
+      "baseUrl": "http://127.0.0.1:8080/probe/",
+      "population": 144,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 20,
+      "tickAfter": 392,
+      "elapsedMs": 15070.60000000149,
+      "ticksPerSecond": 24.683821480230595,
+      "longTasks": {
+        "count": 38,
+        "totalMs": 2770,
+        "meanMs": 72.89473684210526,
+        "p50Ms": 65,
+        "p95Ms": 124,
+        "maxMs": 176
+      },
+      "frameGaps": {
+        "count": 277,
+        "totalMs": 15016.099999999999,
+        "meanMs": 54.20974729241877,
+        "p50Ms": 50,
+        "p95Ms": 116.60000000000218,
+        "maxMs": 283.3000000000011
+      },
+      "gapsOver100ms": 19,
+      "managed": {
+        "Core.Reindex": {
+          "count": 1116,
+          "totalMs": 55.60000000000045,
+          "meanMs": 0.04982078853046635,
+          "p50Ms": 0,
+          "p95Ms": 0.1,
+          "maxMs": 0.8
+        },
+        "Core.Disasters": {
+          "count": 372,
+          "totalMs": 7.199999999999991,
+          "meanMs": 0.019354838709677396,
+          "p50Ms": 0,
+          "p95Ms": 0.1,
+          "maxMs": 0.2
+        },
+        "Core.Wildlife": {
+          "count": 372,
+          "totalMs": 1624.5000000000002,
+          "meanMs": 4.366935483870968,
+          "p50Ms": 4.2,
+          "p95Ms": 5.7,
+          "maxMs": 12.2
+        },
+        "Core.Residents": {
+          "count": 372,
+          "totalMs": 76.90000000000029,
+          "meanMs": 0.20672043010752766,
+          "p50Ms": 0.2,
+          "p95Ms": 0.4,
+          "maxMs": 2.1
+        },
+        "Core.Actions": {
+          "count": 372,
+          "totalMs": 3377.000000000002,
+          "meanMs": 9.077956989247317,
+          "p50Ms": 8.7,
+          "p95Ms": 14.5,
+          "maxMs": 40.9
+        },
+        "Core.Communication": {
+          "count": 372,
+          "totalMs": 256.29999999999967,
+          "meanMs": 0.688978494623655,
+          "p50Ms": 0.6,
+          "p95Ms": 1.4,
+          "maxMs": 6.8
+        },
+        "Core.Society": {
+          "count": 372,
+          "totalMs": 161.99999999999997,
+          "meanMs": 0.4354838709677419,
+          "p50Ms": 0.2,
+          "p95Ms": 1.6,
+          "maxMs": 6.3
+        },
+        "Core.Diplomacy": {
+          "count": 372,
+          "totalMs": 2.4000000000000004,
+          "meanMs": 0.006451612903225807,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "maxMs": 1.9
+        },
+        "Core.Conflicts": {
+          "count": 372,
+          "totalMs": 6.2,
+          "meanMs": 0.016666666666666666,
+          "p50Ms": 0,
+          "p95Ms": 0.1,
+          "maxMs": 0.9
+        },
+        "Core.Migration": {
+          "count": 372,
+          "totalMs": 1.5000000000000002,
+          "meanMs": 0.00403225806451613,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "maxMs": 0.3
+        },
+        "Core.Growth": {
+          "count": 372,
+          "totalMs": 56.3,
+          "meanMs": 0.15134408602150537,
+          "p50Ms": 0,
+          "p95Ms": 1.5,
+          "maxMs": 5.7
+        },
+        "Core.Territory": {
+          "count": 372,
+          "totalMs": 0.5,
+          "meanMs": 0.0013440860215053765,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "maxMs": 0.1
+        },
+        "Core.Armies": {
+          "count": 372,
+          "totalMs": 2.4000000000000012,
+          "meanMs": 0.00645161290322581,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "maxMs": 0.7
+        },
+        "Core.Archive": {
+          "count": 372,
+          "totalMs": 12.399999999999972,
+          "meanMs": 0.03333333333333326,
+          "p50Ms": 0,
+          "p95Ms": 0.1,
+          "maxMs": 0.9
+        },
+        "Core.RemoveSettlements": {
+          "count": 372,
+          "totalMs": 5.099999999999998,
+          "meanMs": 0.013709677419354834,
+          "p50Ms": 0,
+          "p95Ms": 0.1,
+          "maxMs": 0.2
+        },
+        "Core.RemoveNations": {
+          "count": 372,
+          "totalMs": 8.899999999999986,
+          "meanMs": 0.02392473118279566,
+          "p50Ms": 0,
+          "p95Ms": 0.1,
+          "maxMs": 0.6
+        },
+        "Core.Topology": {
+          "count": 372,
+          "totalMs": 147.19999999999933,
+          "meanMs": 0.395698924731181,
+          "p50Ms": 0.1,
+          "p95Ms": 2,
+          "maxMs": 4.4
+        },
+        "Core.Totals": {
+          "count": 372,
+          "totalMs": 13.099999999999987,
+          "meanMs": 0.03521505376344083,
+          "p50Ms": 0,
+          "p95Ms": 0.1,
+          "maxMs": 1.5
+        },
+        "Core.Projects": {
+          "count": 372,
+          "totalMs": 5.399999999999997,
+          "meanMs": 0.014516129032258056,
+          "p50Ms": 0,
+          "p95Ms": 0.1,
+          "maxMs": 0.3
+        },
+        "Engine.Step": {
+          "count": 372,
+          "totalMs": 5940,
+          "meanMs": 15.96774193548387,
+          "p50Ms": 15.4,
+          "p95Ms": 23.9,
+          "maxMs": 49.1
+        },
+        "Map.HashScan": {
+          "count": 16704,
+          "totalMs": 1780.4999999997622,
+          "meanMs": 0.10659123563216967,
+          "p50Ms": 0.1,
+          "p95Ms": 0.2,
+          "maxMs": 3.7
+        },
+        "Map.Terrain": {
+          "count": 482,
+          "totalMs": 1877.7999999999993,
+          "meanMs": 3.8958506224066376,
+          "p50Ms": 6.4,
+          "p95Ms": 8.3,
+          "maxMs": 17.4
+        },
+        "Map.MotionSnapshots": {
+          "count": 261,
+          "totalMs": 35.80000000000011,
+          "meanMs": 0.13716475095785483,
+          "p50Ms": 0.1,
+          "p95Ms": 0.2,
+          "maxMs": 2.5
+        },
+        "Map.RefreshWorld": {
+          "count": 261,
+          "totalMs": 1967.4999999999998,
+          "meanMs": 7.53831417624521,
+          "p50Ms": 7.2,
+          "p95Ms": 9.9,
+          "maxMs": 18.3
+        },
+        "UI.OnTick": {
+          "count": 261,
+          "totalMs": 7948.000000000001,
+          "meanMs": 30.45210727969349,
+          "p50Ms": 30.1,
+          "p95Ms": 44.3,
+          "maxMs": 56.8
+        },
+        "Map.ResidentGeometry": {
+          "count": 221,
+          "totalMs": 136.19999999999985,
+          "meanMs": 0.6162895927601802,
+          "p50Ms": 0.5,
+          "p95Ms": 1.1,
+          "maxMs": 4.6
+        },
+        "Map.Ecology": {
+          "count": 221,
+          "totalMs": 0.1,
+          "meanMs": 0.00045248868778280545,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "maxMs": 0.1
+        },
+        "Map.Labels": {
+          "count": 221,
+          "totalMs": 334.20000000000005,
+          "meanMs": 1.512217194570136,
+          "p50Ms": 1.2,
+          "p95Ms": 3.1,
+          "maxMs": 10.6
+        },
+        "Map.Render": {
+          "count": 221,
+          "totalMs": 735.1000000000005,
+          "meanMs": 3.3262443438914047,
+          "p50Ms": 2.8,
+          "p95Ms": 5.8,
+          "maxMs": 13.1
+        },
+        "Map.TerritoryBuild": {
+          "count": 78,
+          "totalMs": 24.3,
+          "meanMs": 0.31153846153846154,
+          "p50Ms": 0.2,
+          "p95Ms": 0.4,
+          "maxMs": 10.3
+        },
+        "UI.RefreshUi": {
+          "count": 21,
+          "totalMs": 21.400000000000002,
+          "meanMs": 1.0190476190476192,
+          "p50Ms": 0.9,
+          "p95Ms": 1.8,
+          "maxMs": 2.4
+        },
+        "Map.TerrainBuild": {
+          "count": 8,
+          "totalMs": 2.3000000000000003,
+          "meanMs": 0.28750000000000003,
+          "p50Ms": 0.2,
+          "p95Ms": 0.7,
+          "maxMs": 0.7
+        }
+      },
+      "metricDelta": {
+        "TaskDuration": 17213.924000000003,
+        "ScriptDuration": 11867.169,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 21.194000000000003
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 3.3359375,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {
+        "Core.Reindex": 0.14946236559139905,
+        "Core.Disasters": 0.019354838709677396,
+        "Core.Wildlife": 4.366935483870968,
+        "Core.Residents": 0.20672043010752766,
+        "Core.Actions": 9.077956989247317,
+        "Core.Communication": 0.688978494623655,
+        "Core.Society": 0.4354838709677419,
+        "Core.Diplomacy": 0.006451612903225807,
+        "Core.Conflicts": 0.016666666666666666,
+        "Core.Migration": 0.00403225806451613,
+        "Core.Growth": 0.15134408602150537,
+        "Core.Territory": 0.0013440860215053765,
+        "Core.Armies": 0.00645161290322581,
+        "Core.Archive": 0.03333333333333326,
+        "Core.RemoveSettlements": 0.013709677419354834,
+        "Core.RemoveNations": 0.02392473118279566,
+        "Core.Topology": 0.395698924731181,
+        "Core.Totals": 0.03521505376344083,
+        "Core.Projects": 0.014516129032258056,
+        "Engine.Step": 15.96774193548387,
+        "Map.HashScan": 4.7862903225800055,
+        "Map.Terrain": 5.04784946236559,
+        "Map.MotionSnapshots": 0.09623655913978524,
+        "Map.RefreshWorld": 5.288978494623655,
+        "UI.OnTick": 21.365591397849464,
+        "Map.ResidentGeometry": 0.3661290322580641,
+        "Map.Ecology": 0.00026881720430107527,
+        "Map.Labels": 0.8983870967741937,
+        "Map.Render": 1.9760752688172056,
+        "Map.TerritoryBuild": 0.06532258064516129,
+        "UI.RefreshUi": 0.05752688172043011,
+        "Map.TerrainBuild": 0.006182795698924732
+      }
+    },
+    {
+      "version": "optimized-probe",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-probe/large-far-5.json",
+      "name": "large-far-5",
+      "speed": 5,
+      "baseUrl": "http://127.0.0.1:8080/probe/",
+      "population": 2000,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 8,
+      "tickAfter": 131,
+      "elapsedMs": 15188.099999999627,
+      "ticksPerSecond": 8.098445493511566,
+      "longTasks": {
+        "count": 135,
+        "totalMs": 11112,
+        "meanMs": 82.31111111111112,
+        "p50Ms": 82,
+        "p95Ms": 106,
+        "maxMs": 215
+      },
+      "frameGaps": {
+        "count": 113,
+        "totalMs": 15082.7,
+        "meanMs": 133.47522123893805,
+        "p50Ms": 133.29999999999927,
+        "p95Ms": 216.70000000000073,
+        "maxMs": 250
+      },
+      "gapsOver100ms": 99,
+      "managed": {
+        "Map.Terrain": {
+          "count": 223,
+          "totalMs": 1110.2999879999998,
+          "meanMs": 4.978923713004483,
+          "p50Ms": 6.9,
+          "p95Ms": 10.9,
+          "maxMs": 26.199999
+        },
+        "Map.ResidentGeometry": {
+          "count": 100,
+          "totalMs": 370.4000060000001,
+          "meanMs": 3.7040000600000007,
+          "p50Ms": 3.4,
+          "p95Ms": 4.800001,
+          "maxMs": 5.1
+        },
+        "Map.Ecology": {
+          "count": 100,
+          "totalMs": 0.200001,
+          "meanMs": 0.00200001,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "maxMs": 0.100001
+        },
+        "Map.Labels": {
+          "count": 100,
+          "totalMs": 382.6000020000001,
+          "meanMs": 3.826000020000001,
+          "p50Ms": 3.5,
+          "p95Ms": 6.1,
+          "maxMs": 12.299999
+        },
+        "Map.Render": {
+          "count": 100,
+          "totalMs": 1069.100003,
+          "meanMs": 10.69100003,
+          "p50Ms": 10.300001,
+          "p95Ms": 15.700001,
+          "maxMs": 19.399999
+        },
+        "Core.Reindex": {
+          "count": 369,
+          "totalMs": 123.19999299999992,
+          "meanMs": 0.3338753197831976,
+          "p50Ms": 0.3,
+          "p95Ms": 0.5,
+          "maxMs": 1.6
+        },
+        "Core.Disasters": {
+          "count": 123,
+          "totalMs": 2.400004,
+          "meanMs": 0.019512227642276423,
+          "p50Ms": 0,
+          "p95Ms": 0.100001,
+          "maxMs": 0.100001
+        },
+        "Core.Wildlife": {
+          "count": 123,
+          "totalMs": 436.100003,
+          "meanMs": 3.545528479674797,
+          "p50Ms": 3.799999,
+          "p95Ms": 4.699999,
+          "maxMs": 7.5
+        },
+        "Core.Residents": {
+          "count": 123,
+          "totalMs": 152.79998999999984,
+          "meanMs": 1.2422763414634133,
+          "p50Ms": 1.1,
+          "p95Ms": 1.799999,
+          "maxMs": 4.199999
+        },
+        "Core.Actions": {
+          "count": 123,
+          "totalMs": 4909.200016,
+          "meanMs": 39.91219525203252,
+          "p50Ms": 37.300001,
+          "p95Ms": 53.600001,
+          "maxMs": 90.4
+        },
+        "Core.Communication": {
+          "count": 123,
+          "totalMs": 941.3999879999998,
+          "meanMs": 7.6536584390243885,
+          "p50Ms": 7.5,
+          "p95Ms": 9.899999,
+          "maxMs": 11.699999
+        },
+        "Core.Society": {
+          "count": 123,
+          "totalMs": 343.300006,
+          "meanMs": 2.7910569593495933,
+          "p50Ms": 1.400001,
+          "p95Ms": 7.299999,
+          "maxMs": 16
+        },
+        "Core.Diplomacy": {
+          "count": 123,
+          "totalMs": 2.300001,
+          "meanMs": 0.01869919512195122,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "maxMs": 2
+        },
+        "Core.Conflicts": {
+          "count": 123,
+          "totalMs": 8.199997,
+          "meanMs": 0.06666664227642276,
+          "p50Ms": 0,
+          "p95Ms": 0.5,
+          "maxMs": 2.299999
+        },
+        "Core.Migration": {
+          "count": 123,
+          "totalMs": 1.4,
+          "meanMs": 0.01138211382113821,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "maxMs": 0.700001
+        },
+        "Core.Growth": {
+          "count": 123,
+          "totalMs": 222.899999,
+          "meanMs": 1.8121951138211383,
+          "p50Ms": 0,
+          "p95Ms": 8,
+          "maxMs": 125.5
+        },
+        "Core.Territory": {
+          "count": 123,
+          "totalMs": 0.100001,
+          "meanMs": 0.0008130162601626017,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "maxMs": 0.100001
+        },
+        "Core.Armies": {
+          "count": 123,
+          "totalMs": 469.600004,
+          "meanMs": 3.8178862113821137,
+          "p50Ms": 4.1,
+          "p95Ms": 5.5,
+          "maxMs": 20.1
+        },
+        "Core.Archive": {
+          "count": 123,
+          "totalMs": 25.800000999999998,
+          "meanMs": 0.2097561056910569,
+          "p50Ms": 0.2,
+          "p95Ms": 0.300001,
+          "maxMs": 0.6
+        },
+        "Core.RemoveSettlements": {
+          "count": 123,
+          "totalMs": 2.3999930000000007,
+          "meanMs": 0.01951213821138212,
+          "p50Ms": 0,
+          "p95Ms": 0.1,
+          "maxMs": 0.299999
+        },
+        "Core.RemoveNations": {
+          "count": 123,
+          "totalMs": 4.699998000000001,
+          "meanMs": 0.038211365853658544,
+          "p50Ms": 0,
+          "p95Ms": 0.100001,
+          "maxMs": 0.300001
+        },
+        "Core.Topology": {
+          "count": 123,
+          "totalMs": 218.8999990000001,
+          "meanMs": 1.779674788617887,
+          "p50Ms": 2.200001,
+          "p95Ms": 3.199999,
+          "maxMs": 4.5
+        },
+        "Core.Totals": {
+          "count": 123,
+          "totalMs": 7.300004999999993,
+          "meanMs": 0.05934963414634141,
+          "p50Ms": 0,
+          "p95Ms": 0.100001,
+          "maxMs": 1.1
+        },
+        "Core.Projects": {
+          "count": 123,
+          "totalMs": 4.500007999999999,
+          "meanMs": 0.036585430894308935,
+          "p50Ms": 0,
+          "p95Ms": 0.100001,
+          "maxMs": 0.700001
+        },
+        "Engine.Step": {
+          "count": 123,
+          "totalMs": 7941.700002999999,
+          "meanMs": 64.56666669105691,
+          "p50Ms": 61,
+          "p95Ms": 83.899999,
+          "maxMs": 189.5
+        },
+        "Map.HashScan": {
+          "count": 7872,
+          "totalMs": 811.7999900000882,
+          "meanMs": 0.103124998729686,
+          "p50Ms": 0.1,
+          "p95Ms": 0.200001,
+          "maxMs": 1.799999
+        },
+        "Map.TerritoryBuild": {
+          "count": 641,
+          "totalMs": 101.90001099999982,
+          "meanMs": 0.1589703759750387,
+          "p50Ms": 0.1,
+          "p95Ms": 0.200001,
+          "maxMs": 13
+        },
+        "Map.MotionSnapshots": {
+          "count": 123,
+          "totalMs": 92.99998400000003,
+          "meanMs": 0.7560974308943091,
+          "p50Ms": 0.700001,
+          "p95Ms": 0.900001,
+          "maxMs": 1.2
+        },
+        "Map.RefreshWorld": {
+          "count": 123,
+          "totalMs": 1230.299990000001,
+          "meanMs": 10.002438943089437,
+          "p50Ms": 9.400001,
+          "p95Ms": 13.699999,
+          "maxMs": 27
+        },
+        "UI.OnTick": {
+          "count": 123,
+          "totalMs": 9214.299992,
+          "meanMs": 74.91300806504066,
+          "p50Ms": 71.799999,
+          "p95Ms": 93.600001,
+          "maxMs": 200.1
+        },
+        "UI.RefreshUi": {
+          "count": 20,
+          "totalMs": 34.000005,
+          "meanMs": 1.70000025,
+          "p50Ms": 1.7,
+          "p95Ms": 2.400001,
+          "maxMs": 2.700001
+        },
+        "Map.TerrainBuild": {
+          "count": 580,
+          "totalMs": 141.29999899999981,
+          "meanMs": 0.24362068793103417,
+          "p50Ms": 0.2,
+          "p95Ms": 0.399999,
+          "maxMs": 15.700001
+        }
+      },
+      "metricDelta": {
+        "TaskDuration": 17498.603,
+        "ScriptDuration": 13514.95,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 10.021
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 3.3359375,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {
+        "Map.Terrain": 9.026829170731705,
+        "Map.ResidentGeometry": 3.0113821626016266,
+        "Map.Ecology": 0.0016260243902439025,
+        "Map.Labels": 3.11056912195122,
+        "Map.Render": 8.691869943089431,
+        "Core.Reindex": 1.0016259593495929,
+        "Core.Disasters": 0.019512227642276423,
+        "Core.Wildlife": 3.545528479674797,
+        "Core.Residents": 1.2422763414634133,
+        "Core.Actions": 39.91219525203252,
+        "Core.Communication": 7.6536584390243885,
+        "Core.Society": 2.7910569593495933,
+        "Core.Diplomacy": 0.01869919512195122,
+        "Core.Conflicts": 0.06666664227642276,
+        "Core.Migration": 0.01138211382113821,
+        "Core.Growth": 1.8121951138211383,
+        "Core.Territory": 0.0008130162601626017,
+        "Core.Armies": 3.8178862113821137,
+        "Core.Archive": 0.2097561056910569,
+        "Core.RemoveSettlements": 0.01951213821138212,
+        "Core.RemoveNations": 0.038211365853658544,
+        "Core.Topology": 1.779674788617887,
+        "Core.Totals": 0.05934963414634141,
+        "Core.Projects": 0.036585430894308935,
+        "Engine.Step": 64.56666669105691,
+        "Map.HashScan": 6.599999918699904,
+        "Map.TerritoryBuild": 0.8284553739837384,
+        "Map.MotionSnapshots": 0.7560974308943091,
+        "Map.RefreshWorld": 10.002438943089437,
+        "UI.OnTick": 74.91300806504066,
+        "UI.RefreshUi": 0.27642280487804877,
+        "Map.TerrainBuild": 1.1487804796747954
+      }
+    },
+    {
+      "version": "optimized-probe",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-probe/large-near-5.json",
+      "name": "large-near-5",
+      "speed": 5,
+      "baseUrl": "http://127.0.0.1:8080/probe/",
+      "population": 2000,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 6,
+      "tickAfter": 162,
+      "elapsedMs": 15035.199999999255,
+      "ticksPerSecond": 10.375651803767674,
+      "longTasks": {
+        "count": 156,
+        "totalMs": 11910,
+        "meanMs": 76.34615384615384,
+        "p50Ms": 73,
+        "p95Ms": 108,
+        "maxMs": 232
+      },
+      "frameGaps": {
+        "count": 176,
+        "totalMs": 14932.699999999997,
+        "meanMs": 84.84488636363635,
+        "p50Ms": 83.40000000000146,
+        "p95Ms": 150,
+        "maxMs": 250.09999999999854
+      },
+      "gapsOver100ms": 72,
+      "managed": {
+        "Map.Terrain": {
+          "count": 297,
+          "totalMs": 126.09999399999998,
+          "meanMs": 0.42457910437710433,
+          "p50Ms": 0.5,
+          "p95Ms": 1.2,
+          "maxMs": 4.6
+        },
+        "Map.ResidentGeometry": {
+          "count": 141,
+          "totalMs": 17.099987000000006,
+          "meanMs": 0.12127650354609933,
+          "p50Ms": 0.1,
+          "p95Ms": 0.299999,
+          "maxMs": 1.8
+        },
+        "Map.Ecology": {
+          "count": 141,
+          "totalMs": 304.7999950000001,
+          "meanMs": 2.161702092198582,
+          "p50Ms": 2,
+          "p95Ms": 3.100001,
+          "maxMs": 4.7
+        },
+        "Map.NearScene": {
+          "count": 141,
+          "totalMs": 204.79999900000016,
+          "meanMs": 1.4524822624113487,
+          "p50Ms": 1.2,
+          "p95Ms": 3.2,
+          "maxMs": 4.600001
+        },
+        "Map.Labels": {
+          "count": 141,
+          "totalMs": 251.10001599999993,
+          "meanMs": 1.780851177304964,
+          "p50Ms": 1.5,
+          "p95Ms": 3.4,
+          "maxMs": 7.800001
+        },
+        "Map.Render": {
+          "count": 141,
+          "totalMs": 897.7999850000001,
+          "meanMs": 6.3673757801418445,
+          "p50Ms": 6.099999,
+          "p95Ms": 9.5,
+          "maxMs": 12.199999
+        },
+        "Core.Reindex": {
+          "count": 468,
+          "totalMs": 173.20003800000052,
+          "meanMs": 0.3700855512820524,
+          "p50Ms": 0.300001,
+          "p95Ms": 0.6,
+          "maxMs": 1.599999
+        },
+        "Core.Disasters": {
+          "count": 156,
+          "totalMs": 4.399991000000001,
+          "meanMs": 0.028205070512820517,
+          "p50Ms": 0,
+          "p95Ms": 0.1,
+          "maxMs": 0.299999
+        },
+        "Core.Wildlife": {
+          "count": 156,
+          "totalMs": 586.3000059999999,
+          "meanMs": 3.7583333717948713,
+          "p50Ms": 3.9,
+          "p95Ms": 4.800001,
+          "maxMs": 8.9
+        },
+        "Core.Residents": {
+          "count": 156,
+          "totalMs": 191.90000499999977,
+          "meanMs": 1.2301282371794857,
+          "p50Ms": 1.100001,
+          "p95Ms": 1.7,
+          "maxMs": 4.1
+        },
+        "Core.Actions": {
+          "count": 156,
+          "totalMs": 6383.499991000004,
+          "meanMs": 40.91987173717951,
+          "p50Ms": 38.899999,
+          "p95Ms": 56.3,
+          "maxMs": 95.199999
+        },
+        "Core.Communication": {
+          "count": 156,
+          "totalMs": 1235.3000100000006,
+          "meanMs": 7.918589807692312,
+          "p50Ms": 7.7,
+          "p95Ms": 10.9,
+          "maxMs": 13.6
+        },
+        "Core.Society": {
+          "count": 156,
+          "totalMs": 443.7999979999996,
+          "meanMs": 2.8448717820512797,
+          "p50Ms": 1.5,
+          "p95Ms": 8,
+          "maxMs": 17.099999
+        },
+        "Core.Diplomacy": {
+          "count": 156,
+          "totalMs": 2.500002,
+          "meanMs": 0.016025653846153846,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "maxMs": 2.1
+        },
+        "Core.Conflicts": {
+          "count": 156,
+          "totalMs": 11.099995,
+          "meanMs": 0.0711538141025641,
+          "p50Ms": 0,
+          "p95Ms": 0.6,
+          "maxMs": 2
+        },
+        "Core.Migration": {
+          "count": 156,
+          "totalMs": 1.5,
+          "meanMs": 0.009615384615384616,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "maxMs": 0.799999
+        },
+        "Core.Growth": {
+          "count": 156,
+          "totalMs": 360.999998,
+          "meanMs": 2.3141025512820512,
+          "p50Ms": 0,
+          "p95Ms": 8.5,
+          "maxMs": 143.8
+        },
+        "Core.Territory": {
+          "count": 156,
+          "totalMs": 0.30000000000000004,
+          "meanMs": 0.0019230769230769234,
+          "p50Ms": 0,
+          "p95Ms": 0,
+          "maxMs": 0.1
+        },
+        "Core.Armies": {
+          "count": 156,
+          "totalMs": 621.100011,
+          "meanMs": 3.981410326923077,
+          "p50Ms": 4.100001,
+          "p95Ms": 6.4,
+          "maxMs": 19.7
+        },
+        "Core.Archive": {
+          "count": 156,
+          "totalMs": 39.09997699999996,
+          "meanMs": 0.2506408782051279,
+          "p50Ms": 0.2,
+          "p95Ms": 0.5,
+          "maxMs": 3
+        },
+        "Core.RemoveSettlements": {
+          "count": 156,
+          "totalMs": 2.6999990000000005,
+          "meanMs": 0.0173076858974359,
+          "p50Ms": 0,
+          "p95Ms": 0.1,
+          "maxMs": 0.100001
+        },
+        "Core.RemoveNations": {
+          "count": 156,
+          "totalMs": 6.499999999999996,
+          "meanMs": 0.04166666666666664,
+          "p50Ms": 0,
+          "p95Ms": 0.100001,
+          "maxMs": 0.5
+        },
+        "Core.Topology": {
+          "count": 156,
+          "totalMs": 303.50000500000016,
+          "meanMs": 1.9455128525641037,
+          "p50Ms": 2.4,
+          "p95Ms": 3.400001,
+          "maxMs": 4.2
+        },
+        "Core.Totals": {
+          "count": 156,
+          "totalMs": 10.39999899999999,
+          "meanMs": 0.0666666602564102,
+          "p50Ms": 0.099999,
+          "p95Ms": 0.2,
+          "maxMs": 0.6
+        },
+        "Core.Projects": {
+          "count": 156,
+          "totalMs": 6.699997999999998,
+          "meanMs": 0.04294870512820512,
+          "p50Ms": 0,
+          "p95Ms": 0.100001,
+          "maxMs": 0.5
+        },
+        "Engine.Step": {
+          "count": 156,
+          "totalMs": 10476.000008999992,
+          "meanMs": 67.15384621153841,
+          "p50Ms": 63.8,
+          "p95Ms": 92.9,
+          "maxMs": 214.9
+        },
+        "Map.HashScan": {
+          "count": 624,
+          "totalMs": 69.30000800000005,
+          "meanMs": 0.1110577051282052,
+          "p50Ms": 0.1,
+          "p95Ms": 0.200001,
+          "maxMs": 0.5
+        },
+        "Map.TerritoryBuild": {
+          "count": 58,
+          "totalMs": 14.099999000000002,
+          "meanMs": 0.2431034310344828,
+          "p50Ms": 0.100001,
+          "p95Ms": 0.9,
+          "maxMs": 2
+        },
+        "Map.MotionSnapshots": {
+          "count": 156,
+          "totalMs": 128.700009,
+          "meanMs": 0.8250000576923077,
+          "p50Ms": 0.8,
+          "p95Ms": 1.1,
+          "maxMs": 1.5
+        },
+        "Map.RefreshWorld": {
+          "count": 156,
+          "totalMs": 297.70000899999997,
+          "meanMs": 1.9083333910256408,
+          "p50Ms": 1.7,
+          "p95Ms": 3.2,
+          "maxMs": 6.4
+        },
+        "UI.OnTick": {
+          "count": 156,
+          "totalMs": 10821.700009,
+          "meanMs": 69.3698718525641,
+          "p50Ms": 65.8,
+          "p95Ms": 99,
+          "maxMs": 220
+        },
+        "UI.RefreshUi": {
+          "count": 20,
+          "totalMs": 37.099999000000004,
+          "meanMs": 1.8549999500000003,
+          "p50Ms": 1.7,
+          "p95Ms": 2.8,
+          "maxMs": 2.899999
+        },
+        "Map.TerrainBuild": {
+          "count": 24,
+          "totalMs": 6.899998999999999,
+          "meanMs": 0.2874999583333333,
+          "p50Ms": 0.200001,
+          "p95Ms": 0.600001,
+          "maxMs": 1
+        }
+      },
+      "metricDelta": {
+        "TaskDuration": 16259.107,
+        "ScriptDuration": 13922.715,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 12.102
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 71.28825600000027,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {
+        "Map.Terrain": 0.8083332948717947,
+        "Map.ResidentGeometry": 0.10961530128205133,
+        "Map.Ecology": 1.9538461217948724,
+        "Map.NearScene": 1.3128205064102574,
+        "Map.Labels": 1.6096154871794868,
+        "Map.Render": 5.755128108974359,
+        "Core.Reindex": 1.1102566538461571,
+        "Core.Disasters": 0.028205070512820517,
+        "Core.Wildlife": 3.7583333717948713,
+        "Core.Residents": 1.2301282371794857,
+        "Core.Actions": 40.91987173717951,
+        "Core.Communication": 7.918589807692312,
+        "Core.Society": 2.8448717820512797,
+        "Core.Diplomacy": 0.016025653846153846,
+        "Core.Conflicts": 0.0711538141025641,
+        "Core.Migration": 0.009615384615384616,
+        "Core.Growth": 2.3141025512820512,
+        "Core.Territory": 0.0019230769230769234,
+        "Core.Armies": 3.981410326923077,
+        "Core.Archive": 0.2506408782051279,
+        "Core.RemoveSettlements": 0.0173076858974359,
+        "Core.RemoveNations": 0.04166666666666664,
+        "Core.Topology": 1.9455128525641037,
+        "Core.Totals": 0.0666666602564102,
+        "Core.Projects": 0.04294870512820512,
+        "Engine.Step": 67.15384621153841,
+        "Map.HashScan": 0.4442308205128208,
+        "Map.TerritoryBuild": 0.09038460897435899,
+        "Map.MotionSnapshots": 0.8250000576923077,
+        "Map.RefreshWorld": 1.9083333910256408,
+        "UI.OnTick": 69.3698718525641,
+        "UI.RefreshUi": 0.23782050641025643,
+        "Map.TerrainBuild": 0.04423076282051282
+      }
+    },
+    {
+      "version": "rejected-selective-aot",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-aot/default-far-5.json",
+      "name": "default-far-5",
+      "speed": 5,
+      "baseUrl": "http://127.0.0.1:8080/aot/",
+      "population": 144,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 8,
+      "tickAfter": 263,
+      "elapsedMs": 15062,
+      "ticksPerSecond": 16.93002257336343,
+      "longTasks": {
+        "count": 108,
+        "totalMs": 6693,
+        "meanMs": 61.97222222222222,
+        "p50Ms": 53,
+        "p95Ms": 100,
+        "maxMs": 115
+      },
+      "frameGaps": {
+        "count": 221,
+        "totalMs": 14999.5,
+        "meanMs": 67.8710407239819,
+        "p50Ms": 66.70000000000073,
+        "p95Ms": 133.29999999999927,
+        "maxMs": 166.70000000000073
+      },
+      "gapsOver100ms": 39,
+      "managed": {},
+      "metricDelta": {
+        "TaskDuration": 16345.839000000002,
+        "ScriptDuration": 13095.903999999999,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 19.913
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 3.3359375,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {}
+    },
+    {
+      "version": "rejected-selective-aot",
+      "rawFile": "artifacts/performance-optimization-20261005/browser-aot/large-far-5.json",
+      "name": "large-far-5",
+      "speed": 5,
+      "baseUrl": "http://127.0.0.1:8080/aot/",
+      "population": 2000,
+      "width": 256,
+      "height": 256,
+      "exactTerrainCounterfactual": false,
+      "legacyTerrainCounterfactual": false,
+      "tickBefore": 7,
+      "tickAfter": 123,
+      "elapsedMs": 15201.100000000559,
+      "ticksPerSecond": 7.631026702014705,
+      "longTasks": {
+        "count": 131,
+        "totalMs": 11340,
+        "meanMs": 86.56488549618321,
+        "p50Ms": 87,
+        "p95Ms": 106,
+        "maxMs": 229
+      },
+      "frameGaps": {
+        "count": 110,
+        "totalMs": 14982.800000000001,
+        "meanMs": 136.20727272727274,
+        "p50Ms": 133.39999999999964,
+        "p95Ms": 216.59999999999854,
+        "maxMs": 283.40000000000146
+      },
+      "gapsOver100ms": 98,
+      "managed": {},
+      "metricDelta": {
+        "TaskDuration": 17065.55,
+        "ScriptDuration": 13435.094000000001,
+        "LayoutDuration": 0,
+        "RecalcStyleDuration": 10.385
+      },
+      "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+      "tileSize": 3.3359375,
+      "errors": [],
+      "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+      "managedMsPerSimulationDay": {}
+    }
+  ],
+  "artifactHashes": {
+    "tests/SeWZC.WorldBox.Core.Tests/bin/Release/net10.0/SeWZC.WorldBox.Core.dll": {
+      "bytes": 980480,
+      "sha256": "5c17dbed77864533164b24899eaeaa9527576cbf4e0f938d14cc8fb1b104d14b"
+    },
+    "tests/SeWZC.WorldBox.UI.Tests/bin/Release/net10.0/SeWZC.WorldBox.UI.dll": {
+      "bytes": 13851648,
+      "sha256": "bcb742efce81eb2bbf09d478d51e58f7b36d272eb3c10eec957ef31ef9edfbdc"
+    },
+    "artifacts/performance-optimization-20261005/final-publish/wwwroot/_framework/SeWZC.WorldBox.Browser.70d8unlgac.wasm": {
+      "bytes": 12053,
+      "sha256": "d7dd052c3a2a782533ee874cd2dc9908f588c5fba80f0ad35561b528a799ccba"
+    },
+    "artifacts/performance-optimization-20261005/final-publish/wwwroot/_framework/SeWZC.WorldBox.Core.ppw9496i8u.wasm": {
+      "bytes": 935189,
+      "sha256": "23cad7fec2052cc8c0ee813cea3dd35b96d86b1265de8011ca25526a524a7b75"
+    },
+    "artifacts/performance-optimization-20261005/final-publish/wwwroot/_framework/SeWZC.WorldBox.UI.6ir81ad5nc.wasm": {
+      "bytes": 13828889,
+      "sha256": "3e56bcaf47c42fa2456ae6351400462149776dd38f9696b795bf08d7946d9965"
+    }
+  },
+  "selectiveAotExperiment": {
+    "adopted": false,
+    "selection": [
+      "SeWZC.WorldBox.Core",
+      "System.Private.CoreLib",
+      "aot-instances"
+    ],
+    "staticSize": {
+      "optimized": {
+        "uncompressedStaticBytes": 70386315,
+        "nativeWasmBytes": 8896563
+      },
+      "selectiveAot": {
+        "uncompressedStaticBytes": 83751994,
+        "nativeWasmBytes": 18177728
+      }
+    },
+    "limitation": "One selective AOT attempt, not complete AOT or all possible AOT settings; larger payload without improvement on tested scenes."
+  },
+  "validation": {
+    "releaseBuildWarnings": 0,
+    "releaseBuildErrors": 0,
+    "unitChecks": 88,
+    "headlessUiChecks": 40,
+    "newHeadlessUiChecks": 3,
+    "fastChecksSeconds": 7.04,
+    "integrationChecks": 122,
+    "integrationSeconds": 35.66,
+    "selectedLongChecks": 1,
+    "selectedLongSeconds": 12.17,
+    "selectedLongScenario": "large-map food webs survive long revisit intervals and deterministic resume",
+    "allNativePairsIdentical": true,
+    "allNativeSavesWithin64MiB": true,
+    "finalProductionThroughputObservations": 9,
+    "optimizedProbeObservations": 3,
+    "browserMotion": true,
+    "browserDesktopAndTouchVisuals": true,
+    "browserIndexedDbRecovery": true,
+    "browserForcedSoftware2d": true,
+    "staticAssetCheck": true,
+    "rawDirectory": "artifacts/performance-optimization-20261005"
+  },
+  "limitations": [
+    "Native timings exclude generation, warmup, serialization, UI and browser execution; not WebAssembly timings.",
+    "Three native repetitions and short browser observations are not statistical confidence or a long-run guarantee.",
+    "Full view is 1440x960; near view is 390x844 touch emulation, not a physical phone.",
+    "Pressure fixture is flat grass with generated water and plants retained, not a default natural map.",
+    "Instrumentation adds overhead; parent and child totals overlap. Historical browser probe windows advance different simulated days at different throughput, so phase comparisons are descriptive.",
+    "Terrain hash scanning increased in this probe, while terrain drawing and whole-map refresh decreased.",
+    "Fast-mode soft slice is 48 ms, normal mode is 12 ms; a first atomic step can exceed the slice, and fast-mode frame gaps increased.",
+    "Tested 2000-resident scenes still fall below 25 days/s. Core single-step elapsed time alone remains about 65-67 ms.",
+    "Full 256x256 terrain reuse retains about 16 MiB extra RGBA memory and 289 KiB tile inputs.",
+    "Autosave still pauses simulation during snapshot capture; no save format or snapshot semantics were changed.",
+    "Optimized build is local and uncommitted; no public deployment was performed."
+  ]
+}

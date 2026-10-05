@@ -1,4 +1,6 @@
 using System;
+using System.Buffers.Binary;
+using System.Runtime.InteropServices;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
@@ -22,11 +24,15 @@ internal sealed class PixelCanvas(int width, int height)
 
     public void Rect(int x, int y, int width, int height, uint rgba)
     {
+        var left = Math.Max(0, x);
+        var top = Math.Max(0, y);
         var right = Math.Min(Width, x + width);
         var bottom = Math.Min(Height, y + height);
-        for (var py = Math.Max(0, y); py < bottom; py++)
-        for (var px = Math.Max(0, x); px < right; px++)
-            Pixel(px, py, rgba);
+        if (left >= right || top >= bottom) return;
+        var color = BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(rgba) : rgba;
+        var pixels = MemoryMarshal.Cast<byte, uint>(Pixels.AsSpan());
+        for (var py = top; py < bottom; py++)
+            pixels.Slice(py * Width + left, right - left).Fill(color);
     }
 
     public static uint Shade(uint rgba, int offset)

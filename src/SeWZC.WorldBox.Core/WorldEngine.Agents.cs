@@ -335,10 +335,12 @@ public sealed partial class WorldEngine
             choices.Add(new(AgentGoalKind.Gather, foodSite % State.Width, foodSite / State.Width, score,
                 foodFact is { Value: < 12 } ? "已知粮情显示家乡粮少，在可见的可食土地采集" : "眼前土地能产食物，采集后随身携带", foodFact));
         }
+        int? materialSite = null;
         if (person.Age >= 14 && person.Profession is Profession.Lumberjack or Profession.Miner
             && LocalMaterialsNeeded(person, home))
         {
             var site = FindVisibleResourceSite(person, person.Profession);
+            materialSite = site;
             if (site >= 0) choices.Add(new(AgentGoalKind.Work, site % State.Width, site / State.Width,
                 58 + personality.Diligence * 12, person.Profession == Profession.Lumberjack ? "看见可采木材，前往伐木" : "看见矿石露头，前往开采"));
         }
@@ -352,7 +354,8 @@ public sealed partial class WorldEngine
                 kind == AgentGoalKind.Study ? "附近有可参与的研究设施，前往学习" : kind == AgentGoalKind.TrainMagic ? "附近有可训练的魔法设施" : "附近有实际施工或生产工作", EntityId: work.Id));
         }
         if (person.Age >= 14 && person.Profession is Profession.Lumberjack or Profession.Miner
-            && (person.Profession == Profession.Lumberjack ? FindVisibleResourceSite(person, Profession.Lumberjack) < 0 : depositSite < 0 && FindVisibleResourceSite(person, Profession.Miner) < 0)
+            && (person.Profession == Profession.Lumberjack ? (materialSite ?? FindVisibleResourceSite(person, Profession.Lumberjack)) < 0
+                : depositSite < 0 && (materialSite ?? FindVisibleResourceSite(person, Profession.Miner)) < 0)
             && (Distance(person.X, person.Y, home.X, home.Y) <= 1 && (person.Profession == Profession.Lumberjack ? home.Resources.Wood < 60
                 : agent.MaterialPriority is not null || HasResearch(home.Id, ResearchKind.Industry) && home.Resources.Coal < 8 || HasResearch(home.Id, ResearchKind.Electrification) && home.Resources.Oil < 8
                     || HasResearch(home.Id, ResearchKind.AdvancedComputing) && home.Resources.RareEarth < 8) || agent.Goal.Kind == AgentGoalKind.Explore))
@@ -440,12 +443,16 @@ public sealed partial class WorldEngine
             var index = Index(x, y);
             var tile = State.Tiles[index];
             if (!RaceTerrainRules.CanWalk(tile, person.Race) || tile.FireTicks > 0) continue;
-            if (profession != Profession.Miner && NaturalPlantHarvestEfficiency(tile, profession == Profession.Lumberjack) < .25) continue;
-            var productivity = ResourceSiteYield(index, profession) * GatheringTerritoryMultiplier(person, tile);
+            double? plantEfficiency = null;
+            if (profession != Profession.Miner)
+            {
+                plantEfficiency = NaturalPlantHarvestEfficiency(tile, profession == Profession.Lumberjack);
+                if (plantEfficiency < .25) continue;
+            }
+            var productivity = ResourceSiteYield(index, profession, plantEfficiency, out var oreAvailable) * GatheringTerritoryMultiplier(person, tile);
             if (productivity <= 0) continue;
             if (profession == Profession.Miner && person.Agent.MaterialPriority == ResourceKind.Ore
-                && TerrainRules.For(tile.Terrain).OreYield <= 0
-                && !Directions.Any(d => InBounds(x + d.X, y + d.Y) && State.Tiles[Index(x + d.X, y + d.Y)] is { Terrain: TerrainType.Mountain, ResourceAmount: > 0 })) continue;
+                && !oreAvailable) continue;
             if (profession == Profession.Farmer && State.Rules.Hunger && person.Hunger > 20
                 && .7 * productivity * RaceTerrainRules.For(person.Race, tile.Terrain).Productivity * GatheringCondition(person) * (.75 + person.Agent.Personality.Diligence * .5) * State.Rules.GatheringRate < FoodUse(person)) continue;
             var score = productivity * 8 - offset.Distance;
@@ -457,19 +464,27 @@ public sealed partial class WorldEngine
     }
 
     private double ResourceSiteYield(int index, Profession profession)
+        => ResourceSiteYield(index, profession, null, out _);
+
+    private double ResourceSiteYield(int index, Profession profession, double? plantEfficiency, out bool oreAvailable)
     {
         var tile = State.Tiles[index];
+        oreAvailable = false;
         if (profession == Profession.Farmer)
             return tile.ResourceAmount > 0 && tile.IsWalkable
-                ? Math.Min(1, TerrainRules.For(tile.Terrain).FoodYield / .7) * tile.Fertility / 100d * (tile.DroughtTicks > 0 ? 0.15 : 1) * NaturalPlantHarvestEfficiency(tile) : 0;
-        if (profession == Profession.Lumberjack) return tile.ResourceAmount > 0 && IsForestTerrain(tile.Terrain) ? TerrainRules.For(tile.Terrain).WoodYield * NaturalPlantHarvestEfficiency(tile, wood: true) : 0;
+                ? Math.Min(1, TerrainRules.For(tile.Terrain).FoodYield / .7) * tile.Fertility / 100d * (tile.DroughtTicks > 0 ? 0.15 : 1) * (plantEfficiency ?? NaturalPlantHarvestEfficiency(tile)) : 0;
+        if (profession == Profession.Lumberjack) return tile.ResourceAmount > 0 && IsForestTerrain(tile.Terrain) ? TerrainRules.For(tile.Terrain).WoodYield * (plantEfficiency ?? NaturalPlantHarvestEfficiency(tile, wood: true)) : 0;
         if (profession == Profession.Miner)
         {
             var best = tile.ResourceAmount > 0 ? Math.Min(1, TerrainRules.For(tile.Terrain).StoneYield + TerrainRules.For(tile.Terrain).OreYield) : 0;
+            oreAvailable = TerrainRules.For(tile.Terrain).OreYield > 0;
             var x = index % State.Width; var y = index / State.Width;
             foreach (var (dx, dy) in Directions)
                 if (InBounds(x + dx, y + dy) && State.Tiles[Index(x + dx, y + dy)] is { Terrain: TerrainType.Mountain, ResourceAmount: > 0 } mountain)
+                {
+                    oreAvailable = true;
                     best = Math.Max(best, Math.Min(1, TerrainRules.For(mountain.Terrain).StoneYield + TerrainRules.For(mountain.Terrain).OreYield));
+                }
             return best;
         }
         return 0;
@@ -631,7 +646,8 @@ public sealed partial class WorldEngine
         if (profession == Profession.Miner && TryGatherDeposit(person)) return;
         var index = Index(person.X, person.Y);
         var tile = State.Tiles[index];
-        if (tile.FireTicks > 0 || ResourceSiteYield(index, profession) <= 0)
+        var siteYield = tile.FireTicks > 0 ? 0 : ResourceSiteYield(index, profession);
+        if (siteYield <= 0)
         {
             person.Agent.NextThinkTick = State.Tick + 1;
             return;
@@ -641,12 +657,12 @@ public sealed partial class WorldEngine
             * (profession is Profession.Lumberjack or Profession.Miner && HasResearch(person.SettlementId, ResearchKind.Forestry) ? 1.25 : 1);
         if (profession == Profession.Farmer)
         {
-            var amount = HarvestPlants(tile, 0.7 * ResourceSiteYield(index, profession) * productivity * AgentFoodPolicyMultiplier(person) * GatheringTerritoryMultiplier(person, tile));
+            var amount = HarvestPlants(tile, 0.7 * siteYield * productivity * AgentFoodPolicyMultiplier(person) * GatheringTerritoryMultiplier(person, tile));
             person.Inventory.Food += amount; RecordHarvest(tile, amount);
         }
         else if (profession == Profession.Lumberjack)
         {
-            var amount = HarvestPlants(tile, 0.28 * ResourceSiteYield(index, profession) * productivity * (person.Race == RaceKind.Elf ? 1.2 : 1) * GatheringTerritoryMultiplier(person, tile), wood: true);
+            var amount = HarvestPlants(tile, 0.28 * siteYield * productivity * (person.Race == RaceKind.Elf ? 1.2 : 1) * GatheringTerritoryMultiplier(person, tile), wood: true);
             person.Inventory.Wood += amount; RecordHarvest(tile, amount);
             FinishLogging(tile, person.X, person.Y);
         }

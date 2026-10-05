@@ -22,6 +22,9 @@ var tests = new (string Name, Action Test)[]
     ("Resident search remains attached and excludes archived people by default", ResidentSearch),
     ("Close terrain refresh scans visible chunks without modifying the world", VisibleTerrain),
     ("Terrain images ignore invisible resource changes and retain the forest stump threshold", TerrainResourceImages),
+    ("Incremental terrain matches a fresh image across chunk borders and edits", IncrementalTerrain),
+    ("Pixel rectangles preserve RGBA order and clip at canvas edges", PixelRectangles),
+    ("Resident geometry includes only the layers drawn at the current zoom", ResidentGeometryLayers),
     ("Save capture suspends stepping and continuing map strokes cancel it", SaveCaptureBoundary),
     ("Paged tools expose every building and keep previews outside toolbar layout", ToolPagination),
     ("Building damage stays visible without expanding secondary details", BuildingDamage),
@@ -1059,6 +1062,79 @@ static void TerrainResourceImages()
     Assert(!ReferenceEquals(forest, stump), "Depleted forest did not show its stump");
     grass.ResourceAmount = 26; var before = engine.ExportJson(); map.RefreshWorld();
     Assert(!ReferenceEquals(stump, Image()) && engine.ExportJson() == before, "Forest recovery remained stale or observation changed the world");
+}
+
+static void PixelRectangles()
+{
+    var type = typeof(WorldMapControl).Assembly.GetType("SeWZC.WorldBox.UI.Controls.PixelCanvas")!;
+    var canvas = Activator.CreateInstance(type, 3, 2)!;
+    type.GetMethod("Rect")!.Invoke(canvas, [-1, 0, 3, 2, 0x11223344u]);
+    var pixels = (byte[])type.GetProperty("Pixels")!.GetValue(canvas)!;
+    byte[] expected = [0x11, 0x22, 0x33, 0x44, 0x11, 0x22, 0x33, 0x44, 0, 0, 0, 0,
+        0x11, 0x22, 0x33, 0x44, 0x11, 0x22, 0x33, 0x44, 0, 0, 0, 0];
+    Assert(pixels.SequenceEqual(expected), "Clipped rectangle changed channels or wrote outside its bounds");
+    type.GetMethod("Rect")!.Invoke(canvas, [3, -2, 5, 1, 0xFFFFFFFFu]);
+    Assert(pixels.SequenceEqual(expected), "An off-canvas rectangle changed pixels");
+}
+
+static void IncrementalTerrain()
+{
+    var engine = WorldEngine.Create(42, 64, 64, false); engine.State.NaturalDisasters = false;
+    var map = Map(View(engine)); map.RefreshWorld(true);
+    Dictionary<object, byte[]> Pixels(WorldMapControl control)
+    {
+        var chunks = Field<System.Collections.IDictionary>(control, "_chunks");
+        return chunks.Keys.Cast<object>().ToDictionary(key => key, key =>
+        {
+            var chunk = chunks[key]!;
+            var canvas = chunk.GetType().GetProperty("TerrainCanvas")!.GetValue(chunk)!;
+            return (byte[])canvas.GetType().GetProperty("Pixels")!.GetValue(canvas)!;
+        });
+    }
+    var initialBuffers = Pixels(map);
+    void Verify()
+    {
+        var before = engine.ExportJson(); map.RefreshWorld();
+        var fresh = Map(View(engine)); fresh.RefreshWorld(true);
+        var actual = Pixels(map); var expected = Pixels(fresh);
+        Assert(expected.Count == actual.Count && expected.All(pair => actual[pair.Key].SequenceEqual(pair.Value)),
+            "A partial update differs from a complete redraw, including its gutter");
+        Assert(actual.All(pair => ReferenceEquals(pair.Value, initialBuffers[pair.Key])), "An edit replaced the managed chunk buffer");
+        Assert(engine.ExportJson() == before, "Terrain observation changed the saved world");
+    }
+    var center = engine.State.Tiles[20 * 64 + 20];
+    center.Terrain = TerrainType.Desert; Verify();
+    Assert(map.TerrainTilesDrawn <= 9, "A one-tile edit redrew the entire chunk");
+    foreach (var x in new[] { 0, 31, 32, 63 })
+    {
+        var tile = engine.State.Tiles[31 * 64 + x];
+        tile.Terrain = TerrainType.River; tile.RoadLevel = 1; Verify();
+        tile.Terrain = TerrainType.Mountain; tile.RoadLevel = 0; Verify();
+        tile.Terrain = TerrainType.Forest; tile.ResourceAmount = 30; tile.DroughtTicks = 3; Verify();
+        tile.ResourceAmount = 24; Verify();
+        // Dry forest and normal scrub collided in the former additive image hash.
+        tile.Terrain = TerrainType.Scrub; tile.DroughtTicks = 0; Verify();
+    }
+}
+
+static void ResidentGeometryLayers()
+{
+    var engine = WorldEngine.Create(42, 32, 32, false);
+    engine.State.Tiles[16 * 32 + 16].Terrain = TerrainType.Grass;
+    engine.SpawnResidents(16, 16, RaceKind.Human, 1);
+    var person = engine.State.Residents.Single(); person.Inventory.Food = 4;
+    var before = engine.ExportJson(); var map = Map(View(engine));
+    map.Arrange(new Rect(0, 0, 200, 200)); map.FitWorld(); Call(map, "RebuildResidents");
+    Assert(Field<object?>(map, "_cargoGeometry") is null && Field<object?>(map, "_messageGeometry") is null
+        && Field<object?>(map, "_magicGeometry") is null, "Subpixel overview badges still constructed geometry");
+    map.FocusTile(person.X, person.Y); Call(map, "RebuildResidents");
+    Assert(Field<object?>(map, "_cargoGeometry") is not null, "Readable medium-zoom cargo was removed");
+    for (var i = 0; i < 4; i++) map.ZoomIn();
+    Call(map, "RebuildResidents");
+    Assert(Field<object?>(map, "_cargoGeometry") is null && Field<object?>(map, "_heads") is null,
+        "Near-scene sprites also constructed unused silhouette details");
+    Assert(Field<System.Collections.IDictionary>(map, "_renderedResidentPoints").Contains(person.Id), "Near residents lost their click position");
+    Assert(engine.ExportJson() == before, "Changing resident detail levels changed the world");
 }
 
 static void SaveCaptureBoundary()
