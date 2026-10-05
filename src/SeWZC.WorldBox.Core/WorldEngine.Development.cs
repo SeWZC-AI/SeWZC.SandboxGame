@@ -1,6 +1,13 @@
 namespace SeWZC.WorldBox.Core;
 
-public enum DevelopmentFocus { Automatic, Technology, MagicPractice, ArcaneIndustry, Integrated }
+public enum DevelopmentFocus
+{
+    Automatic,
+    Technology,
+    MagicPractice,
+    ArcaneIndustry,
+    Integrated,
+}
 
 public sealed partial class Nation
 {
@@ -16,14 +23,19 @@ public sealed partial class WorldEngine
         var nation = State.Nations.FirstOrDefault(n => n.Id == town.NationId);
         if (nation is { DevelopmentFocus: not DevelopmentFocus.Automatic }) return nation.DevelopmentFocus;
         var culture = GetCulture(town.CultureId);
-        return !State.Society.MagicEnabled || culture.Innovation >= culture.NatureAffinity ? DevelopmentFocus.Technology : DevelopmentFocus.MagicPractice;
+        return !State.Society.MagicEnabled || culture.Innovation >= culture.NatureAffinity
+            ? DevelopmentFocus.Technology
+            : DevelopmentFocus.MagicPractice;
     }
 
-    public static string DevelopmentFocusName(DevelopmentFocus focus) => focus switch
+    public static string DevelopmentFocusName(DevelopmentFocus focus)
     {
-        DevelopmentFocus.Technology => "科技发展", DevelopmentFocus.MagicPractice => "法术传承",
-        DevelopmentFocus.ArcaneIndustry => "魔法工艺", DevelopmentFocus.Integrated => "兼修科技与魔法", _ => "依当地文化选择"
-    };
+        return focus switch
+        {
+            DevelopmentFocus.Technology => "科技发展", DevelopmentFocus.MagicPractice => "法术传承",
+            DevelopmentFocus.ArcaneIndustry => "魔法工艺", DevelopmentFocus.Integrated => "兼修科技与魔法", _ => "依当地文化选择",
+        };
+    }
 
     public void SetDevelopmentFocus(int nationId, DevelopmentFocus focus)
     {

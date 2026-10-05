@@ -1,4 +1,3 @@
-using System;
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 
@@ -37,24 +36,40 @@ internal sealed class PixelCanvas(int width, int height)
 
     public static uint Shade(uint rgba, int offset)
     {
-        static uint Shift(uint component, int amount) => (uint)Math.Clamp((int)component + amount, 0, 255);
-        return Shift(rgba >> 24, offset) << 24 |
-               Shift((rgba >> 16) & 255, offset) << 16 |
-               Shift((rgba >> 8) & 255, offset) << 8 |
+        static uint Shift(uint component, int amount)
+        {
+            return (uint)Math.Clamp((int)component + amount, 0, 255);
+        }
+
+        return (Shift(rgba >> 24, offset) << 24) |
+               (Shift((rgba >> 16) & 255, offset) << 16) |
+               (Shift((rgba >> 8) & 255, offset) << 8) |
                (rgba & 255);
     }
 
     public void Line(int x, int y, int endX, int endY, uint color, int thickness = 1)
     {
-        var dx = Math.Abs(endX - x); var dy = -Math.Abs(endY - y);
-        var sx = x < endX ? 1 : -1; var sy = y < endY ? 1 : -1; var error = dx + dy;
+        var dx = Math.Abs(endX - x);
+        var dy = -Math.Abs(endY - y);
+        var sx = x < endX ? 1 : -1;
+        var sy = y < endY ? 1 : -1;
+        var error = dx + dy;
         while (true)
         {
             Rect(x, y, thickness, thickness, color);
             if (x == endX && y == endY) return;
             var twice = error * 2;
-            if (twice >= dy) { error += dy; x += sx; }
-            if (twice <= dx) { error += dx; y += sy; }
+            if (twice >= dy)
+            {
+                error += dy;
+                x += sx;
+            }
+
+            if (twice <= dx)
+            {
+                error += dx;
+                y += sy;
+            }
         }
     }
 

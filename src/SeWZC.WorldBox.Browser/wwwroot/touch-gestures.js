@@ -2,7 +2,7 @@
 // browsers do not enforce touch-action or viewport zoom limits for every gesture.
 // Cancel only the native default; pointer events still reach the map and controls.
 export function installTouchGestures(root) {
-    const options = { capture: true, passive: false };
+    const options = {capture: true, passive: false};
     const preventPinch = event => {
         if (event.touches.length > 1 && event.cancelable) event.preventDefault();
     };

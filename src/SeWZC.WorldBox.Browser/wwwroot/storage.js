@@ -19,7 +19,10 @@ export function yieldSave() {
         yieldChannel = new MessageChannel();
         yieldChannel.port1.onmessage = () => pendingYields.shift()?.();
     }
-    return new Promise(resolve => { pendingYields.push(resolve); yieldChannel.port2.postMessage(0); });
+    return new Promise(resolve => {
+        pendingYields.push(resolve);
+        yieldChannel.port2.postMessage(0);
+    });
 }
 
 function checkSize(text) {
@@ -56,7 +59,9 @@ function openDatabase() {
                 database.close();
                 databasePromise = undefined;
             };
-            database.onclose = () => { databasePromise = undefined; };
+            database.onclose = () => {
+                databasePromise = undefined;
+            };
             resolve(database);
         };
     }).catch(error => {
@@ -70,14 +75,18 @@ function openDatabase() {
 // rendering thread. This ordinary worker needs no WASM threads or special headers.
 export function beginSave() {
     if (typeof Worker === "function" && !saveWorker) {
-        try { saveWorker = new Worker(import.meta.resolve("./storage-worker.js"), { type: "module" }); }
-        catch { /* Use bounded Blob chunks on browsers without a usable worker. */ }
+        try {
+            saveWorker = new Worker(import.meta.resolve("./storage-worker.js"), {type: "module"});
+        } catch { /* Use bounded Blob chunks on browsers without a usable worker. */
+        }
         if (saveWorker) {
-            saveWorker.onmessage = ({ data }) => {
+            saveWorker.onmessage = ({data}) => {
                 const request = saveRequests.get(data.id);
                 if (!request) return;
-                if (data.ok) { saveRequests.delete(data.id); request.resolve?.(); }
-                else {
+                if (data.ok) {
+                    saveRequests.delete(data.id);
+                    request.resolve?.();
+                } else {
                     request.error = new Error(data.error || "保存世界失败。");
                     request.reject?.(request.error);
                 }
@@ -88,12 +97,13 @@ export function beginSave() {
                     request.error = new Error("后台存储启动失败，请尝试导出世界。");
                     request.reject?.(request.error);
                 }
-                saveWorker.terminate(); saveWorker = undefined;
+                saveWorker.terminate();
+                saveWorker = undefined;
             };
         }
     }
     const id = ++nextSaveRequest;
-    saveRequests.set(id, { worker: saveWorker, parts: [], bytes: 0 });
+    saveRequests.set(id, {worker: saveWorker, parts: [], bytes: 0});
     return id;
 }
 
@@ -102,7 +112,7 @@ export function appendSave(id, chunk) {
     if (!request || request.error) throw request?.error || new Error("保存已中断。");
     try {
         if (typeof chunk !== "string" || !chunk.length) throw new Error("存档数据块为空或不是文本。");
-        if (request.worker) request.worker.postMessage({ id, op: "append", chunk });
+        if (request.worker) request.worker.postMessage({id, op: "append", chunk});
         else {
             const part = new Blob([chunk]);
             request.bytes += part.size;
@@ -110,7 +120,8 @@ export function appendSave(id, chunk) {
             request.parts.push(part);
         }
     } catch (error) {
-        request.error = error; request.parts = [];
+        request.error = error;
+        request.parts = [];
         throw error;
     }
 }
@@ -119,42 +130,54 @@ export async function commitSave(id) {
     const request = saveRequests.get(id);
     if (!request || request.error) throw request?.error || new Error("保存已中断。");
     if (!request.worker) {
-        try { await writeSave(new Blob(request.parts)); }
-        finally { saveRequests.delete(id); }
+        try {
+            await writeSave(new Blob(request.parts));
+        } finally {
+            saveRequests.delete(id);
+        }
         return;
     }
     await new Promise((resolve, reject) => {
-        request.resolve = resolve; request.reject = reject;
+        request.resolve = resolve;
+        request.reject = reject;
         // Workers do not inherit the document import map. Pass the resolved URL.
-        request.worker.postMessage({ id, op: "commit", moduleUrl: import.meta.url });
+        request.worker.postMessage({id, op: "commit", moduleUrl: import.meta.url});
     });
 }
 
 export function discardSave(id) {
     const request = saveRequests.get(id);
-    request?.worker?.postMessage({ id, op: "discard" });
+    request?.worker?.postMessage({id, op: "discard"});
     saveRequests.delete(id);
 }
 
 export async function save(json) {
     if (typeof json !== "string") throw new Error("存档内容不是文本。");
     const id = beginSave();
-    try { appendSave(id, json); await commitSave(id); }
-    finally { discardSave(id); }
+    try {
+        appendSave(id, json);
+        await commitSave(id);
+    } finally {
+        discardSave(id);
+    }
 }
 
 // Shared by the worker and the fallback for browsers without worker support.
 export async function writeSave(json) {
     // Keep the capture in chunks: joining/encoding a multi-megabyte string on
     // the rendering thread would undo the cooperative serializer's benefit.
-    const blob = json instanceof Blob ? json : new Blob([checkSize(json)], { type: "application/json" });
+    const blob = json instanceof Blob ? json : new Blob([checkSize(json)], {type: "application/json"});
     if (!blob.size || blob.size > MAX_FILE_BYTES) throw new Error("存档为空或超过 64 MiB。");
     const compressed = typeof CompressionStream === "function" && typeof DecompressionStream === "function";
     const candidate = compressed
         ? await new Response(blob.stream().pipeThrough(new CompressionStream("gzip"))).blob()
         : blob;
     const useCompressed = compressed && candidate.size < blob.size;
-    const record = { encoding: useCompressed ? "gzip" : "utf-8", bytes: blob.size, data: useCompressed ? candidate : blob };
+    const record = {
+        encoding: useCompressed ? "gzip" : "utf-8",
+        bytes: blob.size,
+        data: useCompressed ? candidate : blob
+    };
     const database = await openDatabase();
     await new Promise((resolve, reject) => {
         const transaction = database.transaction(STORE_NAME, "readwrite");
@@ -183,32 +206,38 @@ export async function load() {
         throw new Error("此浏览器无法解压存档，请使用支持解压的浏览器。");
     const stream = value.encoding === "gzip"
         ? value.data.stream().pipeThrough(new DecompressionStream("gzip")) : value.data.stream();
-    const reader = stream.getReader(), decoder = new TextDecoder("utf-8", { fatal: true });
-    const parts = []; let bytes = 0;
+    const reader = stream.getReader(), decoder = new TextDecoder("utf-8", {fatal: true});
+    const parts = [];
+    let bytes = 0;
     try {
-        for (;;) {
+        for (; ;) {
             const next = await reader.read();
             if (next.done) break;
             bytes += next.value.byteLength;
             if (bytes > MAX_FILE_BYTES || bytes > value.bytes) throw new Error("存档解压大小超出限制。");
-            parts.push(decoder.decode(next.value, { stream: true }));
+            parts.push(decoder.decode(next.value, {stream: true}));
         }
         if (bytes !== value.bytes) throw new Error("存档不完整。");
         parts.push(decoder.decode());
         return parts.join("");
-    } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+    } finally {
+        await reader.cancel().catch(() => {
+        });
+        reader.releaseLock();
+    }
 }
 
 export async function exportFile(json, fileName) {
     checkSize(json);
-    const url = URL.createObjectURL(new Blob([json], { type: "application/json;charset=utf-8" }));
+    const url = URL.createObjectURL(new Blob([json], {type: "application/json;charset=utf-8"}));
     const link = document.createElement("a");
     link.href = url;
     link.download = fileName || "SeWZC.WorldBox.json";
     link.hidden = true;
     document.body.append(link);
-    try { link.click(); }
-    finally {
+    try {
+        link.click();
+    } finally {
         link.remove();
         // Safari can consume the blob after click() returns.
         setTimeout(() => URL.revokeObjectURL(url), 60_000);
@@ -243,21 +272,29 @@ export function importFile() {
                 if (!reading && !input.files?.length) finish(null);
             }, 500);
         };
-        input.addEventListener("cancel", () => finish(null), { once: true });
+        input.addEventListener("cancel", () => finish(null), {once: true});
         input.addEventListener("change", async () => {
             reading = true;
             const file = input.files?.[0];
-            if (!file) { finish(null); return; }
+            if (!file) {
+                finish(null);
+                return;
+            }
             try {
                 if (file.size > MAX_FILE_BYTES) throw new Error("存档不能超过 64 MiB。");
                 const bytes = await file.arrayBuffer();
-                const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+                const text = new TextDecoder("utf-8", {fatal: true}).decode(bytes);
                 finish(checkSize(text));
-            } catch (error) { finish(null, error); }
-        }, { once: true });
+            } catch (error) {
+                finish(null, error);
+            }
+        }, {once: true});
         window.addEventListener("focus", onFocus);
-        try { input.click(); }
-        catch (error) { finish(null, error); }
+        try {
+            input.click();
+        } catch (error) {
+            finish(null, error);
+        }
     });
 }
 

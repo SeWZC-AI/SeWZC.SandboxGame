@@ -1,7 +1,7 @@
-import { dotnet } from './_framework/dotnet.js';
+import {dotnet} from './_framework/dotnet.js';
 import * as storage from './storage.js';
-import { installTextInputBridge } from './text-input.js';
-import { installTouchGestures } from './touch-gestures.js';
+import {installTextInputBridge} from './text-input.js';
+import {installTouchGestures} from './touch-gestures.js';
 
 const root = document.getElementById('out');
 installTouchGestures(root);
@@ -17,7 +17,7 @@ try {
         const exports = await runtime.getAssemblyExports(assembly);
         const readSnapshot = exports.SeWZC.WorldBox.Browser.BrowserTestBridge.ReadSnapshot;
         Object.defineProperty(globalThis, 'worldboxTest', {
-            value: Object.freeze({ snapshot: () => JSON.parse(readSnapshot()) })
+            value: Object.freeze({snapshot: () => JSON.parse(readSnapshot())})
         });
     }
     document.querySelector('.loading')?.remove();

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Avalonia;
@@ -30,9 +31,15 @@ public sealed partial class MainView
                 if (ancestor.TranslatePoint(default, this) is { } ancestorOrigin)
                     visibleBounds = visibleBounds.Intersect(new Rect(ancestorOrigin, ancestor.Bounds.Size));
             }
-            if (control is Expander && control.GetVisualDescendants().OfType<ToggleButton>().FirstOrDefault() is { } toggle
-                && toggle.TranslatePoint(default, this) is { } headerOrigin)
-            { bounds = new Rect(headerOrigin, toggle.Bounds.Size); visibleBounds = visibleBounds.Intersect(bounds); }
+
+            if (control is Expander && control.GetVisualDescendants().OfType<ToggleButton>().FirstOrDefault() is
+                                        { } toggle
+                                    && toggle.TranslatePoint(default, this) is { } headerOrigin)
+            {
+                bounds = new Rect(headerOrigin, toggle.Bounds.Size);
+                visibleBounds = visibleBounds.Intersect(bounds);
+            }
+
             controls.Add(new UiAutomationControl
             {
                 Id = id,
@@ -42,31 +49,33 @@ public sealed partial class MainView
                 Enabled = control.IsEffectivelyEnabled && control.IsHitTestVisible,
                 Value = control switch
                 {
-                    NumericUpDown number => number.Value?.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    NumericUpDown number => number.Value?.ToString(CultureInfo.InvariantCulture),
                     TextBox input => input.Text,
-                    ComboBox combo => combo.SelectedIndex.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ComboBox combo => combo.SelectedIndex.ToString(CultureInfo.InvariantCulture),
                     CheckBox check => check.IsChecked?.ToString(),
                     Expander expander => expander.IsExpanded.ToString(),
                     TextBlock text => text.Text,
                     Button { Content: string label } => label,
                     Button button => string.Join(" ", button.GetVisualDescendants().OfType<TextBlock>()
                         .Select(text => text.Text).Where(text => !string.IsNullOrWhiteSpace(text)).Distinct()),
-                    _ => null
-                }
+                    _ => null,
+                },
             });
         }
 
         var mapPosition = _map.TranslatePoint(default, this) ?? default;
         var tile0 = _map.GetTileScreenPosition(0, 0);
         var tile1 = _map.GetTileScreenPosition(1, 0);
-        UiAutomationPoint? residentPoint = _map.TryGetResidentScreenPosition(_selectedResidentId, out var rendered)
+        var residentPoint = _map.TryGetResidentScreenPosition(_selectedResidentId, out var rendered)
             ? new UiAutomationPoint { X = mapPosition.X + rendered.X, Y = mapPosition.Y + rendered.Y }
             : null;
         var graph = this.GetVisualDescendants().OfType<ResearchGraphControl>().FirstOrDefault();
         var snapshot = new UiAutomationSnapshot
         {
-            Ready = _ready, Paused = _paused, Saving = _saving, SaveCaptureActive = _saveCapture is not null, EditCaptureActive = _prepareEditTask is not null, Speed = _speed, ActiveTool = _map.ActiveTool,
-            RenderedWildlifeCount = _map.RenderedWildlifeCount, RenderedEffectCount = _map.RenderedEffectCount, RenderedEffectTime = _map.RenderedEffectTime, RenderedRouteSegmentCount = _map.RenderedRouteSegmentCount,
+            Ready = _ready, Paused = _paused, Saving = _saving, SaveCaptureActive = _saveCapture is not null,
+            EditCaptureActive = _prepareEditTask is not null, Speed = _speed, ActiveTool = _map.ActiveTool,
+            RenderedWildlifeCount = _map.RenderedWildlifeCount, RenderedEffectCount = _map.RenderedEffectCount,
+            RenderedEffectTime = _map.RenderedEffectTime, RenderedRouteSegmentCount = _map.RenderedRouteSegmentCount,
             RenderedPlantCount = _map.RenderedPlantCount, RenderedBuildingLabelCount = _map.RenderedBuildingLabelCount,
             WorldTick = _engine.State.Tick, SelectedResidentPoint = residentPoint,
             Category = _category, Inspector = _inspectorMode, Status = _status.Text,
@@ -76,18 +85,21 @@ public sealed partial class MainView
             ToolsOpen = _toolsOpen, InspectorOpen = _mobilePanel, PendingPlacement = _map.HasPendingPlacement,
             ToolSlots = _slotTools.ToArray(),
             Controls = controls,
-            ResearchGraph = graph is null ? null : new UiAutomationResearchGraph
-            {
-                Nodes = graph.Layout.Nodes.Count, Edges = graph.Layout.Edges.Count, Zoom = graph.Zoom,
-                OffsetX = graph.Offset.X, OffsetY = graph.Offset.Y,
-                ContentWidth = graph.Layout.Size.Width * graph.Zoom, ContentHeight = graph.Layout.Size.Height * graph.Zoom
-            },
+            ResearchGraph = graph is null
+                ? null
+                : new UiAutomationResearchGraph
+                {
+                    Nodes = graph.Layout.Nodes.Count, Edges = graph.Layout.Edges.Count, Zoom = graph.Zoom,
+                    OffsetX = graph.Offset.X, OffsetY = graph.Offset.Y,
+                    ContentWidth = graph.Layout.Size.Width * graph.Zoom,
+                    ContentHeight = graph.Layout.Size.Height * graph.Zoom,
+                },
             Map = new UiAutomationMap
             {
                 X = mapPosition.X, Y = mapPosition.Y, Width = _map.Bounds.Width, Height = _map.Bounds.Height,
                 Tile0CenterX = mapPosition.X + tile0.X, Tile0CenterY = mapPosition.Y + tile0.Y,
-                TileSize = tile1.X - tile0.X
-            }
+                TileSize = tile1.X - tile0.X,
+            },
         };
         return JsonSerializer.Serialize(snapshot, UiAutomationJsonContext.Default.UiAutomationSnapshot);
     }

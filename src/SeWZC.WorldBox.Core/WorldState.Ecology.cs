@@ -2,25 +2,91 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-public enum WildlifeKind { None, Rabbit, Deer, Boar, Goat, Wolf, Waterfowl, Fish, Fox, Bear, Bison, Yak, Jerboa, Gazelle, Camel, Fennec, Jackal, Lion, Capybara, Hippo, Otter, Crocodile, GrassCarp, Manatee, PredatoryFish, Pike, Shark, SeaTurtle, SeaCow, MuskOx, PolarBear, SnowLeopard }
-public enum AnimalSize { Small, Medium, Large }
-public enum AnimalDiet { Herbivore, Carnivore }
-public enum ConflictStage { Dispute, Confrontation, Violence, Resolved }
-public enum ConflictScope { Individual, Group, Settlement }
+public enum WildlifeKind
+{
+    None,
+    Rabbit,
+    Deer,
+    Boar,
+    Goat,
+    Wolf,
+    Waterfowl,
+    Fish,
+    Fox,
+    Bear,
+    Bison,
+    Yak,
+    Jerboa,
+    Gazelle,
+    Camel,
+    Fennec,
+    Jackal,
+    Lion,
+    Capybara,
+    Hippo,
+    Otter,
+    Crocodile,
+    GrassCarp,
+    Manatee,
+    PredatoryFish,
+    Pike,
+    Shark,
+    SeaTurtle,
+    SeaCow,
+    MuskOx,
+    PolarBear,
+    SnowLeopard,
+}
+
+public enum AnimalSize
+{
+    Small,
+    Medium,
+    Large,
+}
+
+public enum AnimalDiet
+{
+    Herbivore,
+    Carnivore,
+}
+
+public enum ConflictStage
+{
+    Dispute,
+    Confrontation,
+    Violence,
+    Resolved,
+}
+
+public enum ConflictScope
+{
+    Individual,
+    Group,
+    Settlement,
+}
 
 public sealed partial class Tile
 {
-    private WildlifeKind _wildlife;
-    private double _wildlifePopulation;
-    private WildlifePopulations _otherWildlife;
     // 255 means uncomputed; None (0) is a valid cached result for empty tiles.
     private byte _edibleLandAnimal = byte.MaxValue, _edibleWaterAnimal = byte.MaxValue;
-    [JsonRequired] public WildlifeKind Wildlife
+    private WildlifePopulations _otherWildlife;
+    private WildlifeKind _wildlife;
+    private double _wildlifePopulation;
+
+    [JsonRequired]
+    public WildlifeKind Wildlife
     {
         get => _wildlife;
-        set { if (_wildlife != value) InvalidateEdibleAnimals(); _wildlife = value; }
+        set
+        {
+            if (_wildlife != value) InvalidateEdibleAnimals();
+            _wildlife = value;
+        }
     }
-    [JsonRequired] public double WildlifePopulation
+
+    [JsonRequired]
+    public double WildlifePopulation
     {
         get => _wildlifePopulation;
         set
@@ -29,18 +95,30 @@ public sealed partial class Tile
             _wildlifePopulation = value;
         }
     }
+
     // A zero-valued population set is the safe default for existing format 8 worlds.
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public WildlifePopulations OtherWildlife
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public WildlifePopulations OtherWildlife
     {
         get => _otherWildlife;
-        set { _otherWildlife = value; InvalidateEdibleAnimals(); }
+        set
+        {
+            _otherWildlife = value;
+            InvalidateEdibleAnimals();
+        }
     }
 
-    private void InvalidateEdibleAnimals() => _edibleLandAnimal = _edibleWaterAnimal = byte.MaxValue;
+    [JsonIgnore]
+    public int WildlifeMask => OtherWildlife.ActiveMask | (WildlifePopulation > 0 ? 1 << (int)Wildlife : 0);
+
+    private void InvalidateEdibleAnimals()
+    {
+        _edibleLandAnimal = _edibleWaterAnimal = byte.MaxValue;
+    }
 
     internal WildlifeKind EdibleAnimal(bool aquatic)
     {
-        ref var cached = ref (aquatic ? ref _edibleWaterAnimal : ref _edibleLandAnimal);
+        ref var cached = ref aquatic ? ref _edibleWaterAnimal : ref _edibleLandAnimal;
         if (cached != byte.MaxValue) return (WildlifeKind)cached;
         cached = (byte)WildlifeKind.None;
         var largest = 0d;
@@ -48,27 +126,45 @@ public sealed partial class Tile
         {
             var population = AnimalPopulation(kind);
             var biomass = population * AnimalRules.For(kind).BodyMass;
-            if (population >= .05 && biomass > largest) { cached = (byte)kind; largest = biomass; }
+            if (population >= .05 && biomass > largest)
+            {
+                cached = (byte)kind;
+                largest = biomass;
+            }
         }
+
         return (WildlifeKind)cached;
     }
 
-    [JsonIgnore] public int WildlifeMask => OtherWildlife.ActiveMask | (WildlifePopulation > 0 ? 1 << (int)Wildlife : 0);
-
-    public double AnimalPopulation(WildlifeKind kind) => kind == Wildlife ? WildlifePopulation : OtherWildlife.Get(kind);
+    public double AnimalPopulation(WildlifeKind kind)
+    {
+        return kind == Wildlife ? WildlifePopulation : OtherWildlife.Get(kind);
+    }
 
     internal void SetAnimalPopulation(WildlifeKind kind, double population)
     {
         if (kind == Wildlife) WildlifePopulation = population;
         else if (Wildlife == WildlifeKind.None && population > 0)
-        { var others = OtherWildlife; others.Set(kind, 0); OtherWildlife = others; Wildlife = kind; WildlifePopulation = population; }
-        else { var others = OtherWildlife; others.Set(kind, population); OtherWildlife = others; }
+        {
+            var others = OtherWildlife;
+            others.Set(kind, 0);
+            OtherWildlife = others;
+            Wildlife = kind;
+            WildlifePopulation = population;
+        }
+        else
+        {
+            var others = OtherWildlife;
+            others.Set(kind, population);
+            OtherWildlife = others;
+        }
     }
 }
 
 public sealed partial class WorldState
 {
-    [JsonRequired] public List<LocalConflict> Conflicts { get; set; } = [];
+    [JsonRequired]
+    public List<LocalConflict> Conflicts { get; set; } = [];
 }
 
 public sealed class LocalConflict
@@ -94,67 +190,191 @@ public sealed class LocalConflict
 [JsonConverter(typeof(WildlifePopulationsJsonConverter))]
 public struct WildlifePopulations : IEquatable<WildlifePopulations>
 {
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Rabbit { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Deer { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Boar { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Goat { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Wolf { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Waterfowl { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Fish { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Fox { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Bear { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Bison { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Yak { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Jerboa { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Gazelle { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Camel { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Fennec { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Jackal { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Lion { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Capybara { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Hippo { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Otter { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Crocodile { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double GrassCarp { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Manatee { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double PredatoryFish { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Pike { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Shark { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double SeaTurtle { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double SeaCow { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double MuskOx { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double PolarBear { get; set; }
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double SnowLeopard { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Rabbit { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Deer { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Boar { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Goat { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Wolf { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Waterfowl { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Fish { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Fox { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Bear { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Bison { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Yak { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Jerboa { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Gazelle { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Camel { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Fennec { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Jackal { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Lion { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Capybara { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Hippo { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Otter { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Crocodile { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double GrassCarp { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Manatee { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double PredatoryFish { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Pike { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double Shark { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double SeaTurtle { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double SeaCow { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double MuskOx { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double PolarBear { get; set; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public double SnowLeopard { get; set; }
 
     // JSON default omission must not box and reflect over every population.
-    public readonly bool Equals(WildlifePopulations other) =>
-        Rabbit.Equals(other.Rabbit) && Deer.Equals(other.Deer) && Boar.Equals(other.Boar) &&
-        Goat.Equals(other.Goat) && Wolf.Equals(other.Wolf) && Waterfowl.Equals(other.Waterfowl) &&
-        Fish.Equals(other.Fish) && Fox.Equals(other.Fox) && Bear.Equals(other.Bear) &&
-        Bison.Equals(other.Bison) && Yak.Equals(other.Yak) && Jerboa.Equals(other.Jerboa) &&
-        Gazelle.Equals(other.Gazelle) && Camel.Equals(other.Camel) && Fennec.Equals(other.Fennec) &&
-        Jackal.Equals(other.Jackal) && Lion.Equals(other.Lion) && Capybara.Equals(other.Capybara) &&
-        Hippo.Equals(other.Hippo) && Otter.Equals(other.Otter) && Crocodile.Equals(other.Crocodile) &&
-        GrassCarp.Equals(other.GrassCarp) && Manatee.Equals(other.Manatee) && PredatoryFish.Equals(other.PredatoryFish) &&
-        Pike.Equals(other.Pike) && Shark.Equals(other.Shark) && SeaTurtle.Equals(other.SeaTurtle) &&
-        SeaCow.Equals(other.SeaCow) && MuskOx.Equals(other.MuskOx) && PolarBear.Equals(other.PolarBear) &&
-        SnowLeopard.Equals(other.SnowLeopard);
-    public override readonly bool Equals(object? obj) => obj is WildlifePopulations other && Equals(other);
-    public override readonly int GetHashCode()
+    public readonly bool Equals(WildlifePopulations other)
+    {
+        return Rabbit.Equals(other.Rabbit) && Deer.Equals(other.Deer) && Boar.Equals(other.Boar) &&
+               Goat.Equals(other.Goat) && Wolf.Equals(other.Wolf) && Waterfowl.Equals(other.Waterfowl) &&
+               Fish.Equals(other.Fish) && Fox.Equals(other.Fox) && Bear.Equals(other.Bear) &&
+               Bison.Equals(other.Bison) && Yak.Equals(other.Yak) && Jerboa.Equals(other.Jerboa) &&
+               Gazelle.Equals(other.Gazelle) && Camel.Equals(other.Camel) && Fennec.Equals(other.Fennec) &&
+               Jackal.Equals(other.Jackal) && Lion.Equals(other.Lion) && Capybara.Equals(other.Capybara) &&
+               Hippo.Equals(other.Hippo) && Otter.Equals(other.Otter) && Crocodile.Equals(other.Crocodile) &&
+               GrassCarp.Equals(other.GrassCarp) && Manatee.Equals(other.Manatee) &&
+               PredatoryFish.Equals(other.PredatoryFish) &&
+               Pike.Equals(other.Pike) && Shark.Equals(other.Shark) && SeaTurtle.Equals(other.SeaTurtle) &&
+               SeaCow.Equals(other.SeaCow) && MuskOx.Equals(other.MuskOx) && PolarBear.Equals(other.PolarBear) &&
+               SnowLeopard.Equals(other.SnowLeopard);
+    }
+
+    public readonly override bool Equals(object? obj)
+    {
+        return obj is WildlifePopulations other && Equals(other);
+    }
+
+    public readonly override int GetHashCode()
     {
         var hash = new HashCode();
-        hash.Add(Rabbit); hash.Add(Deer); hash.Add(Boar); hash.Add(Goat);
-        hash.Add(Wolf); hash.Add(Waterfowl); hash.Add(Fish); hash.Add(Fox);
-        hash.Add(Bear); hash.Add(Bison); hash.Add(Yak); hash.Add(Jerboa);
-        hash.Add(Gazelle); hash.Add(Camel); hash.Add(Fennec); hash.Add(Jackal);
-        hash.Add(Lion); hash.Add(Capybara); hash.Add(Hippo); hash.Add(Otter);
-        hash.Add(Crocodile); hash.Add(GrassCarp); hash.Add(Manatee); hash.Add(PredatoryFish);
-        hash.Add(Pike); hash.Add(Shark); hash.Add(SeaTurtle); hash.Add(SeaCow);
-        hash.Add(MuskOx); hash.Add(PolarBear); hash.Add(SnowLeopard);
+        hash.Add(Rabbit);
+        hash.Add(Deer);
+        hash.Add(Boar);
+        hash.Add(Goat);
+        hash.Add(Wolf);
+        hash.Add(Waterfowl);
+        hash.Add(Fish);
+        hash.Add(Fox);
+        hash.Add(Bear);
+        hash.Add(Bison);
+        hash.Add(Yak);
+        hash.Add(Jerboa);
+        hash.Add(Gazelle);
+        hash.Add(Camel);
+        hash.Add(Fennec);
+        hash.Add(Jackal);
+        hash.Add(Lion);
+        hash.Add(Capybara);
+        hash.Add(Hippo);
+        hash.Add(Otter);
+        hash.Add(Crocodile);
+        hash.Add(GrassCarp);
+        hash.Add(Manatee);
+        hash.Add(PredatoryFish);
+        hash.Add(Pike);
+        hash.Add(Shark);
+        hash.Add(SeaTurtle);
+        hash.Add(SeaCow);
+        hash.Add(MuskOx);
+        hash.Add(PolarBear);
+        hash.Add(SnowLeopard);
         return hash.ToHashCode();
     }
 
-    [JsonIgnore] public readonly int ActiveMask => (Rabbit > 0 ? 1 << (int)WildlifeKind.Rabbit : 0) | (Deer > 0 ? 1 << (int)WildlifeKind.Deer : 0) | (Boar > 0 ? 1 << (int)WildlifeKind.Boar : 0) | (Goat > 0 ? 1 << (int)WildlifeKind.Goat : 0) | (Wolf > 0 ? 1 << (int)WildlifeKind.Wolf : 0) | (Waterfowl > 0 ? 1 << (int)WildlifeKind.Waterfowl : 0) | (Fish > 0 ? 1 << (int)WildlifeKind.Fish : 0) | (Fox > 0 ? 1 << (int)WildlifeKind.Fox : 0) | (Bear > 0 ? 1 << (int)WildlifeKind.Bear : 0) | (Bison > 0 ? 1 << (int)WildlifeKind.Bison : 0) | (Yak > 0 ? 1 << (int)WildlifeKind.Yak : 0) | (Jerboa > 0 ? 1 << (int)WildlifeKind.Jerboa : 0) | (Gazelle > 0 ? 1 << (int)WildlifeKind.Gazelle : 0) | (Camel > 0 ? 1 << (int)WildlifeKind.Camel : 0) | (Fennec > 0 ? 1 << (int)WildlifeKind.Fennec : 0) | (Jackal > 0 ? 1 << (int)WildlifeKind.Jackal : 0) | (Lion > 0 ? 1 << (int)WildlifeKind.Lion : 0) | (Capybara > 0 ? 1 << (int)WildlifeKind.Capybara : 0) | (Hippo > 0 ? 1 << (int)WildlifeKind.Hippo : 0) | (Otter > 0 ? 1 << (int)WildlifeKind.Otter : 0) | (Crocodile > 0 ? 1 << (int)WildlifeKind.Crocodile : 0) | (GrassCarp > 0 ? 1 << (int)WildlifeKind.GrassCarp : 0) | (Manatee > 0 ? 1 << (int)WildlifeKind.Manatee : 0) | (PredatoryFish > 0 ? 1 << (int)WildlifeKind.PredatoryFish : 0) | (Pike > 0 ? 1 << (int)WildlifeKind.Pike : 0) | (Shark > 0 ? 1 << (int)WildlifeKind.Shark : 0) | (SeaTurtle > 0 ? 1 << (int)WildlifeKind.SeaTurtle : 0) | (SeaCow > 0 ? 1 << (int)WildlifeKind.SeaCow : 0) | (MuskOx > 0 ? 1 << (int)WildlifeKind.MuskOx : 0) | (PolarBear > 0 ? 1 << (int)WildlifeKind.PolarBear : 0) | (SnowLeopard > 0 ? 1 << (int)WildlifeKind.SnowLeopard : 0);
+    [JsonIgnore]
+    public readonly int ActiveMask => (Rabbit > 0 ? 1 << (int)WildlifeKind.Rabbit : 0) |
+                                      (Deer > 0 ? 1 << (int)WildlifeKind.Deer : 0) |
+                                      (Boar > 0 ? 1 << (int)WildlifeKind.Boar : 0) |
+                                      (Goat > 0 ? 1 << (int)WildlifeKind.Goat : 0) |
+                                      (Wolf > 0 ? 1 << (int)WildlifeKind.Wolf : 0) |
+                                      (Waterfowl > 0 ? 1 << (int)WildlifeKind.Waterfowl : 0) |
+                                      (Fish > 0 ? 1 << (int)WildlifeKind.Fish : 0) |
+                                      (Fox > 0 ? 1 << (int)WildlifeKind.Fox : 0) |
+                                      (Bear > 0 ? 1 << (int)WildlifeKind.Bear : 0) |
+                                      (Bison > 0 ? 1 << (int)WildlifeKind.Bison : 0) |
+                                      (Yak > 0 ? 1 << (int)WildlifeKind.Yak : 0) |
+                                      (Jerboa > 0 ? 1 << (int)WildlifeKind.Jerboa : 0) |
+                                      (Gazelle > 0 ? 1 << (int)WildlifeKind.Gazelle : 0) |
+                                      (Camel > 0 ? 1 << (int)WildlifeKind.Camel : 0) |
+                                      (Fennec > 0 ? 1 << (int)WildlifeKind.Fennec : 0) |
+                                      (Jackal > 0 ? 1 << (int)WildlifeKind.Jackal : 0) |
+                                      (Lion > 0 ? 1 << (int)WildlifeKind.Lion : 0) |
+                                      (Capybara > 0 ? 1 << (int)WildlifeKind.Capybara : 0) |
+                                      (Hippo > 0 ? 1 << (int)WildlifeKind.Hippo : 0) |
+                                      (Otter > 0 ? 1 << (int)WildlifeKind.Otter : 0) |
+                                      (Crocodile > 0 ? 1 << (int)WildlifeKind.Crocodile : 0) |
+                                      (GrassCarp > 0 ? 1 << (int)WildlifeKind.GrassCarp : 0) |
+                                      (Manatee > 0 ? 1 << (int)WildlifeKind.Manatee : 0) |
+                                      (PredatoryFish > 0 ? 1 << (int)WildlifeKind.PredatoryFish : 0) |
+                                      (Pike > 0 ? 1 << (int)WildlifeKind.Pike : 0) |
+                                      (Shark > 0 ? 1 << (int)WildlifeKind.Shark : 0) |
+                                      (SeaTurtle > 0 ? 1 << (int)WildlifeKind.SeaTurtle : 0) |
+                                      (SeaCow > 0 ? 1 << (int)WildlifeKind.SeaCow : 0) |
+                                      (MuskOx > 0 ? 1 << (int)WildlifeKind.MuskOx : 0) |
+                                      (PolarBear > 0 ? 1 << (int)WildlifeKind.PolarBear : 0) |
+                                      (SnowLeopard > 0 ? 1 << (int)WildlifeKind.SnowLeopard : 0);
+
     internal readonly void CopyTo(Span<double> destination)
     {
         destination[0] = 0;
@@ -191,41 +411,45 @@ public struct WildlifePopulations : IEquatable<WildlifePopulations>
         destination[(int)WildlifeKind.SnowLeopard] = SnowLeopard;
     }
 
-    public readonly double Get(WildlifeKind kind) => kind switch
+    public readonly double Get(WildlifeKind kind)
     {
-        WildlifeKind.Rabbit => Rabbit,
-        WildlifeKind.Deer => Deer,
-        WildlifeKind.Boar => Boar,
-        WildlifeKind.Goat => Goat,
-        WildlifeKind.Wolf => Wolf,
-        WildlifeKind.Waterfowl => Waterfowl,
-        WildlifeKind.Fish => Fish,
-        WildlifeKind.Fox => Fox,
-        WildlifeKind.Bear => Bear,
-        WildlifeKind.Bison => Bison,
-        WildlifeKind.Yak => Yak,
-        WildlifeKind.Jerboa => Jerboa,
-        WildlifeKind.Gazelle => Gazelle,
-        WildlifeKind.Camel => Camel,
-        WildlifeKind.Fennec => Fennec,
-        WildlifeKind.Jackal => Jackal,
-        WildlifeKind.Lion => Lion,
-        WildlifeKind.Capybara => Capybara,
-        WildlifeKind.Hippo => Hippo,
-        WildlifeKind.Otter => Otter,
-        WildlifeKind.Crocodile => Crocodile,
-        WildlifeKind.GrassCarp => GrassCarp,
-        WildlifeKind.Manatee => Manatee,
-        WildlifeKind.PredatoryFish => PredatoryFish,
-        WildlifeKind.Pike => Pike,
-        WildlifeKind.Shark => Shark,
-        WildlifeKind.SeaTurtle => SeaTurtle,
-        WildlifeKind.SeaCow => SeaCow,
-        WildlifeKind.MuskOx => MuskOx,
-        WildlifeKind.PolarBear => PolarBear,
-        WildlifeKind.SnowLeopard => SnowLeopard,
-        _ => 0
-    };
+        return kind switch
+        {
+            WildlifeKind.Rabbit => Rabbit,
+            WildlifeKind.Deer => Deer,
+            WildlifeKind.Boar => Boar,
+            WildlifeKind.Goat => Goat,
+            WildlifeKind.Wolf => Wolf,
+            WildlifeKind.Waterfowl => Waterfowl,
+            WildlifeKind.Fish => Fish,
+            WildlifeKind.Fox => Fox,
+            WildlifeKind.Bear => Bear,
+            WildlifeKind.Bison => Bison,
+            WildlifeKind.Yak => Yak,
+            WildlifeKind.Jerboa => Jerboa,
+            WildlifeKind.Gazelle => Gazelle,
+            WildlifeKind.Camel => Camel,
+            WildlifeKind.Fennec => Fennec,
+            WildlifeKind.Jackal => Jackal,
+            WildlifeKind.Lion => Lion,
+            WildlifeKind.Capybara => Capybara,
+            WildlifeKind.Hippo => Hippo,
+            WildlifeKind.Otter => Otter,
+            WildlifeKind.Crocodile => Crocodile,
+            WildlifeKind.GrassCarp => GrassCarp,
+            WildlifeKind.Manatee => Manatee,
+            WildlifeKind.PredatoryFish => PredatoryFish,
+            WildlifeKind.Pike => Pike,
+            WildlifeKind.Shark => Shark,
+            WildlifeKind.SeaTurtle => SeaTurtle,
+            WildlifeKind.SeaCow => SeaCow,
+            WildlifeKind.MuskOx => MuskOx,
+            WildlifeKind.PolarBear => PolarBear,
+            WildlifeKind.SnowLeopard => SnowLeopard,
+            _ => 0,
+        };
+    }
+
     public void Set(WildlifeKind kind, double population)
     {
         switch (kind)

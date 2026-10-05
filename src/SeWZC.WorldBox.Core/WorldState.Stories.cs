@@ -1,8 +1,44 @@
 namespace SeWZC.WorldBox.Core;
 
-public enum EventAction { General, Started, Completed, Gifted, Declaration, Muster, Battle, Capture, Retreat, Report, Homecoming, Migration, Secession, Delivery, Policy, Culture, Career, Death }
-public enum WarObjective { OccupySettlement, DefendHomeland }
-public enum WarOutcome { None, ObjectiveReached, SupplyShortage, HeavyLosses, TargetChanged, OrdersReceived, RouteBlocked, Exhausted }
+public enum EventAction
+{
+    General,
+    Started,
+    Completed,
+    Gifted,
+    Declaration,
+    Muster,
+    Battle,
+    Capture,
+    Retreat,
+    Report,
+    Homecoming,
+    Migration,
+    Secession,
+    Delivery,
+    Policy,
+    Culture,
+    Career,
+    Death,
+}
+
+public enum WarObjective
+{
+    OccupySettlement,
+    DefendHomeland,
+}
+
+public enum WarOutcome
+{
+    None,
+    ObjectiveReached,
+    SupplyShortage,
+    HeavyLosses,
+    TargetChanged,
+    OrdersReceived,
+    RouteBlocked,
+    Exhausted,
+}
 
 public sealed partial class Nation
 {
@@ -64,27 +100,40 @@ public sealed class ProjectObservation
 }
 
 public readonly record struct CompletionEstimate(long? RemainingTicks, string Explanation);
+
 public sealed record EventGroup(IReadOnlyList<WorldEvent> Entries)
 {
     public WorldEvent Latest => Entries[^1];
     public int Count => Entries.Count;
 }
 
-public enum ObservedObjectKind { Nation, Settlement, Resident }
+public enum ObservedObjectKind
+{
+    Nation,
+    Settlement,
+    Resident,
+}
+
 public readonly record struct ObservedObject(ObservedObjectKind Kind, int Id);
 
 /// <summary>Presentation queries do not mutate events, simulation time, or the random sequence.</summary>
 public static class WorldStories
 {
-    public static bool Involves(WorldEvent item, ObservedObject target) => target.Kind switch
+    public static bool Involves(WorldEvent item, ObservedObject target)
     {
-        ObservedObjectKind.Nation => item.NationId == target.Id || item.SecondNationId == target.Id,
-        ObservedObjectKind.Settlement => item.SettlementId == target.Id || item.SecondSettlementId == target.Id,
-        _ => item.ResidentId == target.Id
-    };
+        return target.Kind switch
+        {
+            ObservedObjectKind.Nation => item.NationId == target.Id || item.SecondNationId == target.Id,
+            ObservedObjectKind.Settlement => item.SettlementId == target.Id || item.SecondSettlementId == target.Id,
+            _ => item.ResidentId == target.Id,
+        };
+    }
 
-    public static IEnumerable<int> Causes(WorldEvent item) => new[] { item.CauseEventId }
-        .Concat(item.AdditionalCauseEventIds).Where(id => id > 0).Distinct();
+    public static IEnumerable<int> Causes(WorldEvent item)
+    {
+        return new[] { item.CauseEventId }
+            .Concat(item.AdditionalCauseEventIds).Where(id => id > 0).Distinct();
+    }
 
     public static IReadOnlyList<EventGroup> Group(IEnumerable<WorldEvent> events)
     {
@@ -93,11 +142,16 @@ public static class WorldStories
         {
             var group = entry.Importance < EventImportance.Major && entry.Action != EventAction.General
                 ? groups.LastOrDefault(g => g[0].Importance < EventImportance.Major && g[0].Kind == entry.Kind
-                    && g[0].Action == entry.Action && g[0].NationId == entry.NationId && g[0].SecondNationId == entry.SecondNationId
+                    && g[0].Action == entry.Action && g[0].NationId == entry.NationId &&
+                    g[0].SecondNationId == entry.SecondNationId
                     && g[0].SettlementId == entry.SettlementId && g[0].SecondSettlementId == entry.SecondSettlementId
-                    && g[0].ResidentId == entry.ResidentId && entry.Tick - g[0].Tick <= 60) : null;
-            if (group is null) groups.Add([entry]); else group.Add(entry);
+                    && g[0].ResidentId == entry.ResidentId && entry.Tick - g[0].Tick <= 60)
+                : null;
+            if (group is null) groups.Add([entry]);
+            else group.Add(entry);
         }
-        return groups.Select(g => new EventGroup(g)).OrderByDescending(g => g.Latest.Tick).ThenByDescending(g => g.Latest.Id).ToArray();
+
+        return groups.Select(g => new EventGroup(g)).OrderByDescending(g => g.Latest.Tick)
+            .ThenByDescending(g => g.Latest.Id).ToArray();
     }
 }

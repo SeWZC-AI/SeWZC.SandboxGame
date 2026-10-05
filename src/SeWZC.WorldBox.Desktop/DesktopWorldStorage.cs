@@ -1,5 +1,5 @@
-using System.Text;
 using System.IO.Compression;
+using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -13,12 +13,15 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
 {
     private const int MaxFileBytes = 64 * 1024 * 1024;
     private static readonly UTF8Encoding Utf8 = new(false, true);
+
     private static readonly FilePickerFileType WorldFileType = new("WorldBox 世界存档")
     {
         Patterns = ["*.json", "*.worldbox"],
-        MimeTypes = ["application/json"]
+        MimeTypes = ["application/json"],
     };
+
     private readonly SemaphoreSlim _saveLock = new(1, 1);
+
     private readonly string _savePath = savePath ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "SeWZC", "WorldBox", "autosave.worldbox");
@@ -28,7 +31,10 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
 
     public bool IsBackground => MainWindow is { IsActive: false };
 
-    public Task SaveAsync(string json) => SaveChunksAsync([json]);
+    public Task SaveAsync(string json)
+    {
+        return SaveChunksAsync([json]);
+    }
 
     public async Task SaveChunksAsync(string[] chunks)
     {
@@ -46,19 +52,29 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
                     bytes += Utf8.GetByteCount(chunk);
                     if (bytes > MaxFileBytes) throw new IOException("存档不能超过 64 MiB。");
                 }
+
                 Directory.CreateDirectory(Path.GetDirectoryName(_savePath)!);
                 using (var file = File.Create(temporaryPath))
                 using (var compressed = new GZipStream(file, CompressionLevel.Fastest))
                 using (var writer = new StreamWriter(compressed, Utf8))
+                {
                     foreach (var chunk in chunks) writer.Write(chunk);
+                }
+
                 // Same-directory rename replaces only a complete snapshot.
-                File.Move(temporaryPath, _savePath, overwrite: true);
+                File.Move(temporaryPath, _savePath, true);
             });
         }
         finally
         {
-            try { if (temporaryPath is not null && File.Exists(temporaryPath)) File.Delete(temporaryPath); }
-            finally { _saveLock.Release(); }
+            try
+            {
+                if (temporaryPath is not null && File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            }
+            finally
+            {
+                _saveLock.Release();
+            }
         }
     }
 
@@ -72,7 +88,10 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
             await using var compressed = new GZipStream(stream, CompressionMode.Decompress);
             return await ReadUtf8Async(compressed);
         }
-        finally { _saveLock.Release(); }
+        finally
+        {
+            _saveLock.Release();
+        }
     }
 
     public async Task ExportAsync(string json, string fileName)
@@ -86,7 +105,7 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
             SuggestedFileName = fileName,
             DefaultExtension = "json",
             FileTypeChoices = [WorldFileType],
-            ShowOverwritePrompt = true
+            ShowOverwritePrompt = true,
         });
         if (file is null) throw new OperationCanceledException("已取消导出。");
         using (file)
@@ -106,7 +125,7 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
         {
             Title = "导入 WorldBox 世界",
             AllowMultiple = false,
-            FileTypeFilter = [WorldFileType]
+            FileTypeFilter = [WorldFileType],
         });
         if (files.Count == 0) return null;
         using var file = files[0];
@@ -114,8 +133,11 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
         return await ReadUtf8Async(stream);
     }
 
-    private static IStorageProvider GetStorageProvider() => MainWindow?.StorageProvider
-        ?? throw new InvalidOperationException("主窗口尚未准备好。");
+    private static IStorageProvider GetStorageProvider()
+    {
+        return MainWindow?.StorageProvider
+               ?? throw new InvalidOperationException("主窗口尚未准备好。");
+    }
 
     private static void CheckSize(string json)
     {
@@ -133,6 +155,7 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
             if (buffer.Length + count > MaxFileBytes) throw new IOException("存档不能超过 64 MiB。");
             buffer.Write(chunk, 0, count);
         }
+
         var text = Utf8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
         return text.StartsWith('\uFEFF') ? text[1..] : text;
     }

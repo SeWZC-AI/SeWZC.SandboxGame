@@ -15,25 +15,32 @@ internal static class SavePerformance
         for (var i = -1; i < 3; i++)
         {
             var last = Stopwatch.GetTimestamp();
-            var started = last; var longest = 0d; var yields = 0;
+            var started = last;
+            var longest = 0d;
+            var yields = 0;
             var allocated = GC.GetTotalAllocatedBytes(true);
             var chunks = engine.ExportJsonChunksAsync(_ =>
             {
                 longest = Math.Max(longest, Stopwatch.GetElapsedTime(last).TotalMilliseconds);
-                last = Stopwatch.GetTimestamp(); yields++;
+                last = Stopwatch.GetTimestamp();
+                yields++;
                 return ValueTask.CompletedTask;
             }).GetAwaiter().GetResult();
             longest = Math.Max(longest, Stopwatch.GetElapsedTime(last).TotalMilliseconds);
             var elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
             var allocations = GC.GetTotalAllocatedBytes(true) - allocated;
-            if (string.Concat(chunks) != expected) throw new Exception("Benchmark save differs from synchronous capture.");
-            if (i >= 0) samples.Add(new { elapsedMs = elapsed, longestSliceMs = longest, yields, allocatedBytes = allocations });
+            if (string.Concat(chunks) != expected)
+                throw new Exception("Benchmark save differs from synchronous capture.");
+            if (i >= 0)
+                samples.Add(new
+                    { elapsedMs = elapsed, longestSliceMs = longest, yields, allocatedBytes = allocations });
         }
+
         var report = JsonSerializer.Serialize(new
         {
             mode = "chunked", runtime = RuntimeInformation.FrameworkDescription, os = RuntimeInformation.OSDescription,
             engine.State.Width, engine.State.Height, engine.State.Population,
-            jsonBytes = Encoding.UTF8.GetByteCount(expected), samples
+            jsonBytes = Encoding.UTF8.GetByteCount(expected), samples,
         }, new JsonSerializerOptions { WriteIndented = true });
         var output = Array.IndexOf(args, "--output");
         if (output >= 0) File.WriteAllText(args[output + 1], report);

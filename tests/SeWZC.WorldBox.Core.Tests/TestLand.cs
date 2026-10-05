@@ -7,7 +7,11 @@ internal static class TestLand
     public static void ClearWildlife(WorldEngine engine)
     {
         foreach (var tile in engine.State.Tiles)
-        { tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default; }
+        {
+            tile.Wildlife = WildlifeKind.None;
+            tile.WildlifePopulation = 0;
+            tile.OtherWildlife = default;
+        }
     }
 
     // Controlled component fixtures start with an explicitly edited, connected town footprint.
