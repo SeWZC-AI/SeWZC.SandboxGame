@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using SeWZC.WorldBox.Core;
 
@@ -8,7 +9,9 @@ var ecologyOption = Array.IndexOf(args, "--simulate-ecology");
 if (ecologyOption >= 0) return EcologyDiagnostics.Run(args[(ecologyOption + 1)..]);
 if (evolutionOption >= 0)
 {
-    EvolutionProbe.Run(evolutionOption + 1 < args.Length ? args[evolutionOption + 1] : "artifacts/evolution-probe.json");
+    EvolutionProbe.Run(evolutionOption + 1 < args.Length
+        ? args[evolutionOption + 1]
+        : "artifacts/evolution-probe.json");
     return 0;
 }
 
@@ -24,7 +27,8 @@ var visualOption = Array.IndexOf(args, "--export-visual-fixture");
 if (visualOption >= 0)
 {
     if (visualOption + 1 >= args.Length) return 2;
-    VisualFixture.Export(args[visualOption + 1]); return 0;
+    VisualFixture.Export(args[visualOption + 1]);
+    return 0;
 }
 
 var fixtureOption = Array.IndexOf(args, "--export-browser-fixture");
@@ -35,6 +39,7 @@ if (fixtureOption >= 0)
         Console.Error.WriteLine("Usage: --export-browser-fixture <path>");
         return 2;
     }
+
     var fixture = CreateBenchmarkWorld();
     var json = fixture.ExportJson();
     var bytes = Encoding.UTF8.GetByteCount(json);
@@ -44,30 +49,36 @@ if (fixtureOption >= 0)
     Directory.CreateDirectory(Path.GetDirectoryName(path)!);
     File.WriteAllText(path, json, new UTF8Encoding(false));
     Console.WriteLine($"EXPORTED {path}: {bytes} bytes; tick {fixture.State.Tick}, 256×256 terrain, " +
-        $"{fixture.State.Population} residents, {fixture.State.Nations.Count} nations, " +
-        $"{fixture.State.Diplomacies.Count(d => d.Status == DiplomaticStatus.War)} wars.");
+                      $"{fixture.State.Population} residents, {fixture.State.Nations.Count} nations, " +
+                      $"{fixture.State.Diplomacies.Count(d => d.Status == DiplomaticStatus.War)} wars.");
     return 0;
 }
 
 var tests = new (string Name, Action Run)[]
-{
-    ("same seed reproduces terrain and starting world", Generation),
-    ("simulation advances residents and world time", Simulation),
-    ("save and resume preserves subsequent simulation", SaveResume),
-    ("invalid save files are rejected before use", InvalidSaves),
-    ("terrain edits keep residents on accessible land", TerrainEditing),
-    ("mixed edits preserve valid deterministic save states", MixedEditSaveRoundTrips),
-    ("water barrier blocks armies and occupation", ImpassableBarrier),
-    ("disasters change world state and affect residents", Disasters),
-    ("nation editing updates authoritative resources", NationEditing),
-    ("territory transfer and nation splitting preserve ownership", NationTerritoryEditing),
-    ("spawning on owned land joins its existing nation", SpawnOnOwnedLand),
-    ("food availability changes population survival", FoodAvailability),
-    ("war leads to casualties or territorial capture", War)
-}.Concat(AgentBehaviorTests.Cases).Concat(EditorAndMigrationTests.Cases).Concat(SocietyBehaviorTests.Cases()).Concat(EvolutionTests.Cases).Concat(WorkQueryTests.Cases)
+    {
+        ("same seed reproduces terrain and starting world", Generation),
+        ("simulation advances residents and world time", Simulation),
+        ("save and resume preserves subsequent simulation", SaveResume),
+        ("invalid save files are rejected before use", InvalidSaves),
+        ("terrain edits keep residents on accessible land", TerrainEditing),
+        ("mixed edits preserve valid deterministic save states", MixedEditSaveRoundTrips),
+        ("water barrier blocks armies and occupation", ImpassableBarrier),
+        ("disasters change world state and affect residents", Disasters),
+        ("nation editing updates authoritative resources", NationEditing),
+        ("territory transfer and nation splitting preserve ownership", NationTerritoryEditing),
+        ("spawning on owned land joins its existing nation", SpawnOnOwnedLand),
+        ("food availability changes population survival", FoodAvailability),
+        ("war leads to casualties or territorial capture", War),
+    }.Concat(AgentBehaviorTests.Cases).Concat(EditorAndMigrationTests.Cases).Concat(SocietyBehaviorTests.Cases())
+    .Concat(EvolutionTests.Cases).Concat(WorkQueryTests.Cases)
     .Concat(PersistenceRegressionTests.Cases).Concat(SocietyRegressionTests.Cases).Concat(AgentRegressionTests.Cases)
     .Concat(DiplomacyKnowledgeTests.Cases).Concat(StoryTests.Cases).Concat(PresentationWorldTests.Cases)
-    .Concat(TradeRegressionTests.Cases).Concat(AdvancementTests.Cases).Concat(ResearchTreeTests.Cases).Concat(ResearchGameplayTests.Cases).Concat(LandTransportTests.Cases).Concat(EcologyAndConflictTests.Cases).Concat(DevelopmentPlanningTests.Cases).Concat(PerformanceBehaviorTests.Cases).Concat(ProvisioningAndClaimsTests.Cases).Concat(SurvivalAndDisasterTests.Cases).Concat(TownInfrastructureTests.Cases).Concat(GeographyEcologyTests.Cases).Concat(TownActivityTests.Cases).Concat(SimulationOptimizationTests.Cases).Concat(ActionEcologyRegressionTests.Cases).ToArray();
+    .Concat(TradeRegressionTests.Cases).Concat(AdvancementTests.Cases).Concat(ResearchTreeTests.Cases)
+    .Concat(ResearchGameplayTests.Cases).Concat(LandTransportTests.Cases).Concat(EcologyAndConflictTests.Cases)
+    .Concat(DevelopmentPlanningTests.Cases).Concat(PerformanceBehaviorTests.Cases)
+    .Concat(ProvisioningAndClaimsTests.Cases).Concat(SurvivalAndDisasterTests.Cases)
+    .Concat(TownInfrastructureTests.Cases).Concat(GeographyEcologyTests.Cases).Concat(TownActivityTests.Cases)
+    .Concat(SimulationOptimizationTests.Cases).Concat(ActionEcologyRegressionTests.Cases).ToArray();
 var filterOption = Array.IndexOf(args, "--filter");
 var suiteOption = Array.IndexOf(args, "--suite");
 var suite = suiteOption < 0 ? "unit" : args.ElementAtOrDefault(suiteOption + 1);
@@ -77,6 +88,7 @@ if (suite is not ("unit" or "integration" or "long" or "all") ||
     Console.Error.WriteLine("Usage: [--suite unit|integration|long|all] [--filter <name>] [--list]");
     return 2;
 }
+
 tests = tests.Where(t => suite == "all" || suite == Scope(t.Run)).ToArray();
 if (filterOption >= 0)
     tests = tests.Where(t => t.Name.Contains(args[filterOption + 1], StringComparison.OrdinalIgnoreCase)).ToArray();
@@ -85,11 +97,13 @@ if (tests.Length == 0)
     Console.Error.WriteLine("No tests matched the requested suite/filter.");
     return 2;
 }
+
 if (args.Contains("--list"))
 {
     foreach (var test in tests) Console.WriteLine($"{Scope(test.Run)}: {test.Name}");
     return 0;
 }
+
 var failures = 0;
 var totalTime = Stopwatch.StartNew();
 foreach (var (name, run) in tests)
@@ -107,12 +121,17 @@ foreach (var (name, run) in tests)
         Console.Error.WriteLine(ex.StackTrace);
     }
 }
-Console.WriteLine($"{tests.Length - failures}/{tests.Length} {suite} checks passed in {totalTime.Elapsed.TotalSeconds:F2} s");
+
+Console.WriteLine(
+    $"{tests.Length - failures}/{tests.Length} {suite} checks passed in {totalTime.Elapsed.TotalSeconds:F2} s");
 if (failures == 0 && args.Contains("--benchmark")) Benchmark();
 return failures == 0 ? 0 : 1;
 
-static string Scope(Action test) => test.Method.IsDefined(typeof(LongRunningTestAttribute), false) ? "long"
-    : test.Method.IsDefined(typeof(UnitTestAttribute), false) ? "unit" : "integration";
+static string Scope(Action test)
+{
+    return test.Method.IsDefined(typeof(LongRunningTestAttribute), false) ? "long"
+        : test.Method.IsDefined(typeof(UnitTestAttribute), false) ? "unit" : "integration";
+}
 
 static void Generation()
 {
@@ -173,7 +192,9 @@ static void AssertResume(WorldEngine uninterrupted, int steps)
     var saved = uninterrupted.ExportJson();
     var resumed = WorldEngine.ImportJson(saved);
     var imported = resumed.ExportJson();
-    if (saved != imported) throw new InvalidOperationException("A valid save changed during import: " + JsonDifference(JsonNode.Parse(saved), JsonNode.Parse(imported)));
+    if (saved != imported)
+        throw new InvalidOperationException("A valid save changed during import: " +
+                                            JsonDifference(JsonNode.Parse(saved), JsonNode.Parse(imported)));
     uninterrupted.Step(steps);
     resumed.Step(steps);
     Check(uninterrupted.ExportJson() == resumed.ExportJson(),
@@ -191,6 +212,7 @@ static string? JsonDifference(JsonNode? first, JsonNode? second, string path = "
             if (difference is not null) return difference;
         }
     }
+
     if (first is JsonArray aa && second is JsonArray bb)
     {
         if (aa.Count != bb.Count) return $"{path}: count {aa.Count} -> {bb.Count}";
@@ -200,13 +222,14 @@ static string? JsonDifference(JsonNode? first, JsonNode? second, string path = "
             if (difference is not null) return difference;
         }
     }
+
     return $"{path}: {first?.ToJsonString()} -> {second?.ToJsonString()}";
 }
 
 static void InvalidSaves()
 {
     var engine = FlatWorld();
-    engine.SpawnResidents(20, 20, RaceKind.Human, 12);
+    engine.SpawnResidents(20, 20, RaceKind.Human);
     var valid = engine.ExportJson();
     Reject("{unfinished", "malformed JSON");
     Reject("null", "null save");
@@ -258,13 +281,16 @@ static void TerrainEditing()
     Check(engine.State.Residents.Count > 0, "A small terrain edit destroyed the entire settlement.");
     engine.PaintTerrain(x, y, TerrainType.Grass, 1);
     Check(engine.State.Tiles[y * 64 + x].IsWalkable, "Restored land is not traversable.");
-    Check(engine.State.Tiles[y * 64 + x].ResourceAmount == WorldEngine.NaturalResourceCapacity(engine.State.Tiles[y * 64 + x]), "Terrain painting ignored the new habitat resource capacity.");
+    Check(
+        engine.State.Tiles[y * 64 + x].ResourceAmount ==
+        WorldEngine.NaturalResourceCapacity(engine.State.Tiles[y * 64 + x]),
+        "Terrain painting ignored the new habitat resource capacity.");
 
     // An intact resident on the opposite shore must follow their displaced home.
     // Northern land belongs to a competitor, so it is unavailable for relocation.
     var relocation = FlatWorld();
     relocation.SpawnResidents(24, 24, RaceKind.Human, 16);
-    relocation.SpawnResidents(48, 48, RaceKind.Orc, 12);
+    relocation.SpawnResidents(48, 48, RaceKind.Orc);
     var town = relocation.State.Settlements[0];
     var foreignNation = relocation.State.Nations[1].Id;
     var foreignLand = new HashSet<int>();
@@ -275,6 +301,7 @@ static void TerrainEditing()
         relocation.State.Tiles[index].NationId = foreignNation;
         foreignLand.Add(index);
     }
+
     var displaced = relocation.State.Residents.First(r => r.SettlementId == town.Id);
     displaced.X = 30;
     displaced.Y = 24;
@@ -293,6 +320,7 @@ static void TerrainEditing()
         relocation.Tick();
         moved |= previous != (displaced.X, displaced.Y);
     }
+
     Check(moved, "A displaced resident could not resume moving after settlement relocation.");
     CheckResidents(relocation.State);
     AssertResume(relocation, 12);
@@ -321,6 +349,7 @@ static void MixedEditSaveRoundTrips()
                 x = Math.Clamp(town.X + random.Next(-5, 6), 0, engine.State.Width - 1);
                 y = Math.Clamp(town.Y + random.Next(-5, 6), 0, engine.State.Height - 1);
             }
+
             engine.PaintTerrain(x, y, (TerrainType)random.Next(7), random.Next(1, 7));
             if (operation % 3 == 0)
                 engine.TriggerDisaster(x, y, (DisasterKind)random.Next(3), random.Next(2, 7));
@@ -356,6 +385,7 @@ static void ImpassableBarrier()
             Check(army.NationId == nations[0].Id ? army.X < 32 : army.X > 32,
                 "An army crossed an impassable water barrier.");
     }
+
     CheckResidents(engine.State);
 }
 
@@ -372,13 +402,14 @@ static void Disasters()
         "Fire has no effect on residents in its area.");
 
     var drought = FlatWorld();
-    drought.SpawnResidents(24, 24, RaceKind.Dwarf, 12);
+    drought.SpawnResidents(24, 24, RaceKind.Dwarf);
     var mildWeather = WorldEngine.ImportJson(drought.ExportJson());
     drought.TriggerDisaster(24, 24, DisasterKind.Drought, 16);
     Check(drought.State.Tiles.Any(t => t.DroughtTicks > 0), "Drought has no lasting local state.");
     drought.Step(24);
     mildWeather.Step(24);
-    Check(drought.State.Settlements.Sum(s => s.Resources.Food) < mildWeather.State.Settlements.Sum(s => s.Resources.Food),
+    Check(
+        drought.State.Settlements.Sum(s => s.Resources.Food) < mildWeather.State.Settlements.Sum(s => s.Resources.Food),
         "Drought did not lower food production compared with mild weather.");
 
     var plague = FlatWorld();
@@ -395,7 +426,7 @@ static void NationEditing()
 {
     var engine = FlatWorld(32);
     TestLand.ClearWildlife(engine);
-    engine.SpawnResidents(20, 20, RaceKind.Human, 12);
+    engine.SpawnResidents(20, 20, RaceKind.Human);
     var nation = engine.State.Nations.Single();
     engine.RenameNation(nation.Id, "海岚共同体");
     engine.SetNationResources(nation.Id, 800, 450, 320, 175);
@@ -407,16 +438,21 @@ static void NationEditing()
     Check(nation.Name == "海岚共同体", "Nation name editor did not apply.");
     Check(nation.ColorArgb == 0xFF123456, "Nation color editor did not preserve RGB with opaque alpha.");
     Check(nation.Technology == 4, "Technology editing or rejected input changed the selected level.");
-    Check(Math.Abs(settlements.Sum(s => s.Resources.Food) - 800) < 0.001, "Food editor did not update settlement stocks.");
-    Check(Math.Abs(settlements.Sum(s => s.Resources.Wood) - 450) < 0.001, "Wood editor did not update settlement stocks.");
-    Check(Math.Abs(settlements.Sum(s => s.Resources.Stone) - 320) < 0.001, "Stone editor did not update settlement stocks.");
-    Check(Math.Abs(settlements.Sum(s => s.Resources.Ore) - 175) < 0.001, "Ore editor did not update settlement stocks.");
+    Check(Math.Abs(settlements.Sum(s => s.Resources.Food) - 800) < 0.001,
+        "Food editor did not update settlement stocks.");
+    Check(Math.Abs(settlements.Sum(s => s.Resources.Wood) - 450) < 0.001,
+        "Wood editor did not update settlement stocks.");
+    Check(Math.Abs(settlements.Sum(s => s.Resources.Stone) - 320) < 0.001,
+        "Stone editor did not update settlement stocks.");
+    Check(Math.Abs(settlements.Sum(s => s.Resources.Ore) - 175) < 0.001,
+        "Ore editor did not update settlement stocks.");
     Check(Math.Abs(nation.Resources.Food - 800) < 0.001, "Nation's displayed total differs from authoritative stock.");
     var resumed = WorldEngine.ImportJson(engine.ExportJson());
     Check(resumed.State.Nations.Single().Name == "海岚共同体", "Edited name did not survive saving.");
     Check(resumed.State.Nations.Single().ColorArgb == 0xFF123456 && resumed.State.Nations.Single().Technology == 4,
         "Edited color or technology did not survive saving.");
-    Check(Math.Abs(resumed.State.Nations.Single().Resources.Food - 800) < 0.001, "Edited resources did not survive saving.");
+    Check(Math.Abs(resumed.State.Nations.Single().Resources.Food - 800) < 0.001,
+        "Edited resources did not survive saving.");
 }
 
 static void NationTerritoryEditing()
@@ -432,22 +468,26 @@ static void NationTerritoryEditing()
     RejectAction(() => engine.SplitSettlement(firstTown.Id, "过早独立"), "splitting a country's only settlement");
     foreach (var nation in originalNations) engine.SetNationResources(nation.Id, 10000, 500, 500, 500);
     var residentIds = engine.State.Residents.Select(r => r.Id).ToHashSet();
-    engine.TransferTerritory(secondTown.X, secondTown.Y, originalNations[0].Id, 3);
-    Check(engine.State.Nations.All(n => n.Id != originalNations[1].Id), "A nation with no remaining town survived the transfer.");
+    engine.TransferTerritory(secondTown.X, secondTown.Y, originalNations[0].Id);
+    Check(engine.State.Nations.All(n => n.Id != originalNations[1].Id),
+        "A nation with no remaining town survived the transfer.");
     Check(secondTown.NationId == originalNations[0].Id, "The transferred settlement did not join its target nation.");
-    Check(residentIds.SetEquals(engine.State.Residents.Select(r => r.Id)), "Transferring a town deleted or created residents.");
+    Check(residentIds.SetEquals(engine.State.Residents.Select(r => r.Id)),
+        "Transferring a town deleted or created residents.");
     CheckResidents(engine.State);
     _ = WorldEngine.ImportJson(engine.ExportJson());
 
     engine.SetDiplomacy(originalNations[0].Id, originalNations[2].Id, DiplomaticStatus.War);
     engine.Step(35);
-    Check(engine.State.Armies.Any(a => a.NationId == originalNations[0].Id), "Transfer scenario requires soldiers with an active home reference.");
+    Check(engine.State.Armies.Any(a => a.NationId == originalNations[0].Id),
+        "Transfer scenario requires soldiers with an active home reference.");
     residentIds = engine.State.Residents.Select(r => r.Id).ToHashSet();
-    engine.TransferTerritory(firstTown.X, firstTown.Y, originalNations[2].Id, 3);
+    engine.TransferTerritory(firstTown.X, firstTown.Y, originalNations[2].Id);
     Check(firstTown.NationId == originalNations[2].Id, "Capital territory did not transfer.");
     Check(engine.State.Nations.Single(n => n.Id == originalNations[0].Id).CapitalId == secondTown.Id,
         "Losing a capital did not designate the remaining settlement as capital.");
-    Check(residentIds.SetEquals(engine.State.Residents.Select(r => r.Id)), "Capital transfer lost existing civilians or soldiers.");
+    Check(residentIds.SetEquals(engine.State.Residents.Select(r => r.Id)),
+        "Capital transfer lost existing civilians or soldiers.");
     CheckResidents(engine.State);
     _ = WorldEngine.ImportJson(engine.ExportJson());
 
@@ -458,18 +498,24 @@ static void NationTerritoryEditing()
     Check(thirdTown.NationId == newNationId, "The independent settlement still belongs to its parent.");
     Check(engine.State.Nations.Single(n => n.Id == originalNations[2].Id).CapitalId == firstTown.Id,
         "Parent country did not replace its seceding capital.");
-    Check(residentIds.SetEquals(engine.State.Residents.Select(r => r.Id)), "Splitting a settlement changed the resident roster.");
+    Check(residentIds.SetEquals(engine.State.Residents.Select(r => r.Id)),
+        "Splitting a settlement changed the resident roster.");
     CheckResidents(engine.State);
     _ = WorldEngine.ImportJson(engine.ExportJson());
 
-    Check(engine.State.Armies.Any(a => a.NationId == originalNations[0].Id), "Final transfer must exercise an existing army.");
-    engine.TransferTerritory(secondTown.X, secondTown.Y, newNationId, 3);
-    Check(engine.State.Nations.All(n => n.Id != originalNations[0].Id), "The absorbed country remains after losing its final capital.");
-    Check(engine.State.Diplomacies.All(d => d.FirstNationId != originalNations[0].Id && d.SecondNationId != originalNations[0].Id),
+    Check(engine.State.Armies.Any(a => a.NationId == originalNations[0].Id),
+        "Final transfer must exercise an existing army.");
+    engine.TransferTerritory(secondTown.X, secondTown.Y, newNationId);
+    Check(engine.State.Nations.All(n => n.Id != originalNations[0].Id),
+        "The absorbed country remains after losing its final capital.");
+    Check(
+        engine.State.Diplomacies.All(d =>
+            d.FirstNationId != originalNations[0].Id && d.SecondNationId != originalNations[0].Id),
         "Diplomacy still references the absorbed country.");
     Check(engine.State.Armies.All(a => a.NationId != originalNations[0].Id),
         "An army still belongs to the absorbed country.");
-    Check(residentIds.SetEquals(engine.State.Residents.Select(r => r.Id)), "Final capital transfer discarded mobilized residents.");
+    Check(residentIds.SetEquals(engine.State.Residents.Select(r => r.Id)),
+        "Final capital transfer discarded mobilized residents.");
     CheckResidents(engine.State);
     AssertResume(engine, 37);
 }
@@ -501,6 +547,7 @@ static void FoodAvailability()
         tile.Terrain = TerrainType.Sand;
         tile.Fertility = 0;
     }
+
     poor.SpawnResidents(24, 24, RaceKind.Human, 20);
     var nationId = poor.State.Nations.Single().Id;
     poor.SetNationResources(nationId, 0, 100, 100, 100);
@@ -526,6 +573,7 @@ static void War()
         engine.Tick();
         formedArmy |= engine.State.Armies.Count > 0;
     }
+
     Check(formedArmy, "Declared war never mobilized an army.");
     var capture = engine.State.Settlements.Any(s => owners.TryGetValue(s.Id, out var owner) && owner != s.NationId);
     var casualties = originalIds.Except(engine.State.Residents.Select(r => r.Id)).Any();
@@ -544,6 +592,7 @@ static WorldEngine FlatWorld(int size = 64)
         tile.Fertility = 80;
         tile.Elevation = 80;
     }
+
     return engine;
 }
 
@@ -556,6 +605,7 @@ static WorldEngine CreateBenchmarkWorld(int population = 2000, bool wars = true)
         tile.Terrain = TerrainType.Grass;
         tile.Fertility = 80;
     }
+
     for (var row = 0; row < 4; row++)
     for (var column = 0; column < 4; column++)
     {
@@ -568,6 +618,7 @@ static WorldEngine CreateBenchmarkWorld(int population = 2000, bool wars = true)
             remaining -= count;
         }
     }
+
     var nationIds = engine.State.Nations.Select(n => n.Id).ToArray();
     foreach (var id in nationIds) engine.SetNationResources(id, 100000, 10000, 10000, 10000);
     for (var i = 0; wars && i < nationIds.Length; i += 2)
@@ -585,13 +636,13 @@ static void Benchmark()
     engine.Step(120);
     timer.Stop();
     Console.WriteLine($"BENCHMARK native .NET: 256×256 terrain, {initialPopulation} starting residents, " +
-        $"{initialNations} starting nations, 8 wars; 120 ticks in {timer.Elapsed.TotalMilliseconds:F1} ms " +
-        $"({timer.Elapsed.TotalMilliseconds / 120:F2} ms/tick), final population {engine.State.Population}, " +
-        $"active armies {engine.State.Armies.Count}. Browser/mobile rendering is not measured.");
+                      $"{initialNations} starting nations, 8 wars; 120 ticks in {timer.Elapsed.TotalMilliseconds:F1} ms " +
+                      $"({timer.Elapsed.TotalMilliseconds / 120:F2} ms/tick), final population {engine.State.Population}, " +
+                      $"active armies {engine.State.Armies.Count}. Browser/mobile rendering is not measured.");
     var save = engine.ExportJson();
     var saveBytes = Encoding.UTF8.GetByteCount(save);
     Console.WriteLine($"BENCHMARK populated v2 save: {saveBytes} bytes at tick {engine.State.Tick}, " +
-        $"{engine.State.Residents.Sum(r => r.Agent.Memory.Count)} remembered facts.");
+                      $"{engine.State.Residents.Sum(r => r.Agent.Memory.Count)} remembered facts.");
     Check(saveBytes <= WorldEngine.MaxSaveBytes, "The populated target-scale world exceeds the save size limit.");
     _ = WorldEngine.ImportJson(save);
 }
@@ -600,7 +651,7 @@ static WorldEngine WarWorld()
 {
     var engine = FlatWorld();
     engine.SpawnResidents(15, 32, RaceKind.Human, 24);
-    engine.SpawnResidents(46, 32, RaceKind.Orc, 12);
+    engine.SpawnResidents(46, 32, RaceKind.Orc);
     Check(engine.State.Nations.Count == 2, "Scenario requires two separate nations.");
     foreach (var nation in engine.State.Nations)
         engine.SetNationResources(nation.Id, 20000, 500, 500, 500);
@@ -613,7 +664,9 @@ static void CheckResidents(WorldState state)
     {
         Check(resident.X >= 0 && resident.X < state.Width && resident.Y >= 0 && resident.Y < state.Height,
             $"Resident {resident.Id} is outside the map.");
-        Check(WorldEngine.CanTraverse(state.Tiles[resident.Y * state.Width + resident.X], resident.TravelMode, resident.Race),
+        Check(
+            WorldEngine.CanTraverse(state.Tiles[resident.Y * state.Width + resident.X], resident.TravelMode,
+                resident.Race),
             $"Resident {resident.Id} occupies impassable terrain.");
         Check(state.Nations.Any(n => n.Id == resident.NationId), $"Resident {resident.Id} has no nation.");
         Check(state.Settlements.Any(s => s.Id == resident.SettlementId && s.NationId == resident.NationId),
@@ -634,19 +687,31 @@ static string Modify(string json, Action<JsonNode> change)
 static void Reject(string json, string reason)
 {
     var rejected = false;
-    try { _ = WorldEngine.ImportJson(json); }
-    catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.Text.Json.JsonException or FormatException or System.IO.InvalidDataException)
+    try
+    {
+        _ = WorldEngine.ImportJson(json);
+    }
+    catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or JsonException or FormatException
+                                   or InvalidDataException)
     {
         rejected = true;
     }
+
     Check(rejected, $"Importer accepted {reason}.");
 }
 
 static void RejectAction(Action action, string reason)
 {
     var rejected = false;
-    try { action(); }
-    catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { rejected = true; }
+    try
+    {
+        action();
+    }
+    catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+    {
+        rejected = true;
+    }
+
     Check(rejected, $"Editor accepted {reason}.");
 }
 

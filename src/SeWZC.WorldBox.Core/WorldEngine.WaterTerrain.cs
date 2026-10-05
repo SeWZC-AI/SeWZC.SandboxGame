@@ -2,20 +2,38 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    public static bool IsWaterTerrain(TerrainType terrain) => terrain is TerrainType.Water or TerrainType.DeepWater or TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Lake;
-    public static bool IsFreshWater(Tile tile) => tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Lake;
-    public static bool IsWaterSource(Tile tile) => IsFreshWater(tile) || tile.NaturalWaterYield > 0;
+    public static bool IsWaterTerrain(TerrainType terrain)
+    {
+        return terrain is TerrainType.Water or TerrainType.DeepWater or TerrainType.River or TerrainType.Stream
+            or TerrainType.LargeRiver or TerrainType.Lake;
+    }
 
-    private void GenerateLakesAndWater() => GenerateHydrology();
+    public static bool IsFreshWater(Tile tile)
+    {
+        return tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Lake;
+    }
+
+    public static bool IsWaterSource(Tile tile)
+    {
+        return IsFreshWater(tile) || tile.NaturalWaterYield > 0;
+    }
+
+    private void GenerateLakesAndWater()
+    {
+        GenerateHydrology();
+    }
 
     private void SeedPlants(Tile tile)
     {
         tile.Plants = tile.Terrain switch
         {
-            TerrainType.Forest or TerrainType.Rainforest or TerrainType.Woodland => new() { Trees = .7, Shrubs = .3 },
-            TerrainType.Grass or TerrainType.DryFertile or TerrainType.Hills or TerrainType.Tundra or TerrainType.Meadow or TerrainType.Savanna or TerrainType.Scrub or TerrainType.Floodplain or TerrainType.AlpineMeadow => new() { Grass = .6, Shrubs = .15 },
-            TerrainType.Wetland => new() { Reeds = .6, Grass = .3 },
-            _ => new()
+            TerrainType.Forest or TerrainType.Rainforest or TerrainType.Woodland => new PlantCoverage
+                { Trees = .7, Shrubs = .3 },
+            TerrainType.Grass or TerrainType.DryFertile or TerrainType.Hills or TerrainType.Tundra or TerrainType.Meadow
+                or TerrainType.Savanna or TerrainType.Scrub or TerrainType.Floodplain
+                or TerrainType.AlpineMeadow => new PlantCoverage { Grass = .6, Shrubs = .15 },
+            TerrainType.Wetland => new PlantCoverage { Reeds = .6, Grass = .3 },
+            _ => new PlantCoverage(),
         };
     }
 
@@ -24,14 +42,20 @@ public sealed partial class WorldEngine
         if (!State.Rules.ResourceRegeneration) return;
         // Each row is updated once per 120-day year, with no yearly full-map spike.
         var band = (int)((State.Tick - 1) % 120);
-        var firstRow = band * State.Height / 120; var lastRow = (band + 1) * State.Height / 120;
+        var firstRow = band * State.Height / 120;
+        var lastRow = (band + 1) * State.Height / 120;
         Span<double> nearby = stackalloc double[4];
         for (var y = firstRow; y < lastRow; y++)
         for (var x = 0; x < State.Width; x++)
         {
             var tile = State.Tiles[Index(x, y)];
             if (!tile.IsWalkable || tile.Improvement != LandImprovement.None) continue;
-            if (tile.FireTicks > 0) { tile.Plants = new(); continue; }
+            if (tile.FireTicks > 0)
+            {
+                tile.Plants = new PlantCoverage();
+                continue;
+            }
+
             var plants = tile.Plants;
             nearby.Clear();
             if (x + 1 < State.Width) Include(State.Tiles[Index(x + 1, y)].Plants, nearby);
@@ -46,16 +70,22 @@ public sealed partial class WorldEngine
                     : tile.Fertility >= 15;
                 var value = plants.Get(kind);
                 var capacity = suitable ? tile.Fertility / 100d * (tile.DroughtTicks > 0 ? .3 : 1) : 0;
-                value = suitable ? value + .06 * value * (1 - value / Math.Max(.01, capacity)) + nearby[species] * .012 : value * .8;
+                value = suitable
+                    ? value + .06 * value * (1 - value / Math.Max(.01, capacity)) + nearby[species] * .012
+                    : value * .8;
                 plants.Set(kind, Math.Clamp(value, 0, 1));
             }
+
             var total = plants.Total;
             if (total > 1)
-                for (var species = 0; species < 4; species++) plants.Set((PlantKind)species, plants.Get((PlantKind)species) / total);
+                for (var species = 0; species < 4; species++)
+                    plants.Set((PlantKind)species, plants.Get((PlantKind)species) / total);
             tile.Plants = plants;
-            if (tile.Terrain is TerrainType.Grass or TerrainType.DryFertile && plants.Trees * Math.Min(1, tile.ResourceAmount / 100) >= .5 && tile.ClaimedSettlementId == 0)
+            if (tile.Terrain is TerrainType.Grass or TerrainType.DryFertile &&
+                plants.Trees * Math.Min(1, tile.ResourceAmount / 100) >= .5 && tile.ClaimedSettlementId == 0)
                 tile.Terrain = TerrainType.Forest;
         }
+
         static void Include(PlantCoverage plants, Span<double> nearby)
         {
             nearby[0] = Math.Max(nearby[0], plants.Trees);

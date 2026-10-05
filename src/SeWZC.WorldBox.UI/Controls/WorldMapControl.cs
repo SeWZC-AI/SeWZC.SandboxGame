@@ -1,7 +1,4 @@
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -14,20 +11,24 @@ using SeWZC.WorldBox.Core;
 namespace SeWZC.WorldBox.UI.Controls;
 
 /// <summary>
-/// A single map surface: cached pixel chunks, batched resident geometry, and no per-entity controls.
-/// The camera uses artwork pixels; the simulation always uses tile coordinates.
+///     A single map surface: cached pixel chunks, batched resident geometry, and no per-entity controls.
+///     The camera uses artwork pixels; the simulation always uses tile coordinates.
 /// </summary>
 public sealed partial class WorldMapControl : Control
 {
     private const int TilePixels = 8;
     private const int ChunkTiles = 32;
     private static readonly IBrush OceanBrush = Brush(0xFF122D3D);
+
     private static readonly Typeface MapTypeface = new(new FontFamily(
         "avares://SeWZC.WorldBox.UI/Assets/Fonts/NotoSansSC.otf#Noto Sans CJK SC"));
+
     private static readonly IBrush LabelBrush = Brush(0xFFF4F1D8);
     private static readonly IBrush LabelShadow = Brush(0xDB152B2C);
+
     private static readonly IBrush[] ResidentBrushes =
         [Brush(0xFFE2BD69), Brush(0xFFBBE4B6), Brush(0xFFE7A376), Brush(0xFF83B576)];
+
     private static readonly IBrush HeadBrush = Brush(0xFFF2D9AA);
     private static readonly IBrush ShadowBrush = Brush(0x603B3427);
     private static readonly IBrush WallBrush = Brush(0xFFE3D1A0);
@@ -36,34 +37,47 @@ public sealed partial class WorldMapControl : Control
     private static readonly IBrush FarmBrush = Brush(0xFFADA058);
     private static readonly Pen HoverPen = new(Brush(0xEAF9E4A7), 1.4);
     private static readonly Pen SelectionPen = new(Brush(0xFFEAC77C), 1.8);
+    private static readonly IBrush ScaleBrush = Brush(0xAFDAE6D5);
+    private static readonly Pen ScalePen = new(ScaleBrush);
+
+    private static readonly IBrush FlameOuter = Brush(0xFFF0793D);
+    private static readonly IBrush FlameInner = Brush(0xFFFFD575);
+
+    private readonly Dictionary<BuildingKind, FormattedText> _buildingLabelText = [];
     private readonly Dictionary<(int X, int Y), MapChunk> _chunks = [];
-    private readonly Dictionary<IPointer, Point> _touches = [];
-    private readonly Dictionary<int, IBrush> _nationBrushes = [];
     private readonly List<(int X, int Y)> _fires = [];
+    private readonly Dictionary<int, IBrush> _nationBrushes = [];
+    private readonly StreamGeometry?[] _residents = new StreamGeometry?[4];
     private readonly Dictionary<int, (string Name, double Size, FormattedText Text)> _settlementLabels = [];
+    private readonly Dictionary<IPointer, Point> _touches = [];
+
+    private readonly List<Resident> _visibleResidents = [];
+    private string _activeTool = "inspect";
+    private WorldState? _cachedState;
+    private bool _cameraReady;
+
+    private long _chunkRefreshTick = -1;
+    private (int Left, int Right, int Top, int Bottom) _chunkViewport;
+    private bool _dragging;
+    private WorldEngine? _engine;
+    private bool _gestureMoved;
+    private StreamGeometry? _heads;
+    private Point? _hover;
     private Settlement[] _labelSettlements = [];
+    private (int X, int Y)? _lastPaint;
+    private Point _lastPosition;
+    private Point _origin;
+    private bool _panning;
+    private bool _pinching;
+    private bool _preparingWorldEdit;
+    private Point _pressPosition;
+    private (int Left, int Right, int Top, int Bottom) _residentViewport;
     private FormattedText? _scaleLabel;
     private int _scaleLabelTiles;
-    private static readonly IBrush ScaleBrush = Brush(0xAFDAE6D5);
-    private static readonly Pen ScalePen = new(ScaleBrush, 1);
-    private readonly StreamGeometry?[] _residents = new StreamGeometry?[4];
-    private StreamGeometry? _heads;
-    private WorldEngine? _engine;
-    private WorldState? _cachedState;
-    private double _zoom = 0.4;
-    private Point _origin;
-    private bool _cameraReady;
-    private Point? _hover;
     private (int X, int Y)? _selection;
-    private Point _pressPosition;
-    private Point _lastPosition;
-    private bool _dragging;
-    private bool _panning;
-    private bool _gestureMoved;
-    private bool _pinching;
-    private (int X, int Y)? _lastPaint;
-    private string _activeTool = "inspect";
     private bool _showBorders = true;
+    private long _visibleResidentTick = -1;
+    private double _zoom = 0.4;
 
     public WorldMapControl()
     {
@@ -79,8 +93,13 @@ public sealed partial class WorldMapControl : Control
         {
             if (ReferenceEquals(_engine, value)) return;
             CancelPlacement();
-            _touches.Clear(); _dragging = false; _pinching = false; _lastPaint = null;
-            PickingLocation = false; SelectedNationId = 0; SelectedSettlementId = 0;
+            _touches.Clear();
+            _dragging = false;
+            _pinching = false;
+            _lastPaint = null;
+            PickingLocation = false;
+            SelectedNationId = 0;
+            SelectedSettlementId = 0;
             DisposeChunks();
             ResetMotion();
             _settlementLabels.Clear();
@@ -96,7 +115,8 @@ public sealed partial class WorldMapControl : Control
         get => _activeTool;
         set
         {
-            CancelPlacement(); _activeTool = value ?? "inspect";
+            CancelPlacement();
+            _activeTool = value ?? "inspect";
             Cursor = new Cursor(IsNavigationTool ? StandardCursorType.Arrow : StandardCursorType.Cross);
             InvalidateVisual();
         }
@@ -106,16 +126,40 @@ public sealed partial class WorldMapControl : Control
     public int SelectedNationId { get; set; }
     public int SelectedSettlementId { get; set; }
 
-    public readonly record struct MapSelectionState(int? ResidentId, int? BuildingId,
-        (int X, int Y)? Tile, bool Follow, int NationId, int SettlementId);
+    public bool ShowBorders
+    {
+        get => _showBorders;
+        set
+        {
+            _showBorders = value;
+            InvalidateVisual();
+        }
+    }
 
-    public MapSelectionState CaptureMapSelection() => new(SelectedResidentId, SelectedBuildingId,
-        _selection, FollowSelectedResident, SelectedNationId, SelectedSettlementId);
+    private bool IsNavigationTool => ActiveTool.Equals("inspect", StringComparison.OrdinalIgnoreCase) ||
+                                     ActiveTool.Equals("pan", StringComparison.OrdinalIgnoreCase);
+
+    private double FitZoom => Engine is null
+        ? .4
+        : Math.Max(.025,
+            Math.Min((Bounds.Width - 36) / (Engine.State.Width * TilePixels),
+                (Bounds.Height - 36) / (Engine.State.Height * TilePixels)));
+
+    public int TerrainTilesScanned { get; private set; }
+
+    public Func<Task>? PrepareWorldEdit { get; set; }
+
+    public MapSelectionState CaptureMapSelection()
+    {
+        return new MapSelectionState(SelectedResidentId, SelectedBuildingId,
+            _selection, FollowSelectedResident, SelectedNationId, SelectedSettlementId);
+    }
 
     public void RestoreMapSelection(MapSelectionState selection)
     {
         ClearMapSelection();
-        SelectedNationId = selection.NationId; SelectedSettlementId = selection.SettlementId;
+        SelectedNationId = selection.NationId;
+        SelectedSettlementId = selection.SettlementId;
         if (selection.ResidentId is { } resident)
             SelectResident(resident, selection.Follow);
         else if (selection.BuildingId is { } building)
@@ -136,40 +180,46 @@ public sealed partial class WorldMapControl : Control
     {
         ClearMapSelection();
         if (Engine?.State.Society.Buildings.FirstOrDefault(building => building.Id == id) is { } building)
-        { SelectedBuildingId = building.Id; _selection = (building.X, building.Y); }
-        InvalidateVisual();
-    }
+        {
+            SelectedBuildingId = building.Id;
+            _selection = (building.X, building.Y);
+        }
 
-    public bool ShowBorders
-    {
-        get => _showBorders;
-        set { _showBorders = value; InvalidateVisual(); }
+        InvalidateVisual();
     }
 
     /// <summary>Raised once before a tool stroke, allowing the shell to pause and capture an undo snapshot.</summary>
     public event EventHandler? WorldEditing;
+
     public event EventHandler? WorldMutationStarting;
     public event EventHandler? WorldEdited;
     public event Action<int, int>? TileSelected;
     public event Action<string>? ToolError;
 
-    private bool IsNavigationTool => ActiveTool.Equals("inspect", StringComparison.OrdinalIgnoreCase) ||
-                                     ActiveTool.Equals("pan", StringComparison.OrdinalIgnoreCase);
-
     public void RefreshWorld(bool resetCamera = false)
     {
-        if (Engine is null) { InvalidateVisual(); return; }
+        if (Engine is null)
+        {
+            InvalidateVisual();
+            return;
+        }
+
         if (!ReferenceEquals(_cachedState, Engine.State))
         {
             DisposeChunks();
             ResetMotion();
             _settlementLabels.Clear();
-            _effects.Clear(); _seenVisualSequence = Engine.VisualSequence;
+            _effects.Clear();
+            _seenVisualSequence = Engine.VisualSequence;
             _cachedState = Engine.State;
             _cameraReady = false;
         }
+
         if (resetCamera || !_cameraReady) FitWorld();
-        _chunkRefreshTick = -1; _ecologyDirty = true; _visibleResidentTick = -1; _sceneBuildingsDirty = true;
+        _chunkRefreshTick = -1;
+        _ecologyDirty = true;
+        _visibleResidentTick = -1;
+        _sceneBuildingsDirty = true;
         RebuildChangedChunks();
         _labelSettlements = Engine.State.Settlements.OrderByDescending(settlement => settlement.Population).ToArray();
         _relayOverlayDirty = true;
@@ -188,13 +238,20 @@ public sealed partial class WorldMapControl : Control
         _followSelectedResident = false;
         _zoom = FitZoom;
         _origin = new Point((Bounds.Width - Engine.State.Width * TilePixels * _zoom) / 2,
-                            (Bounds.Height - Engine.State.Height * TilePixels * _zoom) / 2);
+            (Bounds.Height - Engine.State.Height * TilePixels * _zoom) / 2);
         _cameraReady = true;
         InvalidateVisual();
     }
 
-    public void ZoomIn() => ZoomAt(new Point(Bounds.Width / 2, Bounds.Height / 2), _zoom * 1.3);
-    public void ZoomOut() => ZoomAt(new Point(Bounds.Width / 2, Bounds.Height / 2), _zoom / 1.3);
+    public void ZoomIn()
+    {
+        ZoomAt(new Point(Bounds.Width / 2, Bounds.Height / 2), _zoom * 1.3);
+    }
+
+    public void ZoomOut()
+    {
+        ZoomAt(new Point(Bounds.Width / 2, Bounds.Height / 2), _zoom / 1.3);
+    }
 
     public void FocusTile(int x, int y)
     {
@@ -202,15 +259,11 @@ public sealed partial class WorldMapControl : Control
         _followSelectedResident = false;
         _zoom = Math.Max(_zoom, 1.4);
         _origin = new Point(Bounds.Width / 2 - (x + .5) * TilePixels * _zoom,
-                            Bounds.Height / 2 - (y + .5) * TilePixels * _zoom);
+            Bounds.Height / 2 - (y + .5) * TilePixels * _zoom);
         _selection = (x, y);
         _cameraReady = true;
         InvalidateVisual();
     }
-
-    private double FitZoom => Engine is null ? .4 : Math.Max(.025,
-        Math.Min((Bounds.Width - 36) / (Engine.State.Width * TilePixels),
-                 (Bounds.Height - 36) / (Engine.State.Height * TilePixels)));
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -227,15 +280,18 @@ public sealed partial class WorldMapControl : Control
         context.DrawRectangle(OceanBrush, null, new Rect(Bounds.Size));
         if (Engine is null || !_cameraReady) return;
         var state = Engine.State;
-        _renderFrameTime = PresentationTime; _renderMotionTime = MotionTime;
-        RenderedEffectCount = 0; RenderedRouteSegmentCount = 0;
+        _renderFrameTime = PresentationTime;
+        _renderMotionTime = MotionTime;
+        RenderedEffectCount = 0;
+        RenderedRouteSegmentCount = 0;
         FollowResident(_renderMotionTime);
         RebuildChangedChunks();
         if (_residentGeometryDirty || _geometryZoom != _zoom || _geometryOrigin != _origin)
             RebuildResidents();
         using (context.PushClip(new Rect(Bounds.Size)))
         {
-            using (context.PushTransform(Matrix.CreateScale(_zoom, _zoom) * Matrix.CreateTranslation(_origin.X, _origin.Y)))
+            using (context.PushTransform(Matrix.CreateScale(_zoom, _zoom) *
+                                         Matrix.CreateTranslation(_origin.X, _origin.Y)))
             {
                 foreach (var chunk in _chunks.Values)
                 {
@@ -243,6 +299,7 @@ public sealed partial class WorldMapControl : Control
                     if (chunk.Terrain is not null) context.DrawImage(chunk.Terrain, chunk.TerrainBounds);
                     if (ShowBorders && chunk.Territory is not null) context.DrawImage(chunk.Territory, chunk.Bounds);
                 }
+
                 DrawEcology(context, state);
                 foreach (var settlement in state.Settlements)
                     if (Visible(new Rect(settlement.X * TilePixels - 28, settlement.Y * TilePixels - 28, 56, 56)))
@@ -250,7 +307,8 @@ public sealed partial class WorldMapControl : Control
                 if (_zoom < 3) DrawBuildings(context, state);
                 DrawMapOverlay(context, state);
                 for (var race = 0; _zoom < 3 && race < _residents.Length; race++)
-                    if (_residents[race] is { } body) context.DrawGeometry(ResidentBrushes[race], null, body);
+                    if (_residents[race] is { } body)
+                        context.DrawGeometry(ResidentBrushes[race], null, body);
                 if (_zoom >= .7 && _zoom < 3 && _heads is not null) context.DrawGeometry(HeadBrush, null, _heads);
                 if (_zoom >= .7 && _zoom < 3)
                 {
@@ -258,6 +316,7 @@ public sealed partial class WorldMapControl : Control
                     if (_messageGeometry is not null) context.DrawGeometry(MessageBrush, null, _messageGeometry);
                     if (_magicGeometry is not null) context.DrawGeometry(ArcaneBrush, null, _magicGeometry);
                 }
+
                 if (_zoom >= 3) DrawNearScene(context, state);
                 DrawTownEffects(context, state);
                 DrawVehicles(context, state);
@@ -265,13 +324,16 @@ public sealed partial class WorldMapControl : Control
                 DrawEffects(context);
                 foreach (var army in state.Armies)
                 {
-                    var position = _armyMotion.TryGetValue(army.Id, out var motion) ? motion.Position(_renderMotionTime) : new Point(army.X, army.Y);
+                    var position = _armyMotion.TryGetValue(army.Id, out var motion)
+                        ? motion.Position(_renderMotionTime)
+                        : new Point(army.X, army.Y);
                     var x = position.X * TilePixels + 4;
                     var y = position.Y * TilePixels;
                     context.DrawRectangle(WoodBrush, null, new Rect(x, y - 10, 1.3, 11));
                     context.DrawRectangle(NationBrush(army.NationId), null, new Rect(x + 1.3, y - 10, 7, 5));
                 }
             }
+
             DrawLabels(context, state);
             DrawInfrastructureLegend(context);
             DrawSelection(context);
@@ -280,30 +342,36 @@ public sealed partial class WorldMapControl : Control
             DrawResidentGoal(context);
             DrawScale(context);
         }
+
         RequestMotionFrame();
     }
 
-    private bool Visible(Rect world) => new Rect(_origin.X + world.X * _zoom, _origin.Y + world.Y * _zoom,
-        world.Width * _zoom, world.Height * _zoom).Intersects(new Rect(Bounds.Size));
+    private bool Visible(Rect world)
+    {
+        return new Rect(_origin.X + world.X * _zoom, _origin.Y + world.Y * _zoom,
+            world.Width * _zoom, world.Height * _zoom).Intersects(new Rect(Bounds.Size));
+    }
 
-    private readonly List<Resident> _visibleResidents = [];
-    private long _visibleResidentTick = -1;
-    private (int Left, int Right, int Top, int Bottom) _residentViewport;
     private IReadOnlyList<Resident> VisibleResidents(WorldState state)
     {
         var viewport = VisibleTiles(state, 3);
         if (_visibleResidentTick == state.Tick && _residentViewport == viewport) return _visibleResidents;
-        _visibleResidentTick = state.Tick; _residentViewport = viewport; _visibleResidents.Clear();
-        bool Inside(int x, int y) => x >= viewport.Left && x <= viewport.Right && y >= viewport.Top && y <= viewport.Bottom;
+        _visibleResidentTick = state.Tick;
+        _residentViewport = viewport;
+        _visibleResidents.Clear();
+
+        bool Inside(int x, int y)
+        {
+            return x >= viewport.Left && x <= viewport.Right && y >= viewport.Top && y <= viewport.Bottom;
+        }
+
         foreach (var person in state.Residents)
-            if (Inside(person.X, person.Y) || person.MoveStartedTick + person.MoveDurationTicks > state.Tick && Inside(person.FromX, person.FromY))
+            if (Inside(person.X, person.Y) || (person.MoveStartedTick + person.MoveDurationTicks > state.Tick &&
+                                               Inside(person.FromX, person.FromY)))
                 _visibleResidents.Add(person);
         return _visibleResidents;
     }
 
-    private long _chunkRefreshTick = -1;
-    private (int Left, int Right, int Top, int Bottom) _chunkViewport;
-    public int TerrainTilesScanned { get; private set; }
     private (int Left, int Right, int Top, int Bottom) VisibleTiles(WorldState state, int margin = 2)
     {
         var size = Math.Max(.01, _zoom * TilePixels);
@@ -317,9 +385,13 @@ public sealed partial class WorldMapControl : Control
     {
         var state = Engine!.State;
         var tiles = VisibleTiles(state);
-        var view = (tiles.Left / ChunkTiles, tiles.Right / ChunkTiles, tiles.Top / ChunkTiles, tiles.Bottom / ChunkTiles);
+        var view = (tiles.Left / ChunkTiles, tiles.Right / ChunkTiles, tiles.Top / ChunkTiles,
+            tiles.Bottom / ChunkTiles);
         if (_chunkRefreshTick == state.Tick && _chunkViewport == view) return;
-        _chunkRefreshTick = state.Tick; _chunkViewport = view; TerrainTilesScanned = 0; TerrainTilesDrawn = 0;
+        _chunkRefreshTick = state.Tick;
+        _chunkViewport = view;
+        TerrainTilesScanned = 0;
+        TerrainTilesDrawn = 0;
         var colors = new Dictionary<int, uint>();
         uint colorHash = 0;
         _nationBrushes.Clear();
@@ -329,12 +401,13 @@ public sealed partial class WorldMapControl : Control
             colorHash = unchecked(colorHash * 31 + nation.ColorArgb + (uint)nation.Id);
             _nationBrushes[nation.Id] = Brush(nation.ColorArgb);
         }
+
         _fires.Clear();
         for (var cy = view.Item3 * ChunkTiles; cy <= view.Item4 * ChunkTiles; cy += ChunkTiles)
         for (var cx = view.Item1 * ChunkTiles; cx <= view.Item2 * ChunkTiles; cx += ChunkTiles)
         {
-            uint terrainHash = 2166136261;
-            uint territoryHash = colorHash;
+            var terrainHash = 2166136261;
+            var territoryHash = colorHash;
             var containsTerritory = false;
             // Include a one-tile apron so edited coastlines and borders invalidate their neighbours.
             for (var y = Math.Max(0, cy - 1); y < Math.Min(state.Height, cy + ChunkTiles + 1); y++)
@@ -346,10 +419,12 @@ public sealed partial class WorldMapControl : Control
                 // Animal and plant quantities belong to the separate ecology layer.
                 terrainHash = unchecked((terrainHash ^ TerrainImageInput(tile)) * 16777619);
                 territoryHash = unchecked((territoryHash ^ (uint)tile.NationId) * 16777619);
-                containsTerritory |= tile.NationId != 0 && x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles;
+                containsTerritory |= tile.NationId != 0 && x >= cx && x < cx + ChunkTiles && y >= cy &&
+                                     y < cy + ChunkTiles;
                 if (x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles && tile.FireTicks > 0)
                     _fires.Add((x, y));
             }
+
             var key = (cx, cy);
             if (!_chunks.TryGetValue(key, out var chunk))
             {
@@ -358,6 +433,7 @@ public sealed partial class WorldMapControl : Control
                     Math.Min(ChunkTiles, state.Height - cy) * TilePixels));
                 _chunks[key] = chunk;
             }
+
             if (chunk.Terrain is null || chunk.TerrainHash != terrainHash)
             {
                 // Adjacent opaque images otherwise expose hairline background seams when
@@ -372,9 +448,10 @@ public sealed partial class WorldMapControl : Control
                     chunk.Bounds.Width + left + right, chunk.Bounds.Height + top + bottom);
                 var canvas = UpdateTerrainCanvas(chunk, state, cx, cy, left, top);
                 chunk.Terrain?.Dispose();
-                chunk.Terrain = MakeBitmap(canvas, opaque: true);
+                chunk.Terrain = MakeBitmap(canvas, true);
                 chunk.TerrainHash = terrainHash;
             }
+
             if (!chunk.TerritoryCached || chunk.TerritoryHash != territoryHash)
             {
                 chunk.Territory?.Dispose();
@@ -395,12 +472,17 @@ public sealed partial class WorldMapControl : Control
                     var py = (y - cy) * TilePixels;
                     canvas.Rect(px, py, TilePixels, TilePixels, rgb | 27);
                     var edge = rgb | 190;
-                    if (x == 0 || state.Tiles[y * state.Width + x - 1].NationId != nationId) canvas.Rect(px, py, 1, 8, edge);
-                    if (y == 0 || state.Tiles[(y - 1) * state.Width + x].NationId != nationId) canvas.Rect(px, py, 8, 1, edge);
-                    if (x == state.Width - 1 || state.Tiles[y * state.Width + x + 1].NationId != nationId) canvas.Rect(px + 7, py, 1, 8, edge);
-                    if (y == state.Height - 1 || state.Tiles[(y + 1) * state.Width + x].NationId != nationId) canvas.Rect(px, py + 7, 8, 1, edge);
+                    if (x == 0 || state.Tiles[y * state.Width + x - 1].NationId != nationId)
+                        canvas.Rect(px, py, 1, 8, edge);
+                    if (y == 0 || state.Tiles[(y - 1) * state.Width + x].NationId != nationId)
+                        canvas.Rect(px, py, 8, 1, edge);
+                    if (x == state.Width - 1 || state.Tiles[y * state.Width + x + 1].NationId != nationId)
+                        canvas.Rect(px + 7, py, 1, 8, edge);
+                    if (y == state.Height - 1 || state.Tiles[(y + 1) * state.Width + x].NationId != nationId)
+                        canvas.Rect(px, py + 7, 8, 1, edge);
                 }
-                chunk.Territory = MakeBitmap(canvas, opaque: false);
+
+                chunk.Territory = MakeBitmap(canvas, false);
             }
         }
     }
@@ -435,9 +517,10 @@ public sealed partial class WorldMapControl : Control
             TerrainType.Scrub => 0x929164FF,
             TerrainType.Floodplain => 0x78A679FF,
             TerrainType.AlpineMeadow => 0xA0AF7BFF,
-            _ => 0x719262FF
+            _ => 0x719262FF,
         };
-        if (tile.DroughtTicks > 0 && tile.Terrain is TerrainType.Grass or TerrainType.Forest or TerrainType.Sand or TerrainType.Hills or TerrainType.Wetland)
+        if (tile.DroughtTicks > 0 && tile.Terrain is TerrainType.Grass or TerrainType.Forest or TerrainType.Sand
+                or TerrainType.Hills or TerrainType.Wetland)
             color = 0xB59D62FF;
         color = PixelCanvas.Shade(color, variation);
         canvas.Rect(px, py, 8, 8, color);
@@ -446,8 +529,13 @@ public sealed partial class WorldMapControl : Control
         if (WorldEngine.IsWaterTerrain(tile.Terrain))
         {
             if (noise % 7 == 0) canvas.Rect(px + nx - 1, py + ny, 3, 1, PixelCanvas.Shade(color, 11));
-            bool LandAt(int tx, int ty) => tx >= 0 && tx < state.Width && ty >= 0 && ty < state.Height &&
-                !WorldEngine.IsWaterTerrain(state.Tiles[ty * state.Width + tx].Terrain);
+
+            bool LandAt(int tx, int ty)
+            {
+                return tx >= 0 && tx < state.Width && ty >= 0 && ty < state.Height &&
+                       !WorldEngine.IsWaterTerrain(state.Tiles[ty * state.Width + tx].Terrain);
+            }
+
             const uint coast = 0x74A29AFF;
             if (LandAt(x, y - 1)) canvas.Rect(px, py, 8, 1, coast);
             if (LandAt(x - 1, y)) canvas.Rect(px, py, 1, 8, coast);
@@ -461,14 +549,21 @@ public sealed partial class WorldMapControl : Control
             if (tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver)
             {
                 var horizontal = !LandAt(x - 1, y) || !LandAt(x + 1, y);
-                canvas.Line(px + 2, py + 3, px + (horizontal ? 6 : 2), py + (horizontal ? 3 : 6), PixelCanvas.Shade(color, 16));
+                canvas.Line(px + 2, py + 3, px + (horizontal ? 6 : 2), py + (horizontal ? 3 : 6),
+                    PixelCanvas.Shade(color, 16));
             }
+
             return;
         }
+
         if (tile.Terrain is TerrainType.Mountain or TerrainType.Hills)
         {
-            bool RidgeAt(int tx, int ty) => tx >= 0 && tx < state.Width && ty >= 0 && ty < state.Height
-                && state.Tiles[ty * state.Width + tx].Terrain is TerrainType.Mountain or TerrainType.Hills;
+            bool RidgeAt(int tx, int ty)
+            {
+                return tx >= 0 && tx < state.Width && ty >= 0 && ty < state.Height
+                       && state.Tiles[ty * state.Width + tx].Terrain is TerrainType.Mountain or TerrainType.Hills;
+            }
+
             var light = tile.Terrain == TerrainType.Mountain ? 0xB2BEADFFu : 0xADB17BFFu;
             var dark = tile.Terrain == TerrainType.Mountain ? 0x596D67FFu : 0x7F875CFFu;
             // The same edge height on neighbouring tiles joins ridges across cells and chunks.
@@ -482,6 +577,7 @@ public sealed partial class WorldMapControl : Control
             if (tile.Terrain == TerrainType.Mountain && noise % 4 == 0) canvas.Rect(px + 3, py + 1, 3, 2, 0xDEE5D5FF);
             return;
         }
+
         canvas.Rect(px + nx, py + ny, noise % 2 == 0 ? 2 : 1, 1, PixelCanvas.Shade(color, -10));
         if (WorldEngine.IsForestTerrain(tile.Terrain) && tile.ResourceAmount < 25)
         {
@@ -498,6 +594,7 @@ public sealed partial class WorldMapControl : Control
                 canvas.Rect(px + 2, py + 1, 4, 2, 0x689254FF);
                 return;
             }
+
             canvas.Rect(px + 2 + shift, py + 6, 4, 1, 0x3F6344FF);
             canvas.Rect(px + 3 + shift, py + 5, 1, 2, 0x755A3DFF);
             canvas.Rect(px + 1 + shift, py + 3, 5, 3, 0x345F43FF);
@@ -557,16 +654,41 @@ public sealed partial class WorldMapControl : Control
     {
         var tile = state.Tiles[y * state.Width + x];
         if (tile.RoadLevel == 0) return;
-        bool RoadAt(int tx, int ty) => tx >= 0 && ty >= 0 && tx < state.Width && ty < state.Height &&
-            state.Tiles[ty * state.Width + tx].RoadLevel > 0;
+
+        bool RoadAt(int tx, int ty)
+        {
+            return tx >= 0 && ty >= 0 && tx < state.Width && ty < state.Height &&
+                   state.Tiles[ty * state.Width + tx].RoadLevel > 0;
+        }
+
         var road = tile.RoadLevel >= 2 ? 0xB4B29BFFu : 0xB49A6FFFu;
         var verge = tile.RoadLevel >= 2 ? 0x858E7FFFu : 0x8A795AFFu;
         canvas.Rect(px + 2, py + 2, 4, 4, verge);
         canvas.Rect(px + 3, py + 3, 2, 2, road);
-        if (RoadAt(x - 1, y)) { canvas.Rect(px, py + 2, 4, 4, verge); canvas.Rect(px, py + 3, 4, 2, road); }
-        if (RoadAt(x + 1, y)) { canvas.Rect(px + 4, py + 2, 4, 4, verge); canvas.Rect(px + 4, py + 3, 4, 2, road); }
-        if (RoadAt(x, y - 1)) { canvas.Rect(px + 2, py, 4, 4, verge); canvas.Rect(px + 3, py, 2, 4, road); }
-        if (RoadAt(x, y + 1)) { canvas.Rect(px + 2, py + 4, 4, 4, verge); canvas.Rect(px + 3, py + 4, 2, 4, road); }
+        if (RoadAt(x - 1, y))
+        {
+            canvas.Rect(px, py + 2, 4, 4, verge);
+            canvas.Rect(px, py + 3, 4, 2, road);
+        }
+
+        if (RoadAt(x + 1, y))
+        {
+            canvas.Rect(px + 4, py + 2, 4, 4, verge);
+            canvas.Rect(px + 4, py + 3, 4, 2, road);
+        }
+
+        if (RoadAt(x, y - 1))
+        {
+            canvas.Rect(px + 2, py, 4, 4, verge);
+            canvas.Rect(px + 3, py, 2, 4, road);
+        }
+
+        if (RoadAt(x, y + 1))
+        {
+            canvas.Rect(px + 2, py + 4, 4, 4, verge);
+            canvas.Rect(px + 3, py + 4, 2, 4, road);
+        }
+
         canvas.Pixel(px + 3, py + 3, PixelCanvas.Shade(road, 12));
     }
 
@@ -578,8 +700,12 @@ public sealed partial class WorldMapControl : Control
         if (pixels.RowBytes == canvas.Width * 4)
             Marshal.Copy(canvas.Pixels, 0, pixels.Address, canvas.Pixels.Length);
         else
+        {
             for (var y = 0; y < canvas.Height; y++)
-                Marshal.Copy(canvas.Pixels, y * canvas.Width * 4, pixels.Address + y * pixels.RowBytes, canvas.Width * 4);
+                Marshal.Copy(canvas.Pixels, y * canvas.Width * 4, pixels.Address + y * pixels.RowBytes,
+                    canvas.Width * 4);
+        }
+
         return bitmap;
     }
 
@@ -604,24 +730,30 @@ public sealed partial class WorldMapControl : Control
             _residents[race] = silhouettes ? new StreamGeometry() : null;
             contexts[race] = _residents[race]?.Open();
         }
+
         try
         {
             foreach (var resident in VisibleResidents(Engine.State))
             {
-                var position = _residentMotion.TryGetValue(resident.Id, out var motion) ? motion.Position(now) : new Point(resident.X, resident.Y);
+                var position = _residentMotion.TryGetValue(resident.Id, out var motion)
+                    ? motion.Position(now)
+                    : new Point(resident.X, resident.Y);
                 var x = (position.X + .5) * TilePixels - .9;
                 var y = (position.Y + .5) * TilePixels;
                 if (!Visible(new Rect(x - 2, y - 3, 6, 7))) continue;
-                _renderedResidentPoints[resident.Id] = ToScreen((position.X + .5) * TilePixels, (position.Y + .5) * TilePixels);
+                _renderedResidentPoints[resident.Id] =
+                    ToScreen((position.X + .5) * TilePixels, (position.Y + .5) * TilePixels);
                 // Near-scene sprites already draw these features; overview badges
                 // below .7 scale are subpixel and do not need separate geometry.
                 if (!silhouettes) continue;
                 var race = Math.Clamp((int)resident.Race, 0, 3);
                 if (ShowVehicle(resident)) continue;
-                if (contexts[race] is { } silhouette) GeometryRect(silhouette, x, y, resident.Profession == Profession.Soldier ? 2.6 : 1.8, 2.4);
+                if (contexts[race] is { } silhouette)
+                    GeometryRect(silhouette, x, y, resident.Profession == Profession.Soldier ? 2.6 : 1.8, 2.4);
                 if (headContext is not null) GeometryRect(headContext, x, y - 1.4, 1.8, 1.4);
                 if (!details) continue;
-                if (resident.Inventory.Food + resident.Inventory.Wood + resident.Inventory.Stone + resident.Inventory.Ore > 0)
+                if (resident.Inventory.Food + resident.Inventory.Wood + resident.Inventory.Stone +
+                    resident.Inventory.Ore > 0)
                     GeometryRect(cargoContext!, x + 1.8, y + .5, 2.3, 2);
                 if (resident.Agent.CarriedMessages.Count > 0)
                     GeometryRect(messageContext!, x + 1.7, y - 2.3, 2.8, 1.6);
@@ -629,7 +761,11 @@ public sealed partial class WorldMapControl : Control
                     GeometryRect(magicContext!, x - .8, y - 2.5, 3.4, 1.1);
             }
         }
-        finally { foreach (var draw in contexts) draw?.Dispose(); }
+        finally
+        {
+            foreach (var draw in contexts) draw?.Dispose();
+        }
+
         _heads = heads;
         _cargoGeometry = cargo;
         _messageGeometry = messages;
@@ -641,7 +777,7 @@ public sealed partial class WorldMapControl : Control
 
     private static void GeometryRect(StreamGeometryContext context, double x, double y, double width, double height)
     {
-        context.BeginFigure(new Point(x, y), true);
+        context.BeginFigure(new Point(x, y));
         context.LineTo(new Point(x + width, y));
         context.LineTo(new Point(x + width, y + height));
         context.LineTo(new Point(x, y + height));
@@ -656,13 +792,16 @@ public sealed partial class WorldMapControl : Control
         if (settlement.FertilityBoostTicks > 0)
             context.DrawEllipse(null, new Pen(HealingBrush, .8), new Point(x, y), 10, 6);
         if (settlement.ShieldTicks > 0)
-            context.DrawEllipse(null, new Pen(ArcaneBrush, 1), new Point(x, y - 5), 13, 16);
+            context.DrawEllipse(null, new Pen(ArcaneBrush), new Point(x, y - 5), 13, 16);
     }
 
     private static void DrawHouse(DrawingContext context, double x, double y, IBrush roof, double scale)
     {
-        void Box(IBrush brush, double dx, double dy, double w, double h) =>
+        void Box(IBrush brush, double dx, double dy, double w, double h)
+        {
             context.DrawRectangle(brush, null, new Rect(x + dx * scale, y + dy * scale, w * scale, h * scale));
+        }
+
         Box(ShadowBrush, -1, 6, 10, 3);
         Box(WallBrush, 0, 1, 7, 6);
         Box(roof, -1, -1, 9, 3);
@@ -671,8 +810,6 @@ public sealed partial class WorldMapControl : Control
         Box(WoodBrush, 0.8, 3, 1, 1);
     }
 
-    private static readonly IBrush FlameOuter = Brush(0xFFF0793D);
-    private static readonly IBrush FlameInner = Brush(0xFFFFD575);
     private void DrawFires(DrawingContext context, double time)
     {
         foreach (var (tx, ty) in _fires)
@@ -680,17 +817,27 @@ public sealed partial class WorldMapControl : Control
             var x = tx * TilePixels + 4;
             var y = ty * TilePixels + 6;
             if (!Visible(new Rect(x - 5, y - 16, 12, 22))) continue;
-            RenderedEffectCount++; RenderedEffectTime = time;
+            RenderedEffectCount++;
+            RenderedEffectTime = time;
             var phase = time * 8 + tx * 1.7 + ty;
             var sway = Math.Sin(phase) * 1.2;
-            using (context.PushOpacity(.18)) context.DrawEllipse(FlameOuter, null, new Point(x, y - 2), 7, 8);
-            Triangle(context, FlameOuter, new(x - 3, y), new(x + 3, y), new(x + sway, y - 9 - Math.Sin(phase * .7) * 2));
-            Triangle(context, FlameInner, new(x - 1.7, y), new(x + 1.8, y), new(x - sway * .4, y - 5));
+            using (context.PushOpacity(.18))
+            {
+                context.DrawEllipse(FlameOuter, null, new Point(x, y - 2), 7, 8);
+            }
+
+            Triangle(context, FlameOuter, new Point(x - 3, y), new Point(x + 3, y),
+                new Point(x + sway, y - 9 - Math.Sin(phase * .7) * 2));
+            Triangle(context, FlameInner, new Point(x - 1.7, y), new Point(x + 1.8, y),
+                new Point(x - sway * .4, y - 5));
             for (var i = 0; i < 2; i++)
             {
                 var rise = (time * 5 + i * 5 + tx % 3) % 10;
                 using (context.PushOpacity((1 - rise / 10) * .4))
-                    context.DrawEllipse(StoneBrush, null, new Point(x + Math.Sin(phase * .2 + i) * 2, y - 8 - rise), 1.4 + rise * .12, 1.2);
+                {
+                    context.DrawEllipse(StoneBrush, null, new Point(x + Math.Sin(phase * .2 + i) * 2, y - 8 - rise),
+                        1.4 + rise * .12, 1.2);
+                }
             }
         }
     }
@@ -705,38 +852,49 @@ public sealed partial class WorldMapControl : Control
         {
             var position = ToScreen((settlement.X + .5) * TilePixels, settlement.Y * TilePixels - 24);
             var size = _zoom > .6 ? 12 : 10;
-            if (!_settlementLabels.TryGetValue(settlement.Id, out var cached) || cached.Name != settlement.Name || cached.Size != size)
+            if (!_settlementLabels.TryGetValue(settlement.Id, out var cached) || cached.Name != settlement.Name ||
+                cached.Size != size)
             {
-                cached = (settlement.Name, size, new FormattedText(DisplayFormat.Text(settlement.Name), CultureInfo.CurrentCulture,
+                cached = (settlement.Name, size, new FormattedText(DisplayFormat.Text(settlement.Name),
+                    CultureInfo.CurrentCulture,
                     FlowDirection.LeftToRight, MapTypeface, size, LabelBrush));
                 _settlementLabels[settlement.Id] = cached;
             }
+
             var text = cached.Text;
             var rect = new Rect(position.X - text.Width / 2 - 5, position.Y - text.Height - 3,
                 text.Width + 10, text.Height + 5);
-            if (!rect.Intersects(new Rect(Bounds.Size)) || occupied.Any(other => other.Intersects(rect.Inflate(4)))) continue;
+            if (!rect.Intersects(new Rect(Bounds.Size)) ||
+                occupied.Any(other => other.Intersects(rect.Inflate(4)))) continue;
             occupied.Add(rect);
             context.DrawRectangle(LabelShadow, null, rect, 3, 3);
             context.DrawText(text, new Point(rect.X + 5, rect.Y + 2));
         }
+
         if (!ShowBuildingNames || _zoom < 5) return;
         foreach (var building in state.Society.Buildings)
         {
             var position = ToScreen((building.X + .5) * TilePixels, BuildingBounds(building).Top);
-            if (position.X < -40 || position.X > Bounds.Width + 40 || position.Y < -20 || position.Y > Bounds.Height) continue;
+            if (position.X < -40 || position.X > Bounds.Width + 40 || position.Y < -20 ||
+                position.Y > Bounds.Height) continue;
             if (!_buildingLabelText.TryGetValue(building.Kind, out var text))
             {
-                text = new FormattedText(WorldEngine.BuildingName(building.Kind), CultureInfo.CurrentCulture, FlowDirection.LeftToRight, MapTypeface, 10, LabelBrush);
+                text = new FormattedText(WorldEngine.BuildingName(building.Kind), CultureInfo.CurrentCulture,
+                    FlowDirection.LeftToRight, MapTypeface, 10, LabelBrush);
                 _buildingLabelText[building.Kind] = text;
             }
-            var rect = new Rect(position.X - text.Width / 2 - 3, position.Y - text.Height - 2, text.Width + 6, text.Height + 3);
-            if (building.Id != SelectedBuildingId && (RenderedBuildingLabelCount >= 40 || occupied.Any(other => other.Intersects(rect.Inflate(2))))) continue;
-            occupied.Add(rect); context.DrawRectangle(LabelShadow, null, rect, 2, 2);
-            context.DrawText(text, new Point(rect.X + 3, rect.Y + 1)); RenderedBuildingLabelCount++;
+
+            var rect = new Rect(position.X - text.Width / 2 - 3, position.Y - text.Height - 2, text.Width + 6,
+                text.Height + 3);
+            if (building.Id != SelectedBuildingId && (RenderedBuildingLabelCount >= 40 ||
+                                                      occupied.Any(other => other.Intersects(rect.Inflate(2)))))
+                continue;
+            occupied.Add(rect);
+            context.DrawRectangle(LabelShadow, null, rect, 2, 2);
+            context.DrawText(text, new Point(rect.X + 3, rect.Y + 1));
+            RenderedBuildingLabelCount++;
         }
     }
-
-    private readonly Dictionary<BuildingKind, FormattedText> _buildingLabelText = [];
 
     private void DrawSelection(DrawingContext context)
     {
@@ -744,8 +902,10 @@ public sealed partial class WorldMapControl : Control
         {
             var center = ToScreen((selected.X + .5) * TilePixels, (selected.Y + .5) * TilePixels);
             var size = Math.Max(7, TilePixels * _zoom + 2);
-            context.DrawRectangle(null, SelectionPen, new Rect(center.X - size / 2, center.Y - size / 2, size, size), 2, 2);
+            context.DrawRectangle(null, SelectionPen, new Rect(center.X - size / 2, center.Y - size / 2, size, size), 2,
+                2);
         }
+
         var hover = _pendingPlacement is { } pending ? GetTileScreenPosition(pending.X, pending.Y) : _hover;
         if (hover is not { } position || IsNavigationTool || !TryTile(position, out var tile)) return;
         var valid = PlacementError(tile.X, tile.Y) is null;
@@ -759,8 +919,12 @@ public sealed partial class WorldMapControl : Control
                 new Rect(point.X - size / 2, point.Y - size / 2, size, size), 1, 1);
             return;
         }
+
         var brushTiles = ActiveTool.StartsWith("road:", StringComparison.OrdinalIgnoreCase)
-            ? 0 : Enum.TryParse<RaceKind>(ActiveTool, out _) ? 3 : Math.Clamp(BrushRadius, 0, 16);
+            ? 0
+            : Enum.TryParse<RaceKind>(ActiveTool, out _)
+                ? 3
+                : Math.Clamp(BrushRadius, 0, 16);
         var toolName = ActiveTool.Contains(':') ? ActiveTool[(ActiveTool.IndexOf(':') + 1)..] : ActiveTool;
         if (Enum.TryParse<DisasterKind>(toolName, true, out _)) brushTiles = DisasterRadius;
         var radius = Math.Max(3, (brushTiles + .5) * TilePixels * _zoom);
@@ -782,20 +946,36 @@ public sealed partial class WorldMapControl : Control
                 MapTypeface, 10, ScaleBrush);
             _scaleLabelTiles = tiles;
         }
+
         context.DrawText(_scaleLabel, new Point(x, y - 18));
     }
 
-    private IBrush NationBrush(int nationId) => _nationBrushes.TryGetValue(nationId, out var brush) ? brush : RoofBrush;
-    private static IBrush Brush(uint argb) => new SolidColorBrush(Color.FromUInt32(argb));
-    private Point ToScreen(double x, double y) => new(_origin.X + x * _zoom, _origin.Y + y * _zoom);
-    private static double Distance(Point first, Point second) =>
-        Math.Sqrt((first.X - second.X) * (first.X - second.X) + (first.Y - second.Y) * (first.Y - second.Y));
+    private IBrush NationBrush(int nationId)
+    {
+        return _nationBrushes.TryGetValue(nationId, out var brush) ? brush : RoofBrush;
+    }
+
+    private static IBrush Brush(uint argb)
+    {
+        return new SolidColorBrush(Color.FromUInt32(argb));
+    }
+
+    private Point ToScreen(double x, double y)
+    {
+        return new Point(_origin.X + x * _zoom, _origin.Y + y * _zoom);
+    }
+
+    private static double Distance(Point first, Point second)
+    {
+        return Math.Sqrt((first.X - second.X) * (first.X - second.X) + (first.Y - second.Y) * (first.Y - second.Y));
+    }
 
     private bool TryTile(Point position, out (int X, int Y) tile)
     {
         tile = ((int)Math.Floor((position.X - _origin.X) / (_zoom * TilePixels)),
-                (int)Math.Floor((position.Y - _origin.Y) / (_zoom * TilePixels)));
-        return Engine is not null && tile.X >= 0 && tile.Y >= 0 && tile.X < Engine.State.Width && tile.Y < Engine.State.Height;
+            (int)Math.Floor((position.Y - _origin.Y) / (_zoom * TilePixels)));
+        return Engine is not null && tile.X >= 0 && tile.Y >= 0 && tile.X < Engine.State.Width &&
+               tile.Y < Engine.State.Height;
     }
 
     private void ZoomAt(Point focus, double zoom)
@@ -824,8 +1004,18 @@ public sealed partial class WorldMapControl : Control
         if (e.Pointer.Type == PointerType.Touch)
         {
             _touches[e.Pointer] = point;
-            if (_touches.Count > 1) { _pinching = true; _gestureMoved = true; }
-            else { _pressPosition = point; _lastPosition = point; _gestureMoved = false; _pinching = false; }
+            if (_touches.Count > 1)
+            {
+                _pinching = true;
+                _gestureMoved = true;
+            }
+            else
+            {
+                _pressPosition = point;
+                _lastPosition = point;
+                _gestureMoved = false;
+                _pinching = false;
+            }
         }
         else
         {
@@ -834,10 +1024,12 @@ public sealed partial class WorldMapControl : Control
             _gestureMoved = false;
             _dragging = true;
             var properties = e.GetCurrentPoint(this).Properties;
-            _panning = PickingLocation || IsNavigationTool || properties.IsMiddleButtonPressed || properties.IsRightButtonPressed;
+            _panning = PickingLocation || IsNavigationTool || properties.IsMiddleButtonPressed ||
+                       properties.IsRightButtonPressed;
             _lastPaint = null;
             if (!_panning) ApplyTool(point);
         }
+
         e.Handled = true;
     }
 
@@ -870,18 +1062,26 @@ public sealed partial class WorldMapControl : Control
                 _touches[e.Pointer] = point;
                 _gestureMoved |= Distance(point, _pressPosition) > 5;
             }
+
             InvalidateVisual();
             e.Handled = true;
             return;
         }
+
         if (_dragging)
         {
             _gestureMoved |= Distance(point, _pressPosition) > 5;
-            if (_panning) { _followSelectedResident = false; _origin += point - _lastPosition; }
+            if (_panning)
+            {
+                _followSelectedResident = false;
+                _origin += point - _lastPosition;
+            }
             else ApplyTool(point);
+
             _lastPosition = point;
             e.Handled = true;
         }
+
         InvalidateVisual();
     }
 
@@ -896,14 +1096,17 @@ public sealed partial class WorldMapControl : Control
             if (_touches.ContainsKey(e.Pointer) && !_gestureMoved && !_pinching)
             {
                 if (PickingLocation) SelectTile(point);
-                else if (IsNavigationTool || Enum.TryParse<TerrainType>(ActiveTool, out _) || ActiveTool == "territory" || ActiveTool.StartsWith("road:")) ApplyTool(point);
+                else if (IsNavigationTool || Enum.TryParse<TerrainType>(ActiveTool, out _) ||
+                         ActiveTool == "territory" || ActiveTool.StartsWith("road:")) ApplyTool(point);
                 else PreviewPlacement(point, true);
             }
+
             _touches.Remove(e.Pointer);
             if (_touches.Count == 0) _pinching = false;
         }
         else if (_dragging && _panning && !_gestureMoved && e.InitialPressMouseButton == MouseButton.Left)
             SelectTile(point);
+
         _dragging = false;
         _lastPaint = null;
         e.Pointer.Capture(null);
@@ -936,27 +1139,50 @@ public sealed partial class WorldMapControl : Control
         InvalidateVisual();
     }
 
-    public Func<Task>? PrepareWorldEdit { get; set; }
-    private bool _preparingWorldEdit;
-
     private async void ApplyTool(Point point)
     {
         if (Engine is null || !TryTile(point, out var tile)) return;
-        if (PickingLocation || IsNavigationTool) { SelectTile(point); return; }
+        if (PickingLocation || IsNavigationTool)
+        {
+            SelectTile(point);
+            return;
+        }
+
         if (_lastPaint == tile) return;
         if (PlacementError(tile.X, tile.Y) is { } placementError)
-        { SetPlacementMessage("无法放置：" + placementError); ToolError?.Invoke(placementError); return; }
+        {
+            SetPlacementMessage("无法放置：" + placementError);
+            ToolError?.Invoke(placementError);
+            return;
+        }
+
         if (_preparingWorldEdit) return;
-        var editEngine = Engine; var editTool = ActiveTool;
+        var editEngine = Engine;
+        var editTool = ActiveTool;
         if (PrepareWorldEdit is not null)
         {
             _preparingWorldEdit = true;
-            try { await PrepareWorldEdit(); }
-            catch (OperationCanceledException) { return; }
-            catch (Exception error) { ToolError?.Invoke("无法准备恢复点：" + error.Message); return; }
-            finally { _preparingWorldEdit = false; }
+            try
+            {
+                await PrepareWorldEdit();
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+            catch (Exception error)
+            {
+                ToolError?.Invoke("无法准备恢复点：" + error.Message);
+                return;
+            }
+            finally
+            {
+                _preparingWorldEdit = false;
+            }
+
             if (PickingLocation || !ReferenceEquals(editEngine, Engine) || editTool != ActiveTool) return;
         }
+
         var tool = ActiveTool;
         var prefix = tool.IndexOf(':');
         if (prefix >= 0) tool = tool[(prefix + 1)..];
@@ -966,9 +1192,15 @@ public sealed partial class WorldMapControl : Control
         WorldMutationStarting?.Invoke(this, EventArgs.Empty);
         if (TryApplyConstructionTool(tool, tile, out var constructionEdited))
         {
-            if (constructionEdited) { RefreshWorld(); WorldEdited?.Invoke(this, EventArgs.Empty); }
+            if (constructionEdited)
+            {
+                RefreshWorld();
+                WorldEdited?.Invoke(this, EventArgs.Empty);
+            }
+
             return;
         }
+
         if (tool.Equals("territory", StringComparison.OrdinalIgnoreCase))
         {
             if (!Engine.State.Nations.Any(nation => nation.Id == SelectedNationId)) return;
@@ -1001,6 +1233,7 @@ public sealed partial class WorldMapControl : Control
                 edited = true;
             }
         }
+
         _lastPaint = tile;
         if (!edited) return;
         RefreshWorld();
@@ -1015,7 +1248,7 @@ public sealed partial class WorldMapControl : Control
         {
             var t = steps == 0 ? 1 : step / (double)steps;
             paint((int)Math.Round(start.X + (tile.X - start.X) * t),
-                  (int)Math.Round(start.Y + (tile.Y - start.Y) * t));
+                (int)Math.Round(start.Y + (tile.Y - start.Y) * t));
         }
     }
 
@@ -1039,9 +1272,22 @@ public sealed partial class WorldMapControl : Control
 
     private void DisposeChunks()
     {
-        foreach (var chunk in _chunks.Values) { chunk.Terrain?.Dispose(); chunk.Territory?.Dispose(); }
+        foreach (var chunk in _chunks.Values)
+        {
+            chunk.Terrain?.Dispose();
+            chunk.Territory?.Dispose();
+        }
+
         _chunks.Clear();
     }
+
+    public readonly record struct MapSelectionState(
+        int? ResidentId,
+        int? BuildingId,
+        (int X, int Y)? Tile,
+        bool Follow,
+        int NationId,
+        int SettlementId);
 
     private sealed class MapChunk(Rect bounds)
     {

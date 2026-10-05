@@ -2,35 +2,51 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    public static string ObjectiveName(WarObjective objective) => objective == WarObjective.OccupySettlement ? "有限占领" : "保卫家园";
-    public static string OutcomeName(WarOutcome outcome) => outcome switch
+    public static string ObjectiveName(WarObjective objective)
     {
-        WarOutcome.ObjectiveReached => "已达成目标", WarOutcome.SupplyShortage => "补给不足",
-        WarOutcome.HeavyLosses => "伤亡过重", WarOutcome.TargetChanged => "目标已变化",
-        WarOutcome.OrdersReceived => "收到停战命令", WarOutcome.RouteBlocked => "道路受阻",
-        WarOutcome.Exhausted => "长期作战，需要休整", _ => "尚在执行"
-    };
+        return objective == WarObjective.OccupySettlement ? "有限占领" : "保卫家园";
+    }
+
+    public static string OutcomeName(WarOutcome outcome)
+    {
+        return outcome switch
+        {
+            WarOutcome.ObjectiveReached => "已达成目标", WarOutcome.SupplyShortage => "补给不足",
+            WarOutcome.HeavyLosses => "伤亡过重", WarOutcome.TargetChanged => "目标已变化",
+            WarOutcome.OrdersReceived => "收到停战命令", WarOutcome.RouteBlocked => "道路受阻",
+            WarOutcome.Exhausted => "长期作战，需要休整", _ => "尚在执行",
+        };
+    }
 
     private void EndCampaign(Army army, WarOutcome outcome, Resident[] soldiers, int cause = 0)
     {
         if (army.Outcome != WarOutcome.None) return;
-        army.Outcome = outcome; army.Retreating = true; army.Gathering = false;
+        army.Outcome = outcome;
+        army.Retreating = true;
+        army.Gathering = false;
         army.Status = OutcomeName(outcome) + "，实际返乡并报告";
         var entry = AddEvent(WorldEventKind.War, $"{_nations[army.NationId].Name}的军队{army.Status}。", army.X, army.Y,
             EventAction.Retreat, army.TargetSettlementId, causeEventId: cause > 0 ? cause : army.LastEventId);
-        entry.NationId = army.NationId; entry.SecondNationId = army.TargetNationId; army.LastEventId = entry.Id;
+        entry.NationId = army.NationId;
+        entry.SecondNationId = army.TargetNationId;
+        army.LastEventId = entry.Id;
         // The event is a world fact. Only actual witnesses receive the report.
         var witnesses = soldiers.Where(r => r.Health > 0 && Distance(r.X, r.Y, army.X, army.Y) <= 3).ToArray();
         if (witnesses.Length == 0) return;
         var witness = witnesses.FirstOrDefault(r => r.Id == army.CommanderId) ?? witnesses[0];
         var report = MakeAgentFact(witness, AgentFactKind.WarReport, army.TargetNationId, army.X, army.Y, (int)outcome,
             $"{ObjectiveName(army.Objective)}：{OutcomeName(outcome)}；在场部队剩余 {soldiers.Length}/{army.InitialSoldiers} 人");
-        report.TargetNationId = army.NationId; report.EventId = entry.Id; report.CampaignEventId = army.CampaignEventId;
+        report.TargetNationId = army.NationId;
+        report.EventId = entry.Id;
+        report.CampaignEventId = army.CampaignEventId;
         report.WarObjective = army.Objective;
         foreach (var person in witnesses)
         {
             RememberAgentFact(person, report);
-            RecordLife(person, report.Text, entry, outcome == WarOutcome.ObjectiveReached ? PersonalExperienceKind.Achievement : PersonalExperienceKind.Hardship);
+            RecordLife(person, report.Text, entry,
+                outcome == WarOutcome.ObjectiveReached
+                    ? PersonalExperienceKind.Achievement
+                    : PersonalExperienceKind.Hardship);
         }
     }
 
@@ -40,8 +56,11 @@ public sealed partial class WorldEngine
         army.BattleRecorded = true;
         var entry = AddEvent(WorldEventKind.War, $"{_nations[army.NationId].Name}的军队在目标附近实际交战。", army.X, army.Y,
             EventAction.Battle, army.TargetSettlementId, causeEventId: army.LastEventId);
-        entry.NationId = army.NationId; entry.SecondNationId = army.TargetNationId; army.LastEventId = entry.Id;
-        foreach (var person in soldiers.Concat(defenders ?? []).Where(r => r.Health > 0 && Distance(r.X, r.Y, army.X, army.Y) <= 5))
+        entry.NationId = army.NationId;
+        entry.SecondNationId = army.TargetNationId;
+        army.LastEventId = entry.Id;
+        foreach (var person in soldiers.Concat(defenders ?? [])
+                     .Where(r => r.Health > 0 && Distance(r.X, r.Y, army.X, army.Y) <= 5))
             RecordLife(person, "亲历交战，战斗结果见关联世界事件。", entry, PersonalExperienceKind.Hardship, EventImportance.Major);
     }
 
@@ -49,16 +68,22 @@ public sealed partial class WorldEngine
     {
         if (fact.Kind != AgentFactKind.WarReport || fact.TargetNationId != town.NationId || fact.Confidence < .4
             || !_nations.TryGetValue(town.NationId, out var nation) || nation.CapitalId != town.Id
-            || fact.Value != Math.Truncate(fact.Value) || fact.Value < 1 || fact.Value > (int)WarOutcome.Exhausted) return;
+            || fact.Value != Math.Truncate(fact.Value) || fact.Value < 1 ||
+            fact.Value > (int)WarOutcome.Exhausted) return;
         var record = nation.Military;
         if (fact.CampaignEventId != record.CampaignEventId || fact.SubjectId != record.EnemyNationId
-            || fact.EventId == record.LastReportEventId || fact.ObservedTick < record.LastReportObservedTick) return;
-        record.LastReportEventId = fact.EventId; record.LastReportObservedTick = fact.ObservedTick;
-        record.LastReportReceivedTick = State.Tick; record.ReportedOutcome = (WarOutcome)(int)fact.Value;
-        record.Report = fact.Text; record.RecoveryUntilTick = Math.Max(record.RecoveryUntilTick, State.Tick + 360);
+                                                           || fact.EventId == record.LastReportEventId ||
+                                                           fact.ObservedTick < record.LastReportObservedTick) return;
+        record.LastReportEventId = fact.EventId;
+        record.LastReportObservedTick = fact.ObservedTick;
+        record.LastReportReceivedTick = State.Tick;
+        record.ReportedOutcome = (WarOutcome)(int)fact.Value;
+        record.Report = fact.Text;
+        record.RecoveryUntilTick = Math.Max(record.RecoveryUntilTick, State.Tick + 360);
         var received = AddEvent(WorldEventKind.War, $"{nation.Name}首都实际收到战报：{fact.Text}。", town.X, town.Y,
             EventAction.Report, town.Id, causeEventId: fact.EventId, evidenceFactId: fact.Id);
-        received.NationId = nation.Id; received.SecondNationId = fact.SubjectId;
+        received.NationId = nation.Id;
+        received.SecondNationId = fact.SubjectId;
         if (!State.Rules.Peace || !_nations.TryGetValue(fact.SubjectId, out var other)) return;
         var relation = Relation(nation.Id, other.Id);
         if (relation.Status != DiplomaticStatus.War) return;

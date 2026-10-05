@@ -6,21 +6,29 @@ public sealed partial class WorldEngine
 
     private void GenerateHydrology()
     {
-        var tiles = State.Tiles; var parents = new int[tiles.Length]; Array.Fill(parents, -1);
-        var visited = new bool[tiles.Length]; var order = new List<int>(tiles.Length);
+        var tiles = State.Tiles;
+        var parents = new int[tiles.Length];
+        Array.Fill(parents, -1);
+        var visited = new bool[tiles.Length];
+        var order = new List<int>(tiles.Length);
         var flow = new double[tiles.Length];
         var frontier = new PriorityQueue<int, (int Height, int Index)>();
         for (var i = 0; i < tiles.Length; i++)
         {
-            var tile = tiles[i]; tile.RiverWidth = 0;
-            tile.Terrain = tile.Elevation < 51 ? TerrainType.DeepWater : tile.Elevation < 69 ? TerrainType.Water : TerrainType.Grass;
-            var x = i % State.Width; var y = i / State.Width;
+            var tile = tiles[i];
+            tile.RiverWidth = 0;
+            tile.Terrain = tile.Elevation < 51 ? TerrainType.DeepWater :
+                tile.Elevation < 69 ? TerrainType.Water : TerrainType.Grass;
+            var x = i % State.Width;
+            var y = i / State.Width;
             tile.Fertility = (byte)Math.Clamp(15 + Noise(x / 23d, y / 23d, 1201) * 85, 0, 100);
             tile.Rainfall = Math.Round(.002 + Math.Pow(Noise(x / 27d, y / 27d, 1601), 3) * .24, 6);
             flow[i] = .2 + tile.Rainfall * 15;
             if (!IsWaterTerrain(tile.Terrain)) continue;
-            visited[i] = true; frontier.Enqueue(i, (tile.Elevation, i));
+            visited[i] = true;
+            frontier.Enqueue(i, (tile.Elevation, i));
         }
+
         // Priority flood gives every inland tile an acyclic outlet rooted in the sea,
         // including flat basins. The dequeue order is also a drainage topological order.
         while (frontier.TryDequeue(out var current, out var priority))
@@ -28,77 +36,113 @@ public sealed partial class WorldEngine
             order.Add(current);
             foreach (var (dx, dy) in Directions)
             {
-                var x = current % State.Width + dx; var y = current / State.Width + dy;
+                var x = current % State.Width + dx;
+                var y = current / State.Width + dy;
                 if (!InBounds(x, y)) continue;
-                var next = Index(x, y); if (visited[next]) continue;
-                visited[next] = true; parents[next] = current;
+                var next = Index(x, y);
+                if (visited[next]) continue;
+                visited[next] = true;
+                parents[next] = current;
                 frontier.Enqueue(next, (Math.Max(priority.Height, tiles[next].Elevation), next));
             }
         }
+
         for (var p = order.Count - 1; p >= 0; p--)
-            if (parents[order[p]] >= 0) flow[parents[order[p]]] += flow[order[p]];
+            if (parents[order[p]] >= 0)
+                flow[parents[order[p]]] += flow[order[p]];
 
         for (var y = 7; y < State.Height - 7; y += 12)
         for (var x = 7; x < State.Width - 7; x += 12)
         {
             if (Noise(x, y, 977) < .64) continue;
             var area = Circle(x, y, 3).ToArray();
-            if (area.Any(i => IsWaterTerrain(tiles[i].Terrain) || tiles[i].Elevation > 178 || _demoHabitat?[i] >= 0)) continue;
+            if (area.Any(i =>
+                    IsWaterTerrain(tiles[i].Terrain) || tiles[i].Elevation > 178 || _demoHabitat?[i] >= 0)) continue;
             var radius = Noise(x, y, 983) > .7 ? 2 : 1;
             foreach (var i in Circle(x, y, radius)) tiles[i].Terrain = TerrainType.Lake;
         }
 
         var sources = Enumerable.Range(0, tiles.Length)
-            .Where(i => parents[i] >= 0 && !IsWaterTerrain(tiles[i].Terrain) && tiles[i].Elevation >= 120 && flow[i] < 12)
+            .Where(i => parents[i] >= 0 && !IsWaterTerrain(tiles[i].Terrain) && tiles[i].Elevation >= 120 &&
+                        flow[i] < 12)
             .OrderByDescending(i => tiles[i].Elevation + Noise(i % State.Width / 7d, i / State.Width / 7d, 1879) * 65)
             .ThenBy(i => i);
-        var selected = new List<int>(); var desired = Math.Clamp(tiles.Length / 4096 + 2, 2, 12);
+        var selected = new List<int>();
+        var desired = Math.Clamp(tiles.Length / 4096 + 2, 2, 12);
         var centers = new byte[tiles.Length];
         foreach (var source in sources)
         {
-            if (selected.Any(i => Distance(i % State.Width, i / State.Width, source % State.Width, source / State.Width) < Math.Max(8, State.Width / 10))) continue;
-            var path = new List<int>(); var current = source; var reserved = false;
+            if (selected.Any(i =>
+                    Distance(i % State.Width, i / State.Width, source % State.Width, source / State.Width) <
+                    Math.Max(8, State.Width / 10))) continue;
+            var path = new List<int>();
+            var current = source;
+            var reserved = false;
             while (current >= 0 && tiles[current].Terrain is not (TerrainType.Water or TerrainType.DeepWater))
             {
-                if (_demoHabitat?[current] >= 0) { reserved = true; break; }
-                path.Add(current); current = parents[current];
+                if (_demoHabitat?[current] >= 0)
+                {
+                    reserved = true;
+                    break;
+                }
+
+                path.Add(current);
+                current = parents[current];
             }
+
             if (reserved || current < 0 || path.Count < 8) continue;
             selected.Add(source);
             foreach (var i in path)
-                centers[i] = (byte)Math.Max(centers[i], flow[i] < 30 ? 1 : flow[i] < 85 ? 2 : flow[i] < 190 ? 3 : flow[i] < 420 ? 4 : 5);
+                centers[i] = (byte)Math.Max(centers[i],
+                    flow[i] < 30 ? 1 : flow[i] < 85 ? 2 : flow[i] < 190 ? 3 : flow[i] < 420 ? 4 : 5);
             if (selected.Count >= desired) break;
         }
+
         // Cross-sections use exact 1..5-cell widths, rather than circular brushes.
         for (var i = 0; i < centers.Length; i++)
         {
             if (centers[i] == 0) continue;
-            var width = centers[i]; var parent = parents[i];
+            var width = centers[i];
+            var parent = parents[i];
             var vertical = parent >= 0 && parent % State.Width == i % State.Width;
             for (var offset = -(width - 1) / 2; offset <= width / 2; offset++)
             {
                 var x = i % State.Width + (vertical ? offset : 0);
                 var y = i / State.Width + (vertical ? 0 : offset);
                 if (!InBounds(x, y)) continue;
-                var next = Index(x, y); var tile = tiles[next];
-                if (tile.Terrain is TerrainType.Water or TerrainType.DeepWater or TerrainType.Lake || _demoHabitat?[next] >= 0) continue;
-                var riverWidth = (byte)Math.Max(tile.RiverWidth, width);
-                tile.Terrain = riverWidth == 1 ? TerrainType.Stream : riverWidth <= 3 ? TerrainType.River : TerrainType.LargeRiver;
+                var next = Index(x, y);
+                var tile = tiles[next];
+                if (tile.Terrain is TerrainType.Water or TerrainType.DeepWater or TerrainType.Lake ||
+                    _demoHabitat?[next] >= 0) continue;
+                var riverWidth = Math.Max(tile.RiverWidth, width);
+                tile.Terrain = riverWidth == 1 ? TerrainType.Stream :
+                    riverWidth <= 3 ? TerrainType.River : TerrainType.LargeRiver;
                 tile.RiverWidth = riverWidth;
             }
         }
-        var distances = new int[tiles.Length]; Array.Fill(distances, int.MaxValue);
+
+        var distances = new int[tiles.Length];
+        Array.Fill(distances, int.MaxValue);
         var queue = new Queue<int>();
         for (var i = 0; i < tiles.Length; i++)
-            if (IsFreshWater(tiles[i])) { distances[i] = 0; queue.Enqueue(i); }
+            if (IsFreshWater(tiles[i]))
+            {
+                distances[i] = 0;
+                queue.Enqueue(i);
+            }
+
         while (queue.TryDequeue(out var current))
             foreach (var (dx, dy) in Directions)
             {
-                var x = current % State.Width + dx; var y = current / State.Width + dy;
+                var x = current % State.Width + dx;
+                var y = current / State.Width + dy;
                 if (!InBounds(x, y)) continue;
-                var next = Index(x, y); if (distances[next] != int.MaxValue) continue;
-                distances[next] = distances[current] + 1; queue.Enqueue(next);
+                var next = Index(x, y);
+                if (distances[next] != int.MaxValue) continue;
+                distances[next] = distances[current] + 1;
+                queue.Enqueue(next);
             }
+
         for (var i = 0; i < tiles.Length; i++)
         {
             var tile = tiles[i];
@@ -108,6 +152,7 @@ public sealed partial class WorldEngine
             tile.ResourceAmount = IsWaterTerrain(tile.Terrain) ? 0 : 50 + tile.Fertility;
             SeedDeposit(tile, i % State.Width, i / State.Width);
         }
+
         LimitMountainRanges();
     }
 
@@ -118,29 +163,46 @@ public sealed partial class WorldEngine
         {
             var race = (RaceKind)_demoHabitat[index];
             tile.Fertility = race == RaceKind.Dwarf ? (byte)60 : race == RaceKind.Orc ? (byte)55 : (byte)80;
-            tile.Rainfall = race == RaceKind.Elf ? .096 : race == RaceKind.Orc ? .012 : race == RaceKind.Dwarf ? .064 : .036;
+            tile.Rainfall = race == RaceKind.Elf ? .096 :
+                race == RaceKind.Orc ? .012 :
+                race == RaceKind.Dwarf ? .064 : .036;
             var variation = Noise(index % State.Width / 2d, index / State.Width / 2d, 1901);
             if (variation > .58)
             {
-                tile.Elevation = 120; tile.Rainfall = .064;
+                tile.Elevation = 120;
+                tile.Rainfall = .064;
                 tile.NaturalWaterYield = tile.Rainfall;
                 return TerrainType.Woodland;
             }
+
             if (variation < .35 && race is RaceKind.Human or RaceKind.Orc)
             {
-                tile.Elevation = 160; tile.Fertility = 50; tile.Rainfall = .024;
+                tile.Elevation = 160;
+                tile.Fertility = 50;
+                tile.Rainfall = .024;
                 tile.NaturalWaterYield = tile.Rainfall;
                 return TerrainType.Hills;
             }
+
             tile.NaturalWaterYield = tile.Rainfall;
-            return race switch { RaceKind.Elf => TerrainType.Forest, RaceKind.Dwarf => TerrainType.AlpineMeadow, RaceKind.Orc => TerrainType.Savanna, _ => TerrainType.Meadow };
+            return race switch
+            {
+                RaceKind.Elf => TerrainType.Forest, RaceKind.Dwarf => TerrainType.AlpineMeadow,
+                RaceKind.Orc => TerrainType.Savanna, _ => TerrainType.Meadow,
+            };
         }
+
         if (tile.Elevation < 79) return TerrainType.Sand;
         if (tile.Elevation > 197) return TerrainType.Snow;
         if (tile.Elevation > 180) return TerrainType.Mountain;
-        if (tile.Elevation > 149) return tile.Fertility >= 55 && tile.NaturalWaterYield >= .032 ? TerrainType.AlpineMeadow : TerrainType.Hills;
+        if (tile.Elevation > 149)
+            return tile.Fertility >= 55 && tile.NaturalWaterYield >= .032
+                ? TerrainType.AlpineMeadow
+                : TerrainType.Hills;
         if (Math.Abs((y + .5) / State.Height * 2 - 1) > .72) return TerrainType.Tundra;
-        if (tile.NaturalWaterYield < .016) return tile.Fertility >= 65 ? TerrainType.DryFertile : tile.Fertility < 30 ? TerrainType.Desert : TerrainType.Savanna;
+        if (tile.NaturalWaterYield < .016)
+            return tile.Fertility >= 65 ? TerrainType.DryFertile :
+                tile.Fertility < 30 ? TerrainType.Desert : TerrainType.Savanna;
         if (tile.Fertility < 30) return TerrainType.Scrub;
         if (waterDistance <= 3 && tile.Fertility >= 70 && tile.Elevation < 135) return TerrainType.Floodplain;
         if (tile.NaturalWaterYield >= .132) return tile.Fertility >= 65 ? TerrainType.Rainforest : TerrainType.Wetland;
@@ -156,30 +218,44 @@ public sealed partial class WorldEngine
         {
             var targetX = State.Width / 2 + (race % 2 == 0 ? -1 : 1) * Math.Clamp(State.Width / 8, 10, 20);
             var targetY = State.Height / 2 + (race < 2 ? -1 : 1) * Math.Clamp(State.Height / 8, 10, 20);
-            var best = -1; var bestDistance = int.MaxValue;
+            var best = -1;
+            var bestDistance = int.MaxValue;
             for (var y = 6; y < State.Height - 6; y++)
             for (var x = 6; x < State.Width - 6; x++)
             {
                 var distance = Distance(x, y, targetX, targetY);
-                if (distance >= bestDistance || sites.Any(i => Distance(x, y, i % State.Width, i / State.Width) < MinimumSettlementDistance)) continue;
-                if (State.Tiles[Index(x, y)].Fertility < 40 || !Circle(x, y, 6).All(i => RaceTerrainRules.For((RaceKind)race, State.Tiles[i].Terrain).Habitable)) continue;
-                best = Index(x, y); bestDistance = distance;
+                if (distance >= bestDistance || sites.Any(i =>
+                        Distance(x, y, i % State.Width, i / State.Width) < MinimumSettlementDistance)) continue;
+                if (State.Tiles[Index(x, y)].Fertility < 40 || !Circle(x, y, 6).All(i =>
+                        RaceTerrainRules.For((RaceKind)race, State.Tiles[i].Terrain).Habitable)) continue;
+                best = Index(x, y);
+                bestDistance = distance;
             }
+
             if (best < 0) break;
             sites.Add(best);
         }
+
         if (sites.Count == 4) return sites.ToArray();
         // A bounded deterministic fallback ensures small maps and extreme seeds
         // still have four separate, genuinely habitable starting neighborhoods.
-        _demoHabitat = new int[State.Tiles.Length]; Array.Fill(_demoHabitat, -1); sites.Clear();
-        var left = Math.Max(7, State.Width / 4 - 1); var top = Math.Max(7, State.Height / 4 - 1);
+        _demoHabitat = new int[State.Tiles.Length];
+        Array.Fill(_demoHabitat, -1);
+        sites.Clear();
+        var left = Math.Max(7, State.Width / 4 - 1);
+        var top = Math.Max(7, State.Height / 4 - 1);
         for (var race = 0; race < 4; race++)
         {
             var x = race % 2 == 0 ? left : State.Width - left - 1;
             var y = race < 2 ? top : State.Height - top - 1;
             sites.Add(Index(x, y));
-            foreach (var i in Circle(x, y, 6)) { _demoHabitat[i] = race; State.Tiles[i].Elevation = race == (int)RaceKind.Dwarf ? (byte)160 : (byte)120; }
+            foreach (var i in Circle(x, y, 6))
+            {
+                _demoHabitat[i] = race;
+                State.Tiles[i].Elevation = race == (int)RaceKind.Dwarf ? (byte)160 : (byte)120;
+            }
         }
+
         GenerateHydrology();
         _demoHabitat = null;
         return sites.ToArray();

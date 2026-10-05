@@ -2,15 +2,73 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-public enum EventImportance { Routine, Notable, Major, Historic }
-public enum AgentGoalKind { Idle, Eat, Gather, Work, Rest, Flee, Socialize, DeliverMessage, Trade, Petition, Study, TrainMagic, March, ReturnHome, Migrate, Explore, ClaimLand, FetchWater, Hunt, Fish, ExtinguishFire }
-public enum AgentFactKind { FoodSupply, Danger, SettlementLocation, ReliefRequest, Policy, WarOrder, PeaceOrder, Culture, Research, Personal, TradeExchange, DiplomaticNotice, WarReport, WaterSource, FoundingSite }
-public enum PersonalExperienceKind { Neutral, Hardship, Achievement, Kindness, Betrayal, Learning }
+public enum EventImportance
+{
+    Routine,
+    Notable,
+    Major,
+    Historic,
+}
+
+public enum AgentGoalKind
+{
+    Idle,
+    Eat,
+    Gather,
+    Work,
+    Rest,
+    Flee,
+    Socialize,
+    DeliverMessage,
+    Trade,
+    Petition,
+    Study,
+    TrainMagic,
+    March,
+    ReturnHome,
+    Migrate,
+    Explore,
+    ClaimLand,
+    FetchWater,
+    Hunt,
+    Fish,
+    ExtinguishFire,
+}
+
+public enum AgentFactKind
+{
+    FoodSupply,
+    Danger,
+    SettlementLocation,
+    ReliefRequest,
+    Policy,
+    WarOrder,
+    PeaceOrder,
+    Culture,
+    Research,
+    Personal,
+    TradeExchange,
+    DiplomaticNotice,
+    WarReport,
+    WaterSource,
+    FoundingSite,
+}
+
+public enum PersonalExperienceKind
+{
+    Neutral,
+    Hardship,
+    Achievement,
+    Kindness,
+    Betrayal,
+    Learning,
+}
 
 public sealed partial class WorldState
 {
     [JsonRequired]
     public int SimulationVersion { get; set; } = 15;
+
     public SocietyState Society { get; set; } = new();
     public List<PendingMessage> PendingMessages { get; set; } = [];
     public List<Resident> ArchivedResidents { get; set; } = [];
@@ -18,7 +76,9 @@ public sealed partial class WorldState
 
 public sealed partial class Tile
 {
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public byte RoadLevel { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public byte RoadLevel { get; set; }
+
     public double ResourceAmount { get; set; } = 100;
 }
 
@@ -58,8 +118,10 @@ public sealed partial class Army
     public int CommanderId { get; set; }
     public DiplomaticStatus KnownDiplomacy { get; set; } = DiplomaticStatus.War;
     public long LastOrderTick { get; set; }
+
     [JsonRequired]
     public int LastOrderFactId { get; set; }
+
     public int FromX { get; set; }
     public int FromY { get; set; }
     public long MoveStartedTick { get; set; }
@@ -107,7 +169,10 @@ public sealed class AgentState
     public int MissionOriginSettlementId { get; set; }
     public long MissionStartedTick { get; set; }
     public long MissionRetryTick { get; set; }
-    [JsonRequired] public int ExplorationHeading { get; set; }
+
+    [JsonRequired]
+    public int ExplorationHeading { get; set; }
+
     public ResourceKind? MaterialPriority { get; set; }
     public long JobChangedTick { get; set; } = -120;
 }
@@ -147,10 +212,13 @@ public sealed class AgentFact
     public int X { get; set; }
     public int Y { get; set; }
     public double Value { get; set; }
+
     /// <summary>最初观察发生的时间；转述时保留该时间。</summary>
     public long ObservedTick { get; set; }
+
     /// <summary>持有本副本的一方获知信息的时间。</summary>
     public long LearnedTick { get; set; }
+
     public int OriginResidentId { get; set; }
     public Profession OriginProfession { get; set; }
     public int SourceResidentId { get; set; }

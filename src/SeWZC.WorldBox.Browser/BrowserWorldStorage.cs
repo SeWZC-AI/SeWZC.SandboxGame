@@ -1,5 +1,5 @@
-using System.Runtime.InteropServices.JavaScript;
 using System.Diagnostics;
+using System.Runtime.InteropServices.JavaScript;
 using System.Runtime.Versioning;
 using SeWZC.WorldBox.UI.Platform;
 
@@ -11,7 +11,11 @@ internal sealed partial class BrowserWorldStorage : IWorldStorage
 {
     public bool IsBackground => GetIsBackground();
 
-    public Task SaveAsync(string json) => Save(json);
+    public Task SaveAsync(string json)
+    {
+        return Save(json);
+    }
+
     public async Task SaveChunksAsync(string[] chunks)
     {
         var id = BeginSave();
@@ -29,13 +33,29 @@ internal sealed partial class BrowserWorldStorage : IWorldStorage
                     started = Stopwatch.GetTimestamp();
                 }
             }
+
             await CommitSave(id);
         }
-        finally { DiscardSave(id); }
+        finally
+        {
+            DiscardSave(id);
+        }
     }
-    public Task<string?> LoadAsync() => Load();
-    public Task ExportAsync(string json, string fileName) => ExportFile(json, fileName);
-    public Task<string?> ImportAsync() => ImportFile();
+
+    public Task<string?> LoadAsync()
+    {
+        return Load();
+    }
+
+    public Task ExportAsync(string json, string fileName)
+    {
+        return ExportFile(json, fileName);
+    }
+
+    public Task<string?> ImportAsync()
+    {
+        return ImportFile();
+    }
 
     [JSImport("isBackground", "worldbox")]
     private static partial bool GetIsBackground();

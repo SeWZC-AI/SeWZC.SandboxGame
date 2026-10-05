@@ -1,5 +1,3 @@
-using System;
-using System.Linq;
 using Avalonia;
 using Avalonia.Media;
 using SeWZC.WorldBox.Core;
@@ -16,8 +14,8 @@ public sealed partial class WorldMapControl
     private static readonly IBrush MessageBrush = Brush(0xFFFFF0C4);
     private static readonly IBrush ProgressBrush = Brush(0xFFB6D59F);
     private StreamGeometry? _cargoGeometry;
-    private StreamGeometry? _messageGeometry;
     private StreamGeometry? _magicGeometry;
+    private StreamGeometry? _messageGeometry;
 
     private void DrawBuildings(DrawingContext context, WorldState state)
     {
@@ -25,13 +23,18 @@ public sealed partial class WorldMapControl
             DrawBuilding(context, building);
     }
 
-    private static double BuildingHeight(BuildingKind kind) => kind switch
+    private static double BuildingHeight(BuildingKind kind)
     {
-        BuildingKind.SignalTower or BuildingKind.Watchtower or BuildingKind.StormSpire or BuildingKind.WardTower or BuildingKind.Waygate => 16, BuildingKind.TownCenter or BuildingKind.PowerPlant => 13,
-        BuildingKind.Academy or BuildingKind.Foundry or BuildingKind.AetherForge => 12,
-        BuildingKind.Farm or BuildingKind.AutomatedFarm => 6.4,
-        BuildingKind.Bridge => 8, BuildingKind.Dock => 6, BuildingKind.MountainPass => 4, _ => 9.6
-    };
+        return kind switch
+        {
+            BuildingKind.SignalTower or BuildingKind.Watchtower or BuildingKind.StormSpire or BuildingKind.WardTower
+                or BuildingKind.Waygate => 16,
+            BuildingKind.TownCenter or BuildingKind.PowerPlant => 13,
+            BuildingKind.Academy or BuildingKind.Foundry or BuildingKind.AetherForge => 12,
+            BuildingKind.Farm or BuildingKind.AutomatedFarm => 6.4,
+            BuildingKind.Bridge => 8, BuildingKind.Dock => 6, BuildingKind.MountainPass => 4, _ => 9.6,
+        };
+    }
 
     private static Rect BuildingBounds(Building building)
     {
@@ -41,16 +44,17 @@ public sealed partial class WorldMapControl
 
     private void DrawBuilding(DrawingContext context, Building building)
     {
-        var x = (building.X + .5) * TilePixels; var y = (building.Y + .5) * TilePixels;
+        var x = (building.X + .5) * TilePixels;
+        var y = (building.Y + .5) * TilePixels;
         var bounds = BuildingBounds(building);
         if (!Visible(bounds)) return;
         var race = _settlementStyles.GetValueOrDefault(building.SettlementId);
         if (!building.IsCompleted)
         {
             context.DrawRectangle(StoneBrush, null, new Rect(x - 3, y - 1, 6, 3));
-            context.DrawLine(new Pen(WoodBrush, .4), new(x - 3, y + 2), new(x - 3, y - 6));
-            context.DrawLine(new Pen(WoodBrush, .4), new(x + 3, y + 2), new(x + 3, y - 6));
-            context.DrawLine(new Pen(WoodBrush, .4), new(x - 3, y - 5), new(x + 3, y - 5));
+            context.DrawLine(new Pen(WoodBrush, .4), new Point(x - 3, y + 2), new Point(x - 3, y - 6));
+            context.DrawLine(new Pen(WoodBrush, .4), new Point(x + 3, y + 2), new Point(x + 3, y - 6));
+            context.DrawLine(new Pen(WoodBrush, .4), new Point(x - 3, y - 5), new Point(x + 3, y - 5));
         }
         else
         {
@@ -58,19 +62,27 @@ public sealed partial class WorldMapControl
             if (building.Kind == BuildingKind.Bridge)
             {
                 var horizontal = building.Direction == BridgeDirection.Horizontal;
-                var deck = new Rect(x - (horizontal ? 4 : 2), y - (horizontal ? 2 : 4), horizontal ? 8 : 4, horizontal ? 4 : 8);
+                var deck = new Rect(x - (horizontal ? 4 : 2), y - (horizontal ? 2 : 4), horizontal ? 8 : 4,
+                    horizontal ? 4 : 8);
                 context.DrawRectangle(WoodBrush, new Pen(StoneBrush, .35), deck);
                 for (var i = -3; i <= 3; i++)
-                    context.DrawLine(new Pen(ProgressBrush, .18), horizontal ? new Point(x + i, y - 1.7) : new Point(x - 1.7, y + i), horizontal ? new Point(x + i, y + 1.7) : new Point(x + 1.7, y + i));
+                    context.DrawLine(new Pen(ProgressBrush, .18),
+                        horizontal ? new Point(x + i, y - 1.7) : new Point(x - 1.7, y + i),
+                        horizontal ? new Point(x + i, y + 1.7) : new Point(x + 1.7, y + i));
             }
             else context.DrawImage(BuildingIcon(race, building.Kind), bounds);
         }
+
         if (_zoom >= 3 && (!building.IsCompleted || building.IsUpgrading || building.Health < 100))
         {
-            var fraction = building.IsUpgrading ? building.UpgradeProgress / Math.Max(1, building.UpgradeRequired) : building.IsCompleted ? building.Health / 100 : building.ConstructionProgress / Math.Max(1, building.ConstructionRequired);
+            var fraction = building.IsUpgrading ? building.UpgradeProgress / Math.Max(1, building.UpgradeRequired) :
+                building.IsCompleted ? building.Health / 100 :
+                building.ConstructionProgress / Math.Max(1, building.ConstructionRequired);
             context.DrawRectangle(WoodBrush, null, new Rect(x - 3, y + 2, 6, .45));
-            context.DrawRectangle(building.IsCompleted && building.Health < 50 ? FlameOuter : ProgressBrush, null, new Rect(x - 3, y + 2, 6 * Math.Clamp(fraction, 0, 1), .45));
-            if (building.IsCompleted && building.Health < 50) context.DrawLine(new Pen(WoodBrush, .25), new(x - 1, y - 3), new(x + 1, y + 1));
+            context.DrawRectangle(building.IsCompleted && building.Health < 50 ? FlameOuter : ProgressBrush, null,
+                new Rect(x - 3, y + 2, 6 * Math.Clamp(fraction, 0, 1), .45));
+            if (building.IsCompleted && building.Health < 50)
+                context.DrawLine(new Pen(WoodBrush, .25), new Point(x - 1, y - 3), new Point(x + 1, y + 1));
         }
     }
 
@@ -80,12 +92,15 @@ public sealed partial class WorldMapControl
         var resident = Engine.State.Residents.FirstOrDefault(r => r.Id == id);
         if (resident is null || resident.Agent.Goal.Kind == AgentGoalKind.Idle) return;
         var goal = resident.Agent.Goal;
-        if (goal.TargetX < 0 || goal.TargetY < 0 || goal.TargetX >= Engine.State.Width || goal.TargetY >= Engine.State.Height) return;
+        if (goal.TargetX < 0 || goal.TargetY < 0 || goal.TargetX >= Engine.State.Width ||
+            goal.TargetY >= Engine.State.Height) return;
         var point = GetTileScreenPosition(goal.TargetX, goal.TargetY);
         if (ShowResidentRoute && _selectedRoute.Count > 1)
         {
-            var routePen = new Pen(HealingBrush, 1.8, dashStyle: DashStyle.Dash);
-            var previous = TryGetResidentScreenPosition(id, out var drawn) ? drawn : GetTileScreenPosition(resident.X, resident.Y);
+            var routePen = new Pen(HealingBrush, 1.8, DashStyle.Dash);
+            var previous = TryGetResidentScreenPosition(id, out var drawn)
+                ? drawn
+                : GetTileScreenPosition(resident.X, resident.Y);
             foreach (var step in _selectedRoute.Skip(1))
             {
                 var next = GetTileScreenPosition(step.X, step.Y);
@@ -95,8 +110,9 @@ public sealed partial class WorldMapControl
                 previous = next;
             }
         }
+
         var size = Math.Max(5, _zoom * TilePixels * .65);
-        var pen = new Pen(Brush(0xB9B9DDC4), 1, dashStyle: DashStyle.Dash);
+        var pen = new Pen(Brush(0xB9B9DDC4), 1, DashStyle.Dash);
         context.DrawRectangle(null, pen, new Rect(point.X - size, point.Y - size, size * 2, size * 2), 2, 2);
     }
 
@@ -114,12 +130,17 @@ public sealed partial class WorldMapControl
             _lastPaint = tile;
             return true;
         }
+
         if (!isRoad && _lastPaint is not null) return true;
         try
         {
             if (_lastPaint is null) WorldEditing?.Invoke(this, EventArgs.Empty);
             if (isRoad)
-                Stroke(tile, (x, y) => { if (isRail) Engine.BuildRail(SelectedSettlementId, x, y, 0); else Engine.BuildRoad(SelectedSettlementId, x, y, 0); });
+                Stroke(tile, (x, y) =>
+                {
+                    if (isRail) Engine.BuildRail(SelectedSettlementId, x, y, 0);
+                    else Engine.BuildRoad(SelectedSettlementId, x, y, 0);
+                });
             else
             {
                 var kind = Enum.Parse<BuildingKind>(tool, true);
@@ -128,6 +149,7 @@ public sealed partial class WorldMapControl
                 if (GiftBuildings) Engine.GrantFacility(SelectedSettlementId, kind, tile.X, tile.Y, direction, level);
                 else Engine.BuildFacility(SelectedSettlementId, kind, tile.X, tile.Y, direction, level);
             }
+
             edited = true;
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
@@ -137,6 +159,7 @@ public sealed partial class WorldMapControl
             edited = isRoad;
             ToolError?.Invoke(exception.Message);
         }
+
         _lastPaint = tile;
         return true;
     }

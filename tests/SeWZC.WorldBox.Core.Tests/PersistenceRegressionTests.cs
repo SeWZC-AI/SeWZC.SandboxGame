@@ -10,9 +10,10 @@ internal static class PersistenceRegressionTests
         ("conflicting memory revisions are rejected before allocating identifiers", MemoryRevisions),
         ("archived goals never start missions or consume living supplies", ArchivedMissions),
         ("archived histories remain editable after army and terrain changes", ArchivedReferences),
-        ("directional diplomacy and remembered order identifiers preserve nonzero and zero values", DirectionalStateRoundTrip),
+        ("directional diplomacy and remembered order identifiers preserve nonzero and zero values",
+            DirectionalStateRoundTrip),
         ("directional diplomacy and order snapshots reject invalid or missing fields", InvalidDirectionalState),
-        ("format four rejects legacy format and simulation versions", RejectLegacyVersions)
+        ("format four rejects legacy format and simulation versions", RejectLegacyVersions),
     ];
 
     private static void MaximumAge()
@@ -39,7 +40,7 @@ internal static class PersistenceRegressionTests
         engine.EditResident(id, new ResidentEdit
         {
             Name = "New name",
-            History = [new ResidentHistoryEntry { Text = "Personal\tprose\nremains readable" }]
+            History = [new ResidentHistoryEntry { Text = "Personal\tprose\nremains readable" }],
         });
         var restored = AssertRoundTrip(engine).GetResident(id)!;
         Require(restored.History.Single().Text == "Personal\tprose\nremains readable",
@@ -75,7 +76,7 @@ internal static class PersistenceRegressionTests
         engine.EditResidentMindJson(id, mind.ToJsonString());
         resident = engine.GetResident(id)!;
         Require(resident.Agent.Memory.Any(f => f.Text == "Edited memory only" && f.Id != oldId)
-            && resident.Agent.CarriedMessages.Any(f => f.Id == oldId && f.Text == oldText),
+                && resident.Agent.CarriedMessages.Any(f => f.Id == oldId && f.Text == oldText),
             "Editing one memory also changed the previously prepared message snapshot.");
         AssertRoundTrip(engine);
     }
@@ -89,10 +90,11 @@ internal static class PersistenceRegressionTests
         var target = engine.State.Settlements.Last();
         engine.EditResident(person.Id, new ResidentEdit
         {
-            Age = 999, Health = 0, X = home.X, Y = home.Y, Inventory = new ResourceStock()
+            Age = 999, Health = 0, X = home.X, Y = home.Y, Inventory = new ResourceStock(),
         });
         engine.Tick();
-        Require(engine.State.ArchivedResidents.Any(r => r.Id == person.Id), "The archive scenario did not produce a dead resident.");
+        Require(engine.State.ArchivedResidents.Any(r => r.Id == person.Id),
+            "The archive scenario did not produce a dead resident.");
         var food = home.Resources.Food;
         var inventory = engine.GetResident(person.Id)!.Inventory.Food;
         foreach (var kind in new[] { AgentGoalKind.Trade, AgentGoalKind.DeliverMessage, AgentGoalKind.Petition })
@@ -102,8 +104,10 @@ internal static class PersistenceRegressionTests
             engine.EditResidentMindJson(person.Id, mind.ToJsonString());
             Require(home.Resources.Food == food && engine.GetResident(person.Id)!.Inventory.Food == inventory,
                 "An archived goal edit consumed living food or loaded a deceased courier.");
-            Require(engine.State.Residents.All(r => r.Id != person.Id), "An archive edit revived the deceased resident.");
+            Require(engine.State.Residents.All(r => r.Id != person.Id),
+                "An archive edit revived the deceased resident.");
         }
+
         AssertRoundTrip(engine);
     }
 
@@ -111,14 +115,22 @@ internal static class PersistenceRegressionTests
     {
         var engine = CreateWorld(14);
         engine.SpawnResidents(44, 32, RaceKind.Elf, 14);
-        engine.ConfigureWorld(new WorldRules { Births = false, Hunger = false, Thirst = false, Migration = false, Expansion = false, Secession = false }, false, false);
+        engine.ConfigureWorld(
+            new WorldRules
+            {
+                Births = false, Hunger = false, Thirst = false, Migration = false, Expansion = false, Secession = false,
+            }, false, false);
         foreach (var resident in engine.State.Residents)
         {
             var home = engine.State.Settlements.First(t => t.Id == resident.SettlementId);
             resident.X = resident.FromX = home.X;
             resident.Y = resident.FromY = home.Y;
-            resident.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = home.X, TargetY = home.Y, ReviewTick = 1000, PlayerDirected = true };
+            resident.Agent.Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.Rest, TargetX = home.X, TargetY = home.Y, ReviewTick = 1000, PlayerDirected = true,
+            };
         }
+
         var nations = engine.State.Nations.ToArray();
         engine.SetDiplomacy(nations[0].Id, nations[1].Id, DiplomaticStatus.War);
         engine.Step(30);
@@ -131,7 +143,10 @@ internal static class PersistenceRegressionTests
             "The archive scenario needs a soldier whose army has disbanded.");
         engine.EditResident(archived.Id, new ResidentEdit
         {
-            History = [new ResidentHistoryEntry { Tick = engine.State.Tick, Text = "Remembered after the army disbanded" }]
+            History =
+            [
+                new ResidentHistoryEntry { Tick = engine.State.Tick, Text = "Remembered after the army disbanded" },
+            ],
         });
         engine.PaintTerrain(archived.X, archived.Y, TerrainType.Water, 0);
         Require(!engine.State.Tiles[archived.Y * engine.State.Width + archived.X].IsWalkable,
@@ -153,14 +168,21 @@ internal static class PersistenceRegressionTests
             "Normal army recruitment did not preserve the order's fact identifier.");
         foreach (var (first, second, aggregate) in new[] { (-40, 71, 16), (-71, 40, -16), (100, -100, 0) })
         {
-            relation.FirstOpinion = first; relation.SecondOpinion = second; relation.Opinion = aggregate;
+            relation.FirstOpinion = first;
+            relation.SecondOpinion = second;
+            relation.Opinion = aggregate;
             var restored = AssertRoundTrip(engine);
             var restoredRelation = restored.State.Diplomacies.Single();
-            Require(restoredRelation.FirstOpinion == first && restoredRelation.SecondOpinion == second && restoredRelation.Opinion == aggregate,
+            Require(
+                restoredRelation.FirstOpinion == first && restoredRelation.SecondOpinion == second &&
+                restoredRelation.Opinion == aggregate,
                 "Saving flattened asymmetric opinions or changed a rounded aggregate.");
-            Require(restored.State.Armies.Select(a => a.LastOrderFactId).SequenceEqual(engine.State.Armies.Select(a => a.LastOrderFactId)),
+            Require(
+                restored.State.Armies.Select(a => a.LastOrderFactId)
+                    .SequenceEqual(engine.State.Armies.Select(a => a.LastOrderFactId)),
                 "Saving changed the army's remembered order identity.");
         }
+
         // Memory has bounded retention; an army must retain its ordering marker after the fact expires.
         var rememberedId = engine.State.Armies[0].LastOrderFactId;
         foreach (var resident in engine.State.Residents.Concat(engine.State.ArchivedResidents))
@@ -168,23 +190,29 @@ internal static class PersistenceRegressionTests
             resident.Agent.Memory.RemoveAll(f => f.Id == rememberedId);
             resident.Agent.CarriedMessages.RemoveAll(f => f.Id == rememberedId);
         }
+
         foreach (var town in engine.State.Settlements) town.PublicKnowledge.RemoveAll(f => f.Id == rememberedId);
         foreach (var message in engine.State.PendingMessages) message.Facts.RemoveAll(f => f.Id == rememberedId);
         Require(AssertRoundTrip(engine).State.Armies[0].LastOrderFactId == rememberedId,
             "An expired fact invalidated the army's persistent order marker.");
 
-        relation.FirstOpinion = 0; relation.SecondOpinion = 0; relation.Opinion = 0;
+        relation.FirstOpinion = 0;
+        relation.SecondOpinion = 0;
+        relation.Opinion = 0;
         foreach (var army in engine.State.Armies) army.LastOrderFactId = 0;
         var saved = JsonNode.Parse(engine.ExportJson())!;
         Require(saved["FormatVersion"]!.GetValue<int>() == 16 && saved["SimulationVersion"]!.GetValue<int>() == 15,
             "New worlds did not explicitly save both current version fields.");
         Require(saved["Diplomacies"]![0]!["FirstOpinion"]?.GetValue<int>() == 0
-            && saved["Diplomacies"]![0]!["SecondOpinion"]?.GetValue<int>() == 0
-            && saved["Armies"]!.AsArray().All(a => a!["LastOrderFactId"]?.GetValue<int>() == 0),
+                && saved["Diplomacies"]![0]!["SecondOpinion"]?.GetValue<int>() == 0
+                && saved["Armies"]!.AsArray().All(a => a!["LastOrderFactId"]?.GetValue<int>() == 0),
             "A required field with a legal zero value was omitted from the save.");
         var zeroRestored = AssertRoundTrip(engine);
-        Require(zeroRestored.State.Diplomacies.Single().FirstOpinion == 0 && zeroRestored.State.Diplomacies.Single().SecondOpinion == 0
-            && zeroRestored.State.Armies.All(a => a.LastOrderFactId == 0), "Legal zero values did not survive loading.");
+        Require(zeroRestored.State.Diplomacies.Single().FirstOpinion == 0 && zeroRestored.State.Diplomacies.Single()
+                                                                              .SecondOpinion == 0
+                                                                          && zeroRestored.State.Armies.All(a =>
+                                                                              a.LastOrderFactId == 0),
+            "Legal zero values did not survive loading.");
     }
 
     private static void InvalidDirectionalState()
@@ -220,12 +248,16 @@ internal static class PersistenceRegressionTests
     private static void RejectLegacyVersions()
     {
         var engine = CreateMilitaryWorld();
-        foreach (var (format, simulation) in new[] { (3, 5), (5, 3), (3, 3), (4, 5), (5, 4), (4, 4), (5, 6), (6, 5), (5, 5), (6, 6), (6, 7), (7, 6), (7, 7), (8, 7), (7, 8), (9, 9), (10, 9), (9, 10), (12, 12) })
+        foreach (var (format, simulation) in new[]
+                 {
+                     (3, 5), (5, 3), (3, 3), (4, 5), (5, 4), (4, 4), (5, 6), (6, 5), (5, 5), (6, 6), (6, 7), (7, 6),
+                     (7, 7), (8, 7), (7, 8), (9, 9), (10, 9), (9, 10), (12, 12),
+                 })
             RejectInvalidSave(engine, json =>
-            {
-                json["FormatVersion"] = format;
-                json["SimulationVersion"] = simulation;
-            }, $"Legacy format/simulation versions {format}/{simulation} were accepted.");
+                {
+                    json["FormatVersion"] = format;
+                    json["SimulationVersion"] = simulation;
+                }, $"Legacy format/simulation versions {format}/{simulation} were accepted.");
     }
 
     private static WorldEngine CreateMilitaryWorld()
@@ -234,21 +266,31 @@ internal static class PersistenceRegressionTests
         engine.SpawnResidents(44, 32, RaceKind.Elf, 14);
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false, Construction = false, Research = false,
-            Expansion = false, Trade = false, Wars = false, Alliances = false, Peace = false, Migration = false, Secession = false
+            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false, Construction = false,
+            Research = false,
+            Expansion = false, Trade = false, Wars = false, Alliances = false, Peace = false, Migration = false,
+            Secession = false,
         }, false, false);
         foreach (var resident in engine.State.Residents)
         {
             var home = engine.State.Settlements.First(t => t.Id == resident.SettlementId);
-            resident.X = resident.FromX = home.X; resident.Y = resident.FromY = home.Y;
-            resident.Age = 24; resident.Health = 100; resident.MagicTraining = 0;
-            resident.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = home.X, TargetY = home.Y,
-                ReviewTick = 1000, PlayerDirected = true };
+            resident.X = resident.FromX = home.X;
+            resident.Y = resident.FromY = home.Y;
+            resident.Age = 24;
+            resident.Health = 100;
+            resident.MagicTraining = 0;
+            resident.Agent.Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.Rest, TargetX = home.X, TargetY = home.Y,
+                ReviewTick = 1000, PlayerDirected = true,
+            };
         }
+
         var nations = engine.State.Nations.ToArray();
         engine.SetDiplomacy(nations[0].Id, nations[1].Id, DiplomaticStatus.War);
         engine.Step(30);
-        Require(engine.State.Armies.Count == 2, "The persistence fixture did not recruit both armies through normal commands.");
+        Require(engine.State.Armies.Count == 2,
+            "The persistence fixture did not recruit both armies through normal commands.");
         return engine;
     }
 
@@ -258,8 +300,15 @@ internal static class PersistenceRegressionTests
         var candidate = JsonNode.Parse(before)!;
         change(candidate);
         var rejected = false;
-        try { WorldEngine.ImportJson(candidate.ToJsonString()); }
-        catch (ArgumentException) { rejected = true; }
+        try
+        {
+            WorldEngine.ImportJson(candidate.ToJsonString());
+        }
+        catch (ArgumentException)
+        {
+            rejected = true;
+        }
+
         Require(rejected, reason);
         Require(engine.ExportJson() == before, "Rejected import modified the existing world.");
     }
@@ -268,34 +317,54 @@ internal static class PersistenceRegressionTests
     {
         var engine = WorldEngine.Create(42, 64, 64, false);
         engine.State.NaturalDisasters = false;
-        foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 80; }
+        foreach (var tile in engine.State.Tiles)
+        {
+            tile.Terrain = TerrainType.Grass;
+            tile.Fertility = 80;
+        }
+
         engine.SpawnResidents(12, 32, RaceKind.Human, population);
         return engine;
     }
 
-    private static JsonObject MissionGoal(WorldEngine engine, Settlement destination, AgentGoalKind kind) => new()
+    private static JsonObject MissionGoal(WorldEngine engine, Settlement destination, AgentGoalKind kind)
     {
-        ["Kind"] = (int)kind, ["TargetX"] = destination.X, ["TargetY"] = destination.Y,
-        ["TargetSettlementId"] = destination.Id, ["StartedTick"] = engine.State.Tick,
-        ["ReviewTick"] = engine.State.Tick + 24, ["PlayerDirected"] = true, ["Reason"] = "An edited intention"
-    };
+        return new JsonObject
+        {
+            ["Kind"] = (int)kind, ["TargetX"] = destination.X, ["TargetY"] = destination.Y,
+            ["TargetSettlementId"] = destination.Id, ["StartedTick"] = engine.State.Tick,
+            ["ReviewTick"] = engine.State.Tick + 24, ["PlayerDirected"] = true, ["Reason"] = "An edited intention",
+        };
+    }
 
     private static void RejectUnchanged(WorldEngine engine, Action action)
     {
         var before = engine.ExportJson();
         var rejected = false;
-        try { action(); }
-        catch (ArgumentException) { rejected = true; }
-        Require(rejected && engine.ExportJson() == before, "An invalid resident edit changed world state or consumed identifiers.");
+        try
+        {
+            action();
+        }
+        catch (ArgumentException)
+        {
+            rejected = true;
+        }
+
+        Require(rejected && engine.ExportJson() == before,
+            "An invalid resident edit changed world state or consumed identifiers.");
     }
 
     private static WorldEngine AssertRoundTrip(WorldEngine engine)
     {
         var saved = engine.ExportJson();
         var restored = WorldEngine.ImportJson(saved);
-        Require(restored.ExportJson() == saved, "A successful resident edit did not survive an exact save/load roundtrip.");
+        Require(restored.ExportJson() == saved,
+            "A successful resident edit did not survive an exact save/load roundtrip.");
         return restored;
     }
 
-    private static void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
+    private static void Require(bool condition, string message)
+    {
+        if (!condition) throw new InvalidOperationException(message);
+    }
 }

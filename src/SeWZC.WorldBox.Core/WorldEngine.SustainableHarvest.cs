@@ -3,7 +3,10 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     /// <summary>按陆地肥力计算自然资源恢复上限，水域地格返回零。</summary>
-    public static double NaturalResourceCapacity(Tile tile) => IsWaterTerrain(tile.Terrain) ? 0 : 50 + tile.Fertility;
+    public static double NaturalResourceCapacity(Tile tile)
+    {
+        return IsWaterTerrain(tile.Terrain) ? 0 : 50 + tile.Fertility;
+    }
 
     private static double WildlifeHarvestEfficiency(Tile tile, WildlifeKind kind)
     {
@@ -15,11 +18,15 @@ public sealed partial class WorldEngine
     }
 
     private static double WildlifeHarvestAmount(Tile tile, WildlifeKind kind, double effort)
-        => Math.Min(tile.AnimalPopulation(kind) * .1, Math.Max(0, effort) * WildlifeHarvestEfficiency(tile, kind));
+    {
+        return Math.Min(tile.AnimalPopulation(kind) * .1, Math.Max(0, effort) * WildlifeHarvestEfficiency(tile, kind));
+    }
 
     private static double PlantStock(Tile tile, bool wood = false)
-        => tile.ResourceAmount * (tile.Improvement == LandImprovement.Farmland && !wood ? 1
+    {
+        return tile.ResourceAmount * (tile.Improvement == LandImprovement.Farmland && !wood ? 1
             : wood ? tile.Plants.Trees : tile.Plants.Shrubs + tile.Plants.Grass + tile.Plants.Reeds);
+    }
 
     private static double NaturalPlantHarvestEfficiency(Tile tile, bool wood = false)
     {
@@ -32,21 +39,26 @@ public sealed partial class WorldEngine
     private static double HarvestPlants(Tile tile, double desired, bool wood = false)
     {
         var stock = PlantStock(tile, wood);
-        var amount = Math.Min(stock * (tile.Improvement == LandImprovement.Farmland && !wood ? 1 : .1), Math.Max(0, desired));
+        var amount = Math.Min(stock * (tile.Improvement == LandImprovement.Farmland && !wood ? 1 : .1),
+            Math.Max(0, desired));
         if (amount <= 0) return 0;
-        var before = tile.ResourceAmount; tile.ResourceAmount -= amount;
+        var before = tile.ResourceAmount;
+        tile.ResourceAmount -= amount;
         if (tile.Improvement != LandImprovement.Farmland)
         {
             // 覆盖比例以共享资源存量为基数；仅减少总存量会连带减少未采集物种。
             var plants = tile.Plants;
             for (var species = 0; species < 4; species++)
             {
-                var kind = (PlantKind)species; var quantity = plants.Get(kind) * before;
+                var kind = (PlantKind)species;
+                var quantity = plants.Get(kind) * before;
                 if (wood == (kind == PlantKind.Trees)) quantity -= amount * quantity / stock;
                 plants.Set(kind, Math.Max(0, quantity) / tile.ResourceAmount);
             }
+
             tile.Plants = plants;
         }
+
         return amount;
     }
 
@@ -60,6 +72,6 @@ public sealed partial class WorldEngine
     {
         var source = person.Agent.Goal.TargetEntityId - 1;
         return source >= 0 && source < State.Tiles.Length
-            && WildlifeSiteProductive(State.Tiles[source], person.Agent.Goal.Kind == AgentGoalKind.Fish);
+                           && WildlifeSiteProductive(State.Tiles[source], person.Agent.Goal.Kind == AgentGoalKind.Fish);
     }
 }

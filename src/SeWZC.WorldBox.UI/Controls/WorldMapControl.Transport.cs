@@ -6,14 +6,18 @@ namespace SeWZC.WorldBox.UI.Controls;
 
 public sealed partial class WorldMapControl
 {
-    private bool ShowVehicle(Resident person) => person.TravelMode == TravelMode.Aircraft
-        || person.TravelMode == TravelMode.Boat && Engine is not null && WorldEngine.IsWaterTerrain(Engine.State.Tiles[person.Y * Engine.State.Width + person.X].Terrain);
+    private bool ShowVehicle(Resident person)
+    {
+        return person.TravelMode == TravelMode.Aircraft
+               || (person.TravelMode == TravelMode.Boat && Engine is not null &&
+                   WorldEngine.IsWaterTerrain(Engine.State.Tiles[person.Y * Engine.State.Width + person.X].Terrain));
+    }
 
     private void DrawVehicles(DrawingContext context, WorldState state)
     {
         foreach (var person in VisibleResidents(state))
         {
-            if (!ShowVehicle(person) || _zoom >= 3 && person.TravelMode != TravelMode.Aircraft) continue;
+            if (!ShowVehicle(person) || (_zoom >= 3 && person.TravelMode != TravelMode.Aircraft)) continue;
             var point = ResidentMapPosition(person.Id, person.X, person.Y);
             if (!Visible(new Rect(point.X - 6, point.Y - 6, 12, 12))) continue;
             DrawVehicle(context, person, point);
@@ -38,7 +42,8 @@ public sealed partial class WorldMapControl
         {
             context.DrawEllipse(WoodBrush, null, point, 4, 1.7);
             context.DrawLine(new Pen(MessageBrush, .5), new Point(point.X, point.Y), new Point(point.X, point.Y - 5));
-            Triangle(context, MessageBrush, new(point.X, point.Y - 5), new(point.X, point.Y - 1), new(point.X + 3, point.Y - 1));
+            Triangle(context, MessageBrush, new Point(point.X, point.Y - 5), new Point(point.X, point.Y - 1),
+                new Point(point.X + 3, point.Y - 1));
         }
     }
 }

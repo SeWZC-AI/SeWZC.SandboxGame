@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
@@ -15,7 +16,7 @@ internal static class SimulationPerformance
             var index = Array.IndexOf(args, name);
             if (index < 0) return fallback;
             if (index + 1 >= args.Length || !int.TryParse(args[index + 1], out var value)
-                || value < minimum || value > maximum)
+                                         || value < minimum || value > maximum)
                 throw new ArgumentException($"{name} requires an integer in [{minimum}, {maximum}].");
             return value;
         }
@@ -55,12 +56,17 @@ internal static class SimulationPerformance
                 durations[tick] = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
                 allocations[tick] = GC.GetAllocatedBytesForCurrentThread() - allocated;
             }
+
             var elapsed = Stopwatch.GetElapsedTime(total).TotalMilliseconds;
             process.Refresh();
             var cpuMs = (process.TotalProcessorTime - cpuBefore).TotalMilliseconds;
             var collections = Enumerable.Range(0, 3).Select(i => GC.CollectionCount(i) - gcBefore[i]).ToArray();
             var ordered = durations.Order().ToArray();
-            double Percentile(double p) => ordered[Math.Clamp((int)Math.Ceiling(p * ticks) - 1, 0, ticks - 1)];
+
+            double Percentile(double p)
+            {
+                return ordered[Math.Clamp((int)Math.Ceiling(p * ticks) - 1, 0, ticks - 1)];
+            }
 
             // Serialization and validation are outside the timed simulation region.
             var save = engine.ExportJson();
@@ -80,23 +86,24 @@ internal static class SimulationPerformance
                 nations = engine.State.Nations.Count, armies = engine.State.Armies.Count,
                 rememberedFacts = engine.State.Residents.Sum(r => r.Agent.Memory.Count),
                 saveBytes = bytes.Length, saveWithinLimit = bytes.Length <= WorldEngine.MaxSaveBytes,
-                saveSha256 = digest, tickMs = durations, tickAllocatedBytes = allocations
+                saveSha256 = digest, tickMs = durations, tickAllocatedBytes = allocations,
             });
             Console.WriteLine($"RUN {repetition + 1}/{repetitions}: {durations.Average():F3} ms/tick, " +
-                $"p95 {Percentile(.95):F3} ms, max {ordered[^1]:F3} ms; " +
-                $"{allocations.Average() / 1024:F1} KiB/tick; final population {engine.State.Population}.");
+                              $"p95 {Percentile(.95):F3} ms, max {ordered[^1]:F3} ms; " +
+                              $"{allocations.Average() / 1024:F1} KiB/tick; final population {engine.State.Population}.");
         }
 
         var report = JsonSerializer.Serialize(new
         {
             timestampUtc = DateTimeOffset.UtcNow, framework = RuntimeInformation.FrameworkDescription,
             os = RuntimeInformation.OSDescription, architecture = RuntimeInformation.ProcessArchitecture.ToString(),
-            processorCount = Environment.ProcessorCount, serverGc = System.Runtime.GCSettings.IsServerGC,
+            processorCount = Environment.ProcessorCount, serverGc = GCSettings.IsServerGC,
             seed = 451, width = 256, height = 256, initialPopulation = population, initialNations = 16,
             wars = wars ? 8 : 0, terrain = "flat grass", naturalDisasters = false,
             warmupTicks = warmup, measuredTicks = ticks, repetitions,
-            limitation = "Native simulation only. Timings exclude generation, warmup, serialization, UI and browser execution. Sampling adds overhead; use a separate untraced run for timing.",
-            measurements
+            limitation =
+                "Native simulation only. Timings exclude generation, warmup, serialization, UI and browser execution. Sampling adds overhead; use a separate untraced run for timing.",
+            measurements,
         }, new JsonSerializerOptions { WriteIndented = true });
         if (outputIndex >= 0)
         {
@@ -106,6 +113,7 @@ internal static class SimulationPerformance
             Console.WriteLine($"REPORT {output}");
         }
         else Console.WriteLine(report);
+
         return 0;
     }
 }

@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using SeWZC.WorldBox.Core;
 
@@ -11,46 +12,27 @@ namespace SeWZC.WorldBox.UI.Controls;
 
 public sealed class ResearchGraphControl : UserControl
 {
-    private readonly Canvas _surface = new();
-    private readonly ScrollViewer _scroll;
     private readonly Connections _connections;
-    private readonly Dictionary<ResearchKind, Button> _nodes;
     private readonly List<TextBlock> _laneLabels = [];
+    private readonly Dictionary<ResearchKind, Button> _nodes;
+    private readonly ScrollViewer _scroll;
+    private readonly Canvas _surface = new();
+    private bool _dragging;
     private Point? _press;
     private Vector _pressOffset;
-    private bool _dragging;
-    public ResearchTreeLayout Layout { get; private set; }
-    public double Zoom { get; private set; } = 1;
-    public Vector Offset => _scroll.Offset;
-    public ResearchKind Selected { get; set; }
-    public bool ShowFullPath { get; set; }
-    public Func<ResearchKind, bool> IsCompleted { get; set; } = _ => false;
-
-    public readonly record struct ViewportState(double Zoom, Vector Offset, bool ShowFullPath);
-
-    public ViewportState CaptureViewport() => new(Zoom, Offset, ShowFullPath);
-
-    public void RestoreViewport(ViewportState viewport, Func<bool>? isCurrent = null)
-    {
-        Zoom = Math.Clamp(viewport.Zoom, .12, 1.5); ShowFullPath = viewport.ShowFullPath;
-        ApplyGeometry(); _scroll.Offset = viewport.Offset;
-        // The zoom changes the scroll extent during the next layout pass.
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        {
-            if ((isCurrent?.Invoke() ?? true) && TopLevel.GetTopLevel(this) is not null)
-                _scroll.Offset = viewport.Offset;
-        }, Avalonia.Threading.DispatcherPriority.Loaded);
-    }
 
     public ResearchGraphControl(Dictionary<ResearchKind, Button> nodes)
     {
         _nodes = nodes;
-        Layout = new(ResearchRules.All.Where(d => ResearchRules.Route(false).Contains(d.Kind)));
+        Layout = new ResearchTreeLayout(ResearchRules.All.Where(d => ResearchRules.Route(false).Contains(d.Kind)));
         _connections = new Connections(this) { IsHitTestVisible = false };
         _surface.Children.Add(_connections);
         foreach (var node in nodes.Values) _surface.Children.Add(node);
-        _scroll = new ScrollViewer { Content = _surface, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        _scroll = new ScrollViewer
+        {
+            Content = _surface, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+        };
         Content = _scroll;
         Background = Brush.Parse("#0D1822");
         ClipToBounds = true;
@@ -62,15 +44,43 @@ public sealed class ResearchGraphControl : UserControl
             // Capturing a dragged node releases its button first. That bubbled event
             // must not cancel the graph's new capture and truncate the gesture.
             if (e.Source != this) return;
-            _press = null; _dragging = false;
+            _press = null;
+            _dragging = false;
         });
         ApplyGeometry();
     }
 
+    public ResearchTreeLayout Layout { get; private set; }
+    public double Zoom { get; private set; } = 1;
+    public Vector Offset => _scroll.Offset;
+    public ResearchKind Selected { get; set; }
+    public bool ShowFullPath { get; set; }
+    public Func<ResearchKind, bool> IsCompleted { get; set; } = _ => false;
+
+    public ViewportState CaptureViewport()
+    {
+        return new ViewportState(Zoom, Offset, ShowFullPath);
+    }
+
+    public void RestoreViewport(ViewportState viewport, Func<bool>? isCurrent = null)
+    {
+        Zoom = Math.Clamp(viewport.Zoom, .12, 1.5);
+        ShowFullPath = viewport.ShowFullPath;
+        ApplyGeometry();
+        _scroll.Offset = viewport.Offset;
+        // The zoom changes the scroll extent during the next layout pass.
+        Dispatcher.UIThread.Post(() =>
+        {
+            if ((isCurrent?.Invoke() ?? true) && TopLevel.GetTopLevel(this) is not null)
+                _scroll.Offset = viewport.Offset;
+        }, DispatcherPriority.Loaded);
+    }
+
     public void ShowRoute(IEnumerable<ResearchDefinition> definitions)
     {
-        Layout = new(definitions);
-        ApplyGeometry(); _scroll.Offset = default;
+        Layout = new ResearchTreeLayout(definitions);
+        ApplyGeometry();
+        _scroll.Offset = default;
     }
 
     public void SetZoom(double zoom)
@@ -95,7 +105,10 @@ public sealed class ResearchGraphControl : UserControl
             bounds.Center.Y * Zoom - _scroll.Viewport.Height / 2);
     }
 
-    public void RefreshConnections() => _connections.InvalidateVisual();
+    public void RefreshConnections()
+    {
+        _connections.InvalidateVisual();
+    }
 
     private void ApplyGeometry()
     {
@@ -106,23 +119,30 @@ public sealed class ResearchGraphControl : UserControl
         foreach (var lane in Layout.Lanes)
         {
             var label = new TextBlock { Text = lane.Name, FontSize = 14 * Zoom, Foreground = Brush.Parse("#8EB6C6") };
-            Canvas.SetLeft(label, (lane.Left + 10) * Zoom); Canvas.SetTop(label, 12 * Zoom);
-            _laneLabels.Add(label); _surface.Children.Add(label);
+            Canvas.SetLeft(label, (lane.Left + 10) * Zoom);
+            Canvas.SetTop(label, 12 * Zoom);
+            _laneLabels.Add(label);
+            _surface.Children.Add(label);
         }
+
         foreach (var (kind, node) in _nodes)
         {
             node.IsVisible = Layout.Nodes.TryGetValue(kind, out var rect);
             if (!node.IsVisible) continue;
-            Canvas.SetLeft(node, rect.X * Zoom); Canvas.SetTop(node, rect.Y * Zoom);
-            node.Width = rect.Width * Zoom; node.Height = rect.Height * Zoom;
+            Canvas.SetLeft(node, rect.X * Zoom);
+            Canvas.SetTop(node, rect.Y * Zoom);
+            node.Width = rect.Width * Zoom;
+            node.Height = rect.Height * Zoom;
             node.Padding = new Thickness(8 * Zoom, 5 * Zoom);
             if (node.Content is StackPanel content)
             {
                 content.Spacing = 2 * Zoom;
                 for (var i = 0; i < content.Children.Count; i++)
-                    if (content.Children[i] is TextBlock text) text.FontSize = (i == 0 ? 13 : 11) * Zoom;
+                    if (content.Children[i] is TextBlock text)
+                        text.FontSize = (i == 0 ? 13 : 11) * Zoom;
             }
         }
+
         RefreshConnections();
     }
 
@@ -130,7 +150,9 @@ public sealed class ResearchGraphControl : UserControl
     {
         if (e.Pointer.Type != PointerType.Touch && !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
         if (e.Source is Control c && (c is ScrollBar || c.GetVisualAncestors().Any(a => a is ScrollBar))) return;
-        _press = e.GetPosition(this); _pressOffset = _scroll.Offset; _dragging = false;
+        _press = e.GetPosition(this);
+        _pressOffset = _scroll.Offset;
+        _dragging = false;
     }
 
     private void MoveDrag(object? sender, PointerEventArgs e)
@@ -142,44 +164,64 @@ public sealed class ResearchGraphControl : UserControl
         // A handled pointer event still reaches Avalonia's gesture recognizers.
         // Once the graph owns a drag, nested scroll views must not capture it again.
         e.PreventGestureRecognition();
-        _dragging = true; e.Pointer.Capture(this);
+        _dragging = true;
+        e.Pointer.Capture(this);
         _scroll.Offset = _pressOffset - delta;
         e.Handled = true;
     }
 
     private void EndDrag(object? sender, PointerReleasedEventArgs e)
     {
-        if (_dragging) { e.Handled = true; e.Pointer.Capture(null); }
-        _press = null; _dragging = false;
+        if (_dragging)
+        {
+            e.Handled = true;
+            e.Pointer.Capture(null);
+        }
+
+        _press = null;
+        _dragging = false;
     }
+
+    public readonly record struct ViewportState(double Zoom, Vector Offset, bool ShowFullPath);
 
     private sealed class Connections(ResearchGraphControl owner) : Control
     {
-        private static readonly IBrush Locked = Brush.Parse("#496075"), Done = Brush.Parse("#65B995"),
-            Path = Brush.Parse("#F1CD83"), Magic = Brush.Parse("#A996D8");
+        private static readonly IBrush Locked = Brush.Parse("#496075"),
+            Done = Brush.Parse("#65B995"),
+            Path = Brush.Parse("#F1CD83"),
+            Magic = Brush.Parse("#A996D8");
+
         public override void Render(DrawingContext context)
         {
             var ancestors = new HashSet<ResearchKind>();
+
             void Visit(ResearchKind kind)
             {
                 if (!ancestors.Add(kind)) return;
                 foreach (var p in ResearchRules.For(kind).Prerequisites) Visit(p);
             }
+
             if (owner.ShowFullPath) Visit(owner.Selected);
             else
             {
                 ancestors.Add(owner.Selected);
                 foreach (var p in ResearchRules.For(owner.Selected).Prerequisites) ancestors.Add(p);
             }
+
             using var scale = context.PushTransform(Matrix.CreateScale(owner.Zoom, owner.Zoom));
             var laneBottom = owner.Layout.Nodes.Max(n => n.Value.Bottom) + 16;
             foreach (var lane in owner.Layout.Lanes)
-                context.DrawRectangle(Brush.Parse("#10212D"), null, new Rect(lane.Left, 38, lane.Width, laneBottom - 38), 8, 8);
+                context.DrawRectangle(Brush.Parse("#10212D"), null,
+                    new Rect(lane.Left, 38, lane.Width, laneBottom - 38), 8, 8);
             // Draw the selected prerequisite path last so crossings remain easy to follow.
-            foreach (var edge in owner.Layout.Edges.OrderBy(e => ancestors.Contains(e.To) && ancestors.Contains(e.From)))
+            foreach (var edge in
+                     owner.Layout.Edges.OrderBy(e => ancestors.Contains(e.To) && ancestors.Contains(e.From)))
             {
-                var selected = owner.ShowFullPath ? ancestors.Contains(edge.To) && ancestors.Contains(edge.From) : edge.To == owner.Selected;
-                var brush = selected ? Path : owner.IsCompleted(edge.From) && owner.IsCompleted(edge.To) ? Done
+                var selected = owner.ShowFullPath
+                    ? ancestors.Contains(edge.To) && ancestors.Contains(edge.From)
+                    : edge.To == owner.Selected;
+                var brush = selected ? Path
+                    : owner.IsCompleted(edge.From) && owner.IsCompleted(edge.To) ? Done
                     : ResearchRules.For(edge.To).Magic ? Magic : Locked;
                 var pen = new Pen(brush, selected ? 2.4 : 1.6);
                 var geometry = new StreamGeometry();
@@ -188,9 +230,12 @@ public sealed class ResearchGraphControl : UserControl
                     path.BeginFigure(edge.Points[0], false);
                     if (edge.Points.Length == 4)
                         path.CubicBezierTo(edge.Points[1], edge.Points[2], edge.Points[3]);
-                    else foreach (var point in edge.Points.Skip(1)) path.LineTo(point);
+                    else
+                        foreach (var point in edge.Points.Skip(1))
+                            path.LineTo(point);
                     path.EndFigure(false);
                 }
+
                 context.DrawGeometry(null, pen, geometry);
                 var tip = edge.Points[^1];
                 context.DrawLine(pen, tip, tip + new Vector(-4, -6));

@@ -6,12 +6,22 @@ namespace SeWZC.WorldBox.UI.Controls;
 
 public sealed partial class WorldMapControl
 {
-    private static readonly uint[] TownHighlightColors = [0xAA5CAEE8, 0xAA9ADA72, 0xAAE1AE60, 0xAAC293E0, 0xAAE48090, 0xAA62CFBC];
+    private static readonly uint[] TownHighlightColors =
+        [0xAA5CAEE8, 0xAA9ADA72, 0xAAE1AE60, 0xAAC293E0, 0xAAE48090, 0xAA62CFBC];
+
     private static readonly IBrush[] TownHighlights = TownHighlightColors.Select(Brush).ToArray();
-    private static readonly IBrush[] WaterHighlights = Enumerable.Range(0, 141).Select(i => Brush(((uint)(40 + i) << 24) | 0x52BDEB)).ToArray();
-    private static readonly IBrush[] FertilityHighlights = Enumerable.Range(0, 101).Select(i => Brush(((uint)(40 + i * 1.4) << 24) | 0x89D773)).ToArray();
+
+    private static readonly IBrush[] WaterHighlights =
+        Enumerable.Range(0, 141).Select(i => Brush(((uint)(40 + i) << 24) | 0x52BDEB)).ToArray();
+
+    private static readonly IBrush[] FertilityHighlights =
+        Enumerable.Range(0, 101).Select(i => Brush(((uint)(40 + i * 1.4) << 24) | 0x89D773)).ToArray();
+
     private static readonly IBrush FireHighlight = Brush(0xBBF07858), DroughtHighlight = Brush(0xAADEB65C);
-    private static readonly Pen WorkingHighlight = new(Brush(0xFF79D58F), 1), RestingHighlight = new(Brush(0xFFB6A2EF), 1), TravelHighlight = new(Brush(0xFF65C8FA), 1);
+
+    private static readonly Pen WorkingHighlight = new(Brush(0xFF79D58F)),
+        RestingHighlight = new(Brush(0xFFB6A2EF)),
+        TravelHighlight = new(Brush(0xFF65C8FA));
 
     private void DrawExtraHighlights(DrawingContext context, WorldState state)
     {
@@ -19,15 +29,20 @@ public sealed partial class WorldMapControl
         {
             foreach (var resident in VisibleResidents(state))
             {
-                if (Overlay == 9 && resident.TravelMode != TravelMode.Boat && resident.Agent.Goal.Kind != AgentGoalKind.Fish) continue;
+                if (Overlay == 9 && resident.TravelMode != TravelMode.Boat &&
+                    resident.Agent.Goal.Kind != AgentGoalKind.Fish) continue;
                 var point = ResidentMapPosition(resident.Id, resident.X, resident.Y);
                 var pen = resident.Activity is ResidentActivity.Working or ResidentActivity.Studying ? WorkingHighlight
                     : resident.Activity == ResidentActivity.Resting ? RestingHighlight : TravelHighlight;
                 context.DrawRectangle(null, pen, new Rect(point.X - 3, point.Y - 3, 6, 6));
-                if (Overlay == 10) context.DrawImage(ActivityPreview(Engine!.GetResidentTaskIcon(resident)), new Rect(point.X + 3, point.Y - 4, 3, 3));
+                if (Overlay == 10)
+                    context.DrawImage(ActivityPreview(Engine!.GetResidentTaskIcon(resident)),
+                        new Rect(point.X + 3, point.Y - 4, 3, 3));
             }
+
             return;
         }
+
         var viewport = VisibleTiles(state);
         for (var y = viewport.Top; y <= viewport.Bottom; y++)
         for (var x = viewport.Left; x <= viewport.Right; x++)
@@ -51,6 +66,7 @@ public sealed partial class WorldMapControl
                 if (tile.FireTicks == 0 && tile.DroughtTicks == 0) continue;
                 brush = tile.FireTicks > 0 ? FireHighlight : DroughtHighlight;
             }
+
             context.DrawRectangle(brush, null, new Rect(x * TilePixels, y * TilePixels, TilePixels, TilePixels));
         }
     }
