@@ -147,6 +147,12 @@ public sealed partial class WorldEngine
         // Mission food stays with the carrier until its recorded destination is reached.
         if (person.Agent.DestinationSettlementId != 0
             && person.Agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage or AgentGoalKind.Petition) return;
+        // Keep cargo assigned to a real local job. Adjacent home tiles are also
+        // work sites; passing them must not unload freshly collected inputs.
+        var assigned = person.Agent.Goal.Kind == AgentGoalKind.Work ? FindBuilding(person.Agent.Goal.TargetEntityId) : null;
+        var recipe = assigned is { IsCompleted: true, Enabled: true } ? AdvancementRules.For(assigned.Kind) : null;
+        if (assigned is not null && assigned.SettlementId == home.Id
+            && (recipe is not null || IsHusbandry(assigned.Kind) || ExpansionSupply(assigned.Kind) is not null || assigned.Health < 50)) return;
         var water = Math.Max(0, person.Inventory.Water - WaterReserve(person));
         home.Resources.Water += water; person.Inventory.Water -= water;
         var food = Math.Max(0, person.Inventory.Food - TravelReserve(person));
@@ -308,7 +314,7 @@ public sealed partial class WorldEngine
             if (site >= 0) choices.Add(new(AgentGoalKind.Work, site % State.Width, site / State.Width,
                 58 + personality.Diligence * 12, person.Profession == Profession.Lumberjack ? "看见可采木材，前往伐木" : "看见矿石露头，前往开采"));
         }
-        if (person.Age >= 14 && (person.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner or Profession.Builder or Profession.Scholar or Profession.Mage || person.Profession >= Profession.Engineer)
+        if (person.Age >= 14 && (person.Profession is Profession.Farmer or Profession.Fisher or Profession.Lumberjack or Profession.Miner or Profession.Builder or Profession.Scholar or Profession.Mage || person.Profession >= Profession.Engineer)
             && FindLocalWorkTarget(person) is { } work)
         {
             var kind = work.Kind == BuildingKind.Academy && person.Profession == Profession.Scholar ? AgentGoalKind.Study
@@ -372,6 +378,7 @@ public sealed partial class WorldEngine
             TargetSettlementId = selected.SettlementId, TargetEntityId = selected.EntityId,
             StartedTick = State.Tick, ReviewTick = State.Tick + 12, Reason = reason
         };
+        ChangeWorkReservation(previous, agent.Goal);
         agent.NextThinkTick = State.Tick + 12;
         agent.Decisions.Add(new AgentDecision
         {
@@ -505,7 +512,7 @@ public sealed partial class WorldEngine
             ActOnAgentMission(person, home);
             return;
         }
-        if (ActOnBuildingRepair(person, home) || ActOnProduction(person, home) || ActOnRacialWork(person, home) || ActOnExpansionFacility(person, home)) return;
+        if (ActOnBuildingRepair(person, home) || ActOnHusbandry(person, home) || ActOnProduction(person, home) || ActOnRacialWork(person, home) || ActOnExpansionFacility(person, home)) return;
         if (goal.Kind == AgentGoalKind.Fish) PrepareJourneyTransport(person, home);
         var interactionRange = AgentInteractionRange(person, home);
         if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > interactionRange || !CanTraverse(State.Tiles[Index(person.X, person.Y)], person.TravelMode, person.Race))

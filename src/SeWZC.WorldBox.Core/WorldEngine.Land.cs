@@ -219,6 +219,15 @@ public sealed partial class WorldEngine
         return false;
     }
 
+    public string GetTileEcologySummary(int x, int y)
+    {
+        if (!InBounds(x, y)) return "地格不存在";
+        var tile = State.Tiles[Index(x, y)];
+        return string.Join("\n", AnimalRules.Species.Where(k => tile.AnimalPopulation(k) >= .001)
+            .Select(k => $"{WildlifeName(k)}  {tile.AnimalPopulation(k):0.###}")) + "\n"
+            + string.Join("\n", PlantResources.At(tile).Select(p => $"{PlantResources.Name(p.Kind)}  {p.Cover:P0}"));
+    }
+
     public string GetTileProductionSummary(int x, int y, ResourceVisibility visibility = ResourceVisibility.Researched)
     {
         if (!InBounds(x, y)) return "地格不存在";
@@ -233,32 +242,18 @@ public sealed partial class WorldEngine
         }
         var lines = new List<string> { products.Count > 0 ? "可采产出：" + string.Join("、", products) : tile.ResourceAmount < 1 && tile.IsWalkable ? "资源暂已采尽，等待自然恢复" : "此地暂无直接采集产出" };
         lines.Add(IsFreshWater(tile) ? "淡水源：无限供水，需到岸边打水并携带返仓"
-            : $"每日可取水 {DailyWaterYield(tile):0.###}   今日剩余 {AvailableWater(x, y):0.###}"
+            : $"供水量 {DailyWaterYield(tile):0.###} / 日"
                 + (DailyWaterYield(tile) < .025 ? "\n供水不足一名成年居民每日所需的 0.025，建议到河湖岸边打水" : ""));
-        if (tile.ClaimedSettlementId != 0) lines.Add("实际地盘：" + _settlements.GetValueOrDefault(tile.ClaimedSettlementId)?.Name);
-        lines.Add($"生成海拔 {tile.Elevation} / 255   降水 {tile.Rainfall:0.000000} / 格 / 日");
-        lines.Add($"河湖补水 {Math.Max(0, tile.NaturalWaterYield - tile.Rainfall):0.000000} / 日");
         if (IsWaterTerrain(tile.Terrain)) lines.Add(tile.Terrain == TerrainType.Stream ? "通行：可涉水，速度较慢" : "通行：需要桥梁或舟船");
-        foreach (var race in Enum.GetValues<RaceKind>())
-        {
-            var adaptation = RaceTerrainRules.For(race, tile.Terrain);
-            lines.Add($"{RaceNames[(int)race]}：{(adaptation.Habitable ? "宜居" : "不宜居")}   {(RaceTerrainRules.CanWalk(tile, race) ? "可步行" : "需通道或载具")}   地形生产 ×{adaptation.Productivity:0.00}");
-        }
         if (tile.IsWalkable) lines.Add($"可采储量 {tile.ResourceAmount:0.#}   肥力 {tile.Fertility}%");
         if (tile.Improvement == LandImprovement.Farmland) lines.Add("耕地：需要居民到场耕作，产物随身运回家园");
         if (tile.FireTicks > 0) lines.Add($"正在燃烧：剩余 {tile.FireTicks} 日，暂停生产");
         else if (tile.DroughtTicks > 0) lines.Add($"干旱：剩余 {tile.DroughtTicks} 日，粮食减产");
-        else if (tile.ResourceAmount >= 1 && tile.IsWalkable) lines.Add("状态：可以采收，自然资源持续恢复");
+        else if (tile.ResourceAmount >= 1 && tile.IsWalkable) lines.Add("状态：可以采收");
         if (IsDepositVisible(tile, visibility) && tile.Deposit is { } kind)
             lines.Add($"{ResourceStock.Name(kind)}矿藏：{tile.DepositAmount:0.#}（不可再生）");
-        if (tile.Harvested > 0) lines.Add($"累计采收 {tile.Harvested:0.#}   最近劳动距今 {Math.Max(0, State.Tick - tile.LastHarvestTick)} 日");
-        var plants = PlantResources.At(tile).ToArray();
-        if (plants.Length > 0) lines.Add("植物：" + string.Join("、", plants.Select(p => $"{PlantResources.Name(p.Kind)} 覆盖 {p.Cover:P0}")) + "（共享可采储量）");
-        for (var species = 1; species < AnimalRules.SpeciesCount; species++)
-        {
-            var speciesKind = (WildlifeKind)species; var population = tile.AnimalPopulation(speciesKind);
-            if (population > 0) lines.Add($"野生动物：{WildlifeName(speciesKind)}（{AnimalRules.For(speciesKind).Size switch { AnimalSize.Small => "小型", AnimalSize.Medium => "中型", _ => "大型" }}{(AnimalRules.For(speciesKind).Diet == AnimalDiet.Carnivore ? "食肉" : "食草")}）   数量 {population:0.0} / 容量 {WildlifeCapacity(tile, speciesKind):0.0}");
-        }
+        var animals = AnimalRules.Species.Where(k => tile.AnimalPopulation(k) >= .08).Select(WildlifeName).ToArray();
+        if (animals.Length > 0) lines.Add("动物：" + string.Join("、", animals));
         return string.Join("\n", lines);
     }
 }

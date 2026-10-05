@@ -120,6 +120,9 @@ public sealed partial class WorldEngine
             else if (tile.ClaimedSettlementId != town.Id && !(founding && CanClaimTile(town, Index(x, y), RaceKind.Dwarf)))
                 return "请先实地占领此地，再建造建筑";
         }
+        if (kind == BuildingKind.Pasture && (tile.Fertility < 25 || IsWaterTerrain(tile.Terrain))) return "牧场需要肥力至少 25 的陆地";
+        if (kind == BuildingKind.Aquaculture && !Circle(x, y, 1).Any(i => IsFreshWater(State.Tiles[i]))) return "水产养殖厂需要紧邻河湖的陆地";
+        if (kind == BuildingKind.Aquaculture && !gift && !HasResearch(settlementId, ResearchKind.Logistics)) return "需要先掌握驿路运输";
         if (kind == BuildingKind.Well && DailyWaterYield(tile) < .025) return "水井需要湿地或每日供水至少 0.025 的地块";
         if (kind is BuildingKind.LumberCamp or BuildingKind.Quarry && !Circle(x, y, 1).Any(i => i != Index(x, y)
             && State.Tiles[i].ResourceAmount > 0 && (kind == BuildingKind.LumberCamp ? IsForestTerrain(State.Tiles[i].Terrain)

@@ -109,7 +109,7 @@ internal static class ResearchGameplayTests
         Check(ResearchRules.All.Count == 40 && ResearchRules.Route(false).Count == 26 && ResearchRules.Route(true).Count == 25, "Actual research routes are incomplete");
         Check(!Enum.IsDefined((ResearchKind)18) && !Enum.IsDefined((ResearchKind)23), "Fake empire knowledge remains valid");
         Check(!e.GetCivilizationProgress(town.Id, false).Achieved, "Knowledge alone magically created an empire");
-        var facilities = ResearchRules.Route(false).SelectMany(k => ResearchRules.For(k).UnlockedBuildings).Distinct().Select(k => Facility(e, town, k)).ToArray();
+        var facilities = new[] { BuildingKind.Foundry, BuildingKind.PowerPlant, BuildingKind.AutomatedFarm, BuildingKind.Fabricator, BuildingKind.Airfield, BuildingKind.MachineWorkshop, BuildingKind.Academy }.Select(k => Facility(e, town, k)).ToArray();
         Check(e.GetCivilizationProgress(town.Id, false).UnprovenProduction.Count > 0 && !e.GetCivilizationProgress(town.Id, false).Achieved, "Unworked factories qualified");
         foreach (var b in facilities)
         {

@@ -23,3 +23,5 @@
 ## 替代关系
 
 替代 [0025](0025-research-trees-and-empire-simulation.md) 的帝国项目和奖励、研究数量及旧保存格式；其材料预算、采矿、住房与水上施工修正保留。替代 [0027](0027-readable-research-branches.md) 的帝国汇合节点与对应数量，保留支线排位与指针捕获修正。历史证据不自动适用于本轮实现。
+
+2026-10-05 修订：容量、捕食及按需设施／文明认证的现行规则见 [ADR-0029](0029-balanced-ecology-and-demand-planning.md)，本文件保留当时依据。

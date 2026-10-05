@@ -14,6 +14,16 @@ public sealed partial class WorldEngine
         ? _workBuildingsById.GetValueOrDefault(id) : State.Society.Buildings.FirstOrDefault(b => b.Id == id);
     private readonly Dictionary<int, SettlementResearch> _localResearch = [];
     private readonly Dictionary<int, ResourceStock> _productionReserves = [];
+    private readonly Dictionary<int, int> _workReservations = [];
+    private static int ReservedWork(AgentGoal goal) => goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic ? goal.TargetEntityId : 0;
+    private void ChangeWorkReservation(AgentGoal previous, AgentGoal next)
+    {
+        if (!_localWorkQueriesActive) return;
+        var oldId = ReservedWork(previous); var newId = ReservedWork(next);
+        if (oldId == newId) return;
+        if (oldId != 0) _workReservations[oldId] = Math.Max(0, _workReservations.GetValueOrDefault(oldId) - 1);
+        if (newId != 0) _workReservations[newId] = _workReservations.GetValueOrDefault(newId) + 1;
+    }
 
     private static List<T> LocalWorkGroup<T>(Dictionary<int, List<T>> groups, List<List<T>> buffers, int settlementId)
     {
@@ -34,14 +44,18 @@ public sealed partial class WorldEngine
             LocalWorkGroup(_localWorkBuildings, _localWorkBuildingBuffers, building.SettlementId).Add(building);
         }
         foreach (var resident in State.Residents)
+        {
             LocalWorkGroup(_localWorkResidents, _localWorkResidentBuffers, resident.SettlementId).Add(resident);
+            var id = ReservedWork(resident.Agent.Goal);
+            if (id != 0 && resident.Health > 0 && resident.ArmyId == 0) _workReservations[id] = _workReservations.GetValueOrDefault(id) + 1;
+        }
         _localWorkQueriesActive = true;
         foreach (var town in State.Settlements) _productionReserves[town.Id] = LocalDevelopmentReserve(town);
     }
 
     private void EndLocalWorkQueries()
     {
-        _localWorkQueriesActive = false; _localResearch.Clear(); _workBuildingsById.Clear(); _productionReserves.Clear();
+        _localWorkQueriesActive = false; _localResearch.Clear(); _workBuildingsById.Clear(); _productionReserves.Clear(); _workReservations.Clear();
         foreach (var group in _localWorkBuildings.Values) group.Clear();
         foreach (var group in _localWorkResidents.Values) group.Clear();
         _localWorkBuildings.Clear();
@@ -72,6 +86,8 @@ public sealed partial class WorldEngine
         {
             if (followTarget && resident.Agent.Goal.TargetEntityId != 0 && resident.Agent.Goal.TargetEntityId != building.Id) continue;
             if (building.SettlementId != resident.SettlementId || building.Health <= 0) continue;
+            if (!followTarget && ReservedWork(resident.Agent.Goal) != building.Id && _localWorkQueriesActive
+                && _workReservations.GetValueOrDefault(building.Id) >= building.WorkSlots) continue;
             var distance = Distance(resident.X, resident.Y, building.X, building.Y);
             if (range == 1 && IsWaterfrontBuilding(building.Kind) && (distance != 1
                 || !State.Tiles[Index(resident.X, resident.Y)].IsWalkable

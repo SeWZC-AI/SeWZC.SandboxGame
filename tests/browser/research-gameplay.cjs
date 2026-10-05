@@ -19,7 +19,7 @@ fs.mkdirSync(output, { recursive: true });
             const errors = observeBrowserErrors(page);
             try {
                 await page.goto(testUrl(baseUrl)); await ui.ready(); await ui.paused();
-                const world = await ui.save(); assert.equal(world.FormatVersion, 14);
+                const world = await ui.save(); assert.equal(world.FormatVersion, 15);
                 world.Tick = Math.max(1, world.Tick); // No person is midway through a tick-zero movement.
                 const town = world.Settlements[0], person = world.Residents.find(r => r.SettlementId === town.Id);
                 Object.assign(town.Resources, { Food: 1000, Water: 1000, Wood: 1000, Stone: 1000, Alloy: 1000, Crystals: 1000, Medicine: 100 });
@@ -35,7 +35,7 @@ fs.mkdirSync(output, { recursive: true });
                     tile.Terrain = 3; tile.FireTicks = 0; tile.Fertility = 100;
                     if (!world.Society.Buildings.some(b => b.X === x && b.Y === y)) sites.push({ x, y });
                 }
-                assert(sites.length >= 3);
+                assert(sites.length >= 4);
                 const template = world.Society.Buildings.find(b => b.SettlementId === town.Id);
                 const gates = sites.slice(0, 2).map(at => ({ ...structuredClone(template), Id: world.NextId++, Kind: 48, X: at.x, Y: at.y,
                     Enabled: true, Health: 100, ConstructionProgress: 30, ConstructionRequired: 30, UpgradeProgress: 0, UpgradeRequired: 0,
@@ -76,6 +76,15 @@ fs.mkdirSync(output, { recursive: true });
                 await ui.fill('spell-x', moved.X, modal); await ui.fill('spell-y', moved.Y, modal); await ui.click('spell-apply', modal);
                 saved = await ui.save(); moved = saved.Residents.find(r => r.Id === person.Id);
                 assert.equal(moved.Mana, 50); assert(moved.PersonalWard > 0);
+                await node('common', 'Agriculture'); await ui.click('research-build-Pasture', inspector);
+                assert.equal(ui.control(await ui.snapshot(), 'building-kind').value, '49');
+                assert.equal(ui.control(await ui.snapshot(), 'building-bridge-direction').visible, false);
+                await ui.fill('building-x', sites[3].x, modal); await ui.fill('building-y', sites[3].y, modal); await ui.click('building-apply', modal);
+                assert((await ui.save()).Society.Buildings.some(b => b.Kind === 49 && b.X === sites[3].x && b.Y === sites[3].y && b.LivestockPopulation === 0));
+                await node('technology', 'Industry'); await ui.click('research-build-Aquaculture', inspector);
+                assert.equal(ui.control(await ui.snapshot(), 'building-kind').value, '50');
+                assert.equal(ui.control(await ui.snapshot(), 'building-bridge-direction').visible, false);
+                await ui.click('modal-close');
                 await ui.click('research-branch-元素与结界', inspector); await ui.click('research-fit', inspector);
                 await ui.point('research-graph', inspector); await ui.click('research-node-BattleMagic', inspector);
                 if (mobile) { while ((await ui.snapshot()).researchGraph.zoom < .95) await ui.click('research-zoom-in', inspector); await ui.click('research-focus', inspector); }

@@ -72,6 +72,7 @@ public sealed partial class WorldEngine
         if (building.IsUpgrading) return $"{(building.PendingDirection.HasValue ? "改向" : "升级")}：{building.UpgradeProgress:0.#} / {building.UpgradeRequired:0}\n等待居民到场施工";
         if (!building.Enabled) return "已停用";
         if (!CanBuildRacialFacility(building.SettlementId, building.Kind)) return "缺少该族成年居民，暂停运营";
+        if (IsHusbandry(building.Kind)) return $"养殖：{(building.LivestockKind == WildlifeKind.None ? "等待取得种群" : WildlifeName(building.LivestockKind))}  {building.LivestockPopulation:0.##} / {LivestockCapacity(building):0.#}\n" + BuildingDescription(building.Kind);
         if (a is null)
         {
             var town = RequireTown(building.SettlementId);
@@ -101,7 +102,7 @@ public sealed partial class WorldEngine
         var reserved = AdvancementRules.Resources.Where(k => a.Input.Get(k) > 0 && (reserve?.Get(k) ?? 0) > 0
             && townStock.Resources.Get(k) < a.Input.Get(k) + reserve!.Get(k)).Select(k => ResourceStock.Name(k) + " " + reserve!.Get(k).ToString("0.#")).ToArray();
         var missing = MissingResources(townStock.Resources, a.Input);
-        if (building.ProductionBatches > 0 && a.Output != ResourceKind.Food && townStock.Resources.Get(a.Output) >= 80) missing = $"{ResourceStock.Name(a.Output)}库存已达补货目标 80，暂停新的领料";
+        if (building.ProductionBatches > 0 && townStock.Resources.Get(a.Output) >= ProductionStockTarget(townStock, a.Output)) missing = $"{ResourceStock.Name(a.Output)}库存已充足，暂停新的领料";
         else if (reserved.Length > 0) missing = "为下一发展项目预留：" + string.Join("、", reserved);
         return $"产出：{ResourceStock.Name(a.Output)} {ProductionYield(building, a):0.#} / 批   累计 {building.ProductionBatches} 批\n" + (missing is not null ? missing
             : a.Magic ? "需要天赋 ≥25、训练 ≥8 且魔力足够的到场施作者" : "原料可用，等待工人取料并到场加工");
@@ -117,9 +118,19 @@ public sealed partial class WorldEngine
             || _settlements.TryGetValue(building.SettlementId, out var town) && WarehouseCanSupply(town, person, a, building.ProductionBatches == 0);
     }
 
+    private static double ProductionStockTarget(Settlement town, ResourceKind kind) => kind switch
+    {
+        ResourceKind.Food => Math.Max(60, town.Population * 3),
+        ResourceKind.Medicine => Math.Max(8, town.Population * .1),
+        ResourceKind.Tools => Math.Max(12, town.Population * .1),
+        ResourceKind.Ammunition => 32,
+        ResourceKind.Boats or ResourceKind.Aircraft => 4,
+        _ => 80
+    };
+
     private bool WarehouseCanSupply(Settlement town, Resident person, Advancement a, bool commissioning)
     {
-        if (!commissioning && a.Output != ResourceKind.Food && town.Resources.Get(a.Output) >= 80) return false;
+        if (!commissioning && town.Resources.Get(a.Output) >= ProductionStockTarget(town, a.Output)) return false;
         var reserve = _localWorkQueriesActive ? _productionReserves.GetValueOrDefault(town.Id) : LocalDevelopmentReserve(town);
         for (var i = 0; i < a.InputResources.Count; i++)
         {
@@ -158,9 +169,17 @@ public sealed partial class WorldEngine
             goal.Reason = "前往家园取料，亲自运至" + BuildingName(building.Kind);
             if (Distance(person.X, person.Y, home.X, home.Y) > 1)
             { MoveAgentTowards(person, home.X, home.Y); person.Activity = ResidentActivity.Delivering; return true; }
-            foreach (var kind in AdvancementRules.Resources)
+            // At most four batches per physical trip, while preserving the next
+            // local project's reserve. Each batch still needs a day's on-site work.
+            var reserve = _productionReserves.GetValueOrDefault(home.Id);
+            var batches = 4d;
+            foreach (var kind in a.InputResources)
+                batches = Math.Min(batches, Math.Floor(Math.Max(0, home.Resources.Get(kind) - (reserve?.Get(kind) ?? 0)) / a.Input.Get(kind)));
+            batches = Math.Max(1, batches);
+            foreach (var kind in a.InputResources)
             {
-                var amount = Math.Max(0, a.Input.Get(kind) - person.Inventory.Get(kind));
+                var personalReserve = kind == ResourceKind.Food ? TravelReserve(person) : kind == ResourceKind.Water ? WaterReserve(person) : 0;
+                var amount = Math.Min(home.Resources.Get(kind), Math.Max(0, a.Input.Get(kind) * batches + personalReserve - person.Inventory.Get(kind)));
                 home.Resources.Set(kind, Math.Max(0, home.Resources.Get(kind) - amount));
                 person.Inventory.Set(kind, person.Inventory.Get(kind) + amount);
             }
@@ -172,9 +191,14 @@ public sealed partial class WorldEngine
         if (TryWorkAtBuilding(person))
         {
             person.Activity = ResidentActivity.Working;
+            if (HasProductionInputs(person.Inventory, a) && person.Inventory.Get(a.Output) < ProductionYield(building, a) * 4
+                && (!a.Magic || person.Mana >= a.Mana))
+            { person.Agent.NextThinkTick = State.Tick + 4; return true; }
+            var previous = person.Agent.Goal;
             person.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y,
                 TargetSettlementId = home.Id, StartedTick = State.Tick, ReviewTick = State.Tick + 100,
                 Reason = "加工完成，亲自把产物运回家园入库" };
+            ChangeWorkReservation(previous, person.Agent.Goal);
             person.Agent.NextThinkTick = State.Tick + 100;
         }
         return true;

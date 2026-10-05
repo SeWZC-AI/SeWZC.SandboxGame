@@ -7,7 +7,7 @@ public enum BuildingKind { Farm, Workshop, Academy, Waystation, SignalTower, Arc
     Shipyard, LumberCamp, Quarry, Well, Granary, Housing, Market, Watchtower,
     AssemblyHall, TradeGuild, SacredGrove, HerbGarden, DwarvenForge, MiningHall, HuntingCamp, WarDrum,
     Reservoir, Hospital, Apothecary, FireStation, Library, SurveyOffice, MachineWorkshop, Arsenal, Armory,
-    AlchemyLab, WardTower, StormSpire, GroveSanctuary, Waygate }
+    AlchemyLab, WardTower, StormSpire, GroveSanctuary, Waygate, Pasture, Aquaculture }
 public enum ResearchKind { Agriculture, Logistics, SignalNetwork, ArcaneArts,
     Industry, Electrification, Automation, AdvancedComputing, Crystalcraft, RunicEngineering, AetherMastery, Aviation,
     Irrigation, Forestry, Medicine, ScientificMethod, EfficientSmelting, EnergyRecycling,
@@ -43,6 +43,8 @@ public sealed class CultureDefinition
 
 public sealed partial class Building
 {
+    [JsonRequired] public WildlifeKind LivestockKind { get; set; }
+    [JsonRequired] public double LivestockPopulation { get; set; }
     [JsonRequired] public int ProductionBatches { get; set; }
     [JsonRequired] public int ServiceActions { get; set; }
     [JsonRequired] public long LastServiceTick { get; set; } = -100;

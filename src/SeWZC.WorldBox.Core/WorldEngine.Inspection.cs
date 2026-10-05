@@ -20,6 +20,8 @@ public sealed partial class WorldEngine
 
     public static string BuildingDescription(BuildingKind kind) => kind switch
     {
+        BuildingKind.Pasture => "农民在牧场驯养当地草食动物，携带饲料和饮水到场；保留繁殖群，成熟后产出粮食。干旱或草场耗尽时停工。",
+        BuildingKind.Aquaculture => "渔民从相邻河湖取得实际鱼群，投喂、繁殖与收获；需要工业和运输知识、饲料、饮水与现场劳动。",
         >= BuildingKind.Reservoir when AdvancementRules.For(kind) is null => ResearchRules.Unlocking(kind)?.Effect ?? "",
         BuildingKind.AssemblyHall => "人类议事厅：当地有成年的人类可建。人类到场携带粮水值守，为两格内居民缓解社交需求，并为附近居民提供三格当面交流范围。",
         BuildingKind.TradeGuild => "人类商贸公会：人类携带粮水到场值守，为三格内本地商人提高行走速度 15%，并提供三格当面交流范围。升级提高服务效率。",
@@ -82,6 +84,7 @@ public sealed partial class WorldEngine
             var missing = new[] { ResearchKind.Electrification, ResearchKind.SignalNetwork }.Where(k => !HasResearch(town.Id, k)).Select(ResearchName).ToArray();
             if (missing.Length > 0) return "缺少本地研究：" + string.Join("、", missing);
         }
+        if (IsHusbandry(b.Kind)) return GetProductionStatus(b.Id);
         if (b.Kind >= BuildingKind.Reservoir) return ExpansionFacilityStatus(b);
         if (b.Kind == BuildingKind.Academy)
         {
@@ -183,7 +186,7 @@ public sealed partial class WorldEngine
         if (person is null || person.Health <= 0) return "已离世，保留生平记录";
         var goal = person.Agent.Goal;
         var task = GetResidentTaskSummary(id);
-        var taskHeader = $"当前任务：{task}\n任务地点：{goal.TargetX}, {goal.TargetY}\n";
+        var taskHeader = $"当前任务：{task}\n";
         var exploringRoutes = goal.Kind == AgentGoalKind.Explore && person.Profession is Profession.Trader or Profession.Messenger or Profession.Representative;
         var facility = goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic ? State.Society.Buildings.FirstOrDefault(b => b.Id == goal.TargetEntityId) : null;
         if (goal.Kind == AgentGoalKind.Work && facility is { IsCompleted: true } && facility.SettlementId == person.SettlementId

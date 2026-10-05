@@ -83,7 +83,7 @@ static void TownInformationAndMobileHeight()
     Call(view, "OpenBuilding", center); Layout();
     Assert(Control<TextBlock>(view, "center-town-summary").Text!.Contains("城镇生效"), "Center omitted the town status");
     Click(view, "center-town-info"); Layout();
-    Assert(Field<int>(view, "_inspectorSettlementId") == center.SettlementId && Control<TextBlock>(view, "town-expansion-summary").Text!.Contains("独占陆地"), "Center opened another town or omitted its details");
+    Assert(Field<int>(view, "_inspectorSettlementId") == center.SettlementId && Control<TextBlock>(view, "town-expansion-summary").Text!.Contains("城镇等级"), "Center opened another town or omitted its details");
     var collapsed = Control<Border>(view, "inspector-panel").Bounds.Height;
     Click(view, "inspector-expand"); Layout();
     var expanded = Control<Border>(view, "inspector-panel").Bounds.Height;
@@ -407,9 +407,17 @@ static void ContextDetails()
     Call(view, "SelectMapObject", "tile", 0, town.X, town.Y);
     var summary = Field<TextBlock>(view, "_selectionText").Text!;
     Assert(!summary.Contains("位置") && summary.Contains("可采"), "Tile selection omitted useful output or retained coordinates");
+    Call(view, "OpenInspector", "tile", true);
+    var water = Control<TextBlock>(view, "tile-water").Text!;
+    Assert(water.Contains("供水量") && !water.Contains("今日剩余") && !water.Contains("海拔"), "Supply was split or elevation occupied the main detail");
+    Assert(!Control<Expander>(view, "tile-geography").IsExpanded, "Elevation was not folded");
+    Call(view, "ShowLandProject", town.X, town.Y);
+    Assert(!view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.IsVisible && t.GetLogicalAncestors().OfType<Control>().All(c => c.IsVisible) && t.Text is "桥梁方向" or "桥梁等级"), "Ordinary land buildings retained direction labels");
+    Call(view, "CloseModal");
     var center = engine.State.Society.Buildings.First(b => b.Kind == BuildingKind.TownCenter);
     Call(view, "OpenBuilding", center);
     Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("家园粮仓") == true), "Center details omit their actual stock and function");
+    Assert(!view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("建造原因") == true || t.Text?.Contains("距中心") == true), "Planning internals leaked into selected building detail");
 }
 
 static void ResidentSearch()

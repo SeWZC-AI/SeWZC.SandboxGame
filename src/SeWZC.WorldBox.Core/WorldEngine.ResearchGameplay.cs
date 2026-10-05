@@ -50,7 +50,11 @@ public sealed partial class WorldEngine
         _ = RequireTown(settlementId);
         var route = ResearchRules.Route(magic);
         var missingResearch = route.Where(k => !HasResearch(settlementId, k)).Select(ResearchName).ToArray();
-        var required = route.SelectMany(k => ResearchRules.For(k).UnlockedBuildings).Distinct().ToArray();
+        // Civilization is demonstrated by the working production chain. A peaceful
+        // town need not build idle defenses or geography-specific transport sites.
+        var required = AdvancementRules.All.Where(a => route.Contains(a.Research)
+                && a.Output is not (ResourceKind.Medicine or ResourceKind.Ammunition))
+            .Select(a => a.Facility).Concat(magic ? new[] { BuildingKind.Academy, BuildingKind.ArcaneSanctum } : new[] { BuildingKind.Academy }).Distinct().ToArray();
         var buildings = State.Society.Buildings.Where(b => b.SettlementId == settlementId).ToArray();
         bool Ready(Building b) => b.Enabled && b.IsCompleted && !b.IsUpgrading && b.Health >= 50
             && BuildingGroundOwned(b) && State.Tiles[Index(b.X, b.Y)].FireTicks == 0

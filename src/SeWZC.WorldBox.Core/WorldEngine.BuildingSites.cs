@@ -23,6 +23,8 @@ public sealed partial class WorldEngine
                 && (kind == BuildingKind.LumberCamp ? IsForestTerrain(State.Tiles[i].Terrain)
                     : kind is BuildingKind.Quarry or BuildingKind.MiningHall ? TerrainRules.For(State.Tiles[i].Terrain).StoneYield + TerrainRules.For(State.Tiles[i].Terrain).OreYield > 0
                     : TerrainRules.For(State.Tiles[i].Terrain).WoodYield + TerrainRules.For(State.Tiles[i].Terrain).StoneYield + TerrainRules.For(State.Tiles[i].Terrain).OreYield > 0));
+        if (IsHusbandry(kind)) return HusbandryStockAt(index % State.Width, index / State.Width, kind == BuildingKind.Aquaculture).Source >= 0;
+        if (kind == BuildingKind.Well && DailyWaterYield(tile) < .1) return false;
         if (kind == BuildingKind.HuntingCamp) return EdibleAnimal(tile) != WildlifeKind.None;
         return true;
     }

@@ -49,7 +49,7 @@ public sealed partial class MainView
         body.Children.Add(LiveText(() =>
         {
             var r = Current();
-            return $"位置 {r.X}, {r.Y}\n{ActivityName(r.Activity)}\n生命 {r.Health:F1}\n饥饿 {r.Hunger:F1}\n口渴 {r.Thirst:F1}\n疫病 {r.SicknessTicks} 日\n疲劳 {r.Agent.Fatigue:F1}\n社交需求 {r.Agent.SocialNeed:F1}\n特质：{r.Trait}\n随身库存：{StockLabel(r.Inventory)}\n魔力 {r.Mana:F1}\n天赋 {r.MagicTalent:F1}\n训练 {r.MagicTraining:F1}\n军队 {(r.ArmyId == 0 ? "无" : r.ArmyId.ToString())}\n家园 {TownName(r.SettlementId)}";
+            return $"{ActivityName(r.Activity)}\n生命 {r.Health:F1}\n饥饿 {r.Hunger:F1}\n口渴 {r.Thirst:F1}\n疫病 {r.SicknessTicks} 日\n疲劳 {r.Agent.Fatigue:F1}\n社交需求 {r.Agent.SocialNeed:F1}\n特质：{r.Trait}\n随身库存：{StockLabel(r.Inventory)}\n魔力 {r.Mana:F1}\n天赋 {r.MagicTalent:F1}\n训练 {r.MagicTraining:F1}\n军队 {(r.ArmyId == 0 ? "无" : r.ArmyId.ToString())}\n家园 {TownName(r.SettlementId)}";
         }));
         var effects = FoldSection(panel, "当前加成与减益", "resident-effects");
         effects.Children.Add(LiveText(() => EffectLabel(_engine.GetResidentEffects(id))));

@@ -29,6 +29,15 @@ public sealed partial class WorldEngine
             if (adults.Length < 20) continue;
             foreach (var job in Enum.GetValues<Profession>().Where(j => j >= Profession.Engineer))
             {
+                bool Facility(BuildingKind kind) => State.Society.Buildings.Any(b => b.SettlementId == town.Id && b.Kind == kind && b.Enabled && b.Health > 0);
+                if (!(job switch
+                {
+                    Profession.Engineer => Facility(BuildingKind.MachineWorkshop) || State.Society.Buildings.Any(b => b.SettlementId == town.Id && (!b.IsCompleted || b.Health < 50)),
+                    Profession.Physician => Facility(BuildingKind.Hospital), Profession.Firefighter => Facility(BuildingKind.FireStation),
+                    Profession.Ranger => Facility(BuildingKind.Arsenal), Profession.Archivist => Facility(BuildingKind.Library),
+                    Profession.Battlemage => Facility(BuildingKind.StormSpire), Profession.Surveyor => Facility(BuildingKind.SurveyOffice),
+                    Profession.Gardener => Facility(BuildingKind.GroveSanctuary), _ => false
+                })) continue;
                 var unlock = ResearchRules.Unlocking(job);
                 if (unlock is null || !HasResearch(town.Id, unlock.Kind) || adults.Any(r => r.Profession == job)) continue;
                 var recruit = adults.Where(r => r.Profession is Profession.Farmer or Profession.Builder or Profession.Scholar or Profession.Mage

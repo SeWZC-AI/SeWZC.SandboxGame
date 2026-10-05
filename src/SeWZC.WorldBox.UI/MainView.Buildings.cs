@@ -38,7 +38,7 @@ public sealed partial class MainView
         var id = _selectedBuildingId;
         Building? Current() => _engine.State.Society.Buildings.FirstOrDefault(b => b.Id == id);
         if (Current() is not { } building) { panel.Children.Add(Paragraph("建筑已被移除，可在建筑与道路列表查看其他设施。")); return; }
-        panel.Children.Add(LiveText(() => Current() is { } b ? BuildingLabel(b) : "建筑已不存在", 18, Mint));
+        panel.Children.Add(LiveText(() => Current() is { } b ? WorldEngine.BuildingName(b.Kind) : "建筑已不存在", 18, Mint));
         panel.Children.Add(Named(LiveText(() => Current() is { } b ? $"建筑生命 {b.Health:0.#} / 100" : "建筑已不存在"), "building-health"));
         panel.Children.Add(Named(LiveText(() => Current() is { } b ? $"等级 {b.Level} / 3" +
             (b.IsUpgrading ? $"\n{(b.PendingDirection.HasValue ? "改向" : "升级")}施工 {b.UpgradeProgress:0.0} / {b.UpgradeRequired:0}" : "") : ""), "building-level"));
@@ -48,13 +48,11 @@ public sealed partial class MainView
             panel.Children.Add(Named(LiveText(() => _engine.GetSettlementSummary(building.SettlementId)), "center-town-summary"));
             panel.Children.Add(Named(Button("查看城镇信息", () => { _inspectorSettlementId = building.SettlementId; OpenInspector("infrastructure"); }), "center-town-info"));
         }
-        if (!string.IsNullOrWhiteSpace(building.PlanningReason))
-            panel.Children.Add(Named(LiveText(() => Current() is { } b ? $"建造原因：{b.PlanningReason}\n{b.SiteReason}" : ""), "building-plan"));
         panel.Children.Add(Named(LiveText(() => EffectLabel(_engine.GetBuildingEffects(id).Where(e => e.Name is not ("建筑耐火" or "下一级")).ToArray())), "building-effects"));
         panel.Children.Add(Named(LiveText(() => string.Join("\n", _engine.GetBuildingEffects(id).Where(e => e.Name == "下一级"))), "building-next-level"));
-        var condition = FoldSection(panel, "位置、耐火与工作记录", "building-condition");
+        var condition = FoldSection(panel, "耐火与工作记录", "building-condition");
         condition.Children.Add(LiveText(() => Current() is not { } b ? "建筑已不存在" :
-            $"聚落：{TownName(b.SettlementId)}\n位置：{b.X}, {b.Y}" + (b.LastWorkedTick >= 0 ? $"\n最近工作：{DateLabel(b.LastWorkedTick)}" : "")));
+            $"聚落：{TownName(b.SettlementId)}" + (b.LastWorkedTick >= 0 ? $"\n最近工作：{DateLabel(b.LastWorkedTick)}" : "")));
         condition.Children.Add(LiveText(() => string.Join("\n", _engine.GetBuildingEffects(id).Where(e => e.Name == "建筑耐火"))));
         var actions = new WrapPanel { Orientation = Orientation.Horizontal };
         panel.Children.Add(actions);

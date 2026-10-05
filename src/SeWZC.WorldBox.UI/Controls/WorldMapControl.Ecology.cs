@@ -122,14 +122,12 @@ public sealed partial class WorldMapControl
                     }
                     if (ShowWildlife)
                     {
-                        var slot = 0; var shownGroups = 0;
-                        for (var species = 1; species < AnimalRules.SpeciesCount; species++)
+                        var slot = 0;
+                        for (var group = 0; group < 6; group++)
                         {
-                            var kind = (WildlifeKind)species; var population = tile.AnimalPopulation(kind);
-                            if (population < .25) continue;
-                            var group = (int)AnimalRules.For(kind).Size * 2 + (int)AnimalRules.For(kind).Diet;
-                            if ((shownGroups & (1 << group)) != 0) continue;
-                            shownGroups |= 1 << group;
+                            var kind = WorldEngine.VisibleWildlife(tile, group);
+                            if (kind == WildlifeKind.None) continue;
+                            var population = tile.AnimalPopulation(kind);
                             var scale = .25 + .75 * Math.Clamp(population / Math.Max(1, WorldEngine.WildlifeCapacity(tile, kind)), 0, 1);
                             var size = (AnimalRules.For(kind).Size == AnimalSize.Large ? 3.2 : AnimalRules.For(kind).Size == AnimalSize.Small ? 2.2 : 2.8) * scale;
                             var cx = (x + .25 + slot % 3 * .28) * TilePixels; var cy = (y + .76 - slot / 3 * .3) * TilePixels;

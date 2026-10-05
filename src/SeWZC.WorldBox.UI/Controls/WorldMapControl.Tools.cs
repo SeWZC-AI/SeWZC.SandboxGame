@@ -71,7 +71,7 @@ public sealed partial class WorldMapControl
             : Enum.TryParse<RaceKind>(ActiveTool, out _) ? $"投放 {SpawnCount} 位居民"
             : Enum.TryParse<DisasterKind>(ActiveTool, out _) ? $"单次释放\n范围：{DisasterRadius} 格" : $"绘制范围：{BrushRadius} 格";
         if (ActiveTool == "build:Bridge") detail += $"\n方向：{WorldEngine.BridgeDirectionName(ConstructionBridgeDirection)}\n等级 {ConstructionBridgeLevel}   离自然岸最多 {WorldEngine.BridgeShoreLimit(ConstructionBridgeLevel)} 格\n材料：木材 {WorldEngine.FacilityCost(BuildingKind.Bridge, ConstructionBridgeLevel).Wood:0.#}   石材 {WorldEngine.FacilityCost(BuildingKind.Bridge, ConstructionBridgeLevel).Stone:0.#}";
-        SetPlacementMessage($"位置：{tile.X}, {tile.Y}\n{(error is null ? detail : "无法放置：" + error)}");
+        SetPlacementMessage(error is null ? detail : "无法放置：" + error);
         InvalidateVisual();
     }
 

@@ -36,13 +36,12 @@ internal static class PerformanceBehaviorTests
         var tile = new Tile { Terrain = TerrainType.Grass, Wildlife = WildlifeKind.Deer, WildlifePopulation = .5,
             OtherWildlife = new() { Rabbit = .49, Boar = 1, Fish = 2 } };
         void Expect(WildlifeKind expected, bool water = false) => Check(query(tile, water) == expected, "Stale edible animal after changing populations or terrain");
-        Expect(WildlifeKind.Deer); Expect(WildlifeKind.Deer);
-        tile.WildlifePopulation = .49; Expect(WildlifeKind.Boar);
-        tile.OtherWildlife = new() { Rabbit = .5, Boar = 1, Fish = 2 }; Expect(WildlifeKind.Rabbit);
-        tile.Wildlife = WildlifeKind.Rabbit; Expect(WildlifeKind.Boar); // The primary population overrides a duplicate secondary field.
-        tile.WildlifePopulation = .5; Expect(WildlifeKind.Rabbit);
+        Expect(WildlifeKind.Boar); Expect(WildlifeKind.Boar);
+        tile.OtherWildlife = new() { Rabbit = 3, Boar = 1, Fish = 2 }; Expect(WildlifeKind.Rabbit);
+        tile.Wildlife = WildlifeKind.Rabbit; Expect(WildlifeKind.Boar);
+        tile.WildlifePopulation = 3; Expect(WildlifeKind.Rabbit);
         tile.Terrain = TerrainType.Lake; Expect(WildlifeKind.None); Expect(WildlifeKind.Fish, true);
-        tile.OtherWildlife = new() { Fish = .49, SeaCow = .5, Shark = 3 }; Expect(WildlifeKind.SeaCow, true);
+        tile.OtherWildlife = new() { Fish = .049, SeaCow = .05, Shark = 3 }; Expect(WildlifeKind.SeaCow, true);
         tile.OtherWildlife = default; Expect(WildlifeKind.None, true);
         tile.Terrain = TerrainType.Grass; Expect(WildlifeKind.Rabbit); Expect(WildlifeKind.None, true);
         tile.WildlifePopulation = 0; Expect(WildlifeKind.None);
@@ -51,10 +50,10 @@ internal static class PerformanceBehaviorTests
         WildlifeKind Reference(Tile current, bool water)
         {
             if (water != WorldEngine.IsWaterTerrain(current.Terrain)) return WildlifeKind.None;
-            foreach (var kind in AnimalRules.Species)
-                if (AnimalRules.For(kind).Diet == AnimalDiet.Herbivore && (!water || AnimalRules.For(kind).Aquatic)
-                    && current.AnimalPopulation(kind) >= .5) return kind;
-            return WildlifeKind.None;
+            return AnimalRules.Species.Where(kind => AnimalRules.For(kind).Diet == AnimalDiet.Herbivore
+                    && (!water || AnimalRules.For(kind).Aquatic) && current.AnimalPopulation(kind) >= .05)
+                .OrderByDescending(kind => current.AnimalPopulation(kind) * AnimalRules.For(kind).BodyMass)
+                .FirstOrDefault();
         }
         foreach (var kind in AnimalRules.Species)
         {
@@ -113,9 +112,11 @@ internal static class PerformanceBehaviorTests
     [UnitTest]
     private static void DailyEcology()
     {
-        var engine = Flat(); engine.Step();
-        Check(engine.State.Tiles[2 * 32 + 16].WildlifePopulation > 1, "First band did not grow on the first day");
-        Check(engine.State.Tiles[28 * 32 + 16].WildlifePopulation == 1, "Distant band grew before its turn");
+        var engine = Flat();
+        foreach (var tile in engine.State.Tiles) tile.WildlifePopulation = .01;
+        engine.Step();
+        Check(engine.State.Tiles[2 * 32 + 16].WildlifePopulation > .01, "First band did not grow on the first day");
+        Check(engine.State.Tiles[28 * 32 + 16].WildlifePopulation == .01, "Distant band grew before its turn");
         for (var phase = 1; phase <= 6; phase++)
         {
             var resumed = WorldEngine.ImportJson(engine.ExportJson());
@@ -123,7 +124,7 @@ internal static class PerformanceBehaviorTests
             Check(engine.ExportJson() == resumed.ExportJson(), $"Ecology resume diverged at phase {phase}");
         }
         foreach (var row in new[] { 2, 8, 13, 18, 24, 29 })
-            Check(engine.State.Tiles[row * 32 + 16].WildlifePopulation > 1, "Some rows skipped their six-day growth cycle");
+            Check(engine.State.Tiles[row * 32 + 16].WildlifePopulation > .01, "Some rows skipped their six-day growth cycle");
     }
 
     [UnitTest]

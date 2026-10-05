@@ -53,6 +53,8 @@ public static class AnimalRules
     internal static ReadOnlySpan<WildlifeKind> EdibleAnimals(bool aquatic) => aquatic ? EdibleWaterAnimals : EdibleLandAnimals;
     private static readonly WildlifeKind[][] Prey = Enumerable.Range(0, SpeciesCount)
         .Select(i => Species.Where(p => CanPreyOn((WildlifeKind)i, p)).ToArray()).ToArray();
+    private static readonly WildlifeKind[][] Predators = Enumerable.Range(0, SpeciesCount)
+        .Select(i => Species.Where(p => CanPreyOn(p, (WildlifeKind)i)).ToArray()).ToArray();
     internal static ReadOnlySpan<WildlifeKind> PreyFor(WildlifeKind predator) => Prey[(int)predator];
     public static AnimalDefinition For(WildlifeKind kind) => Definitions[(int)kind];
     public static bool CanPreyOn(WildlifeKind predator, WildlifeKind prey) => predator != WildlifeKind.None && prey != WildlifeKind.None
@@ -71,16 +73,52 @@ public static class AnimalRules
         TerrainType.Water or TerrainType.DeepWater => Marine,
         _ => AnimalHabitat.None
     };
+    // Predators share each eligible prey's biomass budget instead of each
+    // independently claiming the whole prey population.
+    public static int PredatorCompetitors(Tile tile, WildlifeKind prey)
+    {
+        var count = 0;
+        foreach (var predator in Species)
+            if (CanPreyOn(predator, prey) && EnvironmentalCapacity(tile, predator) > 0) count++;
+        return Math.Max(1, count);
+    }
+    internal static void FillCapacities(Tile tile, Span<double> capacities, Span<byte> competitors)
+    {
+        capacities.Clear(); competitors.Clear();
+        var herbs = 0;
+        foreach (var kind in Species)
+        {
+            var raw = RawCapacity(tile, kind); capacities[(int)kind] = raw;
+            if (raw > 0 && For(kind).Diet == AnimalDiet.Herbivore) herbs++;
+        }
+        foreach (var kind in Species)
+        {
+            if (For(kind).Diet == AnimalDiet.Herbivore) capacities[(int)kind] /= Math.Max(1, herbs);
+            var count = 0;
+            foreach (var predator in Predators[(int)kind]) if (capacities[(int)predator] > 0) count++;
+            competitors[(int)kind] = (byte)Math.Max(1, count);
+        }
+    }
     public static double EnvironmentalCapacity(Tile tile, WildlifeKind kind)
+    {
+        var raw = RawCapacity(tile, kind);
+        if (raw == 0 || For(kind).Diet == AnimalDiet.Carnivore) return raw;
+        var competitors = 0;
+        foreach (var candidate in Species)
+            if (For(candidate).Diet == AnimalDiet.Herbivore && RawCapacity(tile, candidate) > 0) competitors++;
+        return raw / Math.Max(1, competitors);
+    }
+    private static double RawCapacity(Tile tile, WildlifeKind kind)
     {
         if (kind == WildlifeKind.None || tile.FireTicks > 0) return 0;
         var animal = For(kind);
         if ((animal.Habitats & Habitat(tile.Terrain)) == 0) return 0;
         var water = WorldEngine.IsWaterTerrain(tile.Terrain) ? 1 : tile.NaturalWaterYield;
         if (tile.Fertility < animal.MinimumFertility || water < animal.MinimumWater) return 0;
-        var food = .2 + tile.Fertility / 125d;
+        var vegetation = WorldEngine.IsWaterTerrain(tile.Terrain) ? 1 : .2 + .8 * Math.Clamp(tile.Plants.Grass + tile.Plants.Shrubs * .8 + tile.Plants.Trees * .55 + tile.Plants.Reeds * .8, 0, 1);
+        var food = (.2 + tile.Fertility / 125d) * vegetation;
         if (!WorldEngine.IsWaterTerrain(tile.Terrain)) food *= Math.Clamp(tile.ResourceAmount / 100, 0, 1) * Math.Clamp(water / Math.Max(.004, animal.MinimumWater * 2), .15, 1);
-        var capacity = animal.Size == AnimalSize.Small ? 12 : animal.Size == AnimalSize.Medium ? 6 : 2.5;
+        var capacity = animal.Size == AnimalSize.Small ? 4.2 : animal.Size == AnimalSize.Medium ? 2.1 : .875;
         return capacity * food * (tile.Improvement == LandImprovement.Farmland ? .35 : 1)
             * (tile.SettlementId != 0 ? .1 : 1) * (tile.DroughtTicks > 0 ? .25 : 1);
     }
