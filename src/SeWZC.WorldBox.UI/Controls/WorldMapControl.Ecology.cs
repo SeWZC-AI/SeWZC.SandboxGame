@@ -113,7 +113,7 @@ public sealed partial class WorldMapControl
                     if (ShowPlants)
                     {
                         var slot = 0;
-                        foreach (var (kind, cover) in PlantResources.At(tile))
+        foreach (var (kind, cover, _) in PlantResources.At(tile))
                         {
                             var size = 2.8 * (.25 + .75 * cover);
                             _plantDraws.Add((PlantIcon(kind), new Rect((x + .23 + slot * .34) * TilePixels - size / 2, (y + .22) * TilePixels - size / 2, size, size)));

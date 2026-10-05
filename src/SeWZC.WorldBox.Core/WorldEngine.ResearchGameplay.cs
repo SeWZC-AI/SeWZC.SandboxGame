@@ -305,7 +305,8 @@ public sealed partial class WorldEngine
                 var total = plants.Total; if (total > 1) for (var i = 0; i < 4; i++) plants.Set((PlantKind)i, plants.Get((PlantKind)i) / total);
                 tile.Plants = plants;
                 if (plants.Trees >= .5 && tile.SettlementId == 0 && tile.Terrain is TerrainType.Grass or TerrainType.DryFertile) tile.Terrain = TerrainType.Woodland;
-                tile.ResourceAmount = Math.Min(100, tile.ResourceAmount + effort);
+                var capacity = NaturalResourceCapacity(tile);
+                if (tile.ResourceAmount < capacity) tile.ResourceAmount = Math.Min(capacity, tile.ResourceAmount + effort);
                 EmitVisual(WorldVisualKind.Harvest, ground % State.Width, ground / State.Width); done = true; break;
         }
         if (done) { b.ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1); b.LastServiceTick = State.Tick; }

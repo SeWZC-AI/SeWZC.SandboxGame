@@ -75,7 +75,7 @@ public sealed partial class WorldEngine
             if (person.Inventory.Food < LivestockFeed(b) || person.Inventory.Water < .75 + LivestockWater(b)) return false;
             person.Inventory.Food -= LivestockFeed(b); person.Inventory.Water -= LivestockWater(b);
             var tile = State.Tiles[Index(b.X, b.Y)];
-            if (b.Kind == BuildingKind.Pasture) tile.ResourceAmount -= Math.Min(tile.ResourceAmount, .04 * Math.Min(6, b.LivestockPopulation));
+            if (b.Kind == BuildingKind.Pasture) HarvestPlants(tile, .04 * Math.Min(6, b.LivestockPopulation) * NaturalPlantHarvestEfficiency(tile));
             // Feed and on-site labour renew the herd. Harvest never spends breeding stock.
             b.LivestockPopulation = Math.Min(LivestockCapacity(b), b.LivestockPopulation + .04 * effort * b.LivestockPopulation * (1 - b.LivestockPopulation / LivestockCapacity(b)));
             if (b.LivestockPopulation > 2)

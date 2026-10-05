@@ -199,7 +199,8 @@ public sealed partial class WorldEngine
         if (goal.Kind == AgentGoalKind.Work && goal.TargetEntityId == 0 && person.Profession == Profession.Miner
             && person.Agent.MaterialPriority is not null && FindVisibleResourceSite(person, Profession.Miner) < 0 && VisibleDepositSite(person) < 0) return false;
         if (goal.Kind == AgentGoalKind.Gather || goal.Kind == AgentGoalKind.Work && goal.TargetEntityId == 0)
-            return ResourceSiteYield(Index(goal.TargetX, goal.TargetY), goal.Kind == AgentGoalKind.Gather ? Profession.Farmer : person.Profession) > 0;
+            return ResourceSiteYield(Index(goal.TargetX, goal.TargetY), goal.Kind == AgentGoalKind.Gather ? Profession.Farmer : person.Profession) > 0
+                && (person.Profession == Profession.Miner || NaturalPlantHarvestEfficiency(State.Tiles[Index(goal.TargetX, goal.TargetY)], goal.Kind == AgentGoalKind.Work && person.Profession == Profession.Lumberjack) >= .25);
         if (goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic)
             return FindBuilding(goal.TargetEntityId) is { } building && building.SettlementId == home.Id && BuildingHasWork(building, person);
         return false;
@@ -266,8 +267,7 @@ public sealed partial class WorldEngine
         if (agent.Goal.Kind is AgentGoalKind.ClaimLand or AgentGoalKind.FetchWater or AgentGoalKind.Hunt or AgentGoalKind.Fish
             && choices.Count == 0 && State.Tick - agent.Goal.StartedTick < 48 && person.Hunger < 20 && person.Thirst < 60
             && agent.Fatigue < 60 && State.Tick >= agent.Goal.NavigationRetryTick
-            && (agent.Goal.Kind is not (AgentGoalKind.Hunt or AgentGoalKind.Fish) || agent.Goal.TargetEntityId > 0
-                && EdibleAnimal(State.Tiles[agent.Goal.TargetEntityId - 1], aquatic: agent.Goal.Kind == AgentGoalKind.Fish) != WildlifeKind.None)
+            && (agent.Goal.Kind is not (AgentGoalKind.Hunt or AgentGoalKind.Fish) || WildlifeGoalProductive(person))
             && (agent.Goal.Kind != AgentGoalKind.ClaimLand || CanClaimTile(home, Index(agent.Goal.TargetX, agent.Goal.TargetY), person.Race))
             && (agent.Goal.Kind != AgentGoalKind.FetchWater || person.Thirst >= 10
                 || agent.Goal.TargetEntityId > 0 && DailyWaterYield(State.Tiles[agent.Goal.TargetEntityId - 1]) >= .1)
@@ -440,6 +440,7 @@ public sealed partial class WorldEngine
             var index = Index(x, y);
             var tile = State.Tiles[index];
             if (!RaceTerrainRules.CanWalk(tile, person.Race) || tile.FireTicks > 0) continue;
+            if (profession != Profession.Miner && NaturalPlantHarvestEfficiency(tile, profession == Profession.Lumberjack) < .25) continue;
             var productivity = ResourceSiteYield(index, profession) * GatheringTerritoryMultiplier(person, tile);
             if (productivity <= 0) continue;
             if (profession == Profession.Miner && person.Agent.MaterialPriority == ResourceKind.Ore
@@ -460,8 +461,8 @@ public sealed partial class WorldEngine
         var tile = State.Tiles[index];
         if (profession == Profession.Farmer)
             return tile.ResourceAmount > 0 && tile.IsWalkable
-                ? Math.Min(1, TerrainRules.For(tile.Terrain).FoodYield / .7) * tile.Fertility / 100d * (tile.DroughtTicks > 0 ? 0.15 : 1) : 0;
-        if (profession == Profession.Lumberjack) return tile.ResourceAmount > 0 && IsForestTerrain(tile.Terrain) ? TerrainRules.For(tile.Terrain).WoodYield : 0;
+                ? Math.Min(1, TerrainRules.For(tile.Terrain).FoodYield / .7) * tile.Fertility / 100d * (tile.DroughtTicks > 0 ? 0.15 : 1) * NaturalPlantHarvestEfficiency(tile) : 0;
+        if (profession == Profession.Lumberjack) return tile.ResourceAmount > 0 && IsForestTerrain(tile.Terrain) ? TerrainRules.For(tile.Terrain).WoodYield * NaturalPlantHarvestEfficiency(tile, wood: true) : 0;
         if (profession == Profession.Miner)
         {
             var best = tile.ResourceAmount > 0 ? Math.Min(1, TerrainRules.For(tile.Terrain).StoneYield + TerrainRules.For(tile.Terrain).OreYield) : 0;
@@ -640,13 +641,13 @@ public sealed partial class WorldEngine
             * (profession is Profession.Lumberjack or Profession.Miner && HasResearch(person.SettlementId, ResearchKind.Forestry) ? 1.25 : 1);
         if (profession == Profession.Farmer)
         {
-            var amount = Math.Min(tile.ResourceAmount, 0.7 * ResourceSiteYield(index, profession) * productivity * AgentFoodPolicyMultiplier(person) * GatheringTerritoryMultiplier(person, tile));
-            tile.ResourceAmount -= amount; person.Inventory.Food += amount; RecordHarvest(tile, amount);
+            var amount = HarvestPlants(tile, 0.7 * ResourceSiteYield(index, profession) * productivity * AgentFoodPolicyMultiplier(person) * GatheringTerritoryMultiplier(person, tile));
+            person.Inventory.Food += amount; RecordHarvest(tile, amount);
         }
         else if (profession == Profession.Lumberjack)
         {
-            var amount = Math.Min(tile.ResourceAmount, 0.28 * ResourceSiteYield(index, profession) * productivity * (person.Race == RaceKind.Elf ? 1.2 : 1) * GatheringTerritoryMultiplier(person, tile));
-            tile.ResourceAmount -= amount; person.Inventory.Wood += amount; RecordHarvest(tile, amount);
+            var amount = HarvestPlants(tile, 0.28 * ResourceSiteYield(index, profession) * productivity * (person.Race == RaceKind.Elf ? 1.2 : 1) * GatheringTerritoryMultiplier(person, tile), wood: true);
+            person.Inventory.Wood += amount; RecordHarvest(tile, amount);
             FinishLogging(tile, person.X, person.Y);
         }
         else
@@ -660,6 +661,8 @@ public sealed partial class WorldEngine
             var oreRatio = minerals.OreYield / Math.Max(.001, minerals.StoneYield + minerals.OreYield);
             person.Inventory.Stone += amount * (1 - oreRatio); person.Inventory.Ore += amount * oreRatio;
         }
+        if (profession != Profession.Miner && !person.Agent.Goal.PlayerDirected && NaturalPlantHarvestEfficiency(tile, profession == Profession.Lumberjack) < .25)
+            person.Agent.NextThinkTick = State.Tick + 1;
         person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + 0.30);
         person.Activity = ResidentActivity.Working;
     }

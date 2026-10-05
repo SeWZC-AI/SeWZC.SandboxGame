@@ -134,7 +134,7 @@ internal static class AgentBehaviorTests
             engine.State.Rules.Hunger = engine.State.Rules.Thirst = false;
             engine.SpawnResidents(10, 10, RaceKind.Human, 1);
             engine.State.Society.Buildings.Clear();
-            foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Floodplain; tile.Fertility = 0; tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default; }
+            foreach (var tile in engine.State.Tiles) { tile.Terrain = TerrainType.Floodplain; tile.Fertility = 0; tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0; tile.OtherWildlife = default; tile.Plants = new() { Grass = 1 }; }
             foreach (var site in resources) engine.State.Tiles[site.Y * engine.State.Width + site.X].Fertility = site.Fertility;
             var person = engine.State.Residents.Single();
             person.Profession = Profession.Farmer; person.Age = 60; person.Inventory.Food = 1.2;
@@ -164,6 +164,7 @@ internal static class AgentBehaviorTests
         person.Inventory.Food = 10;
         var resource = engine.State.Tiles[20 * engine.State.Width + 28];
         resource.Terrain = TerrainType.Forest;
+        resource.Plants = new() { Trees = 1 };
         PlaceAndHold(person, 28, 20, AgentGoalKind.Work);
         var naturalStock = resource.ResourceAmount;
         engine.Tick();

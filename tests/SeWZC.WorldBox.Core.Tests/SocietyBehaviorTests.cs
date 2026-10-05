@@ -224,6 +224,8 @@ internal static class SocietyBehaviorTests
         var engine = FlatWorld();
         var town = engine.State.Settlements.Single();
         var workshop = engine.State.Society.Buildings.Single(b => b.Kind == BuildingKind.Workshop);
+        var trees = engine.State.Tiles[workshop.Y * engine.State.Width + workshop.X + 1];
+        trees.Terrain = TerrainType.Forest; trees.ResourceAmount = 100; trees.Plants = new() { Trees = 1 };
         var worker = engine.State.Residents.Last();
         Place(worker, workshop.X, workshop.Y);
         worker.Profession = Profession.Builder;

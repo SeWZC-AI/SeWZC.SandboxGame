@@ -250,17 +250,19 @@ static void DetailedInspection()
 static void QuietSelection()
 {
     var engine = TwoTownWorld(); var view = View(engine); var resident = engine.State.Residents[0];
+    resident.Health = 61.5; var building = engine.State.Society.Buildings[0]; building.Health = 86;
     var before = engine.ExportJson();
     Call(view, "ToggleTools");
     Call(view, "SelectMapObject", "resident", resident.Id, 0, 0);
     Assert(!Field<bool>(view, "_mobilePanel") && !Field<Border>(view, "_modal").IsVisible, "Selection opened a panel");
     Assert(Control<Border>(view, "selection-summary").IsVisible, "Selection has no summary");
+    Assert(Field<TextBlock>(view, "_selectionText").Text!.Contains($"{resident.Name}（61.5/100）"), "Resident preview omitted current/maximum health");
     Assert(!Field<bool>(view, "_toolsOpen"), "Open tools hid the new map selection summary");
     Click(view, "selection-view");
     Assert(Field<bool>(view, "_mobilePanel") && Field<string>(view, "_inspectorMode") == "resident", "Explicit view did not open resident details");
-    var building = engine.State.Society.Buildings[0];
     Call(view, "SelectMapObject", "building", building.Id, building.X, building.Y);
     Assert(!Field<bool>(view, "_mobilePanel"), "Building selection opened details");
+    Assert(Field<TextBlock>(view, "_selectionText").Text!.Contains("（86/100）"), "Building preview omitted current/maximum health");
     Click(view, "selection-view");
     Assert(Field<string>(view, "_inspectorMode") == "building", "Building details did not open");
     Call(view, "SelectMapObject", "tile", 0, 1, 1);
@@ -400,17 +402,25 @@ static void ImportedSeparators()
 
 static void ContextDetails()
 {
-    var engine = TwoTownWorld(); var view = View(engine);
+    var engine = TwoTownWorld(); var town = engine.State.Settlements[0];
+    var tile = engine.State.Tiles[town.Y * engine.State.Width + town.X];
+    tile.Rainfall = .25; tile.NaturalWaterYield = 1.5;
+    var view = View(engine);
     Call(view, "OpenResident", engine.State.Residents[0].Id);
     Assert(!view.GetLogicalDescendants().OfType<Avalonia.Controls.Control>().Any(c => AutomationProperties.GetAutomationId(c) == "inspector-overview"), "Resident detail retained unrelated world tabs");
-    var town = engine.State.Settlements[0];
     Call(view, "SelectMapObject", "tile", 0, town.X, town.Y);
     var summary = Field<TextBlock>(view, "_selectionText").Text!;
-    Assert(!summary.Contains("位置") && summary.Contains("可采"), "Tile selection omitted useful output or retained coordinates");
+    Assert(!summary.Contains("位置") && summary.Contains($"（{tile.ResourceAmount:0.#}/{WorldEngine.NaturalResourceCapacity(tile):0.#}）"), "Tile selection omitted the compact stock/capacity or retained coordinates");
     Call(view, "OpenInspector", "tile", true);
     var water = Control<TextBlock>(view, "tile-water").Text!;
-    Assert(water.Contains("供水量") && !water.Contains("今日剩余") && !water.Contains("海拔"), "Supply was split or elevation occupied the main detail");
+    Assert(water.Contains("供水量 1.5 / 日") && !water.Contains("今日剩余") && !water.Contains("海拔"), "Supply omitted the combined daily total or elevation occupied the main detail");
+    Assert(!view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("降水") == true || t.Text?.Contains("补水") == true), "Source breakdown leaked into main or folded details");
     Assert(!Control<Expander>(view, "tile-geography").IsExpanded, "Elevation was not folded");
+    tile.DroughtTicks = 2; Call(view, "RefreshUi", true);
+    Assert(Control<TextBlock>(view, "tile-water").Text!.Contains("供水量 0.3 / 日"), "Supply did not reflect drought in the same field");
+    var terrain = tile.Terrain; tile.Terrain = TerrainType.Lake; Call(view, "RefreshUi", true);
+    Assert(Control<TextBlock>(view, "tile-water").Text!.Contains("供水量 无限"), "Fresh water used a separate supply label");
+    tile.Terrain = terrain; tile.DroughtTicks = 0;
     Call(view, "ShowLandProject", town.X, town.Y);
     Assert(!view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.IsVisible && t.GetLogicalAncestors().OfType<Control>().All(c => c.IsVisible) && t.Text is "桥梁方向" or "桥梁等级"), "Ordinary land buildings retained direction labels");
     Call(view, "CloseModal");
@@ -418,6 +428,10 @@ static void ContextDetails()
     Call(view, "OpenBuilding", center);
     Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("家园粮仓") == true), "Center details omit their actual stock and function");
     Assert(!view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("建造原因") == true || t.Text?.Contains("距中心") == true), "Planning internals leaked into selected building detail");
+    var before = engine.ExportJson(); Call(view, "OpenInspector", "guide", true);
+    var guide = Control<TextBlock>(view, "guide-water").Text!;
+    Assert(guide.Contains("供水量") && !guide.Contains("降水") && !guide.Contains("补水"), "Guide retained separate water sources");
+    Assert(engine.ExportJson() == before, "Reading the water guide changed the world");
 }
 
 static void ResidentSearch()

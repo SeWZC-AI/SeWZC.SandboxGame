@@ -204,7 +204,7 @@ public sealed partial class WorldEngine
 
     private (int Site, int Source, bool Fishing) FindHarvestableWildlife(Resident person)
     {
-        var reachable = 0;
+        var reachable = 0; var best = (Site: -1, Source: -1, Fishing: false); var bestScore = 0d;
         foreach (var offset in VisibleResourceOffsets)
         {
             // A shore fisher can reach a bank six steps away beside a fish
@@ -214,14 +214,22 @@ public sealed partial class WorldEngine
             if (!InBounds(x, y)) continue;
             var index = Index(x, y); var tile = State.Tiles[index];
             if (tile.FireTicks > 0) continue;
-            if (offset.Distance <= 6 && RaceTerrainRules.CanWalk(tile, person.Race) && !IsWaterTerrain(tile.Terrain) && EdibleAnimal(tile) != WildlifeKind.None && VisibleSiteReachable(person, index, ref reachable)) return (index, index, false);
-            if (EdibleAnimal(tile, aquatic: true) == WildlifeKind.None) continue;
+            var aquatic = IsWaterTerrain(tile.Terrain); var kind = EdibleAnimal(tile, aquatic);
+            var efficiency = WildlifeHarvestEfficiency(tile, kind);
+            if (kind == WildlifeKind.None || efficiency < .25) continue;
+            var score = Math.Min(tile.AnimalPopulation(kind) * .1, .15 * efficiency) * AnimalRules.For(kind).BodyMass
+                * GatheringTerritoryMultiplier(person, tile) / (1 + offset.Distance * .2);
+            if (score <= bestScore) continue;
+            if (!aquatic && offset.Distance <= 6 && RaceTerrainRules.CanWalk(tile, person.Race)
+                && VisibleSiteReachable(person, index, ref reachable))
+            { best = (index, index, false); bestScore = score; continue; }
+            if (!aquatic) continue;
             foreach (var (dx, dy) in Directions)
                 if (Walkable(x + dx, y + dy, person.Race) && State.Tiles[Index(x + dx, y + dy)].FireTicks == 0
                     && VisibleSiteReachable(person, Index(x + dx, y + dy), ref reachable))
-                    return (Index(x + dx, y + dy), index, true);
+                { best = (Index(x + dx, y + dy), index, true); bestScore = score; break; }
         }
-        return (-1, -1, false);
+        return best;
     }
 
     private void AddBoatFishingChoice(Resident person, Settlement home, List<GoalChoice> choices)
@@ -237,8 +245,9 @@ public sealed partial class WorldEngine
             if (!InBounds(x, y)) continue;
             var index = Index(x, y); var tile = State.Tiles[index];
             var animal = EdibleAnimal(tile, aquatic: true);
-            if (animal == WildlifeKind.None || tile.FireTicks > 0) continue;
-            var value = Math.Min(4, tile.AnimalPopulation(animal)) * AnimalRules.For(animal).BodyMass - offset.Distance * .5;
+            var efficiency = WildlifeHarvestEfficiency(tile, animal);
+            if (animal == WildlifeKind.None || efficiency < .25 || tile.FireTicks > 0) continue;
+            var value = Math.Min(tile.AnimalPopulation(animal) * .1, .15 * efficiency) * AnimalRules.For(animal).BodyMass / (1 + offset.Distance * .2);
             if (value > score && VisibleSiteReachable(person, index, ref reachable, TravelMode.Boat))
             { best = index; score = value; }
         }
@@ -264,11 +273,12 @@ public sealed partial class WorldEngine
         var tile = State.Tiles[source]; var kind = EdibleAnimal(tile, aquatic: goal.Kind == AgentGoalKind.Fish);
         if (kind == WildlifeKind.None || tile.FireTicks > 0) { person.Agent.NextThinkTick = State.Tick; return false; }
         var yield = AnimalRules.For(kind).BodyMass;
-        var amount = Math.Min(tile.AnimalPopulation(kind), .15 * State.Rules.GatheringRate * GatheringCondition(person) * GatheringTerritoryMultiplier(person, tile));
+        var amount = WildlifeHarvestAmount(tile, kind, .15 * State.Rules.GatheringRate * GatheringCondition(person) * GatheringTerritoryMultiplier(person, tile));
         amount = Math.Min(amount, (1_000_000 - person.Inventory.Food) / yield);
         tile.SetAnimalPopulation(kind, tile.AnimalPopulation(kind) - amount);
         person.Inventory.Food += amount * yield; RecordHarvest(tile, amount * yield);
         person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + .3); person.Activity = ResidentActivity.Working;
+        if (!goal.PlayerDirected && !WildlifeSiteProductive(tile, goal.Kind == AgentGoalKind.Fish)) person.Agent.NextThinkTick = State.Tick + 1;
         return amount > 0;
     }
 }

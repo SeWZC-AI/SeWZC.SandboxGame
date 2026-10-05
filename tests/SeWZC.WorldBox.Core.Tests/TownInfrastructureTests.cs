@@ -153,6 +153,7 @@ internal static class TownInfrastructureTests
     {
         var e = Flat(); var town = e.State.Settlements.Single(); var worker = e.State.Residents.Single();
         e.State.Tiles[16 * 32 + 17].Terrain = TerrainType.Forest;
+        e.State.Tiles[16 * 32 + 17].Plants = new() { Trees = 1 };
         var camp = e.GrantFacility(town.Id, BuildingKind.LumberCamp, 16, 16);
         worker.Profession = Profession.Lumberjack; Hold(e, worker, AgentGoalKind.Work, 16, 16, camp); e.State.Tick++;
         var wood = worker.Inventory.Wood;

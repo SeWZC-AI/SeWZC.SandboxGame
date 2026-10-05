@@ -99,7 +99,7 @@ public sealed partial class WorldEngine
         if (b.Kind == BuildingKind.LumberCamp && FindWorkshopResource(b, Profession.Lumberjack) < 0) return "附近木材已采尽";
         if (b.Kind == BuildingKind.Workshop && FindWorkshopResource(b, Profession.Lumberjack) < 0 && FindWorkshopResource(b, Profession.Miner) < 0) return "邻格没有可采木材、石材或矿石";
         if (b.Kind is BuildingKind.Quarry or BuildingKind.MiningHall && FindWorkshopResource(b, Profession.Miner) < 0) return "附近石材与矿石已采尽";
-        if (b.Kind == BuildingKind.HuntingCamp && EdibleAnimal(tile) == WildlifeKind.None) return "本格没有可狩猎的食草动物";
+        if (b.Kind == BuildingKind.HuntingCamp && !WildlifeSiteProductive(tile, aquatic: false)) return "本格猎物稀少，等待种群恢复或另寻猎场";
         if (b.Kind is BuildingKind.Infirmary or BuildingKind.HerbGarden && FindLocalWorkPatient(b, firstOnly: true) is null) return "3 格内没有需要治疗的同聚落居民";
         if (b.Kind is BuildingKind.Waystation or BuildingKind.SignalTower or BuildingKind.Dock or BuildingKind.Market && town.Resources.Food < .01) return $"值守缺粮：仓库粮食 {town.Resources.Food:0.###}，每次需要 0.01";
         if (b.Kind == BuildingKind.ArcaneSanctum && town.Resources.Food < .03) return $"训练缺粮：仓库粮食 {town.Resources.Food:0.###}，每次需要 0.03";

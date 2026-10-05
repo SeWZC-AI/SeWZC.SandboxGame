@@ -26,6 +26,7 @@ internal static class EcologyAndConflictTests
         var town = engine.State.Settlements.Single(); engine.GrantFacility(town.Id, BuildingKind.Farm, 18, 16);
         var person = engine.State.Residents.First(p => p.Id != town.RepresentativeId);
         var tile = engine.State.Tiles[16 * engine.State.Width + 19]; tile.Terrain = TerrainType.Forest; tile.ResourceAmount = 100;
+        tile.Plants = new() { Trees = 1 };
         engine.EditResident(person.Id, new ResidentEdit { X = 19, Y = 16, Age = 25, Profession = Profession.Lumberjack });
         person = engine.GetResident(person.Id)!;
         person.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Work, TargetX = 19, TargetY = 16, PlayerDirected = true,

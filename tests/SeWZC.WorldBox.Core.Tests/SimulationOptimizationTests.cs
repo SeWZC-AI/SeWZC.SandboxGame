@@ -60,6 +60,7 @@ internal static class SimulationOptimizationTests
     {
         var e = Flat(1); var person = e.State.Residents.Single(); person.X = 16; person.Y = 16;
         var source = e.State.Tiles[16 * 32 + 16]; source.Terrain = TerrainType.Forest;
+        source.Plants = new() { Trees = 1 };
         Invoke(e, "GatherActualResources", person, Profession.Lumberjack);
         var outside = person.Inventory.Wood; var remaining = source.ResourceAmount;
         Claim(e, 61); Invoke(e, "GatherActualResources", person, Profession.Lumberjack);
