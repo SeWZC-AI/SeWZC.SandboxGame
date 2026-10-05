@@ -1,0 +1,91 @@
+namespace SeWZC.WorldBox.Core;
+
+public sealed partial class WorldEngine
+{
+    public static bool IsHusbandry(BuildingKind kind) => kind is BuildingKind.Pasture or BuildingKind.Aquaculture;
+    public static double LivestockCapacity(Building building) => (building.Kind == BuildingKind.Pasture ? 8 : 12) * building.Efficiency;
+    private static bool CanDomesticate(WildlifeKind kind, bool aquatic) => AnimalRules.For(kind).Diet == AnimalDiet.Herbivore
+        && (aquatic ? kind is WildlifeKind.Fish or WildlifeKind.GrassCarp : kind is WildlifeKind.Goat or WildlifeKind.Deer or WildlifeKind.Boar or WildlifeKind.Bison or WildlifeKind.Yak or WildlifeKind.Gazelle);
+    private (int Source, WildlifeKind Kind) HusbandryStockAt(int x, int y, bool aquatic)
+    {
+        var source = -1; var species = WildlifeKind.None; var largest = .02;
+        foreach (var i in Circle(x, y, aquatic ? 1 : 0))
+        {
+            if (aquatic && !IsFreshWater(State.Tiles[i])) continue;
+            foreach (var kind in AnimalRules.Species)
+                if (CanDomesticate(kind, aquatic) && State.Tiles[i].AnimalPopulation(kind) > largest)
+                { largest = State.Tiles[i].AnimalPopulation(kind); source = i; species = kind; }
+        }
+        return (source, species);
+    }
+    private static double LivestockFeed(Building b) => .02 * Math.Min(6, b.LivestockPopulation);
+    private static double LivestockWater(Building b) => .005 * Math.Min(6, b.LivestockPopulation);
+    private bool HusbandryHasWork(Building b, Resident person)
+    {
+        if (!HasResearch(b.SettlementId, b.Kind == BuildingKind.Pasture ? ResearchKind.Agriculture : ResearchKind.Industry)
+            || b.Kind == BuildingKind.Aquaculture && !HasResearch(b.SettlementId, ResearchKind.Logistics)) return false;
+        if (person.Profession != (b.Kind == BuildingKind.Pasture ? Profession.Farmer : Profession.Fisher)) return false;
+        var tile = State.Tiles[Index(b.X, b.Y)];
+        if (tile.DroughtTicks > 0 || tile.FireTicks > 0) return false;
+        if (b.LivestockPopulation < .01) return HusbandryStockAt(b.X, b.Y, b.Kind == BuildingKind.Aquaculture).Source >= 0;
+        var home = RequireTown(b.SettlementId);
+        return (person.Inventory.Food >= LivestockFeed(b) || home.Resources.Food >= LivestockFeed(b))
+            && (person.Inventory.Water >= .75 + LivestockWater(b) || home.Resources.Water >= .08 || DailyWaterYield(tile) >= .08)
+            && (b.Kind == BuildingKind.Aquaculture || tile.ResourceAmount >= .2);
+    }
+    private bool ActOnHusbandry(Resident person, Settlement home)
+    {
+        var goal = person.Agent.Goal;
+        if (goal.Kind != AgentGoalKind.Work || FindBuilding(goal.TargetEntityId) is not { } b || !IsHusbandry(b.Kind)
+            || !b.IsCompleted || b.IsUpgrading) return false;
+        if (!HusbandryHasWork(b, person)) { person.Agent.NextThinkTick = State.Tick; return true; }
+        if (b.LivestockPopulation >= .01 && (person.Inventory.Food < LivestockFeed(b) || person.Inventory.Water < .75 + LivestockWater(b)))
+        {
+            goal.TargetX = home.X; goal.TargetY = home.Y;
+            if (Distance(person.X, person.Y, home.X, home.Y) > 1)
+            { MoveAgentTowards(person, home.X, home.Y); person.Activity = ResidentActivity.Delivering; return true; }
+            foreach (var (kind, target) in new[] { (ResourceKind.Food, TravelReserve(person) + 1), (ResourceKind.Water, 1.5) })
+            {
+                var take = Math.Min(home.Resources.Get(kind), Math.Max(0, target - person.Inventory.Get(kind)));
+                home.Resources.Set(kind, home.Resources.Get(kind) - take); person.Inventory.Set(kind, person.Inventory.Get(kind) + take);
+            }
+            DrawWater(person, Index(person.X, person.Y), Math.Max(0, 1.5 - person.Inventory.Water));
+        }
+        goal.TargetX = b.X; goal.TargetY = b.Y;
+        if (Distance(person.X, person.Y, b.X, b.Y) > 0)
+        { MoveAgentTowards(person, b.X, b.Y); person.Activity = ResidentActivity.Delivering; return true; }
+        if (TryWorkAtBuilding(person)) person.Activity = ResidentActivity.Working;
+        if (person.Inventory.Food >= TravelReserve(person) + 3)
+        { var previous = person.Agent.Goal; person.Agent.Goal = new() { Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, StartedTick = State.Tick }; ChangeWorkReservation(previous, person.Agent.Goal); person.Agent.NextThinkTick = State.Tick; }
+        return true;
+    }
+    private bool WorkHusbandry(Building b, Resident person, double effort)
+    {
+        if (!HusbandryHasWork(b, person) || person.X != b.X || person.Y != b.Y) return false;
+        if (b.LivestockPopulation < .01)
+        {
+            var stock = HusbandryStockAt(b.X, b.Y, b.Kind == BuildingKind.Aquaculture);
+            if (stock.Source < 0) return false;
+            var tile = State.Tiles[stock.Source]; var take = Math.Min(1, tile.AnimalPopulation(stock.Kind) * .5);
+            tile.SetAnimalPopulation(stock.Kind, tile.AnimalPopulation(stock.Kind) - take);
+            b.LivestockKind = stock.Kind; b.LivestockPopulation = take;
+        }
+        else
+        {
+            if (person.Inventory.Food < LivestockFeed(b) || person.Inventory.Water < .75 + LivestockWater(b)) return false;
+            person.Inventory.Food -= LivestockFeed(b); person.Inventory.Water -= LivestockWater(b);
+            var tile = State.Tiles[Index(b.X, b.Y)];
+            if (b.Kind == BuildingKind.Pasture) tile.ResourceAmount -= Math.Min(tile.ResourceAmount, .04 * Math.Min(6, b.LivestockPopulation));
+            // Feed and on-site labour renew the herd. Harvest never spends breeding stock.
+            b.LivestockPopulation = Math.Min(LivestockCapacity(b), b.LivestockPopulation + .04 * effort * b.LivestockPopulation * (1 - b.LivestockPopulation / LivestockCapacity(b)));
+            if (b.LivestockPopulation > 2)
+            {
+                var harvest = Math.Min(b.LivestockPopulation - 2, .04 * Math.Min(1.5, effort));
+                b.LivestockPopulation -= harvest; person.Inventory.Food += harvest * (b.Kind == BuildingKind.Pasture ? 8 : 9);
+                b.ProductionBatches = Math.Min(1_000_000_000, b.ProductionBatches + 1);
+            }
+        }
+        b.ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1); b.LastServiceTick = State.Tick;
+        return true;
+    }
+}

@@ -15,8 +15,8 @@ public static class ResearchRules
 {
     public static IReadOnlyList<ResearchDefinition> All { get; } = Array.AsReadOnly(new[]
     {
-        new ResearchDefinition(ResearchKind.Agriculture, "农业改良", "民生与资源", "基础", false, [], new() { Food = 20, Wood = 15 }, 60, "农场实际采收增加 35%。"),
-        new(ResearchKind.Logistics, "驿路运输", "民生与资源", "基础", false, [], new() { Food = 20, Wood = 20, Stone = 10 }, 60, "解锁驿站、桥梁、山路、船坞与码头。"),
+        new ResearchDefinition(ResearchKind.Agriculture, "农业改良", "民生与资源", "基础", false, [], new() { Food = 20, Wood = 15 }, 60, "农场实际采收增加 35%，解锁现场驯养、投喂和繁殖的牧场。", [BuildingKind.Pasture]),
+        new(ResearchKind.Logistics, "驿路运输", "民生与资源", "基础", false, [], new() { Food = 20, Wood = 20, Stone = 10 }, 60, "解锁驿站、桥梁、山路、船坞与码头。", [BuildingKind.Waystation, BuildingKind.Bridge, BuildingKind.MountainPass, BuildingKind.Shipyard, BuildingKind.Dock]),
         new(ResearchKind.Irrigation, "灌溉农学", "民生与资源", "专业", false, [ResearchKind.Agriculture], new() { Food = 25, Wood = 15, Stone = 10 }, 90, "农场及进阶粮食设施实际产量增加 25%；仍受当地肥力与干旱约束。"),
         new(ResearchKind.Forestry, "林业与勘采", "民生与资源", "专业", false, [ResearchKind.Logistics], new() { Food = 25, Wood = 10, Stone = 10 }, 90, "实地采集木材、石材、矿石与阶段矿藏的效率增加 25%。"),
         new(ResearchKind.Medicine, "公共医学", "民生与资源", "专业", false, [ResearchKind.Agriculture], new() { Food = 30, Wood = 10, Ore = 5 }, 90, "医务所现场治疗效率增加 50%。"),
@@ -85,7 +85,7 @@ public static class ResearchRules
     {
         var a = AdvancementRules.For(kind)!;
         return new(kind, a.Name, branch, a.Stage, a.Magic, a.Prerequisites, a.ResearchCost, 180,
-            "解锁" + a.FacilityName + "。\n" + WorldEngine.ProductionRecipe(a.Facility), [a.Facility],
+            "解锁" + a.FacilityName + "。\n" + WorldEngine.ProductionRecipe(a.Facility), kind == ResearchKind.Industry ? [a.Facility, BuildingKind.Aquaculture] : [a.Facility],
             kind == ResearchKind.Ballistics ? [Profession.Ranger] : null);
     }
 }

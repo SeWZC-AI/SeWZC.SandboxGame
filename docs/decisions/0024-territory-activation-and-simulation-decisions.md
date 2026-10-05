@@ -29,3 +29,5 @@
 ## 验证与边界
 
 主要回归在 `SimulationOptimizationTests`、已有城镇／供水／采矿检查与 Headless／手机浏览器检查。实际构建、长程结果和源码归属见 [验证记录](../verification.md)。不同地形、捕猎、火灾和资源枯竭仍可造成真实的局部灭绝；对照结果不保证每个物种或有人类活动的全部种子数量相同。
+
+2026-10-05 修订：容量、捕食及按需设施／文明认证的现行规则见 [ADR-0029](0029-balanced-ecology-and-demand-planning.md)，本文件保留当时依据。

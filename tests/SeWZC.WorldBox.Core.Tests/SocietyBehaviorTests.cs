@@ -244,6 +244,7 @@ internal static class SocietyBehaviorTests
     private static void DevelopmentBudget()
     {
         var engine = FlatWorld(36);
+        engine.State.Rules.Thirst = false;
         var town = engine.State.Settlements.Single();
         engine.SetNationResources(town.NationId, 500, 50, 20, 0);
         foreach (var resident in engine.State.Residents)
@@ -271,9 +272,12 @@ internal static class SocietyBehaviorTests
         engine.GrantReceivedResearch(town.Id, ResearchKind.ArcaneArts);
         foreach (var r in ResearchRules.All.Where(r => r.Branch == "民生与资源")) engine.GrantReceivedResearch(town.Id, r.Kind);
         engine.SetNationResources(town.NationId, 500, 100, 15, 0);
+        foreach (var person in engine.State.Residents)
+            person.Agent.Memory.Add(new AgentFact { Id = engine.State.NextId++, Kind = AgentFactKind.SettlementLocation, SubjectId = 999,
+                X = 20, Y = 20, Value = town.NationId, Confidence = 1, ObservedTick = engine.State.Tick, LearnedTick = engine.State.Tick });
         engine.State.Tick += 60;
         engine.TickSociety();
         Check(engine.State.Society.Buildings.Any(b => b.Kind == BuildingKind.Waystation),
-            "An unaffordable arcane sanctum prevented the town from building its funded waystation.");
+            $"An unaffordable arcane sanctum prevented the funded waystation: {town.DevelopmentGoal}; {town.DevelopmentBlocker}; sites {string.Join(",", engine.State.Society.Buildings.Select(b => b.Kind + "/" + b.IsCompleted))}");
     }
 }

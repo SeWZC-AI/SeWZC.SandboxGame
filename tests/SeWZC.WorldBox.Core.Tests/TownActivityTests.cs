@@ -23,15 +23,14 @@ internal static class TownActivityTests
         var e = Flat(); var person = e.State.Residents.Single(); var tile = e.State.Tiles[person.Y * 32 + person.X];
         person.Age = 20; person.MoveStartedTick = -100; person.MoveDurationTicks = 1;
         person.Agent.Goal = new() { Kind = AgentGoalKind.Hunt, TargetEntityId = person.Y * 32 + person.X + 1 };
-        tile.Wildlife = WildlifeKind.Rabbit; tile.WildlifePopulation = .5; tile.OtherWildlife = new() { Deer = .5 };
-        Check(e.TryHarvestWildlife(person) && tile.WildlifePopulation < .5 && tile.OtherWildlife.Deer == .5, "First hunter did not consume the first prey");
-        Check(e.TryHarvestWildlife(person) && tile.OtherWildlife.Deer < .5, "Next hunter used an exhausted cached prey");
-        Check(!e.TryHarvestWildlife(person), "Hunters continued after all eligible prey was depleted");
+        tile.Wildlife = WildlifeKind.Rabbit; tile.WildlifePopulation = .05; tile.OtherWildlife = new() { Deer = .05 };
+        Check(e.TryHarvestWildlife(person) && tile.OtherWildlife.Deer == 0 && tile.WildlifePopulation == .05, "First hunter did not consume the largest available prey");
+        Check(e.TryHarvestWildlife(person) && tile.WildlifePopulation == 0 && !e.TryHarvestWildlife(person), "Next hunter used an exhausted cached prey");
         tile = e.State.Tiles[person.Y * 32 + person.X + 1]; tile.Terrain = TerrainType.Water;
-        tile.Wildlife = WildlifeKind.Fish; tile.WildlifePopulation = .5; tile.OtherWildlife = new() { GrassCarp = .5 };
+        tile.Wildlife = WildlifeKind.Fish; tile.WildlifePopulation = .05; tile.OtherWildlife = new() { GrassCarp = .05 };
         person.Agent.Goal = new() { Kind = AgentGoalKind.Fish, TargetEntityId = person.Y * 32 + person.X + 2 };
-        Check(e.TryHarvestWildlife(person) && tile.WildlifePopulation < .5 && tile.OtherWildlife.GrassCarp == .5, "First fisher did not consume the first fish");
-        Check(e.TryHarvestWildlife(person) && tile.OtherWildlife.GrassCarp < .5 && !e.TryHarvestWildlife(person), "Next fisher retained exhausted fish");
+        Check(e.TryHarvestWildlife(person) && tile.OtherWildlife.GrassCarp == 0 && tile.WildlifePopulation == .05, "First fisher did not consume the largest available fish");
+        Check(e.TryHarvestWildlife(person) && tile.WildlifePopulation == 0 && !e.TryHarvestWildlife(person), "Next fisher retained exhausted fish");
     }
     private static WorldEngine Flat(int population = 1)
     {

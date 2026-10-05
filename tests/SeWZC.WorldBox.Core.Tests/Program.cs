@@ -4,6 +4,8 @@ using System.Text.Json.Nodes;
 using SeWZC.WorldBox.Core;
 
 var evolutionOption = Array.IndexOf(args, "--evolution");
+var ecologyOption = Array.IndexOf(args, "--simulate-ecology");
+if (ecologyOption >= 0) return EcologyDiagnostics.Run(args[(ecologyOption + 1)..]);
 if (evolutionOption >= 0)
 {
     EvolutionProbe.Run(evolutionOption + 1 < args.Length ? args[evolutionOption + 1] : "artifacts/evolution-probe.json");
@@ -63,7 +65,7 @@ var tests = new (string Name, Action Run)[]
 }.Concat(AgentBehaviorTests.Cases).Concat(EditorAndMigrationTests.Cases).Concat(SocietyBehaviorTests.Cases()).Concat(EvolutionTests.Cases).Concat(WorkQueryTests.Cases)
     .Concat(PersistenceRegressionTests.Cases).Concat(SocietyRegressionTests.Cases).Concat(AgentRegressionTests.Cases)
     .Concat(DiplomacyKnowledgeTests.Cases).Concat(StoryTests.Cases).Concat(PresentationWorldTests.Cases)
-    .Concat(TradeRegressionTests.Cases).Concat(AdvancementTests.Cases).Concat(ResearchTreeTests.Cases).Concat(ResearchGameplayTests.Cases).Concat(LandTransportTests.Cases).Concat(EcologyAndConflictTests.Cases).Concat(DevelopmentPlanningTests.Cases).Concat(PerformanceBehaviorTests.Cases).Concat(ProvisioningAndClaimsTests.Cases).Concat(SurvivalAndDisasterTests.Cases).Concat(TownInfrastructureTests.Cases).Concat(GeographyEcologyTests.Cases).Concat(TownActivityTests.Cases).Concat(SimulationOptimizationTests.Cases).ToArray();
+    .Concat(TradeRegressionTests.Cases).Concat(AdvancementTests.Cases).Concat(ResearchTreeTests.Cases).Concat(ResearchGameplayTests.Cases).Concat(LandTransportTests.Cases).Concat(EcologyAndConflictTests.Cases).Concat(DevelopmentPlanningTests.Cases).Concat(PerformanceBehaviorTests.Cases).Concat(ProvisioningAndClaimsTests.Cases).Concat(SurvivalAndDisasterTests.Cases).Concat(TownInfrastructureTests.Cases).Concat(GeographyEcologyTests.Cases).Concat(TownActivityTests.Cases).Concat(SimulationOptimizationTests.Cases).Concat(ActionEcologyRegressionTests.Cases).ToArray();
 var filterOption = Array.IndexOf(args, "--filter");
 var suiteOption = Array.IndexOf(args, "--suite");
 var suite = suiteOption < 0 ? "unit" : args.ElementAtOrDefault(suiteOption + 1);

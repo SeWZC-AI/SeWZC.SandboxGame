@@ -25,7 +25,7 @@ public sealed partial class Tile
         get => _wildlifePopulation;
         set
         {
-            if ((_wildlifePopulation >= .5) != (value >= .5)) InvalidateEdibleAnimals();
+            if (_wildlifePopulation != value) InvalidateEdibleAnimals();
             _wildlifePopulation = value;
         }
     }
@@ -43,8 +43,13 @@ public sealed partial class Tile
         ref var cached = ref (aquatic ? ref _edibleWaterAnimal : ref _edibleLandAnimal);
         if (cached != byte.MaxValue) return (WildlifeKind)cached;
         cached = (byte)WildlifeKind.None;
+        var largest = 0d;
         foreach (var kind in AnimalRules.EdibleAnimals(aquatic))
-            if (AnimalPopulation(kind) >= .5) { cached = (byte)kind; break; }
+        {
+            var population = AnimalPopulation(kind);
+            var biomass = population * AnimalRules.For(kind).BodyMass;
+            if (population >= .05 && biomass > largest) { cached = (byte)kind; largest = biomass; }
+        }
         return (WildlifeKind)cached;
     }
 

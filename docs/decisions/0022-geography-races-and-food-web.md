@@ -23,3 +23,5 @@
 ## 实现与验证
 
 主要代码为 `WorldEngine.Geography.cs`、`TerrainAdaptation.cs`、`AnimalRules.cs`、`WorldEngine.Ecology.cs` 与 `WorldEngine.RacialBuildings.cs`。`GeographyEcologyTests` 检查出海连通、宽度级别、山脉上限、部落宜居与归属、海拔不干预运行、捕食因果、种族工作、熔炉实物生产、微量雨水不阻塞劳动及确定续演。结果与限制维护在[验证记录](../verification.md)。
+
+2026-10-05 修订：容量、捕食及按需设施／文明认证的现行规则见 [ADR-0029](0029-balanced-ecology-and-demand-planning.md)，本文件保留当时依据。

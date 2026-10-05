@@ -184,7 +184,7 @@ internal static class SocietyRegressionTests
     private static void FractionalMaterials()
     {
         var engine = Flat(size: 32); var town = engine.State.Settlements.Single();
-        engine.ConfigureWorld(engine.State.Rules with { Construction = true }, false, false);
+        engine.ConfigureWorld(engine.State.Rules with { Construction = true, Research = true }, false, false);
         town.Resources.Wood = 30 - 0.0000001; town.Resources.Stone = 15;
         Check(engine.FacilityPlacementError(town.Id, BuildingKind.Academy, 18, 24) is null,
             "The fixture did not exercise an accepted roundoff-sized shortage.");

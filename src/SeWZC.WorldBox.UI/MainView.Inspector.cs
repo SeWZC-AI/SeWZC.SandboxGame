@@ -268,11 +268,16 @@ public sealed partial class MainView
         panel.Children.Add(Named(Button("编辑此地资源与道路", () => ShowTileEditor(point.X, point.Y)), "tile-edit"));
         LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.X == point.X && b.Y == point.Y), b => b.Id.ToString(),
             b => BuildingLabel(b) + "\n" + BuildingTask(b), OpenBuilding);
+        var wildlife = FoldSection(panel, "动物与栖息地", "tile-wildlife");
+        wildlife.Children.Add(LiveText(() => _engine.GetTileEcologySummary(point.X, point.Y)));
+        wildlife.Children.Add(LiveText(() => string.Join("\n", Enum.GetValues<RaceKind>().Select(r =>
+            $"{RaceName(r)}：{(RaceTerrainRules.For(r, Tile().Terrain).Habitable ? "宜居" : "不宜居")}"))));
         var effects = FoldSection(panel, "地块加成与减益", "tile-effects");
         effects.Children.Add(LiveText(() => EffectLabel(_engine.GetTileEffects(point.X, point.Y))));
         var local = FoldSection(panel, "归属与周围环境", "tile-context");
-        local.Children.Add(Paragraph("海拔仅用于生成地形，不额外影响移动、劳动或通信。"));
-        local.Children.Add(LiveText(() => $"{NationName(Tile().NationId)}\n{(Tile().RoadLevel > 0 ? $"道路 {Tile().RoadLevel} 级\n" : "")}步行：{(double.IsFinite(_engine.GetTerrainMoveCost(point.X, point.Y)) ? $"耗时系数 {_engine.GetTerrainMoveCost(point.X, point.Y):0.##}" : "无法通行，需桥梁、山路或载具")}"));
+        var geography = FoldSection(local, "地形生成信息", "tile-geography");
+        geography.Children.Add(LiveText(() => $"海拔 {Tile().Elevation} / 255"));
+        local.Children.Add(LiveText(() => $"{NationName(Tile().NationId)}   {TownName(Tile().ClaimedSettlementId)}\n{(Tile().RoadLevel > 0 ? $"道路 {Tile().RoadLevel} 级\n" : "")}步行：{(double.IsFinite(_engine.GetTerrainMoveCost(point.X, point.Y)) ? $"耗时系数 {_engine.GetTerrainMoveCost(point.X, point.Y):0.##}" : "无法通行，需桥梁、山路或载具")}"));
         LiveRows(local, () => _engine.State.Conflicts.Where(c => c.SettlementId == Tile().SettlementId || Math.Abs(c.X - point.X) + Math.Abs(c.Y - point.Y) <= 3), c => c.Id.ToString(),
             c => $"{(c.Stage == ConflictStage.Dispute ? "资源争执" : c.Stage == ConflictStage.Confrontation ? "持续对峙" : c.Stage == ConflictStage.Violence ? "局部斗殴" : "已平息")}   {c.Participants.Count} 人   紧张 {c.Tension:0}%");
         var nearby = FoldSection(panel, "附近居民", "tile-residents");

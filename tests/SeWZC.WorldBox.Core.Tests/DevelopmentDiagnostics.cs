@@ -8,10 +8,10 @@ internal static class DevelopmentDiagnostics
     // Runs the actual core without UI timing or edits. Snapshots deliberately copy mutable values.
     public static int Run(string[] args)
     {
-        var positional = args.Where(a => a is not ("--no-disasters" or "--technology" or "--magic-practice" or "--arcane-industry" or "--peaceful" or "--require-empire" or "--until-empire")).ToArray();
+        var positional = args.Where(a => a is not ("--complete-agenda" or "--no-disasters" or "--technology" or "--magic-practice" or "--arcane-industry" or "--peaceful" or "--require-empire" or "--until-empire")).ToArray();
         if (positional.Length is < 1 or > 4)
         {
-            Console.Error.WriteLine("Usage: --simulate-development <output-directory> [seed=73921] [size=256] [ticks=3600] [--no-disasters] [--peaceful] [--technology|--magic-practice|--arcane-industry] [--require-empire] [--until-empire]");
+            Console.Error.WriteLine("Usage: --simulate-development <output-directory> [seed=73921] [size=256] [ticks=3600] [--no-disasters] [--peaceful] [--technology|--magic-practice|--arcane-industry] [--require-empire] [--until-empire] [--complete-agenda]");
             return 2;
         }
         var seed = positional.Length > 1 ? int.Parse(positional[1]) : 73921;
@@ -36,6 +36,16 @@ internal static class DevelopmentDiagnostics
         Sample();
         for (var completed = 0; completed < ticks; completed += 120)
         {
+            // Explicit all-research experiment supplies a paid agenda, never free knowledge/resources.
+            if (args.Contains("--complete-agenda"))
+                foreach (var town in engine.State.Settlements)
+                {
+                    var project = engine.State.Society.Research.First(r => r.SettlementId == town.Id);
+                    if (project.ActiveProject.HasValue || !engine.State.Society.Buildings.Any(b => b.SettlementId == town.Id && b.Kind == BuildingKind.Academy && b.IsCompleted)) continue;
+                    var candidate = targetRoute.Where(k => !engine.HasResearch(town.Id, k) && engine.ResearchPrerequisiteError(town.Id, k) is null
+                        && WorldEngine.MissingResources(town.Resources, WorldEngine.GetResearchCost(k)) is null).Select(k => (ResearchKind?)k).FirstOrDefault();
+                    if (candidate.HasValue) engine.StartResearch(town.Id, candidate.Value);
+                }
             engine.Step(Math.Min(120, ticks - completed));
             Sample();
             if (completionTick < 0 && CompleteTowns(engine).Length > 0) completionTick = engine.State.Tick;
@@ -51,7 +61,7 @@ internal static class DevelopmentDiagnostics
         var completeTowns = CompleteTowns(resumed);
         File.WriteAllText(Path.Combine(output, "report.json"), JsonSerializer.Serialize(new
         {
-            seed, size, ticks, simulatedTicks = engine.State.Tick - 24, completionTick, milestones, completeTowns, deterministicContinuationTicks = 24, requiredResearch = targetRoute.Select(k => k.ToString()).ToArray(), disasters = engine.State.NaturalDisasters, elapsedSeconds = elapsed.Elapsed.TotalSeconds,
+            seed, size, ticks, completeResearchAgenda = args.Contains("--complete-agenda"), simulatedTicks = engine.State.Tick - 24, completionTick, milestones, completeTowns, deterministicContinuationTicks = 24, requiredResearch = targetRoute.Select(k => k.ToString()).ToArray(), disasters = engine.State.NaturalDisasters, elapsedSeconds = elapsed.Elapsed.TotalSeconds,
             saveBytes = Encoding.UTF8.GetByteCount(save), samples, observedEvents = observedEvents.Values,
             deaths = observedDeaths.Values.Select(r => new { r.Id, cause = r.DeathCause.ToString(), r.DeathTick, r.SettlementId, r.X, r.Y })
         }, new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));

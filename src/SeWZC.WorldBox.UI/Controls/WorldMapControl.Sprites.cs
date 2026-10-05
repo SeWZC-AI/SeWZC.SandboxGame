@@ -264,6 +264,13 @@ public sealed partial class WorldMapControl
         }
         switch (kind)
         {
+            case BuildingKind.Pasture:
+                c.Rect(3, 19, 34, 24, green); c.Rect(3, 19, 34, 2, timber); c.Rect(3, 41, 34, 2, timber);
+                for (var x = 3; x <= 35; x += 8) { c.Rect(x, 17, 2, 28, timber); }
+                c.Rect(10, 28, 12, 7, paper); c.Rect(21, 26, 6, 6, wall); c.Rect(11, 34, 2, 5, paper); c.Rect(20, 34, 2, 5, paper); break;
+            case BuildingKind.Aquaculture:
+                c.Rect(3, 22, 34, 21, metal); c.Rect(6, 25, 13, 15, 0x548DB5FF); c.Rect(22, 25, 12, 15, 0x548DB5FF);
+                c.Rect(10, 31, 6, 3, paper); c.Rect(25, 32, 6, 3, paper); c.Rect(14, 30, 2, 5, paper); c.Rect(29, 31, 2, 5, paper); break;
             case BuildingKind.Reservoir:
                 c.Rect(4, 30, 32, 13, metal); c.Rect(7, 32, 26, 8, 0x548DB5FF); c.Line(9, 35, 29, 35, paper); c.Rect(27, 16, 5, 14, wall); break;
             case BuildingKind.Hospital:

@@ -100,14 +100,13 @@ public sealed partial class WorldEngine
     public string GetSettlementSummary(int id)
     {
         var town = RequireTown(id); var rank = EffectiveSettlementRank(town); var area = GetSettlementArea(id);
-        var text = $"城镇等级：{SettlementTierName(town.Tier)}   独占陆地 {GetSettlementArea(id)} 格\n"
-            + $"城镇生效：{(IsSettlementActive(id) ? "已生效" : "领地不足，加成暂停")}   占地 {area}/{SettlementActivationArea} 格（半径 3 格的等价面积）\n"
-            + $"返乡休息 ×{1 + rank * .1:0.00}   本地研究 ×{1 + rank * .1:0.00}\n"
-            + $"家园 3 格内：同国信使速度 ×{1 + rank * .15:0.00}   每次交谈最多传递 {3 + rank * 2} 条消息\n本城镇占领地外采集效率 ×{OutsideTerritoryGatheringMultiplier:0.00}\n城镇中心等级加成同样需要城镇生效";
+        var text = $"城镇等级：{SettlementTierName(town.Tier)}\n"
+            + $"城镇生效：{(IsSettlementActive(id) ? "已生效" : "领地不足，加成暂停")}\n"
+            + $"人口 {town.Population}   住房 {GetHousingCapacity(id)}";
         if (town.IsExpanding) return text + $"\n扩充施工 {town.ExpansionProgress:0.#} / {town.ExpansionRequired:0}，需居民到场"
             + (area < GetSettlementExpansionArea(id) ? "\n领地不足，扩充暂停" : "");
         if (town.Tier == SettlementTier.City) return text;
-        return text + $"\n升{SettlementTierName(town.Tier + 1)}要求：人口 {town.Population}/{ExpansionPopulation(town.Tier)}   独占陆地 {area}/{GetSettlementExpansionArea(id)} 格\n最大占领半径 {town.MaxClaimRadius} 格，需半径 {(town.MaxClaimRadius + 1) / 2} 格的等价面积\n"
+        return text + $"\n升{SettlementTierName(town.Tier + 1)}要求：人口 {town.Population}/{ExpansionPopulation(town.Tier)}\n"
             + "扩充材料：" + AdvancementRules.Stock(SettlementExpansionCost(town.Tier)) + "\n" + (SettlementExpansionError(id) ?? "条件已满足，可投入扩充");
     }
 }

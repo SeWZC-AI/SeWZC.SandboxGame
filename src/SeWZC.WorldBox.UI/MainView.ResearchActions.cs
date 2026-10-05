@@ -34,7 +34,7 @@ public sealed partial class MainView
         var gates = _engine.State.Society.Buildings.Where(b => b.Kind == BuildingKind.Waygate).ToArray();
         if (people.Length == 0 || gates.Length == 0) { SetStatus("需要成年居民和两座同国折跃门"); return; }
         var panel = ModalPanel("使用折跃门", "本人须到源门 1 格内，两门相距至多 24 格。消耗个人魔力 30、随身魔晶 2，全部背包随本人抵达。");
-        var person = ObjectField(panel, "居民", people.Select(r => (r.Id, r.Name + $"  位置 {r.X},{r.Y}")), people.Any(r => r.Id == _selectedResidentId) ? _selectedResidentId : people[0].Id, "waygate-person");
+        var person = ObjectField(panel, "居民", people.Select(r => (r.Id, r.Name)), people.Any(r => r.Id == _selectedResidentId) ? _selectedResidentId : people[0].Id, "waygate-person");
         var target = ObjectField(panel, "目标折跃门", gates.Select(b => (b.Id, TownName(b.SettlementId) + $"  {b.X},{b.Y}")), gates[0].Id, "waygate-target");
         panel.Children.Add(Named(LiveText(() => _engine.WaygateTravelError(Integer(person), Integer(target)) ?? "人员、门与随身补给满足传送条件"), "waygate-requirements"));
         var apply = Named(Button("携带背包传送", () => RunEdit(() =>
@@ -61,7 +61,7 @@ public sealed partial class MainView
                 var targets = _engine.State.Residents.Where(r => r.NationId != person.NationId && r.Health > 0).ToArray();
                 if (targets.Length == 0) { SetStatus("没有可选的外来居民"); return; }
                 var modal = ModalPanel("游击射手射击", "需要随身弹药 1，目标在 4 格内且视线畅通，本人已收到交战军令。射击间隔至少 3 日。");
-                var target = ObjectField(modal, "目标", targets.Select(r => (r.Id, r.Name + $"  {r.X},{r.Y}")), targets[0].Id, "ranged-target");
+                var target = ObjectField(modal, "目标", targets.Select(r => (r.Id, r.Name)), targets[0].Id, "ranged-target");
                 modal.Children.Add(Named(LiveText(() => _engine.RangedAttackError(person.Id, Integer(target)) ?? "可以射击"), "ranged-requirements"));
                 modal.Children.Add(Named(Button("消耗弹药射击", () => RunEdit(() =>
                 { _engine.RangedAttack(person.Id, Integer(target)); CloseModal(); }, "射击已执行")), "ranged-apply"));

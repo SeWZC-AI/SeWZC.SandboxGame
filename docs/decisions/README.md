@@ -34,6 +34,7 @@
 | [0026](0026-connected-research-graph.md) | 有真实依赖连线的科技树 | 采用；混排与外围连线被 0027 替代 |
 | [0027](0027-readable-research-branches.md) | 两条帝国路线分别成树，支线独占位置 | 部分采用；帝国汇合被 0028 替代 |
 | [0028](0028-civilization-outcomes-and-research-gameplay.md) | 文明结果与研究解锁玩法 | 采用 |
+| [0029](0029-balanced-ecology-and-demand-planning.md) | 平衡食物网、真实养殖与按需建设／研究 | 采用 |
 
 ## 何时新增或替代
 

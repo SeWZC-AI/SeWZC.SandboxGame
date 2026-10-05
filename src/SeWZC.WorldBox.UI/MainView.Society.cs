@@ -107,7 +107,7 @@ public sealed partial class MainView
         {
             BuildResearchTree(panel, town);
             panel.Children.Add(Text("设施\n施工与工作人员", 12, Mint));
-            LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.SettlementId == town.Id).OrderBy(b => b.Id), b => b.Id.ToString(), b => $"{WorldEngine.BuildingName(b.Kind)} #{b.Id}\n{b.X},{b.Y}\n{(b.IsCompleted ? "已建成" : $"施工 {b.ConstructionProgress:F1}/{b.ConstructionRequired:F0}")}\n健康 {b.Health:F0}\n{(b.IsCompleted ? "" : _engine.GetCompletionEstimate(b.Observation, b.ConstructionProgress, b.ConstructionRequired).Explanation + "\n")}工作岗位 {b.Workers.Count}/{b.WorkSlots}\n最近工作 {DateLabel(b.LastWorkedTick)}", OpenBuilding);
+            LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.SettlementId == town.Id).OrderBy(b => b.Id), b => b.Id.ToString(), b => BuildingLabel(b) + "\n" + BuildingTask(b), OpenBuilding);
             panel.Children.Add(Named(Button("查看设施成本与建造", () => ShowBuildingEditor(town.Id)), "building-open"));
         }
         panel.Children.Add(Named(LiveText(() => $"可占领范围上限：{town.MaxClaimRadius} 格\n" + (town.FoundationPending ? "拓荒队尚未完成到场登记" : "相邻空地须由居民到场驻留登记")), "town-claim-limit"));
@@ -115,7 +115,7 @@ public sealed partial class MainView
         LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.SettlementId == town.Id && AdvancementRules.For(b.Kind) is not null).OrderBy(b => b.Id),
             b => b.Id.ToString(), b => WorldEngine.BuildingName(b.Kind) + "\n" + WorldEngine.ProductionRecipe(b.Kind) + "\n" + _engine.GetProductionStatus(b.Id), OpenBuilding);
         panel.Children.Add(Text("实体运输与传信", 12, Mint));
-        LiveRows(panel, () => _engine.State.Residents.Where(r => (r.SettlementId == town.Id || r.Agent.DestinationSettlementId == town.Id) && (r.Agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage || r.Profession is Profession.Trader or Profession.Messenger)).OrderBy(r => r.Id).Take(30), r => r.Id.ToString(), r => $"{r.Name}\n{WorldEngine.TravelModeName(r.TravelMode)}\n{GoalName(r.Agent.Goal.Kind)}\n{r.X},{r.Y} → {TownName(r.Agent.DestinationSettlementId)}\n携带：{StockLabel(r.Inventory)}\n消息 {r.Agent.CarriedMessages.Count} 条\n{r.Agent.Goal.Reason}", r => OpenResident(r.Id));
+        LiveRows(panel, () => _engine.State.Residents.Where(r => (r.SettlementId == town.Id || r.Agent.DestinationSettlementId == town.Id) && (r.Agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage || r.Profession is Profession.Trader or Profession.Messenger)).OrderBy(r => r.Id).Take(30), r => r.Id.ToString(), r => $"{r.Name}\n{WorldEngine.TravelModeName(r.TravelMode)}\n{GoalName(r.Agent.Goal.Kind)}\n目的地：{TownName(r.Agent.DestinationSettlementId)}\n携带：{StockLabel(r.Inventory)}\n消息 {r.Agent.CarriedMessages.Count} 条\n{r.Agent.Goal.Reason}", r => OpenResident(r.Id));
         panel.Children.Add(Text("通信覆盖与连通\n当前实际状态", 12, Mint));
         panel.Children.Add(Paragraph("同国在运作的信号塔通过视线连通；1 级接入 12 格、塔间 24 格，每级增加 4／8 格；塔间取较低等级。山脉阻挡。设施需要工作人员、足够健康且未着火。道路与驿站改变实际信使行程。"));
         LiveRows(panel, () => _engine.State.Settlements.Where(t => t.NationId == town.NationId && t.Id != town.Id).OrderBy(t => t.Id), t => t.Id.ToString(), t => _engine.CanRelayInformation(town.Id, t.Id, out var ticks) ? $"{town.Name} ↔ {t.Name}\n信号连通\n预计 {ticks} 日" : $"{town.Name} ↔ {t.Name}\n信号未连通\n依赖居民实际携带消息", t => _map.FocusTile(t.X, t.Y));
@@ -148,7 +148,6 @@ public sealed partial class MainView
             bridgeOptions.IsVisible = type.SelectedItem is BuildingKind.Bridge;
             if (type.SelectedItem is BuildingKind kind)
                 cost.Text = DisplayFormat.Text("施工材料：" + StockLabel(WorldEngine.FacilityCost(kind, kind == BuildingKind.Bridge ? Integer(level) : 1))
-                    + $"\n选址：距聚落中心不超过 {(kind is BuildingKind.Bridge or BuildingKind.MountainPass ? 24 : Math.Max(8, town.MaxClaimRadius))} 格。"
                     + (WorldEngine.IsWaterfrontBuilding(kind) ? "须建在紧邻自然陆岸的水域。" : "")
                     + "\n" + (AdvancementRules.For(kind) is { } a ? "运营需要：" + WorldEngine.ResearchName(a.Research) + "及其前置\n" : "")
                     + (kind is BuildingKind.Waystation or BuildingKind.Bridge or BuildingKind.MountainPass or BuildingKind.Dock ? "建设知识：驿路运输。\n"

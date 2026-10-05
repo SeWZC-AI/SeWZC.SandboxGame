@@ -113,11 +113,14 @@ public sealed partial class WorldEngine
     {
         if (!State.Rules.Construction || buildings.Any(b => !b.IsCompleted || b.IsUpgrading)) return false;
         var reserve = LocalDevelopmentReserve(town);
+        var demand = InspectLocalDemand(town, buildings);
         foreach (var building in buildings.OrderBy(b => b.Level).ThenBy(b => b.Id))
         {
+            if (!FacilityNeeded(demand, building.Kind) || building.Kind != BuildingKind.TownCenter
+                && building.Kind != BuildingKind.Housing && building.Workers.Count < building.WorkSlots) continue;
             if (building.Level >= 3 || State.Tick - building.LastWorkedTick > 24 || BuildingUpgradeError(building.Id) is not null) continue;
             var cost = GetUpgradeCost(building);
-            if (AdvancementRules.Resources.Any(k => town.Resources.Get(k) < cost.Get(k) + reserve.Get(k) + (k == ResourceKind.Food ? town.Population * 2 : 0))) continue;
+            if (AdvancementRules.Resources.Any(k => town.Resources.Get(k) < cost.Get(k) + reserve.Get(k) + (k == ResourceKind.Food && building.Kind is not (BuildingKind.Farm or BuildingKind.Pasture or BuildingKind.Aquaculture or BuildingKind.AutomatedFarm or BuildingKind.RunicGarden) ? town.Population * 2 : 0))) continue;
             UpgradeBuilding(building.Id); town.DevelopmentGoal = "升级" + BuildingName(building.Kind);
             town.DevelopmentBlocker = "材料已投入，等待居民到场升级"; return true;
         }

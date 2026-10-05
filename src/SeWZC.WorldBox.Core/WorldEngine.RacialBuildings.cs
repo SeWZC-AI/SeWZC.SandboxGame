@@ -118,5 +118,5 @@ public sealed partial class WorldEngine
     }
 
     public static bool IsForestTerrain(TerrainType terrain) => terrain is TerrainType.Forest or TerrainType.Woodland or TerrainType.Rainforest;
-    private static bool PreserveBuildingForest(BuildingKind kind) => kind == BuildingKind.SacredGrove;
+    private static bool PreserveBuildingForest(BuildingKind kind) => kind is BuildingKind.SacredGrove or BuildingKind.Pasture;
 }

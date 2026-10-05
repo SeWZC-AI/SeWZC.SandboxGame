@@ -64,6 +64,7 @@ public sealed partial class WorldEngine
         var factor = building.Efficiency;
         var effect = building.Kind switch
         {
+            BuildingKind.Pasture or BuildingKind.Aquaculture => $"养殖上限 {LivestockCapacity(building):0.#}；投喂按存栏量消耗随身粮食与水（每次最多 0.12、0.03），保留至少 2 份繁殖群。连续 30 日无人照料后数量下降",
             BuildingKind.Farm => "耕作收获粮食，装入随身库存后运回；收成受肥力、干旱和农业研究影响" + (factor > 1 ? $"；等级产量倍率 ×{factor:0.00}" : ""),
             BuildingKind.Workshop => "开采邻格实际可采材料（木材、石材、矿石），由工人携带返仓" + (factor > 1 ? $"；等级产量倍率 ×{factor:0.00}" : ""),
             BuildingKind.LumberCamp => "伐木工采收邻格木材，携带返仓" + (factor > 1 ? $"；等级产量倍率 ×{factor:0.00}" : ""),

@@ -92,11 +92,11 @@ internal static class AdvancementTests
                     var deadline = engine.State.Tick + 15000;
                     while (town.Resources.Get(resource) + .000001 < cost.Get(resource) && engine.State.Tick < deadline)
                     {
-                        if (Math.Abs(worker.X - town.X) + Math.Abs(worker.Y - town.Y) <= 1 && worker.Agent.Goal.Kind != AgentGoalKind.Work)
+                        if (Math.Abs(worker.X - town.X) + Math.Abs(worker.Y - town.Y) <= 1 && engine.State.Tick - worker.MoveStartedTick >= worker.MoveDurationTicks && worker.Agent.Goal.Kind != AgentGoalKind.Work)
                             SendToWork(engine, worker, producer);
                         engine.Step();
                     }
-                    Check(town.Resources.Get(resource) + .000001 >= cost.Get(resource), "Physical production never supplied " + resource);
+                    Check(town.Resources.Get(resource) + .000001 >= cost.Get(resource), "Physical production never supplied " + resource + $" tick {engine.State.Tick}, goal {worker.Agent.Goal.Kind}, target {worker.Agent.Goal.TargetEntityId}, at {worker.X},{worker.Y}, stock {town.Resources.Get(resource)}, inv {worker.Inventory.Get(resource)}, inputs ore {worker.Inventory.Ore}, coal {worker.Inventory.Coal}, reason {worker.Agent.Goal.Reason}, home {town.X},{town.Y}, goalXY {worker.Agent.Goal.TargetX},{worker.Agent.Goal.TargetY}, fatigue {worker.Agent.Fatigue}, nav retry {worker.Agent.Goal.NavigationRetryTick}, moves {worker.MoveStartedTick}/{worker.MoveDurationTicks}");
                 }
             }
             foreach (var definition in ResearchRules.All.Where(r => ResearchRules.Route(magic).Contains(r.Kind)))
@@ -142,8 +142,8 @@ internal static class AdvancementTests
         var building = Facility(engine, town, BuildingKind.Foundry);
         var coal = town.Resources.Coal; var ore = town.Resources.Ore;
         SendToWork(engine, worker, building); engine.Step();
-        Check(town.Resources.Coal == coal - 1 && town.Resources.Ore == ore - 2 && worker.Inventory.Ore == 2,
-            "The worker did not physically load one batch of inputs at home.");
+        Check(town.Resources.Coal == coal - 4 && town.Resources.Ore == ore - 8 && worker.Inventory.Ore == 8,
+            "The worker did not physically load its bounded four-batch cargo at home.");
         Check(town.Resources.Alloy == 0 && building.ProductionBatches == 0, "Remote factory produced before its carrier arrived.");
         var saved = WorldEngine.ImportJson(engine.ExportJson());
         for (var i = 0; i < 100 && building.ProductionBatches == 0; i++) { engine.Step(); saved.Step(); }
@@ -152,7 +152,7 @@ internal static class AdvancementTests
             "Output was not carried by the actual worker.");
         var returnSave = WorldEngine.ImportJson(engine.ExportJson());
         for (var i = 0; i < 100 && town.Resources.Alloy == 0; i++) { engine.Step(); returnSave.Step(); }
-        Check(engine.ExportJson() == returnSave.ExportJson() && town.Resources.Alloy == 1, "Output failed physical return or deterministic continuation.");
+        Check(engine.ExportJson() == returnSave.ExportJson() && town.Resources.Alloy == 4, "Output failed physical return or deterministic continuation.");
         Check(engine.State.Events.Any(e => e.ResidentId == worker.Id && e.Action == EventAction.Delivery), "First production has no observable event.");
         Hold(engine, worker, town.X, town.Y);
         town.Resources.Coal = 1 - .0000001; town.Resources.Ore = 2 - .0000001;

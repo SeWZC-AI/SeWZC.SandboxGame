@@ -11,7 +11,7 @@ const baseUrl = process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.Sa
 const modal = { scroll: 'modal-scroll' }, inspector = { scroll: 'inspector-scroll' };
 const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 fs.mkdirSync(output, { recursive: true });
-execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-saves-20261004.zip'), path.join(output, 'saves')]);
+execFileSync('python3', ['-m', 'zipfile', '-e', path.resolve('docs/saves/empire-saves-20261005.zip'), path.join(output, 'saves')]);
 
 (async () => {
     const browser = await chromium.launch(chromiumLaunchOptions());

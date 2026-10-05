@@ -66,7 +66,7 @@ internal static class ProvisioningAndClaimsTests
 
     private static void AutonomousClaim()
     {
-        var e = Flat(6); var town = e.State.Settlements.Single();
+        var e = Flat(36); var town = e.State.Settlements.Single();
         var farm = e.State.Society.Buildings.First(b => b.Kind == BuildingKind.Farm);
         foreach (var building in e.State.Society.Buildings.Where(b => b.Kind == BuildingKind.Workshop)) building.Enabled = false;
         for (var i = 0; i < farm.WorkSlots; i++)
@@ -179,7 +179,7 @@ internal static class ProvisioningAndClaimsTests
 
     private static void AutonomousUpgrade()
     {
-        var e = Flat(6); var town = e.State.Settlements.Single();
+        var e = Flat(36); var town = e.State.Settlements.Single();
         TestLand.ClaimAllTowns(e);
         e.State.Society.MagicEnabled = true;
         var research = e.State.Society.Research.Single(); research.Completed = Enum.GetValues<ResearchKind>().ToList();
@@ -201,8 +201,9 @@ internal static class ProvisioningAndClaimsTests
         Hold(e, worker, AgentGoalKind.Work, farm.X, farm.Y, farm.Id);
         foreach (var r in e.State.Residents.Skip(1)) Hold(e, r, AgentGoalKind.Rest, town.X, town.Y);
         e.State.Rules.Construction = true;
+        town.Resources.Food = 0; farm.WorkSlots = 1;
         e.Step(100);
-        Check(farm.Level > 1 || farm.IsUpgrading, "A used, funded facility never received an autonomous upgrade.");
+        Check(farm.Level > 1 || farm.IsUpgrading, $"A saturated facility never upgraded: {town.DevelopmentGoal}; {town.DevelopmentBlocker}; food {town.Resources.Food}; pop {town.Population}; worked {farm.LastWorkedTick}; workers {farm.Workers.Count}/{farm.WorkSlots}; worker {worker.Profession}/{worker.Agent.Goal.Kind}");
     }
 
     private static void Migration()
