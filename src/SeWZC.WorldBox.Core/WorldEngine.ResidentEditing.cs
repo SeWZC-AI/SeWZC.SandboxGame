@@ -32,6 +32,7 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Editor, "世界规则已更新；居民通过当地观察了解变化。");
     }
 
+    /// <summary>先校验修改后的副本，再替换存活居民或归档记录；历史编辑只影响未来行为。</summary>
     public void EditResident(int id, ResidentEdit patch)
     {
         ArgumentNullException.ThrowIfNull(patch);

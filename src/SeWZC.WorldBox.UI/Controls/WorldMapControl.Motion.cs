@@ -35,10 +35,12 @@ public sealed partial class WorldMapControl
     private double _renderFrameTime;
     private double _renderMotionTime;
     private double _simulationAnchorTick, _simulationAnchorTime;
+    /// <summary>下一模拟日已积累的时间比例，用于确定移动插值的时间基准。</summary>
     public double SimulationTickFraction { get; set; }
     private double MotionTime => _simulationAnchorTick + Math.Min(1 - (_simulationAnchorTick - Math.Floor(_simulationAnchorTick)),
         Math.Max(0, PresentationTime - _simulationAnchorTime) / SimulationTickDurationSeconds);
 
+    /// <summary>是否冻结呈现时钟和移动动画。</summary>
     public bool IsSimulationPaused
     {
         get => _simulationPaused;
@@ -54,6 +56,7 @@ public sealed partial class WorldMapControl
         }
     }
 
+    /// <summary>当前速度下，移动插值使用的每模拟日实际秒数。</summary>
     public double SimulationTickDurationSeconds
     {
         get => _simulationTickDurationSeconds;
@@ -62,6 +65,7 @@ public sealed partial class WorldMapControl
             if (!double.IsFinite(value)) return;
             var next = Math.Clamp(value, .016, 1.5);
             if (Math.Abs(next - _simulationTickDurationSeconds) < .000001) return;
+            // 先按旧速度记录当前插值时刻，再调整速度，避免移动位置突然跳变。
             _simulationAnchorTick = MotionTime;
             _simulationAnchorTime = PresentationTime;
             _simulationTickDurationSeconds = next;

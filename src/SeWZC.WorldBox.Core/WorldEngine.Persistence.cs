@@ -7,18 +7,21 @@ public sealed partial class WorldEngine
 {
     public const int MaxSaveBytes = 64 * 1024 * 1024;
 
+    /// <summary>同步把当前世界序列化为 JSON，用于存档或编辑恢复点。</summary>
     public string ExportJson() => JsonSerializer.Serialize(State, WorldJsonContext.Default.WorldState);
 
     private static readonly WorldJsonContext StreamingJson = new(new JsonSerializerOptions(WorldJsonContext.Default.Options)
         { DefaultBufferSize = 16 * 1024 });
 
-    /// <summary>Serialize in bounded buffers. The caller suspends stepping and
-    /// cancels this capture before editing or replacing the world.</summary>
+    /// <summary>通过有界且可取消的分块捕获，将当前世界序列化为 JSON 字符串。</summary>
+    /// <remarks>调用方须暂停模拟，并在修改或替换世界前取消仍在进行的捕获。</remarks>
+    /// <param name="yield">在缓冲写入之间让界面有机会处理事件的回调。</param>
+    /// <param name="cancellationToken">取消捕获，不返回不完整的存档。</param>
     public async Task<string> ExportJsonAsync(Func<CancellationToken, ValueTask> yield, CancellationToken cancellationToken = default)
         => string.Concat(await ExportJsonChunksAsync(yield, cancellationToken));
 
-    /// <summary>Capture immutable text chunks without a growing full-size byte
-    /// buffer or a final whole-world UTF-8 decode on the rendering thread.</summary>
+    /// <summary>将当前世界捕获为不可变的 JSON 文本块，在序列化期间让出执行权并检查存档大小上限。</summary>
+    /// <remarks>调用方须暂停模拟，并在修改或替换世界前取消仍在进行的捕获。</remarks>
     public async Task<string[]> ExportJsonChunksAsync(Func<CancellationToken, ValueTask> yield, CancellationToken cancellationToken = default)
     {
         using var stream = new YieldingSaveStream(yield);
@@ -27,6 +30,7 @@ public sealed partial class WorldEngine
         return stream.Complete();
     }
 
+    /// <summary>将 UTF-8 写入数据解码为文本块，检查大小并在分块间让出执行权。</summary>
     private sealed class YieldingSaveStream(Func<CancellationToken, ValueTask> yield) : Stream
     {
         private static readonly UTF8Encoding Utf8 = new(false, true);
@@ -95,6 +99,8 @@ public sealed partial class WorldEngine
         }
     }
 
+    /// <summary>解析并校验当前格式的存档，再构造引擎并重建运行时索引。</summary>
+    /// <exception cref="ArgumentException">存档为空、超出大小上限、格式错误或不满足世界数据约束。</exception>
     public static WorldEngine ImportJson(string json)
     {
         if (string.IsNullOrWhiteSpace(json) || json.Length > MaxSaveBytes || Encoding.UTF8.GetByteCount(json) > MaxSaveBytes)
@@ -102,6 +108,7 @@ public sealed partial class WorldEngine
         WorldState state;
         try { state = JsonSerializer.Deserialize(json, WorldJsonContext.Default.WorldState) ?? throw new JsonException("存档内容为空。"); }
         catch (JsonException ex) { throw new ArgumentException("无法读取存档：JSON 格式无效。", nameof(json), ex); }
+        // 构造引擎时会重建索引，因此须在初始化前拒绝无效的实体引用。
         ValidateState(state);
         return new WorldEngine(state);
     }

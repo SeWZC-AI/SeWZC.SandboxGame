@@ -20,6 +20,7 @@ public sealed partial class WorldEngine
         OriginResidentId = observer.Id, SourceResidentId = observer.Id, OriginProfession = observer.Profession, Confidence = 1, Text = text
     };
 
+    /// <summary>复制信息记录，保留观察编号、来源和时间戳。</summary>
     private static AgentFact CopyAgentFact(AgentFact fact) => new()
     {
         Id = fact.Id, EventId = fact.EventId, CampaignEventId = fact.CampaignEventId, WarObjective = fact.WarObjective, Kind = fact.Kind, SubjectId = fact.SubjectId, TargetNationId = fact.TargetNationId, X = fact.X, Y = fact.Y, Value = fact.Value,
@@ -29,6 +30,7 @@ public sealed partial class WorldEngine
         Confidence = fact.Confidence, Hops = fact.Hops, Text = fact.Text
     };
 
+    /// <summary>根据原始观察时间和议题有效期，计算衰减后的报告可信度。</summary>
     private double AgentFactReliability(AgentFact fact)
     {
         var lifetime = fact.Kind switch
@@ -80,6 +82,7 @@ public sealed partial class WorldEngine
         (fact.Kind == AgentFactKind.SettlementLocation && fact.SubjectId == homeId ? 100000 : 0)
         + (fact.Kind is AgentFactKind.Research or AgentFactKind.Policy ? 60 : 0) + fact.LearnedTick;
 
+    /// <summary>将附近的观察和可接触的公开报告记录到该居民自己的记忆中。</summary>
     private void ObserveAgentEnvironment(Resident person)
     {
         if (State.Rules.Expansion && person.Profession is Profession.Builder or Profession.Messenger or Profession.Trader

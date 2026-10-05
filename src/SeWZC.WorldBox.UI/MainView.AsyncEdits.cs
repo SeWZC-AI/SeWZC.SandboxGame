@@ -8,6 +8,7 @@ namespace SeWZC.WorldBox.UI;
 
 public sealed partial class MainView
 {
+    /// <summary>将待提交的命令绑定到原世界及界面会话，并记录恢复输入控件所需的状态。</summary>
     private sealed class EditSubmission(WorldEngine source, int generation, bool modal, int navigation)
     {
         public WorldEngine Source { get; } = source;
@@ -66,6 +67,7 @@ public sealed partial class MainView
         finally { _saveGate.Release(); }
     }
 
+    /// <summary>捕获指定世界的可取消撤销快照，期间临时停止模拟。</summary>
     private async Task<string> PrepareCheckpointAsync(WorldEngine source, CancellationToken cancellationToken,
         Func<bool>? current = null)
     {
@@ -112,6 +114,10 @@ public sealed partial class MainView
         }
     }
 
+    /// <summary>准备撤销恢复点，仅在原世界及界面会话仍有效时执行编辑。</summary>
+    /// <param name="command">捕获完成且会话校验通过后执行的同步世界修改。</param>
+    /// <param name="replaceCheckpoint">本轮编辑已有恢复点时，是否仍重新捕获。</param>
+    /// <returns>命令是否执行成功；部分执行后失败仍保留撤销恢复点。</returns>
     private async Task<bool> SubmitEditAsync(Action command, bool replaceCheckpoint = false)
     {
         if (!CanSubmitEdit()) return false;

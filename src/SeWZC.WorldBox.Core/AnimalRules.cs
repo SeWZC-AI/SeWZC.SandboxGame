@@ -2,11 +2,13 @@ namespace SeWZC.WorldBox.Core;
 
 [Flags]
 public enum AnimalHabitat { None = 0, Green = 1, Forest = 2, High = 4, Cold = 8, Dry = 16, Wet = 32, Fresh = 64, Marine = 128 }
+/// <summary>物种的体型、食性、适宜栖息地，以及最低肥力和供水要求。</summary>
 public readonly record struct AnimalDefinition(string Name, AnimalSize Size, AnimalDiet Diet, AnimalHabitat Habitats, byte MinimumFertility, double MinimumWater)
 {
     public double BodyMass => Size == AnimalSize.Small ? 1 : Size == AnimalSize.Medium ? 2 : 4;
     public bool Aquatic => (Habitats & (AnimalHabitat.Fresh | AnimalHabitat.Marine)) != 0;
 }
+/// <summary>模拟与查看共用的物种定义、捕食关系和栖息地容量计算。</summary>
 public static class AnimalRules
 {
     public const int SpeciesCount = 32;

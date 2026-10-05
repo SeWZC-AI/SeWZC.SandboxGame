@@ -2,6 +2,7 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>参与评分的候选任务，记录位置、目标实体及作为依据的记忆。</summary>
     private readonly record struct GoalChoice(AgentGoalKind Kind, int X, int Y, double Score, string Reason,
         AgentFact? Evidence = null, int SettlementId = 0, int EntityId = 0);
     private readonly List<GoalChoice> _goalChoices = [];
@@ -17,8 +18,7 @@ public sealed partial class WorldEngine
     private RaceKind _visibleAccessRace;
     private VisibleAccessCache? _visibleAccessCache;
 
-    // Bounded, derived reachability. Integer keys describe geography only,
-    // never supplies, knowledge or an individual's target choice.
+    /// <summary>在同一模拟日和通行修订号下，按起点、种族和交通方式复用的有界可达性缓存。</summary>
     private sealed class VisibleAccessCache
     {
         private const int Slots = 1024, Cells = 85;
@@ -490,9 +490,13 @@ public sealed partial class WorldEngine
         return 0;
     }
 
+    /// <summary>标记六格可见半径内的可达地格，并返回本次搜索的标记编号。</summary>
+    /// <param name="person">提供搜索起点和种族通行规则的居民。</param>
+    /// <param name="requestedMode">待评估的交通方式，不修改居民状态；默认使用居民当前的方式。</param>
     private int MarkVisibleReachable(Resident person, TravelMode? requestedMode = null)
     {
         _territoryCounts.Bind(State.Tiles);
+        // 地形、桥梁或火情可能在同一天改变，因此不能只按时间判断缓存路径是否有效。
         var revision = _territoryCounts.TraversalRevision;
         var mode = requestedMode ?? person.TravelMode;
         var start = Index(person.X, person.Y);

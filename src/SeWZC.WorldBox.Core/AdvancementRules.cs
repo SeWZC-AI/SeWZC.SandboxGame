@@ -64,6 +64,7 @@ public sealed partial class ResourceStock
     };
 }
 
+/// <summary>生产技术的研究要求、设施成本、每批原料与产出，以及可选的魔力消耗。</summary>
 public sealed record Advancement(ResearchKind Research, string Name, string Stage, bool Magic,
     ResearchKind[] Prerequisites, ResourceStock ResearchCost, BuildingKind Facility, string FacilityName,
     ResourceStock BuildingCost, ResourceStock Input, ResourceKind Output, double Yield, double Mana = 0)

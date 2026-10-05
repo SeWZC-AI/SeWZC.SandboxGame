@@ -12,6 +12,7 @@ internal sealed class EntityMotionTrack(Point position)
     public Point Target { get; private set; } = position;
     public long SeenRevision { get; set; }
 
+    /// <summary>按模拟时间对已提交的移动轨迹插值，位置限制在轨迹两端之间。</summary>
     public Point Position(double simulationTime)
     {
         if (_duration <= 0) return Target;
@@ -22,6 +23,7 @@ internal sealed class EntityMotionTrack(Point position)
 
     public bool IsMoving(double simulationTime) => _duration > 0 && simulationTime < _started + _duration;
 
+    /// <summary>根据逻辑状态更新移动区段；需要立即定位时直接显示目标位置。</summary>
     public void Update(Point from, Point target, long startedTick, int durationTicks, bool snap)
     {
         if (!snap && target == Target && startedTick == _started) return;

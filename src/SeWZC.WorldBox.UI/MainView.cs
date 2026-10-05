@@ -12,6 +12,7 @@ using SeWZC.WorldBox.UI.Controls;
 
 namespace SeWZC.WorldBox.UI;
 
+/// <summary>协调模拟计时、地图与详情展示、玩家编辑和平台存储。</summary>
 public sealed partial class MainView : UserControl
 {
     private static readonly IBrush Ink = Brush.Parse("#111E29");
@@ -265,6 +266,7 @@ public sealed partial class MainView : UserControl
         _lastSave = _clock.Elapsed.TotalSeconds; _map.RefreshWorld(true); RefreshUi(true);
     }
 
+    /// <summary>在回调预算内推进到期的模拟日，再刷新界面并调度保存。</summary>
     private void OnTick(object? sender, EventArgs e)
     {
         var now = _clock.Elapsed.TotalSeconds;
@@ -542,6 +544,7 @@ public sealed partial class MainView : UserControl
     private void FinishSaveCapture(CancellationTokenSource capture)
     {
         if (!ReferenceEquals(_saveCapture, capture)) return;
+        // 捕获期间模拟暂停，恢复时不能把捕获耗时计入待推进的模拟时间。
         _saveCapture = null; _previousTime = _clock.Elapsed.TotalSeconds;
         _map.IsSimulationPaused = WorldTimeStopped;
         _simulationStatus.Text = "世界正在演化";

@@ -20,6 +20,7 @@ public enum InstitutionKind { Council, Monarchy, GuildCouncil }
 public enum PolicyKind { Balanced, FoodSecurity, Defense, Scholarship, PublicHealth }
 public enum SpellKind { Heal, HarvestBlessing, Shield, Ember, FrostBolt, ChainLightning, RainCall, RuneWard }
 
+/// <summary>需要保存的文化、设施、本地研究、制度，以及机构实际收到的报告。</summary>
 public sealed class SocietyState
 {
     public bool MagicEnabled { get; set; } = true;
@@ -41,6 +42,7 @@ public sealed class CultureDefinition
     public double NatureAffinity { get; set; } = 0.5;
 }
 
+/// <summary>实际设施的归属、施工、生命值、劳动及生产或服务记录。</summary>
 public sealed partial class Building
 {
     [JsonRequired] public WildlifeKind LivestockKind { get; set; }
@@ -64,6 +66,7 @@ public sealed partial class Building
     [JsonIgnore] public bool IsCompleted => ConstructionProgress >= ConstructionRequired && Health > 0;
 }
 
+/// <summary>聚落已掌握的研究及当前项目进度，包含从外地收到的知识。</summary>
 public sealed class SettlementResearch
 {
     public ProjectObservation Observation { get; set; } = new();
@@ -75,6 +78,7 @@ public sealed class SettlementResearch
     public List<ResearchKind> Completed { get; set; } = [];
 }
 
+/// <summary>聚落选定的政策及其依据，也可由玩家覆盖选择。</summary>
 public sealed class LocalPolicy
 {
     public int SettlementId { get; set; }
@@ -86,6 +90,7 @@ public sealed class LocalPolicy
     public long EvidenceObservedTick { get; set; }
 }
 
+/// <summary>国家的制度形式、可选的玩家指定政策及最近一次制度决策。</summary>
 public sealed class NationInstitution
 {
     public int NationId { get; set; }
@@ -95,6 +100,7 @@ public sealed class NationInstitution
     public long LastDecisionTick { get; set; }
 }
 
+/// <summary>聚落机构已收到的议题，保留最初观察者、其当时职业和观察时间。</summary>
 public sealed class InstitutionReport
 {
     public int EventId { get; set; }

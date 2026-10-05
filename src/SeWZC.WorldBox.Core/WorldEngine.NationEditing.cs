@@ -8,6 +8,7 @@ public sealed partial class WorldEngine
         nation.ColorArgb = colorArgb | 0xFF000000;
     }
 
+    /// <summary>将国家的古代工具等级设为 1 至 5，独立于聚落研究的完成情况。</summary>
     public void SetNationTechnology(int nationId, int level)
     {
         if (!_nations.TryGetValue(nationId, out var nation)) throw new ArgumentException("国家不存在。", nameof(nationId));
