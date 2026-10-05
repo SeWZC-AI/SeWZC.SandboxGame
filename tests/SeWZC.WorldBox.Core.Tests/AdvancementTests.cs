@@ -245,7 +245,7 @@ internal static class AdvancementTests
         Reject(r => r["FormatVersion"] = 5);
         Reject(r => r["Settlements"]![0]!["Resources"]!["Alloy"] = -1);
         Reject(r => r["Residents"]![0]!["Inventory"]!["EnergyCells"] = 1_000_001);
-        Reject(r => r["Settlements"]![0]!["Resources"]!.AsObject().Remove("Crystals"));
+        Reject(r => r["Settlements"]![0]!["Resources"]!["Crystals"] = null);
         Reject(r => r["Society"]!["Buildings"]![0]!["ProductionBatches"] = -1);
         Check(engine.ExportJson() == saved, "Rejected imports changed the current world.");
     }

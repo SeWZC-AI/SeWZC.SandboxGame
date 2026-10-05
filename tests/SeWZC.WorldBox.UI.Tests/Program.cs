@@ -26,6 +26,8 @@ var tests = new (string Name, Action Test)[]
     ("Pixel rectangles preserve RGBA order and clip at canvas edges", PixelRectangles),
     ("Resident geometry includes only the layers drawn at the current zoom", ResidentGeometryLayers),
     ("Save capture suspends stepping and continuing map strokes cancel it", SaveCaptureBoundary),
+    ("Autosave skips unchanged worlds and tracks edits simulation and failed writes", AutosaveChanges),
+    ("Desktop saves compress exact chunks and preserve the last file on encoding failure", DesktopSave),
     ("Paged tools expose every building and keep previews outside toolbar layout", ToolPagination),
     ("Building damage stays visible without expanding secondary details", BuildingDamage),
     ("Building details show concrete effects and blockers without boilerplate", BuildingDetailCopy),
@@ -1152,6 +1154,65 @@ static void SaveCaptureBoundary()
     Call(view, "FinishSaveCapture", continuing);
 }
 
+static void AutosaveChanges()
+{
+    var previous = App.Storage; var storage = new CountingSaveStorage();
+    try
+    {
+        App.Storage = storage;
+        var engine = TwoTownWorld(); var view = View(engine); SetField(view, "_ready", true);
+        void Save(bool manual = false)
+        {
+            var task = (Task)Call(view, "SaveAsync", manual)!;
+            AwaitUi(() => task.IsCompleted, "Save did not complete"); task.GetAwaiter().GetResult();
+        }
+        Save(); Save();
+        Assert(storage.Calls == 1, "An unchanged world was captured again");
+        Save(true); Assert(storage.Calls == 2, "Explicit save was skipped");
+        engine.Step(); Save(); Assert(storage.Calls == 3, "Simulation change was skipped");
+        var edit = (Task<bool>)Call(view, "SubmitEditAsync", (Action)(() => engine.State.Residents[0].Name = "已编辑"), false)!;
+        AwaitUi(() => edit.IsCompleted, "Edit did not complete"); Assert(edit.Result, "Edit was canceled");
+        Save(); Assert(storage.Calls == 4, "Same-tick edit was skipped");
+        engine.Step(); storage.FailNext = true; Save(); Save();
+        Assert(storage.Calls == 6, "Failed save incorrectly marked the world as saved");
+        Call(view, "ReplaceWorld", WorldEngine.ImportJson(engine.ExportJson())); Save();
+        Assert(storage.Calls == 7 && storage.Chunks > 1, "Replacement or chunked storage was skipped");
+        var map = Map(view); map.ActiveTool = "Grass"; SetField(view, "_lastSave", -31d);
+        Call(map, "ApplyTool", map.GetTileScreenPosition(30, 30));
+        Call(view, "OnTick", null, EventArgs.Empty);
+        AwaitUi(() => !Field<bool>(view, "_saving"), "Post-edit save did not settle");
+        Assert(storage.Calls == 7, "Completing an edit immediately started another automatic capture");
+    }
+    finally { App.Storage = previous; }
+}
+
+static void DesktopSave()
+{
+    var directory = Path.Combine(Path.GetTempPath(), "worldbox-save-test-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var path = Path.Combine(directory, "autosave.worldbox");
+        var storage = new SeWZC.WorldBox.Desktop.DesktopWorldStorage(path);
+        var json = TwoTownWorld().ExportJson();
+        var write = storage.SaveChunksAsync([json[..(json.Length / 2)], json[(json.Length / 2)..]]);
+        AwaitUi(() => write.IsCompleted, "Desktop write did not complete"); write.GetAwaiter().GetResult();
+        var saved = File.ReadAllBytes(path);
+        Assert(saved[0] == 0x1f && saved[1] == 0x8b && saved.Length < json.Length / 2, "Desktop save was not compressed");
+        var read = storage.LoadAsync(); AwaitUi(() => read.IsCompleted, "Desktop read did not complete");
+        Assert(read.GetAwaiter().GetResult() == json, "Desktop gzip changed the complete world");
+        try
+        {
+            write = storage.SaveChunksAsync(["\ud800"]);
+            AwaitUi(() => write.IsCompleted, "Failed desktop write did not complete");
+            write.GetAwaiter().GetResult(); throw new Exception("Malformed UTF-16 was saved");
+        }
+        catch (System.Text.EncoderFallbackException) { }
+        Assert(File.ReadAllBytes(path).SequenceEqual(saved) && Directory.GetFiles(directory).Length == 1,
+            "Failed encoding replaced the last complete save or leaked a temporary file");
+    }
+    finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+}
+
 static void FoldedDetails()
 {
     var engine = TwoTownWorld(); var view = View(engine);
@@ -1545,6 +1606,24 @@ static void AwaitUi(Func<bool> completed, string message)
 static void Assert(bool condition, string message) { if (!condition) throw new Exception(message); }
 
 public sealed class TestApp : Application;
+
+public sealed class CountingSaveStorage : IWorldStorage
+{
+    public bool IsBackground => false;
+    public int Calls { get; private set; }
+    public int Chunks { get; private set; }
+    public bool FailNext { get; set; }
+    public Task SaveAsync(string json) => throw new Exception("Autosave used the monolithic path");
+    public Task SaveChunksAsync(string[] chunks)
+    {
+        Calls++; Chunks = chunks.Length;
+        if (FailNext) { FailNext = false; throw new IOException("Write failed"); }
+        return Task.CompletedTask;
+    }
+    public Task<string?> LoadAsync() => Task.FromResult<string?>(null);
+    public Task ExportAsync(string json, string fileName) => Task.CompletedTask;
+    public Task<string?> ImportAsync() => Task.FromResult<string?>(null);
+}
 
 public sealed class DeferredExportStorage : IWorldStorage
 {

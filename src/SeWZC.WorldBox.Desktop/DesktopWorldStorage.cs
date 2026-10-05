@@ -1,4 +1,5 @@
 using System.Text;
+using System.IO.Compression;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -7,7 +8,7 @@ using SeWZC.WorldBox.UI.Platform;
 
 namespace SeWZC.WorldBox.Desktop;
 
-internal sealed class DesktopWorldStorage : IWorldStorage
+internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStorage
 {
     private const int MaxFileBytes = 64 * 1024 * 1024;
     private static readonly UTF8Encoding Utf8 = new(false, true);
@@ -17,27 +18,41 @@ internal sealed class DesktopWorldStorage : IWorldStorage
         MimeTypes = ["application/json"]
     };
     private readonly SemaphoreSlim _saveLock = new(1, 1);
-    private readonly string _savePath = Path.Combine(
+    private readonly string _savePath = savePath ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "SeWZC", "WorldBox", "autosave.json");
+        "SeWZC", "WorldBox", "autosave.worldbox");
 
     private static Window? MainWindow =>
         (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
 
     public bool IsBackground => MainWindow is { IsActive: false };
 
-    public async Task SaveAsync(string json)
+    public Task SaveAsync(string json) => SaveChunksAsync([json]);
+
+    public async Task SaveChunksAsync(string[] chunks)
     {
-        CheckSize(json);
         await _saveLock.WaitAsync();
         string? temporaryPath = null;
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_savePath)!);
             temporaryPath = _savePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            await File.WriteAllTextAsync(temporaryPath, json, Utf8);
-            // Same-directory rename replaces the previous complete snapshot atomically.
-            File.Move(temporaryPath, _savePath, overwrite: true);
+            // Encoding, compression and file replacement must not block Avalonia.
+            await Task.Run(() =>
+            {
+                long bytes = 0;
+                foreach (var chunk in chunks)
+                {
+                    bytes += Utf8.GetByteCount(chunk);
+                    if (bytes > MaxFileBytes) throw new IOException("存档不能超过 64 MiB。");
+                }
+                Directory.CreateDirectory(Path.GetDirectoryName(_savePath)!);
+                using (var file = File.Create(temporaryPath))
+                using (var compressed = new GZipStream(file, CompressionLevel.Fastest))
+                using (var writer = new StreamWriter(compressed, Utf8))
+                    foreach (var chunk in chunks) writer.Write(chunk);
+                // Same-directory rename replaces only a complete snapshot.
+                File.Move(temporaryPath, _savePath, overwrite: true);
+            });
         }
         finally
         {
@@ -53,7 +68,8 @@ internal sealed class DesktopWorldStorage : IWorldStorage
         {
             if (!File.Exists(_savePath)) return null;
             await using var stream = File.OpenRead(_savePath);
-            return await ReadUtf8Async(stream);
+            await using var compressed = new GZipStream(stream, CompressionMode.Decompress);
+            return await ReadUtf8Async(compressed);
         }
         finally { _saveLock.Release(); }
     }

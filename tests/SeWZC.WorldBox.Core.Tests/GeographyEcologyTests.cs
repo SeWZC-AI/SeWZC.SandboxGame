@@ -248,7 +248,7 @@ internal static class GeographyEcologyTests
         Check(e.ExportJson() == restored.ExportJson(), "Expanded ecology or rainfall diverges after resume");
         var invalid = JsonNode.Parse(e.ExportJson())!; invalid["Tiles"]![0]!["rain"] = -1;
         try { WorldEngine.ImportJson(invalid.ToJsonString()); throw new Exception("Negative rainfall was accepted"); } catch (ArgumentException) { }
-        invalid = JsonNode.Parse(e.ExportJson())!; invalid["Tiles"]![0]!["OtherWildlife"] = new JsonObject { ["SnowLeopard"] = -1 };
+        invalid = JsonNode.Parse(e.ExportJson())!; invalid["Tiles"]![0]!["OtherWildlife"] = new JsonArray((int)WildlifeKind.SnowLeopard, -1);
         try { WorldEngine.ImportJson(invalid.ToJsonString()); throw new Exception("Corrupt new species was accepted"); } catch (ArgumentException) { }
     }
 }

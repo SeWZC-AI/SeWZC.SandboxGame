@@ -13,7 +13,7 @@ const baseUrl = process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.Sa
 
 (async () => {
     const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
-    assert.equal(fixture.FormatVersion, 15, 'Generate a fixture for the current alpha version');
+    assert.equal(fixture.FormatVersion, 16, 'Generate a fixture for the current alpha version');
     assert.equal(fixture.Width, 256);
     assert(fixture.Residents.length >= 2000, 'Scale scenario must start with at least 2,000 residents');
     fs.mkdirSync(output, { recursive: true });
@@ -72,8 +72,9 @@ const baseUrl = process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.Sa
                 const request = transaction.objectStore('worlds').get('autosave');
                 transaction.oncomplete = () => {
                     database.close();
-                    if (typeof request.result !== 'string') reject(new Error('Saved JSON is missing'));
-                    else resolve(new Blob([request.result]).size);
+                    const record = request.result;
+                    if (!(record?.data instanceof Blob)) reject(new Error('Saved world is missing'));
+                    else resolve(record.bytes);
                 };
                 transaction.onerror = () => { database.close(); reject(transaction.error); };
                 transaction.onabort = () => { database.close(); reject(transaction.error); };

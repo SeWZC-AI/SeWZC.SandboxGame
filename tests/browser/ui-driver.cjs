@@ -199,20 +199,28 @@ class UiDriver {
 }
 
 async function readSavedWorld(page) {
-    const json = await page.evaluate(() => new Promise((resolve, reject) => {
-        const open = indexedDB.open('sewzc-worldbox', 1);
-        open.onerror = () => reject(open.error);
-        open.onsuccess = () => {
-            const database = open.result;
-            const transaction = database.transaction('worlds');
-            const request = transaction.objectStore('worlds').get('autosave');
-            transaction.oncomplete = () => { database.close(); resolve(request.result); };
-            transaction.onerror = () => { database.close(); reject(transaction.error); };
-            transaction.onabort = () => { database.close(); reject(transaction.error); };
-        };
-    }));
+    const json = await page.evaluate(async () => {
+        const value = await new Promise((resolve, reject) => {
+            const open = indexedDB.open('sewzc-worldbox', 1);
+            open.onerror = () => reject(open.error);
+            open.onsuccess = () => {
+                const database = open.result;
+                const transaction = database.transaction('worlds');
+                const request = transaction.objectStore('worlds').get('autosave');
+                transaction.oncomplete = () => { database.close(); resolve(request.result); };
+                transaction.onerror = () => { database.close(); reject(transaction.error); };
+                transaction.onabort = () => { database.close(); reject(transaction.error); };
+            };
+        });
+        if (typeof value === 'string') return value;
+        if (!(value?.data instanceof Blob)) throw new Error('A real save operation must populate IndexedDB');
+        const stream = value.encoding === 'gzip'
+            ? value.data.stream().pipeThrough(new DecompressionStream('gzip')) : value.data.stream();
+        return new Response(stream).text();
+    });
     assert.equal(typeof json, 'string', 'A real save operation must populate IndexedDB');
-    return JSON.parse(json);
+    try { return JSON.parse(json); }
+    catch (error) { throw new Error(`${error.message}; stored JSON length ${json.length}; ending ${JSON.stringify(json.slice(-120))}`); }
 }
 
 module.exports = { testUrl, UiDriver, readSavedWorld };

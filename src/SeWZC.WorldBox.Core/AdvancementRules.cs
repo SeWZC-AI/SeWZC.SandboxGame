@@ -6,19 +6,19 @@ public enum ResourceKind { Food, Wood, Stone, Ore, Alloy, EnergyCells, Crystals,
 
 public sealed partial class ResourceStock
 {
-    [JsonRequired] public double Water { get; set; }
-    [JsonRequired] public double Alloy { get; set; }
-    [JsonRequired] public double EnergyCells { get; set; }
-    [JsonRequired] public double Crystals { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Water { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Alloy { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double EnergyCells { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Crystals { get; set; }
 
-    [JsonRequired] public double Coal { get; set; }
-    [JsonRequired] public double Oil { get; set; }
-    [JsonRequired] public double RareEarth { get; set; }
-    [JsonRequired] public double Boats { get; set; }
-    [JsonRequired] public double Aircraft { get; set; }
-    [JsonRequired] public double Tools { get; set; }
-    [JsonRequired] public double Medicine { get; set; }
-    [JsonRequired] public double Ammunition { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Coal { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Oil { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double RareEarth { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Boats { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Aircraft { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Tools { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Medicine { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Ammunition { get; set; }
 
     public double Get(ResourceKind kind) => kind switch
     {

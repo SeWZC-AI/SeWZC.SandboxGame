@@ -14,7 +14,7 @@ public enum WorldEventKind { Founding, Growth, Trade, Diplomacy, War, Disaster, 
 
 public sealed partial class WorldState
 {
-    [JsonRequired] public int FormatVersion { get; set; } = 15;
+    [JsonRequired] public int FormatVersion { get; set; } = 16;
     public int Seed { get; set; }
     public int Width { get; set; }
     public int Height { get; set; }
@@ -54,7 +54,7 @@ public sealed partial class Tile
     public byte Fertility { get; set; }
     private int _nationId;
     [JsonIgnore] internal TerritoryCounts? TerritoryCounts { get; set; }
-    public int NationId
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int NationId
     {
         get => _nationId;
         set
@@ -64,9 +64,9 @@ public sealed partial class Tile
             _nationId = value;
         }
     }
-    public int SettlementId { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int SettlementId { get; set; }
     private int _fireTicks;
-    public int FireTicks
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int FireTicks
     {
         get => _fireTicks;
         set
@@ -75,7 +75,7 @@ public sealed partial class Tile
             _fireTicks = value;
         }
     }
-    public int DroughtTicks { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public int DroughtTicks { get; set; }
     [JsonIgnore] public bool IsWalkable => (Terrain == TerrainType.Mountain ? Improvement == LandImprovement.MountainPass
         : Terrain is TerrainType.Water or TerrainType.River or TerrainType.LargeRiver or TerrainType.Lake ? Improvement == LandImprovement.Bridge
         : Terrain != TerrainType.DeepWater);
@@ -102,10 +102,11 @@ public sealed partial class Resident
 
 public sealed partial class ResourceStock
 {
-    public double Food { get; set; }
-    public double Wood { get; set; }
-    public double Stone { get; set; }
-    public double Ore { get; set; }
+    // Format 16: missing amounts mean exactly zero, with no nonzero initializer.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Food { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Wood { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Stone { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Ore { get; set; }
 }
 
 public sealed partial class Settlement

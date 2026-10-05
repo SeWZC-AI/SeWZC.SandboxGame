@@ -10,27 +10,88 @@ public sealed partial class WorldEngine
     public string ExportJson() => JsonSerializer.Serialize(State, WorldJsonContext.Default.WorldState);
 
     private static readonly WorldJsonContext StreamingJson = new(new JsonSerializerOptions(WorldJsonContext.Default.Options)
-        { DefaultBufferSize = 64 * 1024 });
+        { DefaultBufferSize = 16 * 1024 });
 
     /// <summary>Serialize in bounded buffers. The caller suspends stepping and
     /// cancels this capture before editing or replacing the world.</summary>
     public async Task<string> ExportJsonAsync(Func<CancellationToken, ValueTask> yield, CancellationToken cancellationToken = default)
+        => string.Concat(await ExportJsonChunksAsync(yield, cancellationToken));
+
+    /// <summary>Capture immutable text chunks without a growing full-size byte
+    /// buffer or a final whole-world UTF-8 decode on the rendering thread.</summary>
+    public async Task<string[]> ExportJsonChunksAsync(Func<CancellationToken, ValueTask> yield, CancellationToken cancellationToken = default)
     {
         using var stream = new YieldingSaveStream(yield);
         await JsonSerializer.SerializeAsync(stream, State, StreamingJson.WorldState, cancellationToken);
         cancellationToken.ThrowIfCancellationRequested();
-        return Encoding.UTF8.GetString(stream.GetBuffer(), 0, checked((int)stream.Length));
+        return stream.Complete();
     }
 
-    private sealed class YieldingSaveStream(Func<CancellationToken, ValueTask> yield) : MemoryStream
+    private sealed class YieldingSaveStream(Func<CancellationToken, ValueTask> yield) : Stream
     {
+        private static readonly UTF8Encoding Utf8 = new(false, true);
+        private readonly byte[] _pending = new byte[4];
+        private int _pendingCount;
+        private readonly List<string> _chunks = [];
+        private long _bytes;
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => _bytes;
+        public override long Position { get => _bytes; set => throw new NotSupportedException(); }
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+
         public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (Length + buffer.Length > MaxSaveBytes) throw new ArgumentException("存档超过 64 MiB。");
-            Write(buffer.Span);
-            await yield(cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
+            if (_bytes + buffer.Length > MaxSaveBytes) throw new ArgumentException("存档超过 64 MiB。");
+            _bytes += buffer.Length;
+            if (_pendingCount > 0)
+            {
+                var expected = SequenceLength(_pending[0]);
+                var take = Math.Min(expected - _pendingCount, buffer.Length);
+                buffer.Span[..take].CopyTo(_pending.AsSpan(_pendingCount));
+                _pendingCount += take; buffer = buffer[take..];
+                if (_pendingCount == expected)
+                { _chunks.Add(Utf8.GetString(_pending, 0, expected)); _pendingCount = 0; }
+            }
+            while (!buffer.IsEmpty)
+            {
+                var count = Math.Min(buffer.Length, 16 * 1024);
+                var last = count - 1;
+                while (last > 0 && (buffer.Span[last] & 0xc0) == 0x80) last--;
+                var trailing = SequenceLength(buffer.Span[last]) > count - last ? count - last : 0;
+                var complete = count - trailing;
+                if (complete > 0) _chunks.Add(Utf8.GetString(buffer.Span[..complete]));
+                if (trailing > 0)
+                { buffer.Span.Slice(complete, trailing).CopyTo(_pending); _pendingCount = trailing; }
+                buffer = buffer[count..];
+                // Complete a code point split by our own chunk boundary before
+                // processing any later bytes from the same serializer write.
+                if (_pendingCount > 0 && !buffer.IsEmpty)
+                {
+                    var expected = SequenceLength(_pending[0]);
+                    var take = Math.Min(expected - _pendingCount, buffer.Length);
+                    buffer.Span[..take].CopyTo(_pending.AsSpan(_pendingCount));
+                    _pendingCount += take; buffer = buffer[take..];
+                    if (_pendingCount == expected)
+                    { _chunks.Add(Utf8.GetString(_pending, 0, expected)); _pendingCount = 0; }
+                }
+                await yield(cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+        }
+
+        private static int SequenceLength(byte first) => first < 0x80 ? 1 : first < 0xe0 ? 2 : first < 0xf0 ? 3 : 4;
+
+        public string[] Complete()
+        {
+            if (_pendingCount != 0) throw new InvalidOperationException("存档包含不完整的 UTF-8 文本。");
+            return _chunks.ToArray();
         }
     }
 
@@ -58,7 +119,7 @@ public sealed partial class WorldEngine
         int IndexFor(int x, int y) => y * state.Width + x;
         bool WalkablePosition(int x, int y) => PositionValid(x, y) && state.Tiles[y * state.Width + x].IsWalkable;
 
-        Require(state.FormatVersion == 15, "不支持该存档版本，请为本版新建世界。");
+        Require(state.FormatVersion == 16, "不支持该存档版本，请为本版新建世界。");
         Require(state.Width is >= 32 and <= 256 && state.Height is >= 32 and <= 256, "地图尺寸超出范围。");
         Require(state.Tick is >= 0 and <= 120_000_000 && state.RandomState != 0 && state.NextId is > 0 and < 2_000_000_000, "时间或随机数状态无效。");
         Require(state.Tiles is not null && state.Tiles.Length == state.Width * state.Height, "地图地格数量不匹配。");

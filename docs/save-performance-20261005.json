@@ -1,0 +1,192 @@
+{
+  "date": "2026-10-05",
+  "version": "0.0.1-alpha.1.1",
+  "baseCommit": "690f92f04d21eb072c4bd76d1c4af0fb50c99432",
+  "workingTree": "uncommitted task changes",
+  "applicationSourceSha256": "fdadeb87ea280f24befce2289957815a5758c1840cca70b4ecfce29adf0da7e7",
+  "sourceFiles": 110,
+  "canonicalFullStateEquality": true,
+  "baselineSaveSha256": "b9034a4774efd2b5b61909df515b5b833728215c5b3e6a419df981cc135b1924",
+  "compactSaveSha256": "29e2ab232a19cb18031849742d8a1059e9fb92cfbcbf7d9387ba96d112dbe3c5",
+  "sourceHashMethod": "SHA-256 of sorted relative path + NUL + contents + NUL for Directory.Build.props and src files (.cs,.csproj,.js,.css,.html,.axaml,.props), excluding bin/obj",
+  "formatVersion": 16,
+  "simulationVersion": 15,
+  "environment": {
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "runtime": ".NET 10.0.12",
+    "sdk": "10.0.401",
+    "cpu": "AMD EPYC 9V74 (cloud CPU quota)",
+    "chromium": "151.0.7922.173",
+    "playwright": "1.57.0",
+    "browserUrl": "http://127.0.0.1:8080/SeWZC.SandboxGame/",
+    "viewport": "1440x960"
+  },
+  "baseline": {
+    "mode": "buffered full-string async capture",
+    "runtime": ".NET 10.0.12",
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "Width": 256,
+    "Height": 256,
+    "Population": 2000,
+    "jsonBytes": 31133692,
+    "samples": [
+      {
+        "elapsedMs": 862.4869,
+        "longestSliceMs": 220.0873,
+        "yields": 528,
+        "allocatedBytes": 201904992
+      },
+      {
+        "elapsedMs": 581.2998,
+        "longestSliceMs": 99.5441,
+        "yields": 528,
+        "allocatedBytes": 201897960
+      },
+      {
+        "elapsedMs": 460.1712,
+        "longestSliceMs": 53.0401,
+        "yields": 528,
+        "allocatedBytes": 201901872
+      }
+    ]
+  },
+  "current": {
+    "mode": "chunked",
+    "runtime": ".NET 10.0.12",
+    "os": "Debian GNU/Linux 13 (trixie)",
+    "Width": 256,
+    "Height": 256,
+    "Population": 2000,
+    "jsonBytes": 23439123,
+    "samples": [
+      {
+        "elapsedMs": 680.7365,
+        "longestSliceMs": 15.6533,
+        "yields": 1586,
+        "allocatedBytes": 48485688
+      },
+      {
+        "elapsedMs": 565.0104,
+        "longestSliceMs": 2.7032,
+        "yields": 1586,
+        "allocatedBytes": 48479416
+      },
+      {
+        "elapsedMs": 209.1308,
+        "longestSliceMs": 8.2129,
+        "yields": 1586,
+        "allocatedBytes": 48477064
+      }
+    ]
+  },
+  "jsonReductionPercent": 24.71460500091027,
+  "medianAllocationReductionPercent": 75.98862481076947,
+  "browser": [
+    {
+      "fallback": false,
+      "compression": true,
+      "storage": {
+        "encoding": "gzip",
+        "jsonBytes": 24993097,
+        "storedBytes": 4265949
+      },
+      "saveMilliseconds": 27289.795668,
+      "heldSamples": 66,
+      "capturedTick": 6,
+      "population": 2000,
+      "workers": [
+        "http://127.0.0.1:8080/SeWZC.SandboxGame/storage-worker.rfchachl6r.js"
+      ],
+      "errors": [],
+      "observedCaptureUntilMs": 8604.140835999999,
+      "longTasksIncludingSimulationAndRendering": {
+        "count": 175,
+        "p50Ms": 102,
+        "p95Ms": 188,
+        "maxMs": 337
+      },
+      "automatic": {
+        "tick": 102,
+        "unchangedObservationMilliseconds": 33000
+      }
+    },
+    {
+      "fallback": true,
+      "compression": true,
+      "storage": {
+        "encoding": "gzip",
+        "jsonBytes": 25946324,
+        "storedBytes": 4399282
+      },
+      "saveMilliseconds": 56374.867056999996,
+      "heldSamples": 62,
+      "capturedTick": 13,
+      "population": 2000,
+      "workers": [],
+      "errors": [],
+      "observedCaptureUntilMs": 7858.642940999998,
+      "longTasksIncludingSimulationAndRendering": {
+        "count": 534,
+        "p50Ms": 80,
+        "p95Ms": 154,
+        "maxMs": 279
+      }
+    },
+    {
+      "fallback": true,
+      "compression": false,
+      "storage": {
+        "encoding": "utf-8",
+        "jsonBytes": 19427808,
+        "storedBytes": 19427808
+      },
+      "saveMilliseconds": 9516.408320999995,
+      "heldSamples": 51,
+      "capturedTick": 4,
+      "population": 144,
+      "workers": [],
+      "errors": [],
+      "observedCaptureUntilMs": 6633.989313999977,
+      "longTasksIncludingSimulationAndRendering": {
+        "count": 13,
+        "p50Ms": 85,
+        "p95Ms": 254,
+        "maxMs": 254
+      }
+    }
+  ],
+  "deploySmoke": {
+    "url": "http://127.0.0.1:8080/SeWZC.SandboxGame/",
+    "revision": "690f92f04d21eb072c4bd76d1c4af0fb50c99432",
+    "seconds": 35.837192381,
+    "savedTick": 3,
+    "restoredTick": 6,
+    "rendererChecks": [
+      {
+        "stage": "deployed startup",
+        "renderer": "no fallback diagnostics"
+      },
+      {
+        "stage": "deployed save recovery",
+        "renderer": "no fallback diagnostics"
+      }
+    ]
+  },
+  "checks": {
+    "releaseBuild": "0 warnings, 0 errors",
+    "unit": 90,
+    "headlessUi": 55,
+    "fastSeconds": 12.57,
+    "integration": 122,
+    "integrationSeconds": 41.68,
+    "browserSavingCases": 3,
+    "staticAssets": "passed",
+    "diffWhitespace": "passed"
+  },
+  "limitations": [
+    "Native capture benchmark yields synchronously; it does not measure browser FPS. One warmup and three samples retain JIT/GC variability.",
+    "Baseline measures the previous actual full-string save path; current measures the actual chunked save path. Both use the same controlled world and verify synchronous JSON equality.",
+    "Browser saves include simulation, rendering and asynchronous waits; observed capture starts after UI interaction and is not an exact serialization CPU duration.",
+    "No real phone, Safari/Firefox, full CI matrix or public deployment was tested. Large captures still pause simulation and GC/rendering may produce long tasks."
+  ]
+}
