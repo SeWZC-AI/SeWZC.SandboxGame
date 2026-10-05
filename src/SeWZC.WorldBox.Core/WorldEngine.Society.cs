@@ -327,9 +327,10 @@ public sealed partial class WorldEngine
                 var source = FindWorkshopResource(building, resident.Profession);
                 if (source < 0) return false;
                 var sourceTile = State.Tiles[source]; var yields = TerrainRules.For(sourceTile.Terrain);
-                var amount = Math.Min(sourceTile.ResourceAmount, effort * 0.2 * State.Rules.GatheringRate * (HasResearch(town.Id, ResearchKind.Forestry) ? 1.25 : 1) * GatheringTerritoryMultiplier(resident, sourceTile));
-                sourceTile.ResourceAmount -= amount;
-                if (resident.Profession == Profession.Miner) { resident.Inventory.Stone += amount * yields.StoneYield; resident.Inventory.Ore += amount * yields.OreYield; }
+                var desired = effort * 0.2 * State.Rules.GatheringRate * (HasResearch(town.Id, ResearchKind.Forestry) ? 1.25 : 1) * GatheringTerritoryMultiplier(resident, sourceTile);
+                var amount = resident.Profession == Profession.Miner ? Math.Min(sourceTile.ResourceAmount, desired)
+                    : HarvestPlants(sourceTile, desired * NaturalPlantHarvestEfficiency(sourceTile, wood: true), wood: true);
+                if (resident.Profession == Profession.Miner) { sourceTile.ResourceAmount -= amount; resident.Inventory.Stone += amount * yields.StoneYield; resident.Inventory.Ore += amount * yields.OreYield; }
                 else
                 {
                     resident.Inventory.Wood += amount * yields.WoodYield;
@@ -386,8 +387,9 @@ public sealed partial class WorldEngine
         {
             var tile = State.Tiles[index];
             if (tile.ResourceAmount < .5 || tile.FireTicks > 0) continue;
+            if (profession != Profession.Miner && NaturalPlantHarvestEfficiency(tile, wood: true) < .25) continue;
             var yield = TerrainRules.For(tile.Terrain);
-            var value = profession == Profession.Miner ? yield.StoneYield + yield.OreYield : yield.WoodYield;
+            var value = profession == Profession.Miner ? yield.StoneYield + yield.OreYield : yield.WoodYield * NaturalPlantHarvestEfficiency(tile, wood: true);
             if (value > bestYield || value == bestYield && value > 0 && index < best)
             { best = index; bestYield = value; }
         }
@@ -770,7 +772,8 @@ public sealed partial class WorldEngine
             if (!State.Rules.ResourceRegeneration || !tile.IsWalkable || tile.FireTicks > 0) continue;
             var yields = TerrainRules.For(tile.Terrain);
             var renewal = (yields.FoodYield + yields.WoodYield) * (tile.DroughtTicks > 0 ? 0.2 : 1);
-            if (tile.ResourceAmount < 100) tile.ResourceAmount = Math.Min(100, tile.ResourceAmount + renewal * 2);
+            var capacity = NaturalResourceCapacity(tile);
+            if (tile.ResourceAmount < capacity) tile.ResourceAmount = Math.Min(capacity, tile.ResourceAmount + renewal * 2);
         }
     }
 

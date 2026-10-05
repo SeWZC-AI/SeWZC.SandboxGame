@@ -53,7 +53,7 @@ public sealed partial class WorldEngine
             if (total > 1)
                 for (var species = 0; species < 4; species++) plants.Set((PlantKind)species, plants.Get((PlantKind)species) / total);
             tile.Plants = plants;
-            if (tile.Terrain is TerrainType.Grass or TerrainType.DryFertile && plants.Trees >= .5 && tile.ClaimedSettlementId == 0)
+            if (tile.Terrain is TerrainType.Grass or TerrainType.DryFertile && plants.Trees * Math.Min(1, tile.ResourceAmount / 100) >= .5 && tile.ClaimedSettlementId == 0)
                 tile.Terrain = TerrainType.Forest;
         }
         static void Include(PlantCoverage plants, Span<double> nearby)

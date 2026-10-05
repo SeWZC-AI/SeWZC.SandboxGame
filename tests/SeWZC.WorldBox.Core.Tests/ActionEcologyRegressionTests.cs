@@ -15,13 +15,90 @@ internal static class ActionEcologyRegressionTests
         ("pastures and aquaculture capture feed breed and preserve real stocks", Husbandry),
         ("essential construction proceeds during research and optional defenses wait for demand", Planning),
         ("ordinary buildings admit workers from all four sides", Orientation),
-        ("herds reject corrupt saves and continue deterministically", Persistence)
+        ("herds reject corrupt saves and continue deterministically", Persistence),
+        ("low-density hunting slows down and chooses productive visible prey", SustainableHunting),
+        ("natural plants survive repeated collection and gatherers choose fuller sites", SustainablePlants),
+        ("migration spends a small bounded share while preserving population", SlowMigration),
+        ("inhabited worlds retain animal diversity and plants through autonomous collection", InhabitedDiversity)
     ];
     private static void Check(bool value, string message) { if (!value) throw new Exception(message); }
+    [UnitTest]
+    private static void SustainableHunting()
+    {
+        var (e, t, p) = World(); p.X = p.FromX = 24; p.Y = p.FromY = 24;
+        p.MoveStartedTick = -100; p.MoveDurationTicks = 1; p.Inventory.Food = 0;
+        var source = 24 * 32 + 24; var tile = e.State.Tiles[source];
+        tile.Plants = new() { Grass = 1 }; tile.Wildlife = WildlifeKind.Deer;
+        p.Agent.Goal = new() { Kind = AgentGoalKind.Hunt, TargetEntityId = source + 1 };
+        tile.WildlifePopulation = .06; Check(e.TryHarvestWildlife(p), "Sparse prey could not be harvested at a reduced rate");
+        var sparse = .06 - tile.WildlifePopulation;
+        tile.WildlifePopulation = 1; Check(e.TryHarvestWildlife(p), "Dense prey could not be harvested");
+        Check(1 - tile.WildlifePopulation > sparse * 4 && tile.WildlifePopulation > 0, "Sparse hunting did not slow down");
+        tile.WildlifePopulation = .06;
+        for (var i = 0; i < 500; i++) e.TryHarvestWildlife(p);
+        Check(tile.WildlifePopulation > 0, "Repeated hunters exhausted the final breeding population");
+        var better = e.State.Tiles[24 * 32 + 27]; better.Plants = new() { Grass = 1 }; better.Wildlife = WildlifeKind.Deer; better.WildlifePopulation = 2;
+        var query = typeof(WorldEngine).GetMethod("FindHarvestableWildlife", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        var found = ((int Site, int Source, bool Fishing))query.Invoke(e, [p])!;
+        Check(found.Source == 24 * 32 + 27, "Hunter stayed on sparse nearby prey instead of a productive visible site");
+        foreach (var resident in e.State.Residents) resident.Race = RaceKind.Orc;
+        var habitat = e.State.Tiles[19 * 32 + 19];
+        habitat.Terrain = TerrainType.Forest; habitat.ResourceAmount = 100; habitat.Plants = new() { Trees = .7, Shrubs = .3 }; habitat.Wildlife = WildlifeKind.Deer; habitat.WildlifePopulation = 2;
+        e.GrantFacility(t.Id, BuildingKind.HuntingCamp, 19, 19);
+        Check(habitat.Terrain == TerrainType.Forest && habitat.ResourceAmount == 100 && habitat.Plants.Trees == .7,
+            "A hunting camp destroyed its own wildlife habitat");
+    }
+    [UnitTest]
+    private static void SustainablePlants()
+    {
+        var (e, t, p) = World(); p.X = p.FromX = 24; p.Y = p.FromY = 24; p.Profession = Profession.Farmer;
+        var tile = e.State.Tiles[24 * 32 + 24]; tile.Plants = new() { Grass = 1 }; tile.ResourceAmount = .1;
+        var gather = typeof(WorldEngine).GetMethod("GatherActualResources", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        for (var i = 0; i < 500; i++) gather.Invoke(e, [p, Profession.Farmer]);
+        Check(tile.ResourceAmount > 0 && tile.Plants.Grass == 1 && PlantResources.At(tile).Single().Quantity > 0, "Collection cleared scarce plants or their displayed quantity");
+        foreach (var ground in e.State.Tiles) ground.ResourceAmount = 1;
+        var rich = 24 * 32 + 27; e.State.Tiles[rich].ResourceAmount = 100;
+        var query = typeof(WorldEngine).GetMethod("FindVisibleResourceSite", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        Check((int)query.Invoke(e, [p, Profession.Farmer])! == rich, "Gatherer stayed on scarce plants instead of the fuller visible site");
+        tile.ResourceAmount = 45; tile.Plants = new() { Grass = 1 };
+        var before = e.ExportJson(); var detail = e.GetTileProductionSummary(24, 24);
+        Check(detail.Contains("草本 45") && detail.Contains("草籽与嫩叶") && !detail.Contains("野生食物") && !detail.Contains("可采储量"), "Inspection omitted concrete plant quantities and products");
+        Check(e.ExportJson() == before, "Plant inspection changed the world");
+        tile.ResourceAmount = 100; tile.Plants = new() { Trees = .7, Shrubs = .3 };
+        var treeStock = PlantResources.At(tile).Single(s => s.Kind == PlantKind.Trees).Quantity;
+        gather.Invoke(e, [p, Profession.Farmer]);
+        Check(Math.Abs(PlantResources.At(tile).Single(s => s.Kind == PlantKind.Trees).Quantity - treeStock) < 1e-9, "Food collection spent tree stock instead of edible plants");
+    }
+    [UnitTest]
+    private static void SlowMigration()
+    {
+        var e = WorldEngine.Create(42, 32, 32, false); TestLand.ClearWildlife(e);
+        foreach (var tile in e.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.Fertility = 100; tile.ResourceAmount = 100; tile.NaturalWaterYield = .1; tile.Plants = new() { Grass = 1 }; }
+        var source = e.State.Tiles[0]; source.Wildlife = WildlifeKind.Deer;
+        var initial = source.WildlifePopulation = AnimalRules.EnvironmentalCapacity(source, WildlifeKind.Deer);
+        e.State.Tick = 1; typeof(WorldEngine).GetMethod("TickWildlife", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(e, null);
+        var migrated = e.State.Tiles[1].AnimalPopulation(WildlifeKind.Deer) + e.State.Tiles[32].AnimalPopulation(WildlifeKind.Deer);
+        Check(migrated > 0 && migrated <= initial * .021 && source.WildlifePopulation >= initial * .979, "Animals dispersed too much in a single natural review");
+        Check(Math.Abs(initial - source.WildlifePopulation - migrated) < 1e-9, "Migration created or lost animals");
+    }
+    [LongRunningTest]
+    private static void InhabitedDiversity()
+    {
+        foreach (var seed in new[] { 42, 73921 })
+        {
+            var e = WorldEngine.Create(seed, 128, 128); e.State.NaturalDisasters = false;
+            e.ConfigureWorld(e.State.Rules with { Wars = false, Conflict = 0 }, false, true);
+            e.Step(6000);
+            Check(AnimalRules.Species.All(k => e.State.Tiles.Sum(t => t.AnimalPopulation(k)) > 1), $"Residents exhausted a wildlife species at seed {seed}");
+            Check(e.State.Tiles.Sum(t => PlantResources.At(t).Sum(p => p.Quantity)) > 1000, "Autonomous collection exhausted vegetation");
+            var resumed = WorldEngine.ImportJson(e.ExportJson()); e.Step(24); resumed.Step(24);
+            Check(e.ExportJson() == resumed.ExportJson(), "Sustainable collection lost deterministic continuation");
+        }
+    }
     private static (WorldEngine E, Settlement T, Resident P) World()
     {
         var e = WorldEngine.Create(42, 32, 32, false);
-        foreach (var tile in e.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.ResourceAmount = 100; tile.Fertility = 100; tile.NaturalWaterYield = .1; }
+        foreach (var tile in e.State.Tiles) { tile.Terrain = TerrainType.Grass; tile.ResourceAmount = 100; tile.Fertility = 100; tile.NaturalWaterYield = .1; tile.Plants = new() { Grass = 1 }; }
         TestLand.ClearWildlife(e); e.SpawnResidents(16, 16, RaceKind.Human, 12); TestLand.ClaimAllTowns(e);
         e.ConfigureWorld(new WorldRules { Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
             Construction = false, Research = false, Expansion = false, Trade = false, Wars = false, Migration = false, Alliances = false, Secession = false }, false, true);

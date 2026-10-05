@@ -211,8 +211,11 @@ internal static class ProvisioningAndClaimsTests
         var e = Flat(1); var origin = e.State.Tiles[16 * 32 + 20]; var target = e.State.Tiles[16 * 32 + 21];
         origin.NaturalWaterYield = target.NaturalWaterYield = .02;
         origin.Wildlife = target.Wildlife = WildlifeKind.Rabbit; origin.WildlifePopulation = 200; target.WildlifePopulation = 20;
+        var control = WorldEngine.ImportJson(e.ExportJson()); control.State.Tiles[16 * 32 + 20].WildlifePopulation = 0;
         e.Step(6);
-        Check(target.WildlifePopulation > 20, "Over-capacity habitat blocked fast migration.");
+        control.Step(6);
+        var incoming = target.WildlifePopulation - control.State.Tiles[16 * 32 + 21].WildlifePopulation;
+        Check(incoming > 0 && incoming < 200 * .03, "Crowded habitat blocked migration or received an excessively fast influx.");
         e.State.Rules.ResourceRegeneration = true;
         origin.Plants = new() { Shrubs = 1 }; target.Plants = default; e.Step(120);
         Check(target.Plants.Shrubs > 0 && target.Plants.Shrubs < .1, "Plant spread was absent or not slow and yearly.");

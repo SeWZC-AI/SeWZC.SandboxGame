@@ -23,7 +23,7 @@ public sealed partial class WorldEngine
             || !State.Society.MagicEnabled || person.MagicTalent < 25 || person.MagicTraining >= 100)) return false;
         if (building.Kind == BuildingKind.HerbGarden && FindLocalWorkPatient(building, firstOnly: true) is null) return false;
         if (building.Kind == BuildingKind.MiningHall && FindWorkshopResource(building, Profession.Miner) < 0) return false;
-        if (building.Kind == BuildingKind.HuntingCamp && EdibleAnimal(State.Tiles[Index(building.X, building.Y)]) == WildlifeKind.None) return false;
+        if (building.Kind == BuildingKind.HuntingCamp && !WildlifeSiteProductive(State.Tiles[Index(building.X, building.Y)], aquatic: false)) return false;
         var input = RacialWorkInput(building.Kind);
         return MissingResources(person.Inventory, input) is null || MissingResources(RequireTown(building.SettlementId).Resources, input) is null;
     }
@@ -91,7 +91,7 @@ public sealed partial class WorldEngine
             case BuildingKind.HuntingCamp:
                 var ground = State.Tiles[Index(person.X, person.Y)]; var prey = EdibleAnimal(ground);
                 if (prey == WildlifeKind.None) return false;
-                var caught = Math.Min(ground.AnimalPopulation(prey), .25 * effort * State.Rules.GatheringRate * GatheringTerritoryMultiplier(person, ground));
+                var caught = WildlifeHarvestAmount(ground, prey, .25 * effort * State.Rules.GatheringRate * GatheringTerritoryMultiplier(person, ground));
                 ground.SetAnimalPopulation(prey, ground.AnimalPopulation(prey) - caught);
                 var food = caught * AnimalRules.For(prey).BodyMass;
                 person.Inventory.Food = Math.Min(1_000_000, person.Inventory.Food + food); RecordHarvest(ground, food); return true;
@@ -118,5 +118,5 @@ public sealed partial class WorldEngine
     }
 
     public static bool IsForestTerrain(TerrainType terrain) => terrain is TerrainType.Forest or TerrainType.Woodland or TerrainType.Rainforest;
-    private static bool PreserveBuildingForest(BuildingKind kind) => kind is BuildingKind.SacredGrove or BuildingKind.Pasture;
+    private static bool PreserveBuildingForest(BuildingKind kind) => kind is BuildingKind.SacredGrove or BuildingKind.Pasture or BuildingKind.HuntingCamp or BuildingKind.LumberCamp;
 }

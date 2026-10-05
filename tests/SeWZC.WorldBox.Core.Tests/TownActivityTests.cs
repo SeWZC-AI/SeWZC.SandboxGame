@@ -13,7 +13,7 @@ internal static class TownActivityTests
         ("local conversations preserve ID-ranked recipients across neighborhood orders", ConversationRecipients),
         ("shared visible paths react immediately to fire bridges terrain and travel mode", VisiblePathChanges),
         ("shore fishers retain sources seven steps away beside reachable banks", FishingBoundary),
-        ("successive hunters and fishers see exhausted prey immediately", ExhaustedPrey),
+        ("successive hunters and fishers preserve sparse prey and switch species immediately", ExhaustedPrey),
         ("fishers borrow a real boat fish offshore and return catch through a saved journey", BoatFishing)
     ];
 
@@ -24,13 +24,13 @@ internal static class TownActivityTests
         person.Age = 20; person.MoveStartedTick = -100; person.MoveDurationTicks = 1;
         person.Agent.Goal = new() { Kind = AgentGoalKind.Hunt, TargetEntityId = person.Y * 32 + person.X + 1 };
         tile.Wildlife = WildlifeKind.Rabbit; tile.WildlifePopulation = .05; tile.OtherWildlife = new() { Deer = .05 };
-        Check(e.TryHarvestWildlife(person) && tile.OtherWildlife.Deer == 0 && tile.WildlifePopulation == .05, "First hunter did not consume the largest available prey");
-        Check(e.TryHarvestWildlife(person) && tile.WildlifePopulation == 0 && !e.TryHarvestWildlife(person), "Next hunter used an exhausted cached prey");
+        Check(e.TryHarvestWildlife(person) && tile.OtherWildlife.Deer is > 0 and < .05 && tile.WildlifePopulation == .05, "First hunter failed to preserve sparse deer");
+        Check(e.TryHarvestWildlife(person) && tile.WildlifePopulation is > 0 and < .05 && !e.TryHarvestWildlife(person), "Next hunter reused sparse cached prey instead of switching species");
         tile = e.State.Tiles[person.Y * 32 + person.X + 1]; tile.Terrain = TerrainType.Water;
         tile.Wildlife = WildlifeKind.Fish; tile.WildlifePopulation = .05; tile.OtherWildlife = new() { GrassCarp = .05 };
         person.Agent.Goal = new() { Kind = AgentGoalKind.Fish, TargetEntityId = person.Y * 32 + person.X + 2 };
-        Check(e.TryHarvestWildlife(person) && tile.OtherWildlife.GrassCarp == 0 && tile.WildlifePopulation == .05, "First fisher did not consume the largest available fish");
-        Check(e.TryHarvestWildlife(person) && tile.WildlifePopulation == 0 && !e.TryHarvestWildlife(person), "Next fisher retained exhausted fish");
+        Check(e.TryHarvestWildlife(person) && tile.OtherWildlife.GrassCarp is > 0 and < .05 && tile.WildlifePopulation == .05, "First fisher failed to preserve sparse carp");
+        Check(e.TryHarvestWildlife(person) && tile.WildlifePopulation is > 0 and < .05 && !e.TryHarvestWildlife(person), "Next fisher reused sparse cached fish instead of switching species");
     }
     private static WorldEngine Flat(int population = 1)
     {
@@ -93,6 +93,7 @@ internal static class TownActivityTests
         {
             var e = Flat(); var person = e.State.Residents.Single(); person.Race = RaceKind.Elf;
             e.State.Tiles[16 * 32 + 16].Terrain = terrain;
+            e.State.Tiles[16 * 32 + 16].Plants = profession == Profession.Lumberjack ? new() { Trees = 1 } : new() { Grass = 1 };
             person.X = person.FromX = 16; person.Y = person.FromY = 16; person.Profession = profession;
             person.Agent.Goal = new() { Kind = profession == Profession.Farmer ? AgentGoalKind.Gather : AgentGoalKind.Work,
                 TargetX = 16, TargetY = 16, PlayerDirected = true, ReviewTick = 10000 };
@@ -124,6 +125,7 @@ internal static class TownActivityTests
         person.X = person.FromX = 12; person.Y = person.FromY = 16; person.Agent.Fatigue = 50; person.Agent.NextThinkTick = 0;
         e.Step(8); Check(person.Agent.Goal.Kind == AgentGoalKind.Rest && person.Agent.Fatigue < 35, "Resident departed before completing rest");
         e.State.Tiles[16 * 32 + 16].Terrain = TerrainType.Forest;
+        e.State.Tiles[16 * 32 + 16].Plants = new() { Trees = 1 };
         e.State.Settlements.Single().Resources.Wood = 0;
         person.Agent.Goal = new() { Kind = AgentGoalKind.Work, TargetX = 16, TargetY = 16 };
         person.Agent.Fatigue = 0; person.Agent.NextThinkTick = e.State.Tick;
@@ -195,7 +197,7 @@ internal static class TownActivityTests
         var e = Flat();
         foreach (var tile in e.State.Tiles) { tile.Terrain = TerrainType.DeepWater; tile.ResourceAmount = 0; }
         for (var x = 10; x <= 14; x++) e.State.Tiles[10 * 32 + x].Terrain = TerrainType.Grass;
-        var target = 10 * 32 + 14; e.State.Tiles[target].ResourceAmount = 10;
+        var target = 10 * 32 + 14; e.State.Tiles[target].ResourceAmount = 100; e.State.Tiles[target].Plants = new() { Grass = 1 };
         var barrier = e.State.Tiles[10 * 32 + 12];
         var first = new Resident { Id = 900, X = 10, Y = 10, Race = RaceKind.Human };
         var other = new Resident { Id = 901, X = 11, Y = 10, Race = RaceKind.Human };
@@ -218,7 +220,7 @@ internal static class TownActivityTests
         barrier.Terrain = TerrainType.Mountain; Expect(-1, "Human reused an invalid mountain route");
         first.Race = RaceKind.Dwarf; Expect(target, "Dwarf reused human mountain restriction");
         first.Race = RaceKind.Human; barrier.Improvement = LandImprovement.MountainPass; Expect(target, "Completed mountain pass was ignored");
-        e.State.Tiles = e.State.Tiles.Select(t => new Tile { Terrain = t.Terrain, ResourceAmount = t.ResourceAmount, Fertility = 100 }).ToArray();
+        e.State.Tiles = e.State.Tiles.Select(t => new Tile { Terrain = t.Terrain, ResourceAmount = t.ResourceAmount, Fertility = 100, Plants = t.Plants }).ToArray();
         Expect(-1, "Replacement grid reused an old mountain pass");
     }
 

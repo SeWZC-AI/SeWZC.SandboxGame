@@ -106,7 +106,7 @@ public sealed partial class WorldEngine
         // Births are bounded for a long revisit interval. Scale predation with
         // that same effective interval rather than letting it outgrow renewal.
         var predationRate = .035 * (growthRate / .018);
-        var migrationRate = Math.Min(.5, .20 * elapsed);
+        var migrationRate = Math.Min(.12, .02 * elapsed);
         // Snapshot only a compact band and its four-neighbour apron. Each day's
         // growth, consumption and migrations see one initial population state.
         for (var i = snapshotFirst; i < snapshotLast; i++)

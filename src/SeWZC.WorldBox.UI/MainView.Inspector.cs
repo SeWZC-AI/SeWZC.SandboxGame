@@ -268,7 +268,7 @@ public sealed partial class MainView
         panel.Children.Add(Named(Button("编辑此地资源与道路", () => ShowTileEditor(point.X, point.Y)), "tile-edit"));
         LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.X == point.X && b.Y == point.Y), b => b.Id.ToString(),
             b => BuildingLabel(b) + "\n" + BuildingTask(b), OpenBuilding);
-        var wildlife = FoldSection(panel, "动物与栖息地", "tile-wildlife");
+        var wildlife = FoldSection(panel, "生态与栖息地", "tile-wildlife");
         wildlife.Children.Add(LiveText(() => _engine.GetTileEcologySummary(point.X, point.Y)));
         wildlife.Children.Add(LiveText(() => string.Join("\n", Enum.GetValues<RaceKind>().Select(r =>
             $"{RaceName(r)}：{(RaceTerrainRules.For(r, Tile().Terrain).Habitable ? "宜居" : "不宜居")}"))));

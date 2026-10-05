@@ -9,7 +9,7 @@ namespace SeWZC.WorldBox.UI;
 public sealed partial class MainView
 {
     private readonly Border _selectionBar = new() { IsVisible = false, Background = Panel, Padding = new Thickness(6, 2), CornerRadius = new CornerRadius(7) };
-    private readonly TextBlock _selectionText = Text("", 12, Mint);
+    private readonly TextBlock _selectionText = Named(Text("", 12, Mint), "selection-name");
     private string? _mapSelectionKind;
     private int _selectedBuildingId;
     private bool _expandedInspector;
@@ -46,11 +46,14 @@ public sealed partial class MainView
         if (_mapSelectionKind == "resident" && resident is null || _mapSelectionKind == "building" && building is null)
         { ClearMapSelection(); return; }
         _selectionBar.IsVisible = _mapSelectionKind is not null && !_mobilePanel && !_toolsOpen;
-        _selectionText.Text = resident is not null ? $"{resident.Name}   {ProfessionName(resident.Profession)}\n{ResidentTask(resident)}"
-            : building is not null ? $"{WorldEngine.BuildingName(building.Kind)}\n{BuildingTask(building)}"
-            : _selectedTile is { } p ? $"{TerrainName(_engine.State.Tiles[p.Y * _engine.State.Width + p.X].Terrain)}\n{_engine.GetTileProductionSummary(p.X, p.Y, _resourceVisibility).Split('\n')[0]}" : "";
+        _selectionText.Text = resident is not null ? $"{resident.Name}（{resident.Health:0.#}/100）   {ProfessionName(resident.Profession)}\n{ResidentTask(resident)}"
+            : building is not null ? $"{WorldEngine.BuildingName(building.Kind)}（{building.Health:0.#}/100）\n{BuildingTask(building)}"
+            : _selectedTile is { } p ? TileSelectionLabel(_engine.State.Tiles[p.Y * _engine.State.Width + p.X]) : "";
         _selectionText.Text = DisplayFormat.Text(_selectionText.Text);
     }
+
+    private static string TileSelectionLabel(Tile tile)
+        => $"{TerrainName(tile.Terrain)}（{tile.ResourceAmount:0.#}/{WorldEngine.NaturalResourceCapacity(tile):0.#}）";
 
     private void ViewMapSelection()
     {
