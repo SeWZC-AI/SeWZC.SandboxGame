@@ -57,6 +57,7 @@ fs.mkdirSync(output, { recursive: true });
                     assert.match(details, /供水量 无限/); assert.match(details, /需到岸边打水并携带返仓/);
                     assert.equal((details.match(/供水量/g) || []).length, 1);
                     assert.doesNotMatch(details, /降水|补水|淡水源：/);
+                    assert.doesNotMatch(details, /采集产物：|石材 \d|矿石 \d/, 'Fresh water retained land resource amounts');
                     assert(!details.includes('Infinity'), 'An internal infinity value leaked into the inspector');
                     await ui.point('tile-water', inspector);
                     await page.screenshot({ path: path.join(output, `${terrain.toLowerCase()}-water-${mobile ? 'mobile' : 'desktop'}.png`) });

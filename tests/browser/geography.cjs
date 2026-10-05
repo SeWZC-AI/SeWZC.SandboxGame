@@ -39,6 +39,7 @@ fs.mkdirSync(output, { recursive: true });
                     const saved = await ui.save(), tile = saved.Tiles[64 * saved.Width + 64];
                     assert.equal(tile.Terrain,code, `${terrain} tool failed`);
                     assert.equal(tile.RiverWidth || 0,width, `${terrain} width failed`);
+                    assert.equal(tile.ResourceAmount, width > 0 ? 0 : 50 + tile.Fertility, `${terrain} retained resources from another habitat`);
                     await ui.clickTile(64,64);
                     const preview = ui.control(await ui.snapshot(),'selection-name').value;
                     assert.match(preview,/^[^\n]+（[\d.]+\/[\d.]+）$/);
