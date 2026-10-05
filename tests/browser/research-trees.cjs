@@ -34,7 +34,7 @@ const fixtures = path.resolve(process.env.WORLDBOX_EMPIRE_FIXTURE_DIR || 'artifa
                 await ui.waitFor(s => !s.modalOpen && s.status.startsWith('导入成功'), 'delivered empire save import', 60000);
                 const before = await ui.save();
                 assert.equal(digest(before), digest(expected), 'Import changed the delivered simulated world');
-                await ui.click('header-overview'); await ui.click('overview-infrastructure', inspector);
+                await ui.click('header-overview'); await ui.click('overview-research', inspector);
                 const completedTown = expected.Settlements.findIndex(t => run.completeTowns.includes(t.Id));
                 assert(completedTown >= 0, 'Delivered world has no completed research route');
                 await ui.selectIndex('infrastructure-town', completedTown, inspector);

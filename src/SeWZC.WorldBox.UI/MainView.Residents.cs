@@ -16,7 +16,20 @@ public sealed partial class MainView
         if (_engine.GetResident(id) is not { } resident) { panel.Children.Add(Paragraph("这位居民的记录已不在当前世界中。")); return; }
         Resident Current() => _engine.GetResident(id) ?? resident;
         panel.Children.Add(LiveText(() => $"{Current().Name}   {ProfessionName(Current().Profession)}", 18, Mint));
-        panel.Children.Add(LiveText(() => $"{RaceName(Current().Race)}   年龄 {Current().Age:F1} / 预期寿命 {WorldEngine.Lifespan(Current().Race)} 岁\n{NationName(Current().NationId)}   {TownName(Current().SettlementId)}"));
+        panel.Children.Add(LiveText(() => $"{RaceName(Current().Race)}   年龄 {Current().Age:F1} / 预期寿命 {WorldEngine.Lifespan(Current().Race)} 岁"));
+        var belonging = new WrapPanel { Orientation = Orientation.Horizontal };
+        var nation = Named(Button("查看国家", () => OpenNation(Current().NationId)), "resident-nation");
+        var settlement = Named(Button("查看所属聚落", () => OpenSettlement(Current().SettlementId)), "resident-settlement-link");
+        belonging.Children.Add(nation); belonging.Children.Add(settlement); panel.Children.Add(belonging);
+        void UpdateBelonging()
+        {
+            var r = Current();
+            nation.Content = "国家：" + NationName(r.NationId); nation.IsEnabled = _engine.State.Nations.Any(n => n.Id == r.NationId);
+            settlement.Content = "聚落：" + TownName(r.SettlementId); settlement.IsEnabled = _engine.State.Settlements.Any(t => t.Id == r.SettlementId);
+            ToolTip.SetTip(nation, nation.IsEnabled ? "查看所属国家" : "原属国家已不存在，保留历史归属");
+            ToolTip.SetTip(settlement, settlement.IsEnabled ? "查看所属聚落" : "原属聚落已不存在，保留历史归属");
+        }
+        _inspectorUpdates.Add(UpdateBelonging); UpdateBelonging();
         panel.Children.Add(LiveText(() => Current().Health <= 0 ? $"逝世时间：{DateLabel(Current().DeathTick)}\n死亡原因：{WorldEngine.DeathCauseName(Current().DeathCause)}" : ""));
         panel.Children.Add(LiveText(() => $"生命 {Current().Health:0} / 100   体力 {100 - Current().Agent.Fatigue:0} / 100   饥饿 {Current().Hunger:0}%   口渴 {Current().Thirst:0}%"));
         panel.Children.Add(LiveText(() => _engine.GetResidentActionSummary(id)));
@@ -28,12 +41,18 @@ public sealed partial class MainView
             quick.Children.Add(Named(Button("返回家园", () => QuickResidentGoal(id, AgentGoalKind.ReturnHome)), "resident-home"));
             quick.Children.Add(Named(Button("恢复自主", () => QuickResidentGoal(id, null)), "resident-autonomy"));
             quick.Children.Add(Named(Button("治疗", () => RunEdit(() => _engine.EditResident(id, new ResidentEdit { Health = 100, SicknessTicks = 0 }), "居民已得到治疗")), "resident-heal"));
+            if (resident.Age >= 14)
+            {
+                var cast = Named(Button("施放法术", () => ShowSpellSelectionEditor(SpellKind.Heal), "选择本人施法；窗口显示知识、训练和魔力要求"), "resident-spell");
+                _inspectorUpdates.Add(() => cast.IsEnabled = Current().Health > 0 && Current().Age >= 14);
+                quick.Children.Add(cast);
+            }
             panel.Children.Add(quick);
         }
         panel.Children.Add(WatchControl(ObservedObjectKind.Resident, id, "resident-watch"));
         panel.Children.Add(Named(Button("人物故事与重要转折", () => OpenInspector("story")), "resident-story"));
         var actions = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = 5 };
-        var locate = Named(Button("定位", () => { _map.FocusResident(id); if (_isCompact) { _mobilePanel = false; ApplyLayout(); } }), "resident-locate"); actions.Children.Add(locate);
+        var locate = Named(Button("定位", () => { _map.FocusResident(id); if (_isCompact) CloseInspector(); }), "resident-locate"); actions.Children.Add(locate);
         var follow = Named(new CheckBox { Content = Text("跟随", 12), IsChecked = _map.FollowSelectedResident }, "resident-follow");
         var syncingFollow = false;
         follow.IsCheckedChanged += (_, _) => { if (syncingFollow) return; _map.SelectResident(id, follow.IsChecked == true); if (follow.IsChecked == true) _map.FocusResident(id); };
@@ -88,8 +107,7 @@ public sealed partial class MainView
     {
         var resident = _engine.GetResident(id); if (resident is null) return;
         var archived = _engine.State.ArchivedResidents.Any(person => person.Id == id);
-        _paused = true; _map.IsSimulationPaused = true; RefreshUi();
-        var panel = ModalPanel("编辑居民档案", "世界已暂停。修改后点击应用生效；迁居会改变国家归属。当前任务请在档案的目标编辑中调整。");
+        var panel = ModalPanel("编辑居民档案", "打开期间时间暂时停止，取消会恢复原状态；应用修改后保持暂停。迁居会改变国家归属，当前任务请在目标编辑中调整。");
         var identity = new StackPanel { Spacing = 10 }; var condition = new StackPanel { Spacing = 10 }; var belonging = new StackPanel { Spacing = 10 }; var magic = new StackPanel { Spacing = 10 }; var possessions = new StackPanel { Spacing = 10 };
         var tabs = Named(new TabControl { ItemsSource = new[] { Named(new TabItem { Header = Text("身份", 12), Content = identity }, "resident-tab-identity"), Named(new TabItem { Header = Text("生理", 12), Content = condition }, "resident-tab-condition"), Named(new TabItem { Header = Text("归属", 12), Content = belonging }, "resident-tab-belonging"), Named(new TabItem { Header = Text("魔法", 12), Content = magic }, "resident-tab-magic"), Named(new TabItem { Header = Text("物品", 12), Content = possessions }, "resident-tab-possessions") }, SelectedIndex = 0 }, "resident-editor-tabs");
         panel.Children.Add(tabs);
@@ -114,6 +132,7 @@ public sealed partial class MainView
         var inventory = StockFields(possessions, resident.Inventory, "resident-inventory");
         panel.Children.Add(Named(Button("应用档案变更", async () =>
         {
+            if (!CanSubmitEdit()) return;
             try
             {
                 var patch = new ResidentEdit
@@ -122,7 +141,7 @@ public sealed partial class MainView
                     CultureId = Integer(culture), SettlementId = Integer(home) == resident.SettlementId ? null : Integer(home), Age = Number(age), Health = Number(health), Hunger = Number(hunger), Thirst = Number(thirst), SicknessTicks = Integer(sickness),
                     X = Integer(x), Y = Integer(y), ArmyId = Integer(army) == resident.ArmyId ? null : Integer(army), Mana = Number(mana), MagicTalent = Number(talent), MagicTraining = Number(training), Inventory = ReadStock(inventory)
                 };
-                await PrepareEditAsync(); _engine.EditResident(id, patch); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("居民档案已更新\n可撤销");
+                await SubmitEditAsync(() => { _engine.EditResident(id, patch); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("居民档案已更新\n可撤销"); });
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { SetStatus("未应用变更：" + FriendlyError(ex)); }
         }), "resident-apply"));
@@ -133,7 +152,6 @@ public sealed partial class MainView
     private void ShowGoalEditor(int id)
     {
         var resident = _engine.GetResident(id); if (resident is null) return;
-        _paused = true; _map.IsSimulationPaused = true;
         var panel = ModalPanel("目标、性格与需求", "目标在未来的行动中执行。只修改人格或需求会保留原目标；历史记录中的对象可以保留，自主思考仍会考虑危险与基本需求。");
         var mind = CloneMind(id);
         var originalGoal = mind.Goal;
@@ -217,6 +235,7 @@ public sealed partial class MainView
         var ambition = Field(panel, "抱负 0–1", mind.Personality.Ambition, "resident-ambition");
         panel.Children.Add(Named(Button("应用目标与人格", async () =>
         {
+            if (!CanSubmitEdit()) return;
             try
             {
                 var kind = (AgentGoalKind)goal.SelectedItem!;
@@ -229,7 +248,7 @@ public sealed partial class MainView
                     TargetSettlementId = targetTown, TargetEntityId = targetEntity, Reason = "玩家指定：" + GoalName(kind),
                     PlayerDirected = true, StartedTick = _engine.State.Tick, ReviewTick = _engine.State.Tick + keepDays } : originalGoal;
                 mind.Fatigue = Number(fatigue); mind.SocialNeed = Number(social); mind.Personality.Courage = Number(courage); mind.Personality.Diligence = Number(diligence); mind.Personality.Sociability = Number(sociability); mind.Personality.Ambition = Number(ambition);
-                await PrepareEditAsync(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("目标与人格已更新，将影响接下来的行动");
+                await SubmitEditAsync(() => { _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("目标与人格已更新，将影响接下来的行动"); });
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { SetStatus("未应用变更：" + FriendlyError(ex)); }
         }), "resident-goal-apply"));
@@ -238,7 +257,6 @@ public sealed partial class MainView
 
     private void ShowMemoryEditor(int id, int? factId)
     {
-        _paused = true; _map.IsSimulationPaused = true;
         var mind = CloneMind(id);
         var fact = factId.HasValue ? mind.Memory.FirstOrDefault(f => f.Id == factId) : null;
         var adding = fact is null;
@@ -303,19 +321,23 @@ public sealed partial class MainView
         x.Minimum = -1; y.Minimum = -1; AddMapPicker(panel, x, y);
         panel.Children.Add(Named(Button("保存记忆", async () =>
         {
+            if (!CanSubmitEdit()) return;
             try
             {
                 fact.Kind = (AgentFactKind)kind.SelectedItem!; fact.Text = adding ? FactKindName(fact.Kind) + "（玩家设置）" : fact.Text; fact.Value = choice.IsVisible ? Integer(choice) : Number(value); fact.TargetNationId = addressed.IsVisible ? Integer(addressed) : 0; fact.Confidence = Number(confidence); fact.SubjectId = Integer(subject);
                 fact.X = Integer(x); fact.Y = Integer(y); fact.ObservedTick = Integer(observed); fact.LearnedTick = Integer(learned); fact.OriginResidentId = Integer(origin); fact.SourceResidentId = Integer(source); fact.Hops = Integer(hops);
                 if (adding) mind.Memory.Add(fact);
-                await PrepareEditAsync(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("记忆已更新，世界历史保持原样");
+                if (!await SubmitEditAsync(() => { _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("记忆已更新，世界历史保持原样"); }) && adding)
+                    mind.Memory.Remove(fact);
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { if (adding) mind.Memory.Remove(fact); SetStatus("未应用变更：" + FriendlyError(ex)); }
         }), "memory-apply"));
         if (!adding) panel.Children.Add(Named(Button("删除这条记忆", async () =>
         {
-            try { mind.Memory.Remove(fact); await PrepareEditAsync(); _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("这条记忆已移除"); }
-            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { SetStatus(FriendlyError(ex)); }
+            if (!CanSubmitEdit()) return;
+            var previousIndex = mind.Memory.IndexOf(fact); mind.Memory.Remove(fact);
+            if (!await SubmitEditAsync(() => { _engine.EditResident(id, new ResidentEdit { Agent = mind }); CloseModal(); _map.RefreshWorld(); RefreshUi(true); SetStatus("这条记忆已移除"); }) && previousIndex >= 0)
+                mind.Memory.Insert(previousIndex, fact);
         }), "memory-delete"));
         OpenModal(panel);
     }
@@ -324,7 +346,6 @@ public sealed partial class MainView
     { PersonalExperienceKind.Hardship => "艰难遭遇", PersonalExperienceKind.Achievement => "取得成就", PersonalExperienceKind.Kindness => "得到善意", PersonalExperienceKind.Betrayal => "遭遇背叛", PersonalExperienceKind.Learning => "学习成长", _ => "中性经历" };
     private void ShowHistoryEntryEditor(int id, int? index)
     {
-        _paused = true; _map.IsSimulationPaused = true;
         var history = JsonSerializer.Deserialize(_engine.ExportResidentHistory(id), ResidentUiJsonContext.Default.ListResidentHistoryEntry) ?? [];
         var adding = !index.HasValue || index < 0 || index >= history.Count;
         var entry = adding ? new ResidentHistoryEntry { Tick = _engine.State.Tick, PlayerEdited = true, Experience = PersonalExperienceKind.Learning, Impact = .25 } : history[index!.Value];
@@ -343,34 +364,42 @@ public sealed partial class MainView
         panel.Children.Add(Paragraph("强度为 1 时：艰难使勇气减少 10 个百分点，成就使勇气增加 10 个百分点；善意使社交增加 10 个百分点，背叛使社交减少 10 个百分点；学习使勤勉增加 10 个百分点。负强度反向作用，中性经历不改变性格。"));
         panel.Children.Add(Named(Button("保存个人经历", async () =>
         {
+            if (!CanSubmitEdit()) return;
             try
             {
                 entry.Text = adding ? ExperienceName((PersonalExperienceKind)experience.SelectedItem!) + "（玩家设置）" : entry.Text; entry.Tick = Integer(tick); entry.Importance = (EventImportance)importance.SelectedItem!; entry.Experience = (PersonalExperienceKind)experience.SelectedItem!; entry.Impact = Number(impact); entry.PlayerEdited = true;
                 if (adding) history.Add(entry);
-                await PrepareEditAsync(); _engine.EditResident(id, new ResidentEdit { History = history }); CloseModal(); RefreshUi(true); SetStatus("个人经历已更新，将影响今后的性格与行为");
+                if (!await SubmitEditAsync(() => { _engine.EditResident(id, new ResidentEdit { History = history }); CloseModal(); RefreshUi(true); SetStatus("个人经历已更新，将影响今后的性格与行为"); }) && adding)
+                    history.Remove(entry);
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { if (adding) history.Remove(entry); SetStatus("未应用变更：" + FriendlyError(ex)); }
         }), "history-entry-apply"));
         if (!adding) panel.Children.Add(Named(Button("删除这条个人经历", async () =>
         {
-            try { history.Remove(entry); await PrepareEditAsync(); _engine.EditResident(id, new ResidentEdit { History = history }); CloseModal(); RefreshUi(true); SetStatus("个人经历已移除，世界历史未改变"); }
-            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { SetStatus(FriendlyError(ex)); }
+            if (!CanSubmitEdit()) return;
+            var previousIndex = history.IndexOf(entry); history.Remove(entry);
+            if (!await SubmitEditAsync(() => { _engine.EditResident(id, new ResidentEdit { History = history }); CloseModal(); RefreshUi(true); SetStatus("个人经历已移除，世界历史未改变"); }) && previousIndex >= 0)
+                history.Insert(previousIndex, entry);
         }), "history-entry-delete"));
         OpenModal(panel);
     }
 
     private void ShowResidentJsonEditor(int id, bool history)
     {
-        _paused = true; _map.IsSimulationPaused = true;
         var panel = ModalPanel(history ? "编辑个人经历与历史" : "高级认知编辑", history ? "个人历史与世界事件独立。Experience 与 Impact 是结构化心理影响；文本不会被当作可执行命令。仅影响今后认知，不重新计算过去的世界。" : "包含目标、人格、全部记忆、决策依据、携带消息与任务。字段统一经过模拟核心校验。只修改这个角色的认知，不会改动世界事实。");
         var input = Named(new TextBox { Text = history ? _engine.ExportResidentHistory(id) : _engine.ExportResidentMind(id), AcceptsReturn = true, TextWrapping = Avalonia.Media.TextWrapping.Wrap, MinHeight = 280, MaxHeight = 420 }, history ? "resident-history-json" : "resident-mind-json-input");
         panel.Children.Add(input);
         panel.Children.Add(Named(Button("校验并应用", async () =>
         {
+            if (!CanSubmitEdit()) return;
             try
             {
-                await PrepareEditAsync(); if (history) _engine.EditResidentHistoryJson(id, input.Text ?? ""); else _engine.EditResidentMindJson(id, input.Text ?? "");
-                CloseModal(); RefreshUi(true); SetStatus("角色记录已更新，将影响未来行为");
+                var json = input.Text ?? "";
+                await SubmitEditAsync(() =>
+                {
+                    if (history) _engine.EditResidentHistoryJson(id, json); else _engine.EditResidentMindJson(id, json);
+                    CloseModal(); RefreshUi(true); SetStatus("角色记录已更新，将影响未来行为");
+                });
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or JsonException) { SetStatus("未应用变更：" + FriendlyError(ex)); }
         }), history ? "resident-history-apply" : "resident-mind-apply"));

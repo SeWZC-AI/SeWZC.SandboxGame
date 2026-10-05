@@ -191,13 +191,14 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.click('nation-apply');
         const funded = await ui.save();
         await ui.openOverview();
-        await ui.click('overview-infrastructure', scroll);
+        await ui.click('overview-research', scroll);
         const researchView = await ui.snapshot();
         assert.equal(ui.control(researchView, 'research-start').enabled, false);
         assert.match(ui.control(researchView, 'research-requirements').value, /学舍|学院/);
         const blockedResearch = await ui.save();
         assert.deepEqual(blockedResearch.Society.Research, funded.Society.Research);
         assert.deepEqual(stock(blockedResearch, home.Id), stock(funded, home.Id));
+        await ui.click('settlement-tab-infrastructure');
         await ui.click('building-open', scroll);
         await ui.selectIndex('building-kind', 2, modal); // Academy.
         const buildIndex = funded.Tiles.findIndex((tile, index) => {

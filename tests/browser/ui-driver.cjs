@@ -59,7 +59,11 @@ class UiDriver {
             // consumes wheels for zooming and cannot scroll an outer heading into view.
             const center = { x: canvas.x + viewport.x + 3, y: canvas.y + viewport.y + viewport.height / 2 };
             await this.page.mouse.move(center.x, center.y);
-            await this.page.mouse.wheel(0, Math.sign(control.y - (viewport.y + viewport.height / 2)) * 250);
+            // Small detail panels need a smaller step to avoid repeatedly jumping
+            // from below a target to above it without ever exposing its center.
+            const distance = control.y + control.height / 2 - (viewport.y + viewport.height / 2);
+            const step = Math.min(250, viewport.height * .7);
+            await this.page.mouse.wheel(0, Math.max(-step, Math.min(step, distance)));
             await this.page.waitForTimeout(120);
         }
         throw new Error(`Could not scroll ${id} into view`);

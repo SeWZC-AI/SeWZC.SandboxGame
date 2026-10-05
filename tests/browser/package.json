@@ -5,6 +5,7 @@
     "test:building-details": "node building-details.cjs",
     "test:building-copy": "node building-copy.cjs",
     "test:deploy": "node deploy-smoke.cjs",
+    "test:entries": "node entries.cjs",
     "test": "node smoke.cjs",
     "test:mobile": "node mobile-smoke.cjs",
     "test:motion": "node motion.cjs",

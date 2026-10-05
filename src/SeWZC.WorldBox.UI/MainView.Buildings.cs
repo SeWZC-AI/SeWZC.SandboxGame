@@ -29,6 +29,8 @@ public sealed partial class MainView
 
     private void OpenBuilding(Building building)
     {
+        if (_mapPick is not null) return;
+        if (_mobilePanel && _inspectorMode == "building" && _selectedBuildingId == building.Id) return;
         RememberLocation(); _selectedBuildingId = building.Id; _selectedTile = (building.X, building.Y);
         _mapSelectionKind = "building"; OpenInspector("building", false);
     }
@@ -46,7 +48,7 @@ public sealed partial class MainView
         if (building.Kind == BuildingKind.TownCenter)
         {
             panel.Children.Add(Named(LiveText(() => _engine.GetSettlementSummary(building.SettlementId)), "center-town-summary"));
-            panel.Children.Add(Named(Button("查看城镇信息", () => { _inspectorSettlementId = building.SettlementId; OpenInspector("infrastructure"); }), "center-town-info"));
+            panel.Children.Add(Named(Button("查看城镇信息", () => OpenSettlement(building.SettlementId)), "center-town-info"));
         }
         panel.Children.Add(Named(LiveText(() => EffectLabel(_engine.GetBuildingEffects(id).Where(e => e.Name is not ("建筑耐火" or "下一级")).ToArray())), "building-effects"));
         panel.Children.Add(Named(LiveText(() => string.Join("\n", _engine.GetBuildingEffects(id).Where(e => e.Name == "下一级"))), "building-next-level"));
@@ -77,8 +79,8 @@ public sealed partial class MainView
         LiveRows(condition, OnSiteWorkers, r => r.Id.ToString(),
             r => r.Name + "   " + ProfessionName(r.Profession) + "\n" + ResidentTask(r), r => OpenResident(r.Id));
         if (building.Kind != BuildingKind.TownCenter)
-            panel.Children.Add(Named(Button("查看归属城镇信息", () => { _inspectorSettlementId = building.SettlementId; OpenInspector("infrastructure"); }), "building-town-info"));
-        panel.Children.Add(Named(Button("查看所在土地", () => { _selectedTile = (building.X, building.Y); OpenInspector("tile"); }), "building-ground"));
+            panel.Children.Add(Named(Button("查看归属城镇信息", () => OpenSettlement(building.SettlementId)), "building-town-info"));
+        panel.Children.Add(Named(Button("查看所在土地", () => OpenTile(building.X, building.Y)), "building-ground"));
     }
 
     private static string EffectLabel(IReadOnlyList<EffectInfo> effects) => effects.Count == 0 ? "当前无额外加成或减益" : string.Join("\n\n", effects);
@@ -162,7 +164,7 @@ public sealed partial class MainView
         if (_listRoads)
             LiveRows(panel, () => Roads().Skip(_structurePage * 20).Take(20), i => i.ToString(),
                 i => $"{(_engine.State.Tiles[i].Improvement == LandImprovement.Bridge ? "桥梁 " + WorldEngine.BridgeDirectionName(_engine.State.Tiles[i].BridgeDirection) : "道路")} {_engine.State.Tiles[i].RoadLevel} 级\n位置 {i % _engine.State.Width}, {i / _engine.State.Width}\n归属：{TownName(_engine.State.Tiles[i].ClaimedSettlementId)}\n步行耗时系数 {_engine.GetTerrainMoveCost(i % _engine.State.Width, i / _engine.State.Width):0.##}",
-                i => { _selectedTile = (i % _engine.State.Width, i / _engine.State.Width); _map.FocusTile(_selectedTile.Value.X, _selectedTile.Value.Y); OpenInspector("tile"); });
+                i => OpenTile(i % _engine.State.Width, i / _engine.State.Width, true));
         else LiveRows(panel, () => Buildings().Skip(_structurePage * 20).Take(20), b => b.Id.ToString(),
             b => $"{BuildingLabel(b)}   {TownName(b.SettlementId)}\n{BuildingTask(b)}", OpenBuilding);
         panel.Children.Add(Button("地图突出显示建筑与道路", () => { _map.Overlay = 4; _map.RefreshWorld(); CloseInspector(); }));

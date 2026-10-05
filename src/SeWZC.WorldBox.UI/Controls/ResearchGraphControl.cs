@@ -26,6 +26,22 @@ public sealed class ResearchGraphControl : UserControl
     public bool ShowFullPath { get; set; }
     public Func<ResearchKind, bool> IsCompleted { get; set; } = _ => false;
 
+    public readonly record struct ViewportState(double Zoom, Vector Offset, bool ShowFullPath);
+
+    public ViewportState CaptureViewport() => new(Zoom, Offset, ShowFullPath);
+
+    public void RestoreViewport(ViewportState viewport, Func<bool>? isCurrent = null)
+    {
+        Zoom = Math.Clamp(viewport.Zoom, .12, 1.5); ShowFullPath = viewport.ShowFullPath;
+        ApplyGeometry(); _scroll.Offset = viewport.Offset;
+        // The zoom changes the scroll extent during the next layout pass.
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if ((isCurrent?.Invoke() ?? true) && TopLevel.GetTopLevel(this) is not null)
+                _scroll.Offset = viewport.Offset;
+        }, Avalonia.Threading.DispatcherPriority.Loaded);
+    }
+
     public ResearchGraphControl(Dictionary<ResearchKind, Button> nodes)
     {
         _nodes = nodes;

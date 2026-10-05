@@ -36,7 +36,7 @@ fs.mkdirSync(output, { recursive: true });
                 await ui.click(`building-row-${center.Id}`, { scroll: 'inspector-scroll' });
                 assert.match(ui.control(await ui.snapshot(), 'center-town-summary').value, /城镇等级.*城镇生效/s);
                 await ui.click('center-town-info', { scroll: 'inspector-scroll' });
-                let townInfo = await ui.waitFor(s => s.inspector === 'infrastructure', 'town center information link');
+                let townInfo = await ui.waitFor(s => s.inspector === 'settlement', 'town center information link');
                 assert.equal(ui.control(townInfo, 'infrastructure-town').value, String(before.Settlements.findIndex(t => t.Id === center.SettlementId)));
                 assert.match(ui.control(townInfo, 'town-expansion-summary').value, /城镇等级/);
                 if (mobile) {
