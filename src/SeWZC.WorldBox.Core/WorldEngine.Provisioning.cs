@@ -167,8 +167,9 @@ public sealed partial class WorldEngine
             && person.Inventory.Food < FoodUse(person) * daysHome)
             choices.Add(new(AgentGoalKind.ReturnHome, home.X, home.Y, 85, "口粮接近保守返程需求，先实地返仓补给", SettlementId: home.Id));
         if (person.Age < 14) return;
-        AddBoatFishingChoice(person, home, choices);
-        var wildlife = person.Profession is Profession.Farmer or Profession.Fisher || person.Hunger > 20 && person.Inventory.Food < .3 ? FindHarvestableWildlife(person) : (-1, -1, false);
+        var foodNeeded = FoodSupplyNeeded(person, home);
+        if (foodNeeded) AddBoatFishingChoice(person, home, choices);
+        var wildlife = foodNeeded && (person.Profession is Profession.Farmer or Profession.Fisher || person.Hunger > 20 && person.Inventory.Food < .3) ? FindHarvestableWildlife(person) : (-1, -1, false);
         if (wildlife.Item1 >= 0)
             choices.Add(new(wildlife.Item3 ? AgentGoalKind.Fish : AgentGoalKind.Hunt,
                 wildlife.Item1 % State.Width, wildlife.Item1 / State.Width,

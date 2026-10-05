@@ -124,6 +124,7 @@ internal static class TownActivityTests
         person.X = person.FromX = 12; person.Y = person.FromY = 16; person.Agent.Fatigue = 50; person.Agent.NextThinkTick = 0;
         e.Step(8); Check(person.Agent.Goal.Kind == AgentGoalKind.Rest && person.Agent.Fatigue < 35, "Resident departed before completing rest");
         e.State.Tiles[16 * 32 + 16].Terrain = TerrainType.Forest;
+        e.State.Settlements.Single().Resources.Wood = 0;
         person.Agent.Goal = new() { Kind = AgentGoalKind.Work, TargetX = 16, TargetY = 16 };
         person.Agent.Fatigue = 0; person.Agent.NextThinkTick = e.State.Tick;
         e.Step(12); Check(person.Agent.Goal.TargetX == 16 && person.Inventory.Wood > 0, "Useful logging goal was abandoned during travel");

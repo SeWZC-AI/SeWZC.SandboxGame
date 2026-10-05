@@ -249,9 +249,9 @@ public sealed partial class WorldEngine
         if (BuildingRace(building.Kind) is not null) return RacialBuildingHasWork(building, resident);
         return building.Kind switch
         {
-            BuildingKind.Workshop => FindWorkshopResource(building, resident.Profession) >= 0,
-            BuildingKind.LumberCamp => resident.Profession == Profession.Lumberjack && FindWorkshopResource(building, Profession.Lumberjack) >= 0,
-            BuildingKind.Quarry => resident.Profession == Profession.Miner && FindWorkshopResource(building, Profession.Miner) >= 0,
+            BuildingKind.Workshop => (resident.Agent.Goal.PlayerDirected || LocalMaterialsNeeded(resident, RequireTown(building.SettlementId))) && FindWorkshopResource(building, resident.Profession) >= 0,
+            BuildingKind.LumberCamp => resident.Profession == Profession.Lumberjack && (resident.Agent.Goal.PlayerDirected || LocalMaterialsNeeded(resident, RequireTown(building.SettlementId))) && FindWorkshopResource(building, Profession.Lumberjack) >= 0,
+            BuildingKind.Quarry => resident.Profession == Profession.Miner && (resident.Agent.Goal.PlayerDirected || LocalMaterialsNeeded(resident, RequireTown(building.SettlementId))) && FindWorkshopResource(building, Profession.Miner) >= 0,
             BuildingKind.Well => resident.Inventory.Water < WaterReserve(resident) + 3 && AvailableWater(building.X, building.Y) > 0,
             BuildingKind.Farm => resident.Agent.Goal.PlayerDirected || RequireTown(building.SettlementId).Resources.Food < ProductionStockTarget(RequireTown(building.SettlementId), ResourceKind.Food) || resident.Inventory.Food < TravelReserve(resident),
             BuildingKind.Academy => State.Society.Research.Any(r => r.SettlementId == building.SettlementId && r.ActiveProject.HasValue),
