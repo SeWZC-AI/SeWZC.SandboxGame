@@ -57,7 +57,14 @@ function stats(values) {
                 if (mobile) {
                     await ui.openOverview(); await ui.click('inspector-residents');
                     await ui.fill('resident-search', world.Residents[0].Id, { scroll: 'inspector-scroll' });
-                    await ui.openResidentRow(world.Residents[0].Id); await ui.click('resident-locate', { scroll: 'inspector-scroll' });
+                    await page.waitForTimeout(300);
+                    await ui.openResidentRow(world.Residents[0].Id);
+                    await ui.waitFor(s => s.controls.some(c => c.id === 'resident-locate'), 'resident profile before locating').catch(async error => {
+                        fs.writeFileSync(path.join(output, `${name}-failed.json`), JSON.stringify(await ui.snapshot(), null, 2));
+                        await page.screenshot({ path: path.join(output, `${name}-failed.png`) });
+                        throw error;
+                    });
+                    await ui.click('resident-locate', { scroll: 'inspector-scroll' });
                     for (let i = 0; i < 5; i++) await ui.click('map-zoom-in');
                 }
                 await ui.click(`time-speed-${speed}`); await ui.paused(false);

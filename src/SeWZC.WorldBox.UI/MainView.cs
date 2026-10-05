@@ -271,6 +271,7 @@ public sealed partial class MainView : UserControl
         {
             _accumulator = 0;
             if (!_wasBackground) { _wasBackground = true; _ = SaveAsync(false); }
+            ScheduleNextTick();
             return;
         }
         _wasBackground = false;
@@ -278,16 +279,19 @@ public sealed partial class MainView : UserControl
         {
             _accumulator = Math.Min(.8, _accumulator + elapsed * _speed);
             var work = Stopwatch.GetTimestamp(); var count = 0;
+            // Fast simulation may need two days in one callback to recover a
+            // missed display frame. Reserve map work within one bounded 48 ms slice.
+            var budgetMilliseconds = _speed == 1 ? 12 : 48;
             while (_accumulator >= .2 && count < 4)
             {
                 // Reserve the preceding map cost before adding another atomic
                 // step. An expensive first step still progresses the world.
                 if (count > 0 && Stopwatch.GetElapsedTime(work).TotalMilliseconds
-                    + _lastStepMilliseconds + _lastMapRefreshMilliseconds > 12) break;
+                    + _lastStepMilliseconds + _lastMapRefreshMilliseconds > budgetMilliseconds) break;
                 var stepStarted = Stopwatch.GetTimestamp();
                 _engine.Step(); _accumulator -= .2; count++;
                 _lastStepMilliseconds = Stopwatch.GetElapsedTime(stepStarted).TotalMilliseconds;
-                if (Stopwatch.GetElapsedTime(work).TotalMilliseconds + _lastMapRefreshMilliseconds > 12) break;
+                if (Stopwatch.GetElapsedTime(work).TotalMilliseconds + _lastMapRefreshMilliseconds > budgetMilliseconds) break;
             }
             if (count > 0)
             {
@@ -299,6 +303,17 @@ public sealed partial class MainView : UserControl
         }
         if (now - _lastUi > .7) { _lastUi = now; RefreshUi(); }
         if (now - _lastSave > 30 && !_saving && !_modal.IsVisible && _mapPick is null && !EditCaptureActive) { _lastSave = now; _ = SaveAsync(false); }
+        ScheduleNextTick();
+    }
+
+    private void ScheduleNextTick()
+    {
+        var idle = !_ready || WorldTimeStopped;
+        // DispatcherTimer waits after the callback. Count its work against the next
+        // day's deadline instead of adding a fixed 16 ms wait to every expensive step.
+        var workMilliseconds = (_clock.Elapsed.TotalSeconds - _previousTime) * 1000;
+        var delay = idle ? 50 : Math.Clamp((.2 - _accumulator) * 1000 / _speed - workMilliseconds, 1, 50);
+        _timer.Interval = TimeSpan.FromMilliseconds(delay);
     }
 
     private void TogglePause()
@@ -327,9 +342,7 @@ public sealed partial class MainView : UserControl
     }
     private void UpdateSpeedButtons()
     {
-        // Five-speed days are 40 ms apart. A 50 ms timer that is rescheduled
-        // after each callback cannot service them when one step uses its budget.
-        _timer.Interval = TimeSpan.FromMilliseconds(Math.Max(16, 50d / _speed));
+        ScheduleNextTick();
         foreach (var (speed, button) in _speeds) { button.Background = speed == _speed ? Brush.Parse("#355347") : Panel; button.Foreground = speed == _speed ? Mint : Brushes.White; }
     }
 

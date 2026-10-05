@@ -942,7 +942,7 @@ public sealed partial class WorldEngine
         town.DevelopmentBlocker = State.Rules.Expansion ? $"拓荒条件：人口 {town.Population}/80；需要送达的建村勘察报告、相距至少 {MinimumSettlementDistance} 格的用地与携带补给的拓荒者；费用 {AdvancementRules.Stock(VillageFoundingCost)}" : "已有研究完成；扩张已关闭";
     }
 
-    private IEnumerable<LocalDevelopmentPlan> PendingLocalDevelopment(Settlement town, Building[] buildings, SettlementResearch project)
+    private IEnumerable<LocalDevelopmentPlan> PendingLocalDevelopment(Settlement town, IReadOnlyList<Building> buildings, SettlementResearch project)
     {
         if (State.Rules.Research && !buildings.Any(b => b.Kind == BuildingKind.Academy))
         {
@@ -997,14 +997,19 @@ public sealed partial class WorldEngine
 
     private ResourceStock LocalDevelopmentReserve(Settlement town)
     {
-        var buildings = State.Society.Buildings.Where(b => b.SettlementId == town.Id).ToArray();
-        var project = State.Society.Research.First(r => r.SettlementId == town.Id);
         if (town.Resources.Food < Math.Max(25, town.Population * .4)) return new();
-        var plans = PendingLocalDevelopment(town, buildings, project)
-            .Where(p => p.Facility.HasValue ? State.Rules.Construction : State.Rules.Research).ToArray();
+        IReadOnlyList<Building> buildings = _localWorkQueriesActive
+            ? _localWorkBuildings.GetValueOrDefault(town.Id) ?? []
+            : State.Society.Buildings.Where(b => b.SettlementId == town.Id).ToArray();
+        var project = _localWorkQueriesActive ? _localResearch[town.Id]
+            : State.Society.Research.First(r => r.SettlementId == town.Id);
         // Reserve wood and stone for the next project the local planner can pursue; optional ore
         // shortages may defer magic while the same planner proceeds with basic transport.
-        return plans.FirstOrDefault()?.Cost ?? new();
+        // Stop at the same first eligible plan without constructing every later candidate.
+        // The groups contain live objects; a miner still sees stock and needs at its own turn.
+        foreach (var plan in PendingLocalDevelopment(town, buildings, project))
+            if (plan.Facility.HasValue ? State.Rules.Construction : State.Rules.Research) return plan.Cost;
+        return new();
     }
 
     private static void ValidateSocietyState(WorldState state)

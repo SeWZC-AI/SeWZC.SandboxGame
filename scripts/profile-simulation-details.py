@@ -31,6 +31,7 @@ methods = [
     "WildlifeCapacity", "TickPlants", "AgentFoodPolicyMultiplier", "ProvisionAtHome", "TransferPersonalProduction",
     "CanTraverseStep", "PrepareJourneyTransport", "AddAgentMissionChoices", "AgentFactReliability",
     "GrowSettlements", "ObserveProjects", "BeginLocalWorkQueries", "EndLocalWorkQueries",
+    "LocalDevelopmentReserve", "InspectLocalDemand",
 ]
 if not args.deep:
     methods = [method for method in methods if method not in {"ResourceSiteYield", "CanTraverseStep", "AgentFactReliability"}]

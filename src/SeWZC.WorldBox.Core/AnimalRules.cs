@@ -86,9 +86,15 @@ public static class AnimalRules
     {
         capacities.Clear(); competitors.Clear();
         var herbs = 0;
+        var habitat = Habitat(tile.Terrain);
+        var aquatic = WorldEngine.IsWaterTerrain(tile.Terrain);
+        var water = aquatic ? 1 : tile.NaturalWaterYield;
+        var vegetation = aquatic ? 1 : .2 + .8 * Math.Clamp(tile.Plants.Grass + tile.Plants.Shrubs * .8 + tile.Plants.Trees * .55 + tile.Plants.Reeds * .8, 0, 1);
+        var food = (.2 + tile.Fertility / 125d) * vegetation;
+        var resources = Math.Clamp(tile.ResourceAmount / 100, 0, 1);
         foreach (var kind in Species)
         {
-            var raw = RawCapacity(tile, kind); capacities[(int)kind] = raw;
+            var raw = RawCapacity(tile, kind, habitat, aquatic, water, food, resources); capacities[(int)kind] = raw;
             if (raw > 0 && For(kind).Diet == AnimalDiet.Herbivore) herbs++;
         }
         foreach (var kind in Species)
@@ -111,13 +117,22 @@ public static class AnimalRules
     private static double RawCapacity(Tile tile, WildlifeKind kind)
     {
         if (kind == WildlifeKind.None || tile.FireTicks > 0) return 0;
-        var animal = For(kind);
-        if ((animal.Habitats & Habitat(tile.Terrain)) == 0) return 0;
-        var water = WorldEngine.IsWaterTerrain(tile.Terrain) ? 1 : tile.NaturalWaterYield;
+        var animal = For(kind); var habitat = Habitat(tile.Terrain);
+        if ((animal.Habitats & habitat) == 0) return 0;
+        var aquatic = WorldEngine.IsWaterTerrain(tile.Terrain);
+        var water = aquatic ? 1 : tile.NaturalWaterYield;
         if (tile.Fertility < animal.MinimumFertility || water < animal.MinimumWater) return 0;
-        var vegetation = WorldEngine.IsWaterTerrain(tile.Terrain) ? 1 : .2 + .8 * Math.Clamp(tile.Plants.Grass + tile.Plants.Shrubs * .8 + tile.Plants.Trees * .55 + tile.Plants.Reeds * .8, 0, 1);
+        var vegetation = aquatic ? 1 : .2 + .8 * Math.Clamp(tile.Plants.Grass + tile.Plants.Shrubs * .8 + tile.Plants.Trees * .55 + tile.Plants.Reeds * .8, 0, 1);
         var food = (.2 + tile.Fertility / 125d) * vegetation;
-        if (!WorldEngine.IsWaterTerrain(tile.Terrain)) food *= Math.Clamp(tile.ResourceAmount / 100, 0, 1) * Math.Clamp(water / Math.Max(.004, animal.MinimumWater * 2), .15, 1);
+        return RawCapacity(tile, kind, habitat, aquatic, water, food, Math.Clamp(tile.ResourceAmount / 100, 0, 1));
+    }
+
+    private static double RawCapacity(Tile tile, WildlifeKind kind, AnimalHabitat habitat, bool aquatic, double water, double food, double resources)
+    {
+        if (kind == WildlifeKind.None || tile.FireTicks > 0) return 0;
+        var animal = For(kind);
+        if ((animal.Habitats & habitat) == 0 || tile.Fertility < animal.MinimumFertility || water < animal.MinimumWater) return 0;
+        if (!aquatic) food *= resources * Math.Clamp(water / Math.Max(.004, animal.MinimumWater * 2), .15, 1);
         var capacity = animal.Size == AnimalSize.Small ? 4.2 : animal.Size == AnimalSize.Medium ? 2.1 : .875;
         return capacity * food * (tile.Improvement == LandImprovement.Farmland ? .35 : 1)
             * (tile.SettlementId != 0 ? .1 : 1) * (tile.DroughtTicks > 0 ? .25 : 1);

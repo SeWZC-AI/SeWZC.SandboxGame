@@ -81,10 +81,13 @@ if '            await App.Storage.SaveAsync(_engine.ExportJson());' in text:
         f'            using ({scope("Save.Storage", "_engine.State.Tick")}) await App.Storage.SaveAsync(probeJson);', 'SaveAsync')
 else:
     # This inclusive elapsed scope contains cooperative waits, not just CPU work.
-    text = replace_once(text, '            var json = await _engine.ExportJsonAsync(YieldDuringSave, capture.Token);',
+    first = text.index('    private async Task SaveAsync(bool manual)')
+    last = text.index('    private async ValueTask YieldDuringSave(', first)
+    save = replace_once(text[first:last], '            var json = await _engine.ExportJsonAsync(YieldDuringSave, capture.Token);',
         f'            string json;\n            using ({scope("Save.Serialize", "_engine.State.Tick")}) json = await _engine.ExportJsonAsync(YieldDuringSave, capture.Token);', 'async save capture')
-    text = replace_once(text, '            await App.Storage.SaveAsync(json);',
+    save = replace_once(save, '            await App.Storage.SaveAsync(json);',
         f'            using ({scope("Save.Storage", "_engine.State.Tick")}) await App.Storage.SaveAsync(json);', 'save storage')
+    text = text[:first] + save + text[last:]
 path.write_text(text)
 for file, signature, name in [
     ('WorldMapControl.cs', '    public void RefreshWorld(bool resetCamera = false)', 'Map.RefreshWorld'),
@@ -109,14 +112,28 @@ text = replace_once(text, '            if (chunk.Terrain is null || chunk.Terrai
     '            if (chunk.Terrain is null || chunk.TerrainHash != terrainHash)\n            {\n' + f'                using var terrainProbe = {scope("Map.TerrainBuild", "state.Tick")};', 'terrain build')
 text = replace_once(text, '            if (!chunk.TerritoryCached || chunk.TerritoryHash != territoryHash)\n            {',
     '            if (!chunk.TerritoryCached || chunk.TerritoryHash != territoryHash)\n            {\n' + f'                using var territoryProbe = {scope("Map.TerritoryBuild", "state.Tick")};', 'territory build')
-text = replace_once(text, '        var colors = new Dictionary<int, uint>();',
-    '        var exactResources = SeWZC.WorldBox.Core.BrowserStageProbe.ExactResourceHash;\n        var colors = new Dictionary<int, uint>();', 'resource experiment flag')
+terrain_inputs = destination / ui / 'Controls/WorldMapControl.Terrain.cs'
+if terrain_inputs.exists():
+    path.write_text(text)
+    path = terrain_inputs
+    text = path.read_text()
+    text = replace_once(text, '    private static uint TerrainImageInput(Tile tile)\n    {',
+        '    private static uint TerrainImageInput(Tile tile)\n    {\n        var exactResources = SeWZC.WorldBox.Core.BrowserStageProbe.ExactResourceHash;', 'resource experiment flag')
+else:
+    text = replace_once(text, '        var colors = new Dictionary<int, uint>();',
+        '        var exactResources = SeWZC.WorldBox.Core.BrowserStageProbe.ExactResourceHash;\n        var colors = new Dictionary<int, uint>();', 'resource experiment flag')
 original = '(uint)Math.Clamp((int)(tile.ResourceAmount / 25), 0, 4) * 256'
-exact = '(tile.Terrain == TerrainType.Forest && tile.ResourceAmount < 25 ? 256u : 0u)'
+exact = next((marker for marker in (
+    '(WorldEngine.IsForestTerrain(tile.Terrain) && tile.ResourceAmount < 25 ? 256u : 0u)',
+    '(tile.Terrain == TerrainType.Forest && tile.ResourceAmount < 25 ? 256u : 0u)',
+) if marker in text), None)
 default_exact = original not in text
 if default_exact:
+    if exact is None:
+        raise SystemExit('Source changed: fixed terrain resource hash')
     text = replace_once(text, exact, '(exactResources ? ' + exact + ' : ' + original + ')', 'fixed terrain resource hash')
 else:
+    exact = '(WorldEngine.IsForestTerrain(tile.Terrain) && tile.ResourceAmount < 25 ? 256u : 0u)'
     text = replace_once(text, original, '(exactResources ? ' + exact + ' : ' + original + ')', 'terrain resource hash')
 path.write_text(text)
 

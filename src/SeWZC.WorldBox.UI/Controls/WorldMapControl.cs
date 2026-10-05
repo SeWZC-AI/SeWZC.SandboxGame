@@ -252,7 +252,7 @@ public sealed partial class WorldMapControl : Control
                 for (var race = 0; _zoom < 3 && race < _residents.Length; race++)
                     if (_residents[race] is { } body) context.DrawGeometry(ResidentBrushes[race], null, body);
                 if (_zoom >= .7 && _zoom < 3 && _heads is not null) context.DrawGeometry(HeadBrush, null, _heads);
-                if (_zoom >= .35 && _zoom < 3)
+                if (_zoom >= .7 && _zoom < 3)
                 {
                     if (_cargoGeometry is not null) context.DrawGeometry(CargoBrush, null, _cargoGeometry);
                     if (_messageGeometry is not null) context.DrawGeometry(MessageBrush, null, _messageGeometry);
@@ -319,7 +319,7 @@ public sealed partial class WorldMapControl : Control
         var tiles = VisibleTiles(state);
         var view = (tiles.Left / ChunkTiles, tiles.Right / ChunkTiles, tiles.Top / ChunkTiles, tiles.Bottom / ChunkTiles);
         if (_chunkRefreshTick == state.Tick && _chunkViewport == view) return;
-        _chunkRefreshTick = state.Tick; _chunkViewport = view; TerrainTilesScanned = 0;
+        _chunkRefreshTick = state.Tick; _chunkViewport = view; TerrainTilesScanned = 0; TerrainTilesDrawn = 0;
         var colors = new Dictionary<int, uint>();
         uint colorHash = 0;
         _nationBrushes.Clear();
@@ -344,7 +344,7 @@ public sealed partial class WorldMapControl : Control
                 var tile = state.Tiles[y * state.Width + x];
                 // Resources change this image only when a forest becomes a stump.
                 // Animal and plant quantities belong to the separate ecology layer.
-                terrainHash = unchecked((terrainHash ^ ((uint)tile.Terrain + (tile.DroughtTicks > 0 ? 16u : 0u) + (uint)tile.RoadLevel * 64 + (WorldEngine.IsForestTerrain(tile.Terrain) && tile.ResourceAmount < 25 ? 256u : 0u))) * 16777619);
+                terrainHash = unchecked((terrainHash ^ TerrainImageInput(tile)) * 16777619);
                 territoryHash = unchecked((territoryHash ^ (uint)tile.NationId) * 16777619);
                 containsTerritory |= tile.NationId != 0 && x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles;
                 if (x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles && tile.FireTicks > 0)
@@ -370,13 +370,7 @@ public sealed partial class WorldMapControl : Control
                 var bottom = cy + ChunkTiles < state.Height ? 1 : 0;
                 chunk.TerrainBounds = new Rect(chunk.Bounds.X - left, chunk.Bounds.Y - top,
                     chunk.Bounds.Width + left + right, chunk.Bounds.Height + top + bottom);
-                var canvas = new PixelCanvas((int)chunk.TerrainBounds.Width, (int)chunk.TerrainBounds.Height);
-                for (var y = Math.Max(0, cy - 1); y < Math.Min(state.Height, cy + ChunkTiles + 1); y++)
-                for (var x = Math.Max(0, cx - 1); x < Math.Min(state.Width, cx + ChunkTiles + 1); x++)
-                {
-                    DrawTerrainTile(canvas, state, x, y, (x - cx) * TilePixels + left, (y - cy) * TilePixels + top);
-                    DrawRoadTile(canvas, state, x, y, (x - cx) * TilePixels + left, (y - cy) * TilePixels + top);
-                }
+                var canvas = UpdateTerrainCanvas(chunk, state, cx, cy, left, top);
                 chunk.Terrain?.Dispose();
                 chunk.Terrain = MakeBitmap(canvas, opaque: true);
                 chunk.TerrainHash = terrainHash;
@@ -595,14 +589,15 @@ public sealed partial class WorldMapControl : Control
         var now = _renderMotionTime;
         _renderedResidentPoints.Clear();
         var silhouettes = _zoom < 3;
+        var details = silhouettes && _zoom >= .7;
         var heads = silhouettes && _zoom >= .7 ? new StreamGeometry() : null;
         using var headContext = heads?.Open();
-        var cargo = new StreamGeometry();
-        var messages = new StreamGeometry();
-        var magic = new StreamGeometry();
-        using var cargoContext = cargo.Open();
-        using var messageContext = messages.Open();
-        using var magicContext = magic.Open();
+        var cargo = details ? new StreamGeometry() : null;
+        var messages = details ? new StreamGeometry() : null;
+        var magic = details ? new StreamGeometry() : null;
+        using var cargoContext = cargo?.Open();
+        using var messageContext = messages?.Open();
+        using var magicContext = magic?.Open();
         var contexts = new StreamGeometryContext?[4];
         for (var race = 0; race < 4; race++)
         {
@@ -618,17 +613,20 @@ public sealed partial class WorldMapControl : Control
                 var y = (position.Y + .5) * TilePixels;
                 if (!Visible(new Rect(x - 2, y - 3, 6, 7))) continue;
                 _renderedResidentPoints[resident.Id] = ToScreen((position.X + .5) * TilePixels, (position.Y + .5) * TilePixels);
+                // Near-scene sprites already draw these features; overview badges
+                // below .7 scale are subpixel and do not need separate geometry.
+                if (!silhouettes) continue;
                 var race = Math.Clamp((int)resident.Race, 0, 3);
                 if (ShowVehicle(resident)) continue;
                 if (contexts[race] is { } silhouette) GeometryRect(silhouette, x, y, resident.Profession == Profession.Soldier ? 2.6 : 1.8, 2.4);
                 if (headContext is not null) GeometryRect(headContext, x, y - 1.4, 1.8, 1.4);
-                if (_zoom < .35) continue;
+                if (!details) continue;
                 if (resident.Inventory.Food + resident.Inventory.Wood + resident.Inventory.Stone + resident.Inventory.Ore > 0)
-                    GeometryRect(cargoContext, x + 1.8, y + .5, 2.3, 2);
+                    GeometryRect(cargoContext!, x + 1.8, y + .5, 2.3, 2);
                 if (resident.Agent.CarriedMessages.Count > 0)
-                    GeometryRect(messageContext, x + 1.7, y - 2.3, 2.8, 1.6);
+                    GeometryRect(messageContext!, x + 1.7, y - 2.3, 2.8, 1.6);
                 if (resident.Profession == Profession.Mage)
-                    GeometryRect(magicContext, x - .8, y - 2.5, 3.4, 1.1);
+                    GeometryRect(magicContext!, x - .8, y - 2.5, 3.4, 1.1);
             }
         }
         finally { foreach (var draw in contexts) draw?.Dispose(); }
@@ -1051,6 +1049,8 @@ public sealed partial class WorldMapControl : Control
         public Rect TerrainBounds { get; set; } = bounds;
         public WriteableBitmap? Terrain { get; set; }
         public WriteableBitmap? Territory { get; set; }
+        public PixelCanvas? TerrainCanvas { get; set; }
+        public uint[] TerrainInputs { get; } = new uint[(ChunkTiles + 2) * (ChunkTiles + 2)];
         public uint TerrainHash { get; set; }
         public uint TerritoryHash { get; set; }
         public bool TerritoryCached { get; set; }
