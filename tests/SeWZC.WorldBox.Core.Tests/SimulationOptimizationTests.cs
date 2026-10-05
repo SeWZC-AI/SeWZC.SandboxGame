@@ -130,7 +130,7 @@ internal static class SimulationOptimizationTests
         var e = Flat(1); var person = e.State.Residents.Single(); person.Profession = Profession.Farmer;
         person.Agent.Goal = new() { Kind = AgentGoalKind.Gather, TargetX = 13, TargetY = 16, Reason = "亲眼看见可食资源" };
         var before = e.ExportJson(); var summary = e.GetResidentActionSummary(person.Id);
-        Check(summary.Contains("当前任务：采集野生食物") && summary.Contains("当前劳作：正在前往") && !summary.Contains("任务地点："), "Adjacent exact-site work was described as already happening.");
+        Check(summary.Contains("当前任务：采集浆果、草籽或嫩叶") && !summary.Contains("野生食物") && summary.Contains("当前劳作：正在前往") && !summary.Contains("任务地点："), "Adjacent exact-site work omitted its plant products or was described as already happening.");
         Check(e.ExportJson() == before, "Explaining a task changed the world.");
     }
     private static void Navigation()
