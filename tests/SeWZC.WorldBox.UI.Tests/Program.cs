@@ -230,6 +230,8 @@ static void BuildingDetailCopy()
         b.Kind = kind;
         var text = string.Join("\n", engine.GetBuildingEffects(b.Id));
         Assert(!text.Contains("需要完工、健康与运营条件") && !text.Contains("来源：升级完工后"), "Generic conditions survived for " + kind);
+        if (kind == BuildingKind.Well)
+            Assert(text.Contains("供水量") && !text.Contains("今日剩余") && !text.Contains("每日可取水"), "Well inspection retained a separate water quota field");
         if (WorldEngine.BuildingRace(kind) is not null && kind != BuildingKind.DwarvenForge)
             Assert(!text.Contains("每批加工产出"), "Non-manufacturing racial facility describes a fictitious product");
     }

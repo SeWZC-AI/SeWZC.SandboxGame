@@ -37,7 +37,7 @@ fs.mkdirSync(output, { recursive: true });
                     }
                     return ui.snapshot();
                 }
-                for (const kind of [26, 23, 24, 3, 16, 27, 29, 31, 32, 33, 34]) {
+                for (const kind of [26, 23, 24, 22, 3, 16, 27, 29, 31, 32, 33, 34]) {
                     const s = await open(kind);
                     const text = ['building-health', 'building-effects', 'building-next-level', 'building-status'].map(id => ui.control(s, id).value || '').join('\n');
                     for (const unwanted of ['结构完好', '完工且健康时', '需要完工、健康与运营条件', '来源：升级完工后'])
@@ -49,6 +49,10 @@ fs.mkdirSync(output, { recursive: true });
                         assert.equal(ui.control(s, 'building-status').visible, false);
                     }
                     if (kind === 3) assert.match(ui.control(s, 'building-status').value, /至少 50/);
+                    if (kind === 22) {
+                        assert.equal((ui.control(s, 'building-effects').value.match(/供水量/g) || []).length, 1);
+                        assert.doesNotMatch(text, /今日剩余|每日可取水|降水|补水/);
+                    }
                     if ([27, 29, 32, 33, 34].includes(kind)) assert(!ui.control(s, 'building-effects').value.includes('每批产出'));
                     await page.screenshot({ path: path.join(output, `${name}-${kind}.png`) });
                 }
@@ -63,7 +67,7 @@ fs.mkdirSync(output, { recursive: true });
                 assert.match(ui.control(await ui.snapshot(), 'building-next-level').value, /5 至 6 格/);
                 await page.screenshot({ path: path.join(output, `${name}-watchtower-upgraded.png`) });
                 await diagnostics.assertHealthy(name + ' building details');
-                console.log('PASS', name, '11 building kinds, read-only inspection, concrete disabled/damaged states, live upgrade values');
+                console.log('PASS', name, '12 building kinds, unified well supply, read-only inspection, concrete disabled/damaged states, live upgrade values');
             } catch (error) {
                 await page.screenshot({ path: path.join(output, `${name}-failure.png`) }).catch(() => {}); throw error;
             } finally { await context.close(); }

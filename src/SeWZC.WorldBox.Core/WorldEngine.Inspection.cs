@@ -157,7 +157,7 @@ public sealed partial class WorldEngine
         return goal.Kind switch
         {
             AgentGoalKind.Work => person.Profession == Profession.Lumberjack ? "采伐木材并带回家园" : person.Profession == Profession.Miner ? "开采石矿或已发现矿藏并带回家园" : "采收粮食并带回家园",
-            AgentGoalKind.Gather => "采集野生食物并带回家园",
+            AgentGoalKind.Gather => "采集浆果、草籽或嫩叶并带回家园",
             AgentGoalKind.FetchWater => goal.TargetEntityId > 0 ? "到已发现的水源打水并带回家园" : "实地勘察可用水源",
             AgentGoalKind.Hunt => "狩猎可食动物并带回家园",
             AgentGoalKind.Fish => person.TravelMode == TravelMode.Boat ? "乘舟捕鱼并带回鱼获与舟船" : "到鱼群附近捕鱼并带回家园",
