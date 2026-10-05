@@ -177,7 +177,7 @@ public sealed partial class MainView
             }
             foreach (var spell in definition.UnlockedSpells)
             {
-                var button = Named(Button("施放 " + WorldEngine.SpellName(spell) + $"  魔力 {WorldEngine.SpellManaCost(spell):0}", () => ShowSpellSelectionEditor(spell)), "research-spell-" + spell);
+                var button = Named(Button("施放 " + WorldEngine.SpellName(spell) + $"  魔力 {WorldEngine.SpellManaCost(spell):0}", () => ShowSpellSelectionEditor(spell, town.Id)), "research-spell-" + spell);
                 button.IsEnabled = known; unlocks.Children.Add(button);
             }
             if (definition.Action == "铺设铁路")
@@ -189,7 +189,11 @@ public sealed partial class MainView
                 var button = Named(Button("使用折跃门", ShowWaygateEditor), "research-action-waygate"); button.IsEnabled = known; unlocks.Children.Add(button);
             }
         });
-        var start = Named(Button("投入研究", () => RunEdit(() => _engine.StartResearch(town.Id, _selectedResearch), "研究已立项，居民将到学舍推进")), "research-start");
+        var start = Named(Button("投入研究", () =>
+        {
+            var research = _selectedResearch;
+            RunEdit(() => _engine.StartResearch(town.Id, research), "研究已立项，居民将到学舍推进");
+        }), "research-start");
         detail.Children.Add(start); panel.Children.Add(Card(detail));
         _inspectorUpdates.Add(() => start.IsEnabled = Blocker(_selectedResearch) is null);
     }

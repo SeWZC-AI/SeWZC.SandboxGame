@@ -15,7 +15,10 @@ public sealed partial class MainView
 
     private void SetCategory(string category)
     {
+        if (_mapPick is not null) return;
         if (category is "rules" or "inspect") return;
+        CancelPendingEdit();
+        _navigation.Clear(); _inspectorNavigationGeneration++;
         if (_category != category) _toolPage = 0;
         _category = category;
         _toolsOpen = true; _mobilePanel = false;
@@ -87,7 +90,7 @@ public sealed partial class MainView
     }
     private void OnToolContextChanged()
     {
-        if (_updatingToolContext) return;
+        if (_updatingToolContext || _mapPick is not null) return;
         if (_category == "build" && _toolContext.SelectedIndex >= 0 && _toolContext.SelectedIndex < _constructionTowns.Length) _map.SelectedSettlementId = _constructionTowns[_toolContext.SelectedIndex];
     }
     private ToolChoice[] BuildToolChoices() => new ToolChoice[]
@@ -95,6 +98,9 @@ public sealed partial class MainView
 
     private void SelectTool(string tool)
     {
+        if (_mapPick is not null) return;
+        CancelPendingEdit();
+        _navigation.Clear(); _inspectorNavigationGeneration++;
         if (_map.ActiveTool == tool) { SuspendTool(); return; }
         _map.ActiveTool = tool;
         _map.CancelPlacement();
@@ -112,20 +118,34 @@ public sealed partial class MainView
 
     private void ToggleTools()
     {
+        if (_mapPick is not null) return;
+        CancelPendingEdit();
+        _navigation.Clear(); _inspectorNavigationGeneration++;
         if (_toolsOpen) { SuspendTool(); _toolsOpen = false; }
         else { _toolsOpen = true; _mobilePanel = false; }
         ApplyLayout();
     }
 
-    private void SuspendTool()
+    private void SuspendTool() => SuspendMapTool(true);
+
+    private void SuspendMapTool(bool endNavigation)
     {
+        if (_mapPick is not null) return;
+        CancelPendingEdit();
+        if (endNavigation) { _navigation.Clear(); _inspectorNavigationGeneration++; }
         _map.CancelPlacement(); _map.ActiveTool = "pan";
         _toolTitle.Text = "漫游（点选查看）";
         foreach (var (_, button) in _tools) { button.BorderBrush = Brushes.Transparent; button.Background = Ink; }
         SetStatus("漫游中，可拖动地图或轻点查看对象");
     }
 
-    private void CloseInspector() { _mobilePanel = false; ApplyLayout(); }
+    private void CloseInspector()
+    {
+        if (_mapPick is not null) return;
+        CancelPendingEdit();
+        _navigation.Clear(); _inspectorNavigationGeneration++;
+        _mobilePanel = false; _expandedInspector = false; _researchExpanded = false; ApplyLayout();
+    }
 
     private void ShowRules()
     {
@@ -135,11 +155,6 @@ public sealed partial class MainView
 
     private async void RunEdit(Action command, string message)
     {
-        try
-        {
-            await PrepareEditAsync(); command(); _map.RefreshWorld(); RefreshUi(true); SetStatus(message);
-        }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
-        { SetStatus("未应用变更：" + FriendlyError(ex)); }
+        await SubmitEditAsync(() => { command(); _map.RefreshWorld(); RefreshUi(true); SetStatus(message); });
     }
 }

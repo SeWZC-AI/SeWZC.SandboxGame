@@ -44,9 +44,11 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
                 await ui.click('storage-import', modal); await (await chooser).setFiles(filename);
                 await ui.waitFor(s => !s.modalOpen && s.status.startsWith('导入成功'), 'advanced world import', 30000);
                 const before = await ui.save();
-                await ui.click('header-overview'); await ui.click('overview-infrastructure', inspector);
-                await ui.click('research-expand', inspector);
+                await ui.click('header-overview'); await ui.click('overview-research', inspector);
+                await ui.click('settlement-tab-settlement');
                 assert.match(ui.control(await ui.snapshot(), 'advancement-stage').value, /科技：未来制造.*魔法：以太文明/s);
+                await ui.click('settlement-tab-research');
+                await ui.click('research-expand', inspector);
                 await ui.click('research-route-technology', inspector);
                 await ui.click('research-fit', inspector);
                 await ui.point('research-graph', inspector);
@@ -58,6 +60,7 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
                 await ui.click('research-node-AetherMastery', inspector);
                 assert.match(ui.control(await ui.snapshot(), 'research-requirements').value, /以太转化炉/);
                 assert.equal(digest(await ui.save()), digest(before), 'Reading either route changed the world');
+                await ui.click('settlement-tab-infrastructure');
                 await ui.click('building-open', inspector);
                 await ui.selectIndex('building-kind', 10, modal); // Fabricator, ordinary enum picker.
                 await ui.fill('building-x', at[0].x, modal); await ui.fill('building-y', at[0].y, modal);

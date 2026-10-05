@@ -50,7 +50,7 @@ fs.mkdirSync(output, { recursive: true });
                 await ui.click('header-storage'); const chooser = page.waitForEvent('filechooser');
                 await ui.click('storage-import', modal); await (await chooser).setFiles(filename);
                 await ui.waitFor(s => !s.modalOpen && s.status.startsWith('导入成功'), 'gameplay fixture import', 30000);
-                await ui.click('header-overview'); await ui.click('overview-infrastructure', inspector); await ui.click('research-expand', inspector);
+                await ui.click('header-overview'); await ui.click('overview-research', inspector); await ui.click('research-expand', inspector);
                 async function node(route, kind) {
                     await ui.click(`research-route-${route}`, inspector); await ui.click('research-fit', inspector);
                     await ui.point('research-graph', inspector); await ui.click(`research-node-${kind}`, inspector);

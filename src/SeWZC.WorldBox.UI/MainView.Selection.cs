@@ -30,6 +30,7 @@ public sealed partial class MainView
 
     private void SelectMapObject(string kind, int id = 0, int x = 0, int y = 0)
     {
+        if (_mapPick is not null) return;
         _mapSelectionKind = kind;
         _selectedResidentId = kind == "resident" ? id : 0;
         _selectedBuildingId = kind == "building" ? id : 0;
@@ -45,7 +46,7 @@ public sealed partial class MainView
         var building = _mapSelectionKind == "building" ? _engine.State.Society.Buildings.FirstOrDefault(b => b.Id == _selectedBuildingId) : null;
         if (_mapSelectionKind == "resident" && resident is null || _mapSelectionKind == "building" && building is null)
         { ClearMapSelection(); return; }
-        _selectionBar.IsVisible = _mapSelectionKind is not null && !_mobilePanel && !_toolsOpen;
+        _selectionBar.IsVisible = _mapPick is null && _mapSelectionKind is not null && !_mobilePanel && !_toolsOpen;
         _selectionText.Text = resident is not null ? $"{resident.Name}（{resident.Health:0.#}/100）   {ProfessionName(resident.Profession)}\n{ResidentTask(resident)}"
             : building is not null ? $"{WorldEngine.BuildingName(building.Kind)}（{building.Health:0.#}/100）\n{BuildingTask(building)}"
             : _selectedTile is { } p ? TileSelectionLabel(_engine.State.Tiles[p.Y * _engine.State.Width + p.X]) : "";
@@ -57,6 +58,7 @@ public sealed partial class MainView
 
     private void ViewMapSelection()
     {
+        if (_mapPick is not null) return;
         if (_mapSelectionKind == "resident") OpenResident(_selectedResidentId);
         else if (_mapSelectionKind == "building") OpenInspector("building");
         else if (_selectedTile is not null) OpenInspector("tile");
@@ -65,6 +67,8 @@ public sealed partial class MainView
 
     private void ClearMapSelection()
     {
+        if (_mapPick is not null) return;
+        if (!_mobilePanel) { _navigation.Clear(); _inspectorNavigationGeneration++; }
         _mapSelectionKind = null; _selectedBuildingId = 0; _selectionBar.IsVisible = false;
         if (!_mobilePanel) { _selectedResidentId = 0; _selectedTile = null; }
         _map.ClearMapSelection();

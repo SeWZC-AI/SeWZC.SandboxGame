@@ -4,36 +4,59 @@ using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.UI;
 
 public sealed partial class MainView
 {
     private Action<int, int>? _mapPick;
+    private int _mapPickGeneration;
+    private WorldEngine? _mapPickEngine;
+    private Control? _mapPickModal;
+    private bool _mapPickInspectorVisible, _mapPickToolsOpen;
+    private string _mapPickTool = "pan";
+    private Controls.WorldMapControl.MapSelectionState _mapPickSelection;
 
-    private void AddMapPicker(StackPanel panel, NumericUpDown x, NumericUpDown y)
+    private void AddMapPicker(StackPanel panel, NumericUpDown x, NumericUpDown y, Action? onLocationPicked = null)
     {
         panel.Children.Add(Named(Button("从地图选点", () =>
         {
-            _mapPick = (xx, yy) => { x.Value = xx; y.Value = yy; };
+            if (!_modal.IsVisible || _modal.Child is null) return;
+            _mapPickGeneration = _modalGeneration; _mapPickEngine = _engine; _mapPickModal = _modal.Child;
+            _mapPickInspectorVisible = _mobilePanel; _mapPickToolsOpen = _toolsOpen; _mapPickTool = _map.ActiveTool;
+            _mapPickSelection = _map.CaptureMapSelection();
+            _mapPick = (xx, yy) => { x.Value = xx; y.Value = yy; onLocationPicked?.Invoke(); };
             _map.PickingLocation = true; _map.ActiveTool = "inspect";
             _modal.IsVisible = false; _mobilePanel = false; _toolsOpen = false;
-            ApplyLayout(); SetStatus("点选目标地格，按 Escape 返回表单");
+            _map.IsSimulationPaused = true;
+            ApplyLayout(); RefreshUi(); SetStatus("点选目标地格，按 Escape 返回表单；时间暂时停止");
         }), "map-pick-" + x.Name));
     }
 
     private void FinishMapPick(int? x = null, int? y = null)
     {
         if (_mapPick is null) return;
-        if (x.HasValue && y.HasValue) _mapPick(x.Value, y.Value);
-        _mapPick = null; _map.PickingLocation = false; _map.ActiveTool = "pan";
-        _modal.IsVisible = true;
+        var assignLocation = _mapPick;
+        var current = _mapPickGeneration == _modalGeneration && ReferenceEquals(_mapPickEngine, _engine) && ReferenceEquals(_mapPickModal, _modal.Child);
+        CancelMapPick(restorePresentation: current);
+        if (!current) return;
+        if (x.HasValue && y.HasValue) assignLocation(x.Value, y.Value);
+        _modal.IsVisible = true; _map.IsSimulationPaused = true;
+        RefreshUi(); SetStatus(x.HasValue && y.HasValue ? "已选定位置，可继续编辑表单" : "已返回表单，位置未改变");
     }
 
-    private void CancelMapPick()
+    private void CancelMapPick(bool restorePresentation = false)
     {
         if (_mapPick is null) return;
-        _mapPick = null; _map.PickingLocation = false; _map.ActiveTool = "pan";
+        _mapPick = null; _mapPickEngine = null; _mapPickModal = null; _map.PickingLocation = false;
+        _map.ActiveTool = restorePresentation ? _mapPickTool : "pan";
+        if (restorePresentation)
+        {
+            _map.RestoreMapSelection(_mapPickSelection);
+            _mobilePanel = _mapPickInspectorVisible; _toolsOpen = _mapPickToolsOpen;
+            ApplyLayout();
+        }
     }
     private static Button IconButton(string icon, Action action, string label, string id)
     {
@@ -42,6 +65,7 @@ public sealed partial class MainView
             "plus" => "M 3,8 L 13,8 M 8,3 L 8,13",
             "minus" => "M 3,7.8 L 13,7.8 L 13,8.2 L 3,8.2 Z",
             "back" => "M 10,3 L 5,8 L 10,13",
+            "undo" => "M 5,3 L 2,6 L 5,9 M 2,6 L 9,6 C 12,6 14,8 14,11 C 14,13 12,15 9,15",
             _ => "M 4,4 L 12,12 M 12,4 L 4,12"
         };
         var shape = new Avalonia.Controls.Shapes.Path { Data = Geometry.Parse(path), Stroke = Mint, StrokeThickness = 1.8,

@@ -45,7 +45,7 @@ public sealed partial class MainView
         else if (target.Kind == ObservedObjectKind.Resident) OpenResident(target.Id);
         else if (_engine.State.Settlements.Any(t => t.Id == target.Id))
         {
-            RememberLocation(); _inspectorSettlementId = target.Id; OpenInspector("infrastructure", false);
+            OpenSettlement(target.Id);
         }
         else SetStatus("这处聚落已不在当前世界中；其保留事件仍可在编年史查看。");
     }

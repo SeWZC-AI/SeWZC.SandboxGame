@@ -66,6 +66,7 @@ function fixture(world) {
                 await ui.click(`nation-row-${data.nation.Id}`, scroll); await ui.click('nation-follow', scroll);
                 assert.match(ui.control(await ui.snapshot(), 'nation-military').value, /有限占领[\s\S]*尚未收到前线战报/);
                 await ui.openOverview(); await ui.click('overview-infrastructure', scroll);
+                await ui.click('settlement-tab-settlement');
                 await ui.click('settlement-watch', scroll);
                 assert.match(ui.control(await ui.snapshot(), 'development-estimate').value, /预计还需约/);
                 await ui.openOverview(); await ui.click('inspector-residents'); await ui.openResidentRow(data.actor.Id, scroll);
@@ -88,6 +89,7 @@ function fixture(world) {
                 await ui.openOverview(); await ui.click('inspector-nations'); await ui.click(`nation-row-${data.nation.Id}`, scroll);
                 await ui.click('nation-follow', scroll);
                 await ui.openOverview(); await ui.click('overview-infrastructure', scroll);
+                await ui.click('settlement-tab-settlement');
                 await ui.click('settlement-watch', scroll);
                 await ui.openOverview(); await ui.click('inspector-history'); await ui.click('history-watched', scroll);
                 await ui.selectIndex('history-importance', 2, scroll);

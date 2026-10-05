@@ -7,9 +7,11 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.Threading;
 using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.UI;
 using SeWZC.WorldBox.UI.Controls;
+using SeWZC.WorldBox.UI.Platform;
 
 AppBuilder.Configure<TestApp>().UseHeadless(new AvaloniaHeadlessPlatformOptions()).SetupWithoutStarting();
 
@@ -30,6 +32,19 @@ var tests = new (string Name, Action Test)[]
     ("Town centers open town information and mobile expansion fills available height", TownInformationAndMobileHeight),
     ("Map resources and resident plans remain read-only during inspection", DetailedInspection),
     ("Map objects select quietly and details require the explicit view button", QuietSelection),
+    ("Returning through resident details restores the original ground selection", InspectorReturnSelection),
+    ("Inspector history is scoped to an open visit and retains recent locations", InspectorHistoryBoundaries),
+    ("Cancelling editors restores the previous simulation state", ModalCancelState),
+    ("Applying editors leaves a running world paused", ModalCommitState),
+    ("Abandoned checkpoint captures cannot commit or overwrite a newer editing visit", DeferredModalSubmissions),
+    ("Abandoned first map strokes cannot publish an undo point or retain a temporary pause", DeferredMapStrokes),
+    ("Late exports preserve newer dialogs and queued exports never capture a replacement world", ExportWindowLifecycle),
+    ("Settlement tabs and overview entries preserve the selected town", SettlementEntrypoints),
+    ("Object links refresh names, targets and availability as the world changes", LiveObjectLinks),
+    ("Returning between town research pages restores the selected branch and graph viewport", ResearchNavigationState),
+    ("Construction, spell and railway map pickers pause and restore their source", ActionMapPickers),
+    ("Map picking isolates its original context from tools and navigation", MapPickerContextIsolation),
+    ("Research spells default to local adults while resident spells prefer that resident", SpellContext),
     ("Advanced research choices show separate prerequisites and commit only valid projects", AdvancedResearchUi),
     ("Advanced resource editors preserve untouched stocks and gifted factories expose requirements", AdvancedResourcesUi),
     ("Paused goal edits refresh the selected resident route immediately", GoalRouteRefresh),
@@ -186,6 +201,7 @@ static void HighlightControls()
     Assert(map.Overlay == 0, "Reopening forced disabled highlights on");
     Assert(Control<ComboBox>(view, "map-overlay").ItemCount >= 10, "Additional highlight types are missing");
     Call(view, "OpenInspector", "guide", true);
+    Assert(Control<TextBlock>(view, "inspector-title").Text == "玩法说明", "Game guide retains the world overview title");
     Assert(view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text?.Contains("未使用额度不会累计") == true), "Water rule has no guide entry");
     Assert(engine.ExportJson() == before, "Highlights or guide changed the simulation");
 }
@@ -272,12 +288,566 @@ static void QuietSelection()
     Click(view, "selection-clear"); Assert(!Control<Border>(view, "selection-summary").IsVisible, "Selection did not clear");
 }
 
+static void InspectorReturnSelection()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var map = Map(view); var before = engine.ExportJson();
+    Call(map, "SelectTile", map.GetTileScreenPosition(2, 2));
+    Click(view, "selection-view");
+    Call(view, "OpenResident", engine.State.Residents[0].Id);
+    Assert(map.SelectedResidentId is not null, "Resident detail did not select its resident");
+    Click(view, "inspector-back");
+    Assert(Field<string>(view, "_inspectorMode") == "tile" && Field<string?>(view, "_mapSelectionKind") == "tile",
+        "Returning restored the tile data but not its selection kind");
+    Assert(Field<(int X, int Y)?>(map, "_selection") == (2, 2) && map.SelectedResidentId is null,
+        "Returning left the resident selected on the map");
+    Click(view, "inspector-close");
+    Assert(Control<Border>(view, "selection-summary").IsVisible && Field<(int X, int Y)?>(view, "_selectedTile") == (2, 2),
+        "Closing returned tile details lost its summary");
+    var building = engine.State.Society.Buildings[0];
+    Call(view, "OpenBuilding", building); Call(view, "OpenResident", engine.State.Residents[0].Id);
+    Click(view, "inspector-back");
+    Assert(Field<string?>(view, "_mapSelectionKind") == "building" && map.SelectedBuildingId == building.Id && map.SelectedResidentId is null,
+        "Returning to a building left another object highlighted");
+    Click(view, "inspector-close");
+    var resident = engine.State.Residents[0];
+    Call(view, "OpenResident", resident.Id); map.FollowSelectedResident = true; SetField(view, "_expandedInspector", true);
+    Call(view, "OpenNation", resident.NationId); Click(view, "inspector-back");
+    Assert(map.SelectedResidentId == resident.Id && map.FollowSelectedResident && Field<bool>(view, "_expandedInspector"),
+        "Returning to a resident discarded following or inspector expansion");
+    Assert(engine.ExportJson() == before, "Returning through details changed the world");
+}
+
+static void InspectorHistoryBoundaries()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var map = Map(view); var before = engine.ExportJson();
+    Call(view, "OpenInspector", "overview", true); Click(view, "inspector-residents");
+    Click(view, "inspector-close");
+    Call(map, "SelectTile", map.GetTileScreenPosition(2, 2)); Click(view, "selection-view");
+    Click(view, "inspector-back");
+    Assert(!Field<bool>(view, "_mobilePanel"), "A new map visit returned to a previously closed inspector");
+    Call(view, "OpenInspector", "overview", true);
+    Click(view, "inspector-overview"); Click(view, "inspector-back");
+    Assert(!Field<bool>(view, "_mobilePanel"), "Clicking the current global tab created a duplicate history entry");
+    Call(view, "OpenInspector", "overview", true);
+    for (var i = 0; i < 33; i++) Click(view, i % 2 == 0 ? "inspector-nations" : "inspector-overview");
+    Click(view, "inspector-back");
+    Assert(Field<bool>(view, "_mobilePanel") && Field<string>(view, "_inspectorMode") == "overview",
+        "Reaching the history limit discarded the most recent page");
+    var returned = 1;
+    while (Field<bool>(view, "_mobilePanel") && returned <= 33)
+    { Click(view, "inspector-back"); returned++; }
+    Assert(returned == 33 && !Field<bool>(view, "_mobilePanel"), "History did not retain exactly the latest 32 locations");
+    Assert(engine.ExportJson() == before, "History navigation changed the world");
+}
+
+static void ModalCancelState()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var resident = engine.State.Residents[0]; var before = engine.ExportJson();
+    var editors = new (string Method, object?[] Args)[]
+    {
+        ("ShowNationEditor", [resident.NationId]), ("ShowResidentEditor", [resident.Id]),
+        ("ShowCultureEditor", [resident.CultureId]), ("ShowRules", []), ("ShowSpellSelectionEditor", [SpellKind.Heal, (int?)resident.SettlementId])
+    };
+    foreach (var paused in new[] { false, true })
+    foreach (var editor in editors)
+    {
+        SetField(view, "_paused", paused); SetField(view, "_ready", true);
+        Call(view, editor.Method, editor.Args);
+        Assert(Field<Border>(view, "_modal").IsVisible && Map(view).IsSimulationPaused, editor.Method + " did not temporarily stop simulation");
+        SetField(view, "_accumulator", .4); var tick = engine.State.Tick;
+        Call(view, "OnTick", null, EventArgs.Empty);
+        Assert(engine.State.Tick == tick, editor.Method + " advanced simulation while its form was visible");
+        Click(view, "modal-cancel");
+        Assert(Field<bool>(view, "_paused") == paused && Map(view).IsSimulationPaused == paused,
+            editor.Method + " cancellation changed the previous pause state");
+    }
+    Assert(engine.ExportJson() == before, "Opening or cancelling editors changed the world");
+}
+
+static void ModalCommitState()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var resident = engine.State.Residents[0];
+    var editors = new (string Method, object?[] Args, string Apply)[]
+    {
+        ("ShowNationEditor", [resident.NationId], "nation-apply"), ("ShowResidentEditor", [resident.Id], "resident-apply"),
+        ("ShowCultureEditor", [resident.CultureId], "culture-apply"), ("ShowRules", [], "world-rules-apply")
+    };
+    foreach (var editor in editors)
+    {
+        SetField(view, "_paused", false);
+        // The checkpoint already exists in a continuing editing visit. This keeps
+        // the test focused on committing and closing rather than save scheduling.
+        SetField(view, "_checkpoint", engine.ExportJson());
+        Call(view, editor.Method, editor.Args); Click(view, editor.Apply);
+        Assert(!Field<Border>(view, "_modal").IsVisible && Field<bool>(view, "_paused") && Map(view).IsSimulationPaused,
+            editor.Method + " resumed simulation after applying changes");
+    }
+}
+
+static void ExportWindowLifecycle()
+{
+    var previousStorage = App.Storage;
+    var storage = new DeferredExportStorage();
+    try
+    {
+        App.Storage = storage;
+        foreach (var replaceWorld in new[] { false, true })
+        {
+            storage = new DeferredExportStorage(); App.Storage = storage;
+            var engine = EmptyWorld(42, 32); var view = View(engine); var before = engine.ExportJson();
+            SetField(view, "_paused", false); Call(view, "ShowStorage");
+            var export = (Task)Call(view, "ExportWorldAsync")!;
+            Await(() => storage.ExportCalls == 1, "The original world export never reached storage");
+            Assert(storage.ExportedJson == before, "Export did not capture its original world");
+            if (replaceWorld) { engine = EmptyWorld(43, 32); Call(view, "ReplaceWorld", engine); }
+            Call(view, "ShowRules"); var currentWindow = Field<Border>(view, "_modal").Child;
+            var paused = Field<bool>(view, "_paused");
+            storage.CompleteExport(); Await(() => export.IsCompleted, "The delayed export did not finish"); export.GetAwaiter().GetResult();
+            Assert(Field<Border>(view, "_modal").IsVisible && ReferenceEquals(currentWindow, Field<Border>(view, "_modal").Child),
+                "An old export closed the newer rules window");
+            Assert(ReferenceEquals(engine, Field<WorldEngine>(view, "_engine")) && Field<bool>(view, "_paused") == paused,
+                "Completing an old export changed the current world or pause state");
+        }
+        storage = new DeferredExportStorage(); App.Storage = storage;
+        var queuedView = View(EmptyWorld(42, 32)); Call(queuedView, "ShowStorage");
+        var gate = Field<SemaphoreSlim>(queuedView, "_saveGate"); gate.Wait();
+        Task queued;
+        try
+        {
+            queued = (Task)Call(queuedView, "ExportWorldAsync")!;
+            Call(queuedView, "ReplaceWorld", EmptyWorld(43, 32)); Call(queuedView, "ShowStorage");
+        }
+        finally { gate.Release(); }
+        Await(() => queued.IsCompleted, "The abandoned queued export did not finish"); queued.GetAwaiter().GetResult();
+        Assert(storage.ExportCalls == 0 && Field<Border>(queuedView, "_modal").IsVisible,
+            "A queued old export captured the replacement world or closed its storage window");
+    }
+    finally { storage.CompleteExport(); App.Storage = previousStorage; }
+
+    static void Await(Func<bool> completed, string message)
+    {
+        var clock = Stopwatch.StartNew();
+        while (!completed() && clock.Elapsed.TotalSeconds < 2)
+        { Dispatcher.UIThread.RunJobs(); Thread.Sleep(1); }
+        Assert(completed(), message);
+    }
+}
+
+static void DeferredModalSubmissions()
+{
+    foreach (var editor in new[] { "nation", "culture" })
+    foreach (var abandon in new[] { "cancel", "window", "world" })
+    {
+        var engine = TwoTownWorld(); var view = View(engine); var resident = engine.State.Residents[0];
+        Call(view, "TogglePause");
+        var before = engine.ExportJson();
+        Call(view, editor == "nation" ? "ShowNationEditor" : "ShowCultureEditor", editor == "nation" ? resident.NationId : resident.CultureId);
+        Control<TextBox>(view, editor + "-name").Text = "不能提交的旧窗口";
+        var gate = Field<SemaphoreSlim>(view, "_saveGate"); gate.Wait();
+        Task pending;
+        WorldEngine current = engine; var currentBefore = before; Control? newerWindow = null; string? checkpointAfterAbandon = null;
+        try
+        {
+            Click(view, editor + "-apply");
+            pending = Field<Task?>(view, "_prepareEditTask") ?? throw new Exception("Submit did not wait for its initial checkpoint capture");
+            Assert(!pending.IsCompleted && engine.ExportJson() == before, "A blocked initial submit already changed the world");
+            if (editor == "nation")
+                Assert(!Control<NumericUpDown>(view, "nation-food").IsEffectivelyEnabled && !Control<ComboBox>(view, "nation-technology").IsEffectivelyEnabled
+                    && Control<Button>(view, "modal-cancel").IsEffectivelyEnabled, "Pending submit left draft controls editable or blocked cancellation");
+            if (abandon == "cancel") Click(view, "modal-cancel");
+            else if (abandon == "window") { Call(view, "ShowRules"); newerWindow = Field<Border>(view, "_modal").Child; }
+            else
+            {
+                current = EmptyWorld(43, 32); Call(view, "ReplaceWorld", current); currentBefore = current.ExportJson(); Call(view, "ShowRules");
+                newerWindow = Field<Border>(view, "_modal").Child;
+            }
+            checkpointAfterAbandon = Field<string?>(view, "_checkpoint");
+        }
+        finally { gate.Release(); }
+        AwaitUi(() => pending.IsCompleted && Field<Task?>(view, "_prepareEditTask") is null, "An abandoned submission did not finish cancellation");
+        Assert(engine.ExportJson() == before && current.ExportJson() == currentBefore && ReferenceEquals(current, Field<WorldEngine>(view, "_engine")),
+            "An abandoned form committed its command or changed the replacement world");
+        Assert(Field<string?>(view, "_checkpoint") == checkpointAfterAbandon, "An old checkpoint capture overwrote the current editing visit");
+        Assert(Field<bool>(view, "_paused") == (abandon == "world"), "An abandoned submission changed the original running preference");
+        Assert(abandon == "cancel" ? !Field<Border>(view, "_modal").IsVisible
+            : Field<Border>(view, "_modal").IsVisible && ReferenceEquals(newerWindow, Field<Border>(view, "_modal").Child),
+            "An old submission reopened its form or closed the newer window");
+        if (abandon == "cancel") Assert(!Map(view).IsSimulationPaused, "Cancelled checkpoint capture retained its temporary pause");
+    }
+    {
+        var engine = TwoTownWorld(); var view = View(engine); var nation = engine.State.Nations[0]; var originalName = nation.Name;
+        Call(view, "TogglePause"); var before = engine.ExportJson(); Call(view, "ShowNationEditor", nation.Id);
+        Control<TextBox>(view, "nation-name").Text = "被替换的提交";
+        var gate = Field<SemaphoreSlim>(view, "_saveGate"); gate.Wait(); Task oldPending; Task newerPending;
+        try
+        {
+            Click(view, "nation-apply"); oldPending = Field<Task?>(view, "_prepareEditTask") ?? throw new Exception("Original submit did not wait for its checkpoint");
+            Call(view, "ShowRules"); Control<NumericUpDown>(view, "rule-gathering-rate").Value = .5m;
+            Click(view, "world-rules-apply"); newerPending = Field<Task?>(view, "_prepareEditTask") ?? throw new Exception("Replacement submit did not wait for its checkpoint");
+            AwaitUi(() => oldPending.IsCompleted, "The replaced submission did not finish cancellation");
+            Assert(!newerPending.IsCompleted && ReferenceEquals(newerPending, Field<Task?>(view, "_prepareEditTask"))
+                && !Control<NumericUpDown>(view, "rule-gathering-rate").IsEffectivelyEnabled && Control<Button>(view, "modal-cancel").IsEffectivelyEnabled,
+                "An old submission's cleanup enabled the newer pending form or released its capture boundary");
+        }
+        finally { gate.Release(); }
+        AwaitUi(() => newerPending.IsCompleted && Field<Task?>(view, "_prepareEditTask") is null && !Field<Border>(view, "_modal").IsVisible,
+            "The replacement pending rules submit did not finish");
+        Assert(nation.Name == originalName && engine.State.Rules.GatheringRate == .5 && Field<string?>(view, "_checkpoint") == before,
+            "Overlapping editing visits committed the old draft or lost the replacement's original checkpoint");
+    }
+    {
+        var engine = TwoTownWorld(); var view = View(engine); var nation = engine.State.Nations[0];
+        Call(view, "TogglePause"); var before = engine.ExportJson(); Call(view, "ShowNationEditor", nation.Id);
+        const string marker = "唯一的提交"; Control<TextBox>(view, "nation-name").Text = marker;
+        var gate = Field<SemaphoreSlim>(view, "_saveGate"); gate.Wait(); Task pending;
+        try
+        {
+            Click(view, "nation-apply"); pending = Field<Task?>(view, "_prepareEditTask") ?? throw new Exception("Submit did not wait for its checkpoint");
+            Click(view, "nation-apply");
+        }
+        finally { gate.Release(); }
+        AwaitUi(() => pending.IsCompleted && Field<Task?>(view, "_prepareEditTask") is null && !Field<Border>(view, "_modal").IsVisible,
+            "A valid deferred submission did not complete");
+        Assert(nation.Name == marker && engine.State.Events.Count(e => e.Message.Contains("更名为" + marker + "。")) == 1,
+            "Repeated submit applied the same pending command more than once");
+        Assert(Field<string?>(view, "_checkpoint") == before && Field<bool>(view, "_paused") && Map(view).IsSimulationPaused,
+            "A committed deferred submission lost its original checkpoint or resumed simulation");
+    }
+    foreach (var leaveResearch in new[] { false, true })
+    {
+        var engine = TwoTownWorld(); var town = engine.State.Settlements[0];
+        engine.SetNationResources(town.NationId, 1000, 1000, 1000, 1000, 100, 100, 100);
+        engine.GrantFacility(town.Id, BuildingKind.Academy, town.X + 2, town.Y + 2);
+        var view = View(engine); Call(view, "TogglePause"); Call(view, "OpenSettlement", town.Id, "research");
+        Click(view, "research-node-Agriculture"); var before = engine.ExportJson();
+        var gate = Field<SemaphoreSlim>(view, "_saveGate"); gate.Wait(); Task pending;
+        try
+        {
+            Click(view, "research-start"); pending = Field<Task?>(view, "_prepareEditTask") ?? throw new Exception("Research submit did not wait for its checkpoint");
+            Click(view, "research-node-Logistics");
+            if (leaveResearch) Click(view, "settlement-tab-communication");
+        }
+        finally { gate.Release(); }
+        AwaitUi(() => pending.IsCompleted && Field<Task?>(view, "_prepareEditTask") is null, "Deferred research did not finish its capture boundary");
+        var project = engine.State.Society.Research.Single(r => r.SettlementId == town.Id).ActiveProject;
+        ResearchKind? expected = leaveResearch ? null : ResearchKind.Agriculture;
+        Assert(project == expected,
+            leaveResearch ? "Leaving the research page committed its abandoned project" : "Waiting for a checkpoint changed the clicked research to a later selection");
+        if (leaveResearch) Assert(engine.ExportJson() == before && !Field<bool>(view, "_paused"), "Leaving pending research changed the world or its running preference");
+    }
+    {
+        var engine = TwoTownWorld(); var view = View(engine); var nation = engine.State.Nations[0];
+        Call(view, "TogglePause"); var before = engine.ExportJson();
+        var rejected = (Task<bool>)Call(view, "SubmitEditAsync", (Action)(() => throw new InvalidOperationException("无修改的失败")), false)!;
+        AwaitUi(() => rejected.IsCompleted, "An unchanged failed submission did not finish");
+        Assert(!rejected.GetAwaiter().GetResult() && engine.ExportJson() == before && Field<string?>(view, "_checkpoint") is null && !Field<bool>(view, "_paused"),
+            "A failed command that changed nothing published an undo point or retained pause");
+        var partial = (Task<bool>)Call(view, "SubmitEditAsync", (Action)(() =>
+        {
+            engine.RenameNation(nation.Id, "需撤销的部分修改"); throw new InvalidOperationException("修改后的失败");
+        }), false)!;
+        AwaitUi(() => partial.IsCompleted, "A partially changed failed submission did not finish");
+        Assert(!partial.GetAwaiter().GetResult() && engine.ExportJson() != before && Field<string?>(view, "_checkpoint") == before
+            && Field<bool>(view, "_paused") && Control<Button>(view, "world-undo").IsEnabled,
+            "A partially changed failed command discarded its undo point or resumed simulation");
+        Click(view, "world-undo");
+        Assert(Field<WorldEngine>(view, "_engine").ExportJson() == before, "Undo did not restore a partially failed command's original world");
+    }
+}
+
+static void DeferredMapStrokes()
+{
+    foreach (var abandon in new[] { "pan", "modal", "picker" })
+    {
+        var engine = TwoTownWorld(); engine.PaintTerrain(2, 2, TerrainType.Mountain, 0);
+        var view = View(engine); var map = Map(view); Call(view, "TogglePause");
+        var before = engine.ExportJson(); map.ActiveTool = "Grass";
+        var gate = Field<SemaphoreSlim>(view, "_saveGate"); gate.Wait(); Task pending; Control? newerWindow = null;
+        try
+        {
+            Call(map, "ApplyTool", map.GetTileScreenPosition(2, 2));
+            pending = Field<Task?>(view, "_prepareEditTask") ?? throw new Exception("First map stroke did not wait for its checkpoint");
+            Assert(!pending.IsCompleted && engine.ExportJson() == before, "A blocked map stroke changed the world before capturing its checkpoint");
+            if (abandon == "pan") Call(view, "SuspendTool");
+            else if (abandon == "modal") Call(view, "ShowRules");
+            else
+            {
+                Call(view, "ShowGoalEditor", engine.State.Residents[0].Id); Click(view, "map-pick-resident_goal_x");
+            }
+            newerWindow = Field<Border>(view, "_modal").Child;
+        }
+        finally { gate.Release(); }
+        AwaitUi(() => pending.IsCompleted && Field<Task?>(view, "_prepareEditTask") is null && !Field<bool>(map, "_preparingWorldEdit"),
+            "An abandoned first map stroke did not exit its capture boundary");
+        Assert(engine.ExportJson() == before && Field<string?>(view, "_checkpoint") is null && !Field<bool>(view, "_paused"),
+            "An abandoned map stroke changed terrain, published a checkpoint or paused a running world permanently");
+        if (abandon == "pan") Assert(!Field<Border>(view, "_modal").IsVisible && !map.IsSimulationPaused, "Switching to pan retained the abandoned stroke's temporary pause");
+        else
+        {
+            Assert(ReferenceEquals(newerWindow, Field<Border>(view, "_modal").Child), "An old map stroke replaced the newer window");
+            if (abandon == "picker")
+            {
+                Assert(map.PickingLocation && !Field<Border>(view, "_modal").IsVisible, "An old stroke exited or reopened the active map picker");
+                Call(view, "FinishMapPick", null, null);
+            }
+            Assert(Field<Border>(view, "_modal").IsVisible, "An old stroke closed the newer form");
+            Click(view, "modal-cancel");
+            Assert(!Field<bool>(view, "_paused") && !map.IsSimulationPaused, "Cancelling the newer form failed to resume its original running world");
+        }
+    }
+}
+
+static void SettlementEntrypoints()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var town = engine.State.Settlements[1]; var before = engine.ExportJson();
+    Call(view, "OpenInspector", "overview", true); Click(view, "overview-settlements");
+    Click(view, $"settlement-row-{town.Id}");
+    foreach (var mode in new[] { "settlement", "infrastructure", "research", "communication", "settlement" })
+    {
+        Click(view, "settlement-tab-" + mode);
+        Assert(Field<string>(view, "_inspectorMode") == mode && Field<int>(view, "_inspectorSettlementId") == town.Id,
+            "Changing the settlement tab lost the selected town");
+        var navigation = Field<StackPanel>(view, "_inspectorNavigation");
+        Assert(new[] { "settlement", "infrastructure", "research", "communication" }.All(tab =>
+            Control<Button>(view, "settlement-tab-" + tab).GetLogicalAncestors().Contains(navigation)),
+            "Settlement tabs are buried in the scrolling body");
+    }
+    foreach (var mode in new[] { "research", "communication" })
+    {
+        Call(view, "OpenInspector", "overview", true); Click(view, "overview-" + mode);
+        Assert(Field<string>(view, "_inspectorMode") == mode && Field<int>(view, "_inspectorSettlementId") == town.Id,
+            "Overview's " + mode + " entry discarded the current town");
+    }
+    Assert(engine.ExportJson() == before, "Settlement entries or tabs changed the world");
+}
+
+static void ActionMapPickers()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var town = engine.State.Settlements[0]; var before = engine.ExportJson();
+    var forms = new (string Method, object?[] Args, string Prefix, string Mode)[]
+    {
+        ("ShowBuildingEditor", [town.Id], "building", "infrastructure"),
+        ("ShowSpellSelectionEditor", [SpellKind.Heal, (int?)town.Id], "spell", "research"),
+        ("ShowRailEditor", [town.Id], "rail", "research")
+    };
+    foreach (var form in forms)
+    {
+        Call(view, "OpenSettlement", town.Id, form.Mode); SetField(view, "_paused", false); SetField(view, "_ready", true);
+        Map(view).SelectResident(engine.State.Residents[0].Id, true);
+        var selection = Map(view).CaptureMapSelection();
+        Call(view, form.Method, form.Args); var coordinate = Control<NumericUpDown>(view, form.Prefix + "-x");
+        Click(view, "map-pick-" + form.Prefix + "_x");
+        Assert(Map(view).PickingLocation && !Field<Border>(view, "_modal").IsVisible && Map(view).IsSimulationPaused,
+            form.Prefix + " picker did not enter a paused map view");
+        SetField(view, "_accumulator", .4); var tick = engine.State.Tick; Call(view, "OnTick", null, EventArgs.Empty);
+        Assert(engine.State.Tick == tick, form.Prefix + " picker advanced simulation while its form was hidden");
+        Call(Map(view), "SelectTile", Map(view).GetTileScreenPosition(20, 21));
+        Assert(!Map(view).PickingLocation && Field<Border>(view, "_modal").IsVisible && Field<bool>(view, "_mobilePanel")
+            && Field<string>(view, "_inspectorMode") == form.Mode && Field<int>(view, "_inspectorSettlementId") == town.Id,
+            form.Prefix + " picking failed to restore its original inspector");
+        Assert(ReferenceEquals(coordinate, Control<NumericUpDown>(view, form.Prefix + "-x")) && coordinate.Value == 20
+            && Control<NumericUpDown>(view, form.Prefix + "-y").Value == 21, form.Prefix + " picking replaced the form or lost coordinates");
+        Assert(Map(view).CaptureMapSelection() == selection, form.Prefix + " picking lost the original map selection or follow state");
+        Click(view, "modal-cancel");
+        Assert(!Field<bool>(view, "_paused") && !Map(view).IsSimulationPaused, form.Prefix + " picker cancellation retained its temporary pause");
+    }
+    Assert(engine.ExportJson() == before, "Action map picking changed the world");
+}
+
+static void LiveObjectLinks()
+{
+    var engine = TwoTownWorld(); var home = engine.State.Settlements[0]; var remote = engine.State.Settlements[1];
+    var resident = engine.State.Residents[0]; var nation = engine.State.Nations.First(n => n.Id == home.NationId);
+    engine.PaintTerrain(1, 30, TerrainType.Grass, 3); engine.SpawnResidents(1, 30, RaceKind.Human, 1);
+    var nextCapital = engine.State.Settlements.Single(t => t.Id != home.Id && t.Id != remote.Id);
+    var representative = engine.State.Residents.Single(r => r.SettlementId == nextCapital.Id);
+    engine.TransferTerritory(nextCapital.X, nextCapital.Y, nation.Id, 0);
+    var otherNationId = engine.SplitSettlement(remote.Id, "另一国家");
+    var otherNation = engine.State.Nations.First(n => n.Id == otherNationId);
+    nation.CapitalId = home.Id; nation.RepresentativeId = resident.Id; home.RepresentativeId = 0;
+    var view = View(engine); Call(view, "OpenNation", nation.Id);
+    var capitalLink = Control<Button>(view, "nation-capital"); var representativeLink = Control<Button>(view, "nation-representative");
+    nation.CapitalId = nextCapital.Id; nation.RepresentativeId = representative.Id;
+    nextCapital.Name = "迁移后的首都"; representative.Name = "新任代表";
+    Call(view, "RefreshInspector", false);
+    Assert(ReferenceEquals(capitalLink, Control<Button>(view, "nation-capital")) && capitalLink.IsEnabled && ButtonText(capitalLink).Contains(nextCapital.Name)
+        && ReferenceEquals(representativeLink, Control<Button>(view, "nation-representative")) && representativeLink.IsEnabled && ButtonText(representativeLink).Contains(representative.Name),
+        "National links retained the previous capital or representative label");
+    Click(view, "nation-capital"); Assert(Field<int>(view, "_inspectorSettlementId") == nextCapital.Id, "Capital link opened its old target");
+    Click(view, "inspector-back"); Click(view, "nation-representative");
+    Assert(Field<int>(view, "_selectedResidentId") == representative.Id, "Representative link opened its old target");
+    Click(view, "inspector-back"); nation.CapitalId = nation.RepresentativeId = 0; Call(view, "RefreshInspector", false);
+    Assert(!Control<Button>(view, "nation-capital").IsEnabled && !Control<Button>(view, "nation-representative").IsEnabled,
+        "Missing national targets retained enabled navigation links");
+    nation.CapitalId = nextCapital.Id; nation.RepresentativeId = representative.Id;
+    Call(view, "OpenSettlement", home.Id, "settlement");
+    var nationLink = Control<Button>(view, "settlement-nation"); var townRepresentativeLink = Control<Button>(view, "settlement-representative");
+    Assert(!townRepresentativeLink.IsEnabled, "A settlement without a representative omitted the unavailable state");
+    home.RepresentativeId = resident.Id; resident.Name = "本地新代表"; Call(view, "RefreshInspector", false);
+    Assert(ReferenceEquals(townRepresentativeLink, Control<Button>(view, "settlement-representative"))
+        && townRepresentativeLink.IsEnabled && ButtonText(townRepresentativeLink).Contains(resident.Name), "Settlement representative link failed to appear when appointed");
+    Click(view, "settlement-representative"); Assert(Field<int>(view, "_selectedResidentId") == resident.Id, "Settlement representative link opened another resident");
+    Click(view, "inspector-back");
+    nationLink = Control<Button>(view, "settlement-nation");
+    engine.TransferTerritory(home.X, home.Y, otherNation.Id, 0); engine.RenameNation(otherNation.Id, "改名后的归属国家");
+    Call(view, "RefreshInspector", false);
+    Assert(ReferenceEquals(nationLink, Control<Button>(view, "settlement-nation")) && nationLink.IsEnabled && ButtonText(nationLink).Contains(otherNation.Name),
+        "Settlement ownership or national rename left its link stale");
+    Click(view, "settlement-nation"); Assert(Field<int>(view, "_selectedNationId") == otherNation.Id, "Settlement link opened the previous owner");
+    Click(view, "inspector-back"); home.RepresentativeId = 999_999; Call(view, "RefreshInspector", false);
+    Assert(!Control<Button>(view, "settlement-representative").IsEnabled, "A removed settlement representative retained an enabled link");
+    Call(view, "OpenResident", resident.Id);
+    var residentNationLink = Control<Button>(view, "resident-nation"); var residentTownLink = Control<Button>(view, "resident-settlement-link");
+    engine.EditResident(resident.Id, new ResidentEdit { SettlementId = nextCapital.Id });
+    resident = engine.GetResident(resident.Id)!;
+    engine.RenameNation(nation.Id, "居民的新归属国家"); nextCapital.Name = "居民的新家园"; Call(view, "RefreshInspector", false);
+    Assert(ReferenceEquals(residentNationLink, Control<Button>(view, "resident-nation")) && residentNationLink.IsEnabled && ButtonText(residentNationLink).Contains(nation.Name)
+        && ReferenceEquals(residentTownLink, Control<Button>(view, "resident-settlement-link")) && residentTownLink.IsEnabled && ButtonText(residentTownLink).Contains(nextCapital.Name),
+        "Resident migration or renamed destinations left its belonging links stale");
+    Click(view, "resident-nation"); Assert(Field<int>(view, "_selectedNationId") == nation.Id, "Resident link opened the previous nation");
+    Click(view, "inspector-back"); Click(view, "resident-settlement-link");
+    Assert(Field<int>(view, "_inspectorSettlementId") == nextCapital.Id, "Resident link opened the previous settlement");
+    Click(view, "inspector-back"); resident.NationId = resident.SettlementId = 999_999; Call(view, "RefreshInspector", false);
+    Assert(!Control<Button>(view, "resident-nation").IsEnabled && !Control<Button>(view, "resident-settlement-link").IsEnabled,
+        "A resident's missing historical destinations retained enabled links");
+}
+
+static void MapPickerContextIsolation()
+{
+    var engine = TwoTownWorld(); var view = View(engine); var resident = engine.State.Residents[0]; var other = engine.State.Residents[1];
+    Call(view, "OpenInspector", "overview", true); Call(view, "OpenResident", resident.Id);
+    var map = Map(view); map.FollowSelectedResident = true;
+    Call(view, "ShowGoalEditor", resident.Id); var before = engine.ExportJson(); var selection = map.CaptureMapSelection();
+    Click(view, "map-pick-resident_goal_x");
+    var mode = Field<string>(view, "_inspectorMode"); var category = Field<string>(view, "_category");
+    var nation = Field<int>(view, "_selectedNationId"); var town = Field<int>(view, "_inspectorSettlementId");
+    var tile = Field<(int X, int Y)?>(view, "_selectedTile"); var selectedBuilding = Field<int>(view, "_selectedBuildingId");
+    var history = Field<System.Collections.ICollection>(view, "_navigation").Count;
+    Call(view, "ToggleTools"); Call(view, "SelectTool", "Grass"); Call(view, "SetCategory", "build"); Call(view, "SuspendTool");
+    Call(view, "CloseInspector"); Call(view, "OpenInspector", "overview", true); Call(view, "GoBack");
+    Call(view, "OpenResident", other.Id); Call(view, "OpenNation", other.NationId);
+    Call(view, "OpenSettlement", other.SettlementId, "communication"); Call(view, "OpenTile", 3, 4, true);
+    Call(view, "OpenBuilding", engine.State.Society.Buildings[0]); Call(view, "FocusEvent", engine.State.Events[0]);
+    Assert(map.PickingLocation && map.ActiveTool == "inspect" && !Field<bool>(view, "_mobilePanel") && !Field<bool>(view, "_toolsOpen"),
+        "Tools or navigation escaped the active map picker");
+    Assert(Field<string>(view, "_inspectorMode") == mode && Field<string>(view, "_category") == category
+        && Field<int>(view, "_selectedResidentId") == resident.Id && Field<int>(view, "_selectedNationId") == nation
+        && Field<int>(view, "_inspectorSettlementId") == town && Field<(int X, int Y)?>(view, "_selectedTile") == tile
+        && Field<int>(view, "_selectedBuildingId") == selectedBuilding && Field<System.Collections.ICollection>(view, "_navigation").Count == history
+        && map.CaptureMapSelection() == selection, "A hidden navigation action altered the picker's source context");
+    map.ActiveTool = "Grass";
+    Call(map, "ApplyTool", map.GetTileScreenPosition(20, 21));
+    Assert(!map.PickingLocation && Field<Border>(view, "_modal").IsVisible && Field<bool>(view, "_mobilePanel")
+        && Field<string>(view, "_inspectorMode") == mode && Field<int>(view, "_selectedResidentId") == resident.Id,
+        "A stale drawing tool failed to return to the original map-picker form");
+    Assert(Control<NumericUpDown>(view, "resident-goal-x").Value == 20 && Control<NumericUpDown>(view, "resident-goal-y").Value == 21
+        && map.CaptureMapSelection() == selection && engine.ExportJson() == before, "Map picking applied a terrain tool or lost its explicit coordinates and selection");
+    Click(view, "modal-cancel");
+}
+
+static void ResearchNavigationState()
+{
+    var application = Application.Current!;
+    var theme = new Avalonia.Themes.Fluent.FluentTheme(); application.Styles.Add(theme);
+    var engine = TwoTownWorld(); var view = View(engine); var before = engine.ExportJson();
+    var inspectorScroll = Control<ScrollViewer>(view, "inspector-scroll");
+    inspectorScroll.Width = 280; inspectorScroll.Height = 420;
+    var window = new Window { Content = view, Width = 1000, Height = 800 };
+    void LayoutResearch()
+    {
+        inspectorScroll.ApplyTemplate();
+        view.Measure(new Size(1000, 800)); view.Arrange(new Rect(0, 0, 1000, 800));
+        var body = Field<Grid>(view, "_body");
+        body.Measure(new Size(1000, 730)); body.Arrange(new Rect(0, 0, 1000, 730));
+        inspectorScroll.Measure(new Size(280, 420)); inspectorScroll.Arrange(new Rect(0, 0, 280, 420));
+        var graph = Control<ResearchGraphControl>(view, "research-graph");
+        graph.Measure(new Size(280, 560)); graph.Arrange(new Rect(0, 0, 280, 560));
+        Dispatcher.UIThread.RunJobs();
+    }
+    try
+    {
+        window.Show(); Call(view, "OpenSettlement", engine.State.Settlements[0].Id, "research"); LayoutResearch();
+        Click(view, "research-branch-工业与能源"); Click(view, "research-node-EnergyRecycling");
+        Click(view, "research-development"); Click(view, "research-full-path");
+        var original = Control<ResearchGraphControl>(view, "research-graph");
+        original.SetZoom(1.25); LayoutResearch(); Click(view, "research-focus");
+        var viewport = original.CaptureViewport();
+        Assert(viewport.Offset.Length > 0, "Research fixture did not pan beyond the graph origin");
+        inspectorScroll.Offset = new Vector(0, 180); LayoutResearch();
+        var inspectorOffset = inspectorScroll.Offset;
+        Assert(inspectorOffset.Y > 0, $"Research fixture did not scroll the outer inspector: extent {inspectorScroll.Extent}, viewport {inspectorScroll.Viewport}, bounds {inspectorScroll.Bounds}");
+        viewport = original.CaptureViewport();
+        Call(view, "OpenSettlement", engine.State.Settlements[1].Id, "research"); LayoutResearch();
+        Click(view, "research-route-magic"); Click(view, "research-branch-元素与结界"); Click(view, "research-node-Elementalism");
+        Click(view, "research-development"); Control<ResearchGraphControl>(view, "research-graph").SetZoom(.5);
+        Click(view, "inspector-back"); LayoutResearch();
+        var restored = Control<ResearchGraphControl>(view, "research-graph");
+        Assert(Field<int>(view, "_inspectorSettlementId") == engine.State.Settlements[0].Id
+            && Field<ResearchKind>(view, "_selectedResearch") == ResearchKind.EnergyRecycling
+            && Field<string>(view, "_researchRoute") == "technology" && Field<string>(view, "_researchBranch") == "工业与能源"
+            && Field<bool>(view, "_civilizationDetails"), "Returning restored the town but discarded its research selection or filters");
+        Assert(restored.CaptureViewport() == viewport, "Returning discarded research zoom, pan or full-path presentation");
+        Assert(inspectorScroll.Offset == inspectorOffset, "Returning discarded the inspector's independent scroll position");
+        Assert(engine.ExportJson() == before, "Research view navigation changed the world");
+    }
+    finally { window.Close(); application.Styles.Remove(theme); }
+}
+
+static void SpellContext()
+{
+    var engine = TwoTownWorld(); var town = engine.State.Settlements[0]; var local = engine.State.Residents[0]; var remote = engine.State.Residents[1];
+    local.Name = "本地施法者"; local.Age = remote.Age = 25; local.Profession = remote.Profession = Profession.Mage;
+    local.MagicTalent = remote.MagicTalent = 50; local.MagicTraining = 12; remote.MagicTraining = 90; local.Mana = remote.Mana = 100;
+    remote.Name = "远方施法者";
+    engine.SpawnResidents(town.X, town.Y, RaceKind.Human, 3);
+    var extra = engine.State.Residents.Where(r => r.Id != local.Id && r.Id != remote.Id).ToArray();
+    var alternate = extra[0]; alternate.Name = "本地候补施法者"; alternate.Age = 25; alternate.MagicTalent = 50; alternate.MagicTraining = 8;
+    alternate.X = town.X + 1; alternate.Y = town.Y + 1;
+    extra[1].Name = "已死亡施法者"; extra[1].Age = 30; extra[1].Health = 0; extra[1].MagicTraining = 100;
+    extra[2].Name = "未成年施法者"; extra[2].Age = 8; extra[2].MagicTraining = 100;
+    engine.GrantReceivedResearch(town.Id, ResearchKind.ArcaneArts);
+    engine.GrantReceivedResearch(town.Id, ResearchKind.ManaAttunement);
+    engine.GrantReceivedResearch(town.Id, ResearchKind.Elementalism);
+    var view = View(engine); var before = engine.ExportJson();
+    Call(view, "OpenResident", remote.Id); Call(view, "OpenSettlement", town.Id, "research");
+    Click(view, "research-route-magic"); Click(view, "research-node-Elementalism"); Click(view, "research-spell-FrostBolt");
+    var caster = Control<ComboBox>(view, "spell-caster");
+    Assert(caster.SelectedItem?.ToString()?.Contains(local.Name) == true, "Research from the local town selected a distant caster");
+    Assert(caster.Items.Cast<object>().All(item => !item.ToString()!.Contains(remote.Name)
+        && !item.ToString()!.Contains(extra[1].Name) && !item.ToString()!.Contains(extra[2].Name)),
+        "Local caster choices contain a distant, dead or underage resident");
+    var choices = caster.Items.Cast<object>().ToArray();
+    var alternateIndex = Array.FindIndex(choices, item => item.ToString()!.Contains(alternate.Name));
+    var localIndex = Array.FindIndex(choices, item => item.ToString()!.Contains(local.Name));
+    Assert(alternateIndex >= 0 && localIndex >= 0, "Caster selection omitted a local living adult");
+    caster.SelectedIndex = alternateIndex;
+    Assert(Control<NumericUpDown>(view, "spell-x").Value == alternate.X && Control<NumericUpDown>(view, "spell-y").Value == alternate.Y,
+        "Changing a caster left the untouched default target at the previous caster");
+    Click(view, "map-pick-spell_x");
+    Call(view, "FinishMapPick", alternate.X, alternate.Y);
+    caster.SelectedIndex = localIndex;
+    Assert(Control<NumericUpDown>(view, "spell-x").Value == alternate.X && Control<NumericUpDown>(view, "spell-y").Value == alternate.Y,
+        "Selecting the existing map coordinates failed to mark an explicit spell target");
+    Control<NumericUpDown>(view, "spell-x").Value = 15; Control<NumericUpDown>(view, "spell-y").Value = 16;
+    caster.SelectedIndex = alternateIndex;
+    Assert(Control<NumericUpDown>(view, "spell-x").Value == 15 && Control<NumericUpDown>(view, "spell-y").Value == 16,
+        "Changing a caster overwrote the user's chosen target");
+    Control<NumericUpDown>(view, "spell-x").Value = 15.5m;
+    Assert(Control<TextBlock>(view, "spell-requirements").Text?.Contains("整数") == true && !Control<Button>(view, "spell-apply").IsEnabled,
+        "A fractional spell coordinate threw or retained an enabled action");
+    Click(view, "modal-cancel"); Call(view, "OpenResident", remote.Id); Click(view, "resident-spell");
+    Assert(Control<ComboBox>(view, "spell-caster").SelectedItem?.ToString()?.Contains(remote.Name) == true,
+        "Resident spell entry selected someone other than the inspected resident");
+    Click(view, "modal-cancel");
+    Assert(engine.ExportJson() == before, "Spell selection or coordinate defaults changed the world");
+}
+
 static void AdvancedResearchUi()
 {
     var engine = TwoTownWorld(); var town = engine.State.Settlements[0];
     engine.SetNationResources(town.NationId, 1000, 1000, 1000, 1000, 100, 100, 100);
     engine.GrantFacility(town.Id, BuildingKind.Academy, town.X + 2, town.Y + 2);
-    var view = View(engine); Call(view, "OpenInspector", "infrastructure", true);
+    var view = View(engine); Call(view, "OpenInspector", "research", true);
     var before = engine.ExportJson();
     Assert(Control<TextBlock>(view, "research-requirements").Text?.Contains("投入材料：") == true,
         "Initial research selection hid its cost and conditions");
@@ -885,8 +1455,30 @@ static WorldMapControl Map(MainView view) { var map = Field<WorldMapControl>(vie
 static void Preview(WorldMapControl map, int x, int y) { map.ActiveTool = "Human"; Call(map, "PreviewPlacement", map.GetTileScreenPosition(x, y), true); Assert(map.HasPendingPlacement, "Fixture must create a touch preview"); }
 static object? Call(object target, string name, params object?[] args) => target.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(target, args);
 static T Field<T>(object target, string name) => (T)target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(target)!;
+static void SetField(object target, string name, object? value) => target.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(target, value);
 static T Control<T>(MainView view, string id) where T : Avalonia.Controls.Control => view.GetLogicalDescendants().OfType<T>().Single(control => AutomationProperties.GetAutomationId(control) == id);
 static void Click(MainView view, string id) => Control<Button>(view, id).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+static string ButtonText(Button button) => button.Content is TextBlock text ? text.Text ?? "" : button.Content?.ToString() ?? "";
+static void AwaitUi(Func<bool> completed, string message)
+{
+    var clock = Stopwatch.StartNew();
+    while (!completed() && clock.Elapsed.TotalSeconds < 2)
+    { Dispatcher.UIThread.RunJobs(); Thread.Sleep(1); }
+    Dispatcher.UIThread.RunJobs(); Assert(completed(), message);
+}
 static void Assert(bool condition, string message) { if (!condition) throw new Exception(message); }
 
 public sealed class TestApp : Application;
+
+public sealed class DeferredExportStorage : IWorldStorage
+{
+    private readonly TaskCompletionSource _export = new();
+    public bool IsBackground => false;
+    public int ExportCalls { get; private set; }
+    public string? ExportedJson { get; private set; }
+    public Task SaveAsync(string json) => Task.CompletedTask;
+    public Task<string?> LoadAsync() => Task.FromResult<string?>(null);
+    public Task<string?> ImportAsync() => Task.FromResult<string?>(null);
+    public Task ExportAsync(string json, string fileName) { ExportCalls++; ExportedJson = json; return _export.Task; }
+    public void CompleteExport() => _export.TrySetResult();
+}

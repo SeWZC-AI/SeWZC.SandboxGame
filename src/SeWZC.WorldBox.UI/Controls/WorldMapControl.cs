@@ -106,6 +106,40 @@ public sealed partial class WorldMapControl : Control
     public int SelectedNationId { get; set; }
     public int SelectedSettlementId { get; set; }
 
+    public readonly record struct MapSelectionState(int? ResidentId, int? BuildingId,
+        (int X, int Y)? Tile, bool Follow, int NationId, int SettlementId);
+
+    public MapSelectionState CaptureMapSelection() => new(SelectedResidentId, SelectedBuildingId,
+        _selection, FollowSelectedResident, SelectedNationId, SelectedSettlementId);
+
+    public void RestoreMapSelection(MapSelectionState selection)
+    {
+        ClearMapSelection();
+        SelectedNationId = selection.NationId; SelectedSettlementId = selection.SettlementId;
+        if (selection.ResidentId is { } resident)
+            SelectResident(resident, selection.Follow);
+        else if (selection.BuildingId is { } building)
+            SelectMapBuilding(building);
+        else if (selection.Tile is { } tile)
+            SelectMapTile(tile.X, tile.Y);
+    }
+
+    public void SelectMapTile(int x, int y)
+    {
+        ClearMapSelection();
+        if (Engine is not null && (uint)x < Engine.State.Width && (uint)y < Engine.State.Height)
+            _selection = (x, y);
+        InvalidateVisual();
+    }
+
+    public void SelectMapBuilding(int id)
+    {
+        ClearMapSelection();
+        if (Engine?.State.Society.Buildings.FirstOrDefault(building => building.Id == id) is { } building)
+        { SelectedBuildingId = building.Id; _selection = (building.X, building.Y); }
+        InvalidateVisual();
+    }
+
     public bool ShowBorders
     {
         get => _showBorders;
@@ -802,7 +836,7 @@ public sealed partial class WorldMapControl : Control
             _gestureMoved = false;
             _dragging = true;
             var properties = e.GetCurrentPoint(this).Properties;
-            _panning = IsNavigationTool || properties.IsMiddleButtonPressed || properties.IsRightButtonPressed;
+            _panning = PickingLocation || IsNavigationTool || properties.IsMiddleButtonPressed || properties.IsRightButtonPressed;
             _lastPaint = null;
             if (!_panning) ApplyTool(point);
         }
@@ -814,7 +848,7 @@ public sealed partial class WorldMapControl : Control
         base.OnPointerMoved(e);
         var point = e.GetPosition(this);
         _hover = point;
-        if (!HasPendingPlacement) PreviewPlacement(point);
+        if (!PickingLocation && !HasPendingPlacement) PreviewPlacement(point);
         if (e.Pointer.Type == PointerType.Touch && _touches.ContainsKey(e.Pointer))
         {
             if (_touches.Count >= 2)
@@ -863,7 +897,8 @@ public sealed partial class WorldMapControl : Control
             // single-finger tap may apply a tool; a pinch remains navigation until all fingers lift.
             if (_touches.ContainsKey(e.Pointer) && !_gestureMoved && !_pinching)
             {
-                if (IsNavigationTool || Enum.TryParse<TerrainType>(ActiveTool, out _) || ActiveTool == "territory" || ActiveTool.StartsWith("road:")) ApplyTool(point);
+                if (PickingLocation) SelectTile(point);
+                else if (IsNavigationTool || Enum.TryParse<TerrainType>(ActiveTool, out _) || ActiveTool == "territory" || ActiveTool.StartsWith("road:")) ApplyTool(point);
                 else PreviewPlacement(point, true);
             }
             _touches.Remove(e.Pointer);
@@ -909,7 +944,7 @@ public sealed partial class WorldMapControl : Control
     private async void ApplyTool(Point point)
     {
         if (Engine is null || !TryTile(point, out var tile)) return;
-        if (IsNavigationTool) { SelectTile(point); return; }
+        if (PickingLocation || IsNavigationTool) { SelectTile(point); return; }
         if (_lastPaint == tile) return;
         if (PlacementError(tile.X, tile.Y) is { } placementError)
         { SetPlacementMessage("无法放置：" + placementError); ToolError?.Invoke(placementError); return; }
@@ -919,9 +954,10 @@ public sealed partial class WorldMapControl : Control
         {
             _preparingWorldEdit = true;
             try { await PrepareWorldEdit(); }
+            catch (OperationCanceledException) { return; }
             catch (Exception error) { ToolError?.Invoke("无法准备恢复点：" + error.Message); return; }
             finally { _preparingWorldEdit = false; }
-            if (!ReferenceEquals(editEngine, Engine) || editTool != ActiveTool) return;
+            if (PickingLocation || !ReferenceEquals(editEngine, Engine) || editTool != ActiveTool) return;
         }
         var tool = ActiveTool;
         var prefix = tool.IndexOf(':');

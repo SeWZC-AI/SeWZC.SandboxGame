@@ -22,6 +22,7 @@ public sealed partial class MainView
         var panel = ModalPanel("铺设铁路", "升级本国已有陆地道路，每格消耗石材 1、合金 0.5。居民沿实际连通的轨道移动。");
         var x = Field(panel, "目标 X", _selectedTile?.X ?? town.X, "rail-x");
         var y = Field(panel, "目标 Y", _selectedTile?.Y ?? town.Y, "rail-y");
+        AddMapPicker(panel, x, y);
         var radius = Field(panel, "范围 0–4", 1, "rail-radius");
         panel.Children.Add(Named(Button("铺设铁路", () => RunEdit(() =>
         { _engine.BuildRail(townId, Integer(x), Integer(y), Integer(radius)); CloseModal(); }, "铁路已铺设，材料已扣除")), "rail-apply"));
@@ -36,11 +37,16 @@ public sealed partial class MainView
         var panel = ModalPanel("使用折跃门", "本人须到源门 1 格内，两门相距至多 24 格。消耗个人魔力 30、随身魔晶 2，全部背包随本人抵达。");
         var person = ObjectField(panel, "居民", people.Select(r => (r.Id, r.Name)), people.Any(r => r.Id == _selectedResidentId) ? _selectedResidentId : people[0].Id, "waygate-person");
         var target = ObjectField(panel, "目标折跃门", gates.Select(b => (b.Id, TownName(b.SettlementId) + $"  {b.X},{b.Y}")), gates[0].Id, "waygate-target");
-        panel.Children.Add(Named(LiveText(() => _engine.WaygateTravelError(Integer(person), Integer(target)) ?? "人员、门与随身补给满足传送条件"), "waygate-requirements"));
+        var requirements = Named(Paragraph(""), "waygate-requirements"); panel.Children.Add(requirements);
         var apply = Named(Button("携带背包传送", () => RunEdit(() =>
         { _engine.TravelByWaygate(Integer(person), Integer(target)); CloseModal(); }, "居民已携背包抵达目标门")), "waygate-apply");
         panel.Children.Add(apply);
-        void Refresh() => apply.IsEnabled = _engine.WaygateTravelError(Integer(person), Integer(target)) is null;
+        void Refresh()
+        {
+            var error = _engine.WaygateTravelError(Integer(person), Integer(target));
+            requirements.Text = DisplayFormat.Text(error ?? "人员、门与随身补给满足传送条件");
+            apply.IsEnabled = error is null;
+        }
         person.SelectionChanged += (_, _) => Refresh(); target.SelectionChanged += (_, _) => Refresh(); Refresh();
         OpenModal(panel);
     }
@@ -62,9 +68,16 @@ public sealed partial class MainView
                 if (targets.Length == 0) { SetStatus("没有可选的外来居民"); return; }
                 var modal = ModalPanel("游击射手射击", "需要随身弹药 1，目标在 4 格内且视线畅通，本人已收到交战军令。射击间隔至少 3 日。");
                 var target = ObjectField(modal, "目标", targets.Select(r => (r.Id, r.Name)), targets[0].Id, "ranged-target");
-                modal.Children.Add(Named(LiveText(() => _engine.RangedAttackError(person.Id, Integer(target)) ?? "可以射击"), "ranged-requirements"));
-                modal.Children.Add(Named(Button("消耗弹药射击", () => RunEdit(() =>
-                { _engine.RangedAttack(person.Id, Integer(target)); CloseModal(); }, "射击已执行")), "ranged-apply"));
+                var requirements = Named(Paragraph(""), "ranged-requirements"); modal.Children.Add(requirements);
+                var apply = Named(Button("消耗弹药射击", () => RunEdit(() =>
+                { _engine.RangedAttack(person.Id, Integer(target)); CloseModal(); }, "射击已执行")), "ranged-apply");
+                void Refresh()
+                {
+                    var error = _engine.RangedAttackError(person.Id, Integer(target));
+                    requirements.Text = DisplayFormat.Text(error ?? "可以射击");
+                    apply.IsEnabled = error is null;
+                }
+                target.SelectionChanged += (_, _) => Refresh(); Refresh(); modal.Children.Add(apply);
                 OpenModal(modal);
             }), "resident-ranged"));
         if (_engine.State.Society.Buildings.Any(b => b.Kind == BuildingKind.Waygate))
