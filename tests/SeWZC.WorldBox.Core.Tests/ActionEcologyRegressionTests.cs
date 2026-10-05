@@ -10,6 +10,7 @@ internal static class ActionEcologyRegressionTests
         ("prey shortages kill predators and extreme overcrowding can exhaust prey", Starvation),
         ("shared predator budgets retain a mixed food web across long revisits", Diversity),
         ("wildlife presentation selects actual dominant species without enum bias", WildlifeDisplay),
+        ("full local stores stop needless gathering and real shortages restart work", SupplyDemand),
         ("factory carriers keep loaded inputs through adjacent home tiles", Cargo),
         ("pastures and aquaculture capture feed breed and preserve real stocks", Husbandry),
         ("essential construction proceeds during research and optional defenses wait for demand", Planning),
@@ -110,6 +111,19 @@ internal static class ActionEcologyRegressionTests
             foreach (var k in new[] { WildlifeKind.Deer, WildlifeKind.Boar, WildlifeKind.Goat, WildlifeKind.Bison })
                 Check(e.State.Tiles.Count(t => t.AnimalPopulation(k) >= .08) > 20, $"Only rabbits remained visible: {k}");
         }
+    }
+    private static void SupplyDemand()
+    {
+        var (e, t, p) = World(); p.Profession = Profession.Farmer; p.Inventory.Food = 2;
+        p.X = p.FromX = t.X; p.Y = p.FromY = t.Y;
+        var choose = typeof(WorldEngine).GetMethod("ChooseAgentGoal", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        choose.Invoke(e, [p, t, false]);
+        Check(p.Agent.Goal.Kind != AgentGoalKind.Gather && (p.Agent.Goal.Kind != AgentGoalKind.Work
+            || e.State.Society.Buildings.FirstOrDefault(b => b.Id == p.Agent.Goal.TargetEntityId)?.Kind != BuildingKind.Workshop),
+            "Well-supplied resident continued useless supply shuttling");
+        t.Resources.Food = 0; t.Resources.Wood = 0;
+        p.Agent.Goal = new() { Kind = AgentGoalKind.Idle }; choose.Invoke(e, [p, t, false]);
+        Check(p.Agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Work, "Actual shortage failed to restart useful work");
     }
     private static void Cargo()
     {

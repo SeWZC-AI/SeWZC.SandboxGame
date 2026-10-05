@@ -75,7 +75,13 @@ public sealed partial class MainView
 
     }
 
-    private string FactLabel(AgentFact fact) => $"{FactKindName(fact.Kind)}\n置信度 {fact.Confidence:P0}\n{fact.Text}\n观察 {DateLabel(fact.ObservedTick)}\n获知 {DateLabel(fact.LearnedTick)}\n消息年龄 {Math.Max(0, _engine.State.Tick - fact.ObservedTick)} 日\n经过 {fact.Hops} 次转述\n来源 {ResidentName(fact.SourceResidentId)}\n地点 {fact.X},{fact.Y}\n值 {fact.Value:F1}";
+    private string FactLabel(AgentFact fact)
+    {
+        var location = fact.Kind is AgentFactKind.WaterSource or AgentFactKind.FoundingSite or AgentFactKind.Danger
+            ? $"\n位置 {fact.X}, {fact.Y}" : "";
+        var learned = fact.LearnedTick != fact.ObservedTick ? "\n获知 " + DateLabel(fact.LearnedTick) : "";
+        return $"{FactKindName(fact.Kind)}\n{fact.Text}\n来源 {ResidentName(fact.SourceResidentId)}\n观察 {DateLabel(fact.ObservedTick)}{learned}{location}\n可信度 {fact.Confidence:P0}";
+    }
     private static string FactKindName(AgentFactKind kind) => kind switch { AgentFactKind.WaterSource => "取水地点", AgentFactKind.FoundingSite => "建村勘察", AgentFactKind.FoodSupply => "粮食供给", AgentFactKind.Danger => "危险", AgentFactKind.SettlementLocation => "聚落位置", AgentFactKind.ReliefRequest => "救济请求", AgentFactKind.Policy => "政策", AgentFactKind.WarOrder => "战争命令", AgentFactKind.PeaceOrder => "和平命令", AgentFactKind.Culture => "文化", AgentFactKind.Research => "研究", AgentFactKind.TradeExchange => "贸易往来", AgentFactKind.DiplomaticNotice => "外交声明", AgentFactKind.WarReport => "前线战报", _ => "个人记忆" };
 
     private void ShowResidentEditor(int id)
@@ -152,7 +158,7 @@ public sealed partial class MainView
                 choices.AddRange(_engine.State.Society.Buildings.Where(building => building.SettlementId == resident.SettlementId
                     && (kind == AgentGoalKind.Work || kind == AgentGoalKind.Study && building.Kind == BuildingKind.Academy
                         || kind == AgentGoalKind.TrainMagic && building.Kind is BuildingKind.ArcaneSanctum or BuildingKind.SacredGrove))
-                    .Select(building => new EntityChoice(building.Id, $"{WorldEngine.BuildingName(building.Kind)} #{building.Id}\n{building.X},{building.Y}")));
+                    .Select(building => new EntityChoice(building.Id, BuildingLabel(building))));
             else if (sourceGoal)
             {
                 for (var yy = Math.Max(0, resident.Y - 6); yy <= Math.Min(_engine.State.Height - 1, resident.Y + 6); yy++)

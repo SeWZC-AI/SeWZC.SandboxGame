@@ -181,6 +181,9 @@ public sealed partial class WorldEngine
     private bool ProductiveGoalContinues(Resident person, Settlement home)
     {
         var goal = person.Agent.Goal;
+        if (Distance(person.X, person.Y, home.X, home.Y) <= 1 && !goal.PlayerDirected
+            && (goal.Kind == AgentGoalKind.Gather && home.Resources.Food >= ProductionStockTarget(home, ResourceKind.Food) && person.Inventory.Food >= .3
+                || goal.Kind == AgentGoalKind.Work && goal.TargetEntityId == 0 && !LocalMaterialsNeeded(person, home))) return false;
         if (person.Profession == Profession.Builder && SettlementNeedsClaimArea(home)
             && (FindBuilding(goal.TargetEntityId) is not { } assigned || assigned.IsCompleted && !assigned.IsUpgrading)) return false;
         if (person.Hunger >= 60 || person.Thirst >= 60 || person.Agent.Fatigue >= 60
@@ -200,6 +203,30 @@ public sealed partial class WorldEngine
         if (goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic)
             return FindBuilding(goal.TargetEntityId) is { } building && building.SettlementId == home.Id && BuildingHasWork(building, person);
         return false;
+    }
+
+    private bool FoodSupplyNeeded(Resident person, Settlement home)
+    {
+        if (person.Inventory.Food < .3 || person.Hunger > 20) return true;
+        var fact = LatestAgentFact(person.Agent.Memory, AgentFactKind.FoodSupply, home.Id);
+        var known = Distance(person.X, person.Y, home.X, home.Y) <= 1 ? home.Resources.Food
+            : fact is not null && AgentFactReliability(fact) >= .5 ? fact.Value : 0;
+        return known < ProductionStockTarget(home, ResourceKind.Food);
+    }
+
+    private bool LocalMaterialsNeeded(Resident person, Settlement home)
+    {
+        // A distant worker finishes its trip; new supply decisions use the store
+        // actually reached at home, without granting remote warehouse knowledge.
+        if (Distance(person.X, person.Y, home.X, home.Y) > 1) return true;
+        var reserve = _localWorkQueriesActive ? _productionReserves.GetValueOrDefault(home.Id) : LocalDevelopmentReserve(home);
+        if (person.Profession == Profession.Lumberjack) return home.Resources.Wood < Math.Max(80, reserve?.Wood ?? 0);
+        if (person.Profession != Profession.Miner) return home.Resources.Wood < Math.Max(80, reserve?.Wood ?? 0)
+            || home.Resources.Stone < Math.Max(80, reserve?.Stone ?? 0) || home.Resources.Ore < Math.Max(80, reserve?.Ore ?? 0);
+        return home.Resources.Stone < Math.Max(80, reserve?.Stone ?? 0) || home.Resources.Ore < Math.Max(80, reserve?.Ore ?? 0)
+            || HasResearch(home.Id, ResearchKind.Industry) && home.Resources.Coal < 16
+            || HasResearch(home.Id, ResearchKind.Electrification) && home.Resources.Oil < 16
+            || HasResearch(home.Id, ResearchKind.AdvancedComputing) && home.Resources.RareEarth < 16;
     }
 
     private void ChooseAgentGoal(Resident person, Settlement home, bool interrupted)
@@ -293,10 +320,10 @@ public sealed partial class WorldEngine
             choices.Add(new(AgentGoalKind.Rest, home.X, home.Y, agent.Fatigue * 1.15,
                 $"疲劳达到 {agent.Fatigue:0}，回家休息", null, home.Id));
 
-        var depositSite = VisibleDepositSite(person);
+        var depositSite = LocalMaterialsNeeded(person, home) ? VisibleDepositSite(person) : -1;
         if (person.Age >= 14 && depositSite >= 0) choices.Add(new(AgentGoalKind.Work, depositSite % State.Width, depositSite / State.Width,
             65, "掌握勘探知识后在眼前发现矿藏，实地开采并运回"));
-        var foodSite = FindVisibleResourceSite(person, Profession.Farmer);
+        var foodSite = FoodSupplyNeeded(person, home) ? FindVisibleResourceSite(person, Profession.Farmer) : -1;
         if (foodSite >= 0)
         {
             var score = person.Profession == Profession.Farmer ? 36 + personality.Diligence * 13 : 12;
@@ -308,7 +335,8 @@ public sealed partial class WorldEngine
             choices.Add(new(AgentGoalKind.Gather, foodSite % State.Width, foodSite / State.Width, score,
                 foodFact is { Value: < 12 } ? "已知粮情显示家乡粮少，在可见的可食土地采集" : "眼前土地能产食物，采集后随身携带", foodFact));
         }
-        if (person.Age >= 14 && person.Profession is Profession.Lumberjack or Profession.Miner)
+        if (person.Age >= 14 && person.Profession is Profession.Lumberjack or Profession.Miner
+            && LocalMaterialsNeeded(person, home))
         {
             var site = FindVisibleResourceSite(person, person.Profession);
             if (site >= 0) choices.Add(new(AgentGoalKind.Work, site % State.Width, site / State.Width,
