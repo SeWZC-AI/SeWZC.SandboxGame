@@ -18,7 +18,7 @@ public sealed partial class WorldEngine
             tile.Rainfall = tile.NaturalWaterYield;
             tile.RiverWidth = terrain == TerrainType.Stream ? (byte)1 : terrain == TerrainType.River ? (byte)2 : terrain == TerrainType.LargeRiver ? (byte)4 : (byte)0;
             SeedPlants(tile);
-            tile.ResourceAmount = 100;
+            tile.ResourceAmount = NaturalResourceCapacity(tile);
             tile.Elevation = (byte)(terrain switch { TerrainType.DeepWater => 10, TerrainType.Water => 50, TerrainType.Sand => 75, TerrainType.Mountain => 210, TerrainType.Snow => 240, _ => 110 });
             if (!tile.IsWalkable || IsWaterTerrain(tile.Terrain)) { tile.NationId = 0; tile.ClaimedSettlementId = 0; tile.FireTicks = 0; tile.RoadLevel = 0; _burningTiles.Remove(index); }
         }

@@ -250,11 +250,13 @@ static void TerrainEditing()
     var y = resident.Y;
     engine.PaintTerrain(x, y, TerrainType.Water, 3);
     Check(engine.State.Tiles[y * 64 + x].Terrain == TerrainType.Water, "Terrain brush did not paint its center.");
+    Check(engine.State.Tiles[y * 64 + x].ResourceAmount == 0, "Water painting retained harvestable land resources.");
     engine.Step(5);
     CheckResidents(engine.State);
     Check(engine.State.Residents.Count > 0, "A small terrain edit destroyed the entire settlement.");
     engine.PaintTerrain(x, y, TerrainType.Grass, 1);
     Check(engine.State.Tiles[y * 64 + x].IsWalkable, "Restored land is not traversable.");
+    Check(engine.State.Tiles[y * 64 + x].ResourceAmount == WorldEngine.NaturalResourceCapacity(engine.State.Tiles[y * 64 + x]), "Terrain painting ignored the new habitat resource capacity.");
 
     // An intact resident on the opposite shore must follow their displaced home.
     // Northern land belongs to a competitor, so it is unavailable for relocation.
