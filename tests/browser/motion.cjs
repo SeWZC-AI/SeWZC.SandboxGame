@@ -67,7 +67,12 @@ const distance = (first, second) => Math.hypot(first.x - second.x, first.y - sec
         await ui.click('header-overview');
         await ui.click('inspector-residents');
         await ui.fill('resident-search', actor.Id, inspector);
+        // Search refresh is debounced by 220 ms; an already listed row can move
+        // during the click unless its refreshed layout has settled first.
+        await page.waitForTimeout(300);
         await ui.openResidentRow(actor.Id, inspector);
+        await ui.waitFor(s => s.inspector === 'resident' && s.selectedResidentId === actor.Id,
+            'resident profile before locating');
         await ui.click('resident-locate', inspector);
         await ui.click('resident-goal-edit', inspector);
         await ui.selectIndex('resident-goal', 3, modal); // Work at an entered location.

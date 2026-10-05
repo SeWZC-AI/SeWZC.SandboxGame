@@ -2664,5 +2664,155 @@
     "Full 256x256 terrain reuse retains about 16 MiB extra RGBA memory and 289 KiB tile inputs.",
     "Autosave still pauses simulation during snapshot capture; no save format or snapshot semantics were changed.",
     "Optimized build is local and uncommitted; no public deployment was performed."
-  ]
+  ],
+  "pushIntegrationVerification": {
+    "recordedAtUtc": "2026-10-05T13:57:27.972550+00:00",
+    "sourceCommit": "140a5438f5ac5dffc49e062c527bc4b5b647b597",
+    "upstreamCommit": "8458a4b285d88ae996d5f6a0a280c4b41b713fcb",
+    "sourceSha256": "5302e35e1621903c57d334aa5fc3f865d4f5d84beafd80e63ffafe5427f7a411",
+    "sourceFiles": 96,
+    "coreSourceSha256": "f4ead845648226af4f5e8c3f1cbe2685eb26b6874028f6459aa35d11b32dcfd2",
+    "coreSourceFiles": 56,
+    "coreSourceUnchangedFromOriginalOptimization": true,
+    "integrationChange": "Scheduler uses the upstream WorldTimeStopped predicate for modal, map picker, edit checkpoint, save capture and background idle states; upstream autosave guards retained.",
+    "validation": {
+      "buildWarnings": 0,
+      "buildErrors": 0,
+      "unitChecks": 88,
+      "headlessUiChecks": 53,
+      "fastChecksSeconds": 8.61,
+      "browserEntriesDesktopAndTouch": true,
+      "browserMotion": true,
+      "browserIndexedDbRecovery": true,
+      "staticAssets": true
+    },
+    "browserProfile": [
+      {
+        "name": "default-far-5",
+        "speed": 5,
+        "baseUrl": "http://127.0.0.1:8081/SeWZC.SandboxGame/",
+        "population": 144,
+        "width": 256,
+        "height": 256,
+        "exactTerrainCounterfactual": false,
+        "legacyTerrainCounterfactual": false,
+        "tickBefore": 11,
+        "tickAfter": 384,
+        "elapsedMs": 15060.400000000373,
+        "ticksPerSecond": 24.76693846112924,
+        "longTasks": {
+          "count": 44,
+          "totalMs": 2782,
+          "meanMs": 63.22727272727273,
+          "p50Ms": 59,
+          "p95Ms": 88,
+          "maxMs": 93
+        },
+        "frameGaps": {
+          "count": 282,
+          "totalMs": 15066,
+          "meanMs": 53.42553191489362,
+          "p50Ms": 50.099999999998545,
+          "p95Ms": 100,
+          "maxMs": 166.70000000000073
+        },
+        "gapsOver100ms": 16,
+        "managed": {},
+        "metricDelta": {
+          "TaskDuration": 15926.704000000002,
+          "ScriptDuration": 11444.583,
+          "LayoutDuration": 0,
+          "RecalcStyleDuration": 20.572
+        },
+        "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+        "tileSize": 3.3359375,
+        "errors": [],
+        "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS."
+      },
+      {
+        "name": "large-far-5",
+        "speed": 5,
+        "baseUrl": "http://127.0.0.1:8081/SeWZC.SandboxGame/",
+        "population": 2000,
+        "width": 256,
+        "height": 256,
+        "exactTerrainCounterfactual": false,
+        "legacyTerrainCounterfactual": false,
+        "tickBefore": 8,
+        "tickAfter": 130,
+        "elapsedMs": 15129.300000000745,
+        "ticksPerSecond": 8.063823177542517,
+        "longTasks": {
+          "count": 141,
+          "totalMs": 11315,
+          "meanMs": 80.2482269503546,
+          "p50Ms": 77,
+          "p95Ms": 109,
+          "maxMs": 206
+        },
+        "frameGaps": {
+          "count": 123,
+          "totalMs": 14866,
+          "meanMs": 120.86178861788618,
+          "p50Ms": 133.29999999999927,
+          "p95Ms": 200,
+          "maxMs": 250
+        },
+        "gapsOver100ms": 101,
+        "managed": {},
+        "metricDelta": {
+          "TaskDuration": 17115.091000000004,
+          "ScriptDuration": 13208.444,
+          "LayoutDuration": 0,
+          "RecalcStyleDuration": 9.456000000000001
+        },
+        "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+        "tileSize": 3.3359375,
+        "errors": [],
+        "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS."
+      }
+    ],
+    "browserSmoke": {
+      "url": "http://127.0.0.1:8081/SeWZC.SandboxGame/",
+      "revision": "140a5438f5ac5dffc49e062c527bc4b5b647b597",
+      "seconds": 20.51912327,
+      "savedTick": 2,
+      "restoredTick": 3,
+      "rendererChecks": [
+        {
+          "stage": "deployed startup",
+          "renderer": "no fallback diagnostics"
+        },
+        {
+          "stage": "deployed save recovery",
+          "renderer": "no fallback diagnostics"
+        }
+      ]
+    },
+    "artifactHashes": {
+      "artifacts/site/_framework/SeWZC.WorldBox.Browser.ggx25085pz.wasm": {
+        "sha256": "e0faf6d4719725900daba4d88de95abdcadc34ced2f314fa2689bed7a5a41f93",
+        "bytes": 12053
+      },
+      "artifacts/site/_framework/SeWZC.WorldBox.Core.7zxcz8k0rk.wasm": {
+        "sha256": "039a27f6b2ed3c121a610a63c0212006b901168685118db938b166bdc104524c",
+        "bytes": 935189
+      },
+      "artifacts/site/_framework/SeWZC.WorldBox.UI.kqjbk1rd2k.wasm": {
+        "sha256": "549f2a7f172d71aefc394d3c4fd853dd696b55f802ac718e41620ae5cd1fd255",
+        "bytes": 13864217
+      }
+    },
+    "rawDirectory": "artifacts/push-verification-20261005",
+    "limitations": [
+      "Only two full-view throughput observations repeated after integration, not every original browser scenario.",
+      "No repeated unrelated core integration/long/performance suites; Core source is identical to the fully tested optimization.",
+      "Original performance results below remain attributed to their original source fingerprint.",
+      "One motion navigation attempt clicked during the 220 ms debounced search refresh; the test now waits for layout and the selected profile, and passed with unchanged production sources.",
+      "An incorrectly supplied revision argument interrupted one smoke invocation; final smoke reads the expected revision from git and matches it exactly."
+    ],
+    "pushEquivalentSourceCommit": "a4e6adf166488a9c0d2955ff60ad4e751db06a1e",
+    "sourceGitTreeSha": "fb2e87323ff52374ca7e799e4fd717afee38eb58",
+    "commitIdentityNote": "GitHub GH007 required the existing repository noreply email for the two unpublished commits. The pushed source commit tree is identical to the locally tested original source commit."
+  }
 }
