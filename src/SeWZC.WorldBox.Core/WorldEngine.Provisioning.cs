@@ -46,13 +46,28 @@ public sealed partial class WorldEngine
         if (!InBounds(x, y)) return 0;
         var tile = State.Tiles[Index(x, y)];
         if (tile.FireTicks > 0) return 0;
-        var supply = DailyWaterYield(tile);
+        var supply = GetWaterSupply(x, y);
         return Math.Max(0, supply - (tile.WaterDrawTick == State.Tick ? tile.WaterDrawn : 0));
     }
 
     // Unlimited supply is a derived query result, never a stored resource amount.
     public static double DailyWaterYield(Tile tile) => IsFreshWater(tile) ? double.PositiveInfinity
         : tile.NaturalWaterYield * (tile.DroughtTicks > 0 ? .2 : 1);
+
+    public static double WellWaterYield(Tile tile) => IsWaterTerrain(tile.Terrain) ? 0
+        : Math.Max(0, 30 * DailyWaterYield(tile) - .6);
+
+    public double GetWaterSupply(int x, int y)
+    {
+        if (!InBounds(x, y)) return 0;
+        var tile = State.Tiles[Index(x, y)];
+        if (tile.FireTicks > 0) return 0;
+        var natural = DailyWaterYield(tile);
+        if (IsWaterTerrain(tile.Terrain)) return natural;
+        var well = _localWorkQueriesActive ? _localWaterWells.GetValueOrDefault(Index(x, y))
+            : State.Society.Buildings.FirstOrDefault(b => b.Kind == BuildingKind.Well && b.X == x && b.Y == y);
+        return natural + (well is not null && IsBuildingOperational(well) ? WellWaterYield(tile) : 0);
+    }
 
     private double DrawWater(Resident person, int source, double wanted)
     {
@@ -130,7 +145,7 @@ public sealed partial class WorldEngine
             else
             {
                 var water = FindWaterSite(person);
-                if (water.Bank >= 0 && (needsWater || DailyWaterYield(State.Tiles[water.Source]) >= .1))
+                if (water.Bank >= 0 && (needsWater || GetWaterSupply(water.Source % State.Width, water.Source / State.Width) >= .1))
                     choices.Add(new(AgentGoalKind.FetchWater, water.Bank % State.Width, water.Bank / State.Width,
                         needsWater ? 65 + person.Thirst : atHome && home.Resources.Water < home.Population * .5 ? 72 : 18,
                         "前往实际见过的河湖或有供水的陆地取水，随身携带并运回家园", EntityId: water.Source + 1));

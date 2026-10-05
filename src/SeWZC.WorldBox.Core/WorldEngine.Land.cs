@@ -262,8 +262,8 @@ public sealed partial class WorldEngine
         var lines = new List<string> { "资源：" + GetTileResourceSummary(x, y, visibility) };
         if (products.Count > 0) lines.Add("采集产物：" + string.Join("、", products));
         lines.Add(IsFreshWater(tile) ? "供水量 无限\n需到岸边打水并携带返仓"
-            : $"供水量 {DailyWaterYield(tile):0.###} / 日"
-                + (DailyWaterYield(tile) < .025 ? "\n供水不足一名成年居民每日所需的 0.025，建议到河湖岸边打水" : ""));
+            : $"供水量 {GetWaterSupply(x, y):0.###} / 日"
+                + (GetWaterSupply(x, y) < .025 ? "\n供水不足一名成年居民每日所需的 0.025，建议到河湖岸边打水" : ""));
         if (IsWaterTerrain(tile.Terrain)) lines.Add(tile.Terrain == TerrainType.Stream ? "通行：可涉水，速度较慢" : "通行：需要桥梁或舟船");
         if (tile.IsWalkable) lines.Add($"肥力 {tile.Fertility}%");
         if (tile.Improvement == LandImprovement.Farmland) lines.Add("耕地：需要居民到场耕作，产物随身运回家园");

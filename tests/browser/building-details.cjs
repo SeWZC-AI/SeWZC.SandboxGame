@@ -52,6 +52,10 @@ fs.mkdirSync(output, { recursive: true });
                     if (kind === 22) {
                         assert.equal((ui.control(s, 'building-effects').value.match(/供水量/g) || []).length, 1);
                         assert.doesNotMatch(text, /今日剩余|每日可取水|降水|补水/);
+                        const well = world.Society.Buildings.find(b => b.Kind === kind);
+                        const ground = world.Tiles[well.Y * world.Width + well.X];
+                        const expected = Math.max(0, 30 * ground.w - .6);
+                        assert(ui.control(s, 'building-effects').value.includes(`供水量 ${Number(expected.toFixed(3))} / 日`), 'Well kept its old surface-only yield');
                     }
                     if ([27, 29, 32, 33, 34].includes(kind)) assert(!ui.control(s, 'building-effects').value.includes('每批产出'));
                     await page.screenshot({ path: path.join(output, `${name}-${kind}.png`) });
