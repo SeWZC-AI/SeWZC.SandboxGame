@@ -24,7 +24,7 @@ public sealed partial class WorldEngine
                     : kind is BuildingKind.Quarry or BuildingKind.MiningHall ? TerrainRules.For(State.Tiles[i].Terrain).StoneYield + TerrainRules.For(State.Tiles[i].Terrain).OreYield > 0
                     : TerrainRules.For(State.Tiles[i].Terrain).WoodYield + TerrainRules.For(State.Tiles[i].Terrain).StoneYield + TerrainRules.For(State.Tiles[i].Terrain).OreYield > 0));
         if (IsHusbandry(kind)) return HusbandryStockAt(index % State.Width, index / State.Width, kind == BuildingKind.Aquaculture).Source >= 0;
-        if (kind == BuildingKind.Well && DailyWaterYield(tile) < .1) return false;
+        if (kind == BuildingKind.Well && WellWaterYield(tile) < .1) return false;
         if (kind == BuildingKind.HuntingCamp) return EdibleAnimal(tile) != WildlifeKind.None;
         return true;
     }
@@ -74,7 +74,7 @@ public sealed partial class WorldEngine
                 var yield = kind == BuildingKind.LumberCamp ? yields.WoodYield : kind == BuildingKind.Quarry ? yields.StoneYield + yields.OreYield : Math.Max(yields.WoodYield, yields.StoneYield + yields.OreYield);
                 score += Math.Min(1, source.ResourceAmount / 25) * yield * 12;
             }
-        if (kind == BuildingKind.Well) score += Math.Min(1, DailyWaterYield(tile)) * 15;
+        if (kind == BuildingKind.Well) score += Math.Min(3, WellWaterYield(tile)) * 15;
         if (kind == BuildingKind.Reservoir)
             score += Circle(x, y, 1).Where(i => i == Index(x, y) || IsFreshWater(State.Tiles[i]))
                 .Select(i => Math.Min(3, DailyWaterYield(State.Tiles[i])) * 20).DefaultIfEmpty().Max();

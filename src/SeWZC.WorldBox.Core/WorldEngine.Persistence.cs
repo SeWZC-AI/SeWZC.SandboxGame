@@ -84,7 +84,7 @@ public sealed partial class WorldEngine
             Require(tile is not null && Enum.IsDefined(tile.Terrain) && tile.Fertility <= 100 && tile.RoadLevel <= 3 && FiniteRange(tile.ResourceAmount, 1_000_000) && tile.FireTicks is >= 0 and <= 10_000 && tile.DroughtTicks is >= 0 and <= 10_000, "地格数据无效。");
             Require(FiniteRange(tile!.Rainfall, 4) && (tile.RiverWidth == 0 || (tile.Terrain == TerrainType.Stream ? tile.RiverWidth == 1 : tile.Terrain == TerrainType.River ? tile.RiverWidth is 2 or 3 : tile.Terrain == TerrainType.LargeRiver && tile.RiverWidth is 4 or 5)) && FiniteRange(tile.NaturalWaterYield, 4) && tile.WaterDrawTick >= 0 && tile.WaterDrawTick <= state.Tick
                 && tile.FireSuppressionTick >= 0 && tile.FireSuppressionTick <= state.Tick && tile.FireSuppressed is >= 0 and <= 2
-                && FiniteRange(tile.WaterDrawn, 4) && Enum.IsDefined(tile.BridgeDirection)
+                && FiniteRange(tile.WaterDrawn, 124) && Enum.IsDefined(tile.BridgeDirection)
                 && (tile.Improvement == LandImprovement.Bridge ? tile.BridgeLevel is >= 1 and <= 3 : tile.BridgeLevel == 0), "地块供水或桥梁方向状态无效。");
             for (var plant = 0; plant < 4; plant++) Require(FiniteRange(tile.Plants.Get((PlantKind)plant), 1), "植物覆盖无效。");
             Require(tile.Plants.Total <= 1.000001, "植物总覆盖超出上限。");

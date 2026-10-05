@@ -97,6 +97,7 @@ public sealed partial class WorldEngine
         if (kind == BuildingKind.TownCenter) return "每处聚落的中心由定居和重建维护，无需另行放置";
         if (!_settlements.TryGetValue(settlementId, out var town)) return "先选择归属聚落";
         if (!InBounds(x, y) || !BuildingTerrainValid(kind, State.Tiles[Index(x, y)])) return IsWaterfrontBuilding(kind) ? "船坞和码头需要水中的近岸地块" : kind == BuildingKind.Bridge ? "桥梁需要河流或浅水" : kind == BuildingKind.MountainPass ? "山路需要山地" : "需要可通行的陆地";
+        if (kind == BuildingKind.Well && WellWaterYield(State.Tiles[Index(x, y)]) <= 0) return "水井需要地块供水量高于 0.02 / 日，请选择供水更充足的地块";
         if (!CanBuildRacialFacility(settlementId, kind)) return "需要当地有该种族的成年居民";
         if (kind == BuildingKind.SacredGrove && (!IsForestTerrain(State.Tiles[Index(x, y)].Terrain) || !State.Society.MagicEnabled)) return "精灵圣林需要森林和开放的魔法规则";
         if (kind == BuildingKind.Bridge && BridgePlacementError(x, y, direction ?? InferBridgeDirection(x, y), bridgeLevel) is { } bridgeError) return bridgeError;
@@ -155,6 +156,7 @@ public sealed partial class WorldEngine
     public int GrantFacility(int settlementId, BuildingKind kind, int x, int y, BridgeDirection? direction = null, int bridgeLevel = 1) => PlaceFacility(settlementId, kind, x, y, true, direction, bridgeLevel);
 
     public bool IsBuildingOperational(Building building) => IsFacilityOperating(building)
+        && (building.Kind != BuildingKind.Well || WellWaterYield(State.Tiles[Index(building.X, building.Y)]) > 0)
         && (ResearchRules.Unlocking(building.Kind) is not { } unlock || HasResearch(building.SettlementId, unlock.Kind)
             && unlock.Prerequisites.All(p => HasResearch(building.SettlementId, p)))
         && (building.Kind != BuildingKind.SignalTower || HasResearch(building.SettlementId, ResearchKind.SignalNetwork) && HasResearch(building.SettlementId, ResearchKind.Electrification));

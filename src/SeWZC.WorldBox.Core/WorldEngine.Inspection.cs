@@ -69,6 +69,7 @@ public sealed partial class WorldEngine
         if (b.IsUpgrading) return "升级施工中，暂停原有功能";
         if (tile.FireTicks > 0) return $"暂停：所在地着火，剩余 {tile.FireTicks} 日；可安排居民灭火";
         if (!BuildingTerrainValid(b.Kind, tile)) return "暂停：地形已改变，不再适合此设施；请恢复原地形或换址建设";
+        if (b.Kind == BuildingKind.Well && WellWaterYield(tile) <= 0) return "暂停：当地供水不足，水井无法出水";
         var town = RequireTown(b.SettlementId);
         if (!CanBuildRacialFacility(town.Id, b.Kind)) return $"暂停：本聚落没有存活的成年{RaceNames[(int)BuildingRace(b.Kind)!.Value]}";
         if (AdvancementRules.For(b.Kind) is { } recipe)

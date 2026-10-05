@@ -252,7 +252,8 @@ public sealed partial class WorldEngine
             BuildingKind.Workshop => (resident.Agent.Goal.PlayerDirected || LocalMaterialsNeeded(resident, RequireTown(building.SettlementId))) && FindWorkshopResource(building, resident.Profession) >= 0,
             BuildingKind.LumberCamp => resident.Profession == Profession.Lumberjack && (resident.Agent.Goal.PlayerDirected || LocalMaterialsNeeded(resident, RequireTown(building.SettlementId))) && FindWorkshopResource(building, Profession.Lumberjack) >= 0,
             BuildingKind.Quarry => resident.Profession == Profession.Miner && (resident.Agent.Goal.PlayerDirected || LocalMaterialsNeeded(resident, RequireTown(building.SettlementId))) && FindWorkshopResource(building, Profession.Miner) >= 0,
-            BuildingKind.Well => resident.Inventory.Water < WaterReserve(resident) + 3 && AvailableWater(building.X, building.Y) > 0,
+            BuildingKind.Well => resident.Inventory.Water < WaterReserve(resident) + 3
+                && WellWaterYield(State.Tiles[Index(building.X, building.Y)]) > 0 && AvailableWater(building.X, building.Y) > 0,
             BuildingKind.Farm => resident.Agent.Goal.PlayerDirected || RequireTown(building.SettlementId).Resources.Food < ProductionStockTarget(RequireTown(building.SettlementId), ResourceKind.Food) || resident.Inventory.Food < TravelReserve(resident),
             BuildingKind.Academy => State.Society.Research.Any(r => r.SettlementId == building.SettlementId && r.ActiveProject.HasValue),
             BuildingKind.ArcaneSanctum => State.Society.MagicEnabled && resident.MagicTalent >= 25 && resident.MagicTraining < 100,
@@ -446,7 +447,7 @@ public sealed partial class WorldEngine
     }
 
     private bool IsFacilityOperating(Building building) => BuildingGroundOwned(building) && building.Enabled && building.IsCompleted && !building.IsUpgrading && building.Health >= 50 && BuildingTerrainValid(building.Kind, State.Tiles[Index(building.X, building.Y)])
-        && State.Tiles[Index(building.X, building.Y)].FireTicks == 0 && (PassiveFacility(building) || building.Kind is BuildingKind.TownCenter or BuildingKind.Bridge or BuildingKind.MountainPass or BuildingKind.Waygate || building.LastWorkedTick >= State.Tick - 12
+        && State.Tiles[Index(building.X, building.Y)].FireTicks == 0 && (PassiveFacility(building) || building.Kind is BuildingKind.TownCenter or BuildingKind.Bridge or BuildingKind.MountainPass or BuildingKind.Waygate or BuildingKind.Well || building.LastWorkedTick >= State.Tick - 12
         && State.Residents.Any(r => building.Workers.Contains(r.Id) && r.SettlementId == building.SettlementId && r.Health > 0 && (BuildingRace(building.Kind) is not { } race || r.Race == race && r.Age >= 14) && Distance(r.X, r.Y, building.X, building.Y) <= 1));
     private bool ClearSignalLine(int x0, int y0, int x1, int y1)
     {

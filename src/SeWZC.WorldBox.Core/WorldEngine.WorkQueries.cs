@@ -10,6 +10,7 @@ public sealed partial class WorldEngine
     private readonly List<List<Resident>> _localWorkResidentBuffers = [];
     private bool _localWorkQueriesActive;
     private readonly Dictionary<int, Building> _workBuildingsById = [];
+    private readonly Dictionary<int, Building> _localWaterWells = [];
     private Building? FindBuilding(int id) => id == 0 ? null : _localWorkQueriesActive
         ? _workBuildingsById.GetValueOrDefault(id) : State.Society.Buildings.FirstOrDefault(b => b.Id == id);
     private readonly Dictionary<int, SettlementResearch> _localResearch = [];
@@ -41,6 +42,7 @@ public sealed partial class WorldEngine
         foreach (var building in State.Society.Buildings)
         {
             _workBuildingsById[building.Id] = building;
+            if (building.Kind == BuildingKind.Well) _localWaterWells[Index(building.X, building.Y)] = building;
             LocalWorkGroup(_localWorkBuildings, _localWorkBuildingBuffers, building.SettlementId).Add(building);
         }
         foreach (var resident in State.Residents)
@@ -55,7 +57,7 @@ public sealed partial class WorldEngine
 
     private void EndLocalWorkQueries()
     {
-        _localWorkQueriesActive = false; _localResearch.Clear(); _workBuildingsById.Clear(); _productionReserves.Clear(); _workReservations.Clear();
+        _localWorkQueriesActive = false; _localResearch.Clear(); _workBuildingsById.Clear(); _localWaterWells.Clear(); _productionReserves.Clear(); _workReservations.Clear();
         foreach (var group in _localWorkBuildings.Values) group.Clear();
         foreach (var group in _localWorkResidents.Values) group.Clear();
         _localWorkBuildings.Clear();

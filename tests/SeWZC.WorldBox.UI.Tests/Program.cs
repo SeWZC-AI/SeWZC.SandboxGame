@@ -423,6 +423,13 @@ static void ContextDetails()
     var terrain = tile.Terrain; tile.Terrain = TerrainType.Lake; Call(view, "RefreshUi", true);
     Assert(Control<TextBlock>(view, "tile-water").Text!.Contains("供水量 无限"), "Fresh water used a separate supply label");
     tile.Terrain = terrain; tile.DroughtTicks = 0;
+    var well = engine.State.Society.Buildings.First(b => b.Kind == BuildingKind.TownCenter && b.SettlementId == town.Id);
+    well.Kind = BuildingKind.Well; tile.NaturalWaterYield = .03;
+    Call(view, "OpenBuilding", well);
+    Assert(Control<TextBlock>(view, "building-effects").Text!.Contains("供水量 0.3 / 日"), "Well inspector still shows the tiny natural surface supply");
+    Call(view, "SelectMapObject", "tile", 0, town.X, town.Y); Call(view, "OpenInspector", "tile", true);
+    Assert(Control<TextBlock>(view, "tile-water").Text!.Contains("供水量 0.33 / 日"), "Tile inspector did not combine the functioning well in its single supply field");
+    well.Kind = BuildingKind.TownCenter; tile.NaturalWaterYield = 1.5;
     Call(view, "ShowLandProject", town.X, town.Y);
     Assert(!view.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.IsVisible && t.GetLogicalAncestors().OfType<Control>().All(c => c.IsVisible) && t.Text is "桥梁方向" or "桥梁等级"), "Ordinary land buildings retained direction labels");
     Call(view, "CloseModal");

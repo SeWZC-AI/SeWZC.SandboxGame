@@ -16,7 +16,8 @@ internal static class TownInfrastructureTests
         ("new villages respect spacing and arrive with useful initial supplies", StartingSupplies),
         ("twelve pioneers finish a foundation after delivering fractional building materials", FoundationDelivery),
         ("pioneers reject a walkable stream and found on reported dry ground", StreamFoundation),
-        ("new town and navigation state rejects corrupt saves", InvalidState)
+        ("new town and navigation state rejects corrupt saves", InvalidState),
+        ("wells use a thresholded affine yield with shared finite daily collection", WellSupply)
     ];
 
     private static void Check(bool condition, string message) { if (!condition) throw new Exception(message); }
@@ -162,11 +163,41 @@ internal static class TownInfrastructureTests
         e.State.Tiles[18 * 32 + 16].NaturalWaterYield = 1;
         var well = e.GrantFacility(town.Id, BuildingKind.Well, 16, 18);
         Hold(e, worker, AgentGoalKind.Work, 16, 18, well); e.State.Tick++;
-        Check(e.TryWorkAtBuilding(worker) && e.AvailableWater(16, 18) < 1, "Well invented water instead of sharing the local quota.");
+        var waterBefore = e.AvailableWater(16, 18); var carriedBefore = worker.Inventory.Water;
+        Check(e.TryWorkAtBuilding(worker) && Math.Abs(waterBefore - e.AvailableWater(16, 18) - (worker.Inventory.Water - carriedBefore)) < 1e-9, "Well collection did not debit the shared daily supply.");
         var house = e.GrantFacility(town.Id, BuildingKind.Housing, 15, 20);
         Check(e.GetHousingCapacity(town.Id) == town.Housing + 20, "Healthy house provided no capacity.");
         e.SetBuildingEnabled(house, false);
         Check(e.GetHousingCapacity(town.Id) == town.Housing, "Stopped house kept its bonus.");
+    }
+
+    [UnitTest]
+    private static void WellSupply()
+    {
+        var e = Flat(8); var town = e.State.Settlements.Single();
+        var tile = e.State.Tiles[18 * 32 + 16];
+        Check(e.FacilityPlacementError(town.Id, BuildingKind.Well, 16, 18, true)?.Contains("供水量高于 0.02") == true, "A dry site still allowed an ineffective well");
+        foreach (var (source, expected) in new[] { (.005, 0d), (.02, 0d), (.03, .3), (.04, .6), (.05, .9), (.1, 2.4) })
+        {
+            tile.NaturalWaterYield = source;
+            Check(Math.Abs(WorldEngine.WellWaterYield(tile) - expected) < 1e-9, "Well ignored its threshold or nonzero intercept.");
+        }
+        tile.NaturalWaterYield = .04;
+        var id = e.GrantFacility(town.Id, BuildingKind.Well, 16, 18);
+        Check(Math.Abs(e.GetWaterSupply(16, 18) - .64) < 1e-9, "Working well added no useful local supply.");
+        var before = e.ExportJson(); _ = e.GetWaterSupply(16, 18); _ = e.GetBuildingEffects(id);
+        Check(e.ExportJson() == before, "Inspecting well supply changed the world.");
+        e.SetBuildingEnabled(id, false);
+        Check(e.GetWaterSupply(16, 18) == .04, "Stopped well still supplied water.");
+        e.SetBuildingEnabled(id, true); tile.DroughtTicks = 2;
+        Check(WorldEngine.WellWaterYield(tile) == 0 && Math.Abs(e.GetWaterSupply(16, 18) - .008) < 1e-9, "Drought did not shut down a well below threshold.");
+        tile.DroughtTicks = 0; tile.NaturalWaterYield = .2;
+        foreach (var person in e.State.Residents) Hold(e, person, AgentGoalKind.FetchWater, 16, 18, 18 * 32 + 16 + 1);
+        e.State.Tick++;
+        foreach (var person in e.State.Residents) e.TryFetchWater(person);
+        Check(e.AvailableWater(16, 18) < 1e-9 && Math.Abs(tile.WaterDrawn - 5.6) < 1e-9, "Repeated well work exceeded or failed to consume its daily limit.");
+        var resumed = WorldEngine.ImportJson(e.ExportJson()); e.Step(6); resumed.Step(6);
+        Check(e.ExportJson() == resumed.ExportJson(), "Large well draw lost deterministic continuation.");
     }
 
     private static void BlockedRoute()
