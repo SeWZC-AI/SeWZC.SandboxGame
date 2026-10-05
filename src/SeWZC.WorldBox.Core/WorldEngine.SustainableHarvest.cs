@@ -2,6 +2,7 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>按陆地肥力计算自然资源恢复上限，水域地格返回零。</summary>
     public static double NaturalResourceCapacity(Tile tile) => IsWaterTerrain(tile.Terrain) ? 0 : 50 + tile.Fertility;
 
     private static double WildlifeHarvestEfficiency(Tile tile, WildlifeKind kind)
@@ -9,6 +10,7 @@ public sealed partial class WorldEngine
         if (kind == WildlifeKind.None) return 0;
         var capacity = AnimalRules.EnvironmentalCapacity(tile, kind);
         var density = Math.Min(1, tile.AnimalPopulation(kind) / Math.Max(.05, capacity));
+        // 稀少的动物更难找到，降低采集效率能促使居民在种群耗尽前转向其他来源。
         return density * density;
     }
 
@@ -26,6 +28,7 @@ public sealed partial class WorldEngine
         return density * density;
     }
 
+    /// <summary>扣除可采集的植物生物量，保留未采集的物种，并返回实际采集量。</summary>
     private static double HarvestPlants(Tile tile, double desired, bool wood = false)
     {
         var stock = PlantStock(tile, wood);
@@ -34,6 +37,7 @@ public sealed partial class WorldEngine
         var before = tile.ResourceAmount; tile.ResourceAmount -= amount;
         if (tile.Improvement != LandImprovement.Farmland)
         {
+            // 覆盖比例以共享资源存量为基数；仅减少总存量会连带减少未采集物种。
             var plants = tile.Plants;
             for (var species = 0; species < 4; species++)
             {

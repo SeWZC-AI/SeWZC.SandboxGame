@@ -21,6 +21,9 @@ public sealed partial class WorldEngine
     { var kind = BitOperations.TrailingZeroCount((uint)mask); mask &= mask - 1; return kind; }
 
     public static string WildlifeName(WildlifeKind kind) => AnimalRules.For(kind).Name;
+    /// <summary>选择指定体型与食性分组中超过显示阈值的最大种群；没有候选时返回 <c>None</c>。</summary>
+    /// <param name="tile">待查看当前种群的地格。</param>
+    /// <param name="group">按 <c>size * 2 + diet</c> 编码的体型与食性分组。</param>
     public static WildlifeKind VisibleWildlife(Tile tile, int group)
     {
         var selected = WildlifeKind.None; var largest = .02; var mask = tile.WildlifeMask;
@@ -33,6 +36,7 @@ public sealed partial class WorldEngine
         }
         return selected;
     }
+    /// <summary>计算地格当前容量；食肉动物还受可分配的猎物生物量限制。</summary>
     public static double WildlifeCapacity(Tile tile, WildlifeKind kind)
     {
         var capacity = AnimalRules.EnvironmentalCapacity(tile, kind);
@@ -72,8 +76,10 @@ public sealed partial class WorldEngine
     // Fixed daily work also bounds large-map cost. Small maps retain a six-day
     // cycle; 128 and 256 maps re-evaluate every 64 and 256 simulated days.
     private const int WildlifeTilesPerDay = 256;
+    /// <summary>受每日地格预算限制，完成一轮全部动物复评所需的模拟日数。</summary>
     public int WildlifeCycleDays => Math.Max(6, (State.Tiles.Length + WildlifeTilesPerDay - 1) / WildlifeTilesPerDay);
 
+    /// <summary>基于同一份种群快照，处理当日地格分区的繁殖、捕食和迁移。</summary>
     private void TickWildlife()
     {
         var tiles = State.Tiles;
@@ -90,6 +96,7 @@ public sealed partial class WorldEngine
         _wildlifePredatorLimits ??= new double[bufferTiles * AnimalRules.SpeciesCount];
         _wildlifeHerbivoreKinds ??= new byte[bufferTiles];
         var cycle = WildlifeCycleDays;
+        // 从存档中的模拟时间推导分区，载入后即可接续复评顺序，无需另存游标。
         var phase = (int)((State.Tick - 1) % cycle);
         var first = phase * tiles.Length / cycle;
         var last = (phase + 1) * tiles.Length / cycle;

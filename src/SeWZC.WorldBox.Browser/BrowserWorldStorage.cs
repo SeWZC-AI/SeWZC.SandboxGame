@@ -5,6 +5,7 @@ using SeWZC.WorldBox.UI.Platform;
 
 namespace SeWZC.WorldBox.Browser;
 
+/// <summary>将共享存储操作适配到 JavaScript 的 IndexedDB、文件交换和页面可见性接口。</summary>
 [SupportedOSPlatform("browser")]
 internal sealed partial class BrowserWorldStorage : IWorldStorage
 {

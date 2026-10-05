@@ -49,6 +49,8 @@
 
 `Core` 不依赖 Avalonia、浏览器或桌面文件系统。共享界面通过平台接口访问存储；不要为了一个功能把平台 API 引入模拟。C# 延续现有命名与文件风格，保持 nullable 检查；SDK、语言与依赖版本查看 [global.json](../global.json)、[Directory.Build.props](../Directory.Build.props) 和对应项目配置。
 
+代码注释使用中文。文档注释说明函数和类型的职责，代码内注释说明必要的设计原因，避免复述显而易见的实现。
+
 ## 修改时要守住的因果关系
 
 ### 模拟、知识与资源

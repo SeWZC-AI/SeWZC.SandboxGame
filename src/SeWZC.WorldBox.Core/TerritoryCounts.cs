@@ -1,7 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-// Runtime tile indexes only. Ownership and traversal changes notify separate
-// revisions; loading or replacing the grid rebuilds the ownership index.
+/// <summary>派生的国家地格计数，以及分别跟踪占地和通行变化的修订号。</summary>
 internal sealed class TerritoryCounts
 {
     private readonly Dictionary<int, int> _counts = [];
@@ -11,6 +10,8 @@ internal sealed class TerritoryCounts
     public void InvalidateClaims() => Revision++;
     public void InvalidateTraversal() => TraversalRevision++;
 
+    /// <summary>将归属变化通知绑定到地格数组；更换数组时重建计数。</summary>
+    /// <remarks>已绑定的地格实例须保留；直接替换数组元素会绕过该地格的通知。</remarks>
     public void Bind(Tile[] tiles)
     {
         if (ReferenceEquals(_tiles, tiles)) return;

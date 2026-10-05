@@ -81,6 +81,7 @@ public sealed partial class WorldEvent
     public int CauseEventId { get; set; }
 }
 
+/// <summary>用于目标评分及结构化经历影响的性格权重。</summary>
 public sealed class PersonalityProfile
 {
     public double Courage { get; set; } = 0.5;
@@ -89,6 +90,7 @@ public sealed class PersonalityProfile
     public double Ambition { get; set; } = 0.5;
 }
 
+/// <summary>居民的需求、性格、记忆，以及当前行动或递送任务。</summary>
 public sealed class AgentState
 {
     public bool Initialized { get; set; }
@@ -110,6 +112,7 @@ public sealed class AgentState
     public long JobChangedTick { get; set; } = -120;
 }
 
+/// <summary>当前任务、目标及依据，以及为避免反复受阻而保存的导航进度。</summary>
 public sealed class AgentGoal
 {
     public int NavigationTarget { get; set; } = -1;
@@ -131,6 +134,7 @@ public sealed class AgentGoal
     public string Reason { get; set; } = "";
 }
 
+/// <summary>亲眼观察或转述得到的信息，保留原始依据和本副本的获知记录，内容可能已经过时。</summary>
 public sealed class AgentFact
 {
     public int EventId { get; set; }
@@ -143,7 +147,9 @@ public sealed class AgentFact
     public int X { get; set; }
     public int Y { get; set; }
     public double Value { get; set; }
+    /// <summary>最初观察发生的时间；转述时保留该时间。</summary>
     public long ObservedTick { get; set; }
+    /// <summary>持有本副本的一方获知信息的时间。</summary>
     public long LearnedTick { get; set; }
     public int OriginResidentId { get; set; }
     public Profession OriginProfession { get; set; }
@@ -153,6 +159,7 @@ public sealed class AgentFact
     public string Text { get; set; } = "";
 }
 
+/// <summary>已记录的目标选择，包含当时的评分、理由和所用信息。</summary>
 public sealed class AgentDecision
 {
     public long Tick { get; set; }
@@ -164,6 +171,7 @@ public sealed class AgentDecision
     public int SourceResidentId { get; set; }
 }
 
+/// <summary>等待按计划送达居民的信息，也可指定中继聚落作为接收地点。</summary>
 public sealed class PendingMessage
 {
     public int SenderId { get; set; }
@@ -173,6 +181,7 @@ public sealed class PendingMessage
     public List<AgentFact> Facts { get; set; } = [];
 }
 
+/// <summary>存档保留的加权请愿记录；当前制度接收与决策使用 InstitutionReport。</summary>
 public sealed class CivicOpinion
 {
     public int FactId { get; set; }
@@ -184,6 +193,7 @@ public sealed class CivicOpinion
     public long ReceivedTick { get; set; }
 }
 
+/// <summary>关联世界事件的个人经历；结构化编辑可影响未来性格。</summary>
 public sealed class ResidentHistoryEntry
 {
     public int EventId { get; set; }

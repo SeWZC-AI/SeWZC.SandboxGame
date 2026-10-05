@@ -2,8 +2,11 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>将世界推进一个模拟日。</summary>
     public void Tick() => Step();
 
+    /// <summary>按规则顺序完整推进模拟日，处理行动、通信及世界状态汇总。</summary>
+    /// <param name="steps">推进的日数，范围为 0 至 10,000；为零时不改变世界。</param>
     public void Step(int steps = 1)
     {
         if (steps is < 0 or > 10_000) throw new ArgumentOutOfRangeException(nameof(steps));
@@ -52,6 +55,7 @@ public sealed partial class WorldEngine
 
     private void UpdateResidents()
     {
+        // 先保存现有病例的位置，避免新感染在同一天沿居民遍历顺序连锁传播。
         var infected = new HashSet<int>(State.Residents.Where(r => r.SicknessTicks > 0).Select(r => Index(r.X, r.Y)));
         foreach (var person in State.Residents)
         {

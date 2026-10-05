@@ -2,6 +2,7 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>替换圆形笔刷范围内的地形，重置当地资源和地块改良，并处理位置失效的实体。</summary>
     public void PaintTerrain(int x, int y, TerrainType terrain, int radius = 2)
     {
         if (!Enum.IsDefined(terrain)) throw new ArgumentOutOfRangeException(nameof(terrain));
@@ -27,6 +28,7 @@ public sealed partial class WorldEngine
         Reindex(); InitializeSociety(); RefreshTotals();
     }
 
+    /// <summary>在附近可通行的陆地投放居民，加入现有聚落或按需建立新聚落。</summary>
     public void SpawnResidents(int x, int y, RaceKind race, int count = 12)
     {
         if (!Enum.IsDefined(race)) throw new ArgumentOutOfRangeException(nameof(race));
@@ -94,6 +96,7 @@ public sealed partial class WorldEngine
         return roll < 45 ? Profession.Farmer : roll < 63 ? Profession.Lumberjack : roll < 78 ? Profession.Miner : roll < 85 ? Profession.Builder : roll < 90 ? Profession.Trader : roll < 91 ? Profession.Messenger : roll < 97 ? Profession.Scholar : roll < 99 ? Profession.Mage : Profession.Representative;
     }
 
+    /// <summary>施加局部灾害；火灾和疫病先产生少量源头，后续传播由模拟规则决定。</summary>
     public void TriggerDisaster(int x, int y, DisasterKind kind, int radius = 5)
     {
         if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
@@ -148,6 +151,7 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Editor, $"{previous}更名为{name}。");
     }
 
+    /// <summary>将指定的国家资源总量均分到各聚落仓库；未指定的资源保留原库存。</summary>
     public void SetNationResources(int nationId, double? food = null, double? wood = null, double? stone = null, double? ore = null, double? alloy = null, double? energyCells = null, double? crystals = null, double? coal = null, double? oil = null, double? rareEarth = null, double? boats = null, double? aircraft = null, double? water = null)
     {
         if (!_nations.ContainsKey(nationId)) throw new ArgumentException("国家不存在。", nameof(nationId));
@@ -176,6 +180,7 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Editor, $"{_nations[nationId].Name}的资源储备已调整。");
     }
 
+    /// <summary>直接改变两国外交关系，并发布需要居民和机构接收的命令。</summary>
     public void SetDiplomacy(int first, int second, DiplomaticStatus status)
     {
         if (first == second || !_nations.ContainsKey(first) || !_nations.ContainsKey(second)) throw new ArgumentException("请选择两个不同且存在的国家。");

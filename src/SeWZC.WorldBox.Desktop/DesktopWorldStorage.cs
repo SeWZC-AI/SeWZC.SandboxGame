@@ -8,6 +8,7 @@ using SeWZC.WorldBox.UI.Platform;
 
 namespace SeWZC.WorldBox.Desktop;
 
+/// <summary>保存压缩的本地自动存档，并通过系统文件选择器导入或导出 UTF-8 世界文件。</summary>
 internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStorage
 {
     private const int MaxFileBytes = 64 * 1024 * 1024;

@@ -4,6 +4,7 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     public const int MaxPopulation = 10_000;
+    /// <summary>引擎持有的当前可变世界状态，不是独立快照。</summary>
     public WorldState State { get; }
     private readonly Dictionary<int, Settlement> _settlements = [];
     private readonly Dictionary<int, Nation> _nations = [];
@@ -28,6 +29,11 @@ public sealed partial class WorldEngine
         }
     }
 
+    /// <summary>根据种子生成世界，可选择为每个种族建立开局聚落。</summary>
+    /// <param name="seed">地形生成及模拟随机序列的种子。</param>
+    /// <param name="width">地图宽度，以地格为单位，范围为 32 至 256。</param>
+    /// <param name="height">地图高度，以地格为单位，范围为 32 至 256。</param>
+    /// <param name="demo">是否在生成的地图中建立四个开局聚落。</param>
     public static WorldEngine Create(int seed = 42, int width = 256, int height = 256, bool demo = true)
     {
         if (width is < 32 or > 256 || height is < 32 or > 256)
@@ -75,6 +81,7 @@ public sealed partial class WorldEngine
 
     private uint RandomUInt()
     {
+        // 每次取值都更新世界的随机状态，才能在存档载入后继续同一序列。
         var value = State.RandomState;
         value ^= value << 13; value ^= value >> 17; value ^= value << 5;
         State.RandomState = value;
@@ -88,6 +95,7 @@ public sealed partial class WorldEngine
     private static int Distance(int ax, int ay, int bx, int by) => Math.Abs(ax - bx) + Math.Abs(ay - by);
     private bool _creatingDemo;
     private int NewId() => State.NextId++;
+    /// <summary>创建并返回编年史记录；即使该记录被容量淘汰规则立即移除，也返回该对象。</summary>
     private WorldEvent AddEvent(WorldEventKind kind, string message, int x = -1, int y = -1, EventAction action = EventAction.General, int settlementId = 0, int residentId = 0, int causeEventId = 0, int evidenceFactId = 0)
     {
         var importance = kind switch

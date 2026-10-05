@@ -1,5 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
+/// <summary>研究节点的前置条件、成本、所需工作量、分支及解锁的玩法入口。</summary>
 public sealed record ResearchDefinition(ResearchKind Kind, string Name, string Branch, string Stage,
     bool Magic, ResearchKind[] Prerequisites, ResourceStock Cost, double Work, string Effect,
     BuildingKind[]? Buildings = null, Profession[]? Professions = null, SpellKind[]? Spells = null, string? Action = null)

@@ -2,9 +2,10 @@ namespace SeWZC.WorldBox.Core;
 
 public enum PlantKind { Trees, Shrubs, Grass, Reeds, Crops }
 
+/// <summary>从地格共享资源存量推导的只读植物数量、覆盖率和产物名称。</summary>
 public static class PlantResources
 {
-    // These describe the existing shared resource stock, not additional harvestable inventory.
+    /// <summary>枚举各类植物的份额或农田作物，跳过正在燃烧或资源耗尽的地格。</summary>
     public static IEnumerable<(PlantKind Kind, double Cover, double Quantity)> At(Tile tile)
     {
         if (tile.FireTicks > 0 || tile.ResourceAmount <= 0) yield break;

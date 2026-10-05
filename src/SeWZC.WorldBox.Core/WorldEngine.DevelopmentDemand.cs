@@ -2,9 +2,11 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>建设与研究规划使用的当地劳动力、设施和需求信号。</summary>
     private sealed record LocalDemand(Settlement Town, Resident[] Adults, IReadOnlyList<Building> Buildings, bool Defense, bool Patients,
         bool Water, bool Coast, bool Timber, bool Stone, bool Contacts, bool MagicTalent, bool Roads);
 
+    /// <summary>汇总附近劳动力和资源条件，以及从居民记忆中推断的需求。</summary>
     private LocalDemand InspectLocalDemand(Settlement town, IReadOnlyList<Building> buildings)
     {
         var residents = _localWorkQueriesActive ? _localWorkResidents.GetValueOrDefault(town.Id) : _citizens.GetValueOrDefault(town.Id);
