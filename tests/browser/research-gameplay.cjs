@@ -19,7 +19,7 @@ fs.mkdirSync(output, { recursive: true });
             const errors = observeBrowserErrors(page);
             try {
                 await page.goto(testUrl(baseUrl)); await ui.ready(); await ui.paused();
-                const world = await ui.save(); assert.equal(world.FormatVersion, 15);
+                const world = await ui.save(); assert.equal(world.FormatVersion, 16);
                 world.Tick = Math.max(1, world.Tick); // No person is midway through a tick-zero movement.
                 const town = world.Settlements[0], person = world.Residents.find(r => r.SettlementId === town.Id);
                 Object.assign(town.Resources, { Food: 1000, Water: 1000, Wood: 1000, Stone: 1000, Alloy: 1000, Crystals: 1000, Medicine: 100 });

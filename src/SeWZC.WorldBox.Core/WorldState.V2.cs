@@ -18,7 +18,7 @@ public sealed partial class WorldState
 
 public sealed partial class Tile
 {
-    public byte RoadLevel { get; set; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public byte RoadLevel { get; set; }
     public double ResourceAmount { get; set; } = 100;
 }
 

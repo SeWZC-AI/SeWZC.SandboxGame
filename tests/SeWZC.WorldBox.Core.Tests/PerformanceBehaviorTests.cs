@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core;
+using System.Text.Json.Nodes;
 
 internal static class PerformanceBehaviorTests
 {
@@ -9,6 +10,8 @@ internal static class PerformanceBehaviorTests
         ("large-map ecology uses sparse cycles and resumes across band boundaries", SparseEcology),
         ("territory totals track edits and rebuild after loading", TerritoryEdits),
         ("buffered saves preserve complete JSON and cancel before returning a partial capture", BufferedSave),
+        ("compact saves preserve all species exact values and explicit nonzero defaults", CompactSave),
+        ("save text chunks preserve UTF-8 split across writes and chunk boundaries", Utf8Chunks),
         ("ecological value equality covers every saved field and preserves default omission", EcologicalValueEquality),
         ("edible animals reflect edits ecology and cold save restoration", EdibleAnimals)
     ];
@@ -189,6 +192,9 @@ internal static class PerformanceBehaviorTests
         var engine = Flat(); var before = engine.ExportJson(); var writes = 0;
         var json = engine.ExportJsonAsync(_ => { writes++; return ValueTask.CompletedTask; }).GetAwaiter().GetResult();
         Check(writes > 1 && json == before, "Buffered save changed the complete JSON or never offered a yield");
+        var chunks = engine.ExportJsonChunksAsync(_ => ValueTask.CompletedTask).GetAwaiter().GetResult();
+        Check(chunks.Length > 1 && chunks.All(c => c.Length <= 16 * 1024) && string.Concat(chunks) == before,
+            "Chunked capture changed JSON or returned unbounded text chunks");
         using var cancellation = new CancellationTokenSource();
         try
         {
@@ -197,5 +203,62 @@ internal static class PerformanceBehaviorTests
         }
         catch (OperationCanceledException) { }
         Check(engine.ExportJson() == before && WorldEngine.ImportJson(json).ExportJson() == before, "Save capture modified the world or produced invalid JSON");
+    }
+
+    [UnitTest]
+    private static void Utf8Chunks()
+    {
+        var type = typeof(WorldEngine).GetNestedType("YieldingSaveStream", System.Reflection.BindingFlags.NonPublic)!;
+        var text = "😊中" + new string('a', 16 * 1024 - 1) + "😊界" + new string('b', 16 * 1024 - 1) + "终";
+        var bytes = System.Text.Encoding.UTF8.GetBytes(text);
+        using var stream = (Stream)Activator.CreateInstance(type, (Func<CancellationToken, ValueTask>)(_ => ValueTask.CompletedTask))!;
+        // The first code point crosses serializer writes; later code points
+        // cross our internal buffer boundary within one large serializer write.
+        foreach (var count in new[] { 1, 1, 2, 1, 2 })
+        {
+            stream.WriteAsync(bytes.AsMemory(0, count)).GetAwaiter().GetResult();
+            bytes = bytes[count..];
+        }
+        stream.WriteAsync(bytes).GetAwaiter().GetResult();
+        var chunks = (string[])type.GetMethod("Complete")!.Invoke(stream, null)!;
+        Check(string.Concat(chunks) == text && chunks.All(c => c.Length is > 0 and <= 16 * 1024),
+            "UTF-8 was corrupted or text chunks exceeded the bound");
+    }
+
+    [UnitTest]
+    private static void CompactSave()
+    {
+        var engine = Flat(); engine.SpawnResidents(16, 16, RaceKind.Human, 1);
+        var person = engine.State.Residents[0]; person.Name = "零值与😊";
+        person.Health = person.Mana = person.MagicTalent = 0;
+        person.Inventory = new ResourceStock();
+        var tile = engine.State.Tiles[0]; tile.ResourceAmount = 0;
+        tile.Wildlife = WildlifeKind.None; tile.WildlifePopulation = 0;
+        var wildlife = new WildlifePopulations();
+        foreach (var kind in AnimalRules.Species) wildlife.Set(kind, (int)kind == 1 ? double.Epsilon : (int)kind + .123456789012345);
+        tile.OtherWildlife = wildlife;
+        var json = engine.ExportJson(); var root = JsonNode.Parse(json)!;
+        Check(root["Residents"]![0]!["Inventory"]!.AsObject().Count == 0, "Zero resource amounts still occupy the save");
+        foreach (var name in new[] { "NationId", "SettlementId", "FireTicks", "DroughtTicks", "RoadLevel" })
+            Check(root["Tiles"]![0]![name] is null, "Zero tile state still occupies the save: " + name);
+        Check(root["Tiles"]![0]!["ResourceAmount"]!.GetValue<double>() == 0
+            && root["Residents"]![0]!["Health"]!.GetValue<double>() == 0
+            && root["NaturalDisasters"]!.GetValue<bool>() == false, "A zero/false value with a nonzero initializer was omitted");
+        var resumed = WorldEngine.ImportJson(json);
+        Check(resumed.State.Tiles[0].OtherWildlife.Equals(wildlife) && resumed.ExportJson() == json,
+            "Sparse populations lost a species or rounded an exact value");
+        foreach (var invalid in new JsonNode[]
+        {
+            new JsonArray(1, 1, 1, 2), new JsonArray(0, 1), new JsonArray(32, 1),
+            new JsonArray(1), new JsonArray(1, -1), new JsonArray(1, 1001), new JsonArray(new JsonObject()),
+            new JsonObject { ["Rabbit"] = 1 }
+        })
+        {
+            var bad = root.DeepClone(); bad["Tiles"]![0]!["OtherWildlife"] = invalid;
+            try { WorldEngine.ImportJson(bad.ToJsonString()); throw new Exception("Invalid sparse population accepted"); }
+            catch (ArgumentException) { }
+        }
+        engine.Step(8); resumed.Step(8);
+        Check(engine.ExportJson() == resumed.ExportJson(), "Compact capture changed subsequent simulation");
     }
 }

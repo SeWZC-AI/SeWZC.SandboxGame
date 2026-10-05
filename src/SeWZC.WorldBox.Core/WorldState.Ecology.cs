@@ -89,7 +89,9 @@ public sealed class LocalConflict
     public List<int> Participants { get; set; } = [];
 }
 
-// Value storage avoids allocating a collection for every map tile. Zero fields are omitted.
+// Value storage avoids allocating a collection for every map tile. Format 16
+// serializes exact nonzero populations as species ID / population pairs.
+[JsonConverter(typeof(WildlifePopulationsJsonConverter))]
 public struct WildlifePopulations : IEquatable<WildlifePopulations>
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public double Rabbit { get; set; }

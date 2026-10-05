@@ -130,6 +130,7 @@ public sealed partial class MainView
             // Publish only while the original request is still valid, immediately before its synchronous commit.
             _checkpoint = checkpoint; _paused = true; _map.IsSimulationPaused = true;
             request.Committing = true;
+            _worldEditRevision++;
             command();
             return true;
         }
@@ -151,6 +152,7 @@ public sealed partial class MainView
         }
         finally
         {
+            if (request.Committing) DeferAutosaveAfterEdit();
             if (ReferenceEquals(_editSubmission, request)) _editSubmission = null;
             foreach (var (control, enabled) in request.Inputs) control.IsEnabled = enabled;
             request.Cancellation.Dispose();

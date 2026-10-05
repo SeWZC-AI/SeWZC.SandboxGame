@@ -83,10 +83,10 @@ else:
     # This inclusive elapsed scope contains cooperative waits, not just CPU work.
     first = text.index('    private async Task SaveAsync(bool manual)')
     last = text.index('    private async ValueTask YieldDuringSave(', first)
-    save = replace_once(text[first:last], '            var json = await _engine.ExportJsonAsync(YieldDuringSave, capture.Token);',
-        f'            string json;\n            using ({scope("Save.Serialize", "_engine.State.Tick")}) json = await _engine.ExportJsonAsync(YieldDuringSave, capture.Token);', 'async save capture')
-    save = replace_once(save, '            await App.Storage.SaveAsync(json);',
-        f'            using ({scope("Save.Storage", "_engine.State.Tick")}) await App.Storage.SaveAsync(json);', 'save storage')
+    save = replace_once(text[first:last], '            var chunks = await source.ExportJsonChunksAsync(YieldDuringSave, capture.Token);',
+        f'            string[] chunks;\n            using ({scope("Save.Serialize", "source.State.Tick")}) chunks = await source.ExportJsonChunksAsync(YieldDuringSave, capture.Token);', 'async save capture')
+    save = replace_once(save, '            await storage.SaveChunksAsync(chunks);',
+        f'            using ({scope("Save.Storage", "source.State.Tick")}) await storage.SaveChunksAsync(chunks);', 'save storage')
     text = text[:first] + save + text[last:]
 path.write_text(text)
 for file, signature, name in [

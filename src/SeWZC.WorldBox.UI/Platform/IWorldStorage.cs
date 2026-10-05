@@ -4,6 +4,7 @@ public interface IWorldStorage
 {
     bool IsBackground { get; }
     Task SaveAsync(string json);
+    Task SaveChunksAsync(string[] chunks) => SaveAsync(string.Concat(chunks));
     Task<string?> LoadAsync();
     Task ExportAsync(string json, string fileName);
     Task<string?> ImportAsync();

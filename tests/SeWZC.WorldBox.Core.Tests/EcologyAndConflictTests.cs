@@ -99,7 +99,7 @@ internal static class EcologyAndConflictTests
         source.Terrain = TerrainType.Desert; var before = source.AnimalPopulation(WildlifeKind.Boar);
         engine.Step(6); Require(source.AnimalPopulation(WildlifeKind.Boar) < before, "Unsuitable species did not decline");
         var bad = JsonNode.Parse(engine.ExportJson())!;
-        bad["Tiles"]![16 * 32 + 16]!["OtherWildlife"] = new JsonObject { ["Boar"] = -1 };
+        bad["Tiles"]![16 * 32 + 16]!["OtherWildlife"] = new JsonArray((int)WildlifeKind.Boar, -1);
         try { WorldEngine.ImportJson(bad.ToJsonString()); throw new Exception("Corrupt secondary population accepted"); } catch (ArgumentException) { }
         var legacy = JsonNode.Parse(engine.ExportJson())!;
         foreach (var t in legacy["Tiles"]!.AsArray()) t!.AsObject().Remove("OtherWildlife");

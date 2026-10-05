@@ -37,6 +37,7 @@
 | [0029](0029-balanced-ecology-and-demand-planning.md) | 平衡食物网、真实养殖与按需建设／研究 | 采用 |
 | [0030](0030-sustainable-collection-and-compact-selection.md) | 低密度采集、缓慢扩散与紧凑选择概览 | 采用 |
 | [0031](0031-contextual-navigation-and-modal-pause.md) | 聚落分区、完整返回与窗口临时暂停 | 采用 |
+| [0032](0032-compact-chunked-saves.md) | 明确零值语义、精确稀疏种群与分块压缩保存 | 采用 |
 
 ## 何时新增或替代
 

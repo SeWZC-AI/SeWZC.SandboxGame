@@ -73,6 +73,8 @@ public sealed partial class MainView : UserControl
     private readonly SemaphoreSlim _saveGate = new(1, 1);
     private CancellationTokenSource? _saveCapture;
     private long _lastSaveYield;
+    private long _worldEditRevision, _savedEditRevision = -1, _savedTick = -1;
+    private WorldEngine? _savedSource;
     private Task? _initialization;
     private Control? _shell;
     private int _speed = 1, _selectedNationId, _selectedResidentId;
@@ -96,8 +98,8 @@ public sealed partial class MainView : UserControl
         Focusable = true;
         _map.Engine = _engine;
         _map.PrepareWorldEdit = PrepareEditAsync;
-        _map.WorldMutationStarting += (_, _) => _saveCapture?.Cancel();
-        _map.WorldEdited += (_, _) => { RefreshUi(true); SetStatus("世界已更新并暂停，可撤销本轮编辑"); };
+        _map.WorldMutationStarting += (_, _) => { _saveCapture?.Cancel(); _worldEditRevision++; };
+        _map.WorldEdited += (_, _) => { DeferAutosaveAfterEdit(); RefreshUi(true); SetStatus("世界已更新并暂停，可撤销本轮编辑"); };
         _map.TileSelected += (x, y) => { if (_mapPick is not null) FinishMapPick(x, y); else SelectMapObject("tile", x: x, y: y); };
         _map.ResidentSelected += id => SelectMapObject("resident", id);
         _map.BuildingSelected += id => { var b = _engine.State.Society.Buildings.First(building => building.Id == id); SelectMapObject("building", id, b.X, b.Y); };
@@ -251,7 +253,11 @@ public sealed partial class MainView : UserControl
         try
         {
             if (App.Storage is not null && await App.Storage.LoadAsync() is { } json)
-            { _engine = WorldEngine.ImportJson(json); _map.Engine = _engine; SetStatus("已恢复本机世界，每 30 秒自动保存"); }
+            {
+                _engine = WorldEngine.ImportJson(json); _map.Engine = _engine;
+                _savedSource = _engine; _savedTick = _engine.State.Tick; _savedEditRevision = _worldEditRevision;
+                SetStatus("已恢复本机世界，每 30 秒自动保存");
+            }
             else SetStatus("新世界已诞生，可选择工具创造或观察文明演化");
         }
         catch (Exception ex) { _allowAutosave = false; SetStatus($"本机存档未载入，已暂停自动保存：{FriendlyError(ex)}"); }
@@ -491,20 +497,25 @@ public sealed partial class MainView : UserControl
 
     private async Task SaveAsync(bool manual)
     {
-        if (App.Storage is null || !_ready || !manual && (_saving || !_allowAutosave)) return;
+        var storage = App.Storage;
+        if (storage is null || !_ready || !manual && (_saving || !_allowAutosave || !WorldNeedsSave())) return;
         await _saveGate.WaitAsync();
-        _saving = true;
         using var capture = new CancellationTokenSource();
         try
         {
-            var year = _engine.State.Year;
+            if (!manual && !WorldNeedsSave()) return;
+            _saving = true;
+            var source = _engine; var tick = source.State.Tick; var revision = _worldEditRevision;
+            var year = source.State.Year;
             _saveCapture = capture; _lastSaveYield = Stopwatch.GetTimestamp();
             _map.IsSimulationPaused = true;
             _simulationStatus.Text = "正在保存，模拟短暂停留";
-            var json = await _engine.ExportJsonAsync(YieldDuringSave, capture.Token);
+            var chunks = await source.ExportJsonChunksAsync(YieldDuringSave, capture.Token);
             capture.Token.ThrowIfCancellationRequested();
             FinishSaveCapture(capture);
-            await App.Storage.SaveAsync(json);
+            await storage.SaveChunksAsync(chunks);
+            _savedSource = source; _savedTick = tick; _savedEditRevision = revision;
+            _lastSave = _clock.Elapsed.TotalSeconds;
             if (manual) { _allowAutosave = true; SetStatus("世界已保存到本机"); }
             else SetStatus($"已自动保存（第 {year} 年，{DateTime.Now:HH:mm}）");
         }
@@ -514,9 +525,16 @@ public sealed partial class MainView : UserControl
         finally { FinishSaveCapture(capture); _saving = false; _saveGate.Release(); }
     }
 
+    private bool WorldNeedsSave() => !ReferenceEquals(_savedSource, _engine) || _savedTick != _engine.State.Tick
+        || _savedEditRevision != _worldEditRevision;
+
+    // A large undo capture may outlast a canceled save's retry delay. Start the
+    // remaining quiet period after the edit, avoiding another immediate capture.
+    private void DeferAutosaveAfterEdit() => _lastSave = Math.Max(_lastSave, _clock.Elapsed.TotalSeconds - 25);
+
     private async ValueTask YieldDuringSave(CancellationToken cancellationToken)
     {
-        if (App.Storage?.IsBackground == true || Stopwatch.GetElapsedTime(_lastSaveYield).TotalMilliseconds < 8) return;
+        if (App.Storage?.IsBackground == true || Stopwatch.GetElapsedTime(_lastSaveYield).TotalMilliseconds < 4) return;
         await Task.Delay(1, cancellationToken);
         _lastSaveYield = Stopwatch.GetTimestamp();
     }

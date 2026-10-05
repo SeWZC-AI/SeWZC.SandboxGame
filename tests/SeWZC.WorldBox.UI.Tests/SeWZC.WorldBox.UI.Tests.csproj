@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../src/SeWZC.WorldBox.Desktop/DesktopWorldStorage.cs" Link="Platform/DesktopWorldStorage.cs" />
     <ProjectReference Include="../../src/SeWZC.WorldBox.UI/SeWZC.WorldBox.UI.csproj" />
     <PackageReference Include="Avalonia.Headless" Version="$(AvaloniaVersion)" />
   </ItemGroup>

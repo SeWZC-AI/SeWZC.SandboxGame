@@ -96,7 +96,7 @@ WORLDBOX_BASE_URL=http://127.0.0.1:8080/probe/ CHROMIUM_EXECUTABLE=/usr/bin/chro
 
 需先将 `publish/wwwroot` 放在上述 `/probe/` 服务路径；夹具可以由现有 `--export-browser-fixture` 生成。`WORLDBOX_PROFILE_CASES` 可筛选 `default-far-1,default-far-5,default-near-5,large-far-1,large-far-5,large-near-5,large-auto-5`，默认普通场景观察 15 秒，自动保存场景 38 秒。`WORLDBOX_PROFILE_SECONDS` 设置普通场景时长；`WORLDBOX_PROFILE_DEFAULT_FIXTURE` 可指定此前保存的默认世界，避免两个版本初次启动后日序或群落数量不同。对正式产物运行同一脚本会只记录推进、长任务和浏览器动画帧机会，不要求它暴露探针。
 
-隔离副本额外允许 `WORLDBOX_PROFILE_EXACT_TERRAIN=1` 做地形资源失效条件的实验对照；这个开关只存在于副本中，不是正式产品选项。它限定资源量只影响森林树桩阈值，不改变世界；当前正式实现已采用此条件，隔离副本可用 `WORLDBOX_PROFILE_LEGACY_TERRAIN=1` 恢复旧失效条件作对照；需用相同夹具、相同视角与无并发负载分别测原条件与实验条件。嵌套计时不能直接全部相加，`Save.Serialize` 在缓冲保存实现中包含让出执行权的等待，异步存储等待也不能全部归为主线程阻塞；动画帧机会不等于实际绘制 FPS。原始逐次计时与汇总一起保留，并补一轮未插桩对照以检查探针对结论的影响。
+隔离副本额外允许 `WORLDBOX_PROFILE_EXACT_TERRAIN=1` 做地形资源失效条件的实验对照；这个开关只存在于副本中，不是正式产品选项。它限定资源量只影响森林树桩阈值，不改变世界；当前正式实现已采用此条件，隔离副本可用 `WORLDBOX_PROFILE_LEGACY_TERRAIN=1` 恢复旧失效条件作对照；需用相同夹具、相同视角与无并发负载分别测原条件与实验条件。嵌套计时不能直接全部相加，`Save.Serialize` 在缓冲保存实现中包含让出执行权的等待（格式 16 的自动保存使用 `ExportJsonChunksAsync`），异步存储等待也不能全部归为主线程阻塞；动画帧机会不等于实际绘制 FPS。原始逐次计时与汇总一起保留，并补一轮未插桩对照以检查探针对结论的影响。
 
 `tests/browser/saving.cjs <当前格式大世界存档>` 通过实际按钮与拖动验证保存时镜头可用、日序一致、编辑取消与 Worker 不可用时的回退；CI 使用构建任务生成并上传的同一大世界夹具。存储 Worker 不继承文档 import map，必须使用发布后实际解析的模块 URL。
 
@@ -201,3 +201,10 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 `WorldEngine.ResearchGameplay.cs` 负责文明条件、公共服务、新岗位、铁路、折跃与射击，`WorldEngine.KnowledgeQueries.cs` 负责逐日派生知识索引。研究声明的建筑／职业／法术与操作入口由 `MainView.ResearchActions.cs` 执行正常编辑命令，不能在测试桥中添加修改入口。可变保存字段必须同步验证；枚举槽 18、23 为已删除的错误帝国项目，不得复用。
 
 完整模拟以 `GetCivilizationProgress` 为同一判据，必须检查配套设施的健康、停用、领地、完成状态及真实首批记录。`ResearchGameplayTests` 验证新机制的成本、范围、交战知识、拒绝时不变和保存续演；浏览器 `research-gameplay.cjs` 在桌面／触屏走实际岗位、建造、铁路、折跃与法术入口，`research-trees.cjs` 导入当前交付 ZIP 检查图形与只读行为。新增内容不能仅依赖 enum 数量测试。
+
+
+### 存档性能复现
+
+Release 构建后可独立运行 `dotnet tests/SeWZC.WorldBox.Core.Tests/bin/Release/net10.0/SeWZC.WorldBox.Core.Tests.dll --profile-save --output artifacts/save-performance.json`。该入口创建 256×256、2,000 居民的同一受控世界，预热一次并测量三次实际分块捕获，记录未压缩大小、耗时、最长同步切片、让出次数和总分配量。它与功能套件分开，禁止与构建、测试或浏览器负载并发测量；原生结果不能换算为浏览器帧率。零值／精确种群与确定续演由功能套件验证，真实压缩、无 Worker／无压缩 API、取消和损坏存储元数据由 `tests/browser/saving.cjs` 验证。
+
+保存浏览器套件额外验证真实自动保存及暂停后 33 秒内不重复保存。定位问题时可用 `WORLDBOX_SAVE_CASES=worker,fallback,uncompressed` 筛选路径；未设置时运行全部三种路径。`uncompressed` 同时禁用 scheduler，验证 MessageChannel 的让出回退；各场景均使用隔离的浏览器上下文。
