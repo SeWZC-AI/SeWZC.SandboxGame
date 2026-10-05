@@ -19,7 +19,7 @@ fs.mkdirSync(output, { recursive: true });
                 await page.goto(testUrl(process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.SandboxGame/'));
                 await ui.ready(); await ui.paused();
                 const generated = await ui.save();
-                assert.equal(generated.FormatVersion, 14);
+                assert.equal(generated.FormatVersion, 15);
                 assert.equal(generated.Settlements.length, 4);
                 assert(generated.Tiles.every(t => Number.isFinite(t.rain) && t.rain >= 0));
                 assert(generated.Tiles.some(t => t.RiverWidth === 1));
@@ -41,18 +41,25 @@ fs.mkdirSync(output, { recursive: true });
                     assert.equal(tile.RiverWidth || 0,width, `${terrain} width failed`);
                     await ui.clickTile(64,64); await ui.click('selection-view');
                     const detail = ui.control(await ui.snapshot(),'tile-water').value;
-                    assert.match(detail,/生成海拔/); assert.match(detail,/降水/); assert.match(detail,/河湖补水/);
-                    assert.match(detail,/人类：/); assert.match(detail,/精灵：/); assert.match(detail,/矮人：/); assert.match(detail,/兽人：/);
+                    assert.match(detail,/供水量|淡水源：无限供水/);
+                    assert.doesNotMatch(detail,/海拔|今日剩余|人类：|精灵：|矮人：|兽人：/);
+                    assert.equal(ui.control(await ui.snapshot(),'tile-context').value,'False');
                     assert.doesNotMatch(detail,/水道宽度|未取用的水不累计/);
                     if (terrain === 'Stream') assert.match(detail,/可涉水，速度较慢/);
-                    if (terrain === 'AlpineMeadow') await page.screenshot({path:path.join(output,`geography-${mobile?'mobile':'desktop'}.png`)});
+                    if (terrain === 'AlpineMeadow') {
+                        await ui.click('tile-context', { scroll: 'inspector-scroll' });
+                        assert.equal(ui.control(await ui.snapshot(),'tile-geography').value,'False');
+                        await ui.click('tile-geography', { scroll: 'inspector-scroll' });
+                        assert.equal(ui.control(await ui.snapshot(),'tile-geography').value,'True');
+                        await page.screenshot({path:path.join(output,`geography-${mobile?'mobile':'desktop'}.png`)});
+                    }
                     await ui.click('inspector-close');
                     assert.deepEqual(await ui.save(),saved,'Geography inspection changed the paused world');
                 }
                 await page.reload(); await ui.ready(); await ui.paused();
                 const restored = await ui.save(); assert.equal(restored.Tiles[64 * restored.Width + 64].Terrain,22);
                 await diagnostics.assertHealthy('geography generation, nine terrain tools and save reload');
-                console.log(`PASS ${mobile?'mobile':'desktop'}: climate fields, river widths, nine terrains, racial adaptation details and read-only save reload`);
+                console.log(`PASS ${mobile?'mobile':'desktop'}: climate fields, river widths, nine terrains, single water supply, folded elevation and read-only save reload`);
             } finally { await context.close(); }
         }
     } finally { await browser.close(); }

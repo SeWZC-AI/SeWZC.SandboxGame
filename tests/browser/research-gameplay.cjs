@@ -85,6 +85,7 @@ fs.mkdirSync(output, { recursive: true });
                 assert.equal(ui.control(await ui.snapshot(), 'building-kind').value, '50');
                 assert.equal(ui.control(await ui.snapshot(), 'building-bridge-direction').visible, false);
                 await ui.click('modal-close');
+                await ui.click('research-route-magic', inspector);
                 await ui.click('research-branch-元素与结界', inspector); await ui.click('research-fit', inspector);
                 await ui.point('research-graph', inspector); await ui.click('research-node-BattleMagic', inspector);
                 if (mobile) { while ((await ui.snapshot()).researchGraph.zoom < .95) await ui.click('research-zoom-in', inspector); await ui.click('research-focus', inspector); }
