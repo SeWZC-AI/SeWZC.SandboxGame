@@ -522,11 +522,12 @@ public sealed partial class MainView : UserControl
         _wasBackground = false;
         if (!WorldTimeStopped)
         {
-            _accumulator = Math.Min(.8, _accumulator + elapsed * _speed);
+            // 五倍档最多保留八日欠账，让偶发慢帧之后仍能追回真实模拟步。
+            _accumulator = Math.Min(_speed == 5 ? 1.6 : .8, _accumulator + elapsed * _speed);
             var work = Stopwatch.GetTimestamp();
             var count = 0;
-            // 高速模拟可能需一轮推进两日补回漏帧，须在有界回调时间内为地图刷新预留预算。
-            var budgetMilliseconds = _speed == 1 ? 12 : 48;
+            // 五倍档为补算及地图预留 64 ms，仍最多推进四个完整日并让出界面线程。
+            var budgetMilliseconds = _speed == 1 ? 12 : _speed == 5 ? 64 : 48;
             while (_accumulator >= .2 && count < 4)
             {
                 // 追加模拟日前先预留上一轮地图刷新耗时；首日再贵也须推进，避免世界停滞。
@@ -545,7 +546,7 @@ public sealed partial class MainView : UserControl
             {
                 _map.SimulationTickFraction = Math.Clamp(_accumulator / .2, 0, .999999);
                 var mapStarted = Stopwatch.GetTimestamp();
-                _map.RefreshWorld();
+                _map.RefreshWorld(deferAnimation: _speed == 5);
                 _lastMapRefreshMilliseconds = Stopwatch.GetElapsedTime(mapStarted).TotalMilliseconds;
             }
 

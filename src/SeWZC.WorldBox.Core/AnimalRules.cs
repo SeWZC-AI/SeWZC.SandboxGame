@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>可组合的动物栖息地类别，用于匹配地形环境。</summary>
@@ -112,6 +114,46 @@ public static class AnimalRules
     private static readonly WildlifeKind[][] Predators = Enumerable.Range(0, SpeciesCount)
         .Select(i => Species.Where(p => CanPreyOn(p, (WildlifeKind)i)).ToArray()).ToArray();
 
+    internal static readonly int HerbivoreMask = Species.Where(k => For(k).Diet == AnimalDiet.Herbivore)
+        .Aggregate(0, (mask, k) => mask | 1 << (int)k);
+
+    private static readonly int[] HabitatMasks = Enum.GetValues<TerrainType>()
+        .Select(t => Species.Where(k => (For(k).Habitats & Habitat(t)) != 0)
+            .Aggregate(0, (mask, k) => mask | 1 << (int)k)).ToArray();
+
+    private static readonly int[] PredatorMasks = Predators
+        .Select(kinds => kinds.Aggregate(0, (mask, k) => mask | 1 << (int)k)).ToArray();
+
+    private static readonly double[] BodyMasses = Definitions.Select(a => a.BodyMass).ToArray();
+
+    internal static ReadOnlySpan<WildlifeKind> PreyFor(AnimalSize size)
+    {
+        return PreyFor(size == AnimalSize.Small ? WildlifeKind.Fox :
+            size == AnimalSize.Medium ? WildlifeKind.Wolf : WildlifeKind.Bear);
+    }
+
+    /// <summary>同体型捕食者共享相同猎物清单，按原物种顺序汇总快照生物量。</summary>
+    internal static void FillPreyBiomass(ReadOnlySpan<double> populations, ReadOnlySpan<byte> competitors,
+        Span<double> biomass, Span<double> sharedBiomass)
+    {
+        for (var size = 0; size < 3; size++)
+        {
+            var mass = 0d;
+            var share = 0d;
+            foreach (var prey in PreyFor((AnimalSize)size))
+            {
+                var population = populations[(int)prey];
+                if (population == 0) continue;
+                var amount = population * BodyMasses[(int)prey];
+                mass += amount;
+                share += amount / competitors[(int)prey];
+            }
+
+            biomass[size] = mass;
+            sharedBiomass[size] = share;
+        }
+    }
+
     internal static ReadOnlySpan<WildlifeKind> EdibleAnimals(bool aquatic)
     {
         return aquatic ? EdibleWaterAnimals : EdibleLandAnimals;
@@ -173,11 +215,12 @@ public static class AnimalRules
         return Math.Max(1, count);
     }
 
-    internal static void FillCapacities(Tile tile, Span<double> capacities, Span<byte> competitors)
+    internal static int FillCapacities(Tile tile, Span<double> capacities, Span<byte> competitors)
     {
         capacities.Clear();
-        competitors.Clear();
-        var herbs = 0;
+        competitors.Fill(1);
+        if (tile.FireTicks > 0) return 0;
+        var eligible = 0;
         var habitat = Habitat(tile.Terrain);
         var aquatic = WorldEngine.IsWaterTerrain(tile.Terrain);
         var water = aquatic ? 1 : tile.NaturalWaterYield;
@@ -187,22 +230,29 @@ public static class AnimalRules
                 tile.Plants.Grass + tile.Plants.Shrubs * .8 + tile.Plants.Trees * .55 + tile.Plants.Reeds * .8, 0, 1);
         var food = (.2 + tile.Fertility / 125d) * vegetation;
         var resources = Math.Clamp(tile.ResourceAmount / 100, 0, 1);
-        foreach (var kind in Species)
+        var candidates = HabitatMasks[(int)tile.Terrain];
+        while (candidates != 0)
         {
+            var kind = (WildlifeKind)BitOperations.TrailingZeroCount((uint)candidates);
+            candidates &= candidates - 1;
             var raw = RawCapacity(tile, kind, habitat, aquatic, water, food, resources);
             capacities[(int)kind] = raw;
-            if (raw > 0 && For(kind).Diet == AnimalDiet.Herbivore) herbs++;
+            if (raw > 0) eligible |= 1 << (int)kind;
         }
 
-        foreach (var kind in Species)
+        var herbs = Math.Max(1, BitOperations.PopCount((uint)(eligible & HerbivoreMask)));
+        var herbivores = HerbivoreMask;
+        var predators = eligible & ~HerbivoreMask;
+        while (herbivores != 0)
         {
-            if (For(kind).Diet == AnimalDiet.Herbivore) capacities[(int)kind] /= Math.Max(1, herbs);
-            var count = 0;
-            foreach (var predator in Predators[(int)kind])
-                if (capacities[(int)predator] > 0)
-                    count++;
-            competitors[(int)kind] = (byte)Math.Max(1, count);
+            var species = BitOperations.TrailingZeroCount((uint)herbivores);
+            herbivores &= herbivores - 1;
+            capacities[species] /= herbs;
+            competitors[species] = (byte)Math.Max(1,
+                BitOperations.PopCount((uint)(predators & PredatorMasks[species])));
         }
+
+        return eligible;
     }
 
     /// <summary>计算地形、供水与植被允许的物种容量，食草动物共享植物预算；不含实际猎物限制。</summary>

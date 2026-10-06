@@ -161,7 +161,7 @@ public sealed partial class Tile
 
     /// <summary>当前数量大于零的物种位掩码，位序对应物种编号。</summary>
     [JsonIgnore]
-    public int WildlifeMask => OtherWildlife.ActiveMask | (WildlifePopulation > 0 ? 1 << (int)Wildlife : 0);
+    public int WildlifeMask => _otherWildlife.ActiveMask | (_wildlifePopulation > 0 ? 1 << (int)_wildlife : 0);
 
     private void InvalidateEdibleAnimals()
     {
@@ -192,7 +192,14 @@ public sealed partial class Tile
     /// <param name="kind">动物物种。</param>
     public double AnimalPopulation(WildlifeKind kind)
     {
-        return kind == Wildlife ? WildlifePopulation : OtherWildlife.Get(kind);
+        return kind == _wildlife ? _wildlifePopulation : _otherWildlife.Get(kind);
+    }
+
+    /// <summary>直接复制字段中的种群快照，避免值类型属性额外复制整组动物数据。</summary>
+    internal void CopyAnimalPopulations(Span<double> destination)
+    {
+        _otherWildlife.CopyTo(destination);
+        destination[(int)_wildlife] = _wildlifePopulation;
     }
 
     internal void SetAnimalPopulation(WildlifeKind kind, double population)

@@ -59,7 +59,7 @@ stages = [
     ('Growth', 'if (State.Tick % 12 == 0) GrowSettlements();'),
     ('Territory', 'if (State.Tick % 30 == 0) RefreshTerritoryClaims();'),
     ('Armies', 'UpdateArmies();'), ('Archive', 'ArchiveDeadResidents();'),
-    ('RemoveSettlements', 'foreach (var settlement in State.Settlements.Where(s => _citizens[s.Id].Count == 0).ToArray()) RemoveSettlement(settlement, "居民离散，聚落成为遗址");'),
+    ('RemoveSettlements', 'foreach (var settlement in State.Settlements.Where(s => _citizens[s.Id].Count == 0).ToArray())\n                    RemoveSettlement(settlement, "居民离散，聚落成为遗址");'),
     ('RemoveNations', 'RemoveEmptyNations();'), ('Topology', 'ReconcileSocietyTopology();'),
     ('Totals', 'RefreshTotals();'), ('Projects', 'ObserveProjects();')
 ]
@@ -90,7 +90,7 @@ else:
     text = text[:first] + save + text[last:]
 path.write_text(text)
 for file, signature, name in [
-    ('WorldMapControl.cs', '    public void RefreshWorld(bool resetCamera = false)', 'Map.RefreshWorld'),
+    ('WorldMapControl.cs', '    public void RefreshWorld(bool resetCamera = false, bool deferAnimation = false)', 'Map.RefreshWorld'),
     ('WorldMapControl.cs', '    public override void Render(DrawingContext context)', 'Map.Render'),
     ('WorldMapControl.cs', '    private void RebuildChangedChunks()', 'Map.Terrain'),
     ('WorldMapControl.cs', '    private void RebuildResidents()', 'Map.ResidentGeometry'),
@@ -105,8 +105,8 @@ for file, signature, name in [
 # counterfactual only narrows presentation invalidation to DrawTerrainTile inputs.
 path = destination / ui / 'Controls/WorldMapControl.cs'
 text = path.read_text()
-text = replace_once(text, '            uint terrainHash = 2166136261;',
-    f'            var hashProbe = {scope("Map.HashScan", "state.Tick")};\n            uint terrainHash = 2166136261;', 'chunk hash start')
+text = replace_once(text, '            var terrainHash = 2166136261;',
+    f'            var hashProbe = {scope("Map.HashScan", "state.Tick")};\n            var terrainHash = 2166136261;', 'chunk hash start')
 text = replace_once(text, '            var key = (cx, cy);', '            hashProbe.Dispose();\n            var key = (cx, cy);', 'chunk hash end')
 text = replace_once(text, '            if (chunk.Terrain is null || chunk.TerrainHash != terrainHash)\n            {',
     '            if (chunk.Terrain is null || chunk.TerrainHash != terrainHash)\n            {\n' + f'                using var terrainProbe = {scope("Map.TerrainBuild", "state.Tick")};', 'terrain build')

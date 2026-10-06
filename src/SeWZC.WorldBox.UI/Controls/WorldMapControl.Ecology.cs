@@ -19,6 +19,10 @@ public sealed partial class WorldMapControl
 
     private bool _ecologyDirty = true;
     private (int Left, int Right, int Top, int Bottom) _ecologyViewport;
+    private EcologyViewInput[] _ecologyInputs = [];
+    private bool _ecologyShowWildlife, _ecologyShowPlants;
+    /// <summary>近景生态绘制缓存重建次数，用于呈现诊断。</summary>
+    public int EcologyCacheBuildCount { get; private set; }
     /// <summary>是否绘制近景动物图标。</summary>
     public bool ShowWildlife { get; set; } = true;
     /// <summary>是否绘制近景植物图标。</summary>
@@ -251,10 +255,14 @@ public sealed partial class WorldMapControl
         RenderedPlantCount = 0;
         if (_zoom < 3) return;
         var viewport = VisibleTiles(state);
-        if (_ecologyDirty || viewport != _ecologyViewport)
+        var changed = (_ecologyDirty || viewport != _ecologyViewport) && EcologyInputsChanged(state, viewport);
+        _ecologyDirty = false;
+        _ecologyViewport = viewport;
+        if (changed)
         {
-            _ecologyDirty = false;
-            _ecologyViewport = viewport;
+            Span<double> capacities = stackalloc double[AnimalRules.SpeciesCount];
+            Span<WildlifeKind> groups = stackalloc WildlifeKind[6];
+            EcologyCacheBuildCount++;
             _wildlifeDraws.Clear();
             _depositDraws.Clear();
             _plantDraws.Clear();
@@ -280,16 +288,18 @@ public sealed partial class WorldMapControl
                     }
                 }
 
-                if (ShowWildlife)
+                if (ShowWildlife && tile.WildlifeMask != 0)
                 {
+                    WorldEngine.FillWildlifeCapacities(tile, capacities);
+                    WorldEngine.FillVisibleWildlife(tile, groups);
                     var slot = 0;
                     for (var group = 0; group < 6; group++)
                     {
-                        var kind = WorldEngine.VisibleWildlife(tile, group);
+                        var kind = groups[group];
                         if (kind == WildlifeKind.None) continue;
                         var population = tile.AnimalPopulation(kind);
                         var scale = .25 + .75 *
-                            Math.Clamp(population / Math.Max(1, WorldEngine.WildlifeCapacity(tile, kind)), 0, 1);
+                            Math.Clamp(population / Math.Max(1, capacities[(int)kind]), 0, 1);
                         var size = (AnimalRules.For(kind).Size == AnimalSize.Large ? 3.2 :
                             AnimalRules.For(kind).Size == AnimalSize.Small ? 2.2 : 2.8) * scale;
                         var cx = (x + .25 + slot % 3 * .28) * TilePixels;
@@ -324,4 +334,47 @@ public sealed partial class WorldMapControl
         foreach (var (icon, bounds) in _wildlifeDraws) context.DrawImage(icon, bounds);
         RenderedWildlifeCount = _wildlifeDraws.Count;
     }
+
+    private bool EcologyInputsChanged(WorldState state, (int Left, int Right, int Top, int Bottom) viewport)
+    {
+        var count = (viewport.Right - viewport.Left + 1) * (viewport.Bottom - viewport.Top + 1);
+        var changed = viewport != _ecologyViewport || ShowWildlife != _ecologyShowWildlife || ShowPlants != _ecologyShowPlants;
+        if (_ecologyInputs.Length != count)
+        {
+            _ecologyInputs = new EcologyViewInput[count];
+            changed = true;
+        }
+
+        _ecologyShowWildlife = ShowWildlife;
+        _ecologyShowPlants = ShowPlants;
+        var slot = 0;
+        for (var y = viewport.Top; y <= viewport.Bottom; y++)
+        for (var x = viewport.Left; x <= viewport.Right; x++)
+        {
+            var tile = state.Tiles[y * state.Width + x];
+            var deposit = tile.Deposit is { } resource && VisibleResources.Contains(resource)
+                && Engine!.IsDepositVisible(tile, ResourceVisibility) ? tile.Deposit : null;
+            var vertical = y + 1 < state.Height && state.Tiles[(y + 1) * state.Width + x].Terrain is
+                TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver;
+            // 输入精确比较；饱和资源及灾害剩余时长不改变图形，不触发整层重建。
+            var input = new EcologyViewInput(tile.Terrain, tile.Fertility, tile.Improvement, tile.SettlementId != 0,
+                tile.DroughtTicks > 0, tile.FireTicks > 0, tile.ResourceAmount > 0,
+                Math.Clamp(tile.ResourceAmount / 100, 0, 1), tile.NaturalWaterYield, tile.Plants,
+                tile.Wildlife, tile.WildlifePopulation, tile.OtherWildlife, deposit, vertical);
+            if (_ecologyInputs[slot] != input)
+            {
+                _ecologyInputs[slot] = input;
+                changed = true;
+            }
+
+            slot++;
+        }
+
+        return changed;
+    }
+
+    private readonly record struct EcologyViewInput(TerrainType Terrain, byte Fertility, LandImprovement Improvement,
+        bool Settled, bool Drought, bool Fire, bool HasResources, double Resources, double Water,
+        PlantCoverage Plants, WildlifeKind Wildlife, double Population, WildlifePopulations Others,
+        ResourceKind? Deposit, bool VerticalWater);
 }

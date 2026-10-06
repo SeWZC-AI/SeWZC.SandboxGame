@@ -198,11 +198,16 @@ public sealed record Advancement(
 /// <summary>查询科技与魔法路线的研究及实体生产配方，两条路线可以独立发展。</summary>
 public static class AdvancementRules
 {
-    private static readonly IReadOnlyDictionary<ResearchKind, Advancement> ByResearch =
-        All.ToDictionary(a => a.Research);
+    private static readonly IReadOnlyDictionary<ResearchKind, Advancement> ByResearch;
 
-    private static readonly IReadOnlyDictionary<BuildingKind, Advancement> ByBuilding =
-        All.ToDictionary(a => a.Facility);
+    private static readonly IReadOnlyDictionary<BuildingKind, Advancement> ByBuilding;
+
+    static AdvancementRules()
+    {
+        // 所有字段初始化完成后再建立索引，避免读取尚未赋值的 All。
+        ByResearch = All.ToDictionary(a => a.Research);
+        ByBuilding = All.ToDictionary(a => a.Facility);
+    }
 
     private static readonly Advancement DockRecipe = new(ResearchKind.Logistics, "造船", "古代", false, [],
         new ResourceStock(),
