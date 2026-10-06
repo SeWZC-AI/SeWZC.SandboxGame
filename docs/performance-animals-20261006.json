@@ -1339,5 +1339,66 @@
     "Default full-map 5x reaches about 25 days/second. Close view and 2000-resident stress remain below this target.",
     "Exact save digests match only the measured native worlds; this is not a proof for every possible world.",
     "Final raw samples, fixtures, logs and source probes remain in the ignored artifacts/animal-performance-20261006 directory."
-  ]
+  ],
+  "pushIntegrationVerification": {
+    "upstreamCommit": "14d9167d3c5f199a00167cdab4890bc6981c6a59",
+    "validatedCommit": "8cead74e316ab066f7f7d1e557a93f0c4bca8012",
+    "sourceSha256": "a656fe77b1fe67fe8f13b48aea266b86f549559ec4c2a8850971375548320772",
+    "productionCsharpFiles": 97,
+    "tokenComparison": {
+      "againstCommit": "72f9c39ad453f09777858bb8e7f218ced313915e",
+      "srcAndTestsCsharpFiles": 133,
+      "differences": 0,
+      "tool": "Microsoft.CodeAnalysis.CSharp (.NET SDK 10.0.401)"
+    },
+    "releaseBuild": {
+      "warnings": 0,
+      "errors": 0
+    },
+    "fastChecks": {
+      "coreUnitPassed": 91,
+      "uiPassed": 56,
+      "totalSecondsIncludingProcessStartup": 9.8
+    },
+    "browserPublish": "Trimmed, single-threaded, non-AOT Release; static asset checks passed.",
+    "browserModuleSha256": {
+      "_framework/SeWZC.WorldBox.Browser.qrqr3q6kyj.wasm": "46ab2a10afb6daac0f52c9df8ff686c4c69a8258c8ec69f81f60cc832e2f6170",
+      "_framework/SeWZC.WorldBox.Core.udcxmoesxq.wasm": "0e2d8a873bf9e228af8cbfcb7308bf83b643c7d3e430cf870f82700053cb91ed",
+      "_framework/SeWZC.WorldBox.UI.goefxtcm4c.wasm": "108d4f7a64d276972740a2fbba44a6486247d9d07a05fa6fa67de68e3d537798"
+    },
+    "localBrowserSmoke": {
+      "url": "http://127.0.0.1:8088/SeWZC.SandboxGame/",
+      "revision": "8cead74e316ab066f7f7d1e557a93f0c4bca8012",
+      "seconds": 27.606496645,
+      "savedTick": 2,
+      "restoredTick": 3,
+      "rendererChecks": [
+        {
+          "stage": "deployed startup",
+          "renderer": "no fallback diagnostics"
+        },
+        {
+          "stage": "deployed save recovery",
+          "renderer": "no fallback diagnostics"
+        }
+      ]
+    },
+    "independentReview": {
+      "context": "empty (fork_turns=none)",
+      "scope": "All 17 changed files against origin/main, related call chains, and retained measurement evidence. Read-only review; no independent build, browser run or performance measurement.",
+      "findings": []
+    },
+    "limitations": [
+      "No new performance measurements after integrating comments; retained performance results remain attributed to their original source fingerprint.",
+      "Integration and long-running ecology tests were not rerun for comment-only integration; all 133 C# files have identical tokens to the validated pre-integration version.",
+      "Local browser smoke is not public deployment verification."
+    ],
+    "logs": [
+      "/tmp/worldbox-push-token-check.log",
+      "/tmp/worldbox-push-build.log",
+      "/tmp/worldbox-push-fast.log",
+      "/tmp/worldbox-push-publish.log",
+      "/tmp/worldbox-push-smoke.log"
+    ]
+  }
 }
