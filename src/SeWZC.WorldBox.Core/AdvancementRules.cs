@@ -96,8 +96,8 @@ public static class AdvancementRules
             kind == BuildingKind.Shipyard ? DockRecipe : ByBuilding.GetValueOrDefault(kind);
     }
 
-    /// <summary>将不可变资源数量格式化为摘要。</summary>
-    /// <param name="stock">不可变的配方或成本。</param>
+    /// <summary>将资源数量格式化为摘要。</summary>
+    /// <param name="stock">配方或成本所需的资源数量。</param>
     public static string Stock(ResourceAmounts stock)
     {
         return string.Join("   ", Resources.Where(k => stock.Get(k) > 0)

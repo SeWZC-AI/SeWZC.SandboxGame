@@ -109,7 +109,7 @@ public sealed partial class WorldMapControl : Control
         }
     }
 
-    /// <summary>当前地图工具，由工具对象负责校验、预览和执行。</summary>
+    /// <summary>当前地图工具。</summary>
     public MapTool ActiveTool
     {
         get => _activeTool;

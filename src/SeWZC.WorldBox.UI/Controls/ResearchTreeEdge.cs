@@ -9,10 +9,8 @@ namespace SeWZC.WorldBox.UI.Controls;
 /// <param name="points">在未缩放画布中的连接折线顶点。</param>
 public sealed class ResearchTreeEdge(ResearchKind from, ResearchKind to, Point[] points)
 {
-    /// <summary>作为前置的研究节点。</summary>
     public ResearchKind From { get; } = from;
-    /// <summary>依赖该前置的后续研究节点。</summary>
     public ResearchKind To { get; } = to;
-    /// <summary>在未缩放画布中的折线顶点，构造时复制。</summary>
+    /// <summary>在未缩放画布中的连接折线顶点。</summary>
     public IReadOnlyList<Point> Points { get; } = Array.AsReadOnly((Point[])points.Clone());
 }

@@ -18,7 +18,6 @@ public sealed partial class WorldEngine
         return missing is null ? null : "需要先掌握" + string.Join("、", missing);
     }
 
-    // 热点校验直接遍历不可变数组，不为每栋设施或岗位创建捕获聚落编号的委托。
     private bool HasResearchPrerequisites(int settlementId, ImmutableArray<ResearchKind> prerequisites)
     {
         foreach (var prerequisite in prerequisites.AsSpan())

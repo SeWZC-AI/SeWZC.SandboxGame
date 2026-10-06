@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>分支身份、路线归属和图形泳道与显示名称分开维护。</summary>
+/// <summary>研究分支及其路线归属和布局分组。</summary>
 public sealed class ResearchBranch
 {
     private ResearchBranch(string name, bool shared = false, string? lane = null)

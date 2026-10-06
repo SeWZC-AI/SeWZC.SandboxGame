@@ -172,9 +172,9 @@ public sealed partial class WorldEngine
         return missing.Count == 0 ? null : string.Join("\n", missing);
     }
 
-    /// <summary>检查不可变成本对应的资源缺口。</summary>
-    /// <param name="stock">实际可变库存。</param>
-    /// <param name="cost">不可变资源成本。</param>
+    /// <summary>比较现有库存与所需成本，返回缺少的资源说明；足够时返回空值。</summary>
+    /// <param name="stock">当前资源库存。</param>
+    /// <param name="cost">操作所需的资源数量。</param>
     public static string? MissingResources(ResourceStock stock, ResourceAmounts cost)
     {
         var missing = new List<string>();
