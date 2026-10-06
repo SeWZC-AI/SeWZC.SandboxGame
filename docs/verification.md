@@ -4,14 +4,13 @@
 
 ## 最近验证
 
-2026-10-06 强类型重构的推送复验对应源码提交 **`bcb78d754090a0a36232a269320b871df7ec0a83`**，已整合远端 **`c83b44d326eb812803d74918d06b28ac0da9ce07`** 的类型拆分、动物优化和废弃状态清理。环境为 Debian 13 / x64、.NET SDK 10.0.401、Runtime 10.0.12；193 个生产 C# 文件的 SHA-256 为 `df82ee1c5b0cb4f9f64fad38710c39460e81ee167cbc4c26a762915e9190f0ff`。摘要按排序后的 `src/**/*.cs` 相对路径、NUL、文件内容、NUL 依次计算，排除 `bin`／`obj`。后续验证记录提交只修改本页。
+2026-10-07 公开 API 注释与构建检查对应源码提交 **`0c9b8ce`**，通过 rebase 整合远端 **`9569b6a`**。保留远端已有注释与类型重组，补齐新接口和属性的中文 XML 注释，并启用文档生成及 `CS1591` 错误检查。环境为 Linux 云环境、.NET SDK 10.0.401 与 `wasm-tools`。
 
-- `dotnet build scripts/ci-build.slnf -c Release --no-restore` 通过，**0 警告／错误**；`python3 scripts/run-fast-tests.py` 通过 **94/94 核心单元、57/57 Headless UI**，合计 **7.81 秒**，包含进程启动。
-- `--suite integration` 通过 **122/122**，耗时 **30.24 秒**；`--suite long --filter 'technology civilizations complete real industrial production within a century'` 通过 **1/1**，耗时 **47.88 秒**。种子 73921／42 分别在第 29／4 年发生实际工业生产，并完成百年推进及保存续演。
-- 回归覆盖共享规则集合和费用的隔离、不可变资源读取零分配、多态研究操作、地图连续笔画与单次投放、切换工具、只读导航及当前格式保存恢复。保留远端的同名类型文件与保存／模拟版本。
-- 同机串行比较上述远端基线和源码提交，使用现有 `--profile-simulation --population 2000 --warmup 60 --ticks 120 --repetitions 3`，两侧均设置 `DOTNET_TieredCompilation=0`。种子 451、256×256、16 国、8 场战争，无自然灾害，预热及序列化在计时外。平均墙钟 **5.400 → 5.438 ms/tick**（+0.71%），进程 CPU **5.429 → 5.435 ms/tick**（+0.11%），平均分配 **1945724.4 → 1933167.4 bytes/tick**（−0.65%）。墙钟各轮范围为基线 5.254–5.487、重构 5.042–5.663 ms/tick；本次小幅均值差异处于组内波动范围，不能据此声称稳定加速或硬实时保证。
-- 六轮终态均为人口 2,035、日序 180、实际存档 **36,870,662 bytes**；完整存档 SHA-256 均为 `65FD3FCA2FB5B4D53913A2B03E399FA36766667ADFF98CE1639C63EDB8079F50`，并通过导入。原始日志、逐轮 JSON 与环境摘要保留在 `artifacts/strong-types-push-verification-20261006/`；整合前证据保留在 `artifacts/strong-types-verification-20261006/`，不归给当前源码。
-- 本轮未重新执行裁剪后的 WASM 发布、真实浏览器／触屏、完整长程套件、部署后公网检查或手机真机验证。原生性能不能换算为浏览器帧率；此前浏览器结论的源码归属可通过 Git 历史查阅。
+- 全项目 Release 构建通过，0 警告／错误，包含 Core、UI、Desktop、Browser 与测试项目。
+- **94/94 核心单元、57/57 Headless UI** 通过；快速检查合计 **7.70 秒**，包含两个进程启动。先前基线 `5906ff7` 的规则静态初始化异常在远端更新后不再复现。
+- Roslyn 核对本轮修改的 11 个 C# 文件与 `9569b6a` 的非注释语法 token，完全相同；本轮没有修改运行逻辑。`git diff --check` 通过。
+
+日志保存于本地忽略目录 `artifacts/api-docs-push-20261007/`。未重跑集成、长程或浏览器交互验收；此前结果通过 Git 历史查阅。
 
 ## 复现命令
 
