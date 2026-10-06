@@ -1,33 +1,4 @@
-using System.Text.Json.Serialization;
-
 namespace SeWZC.WorldBox.Core;
-
-/// <summary>聚落已取得的村、镇、城等级。</summary>
-public enum SettlementTier
-{
-    /// <summary>村。</summary>
-    Village,
-    /// <summary>镇。</summary>
-    Town,
-    /// <summary>城。</summary>
-    City,
-}
-
-public sealed partial class Settlement
-{
-    /// <summary>已经取得的村、镇或城等级。</summary>
-    [JsonRequired]
-    public SettlementTier Tier { get; set; }
-
-    /// <summary>本轮村镇城晋升已累计的施工进度。</summary>
-    public double ExpansionProgress { get; set; }
-    /// <summary>本轮村镇城晋升所需的总施工量，0 表示没有晋升项目。</summary>
-    public double ExpansionRequired { get; set; }
-
-    /// <summary>是否有正在进行的村镇城晋升项目。</summary>
-    [JsonIgnore]
-    public bool IsExpanding => ExpansionRequired > 0;
-}
 
 public sealed partial class WorldEngine
 {

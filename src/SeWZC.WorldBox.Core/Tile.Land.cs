@@ -2,30 +2,6 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>地格上的农田、山路或桥梁改良。</summary>
-public enum LandImprovement
-{
-    /// <summary>无地块改良。</summary>
-    None,
-    /// <summary>农田。</summary>
-    Farmland,
-    /// <summary>山路。</summary>
-    MountainPass,
-    /// <summary>桥梁。</summary>
-    Bridge,
-}
-
-/// <summary>居民步行、乘船或航空移动的方式。</summary>
-public enum TravelMode
-{
-    /// <summary>步行。</summary>
-    Foot,
-    /// <summary>舟船。</summary>
-    Boat,
-    /// <summary>运输机。</summary>
-    Aircraft,
-}
-
 public sealed partial class Tile
 {
     private LandImprovement _improvement;
@@ -62,11 +38,4 @@ public sealed partial class Tile
     /// <summary>最近记录的模拟日内，累计采收的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Harvested { get; set; }
-}
-
-public sealed partial class Resident
-{
-    /// <summary>当前移动采用的交通方式。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public TravelMode TravelMode { get; set; }
 }
