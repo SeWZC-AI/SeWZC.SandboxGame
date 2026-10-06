@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>不可变的配方与费用；定长字段保持直接读取，不为每次查询分配集合或库存副本。</summary>
+/// <summary>配方和费用所用的不可变资源数量。</summary>
 public sealed class ResourceAmounts
 {
     public double Water { get; init; }
@@ -41,7 +41,7 @@ public sealed class ResourceAmounts
         _ => throw new ArgumentOutOfRangeException(nameof(kind)),
     };
 
-    /// <summary>需要缩放或编辑费用时创建独立库存，不修改共享规则。</summary>
+    /// <summary>创建可编辑的资源副本。</summary>
     public ResourceStock Copy() => new()
     {
         Water = Water,

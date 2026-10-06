@@ -2,7 +2,7 @@ using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
-/// <summary>工具分类负责自身的选项和笔刷设置，不依赖文字判别。</summary>
+/// <summary>地图工具分类、选项和笔刷设置。</summary>
 public abstract class ToolCategory
 {
     private static readonly IReadOnlyList<string> BrushSizes = Array.AsReadOnly(new[] { "小笔刷", "中笔刷", "大笔刷" });

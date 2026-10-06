@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>研究解锁的额外操作通过多态分派；名称仅用于显示。</summary>
+/// <summary>研究解锁的操作入口。</summary>
 public abstract class ResearchAction
 {
     private protected ResearchAction() { }

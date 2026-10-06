@@ -3,7 +3,7 @@ using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
-/// <summary>地图工具携带强类型参数及行为；标识文字仅用于自动化快照。</summary>
+/// <summary>地图工具的参数、校验、预览和执行。</summary>
 public abstract record MapTool
 {
     private static readonly IReadOnlyDictionary<TerrainType, MapTool> TerrainTools =

@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>研究树的路线负责节点选择，显示文字不参与路线判断。</summary>
+/// <summary>研究树的路线及节点筛选规则。</summary>
 public abstract class ResearchRoute
 {
     private protected ResearchRoute() { }

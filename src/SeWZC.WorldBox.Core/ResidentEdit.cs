@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>居民修改补丁；空值保留原字段，初始化后不可替换，认知和经历编辑只影响未来行为。</summary>
+/// <summary>居民修改补丁；空值保留原字段，认知和经历编辑只影响未来行为。</summary>
 public sealed class ResidentEdit
 {
     /// <summary>要设置的姓名。</summary>
