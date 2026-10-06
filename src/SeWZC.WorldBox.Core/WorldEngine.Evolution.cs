@@ -38,12 +38,18 @@ public sealed partial class WorldEngine
             town.Resources.Food >= town.Population * 2 ? "积累余粮" : "建立家园";
         if (research.Completed.Any(k => AdvancementRules.For(k) is not null)) stage = GetAdvancementStage(town.Id);
         if (town.IsExpanding)
+        {
             return new DevelopmentSummary(stage, "扩充为" + SettlementTierName(town.Tier + 1), "居民到城镇中心施工；城镇中心等级独立",
                 town.ExpansionProgress / town.ExpansionRequired);
+        }
+
         if (construction is not null)
+        {
             return new DevelopmentSummary(stage, "修建" + BuildingName(construction.Kind),
                 State.Tick - construction.LastWorkedTick > 12 ? "等待工人实际到场；可查看居民任务" : "工人正在现场施工",
                 construction.ConstructionProgress / construction.ConstructionRequired);
+        }
+
         if (research.ActiveProject is { } project)
         {
             var academy = State.Society.Buildings.FirstOrDefault(b =>
@@ -72,9 +78,12 @@ public sealed partial class WorldEngine
         if (kind == BuildingKind.TownCenter) return "每处聚落的中心由定居和重建维护，无需另行放置";
         if (!_settlements.TryGetValue(settlementId, out var town)) return "先选择归属聚落";
         if (!InBounds(x, y) || !BuildingTerrainValid(kind, State.Tiles[Index(x, y)]))
+        {
             return IsWaterfrontBuilding(kind) ? "船坞和码头需要水中的近岸地块" :
                 kind == BuildingKind.Bridge ? "桥梁需要河流或浅水" :
                 kind == BuildingKind.MountainPass ? "山路需要山地" : "需要可通行的陆地";
+        }
+
         if (kind == BuildingKind.Well && WellWaterYield(State.Tiles[Index(x, y)]) <= 0)
             return "水井需要地块供水量高于 0.02 / 日，请选择供水更充足的地块";
         if (!CanBuildRacialFacility(settlementId, kind)) return "需要当地有该种族的成年居民";
@@ -185,11 +194,11 @@ public sealed partial class WorldEngine
         return IsFacilityOperating(building)
                && (building.Kind != BuildingKind.Well || WellWaterYield(State.Tiles[Index(building.X, building.Y)]) > 0)
                && (ResearchRules.Unlocking(building.Kind) is not { } unlock ||
-                   HasResearch(building.SettlementId, unlock.Kind)
-                   && unlock.Prerequisites.All(p => HasResearch(building.SettlementId, p)))
+                   (HasResearch(building.SettlementId, unlock.Kind)
+                    && unlock.Prerequisites.All(p => HasResearch(building.SettlementId, p))))
                && (building.Kind != BuildingKind.SignalTower ||
-                   HasResearch(building.SettlementId, ResearchKind.SignalNetwork) &&
-                   HasResearch(building.SettlementId, ResearchKind.Electrification));
+                   (HasResearch(building.SettlementId, ResearchKind.SignalNetwork) &&
+                    HasResearch(building.SettlementId, ResearchKind.Electrification)));
     }
 
     /// <summary>检查笔刷范围内修建道路的条件；可修建时返回空值，否则返回原因。</summary>
@@ -428,10 +437,18 @@ public sealed partial class WorldEngine
             relation.Reason = "友好往来促成结盟提议，等待实际送达与回应";
             AddPublicFact(capital, new AgentFact
             {
-                Id = NewId(), Kind = AgentFactKind.DiplomaticNotice, SubjectId = nation.Id,
-                TargetNationId = other.Id, Value = (int)DiplomaticStatus.Allied, X = capital.X, Y = capital.Y,
-                ObservedTick = State.Tick, LearnedTick = State.Tick, OriginResidentId = capital.RepresentativeId,
-                SourceResidentId = capital.RepresentativeId, OriginProfession = Profession.Representative,
+                Id = NewId(),
+                Kind = AgentFactKind.DiplomaticNotice,
+                SubjectId = nation.Id,
+                TargetNationId = other.Id,
+                Value = (int)DiplomaticStatus.Allied,
+                X = capital.X,
+                Y = capital.Y,
+                ObservedTick = State.Tick,
+                LearnedTick = State.Tick,
+                OriginResidentId = capital.RepresentativeId,
+                SourceResidentId = capital.RepresentativeId,
+                OriginProfession = Profession.Representative,
                 Text = "友好往来促成结盟提议，请对方议事回应",
             });
             var proposal = AddEvent(WorldEventKind.Diplomacy, $"{nation.Name}向{other.Name}提出结盟，等待消息实际送达。", capital.X,
@@ -470,10 +487,18 @@ public sealed partial class WorldEngine
             eventId: entry.Id);
         AddPublicFact(capital, new AgentFact
         {
-            Id = NewId(), EventId = entry.Id, Kind = AgentFactKind.DiplomaticNotice, SubjectId = nation.Id,
-            TargetNationId = other.Id, Value = (int)status, X = capital.X, Y = capital.Y, ObservedTick = State.Tick,
+            Id = NewId(),
+            EventId = entry.Id,
+            Kind = AgentFactKind.DiplomaticNotice,
+            SubjectId = nation.Id,
+            TargetNationId = other.Id,
+            Value = (int)status,
+            X = capital.X,
+            Y = capital.Y,
+            ObservedTick = State.Tick,
             LearnedTick = State.Tick,
-            OriginResidentId = capital.RepresentativeId, SourceResidentId = capital.RepresentativeId,
+            OriginResidentId = capital.RepresentativeId,
+            SourceResidentId = capital.RepresentativeId,
             OriginProfession = Profession.Representative,
             Text = $"{nation.Name}的外交声明：{reason}",
         });
@@ -528,9 +553,14 @@ public sealed partial class WorldEngine
             if (IsKnownHostile(person, town.NationId)) continue;
             person.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Migrate, TargetX = destination.X, TargetY = destination.Y,
-                TargetSettlementId = town.Id, StartedTick = State.Tick, ReviewTick = State.Tick + 360,
-                EvidenceFactId = destination.Id, CauseEventId = destination.EventId,
+                Kind = AgentGoalKind.Migrate,
+                TargetX = destination.X,
+                TargetY = destination.Y,
+                TargetSettlementId = town.Id,
+                StartedTick = State.Tick,
+                ReviewTick = State.Tick + 360,
+                EvidenceFactId = destination.Id,
+                CauseEventId = destination.EventId,
                 Reason = "长期饥饿，依据收到的粮情步行寻找可接纳的新家园",
             };
             person.Agent.NextThinkTick = State.Tick + 6;
@@ -565,8 +595,12 @@ public sealed partial class WorldEngine
         UpdateLocalWorkMembership(person, old);
         person.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.ReturnHome, TargetX = town.X, TargetY = town.Y,
-            TargetSettlementId = town.Id, StartedTick = State.Tick, Reason = "实地抵达后确认新家园可以接纳",
+            Kind = AgentGoalKind.ReturnHome,
+            TargetX = town.X,
+            TargetY = town.Y,
+            TargetSettlementId = town.Id,
+            StartedTick = State.Tick,
+            Reason = "实地抵达后确认新家园可以接纳",
         };
         RememberAgentFact(person,
             MakeAgentFact(person, AgentFactKind.SettlementLocation, town.Id, town.X, town.Y, town.NationId,

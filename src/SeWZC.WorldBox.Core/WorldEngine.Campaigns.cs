@@ -15,10 +15,14 @@ public sealed partial class WorldEngine
     {
         return outcome switch
         {
-            WarOutcome.ObjectiveReached => "已达成目标", WarOutcome.SupplyShortage => "补给不足",
-            WarOutcome.HeavyLosses => "伤亡过重", WarOutcome.TargetChanged => "目标已变化",
-            WarOutcome.OrdersReceived => "收到停战命令", WarOutcome.RouteBlocked => "道路受阻",
-            WarOutcome.Exhausted => "长期作战，需要休整", _ => "尚在执行",
+            WarOutcome.ObjectiveReached => "已达成目标",
+            WarOutcome.SupplyShortage => "补给不足",
+            WarOutcome.HeavyLosses => "伤亡过重",
+            WarOutcome.TargetChanged => "目标已变化",
+            WarOutcome.OrdersReceived => "收到停战命令",
+            WarOutcome.RouteBlocked => "道路受阻",
+            WarOutcome.Exhausted => "长期作战，需要休整",
+            _ => "尚在执行",
         };
     }
 

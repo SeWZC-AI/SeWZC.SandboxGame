@@ -35,8 +35,18 @@ internal static class ResearchGameplayTests
         TestLand.ClaimAllTowns(e);
         e.ConfigureWorld(new WorldRules
         {
-            Aging = false, Births = false, Hunger = false, Thirst = false, Disease = false, Construction = false,
-            Research = false, Expansion = false, Trade = false, Wars = false, Alliances = false, Migration = false,
+            Aging = false,
+            Births = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Trade = false,
+            Wars = false,
+            Alliances = false,
+            Migration = false,
             Secession = false,
         }, false, true);
         var town = e.State.Settlements.Single();
@@ -113,8 +123,10 @@ internal static class ResearchGameplayTests
             var repairs = damaged.ServiceActions;
             e.Step();
             if (damaged.ServiceActions > repairs)
+            {
                 Check(Math.Abs(p.X - damaged.X) + Math.Abs(p.Y - damaged.Y) <= 1,
                     "Repair happened before personnel physically arrived");
+            }
         }
 
         Check(damaged.Health == 100 && damaged.ServiceActions >= 5 && station.ServiceActions >= 5,
@@ -166,7 +178,9 @@ internal static class ResearchGameplayTests
             "Active specialist service was abandoned for construction");
         person.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Work, TargetEntityId = construction.Id, TargetX = construction.X,
+            Kind = AgentGoalKind.Work,
+            TargetEntityId = construction.Id,
+            TargetX = construction.X,
             TargetY = construction.Y,
         };
         var kept = (bool)typeof(WorldEngine).GetMethod("ProductiveGoalContinues",
@@ -288,8 +302,13 @@ internal static class ResearchGameplayTests
     {
         person.Agent.Memory.Add(new AgentFact
         {
-            Kind = AgentFactKind.WarOrder, SubjectId = enemy.NationId, X = enemy.X, Y = enemy.Y,
-            ObservedTick = e.State.Tick, LearnedTick = e.State.Tick, Text = "本国送达的军令",
+            Kind = AgentFactKind.WarOrder,
+            SubjectId = enemy.NationId,
+            X = enemy.X,
+            Y = enemy.Y,
+            ObservedTick = e.State.Tick,
+            LearnedTick = e.State.Tick,
+            Text = "本国送达的军令",
         });
     }
 
@@ -326,7 +345,13 @@ internal static class ResearchGameplayTests
         e.CastSpell(p.Id, SpellKind.FrostBolt, enemy.X, enemy.Y);
         Check(enemy.FrozenUntilTick == e.State.Tick + 6 && p.Mana == 76, "Frost did not freeze or charge");
         enemy.Agent.Goal = new AgentGoal
-            { Kind = AgentGoalKind.Explore, TargetX = 13, TargetY = 8, PlayerDirected = true, ReviewTick = 150 };
+        {
+            Kind = AgentGoalKind.Explore,
+            TargetX = 13,
+            TargetY = 8,
+            PlayerDirected = true,
+            ReviewTick = 150,
+        };
         var location = (enemy.X, enemy.Y);
         e.Step(2);
         Check((enemy.X, enemy.Y) == location, "Frozen enemy moved");

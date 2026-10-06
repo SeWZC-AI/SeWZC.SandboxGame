@@ -37,11 +37,12 @@ internal static class PersistenceRegressionTests
         var id = engine.State.Residents[0].Id;
         RejectUnchanged(engine, () => engine.EditResident(id, new ResidentEdit { Name = "A\tB" }));
         RejectUnchanged(engine, () => engine.EditResident(id, new ResidentEdit { Trait = "A\tB" }));
-        engine.EditResident(id, new ResidentEdit
-        {
-            Name = "New name",
-            History = [new ResidentHistoryEntry { Text = "Personal\tprose\nremains readable" }],
-        });
+        engine.EditResident(id,
+            new ResidentEdit
+            {
+                Name = "New name",
+                History = [new ResidentHistoryEntry { Text = "Personal\tprose\nremains readable" }],
+            });
         var restored = AssertRoundTrip(engine).GetResident(id)!;
         Require(restored.History.Single().Text == "Personal\tprose\nremains readable",
             "Identity validation also rejected or rewrote valid personal prose.");
@@ -90,7 +91,11 @@ internal static class PersistenceRegressionTests
         var target = engine.State.Settlements.Last();
         engine.EditResident(person.Id, new ResidentEdit
         {
-            Age = 999, Health = 0, X = home.X, Y = home.Y, Inventory = new ResourceStock(),
+            Age = 999,
+            Health = 0,
+            X = home.X,
+            Y = home.Y,
+            Inventory = new ResourceStock(),
         });
         engine.Tick();
         Require(engine.State.ArchivedResidents.Any(r => r.Id == person.Id),
@@ -118,7 +123,12 @@ internal static class PersistenceRegressionTests
         engine.ConfigureWorld(
             new WorldRules
             {
-                Births = false, Hunger = false, Thirst = false, Migration = false, Expansion = false, Secession = false,
+                Births = false,
+                Hunger = false,
+                Thirst = false,
+                Migration = false,
+                Expansion = false,
+                Secession = false,
             }, false, false);
         foreach (var resident in engine.State.Residents)
         {
@@ -127,7 +137,11 @@ internal static class PersistenceRegressionTests
             resident.Y = resident.FromY = home.Y;
             resident.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Rest, TargetX = home.X, TargetY = home.Y, ReviewTick = 1000, PlayerDirected = true,
+                Kind = AgentGoalKind.Rest,
+                TargetX = home.X,
+                TargetY = home.Y,
+                ReviewTick = 1000,
+                PlayerDirected = true,
             };
         }
 
@@ -266,9 +280,19 @@ internal static class PersistenceRegressionTests
         engine.SpawnResidents(44, 32, RaceKind.Elf, 14);
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false, Construction = false,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
             Research = false,
-            Expansion = false, Trade = false, Wars = false, Alliances = false, Peace = false, Migration = false,
+            Expansion = false,
+            Trade = false,
+            Wars = false,
+            Alliances = false,
+            Peace = false,
+            Migration = false,
             Secession = false,
         }, false, false);
         foreach (var resident in engine.State.Residents)
@@ -281,8 +305,11 @@ internal static class PersistenceRegressionTests
             resident.MagicTraining = 0;
             resident.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Rest, TargetX = home.X, TargetY = home.Y,
-                ReviewTick = 1000, PlayerDirected = true,
+                Kind = AgentGoalKind.Rest,
+                TargetX = home.X,
+                TargetY = home.Y,
+                ReviewTick = 1000,
+                PlayerDirected = true,
             };
         }
 
@@ -331,9 +358,14 @@ internal static class PersistenceRegressionTests
     {
         return new JsonObject
         {
-            ["Kind"] = (int)kind, ["TargetX"] = destination.X, ["TargetY"] = destination.Y,
-            ["TargetSettlementId"] = destination.Id, ["StartedTick"] = engine.State.Tick,
-            ["ReviewTick"] = engine.State.Tick + 24, ["PlayerDirected"] = true, ["Reason"] = "An edited intention",
+            ["Kind"] = (int)kind,
+            ["TargetX"] = destination.X,
+            ["TargetY"] = destination.Y,
+            ["TargetSettlementId"] = destination.Id,
+            ["StartedTick"] = engine.State.Tick,
+            ["ReviewTick"] = engine.State.Tick + 24,
+            ["PlayerDirected"] = true,
+            ["Reason"] = "An edited intention",
         };
     }
 

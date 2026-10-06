@@ -6,6 +6,7 @@ public sealed partial class WorldMapControl
 {
     private const int TerrainInputStride = ChunkTiles + 2;
     private readonly bool[] _dirtyTerrainTiles = new bool[TerrainInputStride * TerrainInputStride];
+
     /// <summary>最近一帧地形绘制覆盖的地格数。</summary>
     public int TerrainTilesDrawn { get; private set; }
 

@@ -34,8 +34,12 @@ public sealed partial class WorldEngine
             tile.ResourceAmount = NaturalResourceCapacity(tile);
             tile.Elevation = terrain switch
             {
-                TerrainType.DeepWater => 10, TerrainType.Water => 50, TerrainType.Sand => 75,
-                TerrainType.Mountain => 210, TerrainType.Snow => 240, _ => 110,
+                TerrainType.DeepWater => 10,
+                TerrainType.Water => 50,
+                TerrainType.Sand => 75,
+                TerrainType.Mountain => 210,
+                TerrainType.Snow => 240,
+                _ => 110,
             };
             if (!tile.IsWalkable || IsWaterTerrain(tile.Terrain))
             {
@@ -77,13 +81,26 @@ public sealed partial class WorldEngine
             if (State.Nations.Count >= 64 || State.Settlements.Count >= 256) return;
             var nation = new Nation
             {
-                Id = NewId(), FoundingRace = race, Name = NewPlaceName("王国"),
+                Id = NewId(),
+                FoundingRace = race,
+                Name = NewPlaceName("王国"),
                 ColorArgb = NationColors[State.Nations.Count % NationColors.Length],
             };
             settlement = new Settlement
             {
-                Id = NewId(), Name = NewPlaceName("村"), X = x, Y = y, NationId = nation.Id,
-                Resources = new ResourceStock { Food = count * 8, Water = count * 5, Wood = 80, Stone = 45, Ore = 12 },
+                Id = NewId(),
+                Name = NewPlaceName("村"),
+                X = x,
+                Y = y,
+                NationId = nation.Id,
+                Resources = new ResourceStock
+                {
+                    Food = count * 8,
+                    Water = count * 5,
+                    Wood = 80,
+                    Stone = 45,
+                    Ore = 12,
+                },
             };
             nation.CapitalId = settlement.Id;
             foreach (var other in State.Nations)
@@ -91,8 +108,11 @@ public sealed partial class WorldEngine
                 var opinion = RandomInt(41) - 10;
                 State.Diplomacies.Add(new DiplomaticRelation
                 {
-                    FirstNationId = other.Id, SecondNationId = nation.Id,
-                    Opinion = opinion, FirstOpinion = opinion, SecondOpinion = opinion,
+                    FirstNationId = other.Id,
+                    SecondNationId = nation.Id,
+                    Opinion = opinion,
+                    FirstOpinion = opinion,
+                    SecondOpinion = opinion,
                 });
             }
 
@@ -148,9 +168,17 @@ public sealed partial class WorldEngine
         var id = NewId();
         return new Resident
         {
-            Id = id, Name = NewResidentName(id, race), Race = race, X = settlement.X, Y = settlement.Y,
-            FromX = settlement.X, FromY = settlement.Y, Age = age, CultureId = settlement.CultureId,
-            NationId = settlement.NationId, SettlementId = settlement.Id,
+            Id = id,
+            Name = NewResidentName(id, race),
+            Race = race,
+            X = settlement.X,
+            Y = settlement.Y,
+            FromX = settlement.X,
+            FromY = settlement.Y,
+            Age = age,
+            CultureId = settlement.CultureId,
+            NationId = settlement.NationId,
+            SettlementId = settlement.Id,
             Profession = age < 14 ? Profession.Child : AssignProfession(),
             MagicTalent = (race == RaceKind.Elf ? 45 : race == RaceKind.Dwarf ? 23 : race == RaceKind.Orc ? 28 : 32) +
                           unchecked(((uint)id * 2654435761u) ^ (uint)State.Seed) % 36,
@@ -284,7 +312,9 @@ public sealed partial class WorldEngine
     {
         if (!_nations.ContainsKey(nationId)) throw new ArgumentException("国家不存在。", nameof(nationId));
         var amounts = new[]
-            { food, wood, stone, ore, alloy, energyCells, crystals, coal, oil, rareEarth, boats, aircraft, water };
+        {
+            food, wood, stone, ore, alloy, energyCells, crystals, coal, oil, rareEarth, boats, aircraft, water,
+        };
         if (amounts.Any(v => v.HasValue && (!double.IsFinite(v.Value) || v.Value < 0 || v.Value > 1_000_000)))
             throw new ArgumentOutOfRangeException(nameof(food), "资源须在 0 到 1,000,000 之间。");
         if (amounts.All(v => !v.HasValue)) return;
@@ -358,7 +388,9 @@ public sealed partial class WorldEngine
             (r.FirstNationId == second && r.SecondNationId == first));
         if (relation is not null) return relation;
         relation = new DiplomaticRelation
-            { FirstNationId = Math.Min(first, second), SecondNationId = Math.Max(first, second) };
+        {
+            FirstNationId = Math.Min(first, second), SecondNationId = Math.Max(first, second),
+        };
         State.Diplomacies.Add(relation);
         return relation;
     }
@@ -416,10 +448,12 @@ public sealed partial class WorldEngine
                 DamageResident(resident, 15, DeathCause.TerrainChange);
             }
             else
+            {
                 DamageResident(resident, resident.Health,
                     IsWaterTerrain(State.Tiles[Index(resident.X, resident.Y)].Terrain)
                         ? DeathCause.Drowning
                         : DeathCause.TerrainChange);
+            }
         }
 
         ArchiveDeadResidents();

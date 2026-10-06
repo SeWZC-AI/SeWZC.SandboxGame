@@ -33,7 +33,8 @@ public sealed class ResearchGraphControl : UserControl
         foreach (var node in nodes.Values) _surface.Children.Add(node);
         _scroll = new ScrollViewer
         {
-            Content = _surface, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
+            Content = _surface,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
         };
         Content = _scroll;
@@ -54,14 +55,19 @@ public sealed class ResearchGraphControl : UserControl
 
     /// <summary>当前路线的节点、分支和连接线布局。</summary>
     public ResearchTreeLayout Layout { get; private set; }
+
     /// <summary>当前缩放倍率。</summary>
     public double Zoom { get; private set; } = 1;
+
     /// <summary>当前视口的滚动偏移，以控件布局单位计。</summary>
     public Vector Offset => _scroll.Offset;
+
     /// <summary>当前选中并高亮前置路径的研究。</summary>
     public ResearchKind Selected { get; set; }
+
     /// <summary>是否高亮所有递归前置，关闭时只高亮直接前置。</summary>
     public bool ShowFullPath { get; set; }
+
     /// <summary>查询各研究是否已完成的回调，用于连接线着色。</summary>
     public Func<ResearchKind, bool> IsCompleted { get; set; } = _ => false;
 
@@ -254,8 +260,11 @@ public sealed class ResearchGraphControl : UserControl
                     if (edge.Points.Length == 4)
                         path.CubicBezierTo(edge.Points[1], edge.Points[2], edge.Points[3]);
                     else
+                    {
                         foreach (var point in edge.Points.Skip(1))
                             path.LineTo(point);
+                    }
+
                     path.EndFigure(false);
                 }
 

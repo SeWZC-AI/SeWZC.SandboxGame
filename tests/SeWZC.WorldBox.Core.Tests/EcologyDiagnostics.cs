@@ -19,9 +19,11 @@ internal static class EcologyDiagnostics
             {
                 samples.Add(new
                 {
-                    e.State.Tick, Species = AnimalRules.Species.Select(k => new
+                    e.State.Tick,
+                    Species = AnimalRules.Species.Select(k => new
                     {
-                        Kind = k.ToString(), Name = WorldEngine.WildlifeName(k),
+                        Kind = k.ToString(),
+                        Name = WorldEngine.WildlifeName(k),
                         Population = e.State.Tiles.Sum(t => t.AnimalPopulation(k)),
                         VisibleTiles = e.State.Tiles.Count(t => t.AnimalPopulation(k) >= .25),
                     }).ToArray(),

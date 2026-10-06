@@ -5,8 +5,10 @@ public enum DiplomaticStatus
 {
     /// <summary>中立。</summary>
     Neutral,
+
     /// <summary>结盟。</summary>
     Allied,
+
     /// <summary>战争。</summary>
     War,
 }

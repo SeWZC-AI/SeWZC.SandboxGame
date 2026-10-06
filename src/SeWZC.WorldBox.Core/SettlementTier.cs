@@ -5,8 +5,10 @@ public enum SettlementTier
 {
     /// <summary>村。</summary>
     Village,
+
     /// <summary>镇。</summary>
     Town,
+
     /// <summary>城。</summary>
     City,
 }

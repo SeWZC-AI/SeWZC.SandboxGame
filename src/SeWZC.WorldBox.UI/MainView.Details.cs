@@ -13,7 +13,9 @@ public sealed partial class MainView
         var content = new StackPanel { Spacing = 3, Margin = new Thickness(0) };
         var fold = Named(new Expander
         {
-            Header = Text(title, 12, Mint), Content = content, Margin = new Thickness(0),
+            Header = Text(title, 12, Mint),
+            Content = content,
+            Margin = new Thickness(0),
             IsExpanded = _expandedDetails.GetValueOrDefault(id, expanded),
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,

@@ -27,8 +27,12 @@ public class App : Application
         {
             desktop.MainWindow = new Window
             {
-                Title = "SeWZC.WorldBox：众生与山海", Width = 1440, Height = 920,
-                MinWidth = 390, MinHeight = 640, Content = view,
+                Title = "SeWZC.WorldBox：众生与山海",
+                Width = 1440,
+                Height = 920,
+                MinWidth = 390,
+                MinHeight = 640,
+                Content = view,
                 Background = Brush.Parse("#101C27"),
             };
         }

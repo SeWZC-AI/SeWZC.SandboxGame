@@ -33,14 +33,33 @@ internal static class LandTransportTests
         engine.SpawnResidents(8, 16, RaceKind.Human, 3);
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
-            Construction = false, Research = false, Expansion = false, Trade = false, Wars = false,
-            Alliances = false, Peace = false, Migration = false, Secession = false, ResourceRegeneration = false,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Trade = false,
+            Wars = false,
+            Alliances = false,
+            Peace = false,
+            Migration = false,
+            Secession = false,
+            ResourceRegeneration = false,
         }, false, false);
         var town = engine.State.Settlements[0];
         town.Resources = new ResourceStock
         {
-            Food = 1000, Wood = 1000, Stone = 1000, Ore = 1000, Alloy = 100, EnergyCells = 100, Coal = 100, Oil = 100,
+            Food = 1000,
+            Wood = 1000,
+            Stone = 1000,
+            Ore = 1000,
+            Alloy = 100,
+            EnergyCells = 100,
+            Coal = 100,
+            Oil = 100,
         };
         foreach (var person in engine.State.Residents)
         {
@@ -64,8 +83,12 @@ internal static class LandTransportTests
         person.MoveDurationTicks = 1;
         person.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Rest, TargetX = x, TargetY = y, StartedTick = engine.State.Tick,
-            ReviewTick = engine.State.Tick + 1000, PlayerDirected = true,
+            Kind = AgentGoalKind.Rest,
+            TargetX = x,
+            TargetY = y,
+            StartedTick = engine.State.Tick,
+            ReviewTick = engine.State.Tick + 1000,
+            PlayerDirected = true,
         };
     }
 
@@ -290,7 +313,9 @@ internal static class LandTransportTests
                 {
                     count++;
                     foreach (var next in new[]
-                                 { at % 128 > 0 ? at - 1 : -1, at % 128 < 127 ? at + 1 : -1, at - 128, at + 128 })
+                             {
+                                 at % 128 > 0 ? at - 1 : -1, at % 128 < 127 ? at + 1 : -1, at - 128, at + 128,
+                             })
                         if (remaining.Remove(next))
                             queue.Enqueue(next);
                 }
@@ -321,8 +346,13 @@ internal static class LandTransportTests
         worker.Inventory.Food = 20;
         var fact = new AgentFact
         {
-            Id = engine.State.NextId++, Kind = AgentFactKind.SettlementLocation, SubjectId = destination.Id,
-            X = destination.X, Y = destination.Y, Value = destination.NationId, OriginResidentId = worker.Id,
+            Id = engine.State.NextId++,
+            Kind = AgentFactKind.SettlementLocation,
+            SubjectId = destination.Id,
+            X = destination.X,
+            Y = destination.Y,
+            Value = destination.NationId,
+            OriginResidentId = worker.Id,
             SourceResidentId = worker.Id,
         };
         worker.Agent.Memory.Add(fact);
@@ -331,8 +361,12 @@ internal static class LandTransportTests
         worker.Agent.MissionOriginSettlementId = home.Id;
         worker.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.DeliverMessage, TargetX = destination.X, TargetY = destination.Y,
-            TargetSettlementId = destination.Id, ReviewTick = 1000, PlayerDirected = true,
+            Kind = AgentGoalKind.DeliverMessage,
+            TargetX = destination.X,
+            TargetY = destination.Y,
+            TargetSettlementId = destination.Id,
+            ReviewTick = 1000,
+            PlayerDirected = true,
         };
         var fuel = home.Resources.Oil;
         var crossed = false;
@@ -371,11 +405,9 @@ internal static class LandTransportTests
         var json = engine.ExportJson();
         foreach (var mutate in new Action<JsonNode>[]
                  {
-                     r => r["Tiles"]![0]!["DepositAmount"] = -1,
-                     r => r["Tiles"]![0]!["Improvement"] = 3,
+                     r => r["Tiles"]![0]!["DepositAmount"] = -1, r => r["Tiles"]![0]!["Improvement"] = 3,
                      r => r["Residents"]![0]!["TravelMode"] = 2,
-                     r => r["Residents"]![0]!["Inventory"]!["Coal"] = -1,
-                     r => r["FormatVersion"] = 6,
+                     r => r["Residents"]![0]!["Inventory"]!["Coal"] = -1, r => r["FormatVersion"] = 6,
                  })
         {
             var data = JsonNode.Parse(json)!;

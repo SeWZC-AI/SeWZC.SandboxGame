@@ -49,11 +49,29 @@ internal static class ResearchTreeTests
         foreach (var b in engine.State.Society.Buildings) b.ConstructionProgress = b.ConstructionRequired;
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
-            Construction = false, Research = false, Expansion = false, Trade = false, Wars = false, Alliances = false,
-            Migration = false, Secession = false,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Trade = false,
+            Wars = false,
+            Alliances = false,
+            Migration = false,
+            Secession = false,
         }, false, true);
-        town.Resources = new ResourceStock { Food = 100, Wood = 100, Stone = 100, Ore = 100, Alloy = 100, Coal = 100 };
+        town.Resources = new ResourceStock
+        {
+            Food = 100,
+            Wood = 100,
+            Stone = 100,
+            Ore = 100,
+            Alloy = 100,
+            Coal = 100,
+        };
         foreach (var k in new[] { ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Industry })
             engine.GrantReceivedResearch(town.Id, k);
         var id = engine.GrantFacility(town.Id, BuildingKind.Foundry, 17, 16);
@@ -64,7 +82,9 @@ internal static class ResearchTreeTests
         worker.X = worker.FromX = foundry.X;
         worker.Y = worker.FromY = foundry.Y;
         worker.Agent.Goal = new AgentGoal
-            { Kind = AgentGoalKind.Work, TargetEntityId = id, TargetX = foundry.X, TargetY = foundry.Y };
+        {
+            Kind = AgentGoalKind.Work, TargetEntityId = id, TargetX = foundry.X, TargetY = foundry.Y,
+        };
         return (engine, town, worker, foundry);
     }
 

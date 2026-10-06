@@ -6,6 +6,7 @@ public sealed partial class WorldEngine
 {
     // 每日限制生态复评地格数，避免大地图出现整图更新峰值；完整周期随地图规模增长。
     private const int WildlifeTilesPerDay = 256;
+    private double[]? _wildlifeBiomass;
     private double[]? _wildlifeCapacities;
     private double[]? _wildlifeChanges;
     private WildlifeHabitat[]? _wildlifeHabitats;
@@ -17,7 +18,6 @@ public sealed partial class WorldEngine
     private double[]? _wildlifePressure;
     private byte[]? _wildlifePreyCompetitors;
     private double[]? _wildlifeReplacement;
-    private double[]? _wildlifeBiomass;
     private double[]? _wildlifeSharedBiomass;
 
     /// <summary>受每日地格预算限制，完成一轮全部动物复评所需的模拟日数。</summary>
@@ -115,7 +115,8 @@ public sealed partial class WorldEngine
         {
             var species = NextWildlife(ref mask);
             var animal = AnimalRules.For((WildlifeKind)species);
-            capacities[species] = Math.Min(capacities[species], sharedBiomass[(int)animal.Size] * .12 / animal.BodyMass);
+            capacities[species] =
+                Math.Min(capacities[species], sharedBiomass[(int)animal.Size] * .12 / animal.BodyMass);
         }
     }
 
@@ -214,9 +215,11 @@ public sealed partial class WorldEngine
                 _wildlifeHabitats[habitatSlot] = habitat;
                 Array.Clear(_wildlifeReplacement, capacityOffset, AnimalRules.SpeciesCount);
                 Array.Clear(_wildlifePredatorLimits, capacityOffset, AnimalRules.SpeciesCount);
-                var eligible = AnimalRules.FillCapacities(tile, _wildlifeCapacities.AsSpan(capacityOffset, AnimalRules.SpeciesCount),
+                var eligible = AnimalRules.FillCapacities(tile,
+                    _wildlifeCapacities.AsSpan(capacityOffset, AnimalRules.SpeciesCount),
                     _wildlifePreyCompetitors.AsSpan(capacityOffset, AnimalRules.SpeciesCount));
-                _wildlifeHerbivoreKinds[habitatSlot] = (byte)BitOperations.PopCount((uint)(eligible & AnimalRules.HerbivoreMask));
+                _wildlifeHerbivoreKinds[habitatSlot] =
+                    (byte)BitOperations.PopCount((uint)(eligible & AnimalRules.HerbivoreMask));
                 AnimalRules.FillPreyBiomass(_wildlifeCapacities.AsSpan(capacityOffset, AnimalRules.SpeciesCount),
                     _wildlifePreyCompetitors.AsSpan(capacityOffset, AnimalRules.SpeciesCount),
                     capacityBiomass, capacitySharedBiomass);
@@ -247,9 +250,11 @@ public sealed partial class WorldEngine
                 sharedBiomassSnapshot.Clear();
             }
             else
+            {
                 AnimalRules.FillPreyBiomass(_wildlifePopulations.AsSpan(offset, AnimalRules.SpeciesCount),
                     _wildlifePreyCompetitors.AsSpan(capacityOffset, AnimalRules.SpeciesCount),
                     biomassSnapshot, sharedBiomassSnapshot);
+            }
 
             var herbivores = mask & AnimalRules.HerbivoreMask;
             while (herbivores != 0)
@@ -303,7 +308,8 @@ public sealed partial class WorldEngine
                 var demand = population * animal.BodyMass * predationRate;
                 // 先结算捕食者饥饿死亡，再由存活个体捕食；极端过密时允许猎物耗尽，不人为设置猎物下限。
                 var fed = demand > 0 ? Math.Min(1, sharedBiomass / demand) : 1;
-                predatorSurvivors[species] = Math.Max(0, population + normalGrowth) * (fed < 1 ? Math.Pow(fed, .75) : 1);
+                predatorSurvivors[species] =
+                    Math.Max(0, population + normalGrowth) * (fed < 1 ? Math.Pow(fed, .75) : 1);
                 if (biomass <= 0) continue;
                 var consumption = predatorSurvivors[species] * animal.BodyMass * predationRate / biomass;
                 var limit = _wildlifePredatorLimits[capacityOffset + species];
@@ -332,13 +338,15 @@ public sealed partial class WorldEngine
                     var density = capacity > 0 ? population / capacity : 0;
                     var growth = capacity > 0
                         ? Math.Max(-population * deathRate, growthRate * population
-                            * (1 - density - .35 * Math.Max(0, _wildlifePressure[local] - 1)))
+                                                                       * (1 - density - .35 * Math.Max(0,
+                                                                           _wildlifePressure[local] - 1)))
                         : -population * deathRate;
                     growth += preyRenewal[species] * Math.Min(1, density);
                     var loss = Math.Min(Math.Max(0, population + growth), preyLosses[species]);
                     available = Math.Max(0, population + growth - loss);
                 }
                 else available = predatorSurvivors[species];
+
                 _wildlifeChanges[offset + species] += available - population;
                 // 迁移只能使用捕食后的存活量，避免负库存被截为零后凭空增加动物。
                 for (var n = 0; n < count; n++)
@@ -419,7 +427,10 @@ public sealed partial class WorldEngine
     {
         return race switch
         {
-            RaceKind.Elf => 180, RaceKind.Dwarf => 120, RaceKind.Orc => 70, _ => 90,
+            RaceKind.Elf => 180,
+            RaceKind.Dwarf => 120,
+            RaceKind.Orc => 70,
+            _ => 90,
         };
     }
 
@@ -444,8 +455,14 @@ public sealed partial class WorldEngine
             {
                 center = new Building
                 {
-                    Id = NewId(), Kind = BuildingKind.TownCenter, SettlementId = town.Id,
-                    X = town.X, Y = town.Y, ConstructionProgress = 30, ConstructionRequired = 30, WorkSlots = 3,
+                    Id = NewId(),
+                    Kind = BuildingKind.TownCenter,
+                    SettlementId = town.Id,
+                    X = town.X,
+                    Y = town.Y,
+                    ConstructionProgress = 30,
+                    ConstructionRequired = 30,
+                    WorkSlots = 3,
                 };
                 State.Society.Buildings.Add(center);
             }

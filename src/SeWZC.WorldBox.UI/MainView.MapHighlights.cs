@@ -14,11 +14,14 @@ public sealed partial class MainView
     private void BuildMapHighlights(StackPanel panel)
     {
         panel.Children.Add(Text("地图高亮标记", 13, Mint));
-        var overlay = Named(new ComboBox
-        {
-            ItemsSource = MapHighlightLabels, SelectedIndex = _map.Overlay,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        }, "map-overlay");
+        var overlay =
+            Named(
+                new ComboBox
+                {
+                    ItemsSource = MapHighlightLabels,
+                    SelectedIndex = _map.Overlay,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                }, "map-overlay");
         overlay.SelectionChanged += (_, _) =>
         {
             _map.Overlay = Math.Max(0, overlay.SelectedIndex);

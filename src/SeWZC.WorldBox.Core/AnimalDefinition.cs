@@ -17,6 +17,7 @@ public readonly record struct AnimalDefinition(
 {
     /// <summary>按体型折算的相对生物量，用于共享食物和猎物预算。</summary>
     public double BodyMass => Size == AnimalSize.Small ? 1 : Size == AnimalSize.Medium ? 2 : 4;
+
     /// <summary>物种的适宜栖息地是否包含淡水或海洋。</summary>
     public bool Aquatic => (Habitats & (AnimalHabitat.Fresh | AnimalHabitat.Marine)) != 0;
 }

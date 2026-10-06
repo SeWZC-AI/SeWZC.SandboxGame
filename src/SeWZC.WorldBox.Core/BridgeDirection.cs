@@ -5,6 +5,7 @@ public enum BridgeDirection
 {
     /// <summary>左右通行。</summary>
     Horizontal,
+
     /// <summary>上下通行。</summary>
     Vertical,
 }

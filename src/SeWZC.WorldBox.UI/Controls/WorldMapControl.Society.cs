@@ -32,7 +32,10 @@ public sealed partial class WorldMapControl
             BuildingKind.TownCenter or BuildingKind.PowerPlant => 13,
             BuildingKind.Academy or BuildingKind.Foundry or BuildingKind.AetherForge => 12,
             BuildingKind.Farm or BuildingKind.AutomatedFarm => 6.4,
-            BuildingKind.Bridge => 8, BuildingKind.Dock => 6, BuildingKind.MountainPass => 4, _ => 9.6,
+            BuildingKind.Bridge => 8,
+            BuildingKind.Dock => 6,
+            BuildingKind.MountainPass => 4,
+            _ => 9.6,
         };
     }
 
@@ -136,11 +139,13 @@ public sealed partial class WorldMapControl
         {
             if (_lastPaint is null) WorldEditing?.Invoke(this, EventArgs.Empty);
             if (isRoad)
+            {
                 Stroke(tile, (x, y) =>
                 {
                     if (isRail) Engine.BuildRail(SelectedSettlementId, x, y, 0);
                     else Engine.BuildRoad(SelectedSettlementId, x, y, 0);
                 });
+            }
             else
             {
                 var kind = Enum.Parse<BuildingKind>(tool, true);

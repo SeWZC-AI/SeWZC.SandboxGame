@@ -104,23 +104,35 @@ public sealed partial class WorldEngine
         if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return "正在燃烧，暂停工作";
         var workers = State.Tick - building.LastWorkedTick <= 1 ? building.Workers.Count : 0;
         if (!building.IsCompleted)
+        {
             return
                 $"施工：{building.ConstructionProgress / building.ConstructionRequired:P0}   到场工人 {workers}/{building.WorkSlots}";
+        }
+
         if (building.IsUpgrading)
+        {
             return
                 $"{(building.PendingDirection.HasValue ? "改向" : "升级")}：{building.UpgradeProgress:0.#} / {building.UpgradeRequired:0}\n等待居民到场施工";
+        }
+
         if (!building.Enabled) return "已停用";
         if (!CanBuildRacialFacility(building.SettlementId, building.Kind)) return "缺少该族成年居民，暂停运营";
         if (IsHusbandry(building.Kind))
+        {
             return
                 $"养殖：{(building.LivestockKind == WildlifeKind.None ? "等待取得种群" : WildlifeName(building.LivestockKind))}  {building.LivestockPopulation:0.##} / {LivestockCapacity(building):0.#}\n" +
                 BuildingDescription(building.Kind);
+        }
+
         if (a is null)
         {
             var town = RequireTown(building.SettlementId);
             if (building.Kind == BuildingKind.TownCenter && town.IsExpanding)
+            {
                 return
                     $"组织城镇扩充：{town.ExpansionProgress:0.#} / {town.ExpansionRequired:0}\n到场工人 {workers}/{building.WorkSlots}";
+            }
+
             var research = State.Society.Research.First(r => r.SettlementId == town.Id);
             var activity = building.Kind switch
             {
@@ -289,8 +301,12 @@ public sealed partial class WorldEngine
             var previous = person.Agent.Goal;
             person.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y,
-                TargetSettlementId = home.Id, StartedTick = State.Tick, ReviewTick = State.Tick + 100,
+                Kind = AgentGoalKind.ReturnHome,
+                TargetX = home.X,
+                TargetY = home.Y,
+                TargetSettlementId = home.Id,
+                StartedTick = State.Tick,
+                ReviewTick = State.Tick + 100,
                 Reason = "加工完成，亲自把产物运回家园入库",
             };
             ChangeWorkReservation(previous, person.Agent.Goal);

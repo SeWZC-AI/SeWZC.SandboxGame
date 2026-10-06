@@ -7,6 +7,7 @@ public sealed partial class WorldEngine
 
     /// <summary>启用城镇加成所需的独占陆地数量。</summary>
     public const int SettlementActivationArea = 25;
+
     /// <summary>居民在本城镇独占区域外采集时的产量倍率。</summary>
     public const double OutsideTerritoryGatheringMultiplier = .5;
 
@@ -22,7 +23,9 @@ public sealed partial class WorldEngine
     {
         return tier switch
         {
-            SettlementTier.City => "城", SettlementTier.Town => "镇", _ => "村",
+            SettlementTier.City => "城",
+            SettlementTier.Town => "镇",
+            _ => "村",
         };
     }
 
@@ -100,9 +103,11 @@ public sealed partial class WorldEngine
     private bool SettlementNeedsClaimArea(Settlement town)
     {
         return State.Rules.Expansion && !town.FoundationPending
-                                     && (!IsSettlementActive(town.Id) || town.Tier < SettlementTier.City &&
-                                         town.Population >= ExpansionPopulation(town.Tier)
-                                         && GetSettlementArea(town.Id) < GetSettlementExpansionArea(town.Id));
+                                     && (!IsSettlementActive(town.Id) || (town.Tier < SettlementTier.City &&
+                                                                          town.Population >=
+                                                                          ExpansionPopulation(town.Tier)
+                                                                          && GetSettlementArea(town.Id) <
+                                                                          GetSettlementExpansionArea(town.Id)));
     }
 
     /// <summary>查询居民在此地采集所用的本城镇领地内外倍率。</summary>

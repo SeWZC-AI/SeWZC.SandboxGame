@@ -192,7 +192,9 @@ internal static class PresentationWorldTests
         worker.Y = 16;
         worker.Profession = Profession.Builder;
         worker.Agent.Goal = new AgentGoal
-            { Kind = AgentGoalKind.Work, TargetEntityId = id, TargetX = 19, TargetY = 16 };
+        {
+            Kind = AgentGoalKind.Work, TargetEntityId = id, TargetX = 19, TargetY = 16,
+        };
         for (var i = 0; i < 65 && !b.IsCompleted; i++)
         {
             engine.State.Tick++;

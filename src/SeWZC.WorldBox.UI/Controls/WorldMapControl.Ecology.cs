@@ -18,21 +18,28 @@ public sealed partial class WorldMapControl
     private readonly List<(WriteableBitmap Icon, Rect Bounds)> _wildlifeDraws = [];
 
     private bool _ecologyDirty = true;
-    private (int Left, int Right, int Top, int Bottom) _ecologyViewport;
     private EcologyViewInput[] _ecologyInputs = [];
     private bool _ecologyShowWildlife, _ecologyShowPlants;
+    private (int Left, int Right, int Top, int Bottom) _ecologyViewport;
+
     /// <summary>近景生态绘制缓存重建次数，用于呈现诊断。</summary>
     public int EcologyCacheBuildCount { get; private set; }
+
     /// <summary>是否绘制近景动物图标。</summary>
     public bool ShowWildlife { get; set; } = true;
+
     /// <summary>是否绘制近景植物图标。</summary>
     public bool ShowPlants { get; set; } = true;
+
     /// <summary>是否绘制近景建筑名称。</summary>
     public bool ShowBuildingNames { get; set; } = true;
+
     /// <summary>最近一帧绘制的植物图标数。</summary>
     public int RenderedPlantCount { get; private set; }
+
     /// <summary>最近一帧绘制的建筑名称数。</summary>
     public int RenderedBuildingLabelCount { get; private set; }
+
     /// <summary>矿藏图层采用的观察者显示策略。</summary>
     public ResourceVisibility ResourceVisibility { get; set; } = ResourceVisibility.Researched;
 
@@ -112,8 +119,12 @@ public sealed partial class WorldMapControl
         var canvas = new PixelCanvas(32, 32);
         var color = kind switch
         {
-            WildlifeKind.Fish => 0x86CEDBFFu, WildlifeKind.Waterfowl => 0xE2EBDBFFu, WildlifeKind.Wolf => 0xB1B9BAFFu,
-            WildlifeKind.Boar => 0xA8805FFFu, WildlifeKind.Goat => 0xD9D1B5FFu, WildlifeKind.Deer => 0xDCB578FFu,
+            WildlifeKind.Fish => 0x86CEDBFFu,
+            WildlifeKind.Waterfowl => 0xE2EBDBFFu,
+            WildlifeKind.Wolf => 0xB1B9BAFFu,
+            WildlifeKind.Boar => 0xA8805FFFu,
+            WildlifeKind.Goat => 0xD9D1B5FFu,
+            WildlifeKind.Deer => 0xDCB578FFu,
             _ => AnimalRules.For(kind).Diet == AnimalDiet.Carnivore ? 0xB39179FFu : 0xCCB285FFu,
         };
 
@@ -273,8 +284,11 @@ public sealed partial class WorldMapControl
                 var tile = state.Tiles[y * state.Width + x];
                 if (tile.Deposit is { } resource && VisibleResources.Contains(resource) &&
                     Engine!.IsDepositVisible(tile, ResourceVisibility))
+                {
                     _depositDraws.Add((DepositIcon(resource),
                         new Rect((x + .62) * TilePixels, (y + .05) * TilePixels, 2.8, 2.8)));
+                }
+
                 if (ShowPlants)
                 {
                     var slot = 0;
@@ -338,7 +352,8 @@ public sealed partial class WorldMapControl
     private bool EcologyInputsChanged(WorldState state, (int Left, int Right, int Top, int Bottom) viewport)
     {
         var count = (viewport.Right - viewport.Left + 1) * (viewport.Bottom - viewport.Top + 1);
-        var changed = viewport != _ecologyViewport || ShowWildlife != _ecologyShowWildlife || ShowPlants != _ecologyShowPlants;
+        var changed = viewport != _ecologyViewport || ShowWildlife != _ecologyShowWildlife ||
+                      ShowPlants != _ecologyShowPlants;
         if (_ecologyInputs.Length != count)
         {
             _ecologyInputs = new EcologyViewInput[count];
@@ -353,7 +368,9 @@ public sealed partial class WorldMapControl
         {
             var tile = state.Tiles[y * state.Width + x];
             var deposit = tile.Deposit is { } resource && VisibleResources.Contains(resource)
-                && Engine!.IsDepositVisible(tile, ResourceVisibility) ? tile.Deposit : null;
+                                                       && Engine!.IsDepositVisible(tile, ResourceVisibility)
+                ? tile.Deposit
+                : null;
             var vertical = y + 1 < state.Height && state.Tiles[(y + 1) * state.Width + x].Terrain is
                 TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver;
             // 输入精确比较；饱和资源及灾害剩余时长不改变图形，不触发整层重建。
@@ -373,8 +390,20 @@ public sealed partial class WorldMapControl
         return changed;
     }
 
-    private readonly record struct EcologyViewInput(TerrainType Terrain, byte Fertility, LandImprovement Improvement,
-        bool Settled, bool Drought, bool Fire, bool HasResources, double Resources, double Water,
-        PlantCoverage Plants, WildlifeKind Wildlife, double Population, WildlifePopulations Others,
-        ResourceKind? Deposit, bool VerticalWater);
+    private readonly record struct EcologyViewInput(
+        TerrainType Terrain,
+        byte Fertility,
+        LandImprovement Improvement,
+        bool Settled,
+        bool Drought,
+        bool Fire,
+        bool HasResources,
+        double Resources,
+        double Water,
+        PlantCoverage Plants,
+        WildlifeKind Wildlife,
+        double Population,
+        WildlifePopulations Others,
+        ResourceKind? Deposit,
+        bool VerticalWater);
 }

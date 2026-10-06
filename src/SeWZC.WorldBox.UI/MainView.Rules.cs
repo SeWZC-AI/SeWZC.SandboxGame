@@ -10,11 +10,14 @@ public sealed partial class MainView
     {
         var draft = _engine.State.Rules with { };
         var switches = new List<(CheckBox Box, Func<WorldRules, bool> Get, Action<WorldRules, bool> Set)>();
-        var preset = Named(new ComboBox
-        {
-            ItemsSource = new[] { "自定义 / 当前规则", "和平繁荣", "文明兴衰", "动荡世界" }, SelectedIndex = 0,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        }, "rules-preset");
+        var preset =
+            Named(
+                new ComboBox
+                {
+                    ItemsSource = new[] { "自定义 / 当前规则", "和平繁荣", "文明兴衰", "动荡世界" },
+                    SelectedIndex = 0,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                }, "rules-preset");
         panel.Children.Add(preset);
         var disasters = Named(new CheckBox { Content = "允许自然灾害", IsChecked = _engine.State.NaturalDisasters },
             "rule-disasters");
@@ -53,7 +56,9 @@ public sealed partial class MainView
             var box = Named(
                 new ComboBox
                 {
-                    ItemsSource = choices, SelectedIndex = selected, HorizontalAlignment = HorizontalAlignment.Stretch,
+                    ItemsSource = choices,
+                    SelectedIndex = selected,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
                 }, id);
             panel.Children.Add(box);
             return box;

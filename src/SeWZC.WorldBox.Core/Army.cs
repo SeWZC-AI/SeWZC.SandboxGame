@@ -7,20 +7,28 @@ public sealed partial class Army
 {
     /// <summary>军队的稳定 ID。</summary>
     public int Id { get; set; }
+
     /// <summary>关联或归属国家的稳定 ID。</summary>
     public int NationId { get; set; }
+
     /// <summary>当前军事目标国家的 ID。</summary>
     public int TargetNationId { get; set; }
+
     /// <summary>所在地点的横向地格坐标。</summary>
     public int X { get; set; }
+
     /// <summary>所在地点的纵向地格坐标。</summary>
     public int Y { get; set; }
+
     /// <summary>当前士兵数量。</summary>
     public int Soldiers { get; set; }
+
     /// <summary>当前士气。</summary>
     public double Morale { get; set; } = 100;
+
     /// <summary>军队实际携带的粮食补给。</summary>
     public double Supplies { get; set; }
+
     /// <summary>供界面显示的当前军队行动说明。</summary>
     public string Status { get; set; } = "集结";
 

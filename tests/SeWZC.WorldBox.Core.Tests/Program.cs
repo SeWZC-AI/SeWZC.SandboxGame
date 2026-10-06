@@ -193,8 +193,11 @@ static void AssertResume(WorldEngine uninterrupted, int steps)
     var resumed = WorldEngine.ImportJson(saved);
     var imported = resumed.ExportJson();
     if (saved != imported)
+    {
         throw new InvalidOperationException("A valid save changed during import: " +
                                             JsonDifference(JsonNode.Parse(saved), JsonNode.Parse(imported)));
+    }
+
     uninterrupted.Step(steps);
     resumed.Step(steps);
     Check(uninterrupted.ExportJson() == resumed.ExportJson(),

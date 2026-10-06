@@ -69,8 +69,11 @@ public sealed partial class MainView
             }, 11, Mint), "research-state-" + definition.Kind));
             var node = Named(new Button
             {
-                Content = content, HorizontalContentAlignment = HorizontalAlignment.Stretch,
-                CornerRadius = new CornerRadius(8), BorderThickness = new Thickness(1.5), Margin = new Thickness(0),
+                Content = content,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                CornerRadius = new CornerRadius(8),
+                BorderThickness = new Thickness(1.5),
+                Margin = new Thickness(0),
                 Padding = new Thickness(8, 5),
             }, "research-node-" + definition.Kind);
             ToolTip.SetTip(node, definition.Name + "\n" + definition.Effect);
@@ -90,11 +93,13 @@ public sealed partial class MainView
             nodes.Add(definition.Kind, node);
         }
 
-        var graph = Named(new ResearchGraphControl(nodes)
-        {
-            Height = _isCompact ? 380 : 560,
-            IsCompleted = kind => _engine.HasResearch(town.Id, kind), Selected = _selectedResearch,
-        }, "research-graph");
+        var graph = Named(
+            new ResearchGraphControl(nodes)
+            {
+                Height = _isCompact ? 380 : 560,
+                IsCompleted = kind => _engine.HasResearch(town.Id, kind),
+                Selected = _selectedResearch,
+            }, "research-graph");
 
         IEnumerable<ResearchDefinition> Route()
         {
@@ -229,7 +234,10 @@ public sealed partial class MainView
             "research-path-caption"));
         panel.Children.Add(new Border
         {
-            Child = graph, BorderBrush = Line, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(8),
+            Child = graph,
+            BorderBrush = Line,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(8),
             ClipToBounds = true,
         });
         _inspectorUpdates.Add(() =>

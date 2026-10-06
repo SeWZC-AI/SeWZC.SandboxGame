@@ -116,10 +116,8 @@ public sealed partial class WorldEngine
                                                  b.SettlementId == town.Id && IsFacilityOperating(b))
                                              .Sum(b => b.Kind == BuildingKind.Farm
                                                  ? 30 * b.Efficiency
-                                                 :
-                                                 b.Kind is BuildingKind.AutomatedFarm or BuildingKind.RunicGarden
-                                                     ?
-                                                     120 * b.Efficiency
+                                                 : b.Kind is BuildingKind.AutomatedFarm or BuildingKind.RunicGarden
+                                                     ? 120 * b.Efficiency
                                                      : 0)
                                          && citizens.Count > GetHousingCapacity(town.Id) * 0.75
                                          && !State.Society.Buildings.Any(b =>
@@ -129,8 +127,10 @@ public sealed partial class WorldEngine
             {
                 var site = BestBuildingSite(town, BuildingKind.Housing);
                 if (site >= 0)
+                {
                     BuildPlannedFacility(town, BuildingKind.Housing, site % State.Width, site / State.Width,
                         BuildingPurpose(town, BuildingKind.Housing));
+                }
             }
 
             var adults = citizens.Where(p =>
@@ -196,8 +196,13 @@ public sealed partial class WorldEngine
         var y = location / State.Width;
         var town = new Settlement
         {
-            Id = NewId(), Name = NewPlaceName("村"), X = x, Y = y,
-            NationId = origin.NationId, CultureId = origin.CultureId, FoundationPending = true,
+            Id = NewId(),
+            Name = NewPlaceName("村"),
+            X = x,
+            Y = y,
+            NationId = origin.NationId,
+            CultureId = origin.CultureId,
+            FoundationPending = true,
             Resources = new ResourceStock(),
         };
         Spend(origin.Resources, VillageFoundingCost);
@@ -212,19 +217,31 @@ public sealed partial class WorldEngine
             pioneer.SettlementId = town.Id;
             var address = new AgentFact
             {
-                Id = NewId(), Kind = AgentFactKind.SettlementLocation, SubjectId = town.Id, X = x, Y = y,
-                Value = town.NationId, ObservedTick = State.Tick, LearnedTick = State.Tick,
+                Id = NewId(),
+                Kind = AgentFactKind.SettlementLocation,
+                SubjectId = town.Id,
+                X = x,
+                Y = y,
+                Value = town.NationId,
+                ObservedTick = State.Tick,
+                LearnedTick = State.Tick,
                 OriginResidentId = pioneer.Id,
-                OriginProfession = pioneer.Profession, SourceResidentId = pioneer.Id, Text = "拓荒队商定的新家园，物资必须亲自带到",
+                OriginProfession = pioneer.Profession,
+                SourceResidentId = pioneer.Id,
+                Text = "拓荒队商定的新家园，物资必须亲自带到",
             };
             RememberAgentFact(pioneer, address);
             pioneer.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.ReturnHome, TargetX = x, TargetY = y, TargetSettlementId = town.Id,
+                Kind = AgentGoalKind.ReturnHome,
+                TargetX = x,
+                TargetY = y,
+                TargetSettlementId = town.Id,
                 StartedTick = State.Tick,
                 Reason =
                     $"原聚落人口 {citizens.Count}，为拓荒扩展家园；已收到建村勘察报告，选址 {x}, {y} 肥力 {State.Tiles[location].Fertility}/100，周围有可登记陆地，背负粮木石步行建立新家园",
-                PlayerDirected = true, ReviewTick = State.Tick + 150,
+                PlayerDirected = true,
+                ReviewTick = State.Tick + 150,
             };
             citizens.Remove(pioneer);
             _citizens[town.Id].Add(pioneer);

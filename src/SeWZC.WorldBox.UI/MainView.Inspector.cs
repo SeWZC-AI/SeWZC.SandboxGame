@@ -45,12 +45,25 @@ public sealed partial class MainView
                 var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto") };
                 header.Children.Add(Named(Text(_inspectorMode switch
                 {
-                    "watched" => "我的关注", "story" => "人物故事", "event" => "事件与后果", "resident" => "居民档案",
-                    "residents" => "居民列表", "nation" => "国家与文明", "nations" => "国家列表",
-                    "building" => "建筑详情", "structures" => "建筑与道路", "history" => "世界编年史", "tile" => "地块详情",
-                    "rules" => "世界规则", "guide" => "玩法说明",
-                    "settlements" => "聚落列表", "settlement" => "聚落概况", "infrastructure" => "建设与运输",
-                    "research" => "科技与魔法研究", "communication" => "消息与通信", _ => "世界概览",
+                    "watched" => "我的关注",
+                    "story" => "人物故事",
+                    "event" => "事件与后果",
+                    "resident" => "居民档案",
+                    "residents" => "居民列表",
+                    "nation" => "国家与文明",
+                    "nations" => "国家列表",
+                    "building" => "建筑详情",
+                    "structures" => "建筑与道路",
+                    "history" => "世界编年史",
+                    "tile" => "地块详情",
+                    "rules" => "世界规则",
+                    "guide" => "玩法说明",
+                    "settlements" => "聚落列表",
+                    "settlement" => "聚落概况",
+                    "infrastructure" => "建设与运输",
+                    "research" => "科技与魔法研究",
+                    "communication" => "消息与通信",
+                    _ => "世界概览",
                 }, 17, null, true), "inspector-title"));
                 var back = IconButton("back", GoBack, "返回上一处", "inspector-back");
                 Grid.SetColumn(back, 1);
@@ -74,7 +87,8 @@ public sealed partial class MainView
                 var navigation = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*,*,*"), ColumnSpacing = 3 };
                 var entries = new[]
                 {
-                    ("世界", "overview"), ("居民", "residents"), ("国家", "nations"), ("聚落", "settlements"), ("日志", "history"),
+                    ("世界", "overview"), ("居民", "residents"), ("国家", "nations"), ("聚落", "settlements"),
+                    ("日志", "history"),
                 };
                 for (var i = 0; i < entries.Length; i++)
                 {
@@ -173,9 +187,12 @@ public sealed partial class MainView
                     {
                         var button = new Button
                         {
-                            Content = text, HorizontalAlignment = HorizontalAlignment.Stretch,
-                            HorizontalContentAlignment = HorizontalAlignment.Stretch, Padding = new Thickness(6, 3),
-                            Background = Ink, CornerRadius = new CornerRadius(7),
+                            Content = text,
+                            HorizontalAlignment = HorizontalAlignment.Stretch,
+                            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                            Padding = new Thickness(6, 3),
+                            Background = Ink,
+                            CornerRadius = new CornerRadius(7),
                         };
                         if (item is Resident resident) Named(button, $"resident-row-{resident.Id}");
                         if (item is Building building) Named(button, $"building-row-{building.Id}");
@@ -283,7 +300,8 @@ public sealed partial class MainView
                 new ComboBox
                 {
                     ItemsSource = new[] { "已发现或已有聚落掌握开采技术", "全部矿藏（含未发现）", "关闭矿藏显示" },
-                    SelectedIndex = (int)_resourceVisibility, HorizontalAlignment = HorizontalAlignment.Stretch,
+                    SelectedIndex = (int)_resourceVisibility,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
                 }, "map-resources");
         resources.SelectionChanged += (_, _) =>
         {
@@ -296,7 +314,9 @@ public sealed partial class MainView
         {
             var show = Named(
                 new CheckBox
-                    { Content = "显示" + ResourceStock.Name(kind), IsChecked = _map.VisibleResources.Contains(kind) },
+                {
+                    Content = "显示" + ResourceStock.Name(kind), IsChecked = _map.VisibleResources.Contains(kind),
+                },
                 "map-resource-" + kind.ToString().ToLowerInvariant());
             show.IsCheckedChanged += (_, _) =>
             {
@@ -348,7 +368,9 @@ public sealed partial class MainView
         {
             var item = new StackPanel { Margin = new Thickness(4, 0), Spacing = 2 };
             item.Children.Add(new Image
-                { Source = _map.ResidentPreview(race, Profession.Lumberjack), Width = 32, Height = 40 });
+            {
+                Source = _map.ResidentPreview(race, Profession.Lumberjack), Width = 32, Height = 40,
+            });
             item.Children.Add(Text(RaceName(race), 11));
             races.Children.Add(item);
         }
@@ -360,7 +382,9 @@ public sealed partial class MainView
         foreach (var kind in Enum.GetValues<WildlifeKind>().Where(k => k != WildlifeKind.None))
         {
             var item = new StackPanel
-                { Orientation = Orientation.Horizontal, Spacing = 3, Margin = new Thickness(3, 2) };
+            {
+                Orientation = Orientation.Horizontal, Spacing = 3, Margin = new Thickness(3, 2),
+            };
             item.Children.Add(new Image { Source = _map.AnimalPreview(kind), Width = 20, Height = 20 });
             item.Children.Add(Text(WorldEngine.WildlifeName(kind), 11));
             animals.Children.Add(item);
@@ -371,7 +395,9 @@ public sealed partial class MainView
         foreach (var kind in Enum.GetValues<PlantKind>())
         {
             var item = new StackPanel
-                { Orientation = Orientation.Horizontal, Spacing = 3, Margin = new Thickness(3, 2) };
+            {
+                Orientation = Orientation.Horizontal, Spacing = 3, Margin = new Thickness(3, 2),
+            };
             item.Children.Add(new Image { Source = _map.PlantPreview(kind), Width = 20, Height = 20 });
             item.Children.Add(Text(PlantResources.Name(kind), 11));
             vegetation.Children.Add(item);
@@ -495,8 +521,11 @@ public sealed partial class MainView
         if (_engine.State.Nations.Any(nation => nation.Id == Tile().NationId))
             local.Children.Add(Named(Button("查看归属国家", () => OpenNation(Tile().NationId)), "tile-nation"));
         if (_engine.State.Settlements.Any(town => town.Id == Tile().ClaimedSettlementId))
+        {
             local.Children.Add(Named(Button("查看归属聚落", () => OpenSettlement(Tile().ClaimedSettlementId)),
                 "tile-settlement"));
+        }
+
         LiveRows(local,
             () => _engine.State.Conflicts.Where(c =>
                 c.SettlementId == Tile().SettlementId || Math.Abs(c.X - point.X) + Math.Abs(c.Y - point.Y) <= 3),
@@ -540,8 +569,10 @@ public sealed partial class MainView
         {
             var cause = _engine.State.Events.FirstOrDefault(e => e.Id == causeId);
             if (cause is not null)
+            {
                 panel.Children.Add(Named(Button("前因：" + cause.Message, () => FocusEvent(cause)),
                     $"event-cause-{cause.Id}"));
+            }
             else panel.Children.Add(Paragraph($"前因 #{causeId} 已超出历史保留范围。"));
         }
 
@@ -560,8 +591,11 @@ public sealed partial class MainView
         }
 
         if (item.SettlementId > 0 && _engine.State.Settlements.Any(t => t.Id == item.SettlementId))
+        {
             panel.Children.Add(Button("查看 " + TownName(item.SettlementId),
                 () => OpenWatched(new ObservedObject(ObservedObjectKind.Settlement, item.SettlementId))));
+        }
+
         if (item.NationId > 0 && _engine.State.Nations.Any(n => n.Id == item.NationId))
             panel.Children.Add(Button("查看 " + NationName(item.NationId), () => OpenNation(item.NationId)));
         if (item.ResidentId > 0)
@@ -588,7 +622,8 @@ public sealed partial class MainView
             Named(
                 new ComboBox
                 {
-                    ItemsSource = new[] { "重大事件（默认）", "普通与重要日常", "全部事件" }, SelectedIndex = _historyImportance,
+                    ItemsSource = new[] { "重大事件（默认）", "普通与重要日常", "全部事件" },
+                    SelectedIndex = _historyImportance,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                 }, "history-importance");
         importance.SelectionChanged += (_, _) =>
@@ -640,7 +675,7 @@ public sealed partial class MainView
                 (_historyImportance == 2 || (_historyImportance == 0
                     ? e.Importance >= EventImportance.Major
                     : e.Importance < EventImportance.Major)) &&
-                (_historyNationId == 0 || (e.NationId == _historyNationId || e.SecondNationId == _historyNationId)) &&
+                (_historyNationId == 0 || e.NationId == _historyNationId || e.SecondNationId == _historyNationId) &&
                 (!_historyKind.HasValue || e.Kind == _historyKind) &&
                 e.Message.Contains(_historySearch, StringComparison.OrdinalIgnoreCase)).Reverse();
         }
@@ -653,7 +688,9 @@ public sealed partial class MainView
     {
         return value switch
         {
-            EventImportance.Routine => "普通", EventImportance.Notable => "重要日常", EventImportance.Major => "重大",
+            EventImportance.Routine => "普通",
+            EventImportance.Notable => "重要日常",
+            EventImportance.Major => "重大",
             _ => "历史转折",
         };
     }
@@ -662,13 +699,26 @@ public sealed partial class MainView
     {
         return value switch
         {
-            AgentGoalKind.ExtinguishFire => "用水扑救火灾", AgentGoalKind.ClaimLand => "占领地块",
-            AgentGoalKind.FetchWater => "打水或寻找水源", AgentGoalKind.Hunt => "狩猎", AgentGoalKind.Fish => "捕鱼",
-            AgentGoalKind.Explore => "实地探索", AgentGoalKind.Idle => "重新选择任务", AgentGoalKind.Eat => "寻找食物",
-            AgentGoalKind.Gather => "采集资源", AgentGoalKind.Work => "生产劳动", AgentGoalKind.Rest => "休息恢复",
-            AgentGoalKind.Flee => "逃离危险", AgentGoalKind.Socialize => "交流消息", AgentGoalKind.DeliverMessage => "传递消息",
-            AgentGoalKind.Trade => "运输货物", AgentGoalKind.Petition => "表达诉求", AgentGoalKind.Study => "学习研究",
-            AgentGoalKind.TrainMagic => "魔法训练", AgentGoalKind.March => "执行军令", AgentGoalKind.Migrate => "迁往新家园",
+            AgentGoalKind.ExtinguishFire => "用水扑救火灾",
+            AgentGoalKind.ClaimLand => "占领地块",
+            AgentGoalKind.FetchWater => "打水或寻找水源",
+            AgentGoalKind.Hunt => "狩猎",
+            AgentGoalKind.Fish => "捕鱼",
+            AgentGoalKind.Explore => "实地探索",
+            AgentGoalKind.Idle => "重新选择任务",
+            AgentGoalKind.Eat => "寻找食物",
+            AgentGoalKind.Gather => "采集资源",
+            AgentGoalKind.Work => "生产劳动",
+            AgentGoalKind.Rest => "休息恢复",
+            AgentGoalKind.Flee => "逃离危险",
+            AgentGoalKind.Socialize => "交流消息",
+            AgentGoalKind.DeliverMessage => "传递消息",
+            AgentGoalKind.Trade => "运输货物",
+            AgentGoalKind.Petition => "表达诉求",
+            AgentGoalKind.Study => "学习研究",
+            AgentGoalKind.TrainMagic => "魔法训练",
+            AgentGoalKind.March => "执行军令",
+            AgentGoalKind.Migrate => "迁往新家园",
             _ => "返回家园",
         };
     }
@@ -677,11 +727,21 @@ public sealed partial class MainView
     {
         return value switch
         {
-            WorldEventKind.Founding => "建国定居", WorldEventKind.Growth => "发展人口", WorldEventKind.Trade => "贸易运输",
-            WorldEventKind.Diplomacy => "外交", WorldEventKind.War => "战争", WorldEventKind.Disaster => "灾害",
-            WorldEventKind.Death => "死亡", WorldEventKind.Editor => "玩家编辑", WorldEventKind.Personal => "个人经历",
-            WorldEventKind.Communication => "消息通信", WorldEventKind.Culture => "文化", WorldEventKind.Policy => "制度政策",
-            WorldEventKind.Research => "研究", WorldEventKind.Construction => "建设", _ => "魔法",
+            WorldEventKind.Founding => "建国定居",
+            WorldEventKind.Growth => "发展人口",
+            WorldEventKind.Trade => "贸易运输",
+            WorldEventKind.Diplomacy => "外交",
+            WorldEventKind.War => "战争",
+            WorldEventKind.Disaster => "灾害",
+            WorldEventKind.Death => "死亡",
+            WorldEventKind.Editor => "玩家编辑",
+            WorldEventKind.Personal => "个人经历",
+            WorldEventKind.Communication => "消息通信",
+            WorldEventKind.Culture => "文化",
+            WorldEventKind.Policy => "制度政策",
+            WorldEventKind.Research => "研究",
+            WorldEventKind.Construction => "建设",
+            _ => "魔法",
         };
     }
 }

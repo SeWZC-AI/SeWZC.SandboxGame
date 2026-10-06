@@ -5,6 +5,7 @@ public sealed partial class WorldEngine
 {
     /// <summary>世界存活居民数量的上限。</summary>
     public const int MaxPopulation = 10_000;
+
     private static readonly (int X, int Y)[] Directions = [(1, 0), (0, 1), (-1, 0), (0, -1)];
 
     private static readonly uint[] NationColors =
@@ -47,7 +48,10 @@ public sealed partial class WorldEngine
             throw new ArgumentOutOfRangeException(nameof(width), "地图宽高必须在 32 到 256 之间。");
         var state = new WorldState
         {
-            Seed = seed, Width = width, Height = height, RandomState = (uint)seed ^ 0xA341316Cu,
+            Seed = seed,
+            Width = width,
+            Height = height,
+            RandomState = (uint)seed ^ 0xA341316Cu,
             Tiles = new Tile[width * height],
         };
         if (state.RandomState == 0) state.RandomState = 1;
@@ -93,8 +97,11 @@ public sealed partial class WorldEngine
         }
 
         if (_citizens.Count != _settlements.Count)
+        {
             foreach (var id in _citizens.Keys.Where(id => !_settlements.ContainsKey(id)).ToArray())
                 _citizens.Remove(id);
+        }
+
         foreach (var nation in State.Nations) _nations[nation.Id] = nation;
         foreach (var person in State.Residents)
             if (_citizens.TryGetValue(person.SettlementId, out var list))
@@ -171,8 +178,17 @@ public sealed partial class WorldEngine
         };
         var entry = new WorldEvent
         {
-            Id = NewId(), Tick = State.Tick, Kind = kind, Message = message, X = x, Y = y, Importance = importance,
-            Action = action, SettlementId = settlementId, ResidentId = residentId, CauseEventId = causeEventId,
+            Id = NewId(),
+            Tick = State.Tick,
+            Kind = kind,
+            Message = message,
+            X = x,
+            Y = y,
+            Importance = importance,
+            Action = action,
+            SettlementId = settlementId,
+            ResidentId = residentId,
+            CauseEventId = causeEventId,
             EvidenceFactId = evidenceFactId,
         };
         if (InBounds(x, y)) entry.NationId = State.Tiles[Index(x, y)]?.NationId ?? 0;

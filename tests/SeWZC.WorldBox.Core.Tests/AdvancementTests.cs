@@ -26,13 +26,33 @@ internal static class AdvancementTests
         engine.SpawnResidents(24, 24, RaceKind.Human, 2);
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
-            Construction = false, Research = false, Expansion = false, Trade = false, Wars = false,
-            Alliances = false, Peace = false, Migration = false, Secession = false, ResourceRegeneration = false,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Trade = false,
+            Wars = false,
+            Alliances = false,
+            Peace = false,
+            Migration = false,
+            Secession = false,
+            ResourceRegeneration = false,
         }, false, true);
         var town = engine.State.Settlements[0];
         town.Resources = new ResourceStock
-            { Food = 10000, Wood = 10000, Stone = 10000, Ore = 10000, Coal = 10000, Oil = 10000, RareEarth = 10000 };
+        {
+            Food = 10000,
+            Wood = 10000,
+            Stone = 10000,
+            Ore = 10000,
+            Coal = 10000,
+            Oil = 10000,
+            RareEarth = 10000,
+        };
         foreach (var person in engine.State.Residents)
         {
             person.Age = 25;
@@ -56,8 +76,12 @@ internal static class AdvancementTests
         person.MoveDurationTicks = 1;
         person.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Rest, TargetX = x, TargetY = y,
-            PlayerDirected = true, StartedTick = engine.State.Tick, ReviewTick = engine.State.Tick + 90000,
+            Kind = AgentGoalKind.Rest,
+            TargetX = x,
+            TargetY = y,
+            PlayerDirected = true,
+            StartedTick = engine.State.Tick,
+            ReviewTick = engine.State.Tick + 90000,
         };
     }
 
@@ -79,8 +103,11 @@ internal static class AdvancementTests
     {
         if (kind == ResearchKind.SignalNetwork) Know(engine, town, ResearchKind.Electrification);
         if (AdvancementRules.For(kind) is { } a)
+        {
             foreach (var required in a.Prerequisites)
                 Know(engine, town, required);
+        }
+
         engine.GrantReceivedResearch(town.Id, kind);
     }
 
@@ -88,9 +115,13 @@ internal static class AdvancementTests
     {
         person.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Work, TargetEntityId = building.Id,
-            TargetX = building.X, TargetY = building.Y, StartedTick = engine.State.Tick,
-            PlayerDirected = true, ReviewTick = engine.State.Tick + 500,
+            Kind = AgentGoalKind.Work,
+            TargetEntityId = building.Id,
+            TargetX = building.X,
+            TargetY = building.Y,
+            StartedTick = engine.State.Tick,
+            PlayerDirected = true,
+            ReviewTick = engine.State.Tick + 500,
         };
         person.Agent.NextThinkTick = engine.State.Tick + 500;
     }
@@ -118,8 +149,12 @@ internal static class AdvancementTests
                 {
                     worker.Agent.Goal = new AgentGoal
                     {
-                        Kind = AgentGoalKind.ReturnHome, TargetX = town.X, TargetY = town.Y,
-                        StartedTick = engine.State.Tick, PlayerDirected = true, ReviewTick = engine.State.Tick + 1000,
+                        Kind = AgentGoalKind.ReturnHome,
+                        TargetX = town.X,
+                        TargetY = town.Y,
+                        StartedTick = engine.State.Tick,
+                        PlayerDirected = true,
+                        ReviewTick = engine.State.Tick + 1000,
                     };
                     for (var tick = 0;
                          tick < 100 && Math.Abs(worker.X - town.X) + Math.Abs(worker.Y - town.Y) > 1;
@@ -180,8 +215,12 @@ internal static class AdvancementTests
                 // Walk home before picking up materials for the next facility.
                 worker.Agent.Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.ReturnHome, TargetX = town.X, TargetY = town.Y,
-                    StartedTick = engine.State.Tick, PlayerDirected = true, ReviewTick = engine.State.Tick + 1000,
+                    Kind = AgentGoalKind.ReturnHome,
+                    TargetX = town.X,
+                    TargetY = town.Y,
+                    StartedTick = engine.State.Tick,
+                    PlayerDirected = true,
+                    ReviewTick = engine.State.Tick + 1000,
                 };
                 for (var tick = 0;
                      tick < 100 && Math.Abs(worker.X - town.X) + Math.Abs(worker.Y - town.Y) > 1;
@@ -338,8 +377,8 @@ internal static class AdvancementTests
 
         foreach (var kind in new[]
                  {
-                     ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Irrigation, ResearchKind.Forestry,
-                     ResearchKind.Medicine, ResearchKind.ScientificMethod,
+                     ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Irrigation,
+                     ResearchKind.Forestry, ResearchKind.Medicine, ResearchKind.ScientificMethod,
                  }) engine.GrantReceivedResearch(town.Id, kind);
         Facility(engine, town, BuildingKind.Academy);
         Facility(engine, town, BuildingKind.Waystation);
@@ -359,15 +398,21 @@ internal static class AdvancementTests
         var (engine, town, worker) = World();
         var fact = new AgentFact
         {
-            Id = engine.State.NextId++, Kind = AgentFactKind.Research, SubjectId = town.Id,
-            X = town.X, Y = town.Y, Value = (int)ResearchKind.AdvancedComputing, ObservedTick = 0, LearnedTick = 0,
-            OriginResidentId = worker.Id, SourceResidentId = worker.Id,
+            Id = engine.State.NextId++,
+            Kind = AgentFactKind.Research,
+            SubjectId = town.Id,
+            X = town.X,
+            Y = town.Y,
+            Value = (int)ResearchKind.AdvancedComputing,
+            ObservedTick = 0,
+            LearnedTick = 0,
+            OriginResidentId = worker.Id,
+            SourceResidentId = worker.Id,
         };
         var recipient = engine.State.Residents.First();
         engine.State.PendingMessages.Add(new PendingMessage
         {
-            SenderId = worker.Id, RecipientId = recipient.Id,
-            DeliverTick = 3, Facts = [fact],
+            SenderId = worker.Id, RecipientId = recipient.Id, DeliverTick = 3, Facts = [fact],
         });
         engine.Step(2);
         Check(!engine.HasResearch(town.Id, ResearchKind.AdvancedComputing),

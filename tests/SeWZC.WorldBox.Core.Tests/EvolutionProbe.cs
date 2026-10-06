@@ -44,9 +44,12 @@ internal static class EvolutionProbe
                 }
 
                 if (e.State.Tick % 600 == 0)
+                {
                     points.Add(new
                     {
-                        e.State.Tick, e.State.Population, Nations = e.State.Nations.Count,
+                        e.State.Tick,
+                        e.State.Population,
+                        Nations = e.State.Nations.Count,
                         Towns = e.State.Settlements.Count,
                         Research = e.State.Society.Research.Sum(r => r.Completed.Count),
                         ResearchByKind = Enum.GetValues<ResearchKind>().ToDictionary(k => k.ToString(),
@@ -61,6 +64,7 @@ internal static class EvolutionProbe
                         ReportedCampaigns = e.State.Nations.Count(n => n.Military.ReportedOutcome != WarOutcome.None),
                         ObservedDeaths = observedDeaths.Count,
                     });
+                }
             }
 
             gap = Math.Max(gap, e.State.Tick - last);
@@ -83,10 +87,18 @@ internal static class EvolutionProbe
                 throw new Exception($"Seed {seed} failed generational progress");
             var result = new
             {
-                seed, firstConstruction, firstResearch, generationEnded,
+                seed,
+                firstConstruction,
+                firstResearch,
+                generationEnded,
                 foundingSurvivors = e.State.Residents.Count(r => foundingIds.Contains(r.Id)),
-                simulatedSecondsAt1x = 1200, events = total, longestGapSecondsAt1x = gap * .2, kinds, actions,
-                observedDeaths = observedDeaths.Count, points,
+                simulatedSecondsAt1x = 1200,
+                events = total,
+                longestGapSecondsAt1x = gap * .2,
+                kinds,
+                actions,
+                observedDeaths = observedDeaths.Count,
+                points,
             };
             all.Add(result);
             Console.WriteLine(JsonSerializer.Serialize(result));

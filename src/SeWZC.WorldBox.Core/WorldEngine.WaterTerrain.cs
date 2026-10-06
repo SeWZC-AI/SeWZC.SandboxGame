@@ -34,7 +34,9 @@ public sealed partial class WorldEngine
         tile.Plants = tile.Terrain switch
         {
             TerrainType.Forest or TerrainType.Rainforest or TerrainType.Woodland => new PlantCoverage
-                { Trees = .7, Shrubs = .3 },
+            {
+                Trees = .7, Shrubs = .3,
+            },
             TerrainType.Grass or TerrainType.DryFertile or TerrainType.Hills or TerrainType.Tundra or TerrainType.Meadow
                 or TerrainType.Savanna or TerrainType.Scrub or TerrainType.Floodplain
                 or TerrainType.AlpineMeadow => new PlantCoverage { Grass = .6, Shrubs = .15 },
@@ -84,8 +86,11 @@ public sealed partial class WorldEngine
 
             var total = plants.Total;
             if (total > 1)
+            {
                 for (var species = 0; species < 4; species++)
                     plants.Set((PlantKind)species, plants.Get((PlantKind)species) / total);
+            }
+
             tile.Plants = plants;
             if (tile.Terrain is TerrainType.Grass or TerrainType.DryFertile &&
                 plants.Trees * Math.Min(1, tile.ResourceAmount / 100) >= .5 && tile.ClaimedSettlementId == 0)

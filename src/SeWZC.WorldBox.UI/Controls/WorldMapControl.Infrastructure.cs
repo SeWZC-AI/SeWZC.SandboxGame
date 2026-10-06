@@ -16,12 +16,16 @@ public sealed partial class WorldMapControl
 
     private static readonly (int X, int Y)[] InfrastructureDirections = [(1, 0), (0, 1)];
     private FormattedText[]? _infrastructureLegendText;
+
     /// <summary>建设图层是否显示建筑高亮。</summary>
     public bool HighlightBuildings { get; set; } = true;
+
     /// <summary>建设图层是否显示道路和地块改良高亮。</summary>
     public bool HighlightRoads { get; set; } = true;
+
     /// <summary>建设图层筛选的聚落 ID，0 表示所有聚落。</summary>
     public int InfrastructureTownId { get; set; }
+
     /// <summary>建设图层筛选的建筑类别，空值表示所有类别。</summary>
     public BuildingKind? InfrastructureKind { get; set; }
 

@@ -17,8 +17,7 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
 
     private static readonly FilePickerFileType WorldFileType = new("WorldBox 世界存档")
     {
-        Patterns = ["*.json", "*.worldbox"],
-        MimeTypes = ["application/json"],
+        Patterns = ["*.json", "*.worldbox"], MimeTypes = ["application/json"],
     };
 
     private readonly SemaphoreSlim _saveLock = new(1, 1);
@@ -130,9 +129,7 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
         if (!provider.CanOpen) throw new IOException("此平台暂不支持文件导入。");
         var files = await provider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "导入 WorldBox 世界",
-            AllowMultiple = false,
-            FileTypeFilter = [WorldFileType],
+            Title = "导入 WorldBox 世界", AllowMultiple = false, FileTypeFilter = [WorldFileType],
         });
         if (files.Count == 0) return null;
         using var file = files[0];

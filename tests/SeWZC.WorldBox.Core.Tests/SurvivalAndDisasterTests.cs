@@ -37,9 +37,21 @@ internal static class SurvivalAndDisasterTests
 
         e.ConfigureWorld(new WorldRules
         {
-            Aging = false, Births = false, Expansion = false, Construction = false,
-            Research = false, Migration = false, Secession = false, Trade = false, Wars = false, Peace = false,
-            Alliances = false, Hunger = false, Thirst = false, Disease = false, ResourceRegeneration = false,
+            Aging = false,
+            Births = false,
+            Expansion = false,
+            Construction = false,
+            Research = false,
+            Migration = false,
+            Secession = false,
+            Trade = false,
+            Wars = false,
+            Peace = false,
+            Alliances = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            ResourceRegeneration = false,
         }, false, false);
         e.State.Tick = 1;
         e.SpawnResidents(16, 16, RaceKind.Human, people);
@@ -56,8 +68,13 @@ internal static class SurvivalAndDisasterTests
         r.MoveDurationTicks = 1;
         r.Agent.Goal = new AgentGoal
         {
-            Kind = kind, TargetX = x, TargetY = y, TargetEntityId = source,
-            PlayerDirected = true, StartedTick = e.State.Tick, ReviewTick = e.State.Tick + 1000,
+            Kind = kind,
+            TargetX = x,
+            TargetY = y,
+            TargetEntityId = source,
+            PlayerDirected = true,
+            StartedTick = e.State.Tick,
+            ReviewTick = e.State.Tick + 1000,
         };
     }
 

@@ -8,9 +8,14 @@ public sealed partial class WorldEngine
     {
         person.History.Add(new ResidentHistoryEntry
         {
-            Tick = State.Tick, Text = text, Importance = importance,
-            EventId = entry?.Id ?? 0, EvidenceFactId = entry?.EvidenceFactId ?? 0,
-            SettlementId = person.SettlementId, NationId = person.NationId, Experience = experience,
+            Tick = State.Tick,
+            Text = text,
+            Importance = importance,
+            EventId = entry?.Id ?? 0,
+            EvidenceFactId = entry?.EvidenceFactId ?? 0,
+            SettlementId = person.SettlementId,
+            NationId = person.NationId,
+            Experience = experience,
         });
         while (person.History.Count > 24) person.History.RemoveAt(0);
     }
@@ -68,8 +73,11 @@ public sealed partial class WorldEngine
         _ = RequireTown(settlementId);
         var building = State.Society.Buildings.FirstOrDefault(b => b.SettlementId == settlementId && !b.IsCompleted);
         if (building is not null)
+        {
             return GetCompletionEstimate(building.Observation, building.ConstructionProgress,
                 building.ConstructionRequired);
+        }
+
         var research = State.Society.Research.First(r => r.SettlementId == settlementId);
         return research.ActiveProject.HasValue
             ? GetCompletionEstimate(research.Observation, research.Progress, research.RequiredProgress)

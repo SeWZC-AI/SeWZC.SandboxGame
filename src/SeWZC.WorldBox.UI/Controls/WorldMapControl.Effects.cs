@@ -8,7 +8,8 @@ public sealed partial class WorldMapControl
 {
     private static readonly IBrush[] Clothing =
     [
-        Brush(0xFF4C718B), Brush(0xFF85699B), Brush(0xFFB57951), Brush(0xFF587C65), Brush(0xFFAA9A60), Brush(0xFF96636C),
+        Brush(0xFF4C718B), Brush(0xFF85699B), Brush(0xFFB57951), Brush(0xFF587C65), Brush(0xFFAA9A60),
+        Brush(0xFF96636C),
     ];
 
     private static readonly IBrush[] Hair =
@@ -17,12 +18,16 @@ public sealed partial class WorldMapControl
     private readonly List<VisualEffect> _effects = [];
     private long _seenVisualSequence;
     private IReadOnlyList<RoutePoint> _selectedRoute = [];
+
     /// <summary>最近一帧绘制的行动特效数。</summary>
     public int RenderedEffectCount { get; private set; }
+
     /// <summary>最近一帧特效使用的呈现时钟秒数。</summary>
     public double RenderedEffectTime { get; private set; }
+
     /// <summary>最近一帧绘制的居民路线段数。</summary>
     public int RenderedRouteSegmentCount { get; private set; }
+
     /// <summary>是否绘制所选居民的当前目标路线。</summary>
     public bool ShowResidentRoute { get; set; } = true;
 
@@ -46,15 +51,15 @@ public sealed partial class WorldMapControl
 
     private bool HasAnimatedEffects(double now)
     {
-        return _zoom >= 3 && _waterStreams.Count > 0 || _fires.Count > 0 || _effects.Any(e =>
+        return (_zoom >= 3 && _waterStreams.Count > 0) || _fires.Count > 0 || _effects.Any(e =>
                    now - e.Started < e.Duration && Visible(new Rect((e.Event.X - e.Event.Radius) * TilePixels - 32,
                        (e.Event.Y - e.Event.Radius) * TilePixels - 32, 64 + 2 * e.Event.Radius * TilePixels,
                        64 + 2 * e.Event.Radius * TilePixels))) ||
-               _zoom >= 3 && Engine is not null &&
-               (VisibleResidents(Engine.State).Any(r => r.Activity == ResidentActivity.Working) ||
-                Engine.State.Settlements.Any(t =>
-                    (t.ShieldTicks > 0 || t.FertilityBoostTicks > 0) &&
-                    Visible(new Rect(t.X * TilePixels - 32, t.Y * TilePixels - 32, 64, 64))));
+               (_zoom >= 3 && Engine is not null &&
+                (VisibleResidents(Engine.State).Any(r => r.Activity == ResidentActivity.Working) ||
+                 Engine.State.Settlements.Any(t =>
+                     (t.ShieldTicks > 0 || t.FertilityBoostTicks > 0) &&
+                     Visible(new Rect(t.X * TilePixels - 32, t.Y * TilePixels - 32, 64, 64)))));
     }
 
     private static void Triangle(DrawingContext context, IBrush brush, Point a, Point b, Point c)
@@ -196,8 +201,11 @@ public sealed partial class WorldMapControl
         if (resident.PersonalWard > 0)
             context.DrawEllipse(null, new Pen(ArcaneBrush, .35), new Point(x, y - 1.5), 4 * scale, 5 * scale);
         if (resident.FrozenUntilTick > (Engine?.State.Tick ?? 0))
+        {
             context.DrawRectangle(null, new Pen(Brush(0xFF95DEEA), .6),
                 new Rect(x - 3.5 * scale, y - 6 * scale, 7 * scale, 8 * scale), 1, 1);
+        }
+
         DrawActivityBadge(context, resident, x + 2.7, y - 5.5, moving);
     }
 

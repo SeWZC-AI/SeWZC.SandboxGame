@@ -56,8 +56,11 @@ public struct PlantCoverage : IEquatable<PlantCoverage>
     {
         return kind switch
         {
-            PlantKind.Trees => Trees, PlantKind.Shrubs => Shrubs, PlantKind.Grass => Grass,
-            PlantKind.Reeds => Reeds, _ => 0,
+            PlantKind.Trees => Trees,
+            PlantKind.Shrubs => Shrubs,
+            PlantKind.Grass => Grass,
+            PlantKind.Reeds => Reeds,
+            _ => 0,
         };
     }
 

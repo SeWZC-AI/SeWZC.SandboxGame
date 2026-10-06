@@ -38,8 +38,13 @@ internal static class EcologyAndConflictTests
         person = engine.GetResident(person.Id)!;
         person.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Work, TargetX = 19, TargetY = 16, PlayerDirected = true,
-            StartedTick = engine.State.Tick, ReviewTick = engine.State.Tick + 24, Reason = "到森林执行伐木任务",
+            Kind = AgentGoalKind.Work,
+            TargetX = 19,
+            TargetY = 16,
+            PlayerDirected = true,
+            StartedTick = engine.State.Tick,
+            ReviewTick = engine.State.Tick + 24,
+            Reason = "到森林执行伐木任务",
         };
         var wood = person.Inventory.Wood;
         engine.Step();
@@ -64,8 +69,18 @@ internal static class EcologyAndConflictTests
 
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false, Construction = false,
-            Research = false, Expansion = false, Trade = false, Wars = false, Alliances = false, Migration = false,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Trade = false,
+            Wars = false,
+            Alliances = false,
+            Migration = false,
             Secession = false,
         }, false, false);
         return engine;
@@ -239,7 +254,13 @@ internal static class EcologyAndConflictTests
             person.Hunger = 50;
             person.Inventory.Food = 0;
             person.Agent.Goal = new AgentGoal
-                { Kind = AgentGoalKind.Rest, TargetX = 16, TargetY = 16, ReviewTick = 1000, PlayerDirected = true };
+            {
+                Kind = AgentGoalKind.Rest,
+                TargetX = 16,
+                TargetY = 16,
+                ReviewTick = 1000,
+                PlayerDirected = true,
+            };
         }
 
         void Advance(WorldEngine world, int ticks)
@@ -379,7 +400,9 @@ internal static class EcologyAndConflictTests
         var factory = engine.GrantFacility(town.Id, BuildingKind.Foundry, 20, 16);
         person.X = person.FromX = 18;
         person.Agent.Goal = new AgentGoal
-            { Kind = AgentGoalKind.Work, TargetEntityId = factory, TargetX = 20, TargetY = 16 };
+        {
+            Kind = AgentGoalKind.Work, TargetEntityId = factory, TargetX = 20, TargetY = 16,
+        };
         var before = engine.ExportJson();
         Require(engine.GetResidentActionSummary(person.Id).Contains("仓库取料"),
             "Factory work described the wrong current destination");
@@ -398,8 +421,8 @@ internal static class EcologyAndConflictTests
     {
         foreach (var cause in new[]
                  {
-                     DeathCause.Fire, DeathCause.Disease, DeathCause.Starvation, DeathCause.OldAge, DeathCause.Meteor,
-                     DeathCause.PlayerIntervention,
+                     DeathCause.Fire, DeathCause.Disease, DeathCause.Starvation, DeathCause.OldAge,
+                     DeathCause.Meteor, DeathCause.PlayerIntervention,
                  })
         {
             var engine = Empty();

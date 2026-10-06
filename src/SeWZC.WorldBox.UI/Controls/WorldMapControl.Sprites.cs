@@ -39,8 +39,11 @@ public sealed partial class WorldMapControl
         _sceneSprites.Clear();
         foreach (var building in _sceneBuildings)
             if (Visible(BuildingBounds(building)))
+            {
                 _sceneSprites.Add(new SceneSprite((building.Y + .5) * TilePixels + 2, building.Id, building, null,
                     default));
+            }
+
         foreach (var person in VisibleResidents(state))
         {
             if (person.TravelMode == TravelMode.Aircraft) continue;
@@ -65,8 +68,10 @@ public sealed partial class WorldMapControl
             else if (sprite.Resident is { } person)
             {
                 if (ShowVehicle(person))
+                {
                     DrawVehicle(context, person,
                         new Point((sprite.Position.X + .5) * TilePixels, (sprite.Position.Y + .5) * TilePixels));
+                }
                 else DrawResidentSprite(context, person, sprite.Position);
             }
     }
@@ -109,25 +114,40 @@ public sealed partial class WorldMapControl
         var c = new PixelCanvas(32, 40);
         var skin = race switch
         {
-            RaceKind.Elf => 0xD6E4C2FFu, RaceKind.Orc => 0x91AD63FFu, RaceKind.Dwarf => 0xD9B18AFFu,
+            RaceKind.Elf => 0xD6E4C2FFu,
+            RaceKind.Orc => 0x91AD63FFu,
+            RaceKind.Dwarf => 0xD9B18AFFu,
             _ => 0xF0D3A5FFu,
         };
         var hair = race switch
         {
-            RaceKind.Elf => 0xE2DDAAFFu, RaceKind.Orc => 0x343B30FFu, RaceKind.Dwarf => 0xB67540FFu,
+            RaceKind.Elf => 0xE2DDAAFFu,
+            RaceKind.Orc => 0x343B30FFu,
+            RaceKind.Dwarf => 0xB67540FFu,
             _ => 0x624330FFu,
         };
         var shirt = job switch
         {
-            Profession.Fisher => 0x679FAEFFu, Profession.Farmer => 0x87A55EFFu, Profession.Lumberjack => 0xB16842FFu,
+            Profession.Fisher => 0x679FAEFFu,
+            Profession.Farmer => 0x87A55EFFu,
+            Profession.Lumberjack => 0xB16842FFu,
             Profession.Miner => 0x687B91FFu,
-            Profession.Builder => 0xD0A552FFu, Profession.Mage => 0x8E6CADFFu, Profession.Soldier => 0x8397A5FFu,
-            Profession.Scholar => 0x527AABFFu, Profession.Messenger => 0xB56666FFu, Profession.Trader => 0x7F7656FFu,
-            Profession.Engineer => 0xE9B94DFFu, Profession.Physician => 0xE7ECEAFFu,
-            Profession.Firefighter => 0xD25848FFu, Profession.Ranger => 0x597F5CFFu,
-            Profession.Archivist => 0xA17C50FFu, Profession.Battlemage => 0x7655BAFFu,
-            Profession.Surveyor => 0x63B4BAFFu, Profession.Gardener => 0x67A85AFFu,
-            Profession.Representative => 0xE0C078FFu, _ => 0x78928CFFu,
+            Profession.Builder => 0xD0A552FFu,
+            Profession.Mage => 0x8E6CADFFu,
+            Profession.Soldier => 0x8397A5FFu,
+            Profession.Scholar => 0x527AABFFu,
+            Profession.Messenger => 0xB56666FFu,
+            Profession.Trader => 0x7F7656FFu,
+            Profession.Engineer => 0xE9B94DFFu,
+            Profession.Physician => 0xE7ECEAFFu,
+            Profession.Firefighter => 0xD25848FFu,
+            Profession.Ranger => 0x597F5CFFu,
+            Profession.Archivist => 0xA17C50FFu,
+            Profession.Battlemage => 0x7655BAFFu,
+            Profession.Surveyor => 0x63B4BAFFu,
+            Profession.Gardener => 0x67A85AFFu,
+            Profession.Representative => 0xE0C078FFu,
+            _ => 0x78928CFFu,
         };
         const uint wood = 0x63472FFF, metal = 0xC6D4D4FF, paper = 0xFFF0C8FF;
         var headY = race == RaceKind.Dwarf ? 13 : race == RaceKind.Elf ? 6 : 9;
@@ -506,12 +526,16 @@ public sealed partial class WorldMapControl
         const uint timber = 0x6C4C31FF, metal = 0xB6C6C5FF, paper = 0xFFF0C8FF, green = 0x709957FF;
         var wall = race switch
         {
-            RaceKind.Dwarf => 0x929E9DFFu, RaceKind.Orc => 0x9A8060FFu, RaceKind.Elf => 0xC5D3A4FFu,
+            RaceKind.Dwarf => 0x929E9DFFu,
+            RaceKind.Orc => 0x9A8060FFu,
+            RaceKind.Elf => 0xC5D3A4FFu,
             _ => 0xDEC9A0FFu,
         };
         var roof = race switch
         {
-            RaceKind.Dwarf => 0x617780FFu, RaceKind.Orc => 0x675948FFu, RaceKind.Elf => 0x4E865EFFu,
+            RaceKind.Dwarf => 0x617780FFu,
+            RaceKind.Orc => 0x675948FFu,
+            RaceKind.Elf => 0x4E865EFFu,
             _ => 0xB8754BFFu,
         };
 
@@ -536,8 +560,11 @@ public sealed partial class WorldMapControl
             }
 
             if (race == RaceKind.Dwarf)
+            {
                 for (var y = 25; y < 42; y += 5)
                     c.Line(6, y, 33, y, 0x627271FF);
+            }
+
             if (race == RaceKind.Elf)
             {
                 c.Line(7, 42, 4, 23, green, 2);

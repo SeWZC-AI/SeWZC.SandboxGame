@@ -5,6 +5,7 @@ public enum AnimalDiet
 {
     /// <summary>食草。</summary>
     Herbivore,
+
     /// <summary>食肉。</summary>
     Carnivore,
 }

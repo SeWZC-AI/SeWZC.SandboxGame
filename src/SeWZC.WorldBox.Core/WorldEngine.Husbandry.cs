@@ -97,7 +97,9 @@ public sealed partial class WorldEngine
             }
 
             foreach (var (kind, target) in new[]
-                         { (ResourceKind.Food, TravelReserve(person) + 1), (ResourceKind.Water, 1.5) })
+                     {
+                         (ResourceKind.Food, TravelReserve(person) + 1), (ResourceKind.Water, 1.5),
+                     })
             {
                 var take = Math.Min(home.Resources.Get(kind), Math.Max(0, target - person.Inventory.Get(kind)));
                 home.Resources.Set(kind, home.Resources.Get(kind) - take);
@@ -121,7 +123,9 @@ public sealed partial class WorldEngine
         {
             var previous = person.Agent.Goal;
             person.Agent.Goal = new AgentGoal
-                { Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, StartedTick = State.Tick };
+            {
+                Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, StartedTick = State.Tick,
+            };
             ChangeWorkReservation(previous, person.Agent.Goal);
             person.Agent.NextThinkTick = State.Tick;
         }

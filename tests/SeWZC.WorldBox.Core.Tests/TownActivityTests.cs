@@ -71,15 +71,31 @@ internal static class TownActivityTests
 
         e.ConfigureWorld(new WorldRules
         {
-            Aging = false, Births = false, Hunger = false, Thirst = false, Disease = false,
-            Construction = false, Research = false, Expansion = false, Migration = false, Trade = false, Wars = false,
-            Peace = false, Alliances = false, Secession = false, ResourceRegeneration = false, Conflict = 0,
+            Aging = false,
+            Births = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Migration = false,
+            Trade = false,
+            Wars = false,
+            Peace = false,
+            Alliances = false,
+            Secession = false,
+            ResourceRegeneration = false,
+            Conflict = 0,
         }, false, false);
         e.SpawnResidents(12, 16, RaceKind.Human, population);
         foreach (var person in e.State.Residents)
             person.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Rest, TargetX = person.X, TargetY = person.Y, PlayerDirected = true,
+                Kind = AgentGoalKind.Rest,
+                TargetX = person.X,
+                TargetY = person.Y,
+                PlayerDirected = true,
                 ReviewTick = 10000,
             };
         return e;
@@ -160,7 +176,10 @@ internal static class TownActivityTests
             person.Agent.Goal = new AgentGoal
             {
                 Kind = profession == Profession.Farmer ? AgentGoalKind.Gather : AgentGoalKind.Work,
-                TargetX = 16, TargetY = 16, PlayerDirected = true, ReviewTick = 10000,
+                TargetX = 16,
+                TargetY = 16,
+                PlayerDirected = true,
+                ReviewTick = 10000,
             };
             e.Step(8);
             return person.Inventory;
@@ -290,8 +309,12 @@ internal static class TownActivityTests
                 person.Agent.Goal.TargetY = 16;
                 person.Agent.Memory.Add(new AgentFact
                 {
-                    Id = e.State.NextId++, Kind = AgentFactKind.Personal, SubjectId = person.Id,
-                    OriginResidentId = person.Id, SourceResidentId = person.Id, Text = "A remembered personal event",
+                    Id = e.State.NextId++,
+                    Kind = AgentFactKind.Personal,
+                    SubjectId = person.Id,
+                    OriginResidentId = person.Id,
+                    SourceResidentId = person.Id,
+                    Text = "A remembered personal event",
                     Confidence = 1,
                 });
             }
@@ -346,7 +369,13 @@ internal static class TownActivityTests
             _ = Site(other); // Evict the last-search stamp, then exercise the shared cache.
             Check(
                 Site(new Resident
-                    { Id = 902, X = first.X, Y = first.Y, Race = first.Race, TravelMode = first.TravelMode }) == site,
+                {
+                    Id = 902,
+                    X = first.X,
+                    Y = first.Y,
+                    Race = first.Race,
+                    TravelMode = first.TravelMode,
+                }) == site,
                 reason + " for another resident");
         }
 
@@ -373,7 +402,9 @@ internal static class TownActivityTests
         barrier.Improvement = LandImprovement.MountainPass;
         Expect(target, "Completed mountain pass was ignored");
         e.State.Tiles = e.State.Tiles.Select(t => new Tile
-            { Terrain = t.Terrain, ResourceAmount = t.ResourceAmount, Fertility = 100, Plants = t.Plants }).ToArray();
+        {
+            Terrain = t.Terrain, ResourceAmount = t.ResourceAmount, Fertility = 100, Plants = t.Plants,
+        }).ToArray();
         Expect(-1, "Replacement grid reused an old mountain pass");
     }
 

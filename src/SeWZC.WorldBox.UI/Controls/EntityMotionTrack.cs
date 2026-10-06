@@ -9,8 +9,10 @@ internal sealed class EntityMotionTrack(Point position)
     private double _duration;
     private Point _from = position;
     private long _started = -1;
+
     /// <summary>当前已提交移动区段的终点，以地格坐标计。</summary>
     public Point Target { get; private set; } = position;
+
     /// <summary>最近一次世界呈现快照检查到此实体的版本号。</summary>
     public long SeenRevision { get; set; }
 

@@ -43,9 +43,21 @@ internal static class TownInfrastructureTests
 
         e.ConfigureWorld(new WorldRules
         {
-            Aging = false, Births = false, Hunger = false, Thirst = false, Disease = false,
-            Construction = false, Research = false, Expansion = false, Trade = false, Wars = false, Alliances = false,
-            Peace = false, Migration = false, Secession = false, Conflict = 0,
+            Aging = false,
+            Births = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Trade = false,
+            Wars = false,
+            Alliances = false,
+            Peace = false,
+            Migration = false,
+            Secession = false,
+            Conflict = 0,
         }, false, false);
         e.SpawnResidents(12, 16, RaceKind.Human, population);
         foreach (var resident in e.State.Residents) Hold(e, resident, AgentGoalKind.Rest, 12, 16);
@@ -61,8 +73,13 @@ internal static class TownInfrastructureTests
         resident.MoveDurationTicks = 1;
         resident.Agent.Goal = new AgentGoal
         {
-            Kind = kind, TargetX = x, TargetY = y, TargetEntityId = buildingId,
-            StartedTick = e.State.Tick, ReviewTick = e.State.Tick + 1000, PlayerDirected = true,
+            Kind = kind,
+            TargetX = x,
+            TargetY = y,
+            TargetEntityId = buildingId,
+            StartedTick = e.State.Tick,
+            ReviewTick = e.State.Tick + 1000,
+            PlayerDirected = true,
         };
         resident.Agent.NextThinkTick = e.State.Tick + 1000;
     }
@@ -430,7 +447,14 @@ internal static class TownInfrastructureTests
         var e = Flat(80);
         var home = e.State.Settlements.Single();
         e.State.Tick = 119;
-        home.Resources = new ResourceStock { Food = 10000, Water = 1000, Wood = 1000, Stone = 1000, Ore = 100 };
+        home.Resources = new ResourceStock
+        {
+            Food = 10000,
+            Water = 1000,
+            Wood = 1000,
+            Stone = 1000,
+            Ore = 100,
+        };
         foreach (var person in e.State.Residents)
         {
             person.Age = 30;
@@ -443,10 +467,18 @@ internal static class TownInfrastructureTests
         foreach (var y in new[] { 16, 15 })
             home.PublicKnowledge.Add(new AgentFact
             {
-                Id = e.State.NextId++, Kind = AgentFactKind.FoundingSite,
-                SubjectId = home.Id, X = 28, Y = y, ObservedTick = 1, LearnedTick = 1,
-                OriginResidentId = e.State.Residents[0].Id, SourceResidentId = e.State.Residents[0].Id,
-                OriginProfession = e.State.Residents[0].Profession, Confidence = 1, Text = "已带回的建村勘察",
+                Id = e.State.NextId++,
+                Kind = AgentFactKind.FoundingSite,
+                SubjectId = home.Id,
+                X = 28,
+                Y = y,
+                ObservedTick = 1,
+                LearnedTick = 1,
+                OriginResidentId = e.State.Residents[0].Id,
+                SourceResidentId = e.State.Residents[0].Id,
+                OriginProfession = e.State.Residents[0].Profession,
+                Confidence = 1,
+                Text = "已带回的建村勘察",
             });
         e.State.Rules.Expansion = true;
         e.Step();

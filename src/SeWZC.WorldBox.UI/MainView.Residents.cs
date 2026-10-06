@@ -172,12 +172,21 @@ public sealed partial class MainView
     {
         return kind switch
         {
-            AgentFactKind.WaterSource => "取水地点", AgentFactKind.FoundingSite => "建村勘察",
-            AgentFactKind.FoodSupply => "粮食供给", AgentFactKind.Danger => "危险",
-            AgentFactKind.SettlementLocation => "聚落位置", AgentFactKind.ReliefRequest => "救济请求",
-            AgentFactKind.Policy => "政策", AgentFactKind.WarOrder => "战争命令", AgentFactKind.PeaceOrder => "和平命令",
-            AgentFactKind.Culture => "文化", AgentFactKind.Research => "研究", AgentFactKind.TradeExchange => "贸易往来",
-            AgentFactKind.DiplomaticNotice => "外交声明", AgentFactKind.WarReport => "前线战报", _ => "个人记忆",
+            AgentFactKind.WaterSource => "取水地点",
+            AgentFactKind.FoundingSite => "建村勘察",
+            AgentFactKind.FoodSupply => "粮食供给",
+            AgentFactKind.Danger => "危险",
+            AgentFactKind.SettlementLocation => "聚落位置",
+            AgentFactKind.ReliefRequest => "救济请求",
+            AgentFactKind.Policy => "政策",
+            AgentFactKind.WarOrder => "战争命令",
+            AgentFactKind.PeaceOrder => "和平命令",
+            AgentFactKind.Culture => "文化",
+            AgentFactKind.Research => "研究",
+            AgentFactKind.TradeExchange => "贸易往来",
+            AgentFactKind.DiplomaticNotice => "外交声明",
+            AgentFactKind.WarReport => "前线战报",
+            _ => "个人记忆",
         };
     }
 
@@ -198,10 +207,13 @@ public sealed partial class MainView
                 ItemsSource = new[]
                 {
                     Named(new TabItem { Header = Text("身份", 12), Content = identity }, "resident-tab-identity"),
-                    Named(new TabItem { Header = Text("生理", 12), Content = condition }, "resident-tab-condition"),
-                    Named(new TabItem { Header = Text("归属", 12), Content = belonging }, "resident-tab-belonging"),
+                    Named(new TabItem { Header = Text("生理", 12), Content = condition },
+                        "resident-tab-condition"),
+                    Named(new TabItem { Header = Text("归属", 12), Content = belonging },
+                        "resident-tab-belonging"),
                     Named(new TabItem { Header = Text("魔法", 12), Content = magic }, "resident-tab-magic"),
-                    Named(new TabItem { Header = Text("物品", 12), Content = possessions }, "resident-tab-possessions"),
+                    Named(new TabItem { Header = Text("物品", 12), Content = possessions },
+                        "resident-tab-possessions"),
                 },
                 SelectedIndex = 0,
             }, "resident-editor-tabs");
@@ -241,13 +253,21 @@ public sealed partial class MainView
                 {
                     Name = name.Text ?? "",
                     Trait = Integer(trait) == 0 ? null : new[] { "", "勤劳", "勇敢", "好奇", "温和" }[Integer(trait)],
-                    Race = (RaceKind)race.SelectedItem!, Profession = (Profession)profession.SelectedItem!,
+                    Race = (RaceKind)race.SelectedItem!,
+                    Profession = (Profession)profession.SelectedItem!,
                     CultureId = Integer(culture),
-                    SettlementId = Integer(home) == resident.SettlementId ? null : Integer(home), Age = Number(age),
-                    Health = Number(health), Hunger = Number(hunger), Thirst = Number(thirst),
+                    SettlementId = Integer(home) == resident.SettlementId ? null : Integer(home),
+                    Age = Number(age),
+                    Health = Number(health),
+                    Hunger = Number(hunger),
+                    Thirst = Number(thirst),
                     SicknessTicks = Integer(sickness),
-                    X = Integer(x), Y = Integer(y), ArmyId = Integer(army) == resident.ArmyId ? null : Integer(army),
-                    Mana = Number(mana), MagicTalent = Number(talent), MagicTraining = Number(training),
+                    X = Integer(x),
+                    Y = Integer(y),
+                    ArmyId = Integer(army) == resident.ArmyId ? null : Integer(army),
+                    Mana = Number(mana),
+                    MagicTalent = Number(talent),
+                    MagicTraining = Number(training),
                     Inventory = ReadStock(inventory),
                 };
                 await SubmitEditAsync(() =>
@@ -338,8 +358,11 @@ public sealed partial class MainView
             else choices.AddRange(_engine.State.Residents.Select(person => new EntityChoice(person.Id, person.Name)));
 
             if (kind == originalGoal.Kind && choices.All(choice => choice.Id != originalGoal.TargetEntityId))
+            {
                 choices.Add(
                     new EntityChoice(originalGoal.TargetEntityId, $"保留原目标 #{originalGoal.TargetEntityId}（历史引用）"));
+            }
+
             var selected = entity.SelectedItem is EntityChoice prior ? prior.Id : originalGoal.TargetEntityId;
             updatingEntities = true;
             entity.ItemsSource = choices;
@@ -378,8 +401,8 @@ public sealed partial class MainView
                 {
                     var bank = new[]
                         {
-                            (X: sourceX - 1, Y: sourceY), (X: sourceX + 1, Y: sourceY), (X: sourceX, Y: sourceY - 1),
-                            (X: sourceX, Y: sourceY + 1),
+                            (X: sourceX - 1, Y: sourceY), (X: sourceX + 1, Y: sourceY),
+                            (X: sourceX, Y: sourceY - 1), (X: sourceX, Y: sourceY + 1),
                         }
                         .Where(p => p.X >= 0 && p.Y >= 0 && p.X < _engine.State.Width && p.Y < _engine.State.Height &&
                                     _engine.State.Tiles[p.Y * _engine.State.Width + p.X].IsWalkable)
@@ -436,10 +459,14 @@ public sealed partial class MainView
                 mind.Goal = goalChanged
                     ? new AgentGoal
                     {
-                        Kind = kind, TargetX = targetX, TargetY = targetY,
-                        TargetSettlementId = targetTown, TargetEntityId = targetEntity,
+                        Kind = kind,
+                        TargetX = targetX,
+                        TargetY = targetY,
+                        TargetSettlementId = targetTown,
+                        TargetEntityId = targetEntity,
                         Reason = "玩家指定：" + GoalName(kind),
-                        PlayerDirected = true, StartedTick = _engine.State.Tick,
+                        PlayerDirected = true,
+                        StartedTick = _engine.State.Tick,
                         ReviewTick = _engine.State.Tick + keepDays,
                     }
                     : originalGoal;
@@ -473,10 +500,16 @@ public sealed partial class MainView
         var adding = fact is null;
         fact ??= new AgentFact
         {
-            Id = 0, Kind = AgentFactKind.FoodSupply, SubjectId = _engine.GetResident(id)?.SettlementId ?? 0,
-            ObservedTick = _engine.State.Tick, LearnedTick = _engine.State.Tick, OriginResidentId = id,
-            SourceResidentId = id, OriginProfession = _engine.GetResident(id)?.Profession ?? Profession.Child,
-            X = _engine.GetResident(id)?.X ?? 0, Y = _engine.GetResident(id)?.Y ?? 0,
+            Id = 0,
+            Kind = AgentFactKind.FoodSupply,
+            SubjectId = _engine.GetResident(id)?.SettlementId ?? 0,
+            ObservedTick = _engine.State.Tick,
+            LearnedTick = _engine.State.Tick,
+            OriginResidentId = id,
+            SourceResidentId = id,
+            OriginProfession = _engine.GetResident(id)?.Profession ?? Profession.Child,
+            X = _engine.GetResident(id)?.X ?? 0,
+            Y = _engine.GetResident(id)?.Y ?? 0,
         };
         var panel = ModalPanel(adding ? "添加记忆" : "编辑记忆", "这是角色的认知记录，允许它与实际世界不同。修改将影响以后的决策与传播，不回算已经发生的战争、死亡或资源变化。");
         var kind = EnumField(panel, "记忆类型", fact.Kind, FactKindName, "memory-kind");
@@ -522,7 +555,9 @@ public sealed partial class MainView
                 AgentFactKind.Research => Enum.GetValues<ResearchKind>()
                     .Select(r => new EntityChoice((int)r, WorldEngine.ResearchName(r))),
                 AgentFactKind.DiplomaticNotice => new[]
-                    { new EntityChoice(0, "停战声明"), new EntityChoice(1, "结盟提议"), new EntityChoice(2, "宣战声明") },
+                {
+                    new EntityChoice(0, "停战声明"), new EntityChoice(1, "结盟提议"), new EntityChoice(2, "宣战声明"),
+                },
                 AgentFactKind.WarOrder or AgentFactKind.PeaceOrder => new[] { new EntityChoice(0, "仅使用地点") }.Concat(
                     _engine.State.Settlements.Select(t => new EntityChoice(t.Id, t.Name))),
                 AgentFactKind.TradeExchange => new[] { new EntityChoice(1, "实际完成交易") },
@@ -630,9 +665,12 @@ public sealed partial class MainView
     {
         return experience switch
         {
-            PersonalExperienceKind.Hardship => "艰难遭遇", PersonalExperienceKind.Achievement => "取得成就",
-            PersonalExperienceKind.Kindness => "得到善意", PersonalExperienceKind.Betrayal => "遭遇背叛",
-            PersonalExperienceKind.Learning => "学习成长", _ => "中性经历",
+            PersonalExperienceKind.Hardship => "艰难遭遇",
+            PersonalExperienceKind.Achievement => "取得成就",
+            PersonalExperienceKind.Kindness => "得到善意",
+            PersonalExperienceKind.Betrayal => "遭遇背叛",
+            PersonalExperienceKind.Learning => "学习成长",
+            _ => "中性经历",
         };
     }
 
@@ -644,7 +682,9 @@ public sealed partial class MainView
         var entry = adding
             ? new ResidentHistoryEntry
             {
-                Tick = _engine.State.Tick, PlayerEdited = true, Experience = PersonalExperienceKind.Learning,
+                Tick = _engine.State.Tick,
+                PlayerEdited = true,
+                Experience = PersonalExperienceKind.Learning,
                 Impact = .25,
             }
             : history[index!.Value];
@@ -738,7 +778,10 @@ public sealed partial class MainView
             new TextBox
             {
                 Text = history ? _engine.ExportResidentHistory(id) : _engine.ExportResidentMind(id),
-                AcceptsReturn = true, TextWrapping = TextWrapping.Wrap, MinHeight = 280, MaxHeight = 420,
+                AcceptsReturn = true,
+                TextWrapping = TextWrapping.Wrap,
+                MinHeight = 280,
+                MaxHeight = 420,
             }, history ? "resident-history-json" : "resident-mind-json-input");
         panel.Children.Add(input);
         panel.Children.Add(Named(Button("校验并应用", async () =>
@@ -797,7 +840,9 @@ public sealed partial class MainView
         panel.Children.Add(Text(label, 12, Muted));
         var picker = Named(new ComboBox
         {
-            ItemsSource = Enum.GetValues<T>(), SelectedItem = value, HorizontalAlignment = HorizontalAlignment.Stretch,
+            ItemsSource = Enum.GetValues<T>(),
+            SelectedItem = value,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
             ItemTemplate = new FuncDataTemplate<T>((item, _) => Text(name(item), 12)),
         }, id);
         panel.Children.Add(picker);

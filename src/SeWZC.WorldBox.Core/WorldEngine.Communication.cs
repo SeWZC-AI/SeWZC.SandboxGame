@@ -22,10 +22,19 @@ public sealed partial class WorldEngine
     {
         return new AgentFact
         {
-            Id = NewId(), Kind = kind, SubjectId = subject, X = x, Y = y, Value = value,
-            ObservedTick = State.Tick, LearnedTick = State.Tick,
-            OriginResidentId = observer.Id, SourceResidentId = observer.Id, OriginProfession = observer.Profession,
-            Confidence = 1, Text = text,
+            Id = NewId(),
+            Kind = kind,
+            SubjectId = subject,
+            X = x,
+            Y = y,
+            Value = value,
+            ObservedTick = State.Tick,
+            LearnedTick = State.Tick,
+            OriginResidentId = observer.Id,
+            SourceResidentId = observer.Id,
+            OriginProfession = observer.Profession,
+            Confidence = 1,
+            Text = text,
         };
     }
 
@@ -35,13 +44,24 @@ public sealed partial class WorldEngine
     {
         return new AgentFact
         {
-            Id = fact.Id, EventId = fact.EventId, CampaignEventId = fact.CampaignEventId,
-            WarObjective = fact.WarObjective, Kind = fact.Kind, SubjectId = fact.SubjectId,
-            TargetNationId = fact.TargetNationId, X = fact.X, Y = fact.Y, Value = fact.Value,
-            ObservedTick = fact.ObservedTick, LearnedTick = fact.LearnedTick,
-            OriginResidentId = fact.OriginResidentId, SourceResidentId = fact.SourceResidentId,
+            Id = fact.Id,
+            EventId = fact.EventId,
+            CampaignEventId = fact.CampaignEventId,
+            WarObjective = fact.WarObjective,
+            Kind = fact.Kind,
+            SubjectId = fact.SubjectId,
+            TargetNationId = fact.TargetNationId,
+            X = fact.X,
+            Y = fact.Y,
+            Value = fact.Value,
+            ObservedTick = fact.ObservedTick,
+            LearnedTick = fact.LearnedTick,
+            OriginResidentId = fact.OriginResidentId,
+            SourceResidentId = fact.SourceResidentId,
             OriginProfession = fact.OriginProfession,
-            Confidence = fact.Confidence, Hops = fact.Hops, Text = fact.Text,
+            Confidence = fact.Confidence,
+            Hops = fact.Hops,
+            Text = fact.Text,
         };
     }
 
@@ -249,8 +269,11 @@ public sealed partial class WorldEngine
         _messagesToDeliver.Clear();
         if (_conversationHeads.Length != State.Tiles.Length) _conversationHeads = new int[State.Tiles.Length];
         else
+        {
             foreach (var tile in _conversationTiles)
                 _conversationHeads[tile] = 0;
+        }
+
         _conversationTiles.Clear();
         if (_conversationNext.Length < State.Residents.Count) _conversationNext = new int[MaxPopulation];
         for (var i = 0; i < State.Residents.Count; i++)
@@ -284,8 +307,13 @@ public sealed partial class WorldEngine
                 SelectConversationRecipient((int)((State.Tick / 12 + sender.Id) % _conversationNeighbors.Count));
             var facts = SelectMessageFacts(sender, false);
             if (facts.Count > 0 && State.PendingMessages.Count < MaxPopulation * 2)
+            {
                 State.PendingMessages.Add(new PendingMessage
-                    { SenderId = sender.Id, RecipientId = recipient.Id, DeliverTick = State.Tick + 1, Facts = facts });
+                {
+                    SenderId = sender.Id, RecipientId = recipient.Id, DeliverTick = State.Tick + 1, Facts = facts,
+                });
+            }
+
             sender.Agent.LastConversationTick = State.Tick;
             sender.Agent.SocialNeed = Math.Max(0, sender.Agent.SocialNeed - 14);
             recipient.Agent.SocialNeed = Math.Max(0, recipient.Agent.SocialNeed - 10);
@@ -370,8 +398,10 @@ public sealed partial class WorldEngine
                 if (facts.Count == 0 || State.PendingMessages.Count >= MaxPopulation * 2) continue;
                 State.PendingMessages.Add(new PendingMessage
                 {
-                    SenderId = sender.Id, RecipientId = recipient.Id,
-                    TargetSettlementId = destination.Id, DeliverTick = State.Tick + Math.Max(1, travelTicks),
+                    SenderId = sender.Id,
+                    RecipientId = recipient.Id,
+                    TargetSettlementId = destination.Id,
+                    DeliverTick = State.Tick + Math.Max(1, travelTicks),
                     Facts = facts,
                 });
             }
@@ -687,8 +717,11 @@ public sealed partial class WorldEngine
         }
 
         if (destination.PublicKnowledge.Count > 24)
+        {
             destination.PublicKnowledge =
                 destination.PublicKnowledge.OrderByDescending(f => f.LearnedTick).Take(24).ToList();
+        }
+
         ObserveAgentEnvironment(person);
         FinishAgentMission(person, completionReason);
     }
@@ -699,8 +732,12 @@ public sealed partial class WorldEngine
         var goal = agent.Goal;
         agent.Decisions.Add(new AgentDecision
         {
-            Tick = State.Tick, Goal = AgentGoalKind.ReturnHome, Reason = reason,
-            Score = 80, KnowledgeObservedTick = State.Tick, SourceResidentId = person.Id,
+            Tick = State.Tick,
+            Goal = AgentGoalKind.ReturnHome,
+            Reason = reason,
+            Score = 80,
+            KnowledgeObservedTick = State.Tick,
+            SourceResidentId = person.Id,
         });
         if (agent.Decisions.Count > 6) agent.Decisions.RemoveAt(0);
         agent.DestinationSettlementId = 0;
@@ -710,8 +747,13 @@ public sealed partial class WorldEngine
         {
             agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y,
-                TargetSettlementId = home.Id, StartedTick = State.Tick, ReviewTick = State.Tick + 12, Reason = reason,
+                Kind = AgentGoalKind.ReturnHome,
+                TargetX = home.X,
+                TargetY = home.Y,
+                TargetSettlementId = home.Id,
+                StartedTick = State.Tick,
+                ReviewTick = State.Tick + 12,
+                Reason = reason,
             };
         }
         else goal.Kind = AgentGoalKind.Idle;

@@ -16,22 +16,31 @@ public sealed partial class WorldMapControl
     private (int X, int Y)? _pendingPlacement;
     private string _placementMessage = "";
     private bool _relayOverlayDirty = true;
+
     /// <summary>建设工具选定的桥梁通行轴向。</summary>
     public BridgeDirection ConstructionBridgeDirection { get; set; }
+
     /// <summary>建设工具选定的桥梁等级。</summary>
     public int ConstructionBridgeLevel { get; set; } = 1;
+
     /// <summary>是否直接赐予完工建筑，关闭时按材料和施工规则建造。</summary>
     public bool GiftBuildings { get; set; } = true;
+
     /// <summary>每次投放工具创建的居民数量。</summary>
     public int SpawnCount { get; set; } = 12;
+
     /// <summary>灾害工具的作用半径，以地格为单位。</summary>
     public int DisasterRadius { get; set; } = 2;
+
     /// <summary>是否正在为表单选取地图地点。</summary>
     public bool PickingLocation { get; set; }
+
     /// <summary>是否存在等待触屏确认的放置地点。</summary>
     public bool HasPendingPlacement => _pendingPlacement.HasValue;
+
     /// <summary>当前地图高亮图层编号，0 表示关闭。</summary>
     public int Overlay { get; set; }
+
     /// <summary>待确认放置或鼠标预览说明变化时发出的通知。</summary>
     public event Action<string>? PlacementChanged;
 
@@ -70,9 +79,12 @@ public sealed partial class WorldMapControl
         if (Engine is null) return "世界尚未就绪";
         if (x < 0 || y < 0 || x >= Engine.State.Width || y >= Engine.State.Height) return "请选择世界范围内的地点";
         if (ActiveTool.StartsWith("build:") && Enum.TryParse<BuildingKind>(ActiveTool[6..], out var kind))
+        {
             return Engine.FacilityPlacementError(SelectedSettlementId, kind, x, y, GiftBuildings,
                 kind == BuildingKind.Bridge ? ConstructionBridgeDirection : null,
                 kind == BuildingKind.Bridge ? ConstructionBridgeLevel : 1);
+        }
+
         if (ActiveTool == "road:Rail") return Engine.RailPlacementError(SelectedSettlementId, x, y);
         if (ActiveTool.StartsWith("road:")) return Engine.RoadPlacementError(SelectedSettlementId, x, y);
         var tile = Engine.State.Tiles[y * Engine.State.Width + x];
@@ -104,8 +116,11 @@ public sealed partial class WorldMapControl
                         ? $"单次释放\n范围：{DisasterRadius} 格"
                         : $"绘制范围：{BrushRadius} 格";
         if (ActiveTool == "build:Bridge")
+        {
             detail +=
                 $"\n方向：{WorldEngine.BridgeDirectionName(ConstructionBridgeDirection)}\n等级 {ConstructionBridgeLevel}   离自然岸最多 {WorldEngine.BridgeShoreLimit(ConstructionBridgeLevel)} 格\n材料：木材 {WorldEngine.FacilityCost(BuildingKind.Bridge, ConstructionBridgeLevel).Wood:0.#}   石材 {WorldEngine.FacilityCost(BuildingKind.Bridge, ConstructionBridgeLevel).Stone:0.#}";
+        }
+
         SetPlacementMessage(error is null ? detail : "无法放置：" + error);
         InvalidateVisual();
     }
@@ -169,8 +184,10 @@ public sealed partial class WorldMapControl
                     var a = state.Settlements[i];
                     var b = state.Settlements[j];
                     if (Engine!.CanRelayInformation(a.Id, b.Id, out _))
+                    {
                         _relayOverlay.Add((new Point((a.X + .5) * TilePixels, (a.Y + .5) * TilePixels),
                             new Point((b.X + .5) * TilePixels, (b.Y + .5) * TilePixels)));
+                    }
                 }
 
                 _relayOverlayDirty = false;

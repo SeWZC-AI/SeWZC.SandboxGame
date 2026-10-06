@@ -172,9 +172,19 @@ internal static class ActionEcologyRegressionTests
         TestLand.ClaimAllTowns(e);
         e.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
-            Construction = false, Research = false, Expansion = false, Trade = false, Wars = false, Migration = false,
-            Alliances = false, Secession = false,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Trade = false,
+            Wars = false,
+            Migration = false,
+            Alliances = false,
+            Secession = false,
         }, false, true);
         e.State.Tick = 120;
         var t = e.State.Settlements.Single();
@@ -193,8 +203,13 @@ internal static class ActionEcologyRegressionTests
     {
         p.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Work, TargetEntityId = b.Id, TargetX = b.X, TargetY = b.Y,
-            PlayerDirected = true, StartedTick = tick, ReviewTick = tick + 200,
+            Kind = AgentGoalKind.Work,
+            TargetEntityId = b.Id,
+            TargetX = b.X,
+            TargetY = b.Y,
+            PlayerDirected = true,
+            StartedTick = tick,
+            ReviewTick = tick + 200,
         };
         p.Agent.NextThinkTick = tick + 200;
     }
@@ -204,7 +219,8 @@ internal static class ActionEcologyRegressionTests
     {
         var tile = new Tile
         {
-            Wildlife = WildlifeKind.Rabbit, WildlifePopulation = .1,
+            Wildlife = WildlifeKind.Rabbit,
+            WildlifePopulation = .1,
             OtherWildlife = new WildlifePopulations { Waterfowl = .8, Goat = .7, Deer = .2 },
         };
         Check(
@@ -421,7 +437,8 @@ internal static class ActionEcologyRegressionTests
         e.ConfigureWorld(e.State.Rules with { Construction = true, Research = true, Thirst = true }, false, true);
         foreach (var k in new[]
                  {
-                     ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Industry, ResearchKind.Ballistics,
+                     ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Industry,
+                     ResearchKind.Ballistics,
                  }) e.GrantReceivedResearch(t.Id, k);
         e.GrantFacility(t.Id, BuildingKind.Academy, 18, 18);
         var research = e.State.Society.Research.Single();

@@ -85,9 +85,16 @@ public sealed partial class WorldEngine
                 if (second is null) continue;
                 var conflict = new LocalConflict
                 {
-                    Id = NewId(), FirstResidentId = first.Id, SecondResidentId = second.Id,
-                    SettlementId = town.Id, X = first.X, Y = first.Y, Tension = 16,
-                    StartedTick = State.Tick, StageStartedTick = State.Tick, LastChangedTick = State.Tick,
+                    Id = NewId(),
+                    FirstResidentId = first.Id,
+                    SecondResidentId = second.Id,
+                    SettlementId = town.Id,
+                    X = first.X,
+                    Y = first.Y,
+                    Tension = 16,
+                    StartedTick = State.Tick,
+                    StageStartedTick = State.Tick,
+                    LastChangedTick = State.Tick,
                     Participants = [first.Id, second.Id],
                 };
                 State.Conflicts.Add(conflict);

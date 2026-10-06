@@ -40,9 +40,20 @@ internal static class ProvisioningAndClaimsTests
 
         e.ConfigureWorld(new WorldRules
         {
-            Aging = false, Births = false, Hunger = false, Thirst = false,
-            Disease = false, Construction = false, Research = false, Expansion = false, Migration = false,
-            Trade = false, Wars = false, Peace = false, Alliances = false, Secession = false,
+            Aging = false,
+            Births = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Migration = false,
+            Trade = false,
+            Wars = false,
+            Peace = false,
+            Alliances = false,
+            Secession = false,
             ResourceRegeneration = false,
         }, false, false);
         e.State.Tick = 1;
@@ -60,8 +71,13 @@ internal static class ProvisioningAndClaimsTests
         r.MoveDurationTicks = 1;
         r.Agent.Goal = new AgentGoal
         {
-            Kind = kind, TargetX = x, TargetY = y, TargetEntityId = entity,
-            TargetSettlementId = r.SettlementId, StartedTick = e.State.Tick, ReviewTick = e.State.Tick + 1000,
+            Kind = kind,
+            TargetX = x,
+            TargetY = y,
+            TargetEntityId = entity,
+            TargetSettlementId = r.SettlementId,
+            StartedTick = e.State.Tick,
+            ReviewTick = e.State.Tick + 1000,
             PlayerDirected = true,
         };
     }

@@ -31,10 +31,13 @@ public sealed record ResearchDefinition(
 {
     /// <summary>该研究是否属于科技与魔法路线共用的基础分支。</summary>
     public bool Shared => Branch is "民生与资源" or "城建与公共卫生" or "知识与勘察";
+
     /// <summary>此研究解锁的建筑类型；未指定时为空集合。</summary>
     public IReadOnlyList<BuildingKind> UnlockedBuildings => Buildings ?? [];
+
     /// <summary>此研究解锁的职业；未指定时为空集合。</summary>
     public IReadOnlyList<Profession> UnlockedProfessions => Professions ?? [];
+
     /// <summary>此研究解锁的法术；未指定时为空集合。</summary>
     public IReadOnlyList<SpellKind> UnlockedSpells => Spells ?? [];
 }

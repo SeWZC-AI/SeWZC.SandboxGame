@@ -105,13 +105,11 @@ internal static class AgentBehaviorTests
         firstDelivery.Y = secondDelivery.Y = 40;
         var futureFirst = new PendingMessage
         {
-            SenderId = sender.Id, RecipientId = recipient.Id,
-            DeliverTick = sendingTick + 5, Facts = [],
+            SenderId = sender.Id, RecipientId = recipient.Id, DeliverTick = sendingTick + 5, Facts = [],
         };
         var futureSecond = new PendingMessage
         {
-            SenderId = sender.Id, RecipientId = recipient.Id,
-            DeliverTick = sendingTick + 6, Facts = [],
+            SenderId = sender.Id, RecipientId = recipient.Id, DeliverTick = sendingTick + 6, Facts = [],
         };
         engine.State.PendingMessages.AddRange([
             futureFirst,
@@ -227,8 +225,13 @@ internal static class AgentBehaviorTests
         Require(home.Resources.Wood == 0, "Remote production appeared directly in the village warehouse.");
         person.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y,
-            TargetSettlementId = home.Id, StartedTick = engine.State.Tick, ReviewTick = 1000, PlayerDirected = true,
+            Kind = AgentGoalKind.ReturnHome,
+            TargetX = home.X,
+            TargetY = home.Y,
+            TargetSettlementId = home.Id,
+            StartedTick = engine.State.Tick,
+            ReviewTick = 1000,
+            PlayerDirected = true,
         };
         for (var step = 0;
              step < 100 && (Distance(person, home) > 1 ||
@@ -384,8 +387,16 @@ internal static class AgentBehaviorTests
         engine.SpawnResidents(10, 10, RaceKind.Human, 3);
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
-            Construction = false, Research = false, Expansion = false, Wars = false, Migration = false,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Wars = false,
+            Migration = false,
         }, false, false);
         HoldResidents(engine);
         var travelers = engine.State.Residents.Take(2).ToArray();
@@ -457,7 +468,13 @@ internal static class AgentBehaviorTests
         person.X = person.FromX = x;
         person.Y = person.FromY = y;
         person.Agent.Goal = new AgentGoal
-            { Kind = kind, TargetX = x, TargetY = y, ReviewTick = 1000, PlayerDirected = true };
+        {
+            Kind = kind,
+            TargetX = x,
+            TargetY = y,
+            ReviewTick = 1000,
+            PlayerDirected = true,
+        };
     }
 
     private static AgentFact Fact(WorldEngine engine, Resident observer, AgentFactKind kind, Settlement subject,
@@ -465,10 +482,18 @@ internal static class AgentBehaviorTests
     {
         return new AgentFact
         {
-            Id = engine.State.NextId++, Kind = kind, SubjectId = subject.Id, X = subject.X, Y = subject.Y,
+            Id = engine.State.NextId++,
+            Kind = kind,
+            SubjectId = subject.Id,
+            X = subject.X,
+            Y = subject.Y,
             Value = value,
-            ObservedTick = engine.State.Tick, LearnedTick = engine.State.Tick, OriginResidentId = observer.Id,
-            SourceResidentId = observer.Id, OriginProfession = observer.Profession, Confidence = 1,
+            ObservedTick = engine.State.Tick,
+            LearnedTick = engine.State.Tick,
+            OriginResidentId = observer.Id,
+            SourceResidentId = observer.Id,
+            OriginProfession = observer.Profession,
+            Confidence = 1,
             Text = "Controlled prior observation",
         };
     }

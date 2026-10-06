@@ -96,8 +96,11 @@ public sealed partial class WorldEngine
                 if (State.Rules.Hunger && person.Hunger > 80) DamageResident(person, .30, DeathCause.Starvation);
                 if (person.Health <= 0) continue;
                 if (arrivedHome)
+                {
                     if ((State.Tick + person.Id) % 12 == 0)
                         DeliverLocalDiscoveries(person, home);
+                }
+
                 var danger = State.Tiles[Index(person.X, person.Y)].FireTicks > 0;
                 if ((State.Tick + person.Id) % 16 == 0 || person.Agent.Memory.Count < 2 || danger)
                     ObserveAgentEnvironment(person);
@@ -229,8 +232,11 @@ public sealed partial class WorldEngine
         }
 
         if (goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic)
+        {
             return FindBuilding(goal.TargetEntityId) is { } building && building.SettlementId == home.Id &&
                    BuildingHasWork(building, person);
+        }
+
         return false;
     }
 
@@ -534,8 +540,11 @@ public sealed partial class WorldEngine
 
         if (person.Age >= 14 && person.ArmyId == 0 && FindLocalWorkTarget(person) is { } useful
             && !choices.Any(c => c.EntityId == useful.Id))
+        {
             choices.Add(new GoalChoice(AgentGoalKind.Work, useful.X, useful.Y, 25 + personality.Diligence * 8,
                 "本职暂无任务，协助附近实际施工或生产", EntityId: useful.Id));
+        }
+
         if (Distance(person.X, person.Y, home.X, home.Y) <= 1 && choices.Count == 0)
         {
             choices.Add(_citizens[home.Id].Count > 1
@@ -582,15 +591,23 @@ public sealed partial class WorldEngine
                                                            : "");
         agent.Goal = new AgentGoal
         {
-            Kind = selected.Kind, TargetX = selected.X, TargetY = selected.Y,
-            TargetSettlementId = selected.SettlementId, TargetEntityId = selected.EntityId,
-            StartedTick = State.Tick, ReviewTick = State.Tick + 12, Reason = reason,
+            Kind = selected.Kind,
+            TargetX = selected.X,
+            TargetY = selected.Y,
+            TargetSettlementId = selected.SettlementId,
+            TargetEntityId = selected.EntityId,
+            StartedTick = State.Tick,
+            ReviewTick = State.Tick + 12,
+            Reason = reason,
         };
         ChangeWorkReservation(previous, agent.Goal);
         agent.NextThinkTick = State.Tick + 12;
         agent.Decisions.Add(new AgentDecision
         {
-            Tick = State.Tick, Goal = selected.Kind, Score = selected.Score, Reason = reason,
+            Tick = State.Tick,
+            Goal = selected.Kind,
+            Score = selected.Score,
+            Reason = reason,
             EvidenceFactId = selected.Evidence?.Id ?? 0,
             KnowledgeObservedTick = selected.Evidence?.ObservedTick ?? State.Tick,
             SourceResidentId = selected.Evidence?.SourceResidentId ?? person.Id,
@@ -667,10 +684,13 @@ public sealed partial class WorldEngine
         }
 
         if (profession == Profession.Lumberjack)
+        {
             return tile.ResourceAmount > 0 && IsForestTerrain(tile.Terrain)
                 ? TerrainRules.For(tile.Terrain).WoodYield *
                   (plantEfficiency ?? NaturalPlantHarvestEfficiency(tile, true))
                 : 0;
+        }
+
         if (profession == Profession.Miner)
         {
             var best = tile.ResourceAmount > 0

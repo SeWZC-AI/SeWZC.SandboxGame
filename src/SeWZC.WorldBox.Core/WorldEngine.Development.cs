@@ -21,8 +21,11 @@ public sealed partial class WorldEngine
     {
         return focus switch
         {
-            DevelopmentFocus.Technology => "科技发展", DevelopmentFocus.MagicPractice => "法术传承",
-            DevelopmentFocus.ArcaneIndustry => "魔法工艺", DevelopmentFocus.Integrated => "兼修科技与魔法", _ => "依当地文化选择",
+            DevelopmentFocus.Technology => "科技发展",
+            DevelopmentFocus.MagicPractice => "法术传承",
+            DevelopmentFocus.ArcaneIndustry => "魔法工艺",
+            DevelopmentFocus.Integrated => "兼修科技与魔法",
+            _ => "依当地文化选择",
         };
     }
 

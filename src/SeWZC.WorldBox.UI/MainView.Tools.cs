@@ -154,7 +154,8 @@ public sealed partial class MainView
             new("build:Farm", "农场", "#ADBB75"), new("build:Workshop", "工坊", "#CEB294"),
             new("build:Academy", "学舍", "#91B0C8"), new("build:Waystation", "驿站", "#CEAB76"),
             new("build:Bridge", "桥梁", "#99AAC8"), new("build:MountainPass", "山路", "#B598D1"),
-            new("build:Dock", "码头", "#91C7B1"), new("road:Road", "道路", "#B0A28B"), new("road:Rail", "铁路", "#ADC1D3"),
+            new("build:Dock", "码头", "#91C7B1"), new("road:Road", "道路", "#B0A28B"),
+            new("road:Rail", "铁路", "#ADC1D3"),
         }.Concat(Enum.GetValues<BuildingKind>()
             .Where(k => k is not (BuildingKind.TownCenter or BuildingKind.Farm or BuildingKind.Workshop
                 or BuildingKind.Academy or BuildingKind.Waystation or BuildingKind.Bridge or BuildingKind.MountainPass

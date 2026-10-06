@@ -7,13 +7,6 @@ public static class AdvancementRules
 
     private static readonly IReadOnlyDictionary<BuildingKind, Advancement> ByBuilding;
 
-    static AdvancementRules()
-    {
-        // 所有字段初始化完成后再建立索引，避免读取尚未赋值的 All。
-        ByResearch = All.ToDictionary(a => a.Research);
-        ByBuilding = All.ToDictionary(a => a.Facility);
-    }
-
     private static readonly Advancement DockRecipe = new(ResearchKind.Logistics, "造船", "古代", false, [],
         new ResourceStock(),
         BuildingKind.Shipyard, "船坞", new ResourceStock { Wood = 35, Stone = 20 }, new ResourceStock { Wood = 4 },
@@ -23,6 +16,13 @@ public static class AdvancementRules
         [ResearchKind.Agriculture, ResearchKind.Logistics], new ResourceStock(),
         BuildingKind.DwarvenForge, "矮人锻炉", new ResourceStock { Wood = 30, Stone = 40, Ore = 15 },
         new ResourceStock { Wood = 2, Ore = 2 }, ResourceKind.Alloy, 1.5);
+
+    static AdvancementRules()
+    {
+        // 所有字段初始化完成后再建立索引，避免读取尚未赋值的 All。
+        ByResearch = All.ToDictionary(a => a.Research);
+        ByBuilding = All.ToDictionary(a => a.Facility);
+    }
 
     /// <summary>配方和库存查询使用的全部资源种类。</summary>
     public static IReadOnlyList<ResourceKind> Resources { get; } = Array.AsReadOnly(Enum.GetValues<ResourceKind>());

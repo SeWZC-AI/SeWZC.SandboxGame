@@ -10,8 +10,10 @@ internal sealed class PixelCanvas(int width, int height)
 {
     /// <summary>画布宽度，以像素计。</summary>
     public int Width { get; } = width;
+
     /// <summary>画布高度，以像素计。</summary>
     public int Height { get; } = height;
+
     /// <summary>按行存储的 RGBA 像素字节，每个像素占四个字节。</summary>
     public byte[] Pixels { get; } = new byte[checked(width * height * 4)];
 

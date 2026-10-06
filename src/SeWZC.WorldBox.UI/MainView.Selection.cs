@@ -9,7 +9,9 @@ namespace SeWZC.WorldBox.UI;
 public sealed partial class MainView
 {
     private readonly Border _selectionBar = new()
-        { IsVisible = false, Background = Panel, Padding = new Thickness(6, 2), CornerRadius = new CornerRadius(7) };
+    {
+        IsVisible = false, Background = Panel, Padding = new Thickness(6, 2), CornerRadius = new CornerRadius(7),
+    };
 
     private readonly TextBlock _selectionText = Named(Text("", 12, Mint), "selection-name");
     private bool _expandedInspector;

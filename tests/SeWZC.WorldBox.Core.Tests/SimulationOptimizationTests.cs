@@ -42,9 +42,21 @@ internal static class SimulationOptimizationTests
 
         e.ConfigureWorld(new WorldRules
         {
-            Aging = false, Births = false, Hunger = false, Thirst = false, Disease = false,
-            Construction = false, Research = false, Expansion = false, Trade = false, Wars = false, Alliances = false,
-            Peace = false, Migration = false, Secession = false, ResourceRegeneration = false,
+            Aging = false,
+            Births = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Trade = false,
+            Wars = false,
+            Alliances = false,
+            Peace = false,
+            Migration = false,
+            Secession = false,
+            ResourceRegeneration = false,
         }, false, false);
         e.SpawnResidents(12, 16, RaceKind.Human, population);
         foreach (var person in e.State.Residents)
@@ -53,7 +65,13 @@ internal static class SimulationOptimizationTests
             person.Y = person.FromY = 16;
             person.Age = 25;
             person.Agent.Goal = new AgentGoal
-                { Kind = AgentGoalKind.Rest, TargetX = 12, TargetY = 16, PlayerDirected = true, ReviewTick = 1000 };
+            {
+                Kind = AgentGoalKind.Rest,
+                TargetX = 12,
+                TargetY = 16,
+                PlayerDirected = true,
+                ReviewTick = 1000,
+            };
         }
 
         e.State.Society.Buildings.RemoveAll(b => b.Kind != BuildingKind.TownCenter);
@@ -134,7 +152,9 @@ internal static class SimulationOptimizationTests
         person.X = 15;
         person.Y = 16;
         person.Agent.Goal = new AgentGoal
-            { Kind = AgentGoalKind.Fish, TargetEntityId = 16 * 32 + 17, TargetX = 15, TargetY = 16 };
+        {
+            Kind = AgentGoalKind.Fish, TargetEntityId = 16 * 32 + 17, TargetX = 15, TargetY = 16,
+        };
         e.State.Tick++;
         source.NationId = source.ClaimedSettlementId = 0;
         var food = person.Inventory.Food;
@@ -192,12 +212,19 @@ internal static class SimulationOptimizationTests
             for (var y = 0; y < 32; y++)
                 e.State.Tiles[y * 32 + 13].Terrain = landDetour && y == 17 ? TerrainType.Grass : TerrainType.River;
             if (!landDetour)
+            {
                 foreach (var (x, y) in new[] { (14, 15), (14, 17), (15, 16) })
                     e.State.Tiles[y * 32 + x].Terrain = TerrainType.Mountain;
+            }
+
             person.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Work, TargetX = 18, TargetY = 16, TargetEntityId = farm,
-                PlayerDirected = true, ReviewTick = 1000,
+                Kind = AgentGoalKind.Work,
+                TargetX = 18,
+                TargetY = 16,
+                TargetEntityId = farm,
+                PlayerDirected = true,
+                ReviewTick = 1000,
             };
             e.Step();
             Check(e.State.Society.Buildings.All(b => b.Kind != BuildingKind.Bridge),
@@ -221,7 +248,9 @@ internal static class SimulationOptimizationTests
         builder.Inventory.Water = 2;
         builder.Agent.NextThinkTick = e.State.Tick;
         builder.Agent.Goal = new AgentGoal
-            { Kind = AgentGoalKind.Work, TargetX = 12, TargetY = 18, TargetEntityId = farm };
+        {
+            Kind = AgentGoalKind.Work, TargetX = 12, TargetY = 18, TargetEntityId = farm,
+        };
         e.State.Rules.Expansion = true;
         e.Step();
         Check(builder.Agent.Goal.Kind == AgentGoalKind.ClaimLand && builder.Agent.Goal.Reason.Contains("升级面积"),
@@ -235,7 +264,9 @@ internal static class SimulationOptimizationTests
         var person = e.State.Residents.Single();
         person.Profession = Profession.Farmer;
         person.Agent.Goal = new AgentGoal
-            { Kind = AgentGoalKind.Gather, TargetX = 13, TargetY = 16, Reason = "亲眼看见可食资源" };
+        {
+            Kind = AgentGoalKind.Gather, TargetX = 13, TargetY = 16, Reason = "亲眼看见可食资源",
+        };
         var before = e.ExportJson();
         var summary = e.GetResidentActionSummary(person.Id);
         Check(
@@ -251,7 +282,13 @@ internal static class SimulationOptimizationTests
         var person = e.State.Residents.Single();
         for (var y = 0; y < 32; y++) e.State.Tiles[y * 32 + 13].Terrain = TerrainType.River;
         person.Agent.Goal = new AgentGoal
-            { Kind = AgentGoalKind.Explore, TargetX = 16, TargetY = 16, PlayerDirected = true, ReviewTick = 1000 };
+        {
+            Kind = AgentGoalKind.Explore,
+            TargetX = 16,
+            TargetY = 16,
+            PlayerDirected = true,
+            ReviewTick = 1000,
+        };
         var positions = new HashSet<(int, int)> { (person.X, person.Y) };
         for (var i = 0; i < 160; i++)
         {
@@ -275,7 +312,9 @@ internal static class SimulationOptimizationTests
             var e = WorldEngine.Create(seed, size, size, false);
             e.ConfigureWorld(
                 new WorldRules
-                    { ResourceRegeneration = false, Construction = false, Expansion = false, Births = false }, false,
+                {
+                    ResourceRegeneration = false, Construction = false, Expansion = false, Births = false,
+                }, false,
                 false);
             var initial = e.State.Tiles.Sum(t => AnimalRules.Species.Sum(k => t.AnimalPopulation(k)));
             e.Step(6000);

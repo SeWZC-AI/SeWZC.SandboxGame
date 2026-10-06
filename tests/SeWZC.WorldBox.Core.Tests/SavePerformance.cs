@@ -32,15 +32,24 @@ internal static class SavePerformance
             if (string.Concat(chunks) != expected)
                 throw new Exception("Benchmark save differs from synchronous capture.");
             if (i >= 0)
+            {
                 samples.Add(new
-                    { elapsedMs = elapsed, longestSliceMs = longest, yields, allocatedBytes = allocations });
+                {
+                    elapsedMs = elapsed, longestSliceMs = longest, yields, allocatedBytes = allocations,
+                });
+            }
         }
 
         var report = JsonSerializer.Serialize(new
         {
-            mode = "chunked", runtime = RuntimeInformation.FrameworkDescription, os = RuntimeInformation.OSDescription,
-            engine.State.Width, engine.State.Height, engine.State.Population,
-            jsonBytes = Encoding.UTF8.GetByteCount(expected), samples,
+            mode = "chunked",
+            runtime = RuntimeInformation.FrameworkDescription,
+            os = RuntimeInformation.OSDescription,
+            engine.State.Width,
+            engine.State.Height,
+            engine.State.Population,
+            jsonBytes = Encoding.UTF8.GetByteCount(expected),
+            samples,
         }, new JsonSerializerOptions { WriteIndented = true });
         var output = Array.IndexOf(args, "--output");
         if (output >= 0) File.WriteAllText(args[output + 1], report);
