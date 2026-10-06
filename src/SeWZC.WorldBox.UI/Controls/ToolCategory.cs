@@ -15,18 +15,53 @@ public abstract class ToolCategory
     public virtual int DefaultBrushIndex => 0;
     public virtual bool HasBrush => true;
     public virtual bool IsConstruction => false;
-    public virtual void SetBrush(WorldMapControl map, int index) => map.BrushRadius = Size(index);
-    private static int Size(int index) => index switch { 0 => 2, 1 => 5, _ => 10 };
+
     public static ToolCategory Terrain { get; } = new TerrainCategory();
     public static ToolCategory Life { get; } = new LifeCategory();
     public static ToolCategory Disaster { get; } = new DisasterCategory();
     public static ToolCategory Build { get; } = new BuildCategory();
+
+    public virtual void SetBrush(WorldMapControl map, int index)
+    {
+        map.BrushRadius = Size(index);
+    }
+
+    private static int Size(int index)
+    {
+        return index switch
+        {
+            0 => 2,
+            1 => 5,
+            _ => 10,
+        };
+    }
+
+    private static MapToolChoice[] BuildToolChoices()
+    {
+        return new MapToolChoice[]
+        {
+            new(MapTool.ForBuilding(BuildingKind.Farm), "农场", "#ADBB75"),
+            new(MapTool.ForBuilding(BuildingKind.Workshop), "工坊", "#CEB294"),
+            new(MapTool.ForBuilding(BuildingKind.Academy), "学舍", "#91B0C8"),
+            new(MapTool.ForBuilding(BuildingKind.Waystation), "驿站", "#CEAB76"),
+            new(MapTool.ForBuilding(BuildingKind.Bridge), "桥梁", "#99AAC8"),
+            new(MapTool.ForBuilding(BuildingKind.MountainPass), "山路", "#B598D1"),
+            new(MapTool.ForBuilding(BuildingKind.Dock), "码头", "#91C7B1"), new(MapTool.Road, "道路", "#B0A28B"),
+            new(MapTool.Rail, "铁路", "#ADC1D3"),
+        }.Concat(Enum.GetValues<BuildingKind>()
+            .Where(k => k is not (BuildingKind.TownCenter or BuildingKind.Farm or BuildingKind.Workshop
+                or BuildingKind.Academy or BuildingKind.Waystation or BuildingKind.Bridge or BuildingKind.MountainPass
+                or BuildingKind.Dock)).Select(k => new MapToolChoice(MapTool.ForBuilding(k),
+                WorldEngine.BuildingName(k),
+                AdvancementRules.For(k)?.Magic == true ? "#B598D1" : "#91B0C8"))).ToArray();
+    }
 
     private sealed class TerrainCategory : ToolCategory
     {
         public override string Id => "terrain";
         public override string Title => "塑造山海";
         public override string Hint => "绘制地形时自动暂停";
+
         public override IReadOnlyList<MapToolChoice> Choices { get; } = Array.AsReadOnly(new MapToolChoice[]
         {
             new(MapTool.ForTerrain(TerrainType.Grass), "草地", "#8CAC69"),
@@ -60,6 +95,7 @@ public abstract class ToolCategory
         public override string Id => "life";
         public override string Title => "播下文明";
         public override string Hint => "选择人数，在陆地投放居民";
+
         public override IReadOnlyList<MapToolChoice> Choices { get; } = Array.AsReadOnly(new MapToolChoice[]
         {
             new(MapTool.ForResidents(RaceKind.Human), "人类", "#DEBC85"),
@@ -67,9 +103,21 @@ public abstract class ToolCategory
             new(MapTool.ForResidents(RaceKind.Dwarf), "矮人", "#BE9785"),
             new(MapTool.ForResidents(RaceKind.Orc), "兽人", "#A9B768"),
         });
-        public override IReadOnlyList<string> BrushLabels { get; } = Array.AsReadOnly(new[] { "1 位居民", "12 位居民", "36 位居民" });
+
+        public override IReadOnlyList<string> BrushLabels { get; } =
+            Array.AsReadOnly(new[] { "1 位居民", "12 位居民", "36 位居民" });
+
         public override int DefaultBrushIndex => 1;
-        public override void SetBrush(WorldMapControl map, int index) => map.SpawnCount = index switch { 0 => 1, 1 => 12, _ => 36 };
+
+        public override void SetBrush(WorldMapControl map, int index)
+        {
+            map.SpawnCount = index switch
+            {
+                0 => 1,
+                1 => 12,
+                _ => 36,
+            };
+        }
     }
 
     private sealed class DisasterCategory : ToolCategory
@@ -77,6 +125,7 @@ public abstract class ToolCategory
         public override string Id => "disaster";
         public override string Title => "改变命运";
         public override string Hint => "点击世界，降下灾害";
+
         public override IReadOnlyList<MapToolChoice> Choices { get; } = Array.AsReadOnly(new MapToolChoice[]
         {
             new(MapTool.ForDisaster(DisasterKind.Fire), "火灾", "#F0A065"),
@@ -84,8 +133,14 @@ public abstract class ToolCategory
             new(MapTool.ForDisaster(DisasterKind.Plague), "疫病", "#B194C7"),
             new(MapTool.ForDisaster(DisasterKind.Meteor), "陨石", "#EC8758"),
         });
-        public override IReadOnlyList<string> BrushLabels { get; } = Array.AsReadOnly(new[] { "范围 2 格", "范围 5 格", "范围 10 格" });
-        public override void SetBrush(WorldMapControl map, int index) => map.DisasterRadius = Size(index);
+
+        public override IReadOnlyList<string> BrushLabels { get; } =
+            Array.AsReadOnly(new[] { "范围 2 格", "范围 5 格", "范围 10 格" });
+
+        public override void SetBrush(WorldMapControl map, int index)
+        {
+            map.DisasterRadius = Size(index);
+        }
     }
 
     private sealed class BuildCategory : ToolCategory
@@ -96,25 +151,5 @@ public abstract class ToolCategory
         public override IReadOnlyList<MapToolChoice> Choices { get; } = Array.AsReadOnly(BuildToolChoices());
         public override bool HasBrush => false;
         public override bool IsConstruction => true;
-    }
-
-    private static MapToolChoice[] BuildToolChoices()
-    {
-        return new MapToolChoice[]
-        {
-            new(MapTool.ForBuilding(BuildingKind.Farm), "农场", "#ADBB75"),
-            new(MapTool.ForBuilding(BuildingKind.Workshop), "工坊", "#CEB294"),
-            new(MapTool.ForBuilding(BuildingKind.Academy), "学舍", "#91B0C8"),
-            new(MapTool.ForBuilding(BuildingKind.Waystation), "驿站", "#CEAB76"),
-            new(MapTool.ForBuilding(BuildingKind.Bridge), "桥梁", "#99AAC8"),
-            new(MapTool.ForBuilding(BuildingKind.MountainPass), "山路", "#B598D1"),
-            new(MapTool.ForBuilding(BuildingKind.Dock), "码头", "#91C7B1"),
-            new(MapTool.Road, "道路", "#B0A28B"),
-            new(MapTool.Rail, "铁路", "#ADC1D3"),
-        }.Concat(Enum.GetValues<BuildingKind>()
-            .Where(k => k is not (BuildingKind.TownCenter or BuildingKind.Farm or BuildingKind.Workshop
-                or BuildingKind.Academy or BuildingKind.Waystation or BuildingKind.Bridge or BuildingKind.MountainPass
-                or BuildingKind.Dock)).Select(k => new MapToolChoice(MapTool.ForBuilding(k), WorldEngine.BuildingName(k),
-                AdvancementRules.For(k)?.Magic == true ? "#B598D1" : "#91B0C8"))).ToArray();
     }
 }

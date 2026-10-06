@@ -1,6 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Media;
-using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.UI.Controls;
 
 namespace SeWZC.WorldBox.UI;
@@ -204,5 +203,4 @@ public sealed partial class MainView
             SetStatus(message);
         });
     }
-
 }

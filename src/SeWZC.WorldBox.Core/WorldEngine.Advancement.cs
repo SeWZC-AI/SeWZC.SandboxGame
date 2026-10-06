@@ -21,7 +21,8 @@ public sealed partial class WorldEngine
     private bool HasResearchPrerequisites(int settlementId, ImmutableArray<ResearchKind> prerequisites)
     {
         foreach (var prerequisite in prerequisites.AsSpan())
-            if (!HasResearch(settlementId, prerequisite)) return false;
+            if (!HasResearch(settlementId, prerequisite))
+                return false;
         return true;
     }
 

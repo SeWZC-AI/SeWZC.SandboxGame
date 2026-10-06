@@ -17,9 +17,19 @@ namespace SeWZC.WorldBox.Core;
 /// <param name="yield">每批生产的基础产出数量。</param>
 /// <param name="mana">每批生产需要消耗的魔力，0 表示不消耗魔力。</param>
 public sealed class Advancement(
-    ResearchKind research, string name, string stage, bool magic, IReadOnlyList<ResearchKind> prerequisites,
-    ResourceAmounts researchCost, BuildingKind facility, string facilityName, ResourceAmounts buildingCost,
-    ResourceAmounts input, ResourceKind output, double yield, double mana = 0)
+    ResearchKind research,
+    string name,
+    string stage,
+    bool magic,
+    IReadOnlyList<ResearchKind> prerequisites,
+    ResourceAmounts researchCost,
+    BuildingKind facility,
+    string facilityName,
+    ResourceAmounts buildingCost,
+    ResourceAmounts input,
+    ResourceKind output,
+    double yield,
+    double mana = 0)
 {
     public ResearchKind Research { get; } = research;
     public string Name { get; } = name;
@@ -34,6 +44,7 @@ public sealed class Advancement(
     public ResourceKind Output { get; } = output;
     public double Yield { get; } = yield;
     public double Mana { get; } = mana;
+
     /// <summary>该配方实际消耗的原料种类。</summary>
     public ImmutableArray<ResourceKind> InputResources { get; } =
         Enum.GetValues<ResourceKind>().Where(k => input.Get(k) > 0).ToImmutableArray();

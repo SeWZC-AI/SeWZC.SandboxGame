@@ -144,7 +144,8 @@ public sealed partial class WorldEngine
             return "需要当地掌握奥术基础";
         if (gift) return null;
         if (ResearchRules.Unlocking(kind) is { } unlock && (!HasResearch(settlementId, unlock.Kind)
-                                                            || !HasResearchPrerequisites(settlementId, unlock.Prerequisites)))
+                                                            || !HasResearchPrerequisites(settlementId,
+                                                                unlock.Prerequisites)))
             return "当地尚未掌握" + unlock.Name + "及其前置";
         if (kind is BuildingKind.Bridge or BuildingKind.MountainPass &&
             !HasResearch(settlementId, ResearchKind.Logistics)) return "需要先掌握驿路运输";
@@ -155,7 +156,8 @@ public sealed partial class WorldEngine
         if (kind == BuildingKind.ArcaneSanctum && !HasResearch(settlementId, ResearchKind.ArcaneArts))
             return "当地尚未掌握奥术基础";
         if (AdvancementRules.For(kind) is { } advancement && (!HasResearch(settlementId, advancement.Research)
-                                                              || !HasResearchPrerequisites(settlementId, advancement.Prerequisites)))
+                                                              || !HasResearchPrerequisites(settlementId,
+                                                                  advancement.Prerequisites)))
             return "当地尚未掌握" + ResearchName(advancement.Research) + "及其前置";
         return MissingResources(town.Resources, FacilityCost(kind, bridgeLevel));
     }
@@ -204,8 +206,8 @@ public sealed partial class WorldEngine
         return IsFacilityOperating(building)
                && (building.Kind != BuildingKind.Well || WellWaterYield(State.Tiles[Index(building.X, building.Y)]) > 0)
                && (ResearchRules.Unlocking(building.Kind) is not { } unlock ||
-                   HasResearch(building.SettlementId, unlock.Kind)
-                   && HasResearchPrerequisites(building.SettlementId, unlock.Prerequisites))
+                   (HasResearch(building.SettlementId, unlock.Kind)
+                    && HasResearchPrerequisites(building.SettlementId, unlock.Prerequisites)))
                && (building.Kind != BuildingKind.SignalTower ||
                    (HasResearch(building.SettlementId, ResearchKind.SignalNetwork) &&
                     HasResearch(building.SettlementId, ResearchKind.Electrification)));

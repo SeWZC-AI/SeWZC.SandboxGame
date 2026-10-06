@@ -15,8 +15,15 @@ public sealed partial class MainView : IResearchActionHandler
     private ResearchRoute _researchRoute = ResearchRoute.Technology;
     private ResearchKind _selectedResearch = ResearchKind.Agriculture;
 
-    void IResearchActionHandler.ShowRailEditor(int settlementId) => ShowRailEditor(settlementId);
-    void IResearchActionHandler.ShowWaygateEditor() => ShowWaygateEditor();
+    void IResearchActionHandler.ShowRailEditor(int settlementId)
+    {
+        ShowRailEditor(settlementId);
+    }
+
+    void IResearchActionHandler.ShowWaygateEditor()
+    {
+        ShowWaygateEditor();
+    }
 
     private void BuildResearchTree(StackPanel panel, Settlement town)
     {
@@ -148,7 +155,8 @@ public sealed partial class MainView : IResearchActionHandler
 
         panel.Children.Add(tabs);
         var branches = new WrapPanel { Orientation = Orientation.Horizontal };
-        foreach (var branch in new ResearchBranch?[] { null }.Concat(ResearchRules.All.Select(d => d.Branch).Distinct()))
+        foreach (var branch in
+                 new ResearchBranch?[] { null }.Concat(ResearchRules.All.Select(d => d.Branch).Distinct()))
         {
             var button = Named(Button(branch?.Name ?? "全部分支", () =>
             {
@@ -306,7 +314,8 @@ public sealed partial class MainView : IResearchActionHandler
 
             if (definition.Action is { } action)
             {
-                var button = Named(Button(action.Name, () => action.Invoke(this, town.Id)), "research-action-" + action.Id);
+                var button = Named(Button(action.Name, () => action.Invoke(this, town.Id)),
+                    "research-action-" + action.Id);
                 button.IsEnabled = known;
                 unlocks.Children.Add(button);
             }

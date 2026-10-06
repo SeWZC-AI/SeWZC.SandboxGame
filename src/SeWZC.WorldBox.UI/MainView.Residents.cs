@@ -206,13 +206,13 @@ public sealed partial class MainView
             {
                 ItemsSource = new[]
                 {
-                    Named(new TabItem { Header = Text("身份", 12), Content = identity }, "resident-tab-identity"),
-                    Named(new TabItem { Header = Text("生理", 12), Content = condition },
+                    Named(new TabItem { Header = Text("身份", 12), Content = identity }, "resident-tab-identity"), Named(
+                        new TabItem { Header = Text("生理", 12), Content = condition },
                         "resident-tab-condition"),
                     Named(new TabItem { Header = Text("归属", 12), Content = belonging },
                         "resident-tab-belonging"),
-                    Named(new TabItem { Header = Text("魔法", 12), Content = magic }, "resident-tab-magic"),
-                    Named(new TabItem { Header = Text("物品", 12), Content = possessions },
+                    Named(new TabItem { Header = Text("魔法", 12), Content = magic }, "resident-tab-magic"), Named(
+                        new TabItem { Header = Text("物品", 12), Content = possessions },
                         "resident-tab-possessions"),
                 },
                 SelectedIndex = 0,

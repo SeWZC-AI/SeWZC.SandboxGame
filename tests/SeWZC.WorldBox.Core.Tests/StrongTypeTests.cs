@@ -51,7 +51,7 @@ internal static class StrongTypeTests
 
         foreach (var route in new[] { ResearchRoute.Technology, ResearchRoute.Magic })
             Require(ResearchRules.All.Where(route.Includes).Select(d => d.Kind)
-                    .SequenceEqual(ResearchRules.Route(route.IsMagic)), "Typed routes disagree with the planner");
+                .SequenceEqual(ResearchRules.Route(route.IsMagic)), "Typed routes disagree with the planner");
         Require(ResearchRules.All.Where(ResearchRoute.Common.Includes).All(d => d.Shared),
             "The common route includes exclusive research");
     }
@@ -59,8 +59,15 @@ internal static class StrongTypeTests
     private static void RejectMutation<T>(IReadOnlyList<T> values, T replacement)
     {
         if (values is not IList<T> list) return;
-        try { list[0] = replacement; }
-        catch (NotSupportedException) { return; }
+        try
+        {
+            list[0] = replacement;
+        }
+        catch (NotSupportedException)
+        {
+            return;
+        }
+
         throw new InvalidOperationException("A rule collection is writable through IList");
     }
 
@@ -74,14 +81,6 @@ internal static class StrongTypeTests
         ResearchRules.For(ResearchKind.SpatialMagic).Action!.Invoke(handler, 51);
         Require(handler.RailSettlement == 37 && handler.WaygateVisits == 1,
             "Waygate research changed the rail editor context");
-    }
-
-    private sealed class ActionHandler : IResearchActionHandler
-    {
-        public int RailSettlement { get; private set; }
-        public int WaygateVisits { get; private set; }
-        public void ShowRailEditor(int settlementId) => RailSettlement = settlementId;
-        public void ShowWaygateEditor() => WaygateVisits++;
     }
 
     [UnitTest]
@@ -104,5 +103,21 @@ internal static class StrongTypeTests
     private static void Require(bool condition, string message)
     {
         if (!condition) throw new InvalidOperationException(message);
+    }
+
+    private sealed class ActionHandler : IResearchActionHandler
+    {
+        public int RailSettlement { get; private set; }
+        public int WaygateVisits { get; private set; }
+
+        public void ShowRailEditor(int settlementId)
+        {
+            RailSettlement = settlementId;
+        }
+
+        public void ShowWaygateEditor()
+        {
+            WaygateVisits++;
+        }
     }
 }
