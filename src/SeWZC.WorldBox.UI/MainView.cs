@@ -81,12 +81,12 @@ public sealed partial class MainView : UserControl
     private readonly TextBlock _worldTitle = Text("晨曦群岛", 22);
     private bool _allowAutosave = true;
     private ToolCategory _category = ToolCategory.Terrain;
-    private string _inspectorMode = "overview";
     private string? _checkpoint;
     private int[] _constructionTowns = [];
     private WorldEngine _engine;
     private int _focusedEventId;
     private Task? _initialization;
+    private string _inspectorMode = "overview";
     private bool _isCompact;
     private long _lastSaveYield;
     private double _lastStepMilliseconds, _lastMapRefreshMilliseconds;
@@ -232,7 +232,10 @@ public sealed partial class MainView : UserControl
         var toolsPanel = new StackPanel { Spacing = 4 };
         var categories = new UniformGrid { Columns = 4, Rows = 1 };
         foreach (var (label, category) in new[]
-                     { ("山海", ToolCategory.Terrain), ("众生", ToolCategory.Life), ("天灾", ToolCategory.Disaster), ("建设", ToolCategory.Build) })
+                 {
+                     ("山海", ToolCategory.Terrain), ("众生", ToolCategory.Life), ("天灾", ToolCategory.Disaster),
+                     ("建设", ToolCategory.Build),
+                 })
         {
             var categoryButton = Named(Button(label, () => SetCategory(category)), "tool-category-" + category.Id);
             categoryButton.Tag = category;

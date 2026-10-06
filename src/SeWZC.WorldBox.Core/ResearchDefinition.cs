@@ -17,10 +17,19 @@ namespace SeWZC.WorldBox.Core;
 /// <param name="Spells">解锁的法术，空值表示没有法术解锁。</param>
 /// <param name="Action">解锁的操作入口，空值表示没有额外入口。</param>
 public sealed class ResearchDefinition(
-    ResearchKind kind, string name, ResearchBranch branch, string stage, bool magic,
-    IReadOnlyList<ResearchKind> prerequisites, ResourceAmounts cost, double work, string effect,
-    IReadOnlyList<BuildingKind>? Buildings = null, IReadOnlyList<Profession>? Professions = null,
-    IReadOnlyList<SpellKind>? Spells = null, ResearchAction? Action = null)
+    ResearchKind kind,
+    string name,
+    ResearchBranch branch,
+    string stage,
+    bool magic,
+    IReadOnlyList<ResearchKind> prerequisites,
+    ResourceAmounts cost,
+    double work,
+    string effect,
+    IReadOnlyList<BuildingKind>? Buildings = null,
+    IReadOnlyList<Profession>? Professions = null,
+    IReadOnlyList<SpellKind>? Spells = null,
+    ResearchAction? Action = null)
 {
     public ResearchKind Kind { get; } = kind;
     public string Name { get; } = name;
@@ -32,12 +41,16 @@ public sealed class ResearchDefinition(
     public double Work { get; } = work;
     public string Effect { get; } = effect;
     public ResearchAction? Action { get; } = Action;
+
     /// <summary>是否属于两条路线共同使用的基础分支。</summary>
     public bool Shared => Branch.Shared;
+
     /// <summary>此研究解锁的建筑类型。</summary>
     public ImmutableArray<BuildingKind> UnlockedBuildings { get; } = Buildings?.ToImmutableArray() ?? [];
+
     /// <summary>此研究解锁的职业。</summary>
     public ImmutableArray<Profession> UnlockedProfessions { get; } = Professions?.ToImmutableArray() ?? [];
+
     /// <summary>此研究解锁的法术。</summary>
     public ImmutableArray<SpellKind> UnlockedSpells { get; } = Spells?.ToImmutableArray() ?? [];
 }

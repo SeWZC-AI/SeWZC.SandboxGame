@@ -23,5 +23,9 @@ public sealed class ResearchBranch
     public static ResearchBranch Restoration { get; } = new("奥术与修复");
     public static ResearchBranch Runes { get; } = new("符文与以太");
     public static ResearchBranch Warding { get; } = new("元素与结界");
-    public override string ToString() => Name;
+
+    public override string ToString()
+    {
+        return Name;
+    }
 }

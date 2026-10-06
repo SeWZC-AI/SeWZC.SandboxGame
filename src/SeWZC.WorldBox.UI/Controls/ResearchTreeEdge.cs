@@ -11,6 +11,7 @@ public sealed class ResearchTreeEdge(ResearchKind from, ResearchKind to, Point[]
 {
     public ResearchKind From { get; } = from;
     public ResearchKind To { get; } = to;
+
     /// <summary>在未缩放画布中的连接折线顶点。</summary>
     public IReadOnlyList<Point> Points { get; } = Array.AsReadOnly((Point[])points.Clone());
 }

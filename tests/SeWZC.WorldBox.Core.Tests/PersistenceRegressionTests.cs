@@ -265,12 +265,11 @@ internal static class PersistenceRegressionTests
         var current = engine.State;
         foreach (var (format, simulation) in new[]
                  {
-                     (16, 15),
-                     (current.FormatVersion - 1, current.SimulationVersion),
+                     (16, 15), (current.FormatVersion - 1, current.SimulationVersion),
                      (current.FormatVersion, current.SimulationVersion - 1),
                      (current.FormatVersion + 1, current.SimulationVersion),
-                     (current.FormatVersion, current.SimulationVersion + 1),
-                     (0, current.SimulationVersion), (current.FormatVersion, 0),
+                     (current.FormatVersion, current.SimulationVersion + 1), (0, current.SimulationVersion),
+                     (current.FormatVersion, 0),
                  })
             RejectInvalidSave(engine, json =>
                 {
