@@ -187,7 +187,7 @@ internal static class AdvancementTests
                 if (engine.HasResearch(town.Id, definition.Kind)) continue;
                 if (AdvancementRules.For(definition.Kind) is not { } a)
                 {
-                    Supply(definition.Cost);
+                    Supply(definition.Cost.Copy());
                     Hold(engine, worker, academy.X, academy.Y);
                     worker.Agent.Goal.TargetEntityId = academy.Id;
                     engine.StartResearch(town.Id, definition.Kind);
@@ -201,7 +201,7 @@ internal static class AdvancementTests
                     continue;
                 }
 
-                Supply(a.ResearchCost);
+                Supply(a.ResearchCost.Copy());
                 Hold(engine, worker, academy.X, academy.Y);
                 worker.Agent.Goal.TargetEntityId = academy.Id;
                 engine.StartResearch(town.Id, a.Research);
@@ -225,7 +225,7 @@ internal static class AdvancementTests
                 for (var tick = 0;
                      tick < 100 && Math.Abs(worker.X - town.X) + Math.Abs(worker.Y - town.Y) > 1;
                      tick++) engine.Step();
-                Supply(a.BuildingCost);
+                Supply(a.BuildingCost.Copy());
                 var building = Facility(engine, town, a.Facility, false);
                 Hold(engine, worker, building.X, building.Y);
                 worker.Agent.Goal.TargetEntityId = building.Id;

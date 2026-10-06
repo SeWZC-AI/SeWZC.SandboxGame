@@ -61,7 +61,7 @@ public sealed partial class MainView : UserControl
     private readonly SemaphoreSlim _saveGate = new(1, 1);
     private readonly Control? _shell;
     private readonly TextBlock _simulationStatus = Text("世界正在演化", 11, Mint);
-    private readonly string?[] _slotTools = new string?[8];
+    private readonly MapTool?[] _slotTools = new MapTool?[8];
     private readonly List<(int Speed, Button Button)> _speeds = [];
     private readonly TextBlock _status = Text("正在唤醒世界…", 11, Muted);
     private readonly Border _timeStatus = new();
@@ -74,13 +74,14 @@ public sealed partial class MainView : UserControl
     private readonly Button[] _toolSlots = new Button[8];
     private readonly Border[] _toolSwatches = new Border[8];
     private readonly TextBlock _toolTitle = Text("塑造山海", 13, Mint);
-    private readonly List<(string Tool, Button Button)> _tools = [];
+    private readonly List<(MapTool Tool, Button Button)> _tools = [];
     private readonly Button _undo;
     private readonly TextBlock _version = Text("众生纪元  alpha", 10, Muted);
     private readonly TextBlock _worldSubtitle = Text("", 11, Muted);
     private readonly TextBlock _worldTitle = Text("晨曦群岛", 22);
     private bool _allowAutosave = true;
-    private string _category = "terrain", _inspectorMode = "overview";
+    private ToolCategory _category = ToolCategory.Terrain;
+    private string _inspectorMode = "overview";
     private string? _checkpoint;
     private int[] _constructionTowns = [];
     private WorldEngine _engine;
@@ -231,11 +232,9 @@ public sealed partial class MainView : UserControl
         var toolsPanel = new StackPanel { Spacing = 4 };
         var categories = new UniformGrid { Columns = 4, Rows = 1 };
         foreach (var (label, category) in new[]
-                 {
-                     ("山海", "terrain"), ("众生", "life"), ("天灾", "disaster"), ("建设", "build"),
-                 })
+                     { ("山海", ToolCategory.Terrain), ("众生", ToolCategory.Life), ("天灾", ToolCategory.Disaster), ("建设", ToolCategory.Build) })
         {
-            var categoryButton = Named(Button(label, () => SetCategory(category)), "tool-category-" + category);
+            var categoryButton = Named(Button(label, () => SetCategory(category)), "tool-category-" + category.Id);
             categoryButton.Tag = category;
             categoryButton.Padding = new Thickness(3, 3);
             categoryButton.Margin = new Thickness(2, 0);
@@ -247,9 +246,7 @@ public sealed partial class MainView : UserControl
         _brushPicker.SelectionChanged += (_, _) =>
         {
             var index = Math.Max(0, _brushPicker.SelectedIndex);
-            if (_category == "life") _map.SpawnCount = new[] { 1, 12, 36 }[index];
-            else if (_category == "disaster") _map.DisasterRadius = new[] { 2, 5, 10 }[index];
-            else _map.BrushRadius = new[] { 2, 5, 10 }[index];
+            _category.SetBrush(_map, index);
         };
         Named(_buildMode, "build-mode");
         _buildMode.SelectionChanged += (_, _) => _map.GiftBuildings = _buildMode.SelectedIndex == 0;
@@ -503,7 +500,7 @@ public sealed partial class MainView : UserControl
             _timer.Start();
         };
         DetachedFromVisualTree += (_, _) => _timer.Stop();
-        SetCategory("terrain");
+        SetCategory(ToolCategory.Terrain);
         _toolsOpen = false;
         ApplyLayout();
         UpdateSpeedButtons();
@@ -1216,9 +1213,9 @@ public sealed partial class MainView : UserControl
             await SubmitEditAsync(() =>
             {
                 CloseModal();
-                SetCategory("terrain");
+                SetCategory(ToolCategory.Terrain);
                 _map.SelectedNationId = nationId;
-                _map.ActiveTool = "territory";
+                _map.ActiveTool = MapTool.Territory;
                 _toolTitle.Text = "划定疆域";
                 _toolHint.Text = "绘制陆地归属，覆盖聚落会一并转移";
                 _mobilePanel = false;

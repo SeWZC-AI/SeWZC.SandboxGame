@@ -119,52 +119,27 @@ public sealed partial class WorldMapControl
         context.DrawRectangle(null, pen, new Rect(point.X - size, point.Y - size, size * 2, size * 2), 2, 2);
     }
 
-    private bool TryApplyConstructionTool(string tool, (int X, int Y) tile, out bool edited)
+    internal bool ConstructWithTool((int X, int Y) tile, bool paintsStroke, Action<int, int> construct)
     {
-        edited = false;
-        var isRail = tool.Equals("Rail", StringComparison.OrdinalIgnoreCase);
-        var isRoad = isRail || tool.Equals("Road", StringComparison.OrdinalIgnoreCase);
-        var isBuilding = ActiveTool.StartsWith("build:", StringComparison.OrdinalIgnoreCase) &&
-                         Enum.TryParse<BuildingKind>(tool, true, out _);
-        if (!isRoad && !isBuilding) return false;
         if (Engine is null || !Engine.State.Settlements.Any(town => town.Id == SelectedSettlementId))
         {
             if (_lastPaint is null) ToolError?.Invoke("请先选择负责建设的聚落。");
-            _lastPaint = tile;
-            return true;
+            return false;
         }
 
-        if (!isRoad && _lastPaint is not null) return true;
+        if (!paintsStroke && _lastPaint is not null) return false;
         try
         {
             if (_lastPaint is null) WorldEditing?.Invoke(this, EventArgs.Empty);
-            if (isRoad)
-            {
-                Stroke(tile, (x, y) =>
-                {
-                    if (isRail) Engine.BuildRail(SelectedSettlementId, x, y, 0);
-                    else Engine.BuildRoad(SelectedSettlementId, x, y, 0);
-                });
-            }
-            else
-            {
-                var kind = Enum.Parse<BuildingKind>(tool, true);
-                var direction = kind == BuildingKind.Bridge ? (BridgeDirection?)ConstructionBridgeDirection : null;
-                var level = kind == BuildingKind.Bridge ? ConstructionBridgeLevel : 1;
-                if (GiftBuildings) Engine.GrantFacility(SelectedSettlementId, kind, tile.X, tile.Y, direction, level);
-                else Engine.BuildFacility(SelectedSettlementId, kind, tile.X, tile.Y, direction, level);
-            }
-
-            edited = true;
+            if (paintsStroke) Stroke(tile, construct);
+            else construct(tile.X, tile.Y);
+            return true;
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
         {
-            // 道路笔刷可能先完成部分地块再遇到限制；失败时仍须刷新已有改动并显示具体原因。
-            edited = isRoad;
+            // 道路笔画可能已完成前几格；失败后仍刷新这些真实改动。
             ToolError?.Invoke(exception.Message);
+            return paintsStroke;
         }
-
-        _lastPaint = tile;
-        return true;
     }
 }

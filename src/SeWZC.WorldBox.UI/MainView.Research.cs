@@ -7,18 +7,21 @@ using SeWZC.WorldBox.UI.Controls;
 
 namespace SeWZC.WorldBox.UI;
 
-public sealed partial class MainView
+public sealed partial class MainView : IResearchActionHandler
 {
     private bool _civilizationDetails;
-    private string _researchBranch = "";
+    private ResearchBranch? _researchBranch;
     private bool _researchExpanded;
-    private string _researchRoute = "technology";
+    private ResearchRoute _researchRoute = ResearchRoute.Technology;
     private ResearchKind _selectedResearch = ResearchKind.Agriculture;
+
+    void IResearchActionHandler.ShowRailEditor(int settlementId) => ShowRailEditor(settlementId);
+    void IResearchActionHandler.ShowWaygateEditor() => ShowWaygateEditor();
 
     private void BuildResearchTree(StackPanel panel, Settlement town)
     {
         panel.Children.Add(LiveText(
-            () => _researchRoute == "magic" ? "魔法研究树" : _researchRoute == "common" ? "两条路线的共同基础" : "科技研究树", 17, Mint));
+            () => _researchRoute.Title, 17, Mint));
         panel.Children.Add(Named(Button("展开 / 收起科技树视野", () =>
         {
             _researchExpanded = !_researchExpanded;
@@ -53,7 +56,7 @@ public sealed partial class MainView
         {
             var content = new StackPanel { Spacing = 2 };
             content.Children.Add(Text(definition.Name, 13, null, true));
-            content.Children.Add(Text(definition.Branch, 11, Muted));
+            content.Children.Add(Text(definition.Branch.Name, 11, Muted));
             content.Children.Add(Named(LiveText(() =>
             {
                 var r = _engine.State.Society.Research.First(x => x.SettlementId == town.Id);
@@ -103,10 +106,8 @@ public sealed partial class MainView
 
         IEnumerable<ResearchDefinition> Route()
         {
-            var route = _researchRoute == "common"
-                ? ResearchRules.All.Where(d => d.Shared)
-                : ResearchRules.All.Where(d => ResearchRules.Route(_researchRoute == "magic").Contains(d.Kind));
-            if (_researchBranch.Length == 0) return route;
+            var route = ResearchRules.All.Where(_researchRoute.Includes);
+            if (_researchBranch is null) return route;
             var wanted = new HashSet<ResearchKind>();
 
             void Add(ResearchKind kind)
@@ -121,20 +122,23 @@ public sealed partial class MainView
 
         graph.ShowRoute(Route());
         var tabs = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = 4 };
-        var routes = new[] { ("科技路线", "technology"), ("魔法路线", "magic"), ("共同基础", "common") };
+        var routes = new[]
+        {
+            ("科技路线", ResearchRoute.Technology), ("魔法路线", ResearchRoute.Magic), ("共同基础", ResearchRoute.Common),
+        };
         for (var i = 0; i < routes.Length; i++)
         {
             var (label, route) = routes[i];
             var tab = Named(Button(label, () =>
             {
                 _researchRoute = route;
-                _researchBranch = "";
+                _researchBranch = null;
                 graph.ShowRoute(Route());
                 if (!graph.Layout.Nodes.ContainsKey(_selectedResearch))
-                    _selectedResearch = route == "magic" ? ResearchKind.ArcaneArts : ResearchKind.Agriculture;
+                    _selectedResearch = route.DefaultResearch;
                 graph.Focus(_selectedResearch);
                 RefreshInspector();
-            }), "research-route-" + route);
+            }), "research-route-" + route.Id);
             tab.HorizontalAlignment = HorizontalAlignment.Stretch;
             tab.Padding = new Thickness(4, 5);
             _inspectorUpdates.Add(() => tab.BorderBrush = _researchRoute == route ? Mint : Line);
@@ -144,9 +148,9 @@ public sealed partial class MainView
 
         panel.Children.Add(tabs);
         var branches = new WrapPanel { Orientation = Orientation.Horizontal };
-        foreach (var branch in new[] { "" }.Concat(ResearchRules.All.Select(d => d.Branch).Distinct()))
+        foreach (var branch in new ResearchBranch?[] { null }.Concat(ResearchRules.All.Select(d => d.Branch).Distinct()))
         {
-            var button = Named(Button(branch.Length == 0 ? "全部分支" : branch, () =>
+            var button = Named(Button(branch?.Name ?? "全部分支", () =>
             {
                 _researchBranch = branch;
                 graph.ShowRoute(Route());
@@ -154,14 +158,12 @@ public sealed partial class MainView
                     _selectedResearch = graph.Layout.Nodes.Keys.First();
                 graph.Fit();
                 RefreshInspector();
-            }), "research-branch-" + (branch.Length == 0 ? "all" : branch));
+            }), "research-branch-" + (branch?.Name ?? "all"));
             branches.Children.Add(button);
             _inspectorUpdates.Add(() =>
             {
-                button.IsVisible = branch.Length == 0 || ResearchRules.All.Any(d =>
-                    d.Branch == branch && (_researchRoute == "common"
-                        ? d.Shared
-                        : ResearchRules.Route(_researchRoute == "magic").Contains(d.Kind)));
+                button.IsVisible = branch is null || ResearchRules.All.Any(d =>
+                    d.Branch == branch && _researchRoute.Includes(d));
                 button.BorderBrush = _researchBranch == branch ? Mint : Line;
             });
         }
@@ -170,13 +172,13 @@ public sealed partial class MainView
         var outcome = new StackPanel { Spacing = 5 };
         outcome.Children.Add(Named(LiveText(() =>
         {
-            var result = _engine.GetCivilizationProgress(town.Id, _researchRoute == "magic");
+            var result = _engine.GetCivilizationProgress(town.Id, _researchRoute.IsMagic);
             return "文明发展成果：" + result.Name + (result.Achieved ? "  已达到" : "  发展中")
                    + $"\n研究 {result.KnownResearch}/{result.TotalResearch}   配套设施 {result.ReadyFacilities}/{result.TotalFacilities}   待首次加工 {result.UnprovenProduction.Count}";
         }, 13, Mint), "civilization-progress"));
         var outcomeDetails = Named(LiveText(() =>
         {
-            var result = _engine.GetCivilizationProgress(town.Id, _researchRoute == "magic");
+            var result = _engine.GetCivilizationProgress(town.Id, _researchRoute.IsMagic);
             return "文明阶段由实际成果判定，无须另行研究或花费材料。\n未掌握：" + (result.MissingResearch.Count == 0
                                                         ? "无"
                                                         : string.Join("、", result.MissingResearch))
@@ -302,16 +304,9 @@ public sealed partial class MainView
                 unlocks.Children.Add(button);
             }
 
-            if (definition.Action == "铺设铁路")
+            if (definition.Action is { } action)
             {
-                var button = Named(Button("铺设铁路", () => ShowRailEditor(town.Id)), "research-action-rail");
-                button.IsEnabled = known;
-                unlocks.Children.Add(button);
-            }
-
-            if (definition.Action == "使用折跃门")
-            {
-                var button = Named(Button("使用折跃门", ShowWaygateEditor), "research-action-waygate");
+                var button = Named(Button(action.Name, () => action.Invoke(this, town.Id)), "research-action-" + action.Id);
                 button.IsEnabled = known;
                 unlocks.Children.Add(button);
             }

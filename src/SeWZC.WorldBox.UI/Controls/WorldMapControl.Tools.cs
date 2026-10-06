@@ -78,26 +78,7 @@ public sealed partial class WorldMapControl
     {
         if (Engine is null) return "世界尚未就绪";
         if (x < 0 || y < 0 || x >= Engine.State.Width || y >= Engine.State.Height) return "请选择世界范围内的地点";
-        if (ActiveTool.StartsWith("build:") && Enum.TryParse<BuildingKind>(ActiveTool[6..], out var kind))
-        {
-            return Engine.FacilityPlacementError(SelectedSettlementId, kind, x, y, GiftBuildings,
-                kind == BuildingKind.Bridge ? ConstructionBridgeDirection : null,
-                kind == BuildingKind.Bridge ? ConstructionBridgeLevel : 1);
-        }
-
-        if (ActiveTool == "road:Rail") return Engine.RailPlacementError(SelectedSettlementId, x, y);
-        if (ActiveTool.StartsWith("road:")) return Engine.RoadPlacementError(SelectedSettlementId, x, y);
-        var tile = Engine.State.Tiles[y * Engine.State.Width + x];
-        if (Enum.TryParse<RaceKind>(ActiveTool, out _) && !tile.IsWalkable) return "居民需要可通行的陆地";
-        if (Enum.TryParse<DisasterKind>(ActiveTool, out var disaster))
-        {
-            if (!tile.IsWalkable) return "请选择陆地上的灾害落点";
-            if (disaster == DisasterKind.Plague &&
-                !Engine.State.Residents.Any(r => Math.Abs(r.X - x) + Math.Abs(r.Y - y) <= DisasterRadius))
-                return "作用范围内没有居民";
-        }
-
-        return null;
+        return ActiveTool.PlacementError(this, x, y);
     }
 
     private void PreviewPlacement(Point point, bool pending = false)
@@ -106,21 +87,7 @@ public sealed partial class WorldMapControl
         _hover = point;
         if (pending) _pendingPlacement = tile;
         var error = PlacementError(tile.X, tile.Y);
-        var detail = ActiveTool.StartsWith("build:")
-            ? GiftBuildings ? "建造方式：直接赐予\n无材料消耗，效果仍受建筑运营条件限制" : "建造方式：居民施工\n扣除当地材料后开工"
-            : ActiveTool.StartsWith("road:")
-                ? "修建道路\n每格木材：0.5\n每格石材：1"
-                : Enum.TryParse<RaceKind>(ActiveTool, out _)
-                    ? $"投放 {SpawnCount} 位居民"
-                    : Enum.TryParse<DisasterKind>(ActiveTool, out _)
-                        ? $"单次释放\n范围：{DisasterRadius} 格"
-                        : $"绘制范围：{BrushRadius} 格";
-        if (ActiveTool == "build:Bridge")
-        {
-            detail +=
-                $"\n方向：{WorldEngine.BridgeDirectionName(ConstructionBridgeDirection)}\n等级 {ConstructionBridgeLevel}   离自然岸最多 {WorldEngine.BridgeShoreLimit(ConstructionBridgeLevel)} 格\n材料：木材 {WorldEngine.FacilityCost(BuildingKind.Bridge, ConstructionBridgeLevel).Wood:0.#}   石材 {WorldEngine.FacilityCost(BuildingKind.Bridge, ConstructionBridgeLevel).Stone:0.#}";
-        }
-
+        var detail = ActiveTool.Describe(this);
         SetPlacementMessage(error is null ? detail : "无法放置：" + error);
         InvalidateVisual();
     }

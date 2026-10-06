@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Media;
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.UI.Controls;
 
 namespace SeWZC.WorldBox.UI;
 
@@ -12,10 +13,9 @@ public sealed partial class MainView
 
     private int _toolPage;
 
-    private void SetCategory(string category)
+    private void SetCategory(ToolCategory category)
     {
         if (_mapPick is not null) return;
-        if (category is "rules" or "inspect") return;
         CancelPendingEdit();
         _navigation.Clear();
         _inspectorNavigationGeneration++;
@@ -23,11 +23,11 @@ public sealed partial class MainView
         _category = category;
         _toolsOpen = true;
         _mobilePanel = false;
-        _map.ActiveTool = "pan";
+        _map.ActiveTool = MapTool.Pan;
         _map.CancelPlacement();
         UpdateToolContext();
-        var allItems = ToolChoices(category);
-        var pages = Math.Max(1, (allItems.Length + _toolSlots.Length - 1) / _toolSlots.Length);
+        var allItems = category.Choices;
+        var pages = Math.Max(1, (allItems.Count + _toolSlots.Length - 1) / _toolSlots.Length);
         _toolPage = Math.Clamp(_toolPage, 0, pages - 1);
         _toolPageLabel.Text = $"第 {_toolPage + 1} / {pages} 页";
         if (_toolPrevious is not null) _toolPrevious.IsEnabled = _toolPage > 0;
@@ -49,22 +49,14 @@ public sealed partial class MainView
 
         foreach (var button in _categoryButtons)
             button.Background = Equals(button.Tag, category) ? Brush.Parse("#355347") : Panel;
-        (_toolTitle.Text, _toolHint.Text) = category switch
-        {
-            "terrain" => ("塑造山海", "绘制地形时自动暂停"),
-            "life" => ("播下文明", "选择人数，在陆地投放居民"),
-            "disaster" => ("改变命运", "点击世界，降下灾害"),
-            "build" => ("建设与交通", "选择归属聚落与建造方式"),
-            "rules" => ("世界与文明", "查看实际规则及发展方向"),
-            _ => ("见证众生", "点选查看，拖动平移，滚轮缩放"),
-        };
-        _brushPicker.ItemsSource = category == "life" ? new[] { "1 位居民", "12 位居民", "36 位居民" }
-            : category == "disaster" ? new[] { "范围 2 格", "范围 5 格", "范围 10 格" } : new[] { "小笔刷", "中笔刷", "大笔刷" };
-        _brushPicker.SelectedIndex = category == "life" ? 1 : 0;
-        _brushPicker.IsVisible = category is "terrain" or "life" or "disaster";
-        _buildMode.IsVisible = category == "build";
-        _bridgeSettings.IsVisible = category == "build";
-        _toolContext.IsVisible = category == "build";
+        _toolTitle.Text = category.Title;
+        _toolHint.Text = category.Hint;
+        _brushPicker.ItemsSource = category.BrushLabels;
+        _brushPicker.SelectedIndex = category.DefaultBrushIndex;
+        _brushPicker.IsVisible = category.HasBrush;
+        _buildMode.IsVisible = category.IsConstruction;
+        _bridgeSettings.IsVisible = category.IsConstruction;
+        _toolContext.IsVisible = category.IsConstruction;
         foreach (var (_, button) in _tools)
         {
             button.BorderBrush = Brushes.Transparent;
@@ -74,49 +66,10 @@ public sealed partial class MainView
         ApplyLayout();
     }
 
-    private ToolChoice[] ToolChoices(string category)
-    {
-        return category switch
-        {
-            "terrain" =>
-            [
-                new ToolChoice("Grass", "草地", "#8CAC69"), new ToolChoice("Forest", "森林", "#427D61"),
-                new ToolChoice("Sand", "沙地", "#E6D09A"),
-                new ToolChoice("Mountain", "山脉", "#9DABB0"), new ToolChoice("Water", "浅海", "#4A9CBA"),
-                new ToolChoice("DeepWater", "深海", "#28556F"),
-                new ToolChoice("Snow", "雪原", "#D4E8E7"), new ToolChoice("Hills", "丘陵", "#92905E"),
-                new ToolChoice("Wetland", "湿地", "#58887D"),
-                new ToolChoice("Desert", "荒漠", "#CEAE75"), new ToolChoice("River", "河流", "#428E9C"),
-                new ToolChoice("Tundra", "苔原", "#99A88C"),
-                new ToolChoice("Lake", "湖泊", "#559BA8"), new ToolChoice("DryFertile", "旱原", "#A3A66B"),
-                new ToolChoice("Stream", "小溪", "#64A8B2"), new ToolChoice("LargeRiver", "江", "#397D99"),
-                new ToolChoice("Meadow", "草甸", "#A8BE75"),
-                new ToolChoice("Woodland", "疏林", "#73966B"), new ToolChoice("Rainforest", "雨林", "#35694F"),
-                new ToolChoice("Savanna", "稀树草原", "#B4AB6B"),
-                new ToolChoice("Scrub", "灌丛", "#9B9D72"), new ToolChoice("Floodplain", "河漫滩", "#85AF81"),
-                new ToolChoice("AlpineMeadow", "高山草甸", "#91A992"),
-            ],
-            "life" =>
-            [
-                new ToolChoice("Human", "人类", "#DEBC85"), new ToolChoice("Elf", "精灵", "#90C599"),
-                new ToolChoice("Dwarf", "矮人", "#BE9785"),
-                new ToolChoice("Orc", "兽人", "#A9B768"),
-            ],
-            "disaster" =>
-            [
-                new ToolChoice("Fire", "火灾", "#F0A065"), new ToolChoice("Drought", "干旱", "#D8C180"),
-                new ToolChoice("Plague", "疫病", "#B194C7"),
-                new ToolChoice("Meteor", "陨石", "#EC8758"),
-            ],
-            "build" => BuildToolChoices(),
-            _ => [],
-        };
-    }
-
     private void UpdateToolContext()
     {
         _updatingToolContext = true;
-        if (_category == "build")
+        if (_category.IsConstruction)
         {
             var towns = _engine.State.Settlements.OrderBy(t => t.Id).ToArray();
             _constructionTowns = towns.Select(t => t.Id).ToArray();
@@ -142,28 +95,12 @@ public sealed partial class MainView
     private void OnToolContextChanged()
     {
         if (_updatingToolContext || _mapPick is not null) return;
-        if (_category == "build" && _toolContext.SelectedIndex >= 0 &&
+        if (_category.IsConstruction && _toolContext.SelectedIndex >= 0 &&
             _toolContext.SelectedIndex < _constructionTowns.Length)
             _map.SelectedSettlementId = _constructionTowns[_toolContext.SelectedIndex];
     }
 
-    private ToolChoice[] BuildToolChoices()
-    {
-        return new ToolChoice[]
-        {
-            new("build:Farm", "农场", "#ADBB75"), new("build:Workshop", "工坊", "#CEB294"),
-            new("build:Academy", "学舍", "#91B0C8"), new("build:Waystation", "驿站", "#CEAB76"),
-            new("build:Bridge", "桥梁", "#99AAC8"), new("build:MountainPass", "山路", "#B598D1"),
-            new("build:Dock", "码头", "#91C7B1"), new("road:Road", "道路", "#B0A28B"),
-            new("road:Rail", "铁路", "#ADC1D3"),
-        }.Concat(Enum.GetValues<BuildingKind>()
-            .Where(k => k is not (BuildingKind.TownCenter or BuildingKind.Farm or BuildingKind.Workshop
-                or BuildingKind.Academy or BuildingKind.Waystation or BuildingKind.Bridge or BuildingKind.MountainPass
-                or BuildingKind.Dock)).Select(k => new ToolChoice("build:" + k, WorldEngine.BuildingName(k),
-                AdvancementRules.For(k)?.Magic == true ? "#B598D1" : "#91B0C8"))).ToArray();
-    }
-
-    private void SelectTool(string tool)
+    private void SelectTool(MapTool tool)
     {
         if (_mapPick is not null) return;
         CancelPendingEdit();
@@ -179,7 +116,7 @@ public sealed partial class MainView
         _map.CancelPlacement();
         _mobilePanel = false;
         _toolTitle.Text = _tools.Select(t => t.Tool).Contains(tool)
-            ? ToolChoices(_category).First(t => t.Key == tool).Label + "（已启用）"
+            ? _category.Choices.First(t => t.Key == tool).Label + "（已启用）"
             : "地图工具已启用";
         foreach (var (key, button) in _tools)
         {
@@ -227,7 +164,7 @@ public sealed partial class MainView
         }
 
         _map.CancelPlacement();
-        _map.ActiveTool = "pan";
+        _map.ActiveTool = MapTool.Pan;
         _toolTitle.Text = "漫游（点选查看）";
         foreach (var (_, button) in _tools)
         {
@@ -268,5 +205,4 @@ public sealed partial class MainView
         });
     }
 
-    private sealed record ToolChoice(string Key, string Label, string Color);
 }

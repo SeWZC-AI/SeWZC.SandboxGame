@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.UI.Controls;
 
 namespace SeWZC.WorldBox.UI;
 
@@ -299,7 +300,7 @@ public sealed partial class MainView
             actions.Children.Add(Named(Button("定位聚落并开始建设", () =>
             {
                 _map.SelectedSettlementId = town.Id;
-                SetCategory("build");
+                SetCategory(ToolCategory.Build);
                 _map.FocusTile(town.X, town.Y);
             }), "infrastructure-build"));
             actions.Children.Add(Named(Button("查看设施成本与建造", () => ShowBuildingEditor(town.Id)), "building-open"));

@@ -10,7 +10,7 @@ public sealed partial class WorldEngine
         var person = State.Residents.FirstOrDefault(r => r.Id == residentId) ?? throw new ArgumentException("居民不存在");
         var unlock = ResearchRules.Unlocking(job) ?? throw new ArgumentException("此岗位不属于研究解锁职业");
         if (!HasResearch(person.SettlementId, unlock.Kind) ||
-            unlock.Prerequisites.Any(k => !HasResearch(person.SettlementId, k)))
+            !HasResearchPrerequisites(person.SettlementId, unlock.Prerequisites))
             throw new InvalidOperationException("当地须掌握" + unlock.Name + "及其前置");
         if (person.Age < 14 || person.Health <= 0 || person.ArmyId != 0 || person.Agent.DestinationSettlementId != 0)
             throw new InvalidOperationException("只能分配当地未出征、未在异地递送的成年居民");
@@ -141,7 +141,7 @@ public sealed partial class WorldEngine
         if (caster is null) return "施法居民不存在";
         var research = ResearchRules.Unlocking(spell);
         return research is not null && (!HasResearch(caster.SettlementId, research.Kind)
-                                        || research.Prerequisites.Any(k => !HasResearch(caster.SettlementId, k)))
+                                        || !HasResearchPrerequisites(caster.SettlementId, research.Prerequisites))
             ? "当地需要掌握" + research.Name + "及其前置"
             : null;
     }
@@ -318,7 +318,7 @@ public sealed partial class WorldEngine
     {
         var research = ResearchRules.Unlocking(b.Kind);
         if (research is null || !HasResearch(b.SettlementId, research.Kind) ||
-            research.Prerequisites.Any(k => !HasResearch(b.SettlementId, k))) return false;
+            !HasResearchPrerequisites(b.SettlementId, research.Prerequisites)) return false;
         return b.Kind switch
         {
             BuildingKind.Reservoir => person.Inventory.Water < 6 && WaterSourceForStation(b) >= 0,

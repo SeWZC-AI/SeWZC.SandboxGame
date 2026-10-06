@@ -190,8 +190,8 @@ public sealed partial class MainView
 
     private sealed record ResearchViewState(
         ResearchKind Selected,
-        string Route,
-        string Branch,
+        ResearchRoute Route,
+        ResearchBranch? Branch,
         bool CivilizationDetails,
         ResearchGraphControl.ViewportState? Viewport);
 }

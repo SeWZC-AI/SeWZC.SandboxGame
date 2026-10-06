@@ -49,7 +49,7 @@ public sealed partial class WorldMapControl : Control
     private readonly Dictionary<IPointer, Point> _touches = [];
 
     private readonly List<Resident> _visibleResidents = [];
-    private string _activeTool = "inspect";
+    private MapTool _activeTool = MapTool.Inspect;
     private WorldState? _cachedState;
     private bool _cameraReady;
 
@@ -109,14 +109,15 @@ public sealed partial class WorldMapControl : Control
         }
     }
 
-    /// <summary>当前工具标识，如 <c>inspect</c>、种族名或 <c>build:</c> 建筑标识。</summary>
-    public string ActiveTool
+    /// <summary>当前地图工具，由工具对象负责校验、预览和执行。</summary>
+    public MapTool ActiveTool
     {
         get => _activeTool;
         set
         {
             CancelPlacement();
-            _activeTool = value ?? "inspect";
+            _activeTool = value ?? throw new ArgumentNullException(nameof(value));
+            _lastPaint = null;
             Cursor = new Cursor(IsNavigationTool ? StandardCursorType.Arrow : StandardCursorType.Cross);
             InvalidateVisual();
         }
@@ -142,8 +143,7 @@ public sealed partial class WorldMapControl : Control
         }
     }
 
-    private bool IsNavigationTool => ActiveTool.Equals("inspect", StringComparison.OrdinalIgnoreCase) ||
-                                     ActiveTool.Equals("pan", StringComparison.OrdinalIgnoreCase);
+    private bool IsNavigationTool => ActiveTool.IsNavigation;
 
     private double FitZoom => Engine is null
         ? .4
@@ -944,7 +944,7 @@ public sealed partial class WorldMapControl : Control
         var previewPen = new Pen(Brush(valid ? 0xFFB8E9BCu : 0xFFF08060u), 2);
         var previewFill = Brush(valid ? 0x448CDDABu : 0x55F08060u);
         var point = ToScreen((tile.X + .5) * TilePixels, (tile.Y + .5) * TilePixels);
-        if (ActiveTool.StartsWith("build:", StringComparison.OrdinalIgnoreCase))
+        if (ActiveTool.SquarePreview)
         {
             var size = Math.Max(6, TilePixels * _zoom);
             context.DrawRectangle(previewFill, previewPen,
@@ -952,13 +952,7 @@ public sealed partial class WorldMapControl : Control
             return;
         }
 
-        var brushTiles = ActiveTool.StartsWith("road:", StringComparison.OrdinalIgnoreCase)
-            ? 0
-            : Enum.TryParse<RaceKind>(ActiveTool, out _)
-                ? 3
-                : Math.Clamp(BrushRadius, 0, 16);
-        var toolName = ActiveTool.Contains(':') ? ActiveTool[(ActiveTool.IndexOf(':') + 1)..] : ActiveTool;
-        if (Enum.TryParse<DisasterKind>(toolName, true, out _)) brushTiles = DisasterRadius;
+        var brushTiles = ActiveTool.PreviewRadius(this);
         var radius = Math.Max(3, (brushTiles + .5) * TilePixels * _zoom);
         context.DrawEllipse(previewFill, previewPen, point, radius, radius);
     }
@@ -1135,8 +1129,7 @@ public sealed partial class WorldMapControl : Control
             if (_touches.ContainsKey(e.Pointer) && !_gestureMoved && !_pinching)
             {
                 if (PickingLocation) SelectTile(point);
-                else if (IsNavigationTool || Enum.TryParse<TerrainType>(ActiveTool, out _) ||
-                         ActiveTool == "territory" || ActiveTool.StartsWith("road:")) ApplyTool(point);
+                else if (!ActiveTool.RequiresTouchConfirmation) ApplyTool(point);
                 else PreviewPlacement(point, true);
             }
 
@@ -1226,60 +1219,28 @@ public sealed partial class WorldMapControl : Control
             if (PickingLocation || !ReferenceEquals(editEngine, Engine) || editTool != ActiveTool) return;
         }
 
-        var tool = ActiveTool;
-        var prefix = tool.IndexOf(':');
-        if (prefix >= 0) tool = tool[(prefix + 1)..];
-        var edited = false;
-        // 连续笔刷虽已有撤销恢复点，每个新落点仍须取消正在捕获的存档，避免保存混入编辑中间状态。
+        // 每个落点先取消正在捕获的存档，包括同一笔连续绘制。
         WorldMutationStarting?.Invoke(this, EventArgs.Empty);
-        if (TryApplyConstructionTool(tool, tile, out var constructionEdited))
-        {
-            if (constructionEdited)
-            {
-                RefreshWorld();
-                WorldEdited?.Invoke(this, EventArgs.Empty);
-            }
-
-            return;
-        }
-
-        if (tool.Equals("territory", StringComparison.OrdinalIgnoreCase))
-        {
-            if (!Engine.State.Nations.Any(nation => nation.Id == SelectedNationId)) return;
-            if (_lastPaint is null) WorldEditing?.Invoke(this, EventArgs.Empty);
-            Stroke(tile, (x, y) => Engine.TransferTerritory(x, y, SelectedNationId, Math.Clamp(BrushRadius, 0, 16)));
-            edited = true;
-        }
-        else if (Enum.TryParse<TerrainType>(tool, true, out var terrain))
-        {
-            if (_lastPaint is null) WorldEditing?.Invoke(this, EventArgs.Empty);
-            Stroke(tile, (x, y) => Engine.PaintTerrain(x, y, terrain, Math.Clamp(BrushRadius, 0, 16)));
-            edited = true;
-        }
-        else if (Enum.TryParse<RaceKind>(tool, true, out var race))
-        {
-            // 每次按下只投放一组居民，避免拖动种族工具瞬间创建大量人口。
-            if (_lastPaint is null)
-            {
-                WorldEditing?.Invoke(this, EventArgs.Empty);
-                Engine.SpawnResidents(tile.X, tile.Y, race, SpawnCount);
-                edited = true;
-            }
-        }
-        else if (Enum.TryParse<DisasterKind>(tool, true, out var disaster))
-        {
-            if (_lastPaint is null)
-            {
-                WorldEditing?.Invoke(this, EventArgs.Empty);
-                Engine.TriggerDisaster(tile.X, tile.Y, disaster, DisasterRadius);
-                edited = true;
-            }
-        }
-
+        var edited = ActiveTool.Apply(this, tile);
         _lastPaint = tile;
         if (!edited) return;
         RefreshWorld();
         WorldEdited?.Invoke(this, EventArgs.Empty);
+    }
+
+    internal bool PaintWithTool((int X, int Y) tile, Action<int, int> paint)
+    {
+        if (_lastPaint is null) WorldEditing?.Invoke(this, EventArgs.Empty);
+        Stroke(tile, paint);
+        return true;
+    }
+
+    internal bool PlaceWithTool(Action place)
+    {
+        if (_lastPaint is not null) return false;
+        WorldEditing?.Invoke(this, EventArgs.Empty);
+        place();
+        return true;
     }
 
     private void Stroke((int X, int Y) tile, Action<int, int> paint)
