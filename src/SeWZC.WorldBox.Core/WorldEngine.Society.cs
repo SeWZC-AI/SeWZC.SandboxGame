@@ -2,9 +2,10 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>世界设施记录数量的上限。</summary>
     public const int MaxBuildings = 1_536;
 
-    /// <summary>Idempotent defaults for current worlds and new towns.</summary>
+    /// <summary>为当前世界及新聚落补齐社会默认状态，已存在的记录保留。</summary>
     public void InitializeSociety()
     {
         if (State.Society.Cultures.Count == 0)
@@ -46,7 +47,7 @@ public sealed partial class WorldEngine
 
             if (State.Society.Research.Any(r => r.SettlementId == town.Id)) continue;
             State.Society.Research.Add(new SettlementResearch { SettlementId = town.Id });
-            // Founding households bring a field and a workshop; later facilities must be constructed.
+            // 定居家庭携带初始农场和工坊，后续设施仍须实际建设。
             if (!town.FoundationPending)
             {
                 AddFoundingFacility(town, BuildingKind.Farm);
@@ -96,6 +97,8 @@ public sealed partial class WorldEngine
         }
     }
 
+    /// <summary>返回建造一级设施所需的资源成本。</summary>
+    /// <param name="kind">设施类别。</param>
     public static ResourceStock GetBuildingCost(BuildingKind kind)
     {
         return kind switch
@@ -138,11 +141,20 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>返回开始指定研究所需的资源成本。</summary>
+    /// <param name="kind">研究项目。</param>
     public static ResourceStock GetResearchCost(ResearchKind kind)
     {
         return ResearchRules.For(kind).Cost.Copy();
     }
 
+    /// <summary>校验并扣除聚落材料后建立待施工设施，返回建筑 ID。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="kind">设施类别。</param>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="direction">桥梁通行轴向，空值时根据现场连岸条件推断。</param>
+    /// <param name="bridgeLevel">建造的桥梁等级，范围为 1 至 3；普通建筑忽略此参数。</param>
     public int BuildFacility(int settlementId, BuildingKind kind, int x, int y, BridgeDirection? direction = null,
         int bridgeLevel = 1)
     {
@@ -187,8 +199,7 @@ public sealed partial class WorldEngine
             EmitVisual(WorldVisualKind.Construction, x, y);
         }
 
-        // A paid waterfront project starts on unclaimed water beside its owned shore.
-        // Register that site now so ownership gates permit the first construction work.
+        // 水上项目起点尚未登记，须在本城镇陆岸旁先登记施工地块，否则归属检查会阻止首次施工。
         if (gift || IsWaterfrontBuilding(kind)) RegisterBuildingGround(building);
         var projectEvent = AddEvent(WorldEventKind.Construction,
             gift
@@ -201,6 +212,11 @@ public sealed partial class WorldEngine
         return building.Id;
     }
 
+    /// <summary>校验并扣除本地材料，在笔刷范围内没有道路的可通行地格修建道路。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="radius">道路笔刷的作用半径，以地格为单位。</param>
     public void BuildRoad(int settlementId, int x, int y, int radius = 1)
     {
         var town = RequireTown(settlementId);
@@ -214,6 +230,9 @@ public sealed partial class WorldEngine
         RefreshTotals();
     }
 
+    /// <summary>校验前置与材料后启动聚落研究项目。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="kind">研究项目。</param>
     public void StartResearch(int settlementId, ResearchKind kind)
     {
         if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
@@ -238,6 +257,9 @@ public sealed partial class WorldEngine
         RefreshTotals();
     }
 
+    /// <summary>判断指定聚落是否已经掌握某项研究。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="kind">研究项目。</param>
     public bool HasResearch(int settlementId, ResearchKind kind)
     {
         return _knowledgeQueriesActive
@@ -248,12 +270,19 @@ public sealed partial class WorldEngine
             .Contains(kind) == true;
     }
 
+    /// <summary>查询聚落所属国家的古代工具等级。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
     public int GetLocalTechnologyLevel(int settlementId)
     {
         return 1 + (State.Society.Research.FirstOrDefault(r => r.SettlementId == settlementId)?.Completed
             .Count(k => k <= ResearchKind.ArcaneArts) ?? 0);
     }
 
+    /// <summary>将实际收到的研究知识记入聚落，关联其递送依据和前因。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="kind">研究项目。</param>
+    /// <param name="causeEventId">关联的前因事件 ID，0 表示未指定前因。</param>
+    /// <param name="evidenceFactId">关联的信息依据 ID，0 表示未指定依据。</param>
     public void GrantReceivedResearch(int settlementId, ResearchKind kind, int causeEventId = 0, int evidenceFactId = 0)
     {
         if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
@@ -284,6 +313,10 @@ public sealed partial class WorldEngine
         }
     }
 
+    /// <summary>查找符合居民职业及本地条件的劳动地点，返回是否找到目标。</summary>
+    /// <param name="resident">参与当前操作的居民状态。</param>
+    /// <param name="x">找到的劳动地点横向地格坐标；失败时为居民当前位置。</param>
+    /// <param name="y">找到的劳动地点纵向地格坐标；失败时为居民当前位置。</param>
     public bool TryGetLocalWorkTarget(Resident resident, out int x, out int y)
     {
         var building = FindLocalWorkBuilding(resident, 8, true);
@@ -389,6 +422,8 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>尝试让到场居民在目标设施施工、升级或劳动，返回是否执行了工作。</summary>
+    /// <param name="resident">参与当前操作的居民状态。</param>
     public bool TryWorkAtBuilding(Resident resident)
     {
         var building = FindLocalWorkBuilding(resident, 1, false, true);
@@ -614,6 +649,10 @@ public sealed partial class WorldEngine
         return best;
     }
 
+    /// <summary>计算包含种族、道路和地块改良修正的步行成本，越界或不可通行时为正无穷。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="race">居民种族，用于应用对应的通行或劳动规则。</param>
     public double GetTerrainMoveCost(int x, int y, RaceKind race = RaceKind.Human)
     {
         if (!InBounds(x, y)) return double.PositiveInfinity;
@@ -633,6 +672,11 @@ public sealed partial class WorldEngine
         return tile.RoadLevel >= 2 ? Math.Max(.35, cost * .3) : tile.RoadLevel > 0 ? Math.Max(0.65, cost * 0.55) : cost;
     }
 
+    /// <summary>计算实际信使在此地的移动速率倍率，包含地形及附近本国驿站加成。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="race">居民种族，用于应用对应的通行或劳动规则。</param>
     public double MessageTravelMultiplier(int x, int y, int nationId, RaceKind race = RaceKind.Human)
     {
         if (!InBounds(x, y)) return 0;
@@ -651,12 +695,16 @@ public sealed partial class WorldEngine
         return speed;
     }
 
+    /// <summary>检查两处同国聚落之间是否有可用信号塔路径，并给出递送日数。</summary>
+    /// <param name="fromSettlementId">信息递送出发聚落的 ID。</param>
+    /// <param name="toSettlementId">信息递送目标聚落的 ID。</param>
+    /// <param name="travelTicks">可用路径所需的模拟日数；没有路径时为零。</param>
     public bool CanRelayInformation(int fromSettlementId, int toSettlementId, out int travelTicks)
     {
         travelTicks = 0;
         if (!_settlements.TryGetValue(fromSettlementId, out var from) ||
             !_settlements.TryGetValue(toSettlementId, out var to) || from.NationId != to.NationId) return false;
-        // Ancient worlds have no relay network to search or allocate traversal buffers for.
+        // 没有信号塔时直接退出，避免古代世界无谓分配中继网络遍历缓冲区。
         if (!State.Society.Buildings.Any(b => b.Kind == BuildingKind.SignalTower && b.IsCompleted)) return false;
         var towers = State.Society.Buildings.Where(b => b.Kind == BuildingKind.SignalTower && IsFacilityOperating(b)
                 && HasResearch(b.SettlementId, ResearchKind.SignalNetwork) &&
@@ -728,6 +776,9 @@ public sealed partial class WorldEngine
         return true;
     }
 
+    /// <summary>设置国家制度形式，并记录玩家干预。</summary>
+    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="kind">国家制度形式。</param>
     public void SetInstitution(int nationId, InstitutionKind kind)
     {
         if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
@@ -735,6 +786,9 @@ public sealed partial class WorldEngine
         State.Society.Institutions.First(i => i.NationId == nationId).Kind = kind;
     }
 
+    /// <summary>为国家指定政策，并安排其在相关聚落生效。</summary>
+    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="policy">待应用的政策。</param>
     public void SetPolicy(int nationId, PolicyKind policy)
     {
         if (!Enum.IsDefined(policy)) throw new ArgumentOutOfRangeException(nameof(policy));
@@ -752,6 +806,8 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Editor, $"{nation.Name}的政策由玩家调整为{PolicyName(policy)}。");
     }
 
+    /// <summary>清除国家和本地的玩家政策覆盖，恢复机构自主选择。</summary>
+    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
     public void SetPolicyAutonomy(int nationId)
     {
         _ = RequireNation(nationId);
@@ -760,16 +816,23 @@ public sealed partial class WorldEngine
             State.Society.Policies.First(p => p.SettlementId == town.Id).PlayerOverride = false;
     }
 
+    /// <summary>查询聚落当前采用的政策，没有记录时返回均衡政策。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
     public PolicyKind GetLocalPolicy(int settlementId)
     {
         return State.Society.Policies.FirstOrDefault(p => p.SettlementId == settlementId)?.Kind ?? PolicyKind.Balanced;
     }
 
+    /// <summary>返回本地政策对生产的倍率。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
     public double GetPolicyProductionMultiplier(int settlementId)
     {
         return GetLocalPolicy(settlementId) == PolicyKind.FoodSecurity ? 1.25 : 1;
     }
 
+    /// <summary>将已经递送到本地的政策应用到聚落。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="policy">待应用的政策。</param>
     public void ApplyReceivedPolicy(int settlementId, PolicyKind policy)
     {
         if (!Enum.IsDefined(policy)) return;
@@ -907,6 +970,9 @@ public sealed partial class WorldEngine
         }
     }
 
+    /// <summary>校验并修改文化名称。</summary>
+    /// <param name="cultureId">文化定义的稳定 ID。</param>
+    /// <param name="name">新的名称。</param>
     public void RenameCulture(int cultureId, string name)
     {
         var culture = RequireCulture(cultureId);
@@ -916,6 +982,11 @@ public sealed partial class WorldEngine
         culture.Name = name;
     }
 
+    /// <summary>校验并设置文化的合作、创新和亲自然权重。</summary>
+    /// <param name="cultureId">文化定义的稳定 ID。</param>
+    /// <param name="cooperation">合作倾向权重，范围为 0 至 1。</param>
+    /// <param name="innovation">创新倾向权重，范围为 0 至 1。</param>
+    /// <param name="natureAffinity">亲自然倾向权重，范围为 0 至 1。</param>
     public void SetCultureValues(int cultureId, double cooperation, double innovation, double natureAffinity)
     {
         var culture = RequireCulture(cultureId);
@@ -926,12 +997,18 @@ public sealed partial class WorldEngine
         culture.NatureAffinity = natureAffinity;
     }
 
+    /// <summary>指定国家的文化归属。</summary>
+    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="cultureId">文化定义的稳定 ID。</param>
     public void SetNationCulture(int nationId, int cultureId)
     {
         _ = RequireCulture(cultureId);
         RequireNation(nationId).CultureId = cultureId;
     }
 
+    /// <summary>指定居民的文化归属。</summary>
+    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="cultureId">文化定义的稳定 ID。</param>
     public void SetResidentCulture(int residentId, int cultureId)
     {
         _ = RequireCulture(cultureId);
@@ -939,6 +1016,9 @@ public sealed partial class WorldEngine
         resident.CultureId = cultureId;
     }
 
+    /// <summary>记录两位居民实际接触对彼此文化认知的影响。</summary>
+    /// <param name="first">实际参与交流的第一位居民。</param>
+    /// <param name="second">实际参与交流的第二位居民。</param>
     public void ExchangeCulture(Resident first, Resident second)
     {
         if (Distance(first.X, first.Y, second.X, second.Y) > 2 || first.CultureId == second.CultureId) return;
@@ -964,7 +1044,7 @@ public sealed partial class WorldEngine
         if (contact.Exposure < 10) return;
         var previous = GetCulture(resident.CultureId).Name;
         resident.CultureId = cultureId;
-        // A new identity requires fresh sustained contact before another conversion.
+        // 文化归属变化后须重新积累持续接触，避免连续快速转化。
         foreach (var exposure in State.Society.CulturalContacts.Where(c => c.ResidentId == resident.Id))
         {
             exposure.Exposure = 0;
@@ -979,6 +1059,11 @@ public sealed partial class WorldEngine
         cultureEvent.NationId = resident.NationId;
     }
 
+    /// <summary>尝试按正式施法命令执行法术；条件不满足时返回失败。</summary>
+    /// <param name="casterId">施法居民的稳定 ID。</param>
+    /// <param name="spell">待查询或施放的法术。</param>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
     public bool TryCastSpell(int casterId, SpellKind spell, int x, int y)
     {
         try
@@ -992,6 +1077,11 @@ public sealed partial class WorldEngine
         }
     }
 
+    /// <summary>校验施法资格、距离和目标后消耗魔力，产生法术实际效果。</summary>
+    /// <param name="casterId">施法居民的稳定 ID。</param>
+    /// <param name="spell">待查询或施放的法术。</param>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
     public void CastSpell(int casterId, SpellKind spell, int x, int y)
     {
         if (!Enum.IsDefined(spell)) throw new ArgumentOutOfRangeException(nameof(spell));
@@ -1117,7 +1207,9 @@ public sealed partial class WorldEngine
         magicEvent.NationId = caster.NationId;
     }
 
-    /// <returns>Damage remaining after a real local shield; does not change unrelated victims.</returns>
+    /// <summary>按附近防御政策及护盾减伤，再消耗个人符文护甲和护甲，返回剩余伤害。</summary>
+    /// <param name="resident">实际承受伤害并消耗个人防护的居民。</param>
+    /// <param name="damage">减伤前的伤害量。</param>
     public double TryAbsorbShieldDamage(Resident resident, double damage)
     {
         var multiplier = 1d;
@@ -1138,6 +1230,7 @@ public sealed partial class WorldEngine
         return remaining - armor;
     }
 
+    /// <summary>在实体或地形编辑后修复城镇中心和连通占领，清理失效的社会归属记录。</summary>
     public void ReconcileSocietyTopology()
     {
         EnsureTownCenters();
@@ -1156,6 +1249,7 @@ public sealed partial class WorldEngine
         foreach (var building in State.Society.Buildings) building.Workers.RemoveAll(id => !people.Contains(id));
     }
 
+    /// <summary>在当前模拟日更新社会分工、设施、研究、政策和通信相关状态。</summary>
     public void TickSociety()
     {
         if (State.Tick % 30 == 0)
@@ -1234,7 +1328,7 @@ public sealed partial class WorldEngine
                 TryAutomaticMagic(person);
         }
 
-        // Spread regeneration work across the map using a persisted clock, never wall time.
+        // 按已保存的模拟日序分摊资源恢复，避免墙钟影响续演或产生整图更新峰值。
         const int batch = 128;
         for (var offset = 0; offset < Math.Min(batch, State.Tiles.Length); offset++)
         {
@@ -1435,7 +1529,7 @@ public sealed partial class WorldEngine
             return;
         }
 
-        // Essentials compete with ongoing research/construction instead of waiting behind them.
+        // 基本生计也须参与项目优先级竞争，避免长期被研究和建设占用资源后无法补足。
         if (demand.Water)
         {
             foreach (var kind in HasResearch(town.Id, ResearchKind.CivilEngineering)
@@ -1592,10 +1686,8 @@ public sealed partial class WorldEngine
         var project = _localWorkQueriesActive
             ? _localResearch[town.Id]
             : State.Society.Research.First(r => r.SettlementId == town.Id);
-        // Reserve wood and stone for the next project the local planner can pursue; optional ore
-        // shortages may defer magic while the same planner proceeds with basic transport.
-        // Stop at the same first eligible plan without constructing every later candidate.
-        // The groups contain live objects; a miner still sees stock and needs at its own turn.
+        // 为下一项可执行的本地计划预留木石；缺矿可推迟魔法项目，但不能阻止基础运输发展。
+        // 只评估首个可选计划，并保留实时库存引用，使矿工在自己行动时仍能看到实际需求。
         foreach (var plan in PendingLocalDevelopment(town, buildings, project))
             if (plan.Facility.HasValue ? State.Rules.Construction : State.Rules.Research)
                 return plan.Cost;
@@ -1781,6 +1873,8 @@ public sealed partial class WorldEngine
         return State.Society.Cultures.FirstOrDefault(c => c.Id == id) ?? State.Society.Cultures[0];
     }
 
+    /// <summary>返回建筑类型的中文名称。</summary>
+    /// <param name="kind">设施类别。</param>
     public static string BuildingName(BuildingKind kind)
     {
         return kind switch
@@ -1803,11 +1897,15 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>返回研究项目的中文名称。</summary>
+    /// <param name="kind">研究项目。</param>
     public static string ResearchName(ResearchKind kind)
     {
         return ResearchRules.For(kind).Name;
     }
 
+    /// <summary>返回政策的中文名称。</summary>
+    /// <param name="kind">政策类别。</param>
     public static string PolicyName(PolicyKind kind)
     {
         return kind switch

@@ -4,21 +4,26 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class Tile
 {
+    /// <summary>最近一次记录扑救效果的模拟日序。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long FireSuppressionTick { get; set; }
 
+    /// <summary>在最近记录的模拟日内，扑救累计缩短的火灾日数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int FireSuppressed { get; set; }
 }
 
 public sealed partial class Resident
 {
+    /// <summary>疫病康复后的暂时免疫截止日序。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long DiseaseImmuneUntilTick { get; set; }
 }
 
 public sealed partial class WorldEngine
 {
+    /// <summary>根据地形燃料、资源和供水计算 0 至 1 的可燃性。</summary>
+    /// <param name="tile">待查询或操作的地格状态。</param>
     public static double TerrainFlammability(Tile tile)
     {
         var fuel = tile.Terrain switch
@@ -32,10 +37,12 @@ public sealed partial class WorldEngine
             TerrainType.Wetland when tile.DroughtTicks > 0 => .12,
             _ => 0,
         };
-        // Wet ground does not ignite just because it can be walked on.
+        // 可通行不代表可燃，湿地须按实际燃料和供水判断点火条件。
         return Math.Clamp(fuel * (tile.DroughtTicks > 0 ? 1.5 : Math.Exp(-tile.NaturalWaterYield * 40)), 0, 1);
     }
 
+    /// <summary>根据建筑用途和等级计算可燃性。</summary>
+    /// <param name="building">待查询或操作的建筑状态。</param>
     public static double BuildingFlammability(Building building)
     {
         return building.Kind switch
@@ -51,6 +58,9 @@ public sealed partial class WorldEngine
         } * Math.Pow(.75, building.Level - 1);
     }
 
+    /// <summary>取地形与存活建筑中的最大可燃性，地点越界时返回零。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
     public double GetTileFlammability(int x, int y)
     {
         if (!InBounds(x, y)) return 0;
@@ -83,6 +93,8 @@ public sealed partial class WorldEngine
         tile.Fertility = (byte)Math.Max(5, tile.Fertility - 10);
     }
 
+    /// <summary>尝试让邻近火源的成年居民消耗随身饮水扑救；返回是否产生扑救效果。</summary>
+    /// <param name="person">参与当前操作的居民状态。</param>
     public bool TryExtinguishFire(Resident person)
     {
         var goal = person.Agent.Goal;
@@ -104,7 +116,7 @@ public sealed partial class WorldEngine
             tile.FireSuppressed = 0;
         }
 
-        // Shared daily limit prevents a crowded tile from vanishing in one tick.
+        // 每格共用每日扑救上限，避免聚集大量居民后火灾在一日内直接消失。
         var reduction = Math.Min(2 - tile.FireSuppressed, tile.FireTicks);
         if (reduction <= 0) return false;
         person.Inventory.Water -= .1;

@@ -45,8 +45,7 @@ public sealed partial class WorldEngine
 
     private string NewResidentName(int id, RaceKind race)
     {
-        // A seed-specific permutation of 32³ combinations, followed by collision checking
-        // against player names and archives. IDs stay separate from normal visible names.
+        // 种子决定名称组合顺序，并检查玩家名称和归档重名；稳定 ID 与显示名称分开，避免名称影响关系。
         var names = GivenNames[(int)race];
         var code = unchecked((uint)id * 4051u + (uint)State.Seed * 7919u) % 32768;
         var used = State.Residents.Concat(State.ArchivedResidents).Select(r => r.Name)

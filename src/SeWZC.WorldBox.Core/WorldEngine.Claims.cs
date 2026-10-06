@@ -7,8 +7,7 @@ public sealed partial class WorldEngine
 
     private long _connectedClaimsRevision = -1;
 
-    // A founding footprint is a single occupied site. Population only raises the
-    // ceiling; it never writes ownership of a surrounding circle.
+    // 建村只登记实际占据的地点；人口仅提高占地上限，不能自动取得周围领土。
     private void ClaimTerritory(Settlement town, int radius)
     {
         town.MaxClaimRadius = Math.Max(town.MaxClaimRadius, Math.Clamp(radius, 1, 17));
@@ -58,6 +57,8 @@ public sealed partial class WorldEngine
         return -1;
     }
 
+    /// <summary>尝试让到场居民登记当前目标地块；返回是否完成登记。</summary>
+    /// <param name="person">参与当前操作的居民状态。</param>
     public bool TryClaimLand(Resident person)
     {
         if (!_settlements.TryGetValue(person.SettlementId, out var town) || person.Age < 14 || person.ArmyId != 0
@@ -120,7 +121,7 @@ public sealed partial class WorldEngine
         if (tile.ClaimedSettlementId == 0) tile.ClaimedSettlementId = town.Id;
     }
 
-    // Rebuild only after ownership/claim edits, never once per resident.
+    // 归属和占领变化后才重建连通区域，避免每个居民都重复扫描。
     private void ReconcileConnectedClaims()
     {
         _territoryCounts.Bind(State.Tiles);

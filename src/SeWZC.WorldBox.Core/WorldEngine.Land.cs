@@ -2,6 +2,10 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>根据交通方式、种族和地块改良判断是否可进入地格。</summary>
+    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="mode">待判断的交通方式。</param>
+    /// <param name="race">居民种族，用于应用对应的通行或劳动规则。</param>
     public static bool CanTraverse(Tile tile, TravelMode mode, RaceKind race = RaceKind.Human)
     {
         return mode switch
@@ -13,6 +17,8 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>返回地块改良的中文名称。</summary>
+    /// <param name="kind">地块改良类别。</param>
     public static string ImprovementName(LandImprovement kind)
     {
         return kind switch
@@ -22,6 +28,8 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>返回开采该类矿藏所需的研究；不属于阶段矿藏时返回空值。</summary>
+    /// <param name="kind">资源种类。</param>
     public static ResearchKind? DepositResearch(ResourceKind kind)
     {
         return kind switch
@@ -47,7 +55,7 @@ public sealed partial class WorldEngine
         if (tile.Deposit.HasValue) tile.DepositAmount = 120 + hash % 181;
     }
 
-    // Keep highlands, but break large impassable components into hills and small peaks.
+    // 将大片不可通行高地分解为丘陵和小山峰，保留地貌同时避免阻断整个地区。
     private void LimitMountainRanges()
     {
         var visited = new bool[State.Tiles.Length];
@@ -123,8 +131,7 @@ public sealed partial class WorldEngine
             || (person.Agent.Goal.TargetSettlementId == 0 && person.Agent.Goal.TargetEntityId == 0)) return;
         if (State.Society.Buildings.Any(b =>
                 b.SettlementId == person.SettlementId && (!b.IsCompleted || b.IsUpgrading))) return;
-        // A real task alone does not justify a bridge if visible land already
-        // connects its interaction position.
+        // 任务确有需求仍须核对可见陆路，已有通路时不应无故建桥。
         if (Distance(person.X, person.Y, targetX, targetY) <= 6 && VisibleWorkSiteReachable(person, targetX, targetY,
                 AgentInteractionRange(person, _settlements.GetValueOrDefault(person.SettlementId)) > 0)) return;
         foreach (var (dx, dy) in Directions)
@@ -137,8 +144,7 @@ public sealed partial class WorldEngine
             var first = State.Tiles[Index(x, y)];
             if (first.Terrain is not (TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver
                     or TerrainType.Water or TerrainType.Lake) || first.Improvement == LandImprovement.Bridge) continue;
-            // Both banks and every intervening section must be seen and usable on one axis.
-            // A mismatched completed bridge is an obstacle, never a reason to build sideways.
+            // 两岸及沿途桥段须在同一轴向可见且可用，异向桥段是障碍，不能据此横向接桥。
             var farBank = false;
             var span = 0;
             var unfinished = 0;
@@ -321,6 +327,9 @@ public sealed partial class WorldEngine
         return false;
     }
 
+    /// <summary>返回地格当前动物数量及植物存量、覆盖率的只读摘要。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
     public string GetTileEcologySummary(int x, int y)
     {
         if (!InBounds(x, y)) return "地格不存在";
@@ -332,6 +341,10 @@ public sealed partial class WorldEngine
                        $"{PlantResources.Name(p.Kind)}  {p.Quantity:0.###} 份   覆盖 {p.Cover:P0}"));
     }
 
+    /// <summary>返回地格当前资源与按显示策略可见的矿藏摘要。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="visibility">观察者的矿藏显示策略。</param>
     public string GetTileResourceSummary(int x, int y, ResourceVisibility visibility = ResourceVisibility.Researched)
     {
         if (!InBounds(x, y)) return "地格不存在";
@@ -352,6 +365,10 @@ public sealed partial class WorldEngine
         return resources.Count > 0 ? string.Join("，", resources) : "暂无植物或矿物";
     }
 
+    /// <summary>返回地格资源、可采集产物、供水、通行和环境状态，矿藏按显示策略筛选。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="visibility">观察者的矿藏显示策略。</param>
     public string GetTileProductionSummary(int x, int y, ResourceVisibility visibility = ResourceVisibility.Researched)
     {
         if (!InBounds(x, y)) return "地格不存在";

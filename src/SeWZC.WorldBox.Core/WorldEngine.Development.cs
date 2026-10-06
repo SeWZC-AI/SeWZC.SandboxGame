@@ -1,22 +1,31 @@
 namespace SeWZC.WorldBox.Core;
 
+/// <summary>国家对科技与魔法发展路线的规划偏好。</summary>
 public enum DevelopmentFocus
 {
+    /// <summary>按当地文化选择。</summary>
     Automatic,
+    /// <summary>科技发展。</summary>
     Technology,
+    /// <summary>法术传承。</summary>
     MagicPractice,
+    /// <summary>魔法工艺。</summary>
     ArcaneIndustry,
+    /// <summary>兼修科技与魔法。</summary>
     Integrated,
 }
 
 public sealed partial class Nation
 {
-    // Automatic is a deterministic culture-based default for worlds saved before this option.
+    // 未指定发展方向时按文化确定默认选择，避免依赖额外随机数。
+    /// <summary>国家对未来科技与魔法规划的偏好。</summary>
     public DevelopmentFocus DevelopmentFocus { get; set; }
 }
 
 public sealed partial class WorldEngine
 {
+    /// <summary>取得国家指定或根据本地文化和魔法开关推导的发展方向。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
     public DevelopmentFocus GetDevelopmentFocus(int settlementId)
     {
         var town = RequireTown(settlementId);
@@ -28,6 +37,8 @@ public sealed partial class WorldEngine
             : DevelopmentFocus.MagicPractice;
     }
 
+    /// <summary>返回发展方向的中文名称。</summary>
+    /// <param name="focus">未来规划采用的发展方向。</param>
     public static string DevelopmentFocusName(DevelopmentFocus focus)
     {
         return focus switch
@@ -37,6 +48,9 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>设置国家未来规划的发展方向，并记录变化。</summary>
+    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="focus">未来规划采用的发展方向。</param>
     public void SetDevelopmentFocus(int nationId, DevelopmentFocus focus)
     {
         if (!Enum.IsDefined(focus)) throw new ArgumentOutOfRangeException(nameof(focus));
@@ -44,6 +58,6 @@ public sealed partial class WorldEngine
         if (nation.DevelopmentFocus == focus) return;
         nation.DevelopmentFocus = focus;
         AddEvent(WorldEventKind.Editor, $"{nation.Name}的发展方向调整为{DevelopmentFocusName(focus)}。");
-        // Choices affect future planning; existing research and facilities keep their history.
+        // 发展方向只影响未来计划，不能抹去已有研究和设施的历史。
     }
 }

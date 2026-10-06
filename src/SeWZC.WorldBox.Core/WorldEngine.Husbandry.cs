@@ -2,11 +2,15 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>判断设施是否为牧场或水产养殖厂。</summary>
+    /// <param name="kind">设施类别。</param>
     public static bool IsHusbandry(BuildingKind kind)
     {
         return kind is BuildingKind.Pasture or BuildingKind.Aquaculture;
     }
 
+    /// <summary>返回设施等级允许的养殖容量。</summary>
+    /// <param name="building">待查询或操作的建筑状态。</param>
     public static double LivestockCapacity(Building building)
     {
         return (building.Kind == BuildingKind.Pasture ? 8 : 12) * building.Efficiency;
@@ -147,7 +151,7 @@ public sealed partial class WorldEngine
             var tile = State.Tiles[Index(b.X, b.Y)];
             if (b.Kind == BuildingKind.Pasture)
                 HarvestPlants(tile, .04 * Math.Min(6, b.LivestockPopulation) * NaturalPlantHarvestEfficiency(tile));
-            // Feed and on-site labour renew the herd. Harvest never spends breeding stock.
+            // 种群恢复需要饲料和到场劳动，采收不能消耗保留的繁殖种群。
             b.LivestockPopulation = Math.Min(LivestockCapacity(b),
                 b.LivestockPopulation + .04 * effort * b.LivestockPopulation *
                 (1 - b.LivestockPopulation / LivestockCapacity(b)));

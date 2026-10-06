@@ -3,15 +3,25 @@ using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
+/// <summary>研究树中从前置研究到后续研究的折线连接。</summary>
+/// <param name="From">作为前置的研究节点。</param>
+/// <param name="To">依赖该前置的后续研究节点。</param>
+/// <param name="Points">在未缩放画布中的连接折线顶点。</param>
 public sealed record ResearchTreeEdge(ResearchKind From, ResearchKind To, Point[] Points);
 
+/// <summary>研究树分支标题及其横向背景范围。</summary>
+/// <param name="Name">分支显示名称。</param>
+/// <param name="Left">分支背景在未缩放画布中的左边界。</param>
+/// <param name="Width">分支背景的未缩放宽度。</param>
 public sealed record ResearchTreeLane(string Name, double Left, double Width);
 
-// Stable branch columns make each route readable. Rules remain the authority for edges.
+/// <summary>根据研究定义计算节点矩形、分支范围和前置连接线。</summary>
 public sealed class ResearchTreeLayout
 {
+    /// <summary>未缩放的研究节点宽度和高度，以控件布局单位计。</summary>
     public const double NodeWidth = 140, NodeHeight = 70;
 
+    // 固定分支列使路线易于阅读，连接关系仍由研究规则决定。
     private static readonly IReadOnlyDictionary<ResearchKind, (int Column, int Row)> Positions =
         new Dictionary<ResearchKind, (int, int)>
         {
@@ -40,6 +50,8 @@ public sealed class ResearchTreeLayout
             [ResearchKind.BattleMagic] = (10, 4), [ResearchKind.SpatialMagic] = (8, 4),
         };
 
+    /// <summary>为非空的研究定义集合计算稳定分支布局及集合内的前置连线。</summary>
+    /// <param name="definitions">需要布局的非空研究定义集合，前置连线仅连接集合内节点。</param>
     public ResearchTreeLayout(IEnumerable<ResearchDefinition> definitions)
     {
         var items = definitions.ToArray();
@@ -76,7 +88,7 @@ public sealed class ResearchTreeLayout
                 Point[] points;
                 if (target.Top - source.Top > 120)
                 {
-                    // A skipped level uses the gap beside the target's branch.
+                    // 跨层连线绕到目标分支旁的空隙，避免穿过中间节点。
                     var track = target.Right + 10 + index * 6;
                     points =
                     [
@@ -98,8 +110,12 @@ public sealed class ResearchTreeLayout
         Size = new Size(nodes.Values.Max(r => r.Right) + 32, nodes.Values.Max(r => r.Bottom) + 24);
     }
 
+    /// <summary>各研究节点在未缩放画布中的矩形。</summary>
     public IReadOnlyDictionary<ResearchKind, Rect> Nodes { get; }
+    /// <summary>当前布局内研究节点之间的前置连接折线。</summary>
     public IReadOnlyList<ResearchTreeEdge> Edges { get; }
+    /// <summary>当前布局的分支标题及横向背景范围。</summary>
     public IReadOnlyList<ResearchTreeLane> Lanes { get; }
+    /// <summary>容纳节点和留白所需的未缩放画布尺寸。</summary>
     public Size Size { get; }
 }

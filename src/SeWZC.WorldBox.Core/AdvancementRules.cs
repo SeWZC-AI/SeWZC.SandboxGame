@@ -2,64 +2,95 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
+/// <summary>仓库、随身货物和生产配方使用的资源种类。</summary>
 public enum ResourceKind
 {
+    /// <summary>粮食。</summary>
     Food,
+    /// <summary>木材。</summary>
     Wood,
+    /// <summary>石材。</summary>
     Stone,
+    /// <summary>矿石。</summary>
     Ore,
+    /// <summary>合金。</summary>
     Alloy,
+    /// <summary>动力单元。</summary>
     EnergyCells,
+    /// <summary>魔晶。</summary>
     Crystals,
+    /// <summary>煤。</summary>
     Coal,
+    /// <summary>石油。</summary>
     Oil,
+    /// <summary>稀土。</summary>
     RareEarth,
+    /// <summary>舟船。</summary>
     Boats,
+    /// <summary>运输机。</summary>
     Aircraft,
+    /// <summary>饮水。</summary>
     Water,
+    /// <summary>工具。</summary>
     Tools,
+    /// <summary>药品。</summary>
     Medicine,
+    /// <summary>弹药。</summary>
     Ammunition,
 }
 
 public sealed partial class ResourceStock
 {
+    /// <summary>饮水的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Water { get; set; }
 
+    /// <summary>合金的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Alloy { get; set; }
 
+    /// <summary>动力单元的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double EnergyCells { get; set; }
 
+    /// <summary>魔晶的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Crystals { get; set; }
 
+    /// <summary>煤的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Coal { get; set; }
 
+    /// <summary>石油的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Oil { get; set; }
 
+    /// <summary>稀土的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double RareEarth { get; set; }
 
+    /// <summary>舟船的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Boats { get; set; }
 
+    /// <summary>运输机的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Aircraft { get; set; }
 
+    /// <summary>工具的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Tools { get; set; }
 
+    /// <summary>药品的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Medicine { get; set; }
 
+    /// <summary>弹药的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Ammunition { get; set; }
 
+    /// <summary>读取指定种类的资源数量。</summary>
+    /// <param name="kind">资源种类。</param>
     public double Get(ResourceKind kind)
     {
         return kind switch
@@ -74,6 +105,9 @@ public sealed partial class ResourceStock
         };
     }
 
+    /// <summary>替换指定种类的资源数量。</summary>
+    /// <param name="kind">资源种类。</param>
+    /// <param name="value">要替换的资源数量。</param>
     public void Set(ResourceKind kind, double value)
     {
         switch (kind)
@@ -98,6 +132,7 @@ public sealed partial class ResourceStock
         }
     }
 
+    /// <summary>复制全部资源数量，返回独立的库存对象。</summary>
     public ResourceStock Copy()
     {
         return new ResourceStock
@@ -109,6 +144,8 @@ public sealed partial class ResourceStock
         };
     }
 
+    /// <summary>返回资源种类的中文名称。</summary>
+    /// <param name="kind">资源种类。</param>
     public static string Name(ResourceKind kind)
     {
         return kind switch
@@ -125,6 +162,19 @@ public sealed partial class ResourceStock
 }
 
 /// <summary>生产技术的研究要求、设施成本、每批原料与产出，以及可选的魔力消耗。</summary>
+/// <param name="Research">解锁该生产技术的研究项目。</param>
+/// <param name="Name">生产技术名称。</param>
+/// <param name="Stage">所属发展阶段名称。</param>
+/// <param name="Magic">该配方是否属于魔法路线。</param>
+/// <param name="Prerequisites">除本研究外须掌握的前置研究。</param>
+/// <param name="ResearchCost">启动对应研究所需的资源成本。</param>
+/// <param name="Facility">执行该配方的设施类别。</param>
+/// <param name="FacilityName">生产设施的显示名称。</param>
+/// <param name="BuildingCost">建造该设施所需的资源成本。</param>
+/// <param name="Input">每批生产实际消耗的原料数量。</param>
+/// <param name="Output">生产得到的资源种类。</param>
+/// <param name="Yield">每批生产的基础产出数量。</param>
+/// <param name="Mana">每批生产需要消耗的魔力，0 表示不消耗魔力。</param>
 public sealed record Advancement(
     ResearchKind Research,
     string Name,
@@ -140,11 +190,12 @@ public sealed record Advancement(
     double Yield,
     double Mana = 0)
 {
+    /// <summary>该配方需要数量大于零的原料种类。</summary>
     public IReadOnlyList<ResourceKind> InputResources { get; } =
         Array.AsReadOnly(Enum.GetValues<ResourceKind>().Where(k => Input.Get(k) > 0).ToArray());
 }
 
-/// <summary>Both routes share physical production and research rules, but neither requires the other route.</summary>
+/// <summary>查询科技与魔法路线的研究及实体生产配方，两条路线可以独立发展。</summary>
 public static class AdvancementRules
 {
     private static readonly IReadOnlyDictionary<ResearchKind, Advancement> ByResearch =
@@ -163,8 +214,10 @@ public static class AdvancementRules
         BuildingKind.DwarvenForge, "矮人锻炉", new ResourceStock { Wood = 30, Stone = 40, Ore = 15 },
         new ResourceStock { Wood = 2, Ore = 2 }, ResourceKind.Alloy, 1.5);
 
+    /// <summary>配方和库存查询使用的全部资源种类。</summary>
     public static IReadOnlyList<ResourceKind> Resources { get; } = Array.AsReadOnly(Enum.GetValues<ResourceKind>());
 
+    /// <summary>科技与魔法路线中的研究及设施生产配方。</summary>
     public static IReadOnlyList<Advancement> All { get; } = Array.AsReadOnly(new Advancement[]
     {
         new(ResearchKind.Industry, "工业冶炼", "工业", false, [ResearchKind.Agriculture, ResearchKind.Logistics],
@@ -218,17 +271,23 @@ public static class AdvancementRules
             ResourceKind.Medicine, 6, 4),
     });
 
+    /// <summary>查找指定研究对应的生产配方，没有配方时返回空值。</summary>
+    /// <param name="kind">研究项目。</param>
     public static Advancement? For(ResearchKind kind)
     {
         return ByResearch.GetValueOrDefault(kind);
     }
 
+    /// <summary>查找指定设施对应的生产配方，没有配方时返回空值。</summary>
+    /// <param name="kind">设施类别。</param>
     public static Advancement? For(BuildingKind kind)
     {
         return kind == BuildingKind.DwarvenForge ? DwarvenRecipe :
             kind == BuildingKind.Shipyard ? DockRecipe : ByBuilding.GetValueOrDefault(kind);
     }
 
+    /// <summary>将库存中数量大于零的资源格式化为摘要。</summary>
+    /// <param name="stock">当前资源库存。</param>
     public static string Stock(ResourceStock stock)
     {
         return string.Join("   ", Resources.Where(k => stock.Get(k) > 0)

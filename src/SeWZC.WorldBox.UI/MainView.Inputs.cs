@@ -161,7 +161,7 @@ public sealed partial class MainView
     private static double Number(NumericUpDown field)
     {
         var value = field.Value ?? throw new ArgumentException("请输入有效数值。");
-        // Preserve the exact stored double when the user has not changed this field.
+        // 输入未改变时保留存储的精确浮点数，避免格式化显示造成隐式编辑。
         return field.Tag is double original && value == (decimal)original ? original : (double)value;
     }
 

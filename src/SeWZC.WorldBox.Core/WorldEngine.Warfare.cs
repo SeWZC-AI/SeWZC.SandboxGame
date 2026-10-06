@@ -149,7 +149,7 @@ public sealed partial class WorldEngine
 
             var commander = soldiers.FirstOrDefault(r => r.Id == army.CommanderId) ?? soldiers[0];
             army.CommanderId = commander.Id;
-            // Orders carried by separated soldiers must reach the commander through local communication.
+            // 离队士兵携带的军令须通过本地通信传给指挥官，避免军队即时共享信息。
             var received = commander.Agent.Memory
                 .Where(f => (f.TargetNationId == 0 || f.TargetNationId == army.NationId) &&
                             f.SubjectId == army.TargetNationId &&
@@ -168,8 +168,7 @@ public sealed partial class WorldEngine
                     EndCampaign(army, WarOutcome.OrdersReceived, soldiers, received.EventId);
                 else if (army.Outcome is WarOutcome.None or WarOutcome.OrdersReceived)
                 {
-                    // A genuinely newer delivered order can supersede a ceasefire. It cannot
-                    // cancel retreat caused by losses, exhaustion, supplies or a completed objective.
+                    // 新递送的军令可替代停战命令，但不能取消损失、疲劳、补给或目标已完成导致的撤退。
                     army.Outcome = WarOutcome.None;
                     army.Retreating = false;
                     if (received.CampaignEventId > 0 && received.CampaignEventId != army.CampaignEventId)

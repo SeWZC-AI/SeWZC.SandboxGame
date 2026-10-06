@@ -19,23 +19,35 @@ public sealed partial class WorldMapControl
 
     private bool _ecologyDirty = true;
     private (int Left, int Right, int Top, int Bottom) _ecologyViewport;
+    /// <summary>是否绘制近景动物图标。</summary>
     public bool ShowWildlife { get; set; } = true;
+    /// <summary>是否绘制近景植物图标。</summary>
     public bool ShowPlants { get; set; } = true;
+    /// <summary>是否绘制近景建筑名称。</summary>
     public bool ShowBuildingNames { get; set; } = true;
+    /// <summary>最近一帧绘制的植物图标数。</summary>
     public int RenderedPlantCount { get; private set; }
+    /// <summary>最近一帧绘制的建筑名称数。</summary>
     public int RenderedBuildingLabelCount { get; private set; }
+    /// <summary>矿藏图层采用的观察者显示策略。</summary>
     public ResourceVisibility ResourceVisibility { get; set; } = ResourceVisibility.Researched;
 
+    /// <summary>矿藏图层允许显示的资源种类。</summary>
     public HashSet<ResourceKind> VisibleResources { get; } =
         [ResourceKind.Coal, ResourceKind.Oil, ResourceKind.RareEarth];
 
+    /// <summary>最近一帧绘制的动物图标数。</summary>
     public int RenderedWildlifeCount { get; private set; }
 
+    /// <summary>取得动物物种图标，供地图与图例共用。</summary>
+    /// <param name="kind">动物物种。</param>
     public IImage AnimalPreview(WildlifeKind kind)
     {
         return AnimalIcon(kind);
     }
 
+    /// <summary>取得植物类别图标，供地图与图例共用。</summary>
+    /// <param name="kind">植物类别。</param>
     public IImage PlantPreview(PlantKind kind)
     {
         return PlantIcon(kind);

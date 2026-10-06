@@ -1,20 +1,36 @@
 namespace SeWZC.WorldBox.Core;
 
+/// <summary>可组合的动物栖息地类别，用于匹配地形环境。</summary>
 [Flags]
 public enum AnimalHabitat
 {
+    /// <summary>无匹配栖息地。</summary>
     None = 0,
+    /// <summary>草地及适宜绿色植被地带。</summary>
     Green = 1,
+    /// <summary>森林地带。</summary>
     Forest = 2,
+    /// <summary>高地和山地。</summary>
     High = 4,
+    /// <summary>寒冷地带。</summary>
     Cold = 8,
+    /// <summary>干旱地带。</summary>
     Dry = 16,
+    /// <summary>湿地。</summary>
     Wet = 32,
+    /// <summary>淡水水域。</summary>
     Fresh = 64,
+    /// <summary>海洋水域。</summary>
     Marine = 128,
 }
 
 /// <summary>物种的体型、食性、适宜栖息地，以及最低肥力和供水要求。</summary>
+/// <param name="Name">物种显示名称。</param>
+/// <param name="Size">物种体型等级。</param>
+/// <param name="Diet">物种食性。</param>
+/// <param name="Habitats">可组合的适宜栖息地类别。</param>
+/// <param name="MinimumFertility">允许该物种生存的最低地格肥力。</param>
+/// <param name="MinimumWater">允许该物种生存的最低每日自然供水量。</param>
 public readonly record struct AnimalDefinition(
     string Name,
     AnimalSize Size,
@@ -23,13 +39,16 @@ public readonly record struct AnimalDefinition(
     byte MinimumFertility,
     double MinimumWater)
 {
+    /// <summary>按体型折算的相对生物量，用于共享食物和猎物预算。</summary>
     public double BodyMass => Size == AnimalSize.Small ? 1 : Size == AnimalSize.Medium ? 2 : 4;
+    /// <summary>物种的适宜栖息地是否包含淡水或海洋。</summary>
     public bool Aquatic => (Habitats & (AnimalHabitat.Fresh | AnimalHabitat.Marine)) != 0;
 }
 
 /// <summary>模拟与查看共用的物种定义、捕食关系和栖息地容量计算。</summary>
 public static class AnimalRules
 {
+    /// <summary>包含 <c>None</c> 在内的物种编号数量，用于按编号索引数组。</summary>
     public const int SpeciesCount = 32;
 
     private const AnimalHabitat Green = AnimalHabitat.Green,
@@ -41,6 +60,7 @@ public static class AnimalRules
         Fresh = AnimalHabitat.Fresh,
         Marine = AnimalHabitat.Marine;
 
+    /// <summary>除 <c>None</c> 外的全部动物物种。</summary>
     public static readonly WildlifeKind[] Species =
         Enum.GetValues<WildlifeKind>().Where(k => k != WildlifeKind.None).ToArray();
 
@@ -102,11 +122,16 @@ public static class AnimalRules
         return Prey[(int)predator];
     }
 
+    /// <summary>按物种编号查询动物定义。</summary>
+    /// <param name="kind">动物物种。</param>
     public static AnimalDefinition For(WildlifeKind kind)
     {
         return Definitions[(int)kind];
     }
 
+    /// <summary>判断食肉物种与食草猎物是否满足相邻体型等级的捕食关系。</summary>
+    /// <param name="predator">待判断的食肉物种。</param>
+    /// <param name="prey">待判断的猎物物种。</param>
     public static bool CanPreyOn(WildlifeKind predator, WildlifeKind prey)
     {
         return predator != WildlifeKind.None && prey != WildlifeKind.None
@@ -115,6 +140,8 @@ public static class AnimalRules
                                              && Math.Abs((int)For(predator).Size - (int)For(prey).Size) <= 1;
     }
 
+    /// <summary>返回地形对应的可组合栖息地类别。</summary>
+    /// <param name="terrain">待查询或设置的地形类别。</param>
     public static AnimalHabitat Habitat(TerrainType terrain)
     {
         return terrain switch
@@ -133,8 +160,10 @@ public static class AnimalRules
         };
     }
 
-    // Predators share each eligible prey's biomass budget instead of each
-    // independently claiming the whole prey population.
+    // 捕食者共享同一种猎物的生物量预算，避免各自重复占用整个种群。
+    /// <summary>计算此地可分配同一种猎物的捕食者种类数，至少返回 1。</summary>
+    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="prey">待判断的猎物物种。</param>
     public static int PredatorCompetitors(Tile tile, WildlifeKind prey)
     {
         var count = 0;
@@ -176,6 +205,9 @@ public static class AnimalRules
         }
     }
 
+    /// <summary>计算地形、供水与植被允许的物种容量，食草动物共享植物预算；不含实际猎物限制。</summary>
+    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="kind">动物物种。</param>
     public static double EnvironmentalCapacity(Tile tile, WildlifeKind kind)
     {
         var raw = RawCapacity(tile, kind);

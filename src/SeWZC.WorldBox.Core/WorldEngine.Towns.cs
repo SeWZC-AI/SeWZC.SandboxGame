@@ -2,37 +2,51 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
+/// <summary>聚落已取得的村、镇、城等级。</summary>
 public enum SettlementTier
 {
+    /// <summary>村。</summary>
     Village,
+    /// <summary>镇。</summary>
     Town,
+    /// <summary>城。</summary>
     City,
 }
 
 public sealed partial class Settlement
 {
+    /// <summary>已经取得的村、镇或城等级。</summary>
     [JsonRequired]
     public SettlementTier Tier { get; set; }
 
+    /// <summary>本轮村镇城晋升已累计的施工进度。</summary>
     public double ExpansionProgress { get; set; }
+    /// <summary>本轮村镇城晋升所需的总施工量，0 表示没有晋升项目。</summary>
     public double ExpansionRequired { get; set; }
 
+    /// <summary>是否有正在进行的村镇城晋升项目。</summary>
     [JsonIgnore]
     public bool IsExpanding => ExpansionRequired > 0;
 }
 
 public sealed partial class WorldEngine
 {
+    /// <summary>建立新聚落时，与现有聚落中心所需的最小距离，以地格计。</summary>
     public const int MinimumSettlementDistance = 16;
 
+    /// <summary>启用城镇加成所需的独占陆地数量。</summary>
     public const int SettlementActivationArea = 25;
+    /// <summary>居民在本城镇独占区域外采集时的产量倍率。</summary>
     public const double OutsideTerritoryGatheringMultiplier = .5;
 
     private readonly Dictionary<int, (long Claims, long Terrain, int X, int Y, int Nation, int Area)> _settlementAreas =
         [];
 
+    /// <summary>建立新村需要实际运输和交付的初始物资。</summary>
     public static ResourceStock VillageFoundingCost => new() { Food = 160, Water = 60, Wood = 80, Stone = 40 };
 
+    /// <summary>返回聚落村镇城等级的中文名称。</summary>
+    /// <param name="tier">待显示的村镇城等级。</param>
     public static string SettlementTierName(SettlementTier tier)
     {
         return tier switch
@@ -41,21 +55,29 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>返回从当前村镇城等级晋升所需的人口。</summary>
+    /// <param name="tier">晋升前的当前村镇城等级。</param>
     public static int ExpansionPopulation(SettlementTier tier)
     {
         return tier == SettlementTier.Village ? 60 : 160;
     }
 
+    /// <summary>计算曼哈顿半径内包含中心的地格数量。</summary>
+    /// <param name="radius">曼哈顿距离半径，以地格为单位。</param>
     public static int ClaimRadiusArea(int radius)
     {
         return 1 + 2 * radius * (radius + 1);
     }
 
+    /// <summary>计算聚落晋升所需的独占陆地面积。</summary>
+    /// <param name="id">聚落的稳定 ID。</param>
     public int GetSettlementExpansionArea(int id)
     {
         return ClaimRadiusArea((RequireTown(id).MaxClaimRadius + 1) / 2);
     }
 
+    /// <summary>返回从当前村镇城等级晋升需要投入的资源。</summary>
+    /// <param name="tier">晋升前的当前村镇城等级。</param>
     public static ResourceStock SettlementExpansionCost(SettlementTier tier)
     {
         return tier switch
@@ -66,6 +88,8 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>统计聚落附近独占登记的本国陆地面积；聚落不存在时返回零。</summary>
+    /// <param name="id">聚落的稳定 ID。</param>
     public int GetSettlementArea(int id)
     {
         if (!_settlements.TryGetValue(id, out var town)) return 0;
@@ -75,7 +99,7 @@ public sealed partial class WorldEngine
                                                              cached.X == town.X && cached.Y == town.Y &&
                                                              cached.Nation == town.NationId)
             return cached.Area;
-        // Count exclusively registered plots in the local footprint, never a nation's shared total.
+        // 城镇加成须按本地独占登记陆地计算，避免借用国家总领土满足条件。
         var area = Circle(town.X, town.Y, 17).Count(i =>
             Distance(town.X, town.Y, i % State.Width, i / State.Width) <= 17 && State.Tiles[i].ClaimedSettlementId == id
                                                                              && State.Tiles[i].NationId ==
@@ -89,6 +113,8 @@ public sealed partial class WorldEngine
         return area;
     }
 
+    /// <summary>判断建村交付已完成且独占陆地足以启用城镇加成。</summary>
+    /// <param name="id">聚落的稳定 ID。</param>
     public bool IsSettlementActive(int id)
     {
         return _settlements.TryGetValue(id, out var town) && !town.FoundationPending
@@ -108,6 +134,10 @@ public sealed partial class WorldEngine
                                          && GetSettlementArea(town.Id) < GetSettlementExpansionArea(town.Id));
     }
 
+    /// <summary>查询居民在此地采集所用的本城镇领地内外倍率。</summary>
+    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
     public double GetGatheringTerritoryMultiplier(int residentId, int x, int y)
     {
         var person = GetResident(residentId);
@@ -124,6 +154,8 @@ public sealed partial class WorldEngine
             : OutsideTerritoryGatheringMultiplier;
     }
 
+    /// <summary>检查聚落晋升的人口、领地、材料和项目条件；可晋升时返回空值，否则返回原因。</summary>
+    /// <param name="id">聚落的稳定 ID。</param>
     public string? SettlementExpansionError(int id)
     {
         if (!_settlements.TryGetValue(id, out var town)) return "聚落已不存在";
@@ -142,6 +174,8 @@ public sealed partial class WorldEngine
         return MissingResources(town.Resources, SettlementExpansionCost(town.Tier));
     }
 
+    /// <summary>扣除聚落材料并启动村镇城晋升施工。</summary>
+    /// <param name="id">聚落的稳定 ID。</param>
     public void ExpandTown(int id)
     {
         if (SettlementExpansionError(id) is { } error) throw new InvalidOperationException(error);
@@ -156,7 +190,7 @@ public sealed partial class WorldEngine
     private bool WorkOnTownExpansion(Settlement town, double effort)
     {
         if (!town.IsExpanding) return false;
-        // Lost territory suspends completion; paid materials and work remain available.
+        // 领地不足时暂停晋升完工，保留已经支付的材料和施工进度，避免重复收费。
         if (GetSettlementArea(town.Id) < GetSettlementExpansionArea(town.Id)) return false;
         town.ExpansionProgress = Math.Min(town.ExpansionRequired,
             town.ExpansionProgress + effort * State.Rules.DevelopmentRate);
@@ -169,6 +203,8 @@ public sealed partial class WorldEngine
         return true;
     }
 
+    /// <summary>返回聚落的等级、独占领地和城镇加成状态摘要。</summary>
+    /// <param name="id">聚落的稳定 ID。</param>
     public string GetSettlementSummary(int id)
     {
         var town = RequireTown(id);

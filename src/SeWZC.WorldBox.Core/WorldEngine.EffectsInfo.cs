@@ -1,5 +1,11 @@
 namespace SeWZC.WorldBox.Core;
 
+/// <summary>供详情界面展示的效果、来源、剩余日数和生效状态。</summary>
+/// <param name="Name">效果名称。</param>
+/// <param name="Effect">实际效果或限制的说明。</param>
+/// <param name="Source">产生效果的来源。</param>
+/// <param name="RemainingDays">剩余模拟日数，空值表示没有明确期限。</param>
+/// <param name="Active">效果当前是否实际生效。</param>
 public readonly record struct EffectInfo(
     string Name,
     string Effect,
@@ -7,6 +13,7 @@ public readonly record struct EffectInfo(
     long? RemainingDays = null,
     bool Active = true)
 {
+    /// <summary>将效果、来源、剩余时间和生效状态格式化为详情文字。</summary>
     public override string ToString()
     {
         return $"{Name}：{Effect}{(string.IsNullOrWhiteSpace(Source) ? "" : $"\n来源：{Source}")}" +
@@ -48,6 +55,8 @@ public sealed partial class WorldEngine
         return bonus;
     }
 
+    /// <summary>列出居民当前的加成、减益、来源及生效条件。</summary>
+    /// <param name="id">居民的稳定 ID。</param>
     public IReadOnlyList<EffectInfo> GetResidentEffects(int id)
     {
         var person = GetResident(id);
@@ -89,6 +98,8 @@ public sealed partial class WorldEngine
         return effects;
     }
 
+    /// <summary>列出建筑当前的加成、减益和运营限制。</summary>
+    /// <param name="id">建筑的稳定 ID。</param>
     public IReadOnlyList<EffectInfo> GetBuildingEffects(int id)
     {
         var building = State.Society.Buildings.FirstOrDefault(b => b.Id == id);
@@ -98,7 +109,7 @@ public sealed partial class WorldEngine
         var active = building.Kind == BuildingKind.Bridge ? ground.Improvement == LandImprovement.Bridge
             : building.Kind == BuildingKind.MountainPass ? ground.Improvement == LandImprovement.MountainPass
             : IsBuildingOperational(building);
-        var source = ""; // The selected building and its level are already shown in the header.
+        var source = ""; // 标题已显示所选建筑及等级，效果来源无需重复。
         var factor = building.Efficiency;
         var effect = building.Kind switch
         {
@@ -242,6 +253,9 @@ public sealed partial class WorldEngine
         return effects;
     }
 
+    /// <summary>列出地格当前的环境、资源、灾害和通行效果。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
     public IReadOnlyList<EffectInfo> GetTileEffects(int x, int y)
     {
         var effects = new List<EffectInfo>();

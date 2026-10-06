@@ -4,22 +4,31 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>查找存活或归档居民，找不到时返回空值。</summary>
+    /// <param name="id">居民的稳定 ID。</param>
     public Resident? GetResident(int id)
     {
         return State.Residents.FirstOrDefault(r => r.Id == id) ??
                State.ArchivedResidents.FirstOrDefault(r => r.Id == id);
     }
 
+    /// <summary>将指定居民的认知与行动状态序列化为 JSON。</summary>
+    /// <param name="id">居民的稳定 ID。</param>
     public string ExportResidentMind(int id)
     {
         return JsonSerializer.Serialize(RequireResident(id).Agent, WorldJsonContext.Default.AgentState);
     }
 
+    /// <summary>将指定居民的经历记录序列化为 JSON。</summary>
+    /// <param name="id">居民的稳定 ID。</param>
     public string ExportResidentHistory(int id)
     {
         return JsonSerializer.Serialize(RequireResident(id).History, WorldJsonContext.Default.ListResidentHistoryEntry);
     }
 
+    /// <summary>解析并校验认知 JSON 后应用到居民，影响其未来行为。</summary>
+    /// <param name="id">居民的稳定 ID。</param>
+    /// <param name="json">待处理的 JSON 文本。</param>
     public void EditResidentMindJson(int id, string json)
     {
         if (json.Length > 100_000) throw new ArgumentException("角色心智记录过大。");
@@ -38,6 +47,9 @@ public sealed partial class WorldEngine
         }
     }
 
+    /// <summary>解析并校验经历 JSON 后应用到居民，影响其未来性格。</summary>
+    /// <param name="id">居民的稳定 ID。</param>
+    /// <param name="json">待处理的 JSON 文本。</param>
     public void EditResidentHistoryJson(int id, string json)
     {
         if (json.Length > 100_000) throw new ArgumentException("角色历史记录过大。");
@@ -61,6 +73,9 @@ public sealed partial class WorldEngine
         return GetResident(id) ?? throw new ArgumentException("居民不存在。", nameof(id));
     }
 
+    /// <summary>设置自然灾害和魔法开关，保留已有发展成果。</summary>
+    /// <param name="naturalDisasters">是否允许自主自然灾害。</param>
+    /// <param name="magicEnabled">是否允许新的魔法发展和施法。</param>
     public void SetWorldRules(bool naturalDisasters, bool magicEnabled)
     {
         State.NaturalDisasters = naturalDisasters;
@@ -69,6 +84,8 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>先校验修改后的副本，再替换存活居民或归档记录；历史编辑只影响未来行为。</summary>
+    /// <param name="id">居民的稳定 ID。</param>
+    /// <param name="patch">仅替换非空字段的居民修改内容。</param>
     public void EditResident(int id, ResidentEdit patch)
     {
         ArgumentNullException.ThrowIfNull(patch);
@@ -233,7 +250,7 @@ public sealed partial class WorldEngine
             candidate.Agent.CarriedMessages.Clear();
         }
 
-        // Edits create new immutable information snapshots. Propagated copies keep their old identities.
+        // 编辑产生新身份的信息快照，已传播副本保留旧身份，避免修改过去收到的信息。
         if (patch.Agent is not null)
         {
             ValidateResidentV2(candidate, State.Tick, State.Width, State.Height);

@@ -72,9 +72,12 @@ public sealed partial class WorldMapControl
         }
     }
 
+    /// <summary>当前选中的居民 ID，空值表示未选中居民。</summary>
     public int? SelectedResidentId { get; private set; }
+    /// <summary>当前选中的建筑 ID，空值表示未选中建筑。</summary>
     public int? SelectedBuildingId { get; private set; }
 
+    /// <summary>镜头是否随所选居民的显示位置移动。</summary>
     public bool FollowSelectedResident
     {
         get => _followSelectedResident;
@@ -94,9 +97,12 @@ public sealed partial class WorldMapControl
     private double PresentationTime => _frozenPresentationTime +
                                        (_simulationPaused ? 0 : _presentationClock.Elapsed.TotalSeconds - _resumedAt);
 
+    /// <summary>通过地图交互选中居民时发出其 ID。</summary>
     public event Action<int>? ResidentSelected;
+    /// <summary>通过地图交互选中建筑时发出其 ID。</summary>
     public event Action<int>? BuildingSelected;
 
+    /// <summary>清除居民、建筑和地格选择，并停止跟随。</summary>
     public void ClearMapSelection()
     {
         ClearResidentSelection();
@@ -105,18 +111,26 @@ public sealed partial class WorldMapControl
         InvalidateVisual();
     }
 
+    /// <summary>将地格中心转换为地图控件内的显示坐标。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
     public Point GetTileScreenPosition(int x, int y)
     {
         return ToScreen((x + .5) * TilePixels, (y + .5) * TilePixels);
     }
 
+    /// <summary>读取最近一帧实际绘制的居民位置，未绘制时返回失败。</summary>
+    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="position">最近一帧实际绘制的位置，单位为控件布局坐标；失败时为默认值。</param>
     public bool TryGetResidentScreenPosition(int residentId, out Point position)
     {
-        // Report the geometry used by the most recent Render, not a position extrapolated
-        // merely because an inspector or automated observer happened to read the property.
+        // 读取最近实际绘制的几何位置，避免仅查看详情或诊断就推动显示位置。
         return _renderedResidentPoints.TryGetValue(residentId, out position);
     }
 
+    /// <summary>选择具有运动轨迹的居民，并可启用镜头跟随。</summary>
+    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="follow">是否启用镜头跟随所选居民。</param>
     public void SelectResident(int residentId, bool follow = false)
     {
         if (!_residentMotion.ContainsKey(residentId))
@@ -133,6 +147,8 @@ public sealed partial class WorldMapControl
         InvalidateVisual();
     }
 
+    /// <summary>选择居民并将其插值显示位置移到镜头中心。</summary>
+    /// <param name="residentId">待操作居民的稳定 ID。</param>
     public void FocusResident(int residentId)
     {
         if (!_residentMotion.TryGetValue(residentId, out var motion)) return;
@@ -145,6 +161,7 @@ public sealed partial class WorldMapControl
         InvalidateVisual();
     }
 
+    /// <summary>清除居民选择并停止跟随镜头。</summary>
     public void ClearResidentSelection()
     {
         SelectedResidentId = null;
@@ -203,8 +220,7 @@ public sealed partial class WorldMapControl
             if (!tracks.TryGetValue(id, out var track)) tracks[id] = track = new EntityMotionTrack(target);
             var displacement = Distance(track.Target, target);
             var editedPosition = sameTick && displacement > 0;
-            // A local edit/teleport must never sweep a unit across the map. Snapshot gaps may
-            // contain several real steps, but only bounded adjacent movement is interpolated.
+            // 编辑传送须直接定位，避免人物横扫整张地图；仅对有界相邻移动插值。
             var teleport = displacement > Math.Max(2, Math.Min(6, elapsedTicks * 2));
             var remainingTicks = Math.Max(0, Math.Max(1, moveDurationTicks) - (state.Tick - moveStartedTick));
             var committedStep = Math.Abs(x - fromX) + Math.Abs(y - fromY) == 1;
@@ -240,7 +256,7 @@ public sealed partial class WorldMapControl
             _framePending = false;
             if (!_motionAttached || IsSimulationPaused) return;
             var frameTime = PresentationTime;
-            // Subpixel movement at overview scale does not need a geometry rebuild every display refresh.
+            // 总览下的小幅移动不足一个像素，无需每次显示刷新都重建几何。
             if (frameTime - _lastAnimatedFrameTime >= (_zoom < 1 ? 1d / 15 : 1d / 30))
             {
                 _lastAnimatedFrameTime = frameTime;
@@ -283,7 +299,7 @@ public sealed partial class WorldMapControl
                 candidates.Add((1, building.Id, Distance(point, ground), ground.Y + 2 * _zoom, building.X, building.Y));
             }
 
-        // The plot under the pointer takes precedence over an overlapping roof.
+        // 优先选择指针下的实际建筑地格，避免前方屋顶遮住后方建筑入口。
         var footprint = hasTile ? candidates.FindIndex(c => c.Kind == 1 && c.X == tile.X && c.Y == tile.Y) : -1;
         var directBuilding = footprint >= 0 ? candidates[footprint].Id : 0;
         candidates.Sort((a, b) => (a.Kind == 1 && a.Id == directBuilding) != (b.Kind == 1 && b.Id == directBuilding)
@@ -296,7 +312,7 @@ public sealed partial class WorldMapControl
                         ? a.Distance.CompareTo(b.Distance)
                         : a.Id.CompareTo(b.Id));
         if (hasTile)
-            candidates.Add((2, 0, 0, 0, tile.X, tile.Y)); // Ground and covered people remain accessible by cycling.
+            candidates.Add((2, 0, 0, 0, tile.X, tile.Y)); // 循环选择保留地格和被遮挡居民的入口。
         if (candidates.Count == 0) return false;
         if (_lastResidentClick is { } previous && Distance(previous, point) <= 4) _residentClickCycle++;
         else _residentClickCycle = 0;

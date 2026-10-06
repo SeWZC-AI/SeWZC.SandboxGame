@@ -29,8 +29,7 @@ public sealed partial class WorldEngine
             frontier.Enqueue(i, (tile.Elevation, i));
         }
 
-        // Priority flood gives every inland tile an acyclic outlet rooted in the sea,
-        // including flat basins. The dequeue order is also a drainage topological order.
+        // 优先洪泛为平坦盆地也建立通向海洋的无环出口，出队顺序可直接用于汇流计算。
         while (frontier.TryDequeue(out var current, out var priority))
         {
             order.Add(current);
@@ -98,7 +97,7 @@ public sealed partial class WorldEngine
             if (selected.Count >= desired) break;
         }
 
-        // Cross-sections use exact 1..5-cell widths, rather than circular brushes.
+        // 河道横截面按一至五格精确生成，避免圆形笔刷把河流涂得过宽。
         for (var i = 0; i < centers.Length; i++)
         {
             if (centers[i] == 0) continue;
@@ -237,8 +236,7 @@ public sealed partial class WorldEngine
         }
 
         if (sites.Count == 4) return sites.ToArray();
-        // A bounded deterministic fallback ensures small maps and extreme seeds
-        // still have four separate, genuinely habitable starting neighborhoods.
+        // 使用有界且确定的兜底布局，保证小地图和极端种子仍有四处独立宜居的开局区域。
         _demoHabitat = new int[State.Tiles.Length];
         Array.Fill(_demoHabitat, -1);
         sites.Clear();

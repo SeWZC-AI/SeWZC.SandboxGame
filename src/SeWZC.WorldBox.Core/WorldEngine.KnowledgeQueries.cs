@@ -4,8 +4,7 @@ public sealed partial class WorldEngine
 {
     private readonly Dictionary<int, ulong> _knowledgeByTown = [];
 
-    // Derived, tick-scoped index. Direct editor/state mutations between steps still
-    // read authoritative research lists; receiving knowledge updates the active mask.
+    // 研究索引只在当前模拟阶段有效；编辑后直接读取权威列表，阶段内收到知识时同步更新掩码。
     private bool _knowledgeQueriesActive;
 
     private void BeginKnowledgeQueries()

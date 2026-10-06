@@ -6,8 +6,7 @@ public sealed partial class WorldEngine
 
     private readonly List<GoalChoice> _goalChoices = [];
 
-    // The visible Manhattan radius visits at most 1 + 2 * 6 * 7 cells,
-    // including detours longer than six steps inside that same visible area.
+    // 缓冲区按可见半径内的地格数分配；可见区域内绕路超过六步时仍须容纳全部地格。
     private readonly (int Index, int First, int Depth)[] _localMoveQueue = new (int, int, int)[85];
     private int _localMoveSearch;
     private int[] _localMoveVisited = [];
@@ -32,7 +31,7 @@ public sealed partial class WorldEngine
     {
         if (person.Agent.Initialized) return;
 
-        // Identity-derived traits do not consume the world's simulation RNG during migration.
+        // 按身份推导初始性格，避免初始化消耗世界随机序列。
         double Trait(int salt)
         {
             var value = unchecked((uint)(person.Id * 374761393 + State.Seed * 668265263 + salt));
@@ -69,7 +68,7 @@ public sealed partial class WorldEngine
                 InitializeAgent(person);
                 if (person.Health <= 0 || !_settlements.TryGetValue(person.SettlementId, out var home)) continue;
                 person.Agent.SocialNeed = Math.Min(100, person.Agent.SocialNeed + 0.07);
-                // Soldiers consume their army's physical provisions in the military system.
+                // 士兵补给由军队统一扣除，避免与居民系统重复消费。
                 if (person.ArmyId != 0)
                 {
                     if ((State.Tick + person.Id) % 16 == 0) ObserveAgentEnvironment(person);
@@ -108,7 +107,7 @@ public sealed partial class WorldEngine
                 if ((!directed && (State.Tick >= person.Agent.NextThinkTick ||
                                    person.Agent.Goal.Kind == AgentGoalKind.Idle)) || emergency)
                     ChooseAgentGoal(person, home, emergency && directed);
-                // Position records a committed destination; work and delivery wait for arrival.
+                // 逻辑位置记录已提交的目的地，劳动和递送必须等待实际到达。
                 if (State.Tick - person.MoveStartedTick < person.MoveDurationTicks ||
                     person.FrozenUntilTick > State.Tick) continue;
                 ActOnAgentGoal(person, home);
@@ -122,7 +121,7 @@ public sealed partial class WorldEngine
         ArchiveDeadResidents();
     }
 
-    // Explorers carry food taken from the home warehouse; extra provisions are not produced cargo.
+    // 探索口粮来自家乡仓库，不能把额外携带的补给当作新生产货物。
     private double TravelReserve(Resident person)
     {
         return person.Profession is Profession.Messenger or Profession.Trader
@@ -136,12 +135,11 @@ public sealed partial class WorldEngine
 
     private void TransferPersonalProduction(Resident person, Settlement home)
     {
-        // Mission food stays with the carrier until its recorded destination is reached.
+        // 任务货物在到达约定目的地前仍由居民携带，避免提前入库。
         if (person.Agent.DestinationSettlementId != 0
             && person.Agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage
                 or AgentGoalKind.Petition) return;
-        // Keep cargo assigned to a real local job. Adjacent home tiles are also
-        // work sites; passing them must not unload freshly collected inputs.
+        // 家乡邻格也可能是工作点，经过时不能卸掉刚领取的生产原料。
         var assigned = person.Agent.Goal.Kind == AgentGoalKind.Work
             ? FindBuilding(person.Agent.Goal.TargetEntityId)
             : null;
@@ -247,8 +245,7 @@ public sealed partial class WorldEngine
 
     private bool LocalMaterialsNeeded(Resident person, Settlement home)
     {
-        // A distant worker finishes its trip; new supply decisions use the store
-        // actually reached at home, without granting remote warehouse knowledge.
+        // 远处居民须完成返乡后再依据实际仓库供给决策，避免获得远程库存知识。
         if (Distance(person.X, person.Y, home.X, home.Y) > 1) return true;
         var reserve = _localWorkQueriesActive
             ? _productionReserves.GetValueOrDefault(home.Id)
@@ -386,7 +383,7 @@ public sealed partial class WorldEngine
         if (activeMission && choices.Count == 0 && !(person.Hunger > 60 && person.Inventory.Food < 0.05)
             && !(person.Thirst > 80 && person.Inventory.Water < .025))
         {
-            // Cargo and travel rations belong to this continuing mission, not a full ordinary work bag.
+            // 任务货物和口粮要随本轮任务继续携带，不能按普通工作背包已满而中断旅程。
             agent.NextThinkTick = State.Tick + 12;
             return;
         }
@@ -618,8 +615,7 @@ public sealed partial class WorldEngine
         var bestScore = double.NegativeInfinity;
         foreach (var offset in VisibleResourceOffsets)
         {
-            // Valid fertility is at most 100 and ResourceSiteYield is at most 1.
-            // Keep equal-score candidates: the original row order chose the lowest tile index.
+            // 评分上界由肥力和产量上界确定；同分候选仍保留，以维持原行序选择的最小地格索引。
             if (offset.Distance > 6 || 8 - offset.Distance < bestScore) break;
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
@@ -813,7 +809,7 @@ public sealed partial class WorldEngine
         switch (goal.Kind)
         {
             case AgentGoalKind.Explore:
-                // Keep the outward heading across completed legs; rotate only after resupply or a blocked leg.
+                // 完成一段探索后保持向外前进，补给或受阻时才转向，避免反复绕同一小圈。
                 if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) == 0 && goal.TargetX == person.FromX &&
                     goal.TargetY == person.FromY)
                     person.Agent.ExplorationHeading = (person.Agent.ExplorationHeading + 1) % 8;
@@ -958,7 +954,10 @@ public sealed partial class WorldEngine
         person.Activity = ResidentActivity.Working;
     }
 
-    /// <summary>Moves one grid cell using only terrain within six visible cells; no unsaved navigation cache.</summary>
+    /// <summary>仅依据六格可见范围内的地形推进一步，并保留居民自身的导航进度。</summary>
+    /// <param name="person">参与当前操作的居民状态。</param>
+    /// <param name="targetX">当前导航目标的横向地格坐标。</param>
+    /// <param name="targetY">当前导航目标的纵向地格坐标。</param>
     private bool MoveAgentTowards(Resident person, int targetX, int targetY)
     {
         if (person.FrozenUntilTick > State.Tick || !InBounds(targetX, targetY) ||
@@ -1051,8 +1050,7 @@ public sealed partial class WorldEngine
                 && !goal.NavigationVisited.Contains(Index(x, y))) return Index(x, y);
         }
 
-        // Search only the six-cell visible horizon. Completed bridges use exactly
-        // the same directional edges here, in movement and in army pathfinding.
+        // 导航仅使用六格可见地形，桥梁轴向与实际移动及军队寻路共用规则，避免预览可走却无法通行。
         if (_localMoveVisited.Length != State.Tiles.Length) _localMoveVisited = new int[State.Tiles.Length];
         if (_localMoveSearch == int.MaxValue)
         {
@@ -1121,6 +1119,14 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>参与评分的候选任务，记录位置、目标实体及作为依据的记忆。</summary>
+    /// <param name="Kind">候选行动目标类别。</param>
+    /// <param name="X">候选目标的横向地格坐标。</param>
+    /// <param name="Y">候选目标的纵向地格坐标。</param>
+    /// <param name="Score">候选目标的综合评分。</param>
+    /// <param name="Reason">候选目标的实际评分理由。</param>
+    /// <param name="Evidence">作为评分依据的居民记忆，空值表示不依赖信息记录。</param>
+    /// <param name="SettlementId">候选目标关联的聚落 ID。</param>
+    /// <param name="EntityId">候选目标对象的编号，含义由目标类别决定。</param>
     private readonly record struct GoalChoice(
         AgentGoalKind Kind,
         int X,

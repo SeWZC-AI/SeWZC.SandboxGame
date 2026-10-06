@@ -4,8 +4,7 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    // Fixed daily work also bounds large-map cost. Small maps retain a six-day
-    // cycle; 128 and 256 maps re-evaluate every 64 and 256 simulated days.
+    // 每日限制生态复评地格数，避免大地图出现整图更新峰值；完整周期随地图规模增长。
     private const int WildlifeTilesPerDay = 256;
     private double[]? _wildlifeCapacities;
     private double[]? _wildlifeChanges;
@@ -29,6 +28,8 @@ public sealed partial class WorldEngine
         return kind;
     }
 
+    /// <summary>返回动物物种的中文名称。</summary>
+    /// <param name="kind">动物物种。</param>
     public static string WildlifeName(WildlifeKind kind)
     {
         return AnimalRules.For(kind).Name;
@@ -57,6 +58,8 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>计算地格当前容量；食肉动物还受可分配的猎物生物量限制。</summary>
+    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="kind">动物物种。</param>
     public static double WildlifeCapacity(Tile tile, WildlifeKind kind)
     {
         var capacity = AnimalRules.EnvironmentalCapacity(tile, kind);
@@ -130,17 +133,14 @@ public sealed partial class WorldEngine
         var snapshotCount = snapshotLast - snapshotFirst;
         Array.Clear(_wildlifeChanges, 0, snapshotCount * AnimalRules.SpeciesCount);
         Array.Clear(_wildlifeIncoming, 0, snapshotCount);
-        // Rates account for elapsed simulation time with bounded losses. Nothing
-        // is updated by rendering or real-time frames, and no RNG is consumed.
+        // 生态速率按已过去的模拟时间折算并限制损失，避免渲染频率影响种群或消耗随机数。
         var elapsed = cycle / 6d;
         var growthRate = Math.Min(.25, .018 * elapsed);
         var deathRate = Math.Min(.65, 1 - Math.Pow(.88, elapsed));
-        // Births are bounded for a long revisit interval. Scale predation with
-        // that same effective interval rather than letting it outgrow renewal.
+        // 长复评周期下繁殖量有上限，捕食也须使用同一有效间隔，避免捕食增长超过可恢复供给。
         var predationRate = .035 * (growthRate / .018);
         var migrationRate = Math.Min(.12, .02 * elapsed);
-        // Snapshot only a compact band and its four-neighbour apron. Each day's
-        // growth, consumption and migrations see one initial population state.
+        // 仅保存当前分区及四邻边界的快照，使本日增长、消费和迁移使用同一初始种群。
         for (var i = snapshotFirst; i < snapshotLast; i++)
         {
             var tile = tiles[i];
@@ -148,14 +148,13 @@ public sealed partial class WorldEngine
             var mask = tile.WildlifeMask;
             var pressure = 0d;
             var offset = local * AnimalRules.SpeciesCount;
-            // Keep habitat slots tied to map indices, not the moving band's origin.
-            // Adjacent days share their apron and can retain its expensive capacities.
+            // 环境缓存按固定地格索引存储，使相邻日期的边界地格复用已计算的容量。
             var habitatSlot = i % bufferTiles;
             var capacityOffset = habitatSlot * AnimalRules.SpeciesCount;
             tile.OtherWildlife.CopyTo(_wildlifePopulations.AsSpan(offset, AnimalRules.SpeciesCount));
             _wildlifePopulations[offset + (int)tile.Wildlife] = tile.WildlifePopulation;
             _wildlifeMasks[local] = mask;
-            // Above 100 resources, food availability is already saturated.
+            // 食物供给饱和后，更多资源不应使环境容量缓存反复失效。
             var habitat = new WildlifeHabitat(tile.Terrain, Math.Clamp(tile.ResourceAmount / 100, 0, 1), tile.Fertility,
                 tile.Improvement,
                 tile.SettlementId != 0, tile.DroughtTicks > 0, tile.FireTicks > 0, tile.NaturalWaterYield, tile.Plants,
@@ -171,8 +170,7 @@ public sealed partial class WorldEngine
                     if (_wildlifeCapacities[capacityOffset + species] > 0 &&
                         AnimalRules.For((WildlifeKind)species).Diet == AnimalDiet.Herbivore)
                         _wildlifeHerbivoreKinds[habitatSlot]++;
-                // At every carrying capacity, herbivore renewal exactly replaces
-                // the sustainable predator consumption computed from the same food web.
+                // 食草动物在容量处的恢复量须覆盖同一食物网推导的可持续捕食，避免稳定环境仍持续衰减。
                 foreach (var predator in AnimalRules.Species)
                 {
                     var definition = AnimalRules.For(predator);
@@ -252,8 +250,7 @@ public sealed partial class WorldEngine
                     ? Math.Max(-population * deathRate, growthRate * population * (1 - population / capacity))
                     : -population * deathRate;
                 var demand = population * animal.BodyMass * predationRate;
-                // Food shortage kills predators before feeding. Starving survivors
-                // can still consume all prey under extreme overcrowding. No prey floor is imposed.
+                // 先结算捕食者饥饿死亡，再由存活个体捕食；极端过密时允许猎物耗尽，不人为设置猎物下限。
                 var fed = demand > 0 ? Math.Min(1, sharedBiomass / demand) : 1;
                 predatorSurvivors[species] = Math.Max(0, population + normalGrowth) * Math.Pow(fed, .75);
                 if (biomass <= 0) continue;
@@ -290,8 +287,7 @@ public sealed partial class WorldEngine
                     ? predatorSurvivors[species]
                     : Math.Max(0, population + growth - loss);
                 _wildlifeChanges[offset + species] += available - population;
-                // Migration spends only survivors, preventing simultaneous predation
-                // and migration from creating animals through a clamped negative stock.
+                // 迁移只能使用捕食后的存活量，避免负库存被截为零后凭空增加动物。
                 for (var n = 0; n < count; n++)
                 {
                     var next = neighbours[n];
@@ -368,6 +364,8 @@ public sealed partial class WorldEngine
         }
     }
 
+    /// <summary>返回种族的基础寿命，以模拟年为单位。</summary>
+    /// <param name="race">要查询基础寿命的种族。</param>
     public static int Lifespan(RaceKind race)
     {
         return race switch

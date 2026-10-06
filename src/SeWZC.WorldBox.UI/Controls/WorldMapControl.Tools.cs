@@ -16,16 +16,26 @@ public sealed partial class WorldMapControl
     private (int X, int Y)? _pendingPlacement;
     private string _placementMessage = "";
     private bool _relayOverlayDirty = true;
+    /// <summary>建设工具选定的桥梁通行轴向。</summary>
     public BridgeDirection ConstructionBridgeDirection { get; set; }
+    /// <summary>建设工具选定的桥梁等级。</summary>
     public int ConstructionBridgeLevel { get; set; } = 1;
+    /// <summary>是否直接赐予完工建筑，关闭时按材料和施工规则建造。</summary>
     public bool GiftBuildings { get; set; } = true;
+    /// <summary>每次投放工具创建的居民数量。</summary>
     public int SpawnCount { get; set; } = 12;
+    /// <summary>灾害工具的作用半径，以地格为单位。</summary>
     public int DisasterRadius { get; set; } = 2;
+    /// <summary>是否正在为表单选取地图地点。</summary>
     public bool PickingLocation { get; set; }
+    /// <summary>是否存在等待触屏确认的放置地点。</summary>
     public bool HasPendingPlacement => _pendingPlacement.HasValue;
+    /// <summary>当前地图高亮图层编号，0 表示关闭。</summary>
     public int Overlay { get; set; }
+    /// <summary>待确认放置或鼠标预览说明变化时发出的通知。</summary>
     public event Action<string>? PlacementChanged;
 
+    /// <summary>清除等待确认的放置地点和预览说明。</summary>
     public void CancelPlacement()
     {
         _pendingPlacement = null;
@@ -33,6 +43,7 @@ public sealed partial class WorldMapControl
         InvalidateVisual();
     }
 
+    /// <summary>校验待确认地点，提交当前工具操作并清除放置预览。</summary>
     public void ConfirmPlacement()
     {
         if (_pendingPlacement is not { } tile) return;

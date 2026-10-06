@@ -1,24 +1,48 @@
 namespace SeWZC.WorldBox.Core;
 
+/// <summary>真实行动产生的地图动画通知类别。</summary>
 public enum WorldVisualKind
 {
+    /// <summary>火灾。</summary>
     Fire,
+    /// <summary>干旱。</summary>
     Drought,
+    /// <summary>疫病。</summary>
     Plague,
+    /// <summary>陨石。</summary>
     Meteor,
+    /// <summary>战斗。</summary>
     Battle,
+    /// <summary>治疗。</summary>
     Heal,
+    /// <summary>丰饶。</summary>
     Harvest,
+    /// <summary>护盾。</summary>
     Shield,
+    /// <summary>火焰法术。</summary>
     Ember,
+    /// <summary>伐木。</summary>
     Logging,
+    /// <summary>施工。</summary>
     Construction,
+    /// <summary>冰霜。</summary>
     Frost,
+    /// <summary>闪电。</summary>
     Lightning,
+    /// <summary>降雨。</summary>
     Rain,
+    /// <summary>折跃。</summary>
     Waygate,
 }
 
+/// <summary>地图动画通知的位置、范围和起点，仅用于呈现。</summary>
+/// <param name="Sequence">该通知在当前引擎中的递增序号。</param>
+/// <param name="Kind">行动特效类别。</param>
+/// <param name="X">特效目标的横向地格坐标。</param>
+/// <param name="Y">特效目标的纵向地格坐标。</param>
+/// <param name="Radius">特效范围，以地格为单位。</param>
+/// <param name="FromX">特效起点的横向地格坐标，-1 表示未指定。</param>
+/// <param name="FromY">特效起点的纵向地格坐标，-1 表示未指定。</param>
 public readonly record struct WorldVisual(
     long Sequence,
     WorldVisualKind Kind,
@@ -28,14 +52,20 @@ public readonly record struct WorldVisual(
     int FromX,
     int FromY);
 
+/// <summary>居民路线预览中的地格坐标。</summary>
+/// <param name="X">路线节点的横向地格坐标。</param>
+/// <param name="Y">路线节点的纵向地格坐标。</param>
 public readonly record struct RoutePoint(int X, int Y);
 
 public sealed partial class WorldEngine
 {
-    // Bounded notifications of actual actions. These are presentation data, never simulation inputs.
+    // 行动通知仅用于呈现并限制数量，不能作为模拟输入。
     private readonly Queue<WorldVisual> _visuals = new();
+    /// <summary>最近发出的地图动画通知序号。</summary>
     public long VisualSequence { get; private set; }
 
+    /// <summary>枚举仍在有限通知队列中、序号晚于指定值的地图动画通知。</summary>
+    /// <param name="sequence">调用方已经处理的最后一个通知序号。</param>
     public IEnumerable<WorldVisual> GetVisualsAfter(long sequence)
     {
         return _visuals.Where(v => v.Sequence > sequence);
@@ -56,7 +86,9 @@ public sealed partial class WorldEngine
         EmitVisual(WorldVisualKind.Logging, x, y);
     }
 
-    /// <summary>Forecast only the current goal using the real local navigator; no world mutation or random draws.</summary>
+    /// <summary>使用实际局部导航预览当前目标的路线，不改变世界或消耗随机数。</summary>
+    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="steps">最多预览的步数，计算时限制在 0 至 64。</param>
     public IReadOnlyList<RoutePoint> PreviewResidentRoute(int residentId, int steps = 24)
     {
         var person = State.Residents.FirstOrDefault(r => r.Id == residentId);
@@ -110,7 +142,12 @@ public sealed partial class WorldEngine
         return route;
     }
 
-    /// <summary>Explicit god edit, fully checked before any field is changed.</summary>
+    /// <summary>先校验所有输入，再应用玩家对地格资源、肥力和道路的直接编辑。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="resources">新的共享自然资源存量，范围为 0 至 1,000,000。</param>
+    /// <param name="fertility">新的肥力，范围为 0 至 100。</param>
+    /// <param name="roadLevel">新的道路等级，范围为 0 至 3；有道路时地格须可通行。</param>
     public void EditTile(int x, int y, double resources, int fertility, int roadLevel)
     {
         if (!InBounds(x, y)) throw new ArgumentException("地格不存在。");

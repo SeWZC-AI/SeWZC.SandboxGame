@@ -38,6 +38,10 @@ public sealed partial class WorldEngine
                 ObserveProject(research.Observation, research.Progress);
     }
 
+    /// <summary>依据近期稳定的实际工作速率估算项目剩余日数；依据不足时给出原因。</summary>
+    /// <param name="observation">项目实际进度的采样记录。</param>
+    /// <param name="progress">项目已经累计的工作量。</param>
+    /// <param name="required">项目完成所需的总工作量。</param>
     public CompletionEstimate GetCompletionEstimate(ProjectObservation observation, double progress, double required)
     {
         if (progress >= required) return new CompletionEstimate(0, "已完成");
@@ -57,6 +61,8 @@ public sealed partial class WorldEngine
         return new CompletionEstimate(remaining, $"按近期实际速率，预计还需约 {remaining} 日；人员与供给变化会影响结果");
     }
 
+    /// <summary>估算聚落当前建设或研究项目的剩余日数。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
     public CompletionEstimate GetDevelopmentEstimate(int settlementId)
     {
         _ = RequireTown(settlementId);

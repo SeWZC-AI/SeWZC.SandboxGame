@@ -2,6 +2,9 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>返回设施建造成本，桥梁按指定等级调整材料量。</summary>
+    /// <param name="kind">设施类别。</param>
+    /// <param name="level">桥梁等级，计算时限制在 1 至 3；普通建筑忽略此参数。</param>
     public static ResourceStock FacilityCost(BuildingKind kind, int level = 1)
     {
         var cost = GetBuildingCost(kind);
@@ -11,16 +14,27 @@ public sealed partial class WorldEngine
         return cost;
     }
 
+    /// <summary>返回桥梁通行轴向的中文名称。</summary>
+    /// <param name="direction">桥梁的通行轴向。</param>
     public static string BridgeDirectionName(BridgeDirection direction)
     {
         return direction == BridgeDirection.Horizontal ? "左右" : "上下";
     }
 
+    /// <summary>计算桥梁等级允许的最大自然离岸距离，以地格计。</summary>
+    /// <param name="level">桥梁等级，计算时限制在 1 至 3。</param>
     public static int BridgeShoreLimit(int level)
     {
         return Math.Clamp(level, 1, 3) * 2;
     }
 
+    /// <summary>检查是否可按指定交通方式跨越一个相邻地格，步行同时检查桥梁轴向。</summary>
+    /// <param name="fromX">起点的横向地格坐标。</param>
+    /// <param name="fromY">起点的纵向地格坐标。</param>
+    /// <param name="toX">终点的横向地格坐标。</param>
+    /// <param name="toY">终点的纵向地格坐标。</param>
+    /// <param name="mode">待判断的交通方式。</param>
+    /// <param name="race">居民种族，用于应用对应的通行或劳动规则。</param>
     public bool CanTraverseStep(int fromX, int fromY, int toX, int toY, TravelMode mode, RaceKind race = RaceKind.Human)
     {
         if (!InBounds(fromX, fromY) || !InBounds(toX, toY) || Distance(fromX, fromY, toX, toY) != 1
@@ -35,6 +49,10 @@ public sealed partial class WorldEngine
                    horizontal == (to.BridgeDirection == BridgeDirection.Horizontal));
     }
 
+    /// <summary>沿桥梁轴向在六格内寻找最近自然岸，未找到时返回 <c>int.MaxValue</c>。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="direction">寻找自然岸时使用的桥梁通行轴向。</param>
     public int BridgeShoreDistance(int x, int y, BridgeDirection direction)
     {
         var dx = direction == BridgeDirection.Horizontal ? 1 : 0;
@@ -55,6 +73,11 @@ public sealed partial class WorldEngine
         return best;
     }
 
+    /// <summary>检查桥梁地形、方向、等级及连岸条件；可放置时返回空值，否则返回原因。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="direction">要建造的桥梁通行轴向。</param>
+    /// <param name="level">要建造的桥梁等级，范围为 1 至 3。</param>
     public string? BridgePlacementError(int x, int y, BridgeDirection direction, int level = 1)
     {
         if (!Enum.IsDefined(direction) || level is < 1 or > 3) return "桥梁方向或等级无效";
@@ -84,6 +107,9 @@ public sealed partial class WorldEngine
             : BridgeDirection.Vertical;
     }
 
+    /// <summary>计算设施升级或桥梁改向所需的资源成本。</summary>
+    /// <param name="building">待查询或操作的建筑状态。</param>
+    /// <param name="reorient">是否计算桥梁改向成本，关闭时计算升级成本。</param>
     public static ResourceStock GetUpgradeCost(Building building, bool reorient = false)
     {
         var cost = GetBuildingCost(building.Kind);
@@ -92,6 +118,10 @@ public sealed partial class WorldEngine
         return cost;
     }
 
+    /// <summary>检查建筑升级或改向的条件；可执行时返回空值，否则返回原因。</summary>
+    /// <param name="id">建筑的稳定 ID。</param>
+    /// <param name="gift">是否按直接赐予校验，跳过材料检查及相关运输研究要求。</param>
+    /// <param name="direction">桥梁改向的目标轴向，空值表示升级一级。</param>
     public string? BuildingUpgradeError(int id, bool gift = false, BridgeDirection? direction = null)
     {
         var building = State.Society.Buildings.FirstOrDefault(b => b.Id == id);
@@ -115,6 +145,10 @@ public sealed partial class WorldEngine
                 GetUpgradeCost(building, direction.HasValue));
     }
 
+    /// <summary>校验后启动升级或桥梁改向施工；赐予时直接完工。</summary>
+    /// <param name="id">建筑的稳定 ID。</param>
+    /// <param name="gift">是否直接赐予，跳过材料支出并直接完工。</param>
+    /// <param name="direction">桥梁改向的目标轴向，空值表示升级一级。</param>
     public void UpgradeBuilding(int id, bool gift = false, BridgeDirection? direction = null)
     {
         if (BuildingUpgradeError(id, gift, direction) is { } error) throw new InvalidOperationException(error);

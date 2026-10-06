@@ -3,6 +3,10 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     /// <summary>替换圆形笔刷范围内的地形，重置当地资源和地块改良，并处理位置失效的实体。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="terrain">待查询或设置的地形类别。</param>
+    /// <param name="radius">笔刷作用半径，以地格为单位。</param>
     public void PaintTerrain(int x, int y, TerrainType terrain, int radius = 2)
     {
         if (!Enum.IsDefined(terrain)) throw new ArgumentOutOfRangeException(nameof(terrain));
@@ -51,6 +55,10 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>在附近可通行的陆地投放居民，加入现有聚落或按需建立新聚落。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="race">要投放的居民种族。</param>
+    /// <param name="count">请求投放的居民数量，仍受世界人口上限限制。</param>
     public void SpawnResidents(int x, int y, RaceKind race, int count = 12)
     {
         if (!Enum.IsDefined(race)) throw new ArgumentOutOfRangeException(nameof(race));
@@ -98,7 +106,7 @@ public sealed partial class WorldEngine
             AddEvent(WorldEventKind.Founding, $"{RaceNames[(int)race]}在{settlement.Name}定居，建立了{nation.Name}。", x, y);
         }
 
-        // Founding families start on the same connected shore as their camp.
+        // 开局居民必须与营地位于同一连通陆岸，避免隔河出生后无法返乡。
         var spawnSites = new List<int> { index };
         var spawnSeen = new HashSet<int> { index };
         for (var site = 0; site < spawnSites.Count; site++)
@@ -121,7 +129,7 @@ public sealed partial class WorldEngine
             person.Y = person.FromY = position / State.Width;
             State.Residents.Add(person);
             _citizens[settlement.Id].Add(person);
-            // Equal starting rations, independent of profession and list order.
+            // 开局口粮统一分配，避免职业和居民处理顺序造成不公平的库存差异。
             var food = State.Rules.Hunger ? Math.Min(settlement.Resources.Food, 1) : 0;
             var water = State.Rules.Thirst ? Math.Min(settlement.Resources.Water, .75) : 0;
             settlement.Resources.Food -= food;
@@ -164,6 +172,10 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>施加局部灾害；火灾和疫病先产生少量源头，后续传播由模拟规则决定。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="kind">要施加的灾害类别。</param>
+    /// <param name="radius">灾害作用半径，以地格为单位。</param>
     public void TriggerDisaster(int x, int y, DisasterKind kind, int radius = 5)
     {
         if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
@@ -236,6 +248,9 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Disaster, label + "。", x, y);
     }
 
+    /// <summary>校验并修改国家名称，同时记录玩家编辑事件。</summary>
+    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="name">新的名称。</param>
     public void RenameNation(int nationId, string name)
     {
         if (!_nations.TryGetValue(nationId, out var nation)) throw new ArgumentException("国家不存在。", nameof(nationId));
@@ -248,6 +263,20 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>将指定的国家资源总量均分到各聚落仓库；未指定的资源保留原库存。</summary>
+    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="food">要设置的国家粮食总量，空值表示保留现有库存。</param>
+    /// <param name="wood">要设置的国家木材总量，空值表示保留现有库存。</param>
+    /// <param name="stone">要设置的国家石材总量，空值表示保留现有库存。</param>
+    /// <param name="ore">要设置的国家矿石总量，空值表示保留现有库存。</param>
+    /// <param name="alloy">要设置的国家合金总量，空值表示保留现有库存。</param>
+    /// <param name="energyCells">要设置的国家动力单元总量，空值表示保留现有库存。</param>
+    /// <param name="crystals">要设置的国家魔晶总量，空值表示保留现有库存。</param>
+    /// <param name="coal">要设置的国家煤总量，空值表示保留现有库存。</param>
+    /// <param name="oil">要设置的国家石油总量，空值表示保留现有库存。</param>
+    /// <param name="rareEarth">要设置的国家稀土总量，空值表示保留现有库存。</param>
+    /// <param name="boats">要设置的国家舟船总量，空值表示保留现有库存。</param>
+    /// <param name="aircraft">要设置的国家运输机总量，空值表示保留现有库存。</param>
+    /// <param name="water">要设置的国家饮水总量，空值表示保留现有库存。</param>
     public void SetNationResources(int nationId, double? food = null, double? wood = null, double? stone = null,
         double? ore = null, double? alloy = null, double? energyCells = null, double? crystals = null,
         double? coal = null, double? oil = null, double? rareEarth = null, double? boats = null,
@@ -283,6 +312,9 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>直接改变两国外交关系，并发布需要居民和机构接收的命令。</summary>
+    /// <param name="first">关系中第一国的 ID。</param>
+    /// <param name="second">关系中第二国的 ID。</param>
+    /// <param name="status">两国新的共同外交状态。</param>
     public void SetDiplomacy(int first, int second, DiplomaticStatus status)
     {
         if (first == second || !_nations.ContainsKey(first) || !_nations.ContainsKey(second))
@@ -307,6 +339,9 @@ public sealed partial class WorldEngine
         relation.LastEventId = diplomaticEvent.Id;
     }
 
+    /// <summary>查询两国共同的外交状态；同国视为结盟，无关系记录时为中立。</summary>
+    /// <param name="first">关系中第一国的 ID。</param>
+    /// <param name="second">关系中第二国的 ID。</param>
     public DiplomaticStatus GetDiplomacy(int first, int second)
     {
         return first == second

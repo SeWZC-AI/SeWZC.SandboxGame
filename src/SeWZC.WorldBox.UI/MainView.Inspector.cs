@@ -31,8 +31,7 @@ public sealed partial class MainView
         _refreshingInspector = true;
         try
         {
-            // A town can disappear during simulation. Resolve the selection before computing
-            // the key so only a changed selection rebuilds controls and their live callbacks.
+            // 聚落可能在模拟中消亡，须先解析选择再计算视图键，避免旧选择保留失效回调。
             if (_inspectorMode is "settlement" or "infrastructure" or "research" or "communication" &&
                 !_engine.State.Settlements.Any(town => town.Id == _inspectorSettlementId))
                 _inspectorSettlementId = _engine.State.Settlements.OrderBy(town => town.Id).FirstOrDefault()?.Id ?? 0;
@@ -123,7 +122,7 @@ public sealed partial class MainView
                 _inspectorScroll.Offset = default;
             }
 
-            // Existing controls stay attached. Timed updates never replace inputs or steal focus.
+            // 定时刷新须保留现有输入控件，避免抢走焦点或覆盖编辑内容。
             foreach (var update in _inspectorUpdates.ToArray()) update();
         }
         finally

@@ -20,6 +20,7 @@ internal sealed class TerritoryCounts
 
     /// <summary>将归属变化通知绑定到地格数组；更换数组时重建计数。</summary>
     /// <remarks>已绑定的地格实例须保留；直接替换数组元素会绕过该地格的通知。</remarks>
+    /// <param name="tiles">要绑定归属变更通知的地格数组。</param>
     public void Bind(Tile[] tiles)
     {
         if (ReferenceEquals(_tiles, tiles)) return;

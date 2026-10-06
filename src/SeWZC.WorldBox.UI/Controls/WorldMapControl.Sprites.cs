@@ -71,11 +71,17 @@ public sealed partial class WorldMapControl
             }
     }
 
+    /// <summary>取得种族与职业对应的居民预览图。</summary>
+    /// <param name="race">决定居民外观的种族。</param>
+    /// <param name="job">要查询或指定的职业。</param>
     public IImage ResidentPreview(RaceKind race, Profession job)
     {
         return ResidentIcon(race, job, 0);
     }
 
+    /// <summary>取得种族风格与建筑类型对应的建筑预览图。</summary>
+    /// <param name="race">决定建筑外观风格的种族。</param>
+    /// <param name="kind">设施类别。</param>
     public IImage BuildingPreview(RaceKind race, BuildingKind kind)
     {
         return BuildingIcon(race, kind);
@@ -283,6 +289,8 @@ public sealed partial class WorldMapControl
         return cached;
     }
 
+    /// <summary>取得居民任务对应的图标位图。</summary>
+    /// <param name="kind">居民任务图标类别。</param>
     public WriteableBitmap ActivityPreview(ResidentTaskIcon kind)
     {
         if (_activityIcons.TryGetValue(kind, out var icon)) return icon;

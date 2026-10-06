@@ -7,9 +7,11 @@ public interface IWorldStorage
     bool IsBackground { get; }
 
     /// <summary>用传入的世界 JSON 替换平台本地自动存档。</summary>
+    /// <param name="json">待处理的 JSON 文本。</param>
     Task SaveAsync(string json);
 
     /// <summary>用按顺序排列的 JSON 文本块替换本地自动存档；默认实现先拼接各块。</summary>
+    /// <param name="chunks">按原始顺序排列的世界 JSON 文本块。</param>
     Task SaveChunksAsync(string[] chunks)
     {
         return SaveAsync(string.Concat(chunks));
@@ -19,6 +21,8 @@ public interface IWorldStorage
     Task<string?> LoadAsync();
 
     /// <summary>将传入的 JSON 以建议文件名提供给用户保存。</summary>
+    /// <param name="json">待处理的 JSON 文本。</param>
+    /// <param name="fileName">提供给用户保存时建议使用的文件名。</param>
     Task ExportAsync(string json, string fileName);
 
     /// <summary>将用户选择的文件读取为 JSON 文本；取消选择时返回 <c>null</c>。</summary>

@@ -12,8 +12,8 @@ namespace SeWZC.WorldBox.UI;
 
 public sealed partial class MainView
 {
-    // Read-only geometry and visible UI state. Browser access is separately gated
-    // behind an explicit test URL; actions still use real pointer/keyboard input.
+    // 浏览器诊断入口仅在显式测试模式开放，自动化操作仍须走真实指针和键盘事件。
+    /// <summary>将当前界面和世界的诊断状态序列化为只读 JSON 快照。</summary>
     public string GetAutomationSnapshotJson()
     {
         var controls = new List<UiAutomationControl>();

@@ -7,7 +7,7 @@ public sealed partial class WorldEngine
 {
     private static readonly Comparison<Resident> ResidentIdOrder = (first, second) => first.Id.CompareTo(second.Id);
 
-    // Rebuilt within the communication phase; never used as authoritative world state.
+    // 通信索引只在本阶段有效，不能替代世界中的权威居民状态。
     private readonly Dictionary<int, Resident> _communicationPeople = [];
     private readonly List<Resident> _conversationNeighbors = [];
     private readonly List<int> _conversationTiles = [];
@@ -30,6 +30,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>复制信息记录，保留观察编号、来源和时间戳。</summary>
+    /// <param name="fact">需要复制并保留来源的信息记录。</param>
     private static AgentFact CopyAgentFact(AgentFact fact)
     {
         return new AgentFact
@@ -45,6 +46,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>根据原始观察时间和议题有效期，计算衰减后的报告可信度。</summary>
+    /// <param name="fact">需要按观察时间评估的信息记录。</param>
     private double AgentFactReliability(AgentFact fact)
     {
         var lifetime = fact.Kind switch
@@ -69,9 +71,7 @@ public sealed partial class WorldEngine
             if (old.ObservedTick > fact.ObservedTick) return;
             if (old.ObservedTick == fact.ObservedTick)
             {
-                // Distinct orders issued on the same day still have an authoritative order.
-                // A relayed newer command must replace an older command of the same kind,
-                // even when the older copy was heard directly with greater confidence.
+                // 同日军令仍有编号顺序；新军令必须替换旧军令，不能因旧副本为亲闻或更可信而拒绝更新。
                 if (fact.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder && old.Id != fact.Id)
                 {
                     if (old.Id > fact.Id) return;
@@ -83,7 +83,7 @@ public sealed partial class WorldEngine
             break;
         }
 
-        // A fresh observation or delivery copy may transfer ownership; shared evidence must be copied.
+        // 新观察或新递送副本可以转交持有权，共享的信息依据则须复制，避免后续修改污染其他持有者。
         memory.Add(copy ? CopyAgentFact(fact) : fact);
         if (memory.Count <= 16) return;
         var forgotten = 0;
@@ -106,6 +106,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>将附近的观察和可接触的公开报告记录到该居民自己的记忆中。</summary>
+    /// <param name="person">参与当前操作的居民状态。</param>
     private void ObserveAgentEnvironment(Resident person)
     {
         if (State.Rules.Expansion && person.Profession is Profession.Builder or Profession.Messenger
@@ -208,7 +209,7 @@ public sealed partial class WorldEngine
         var people = _communicationPeople;
         people.Clear();
         foreach (var person in State.Residents) people.Add(person.Id, person);
-        // Delivery happens before this tick's conversations. Newly learned facts cannot be forwarded yet.
+        // 递送先于本日交谈处理，新获知的信息须等到后续时刻才能转述，避免同日瞬间传播。
         _messagesToDeliver.Clear();
         var remaining = 0;
         for (var i = 0; i < State.PendingMessages.Count; i++)
@@ -293,15 +294,14 @@ public sealed partial class WorldEngine
         }
 
         RelayKnownAgentMessages();
-        // Keep capacities, but do not retain residents that may die in the following warfare phase.
+        // 复用集合容量，但清除居民引用，避免保留随后战争阶段可能死亡的居民。
         people.Clear();
         _conversationNeighbors.Clear();
     }
 
     private Resident SelectConversationRecipient(int rank)
     {
-        // Keep exactly the old ID-sorted recipient without sorting every other
-        // neighbor. Bound adversarial partitions with the original sort.
+        // 只选择与原按 ID 排序相同的接收者，避免排序全部邻居；异常分区过大时回退原排序以限制开销。
         var left = 0;
         var right = _conversationNeighbors.Count - 1;
         var budget = 2 * BitOperations.Log2((uint)_conversationNeighbors.Count);
@@ -561,8 +561,7 @@ public sealed partial class WorldEngine
             return;
         }
 
-        // A distant declaration is not knowledge. Only an order actually received by this
-        // merchant can stop a journey towards the nation in its remembered address.
+        // 远方宣战不等于商人已知；只有实际收到且对应记忆目的国家的军令才能中止旅程。
         if (goal.Kind == AgentGoalKind.Trade && IsKnownHostile(person, (int)address.Value))
         {
             FinishAgentMission(person, "已获知目的地国家敌对，停止交易并携带现有物资返乡");
@@ -579,8 +578,7 @@ public sealed partial class WorldEngine
             }
 
             var distance = Distance(home.X, home.Y, address.X, address.Y);
-            // Recheck the warehouse on arrival: earlier surplus reports may be stale, and
-            // earlier merchants may already have loaded. Keep a modest local food reserve.
+            // 抵达后重新核对库存，旧余粮报告和先到商人可能已改变供给，同时保留本地基本口粮。
             var surplus = Math.Max(0, home.Resources.Food - Math.Max(12, home.Population));
             var cargo = Math.Min(surplus, Math.Max(0, Math.Min(40, 8 + distance * 0.22) - person.Inventory.Food));
             if (cargo <= 1)
@@ -614,7 +612,7 @@ public sealed partial class WorldEngine
             return;
         }
 
-        // Ownership can have changed en route; its current identity is visible only here.
+        // 途中归属可能变化，居民只有到场后才能获知当前身份。
         if (goal.Kind == AgentGoalKind.Trade && IsKnownHostile(person, destination.NationId))
         {
             FinishAgentMission(person, "抵达后发现聚落属于已知敌对国家，保留货物返乡");

@@ -10,6 +10,7 @@ using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
+/// <summary>支持拖动、缩放和前置路径高亮的研究树视图。</summary>
 public sealed class ResearchGraphControl : UserControl
 {
     private readonly Connections _connections;
@@ -21,6 +22,8 @@ public sealed class ResearchGraphControl : UserControl
     private Point? _press;
     private Vector _pressOffset;
 
+    /// <summary>创建研究树视图，并将提供的节点按钮加入画布。</summary>
+    /// <param name="nodes">以研究类别索引的节点按钮，供视图布局和显示。</param>
     public ResearchGraphControl(Dictionary<ResearchKind, Button> nodes)
     {
         _nodes = nodes;
@@ -41,8 +44,7 @@ public sealed class ResearchGraphControl : UserControl
         AddHandler(PointerReleasedEvent, EndDrag, RoutingStrategies.Tunnel);
         AddHandler(PointerCaptureLostEvent, (_, e) =>
         {
-            // Capturing a dragged node releases its button first. That bubbled event
-            // must not cancel the graph's new capture and truncate the gesture.
+            // 节点开始拖动会先释放按钮捕获；忽略冒泡的旧通知，避免取消研究树刚取得的捕获。
             if (e.Source != this) return;
             _press = null;
             _dragging = false;
@@ -50,25 +52,35 @@ public sealed class ResearchGraphControl : UserControl
         ApplyGeometry();
     }
 
+    /// <summary>当前路线的节点、分支和连接线布局。</summary>
     public ResearchTreeLayout Layout { get; private set; }
+    /// <summary>当前缩放倍率。</summary>
     public double Zoom { get; private set; } = 1;
+    /// <summary>当前视口的滚动偏移，以控件布局单位计。</summary>
     public Vector Offset => _scroll.Offset;
+    /// <summary>当前选中并高亮前置路径的研究。</summary>
     public ResearchKind Selected { get; set; }
+    /// <summary>是否高亮所有递归前置，关闭时只高亮直接前置。</summary>
     public bool ShowFullPath { get; set; }
+    /// <summary>查询各研究是否已完成的回调，用于连接线着色。</summary>
     public Func<ResearchKind, bool> IsCompleted { get; set; } = _ => false;
 
+    /// <summary>捕获当前缩放、滚动位置和前置路径显示设置。</summary>
     public ViewportState CaptureViewport()
     {
         return new ViewportState(Zoom, Offset, ShowFullPath);
     }
 
+    /// <summary>恢复视口设置，并在布局完成后再次校正滚动位置。</summary>
+    /// <param name="viewport">此前捕获的视口设置。</param>
+    /// <param name="isCurrent">延迟校正前检查界面会话仍有效的回调，空值表示不额外检查。</param>
     public void RestoreViewport(ViewportState viewport, Func<bool>? isCurrent = null)
     {
         Zoom = Math.Clamp(viewport.Zoom, .12, 1.5);
         ShowFullPath = viewport.ShowFullPath;
         ApplyGeometry();
         _scroll.Offset = viewport.Offset;
-        // The zoom changes the scroll extent during the next layout pass.
+        // 缩放会在下一次布局才更新滚动范围，须在布局后再次恢复偏移。
         Dispatcher.UIThread.Post(() =>
         {
             if ((isCurrent?.Invoke() ?? true) && TopLevel.GetTopLevel(this) is not null)
@@ -76,6 +88,8 @@ public sealed class ResearchGraphControl : UserControl
         }, DispatcherPriority.Loaded);
     }
 
+    /// <summary>重新布局指定研究路线，并将滚动位置移回起点。</summary>
+    /// <param name="definitions">本次显示路线的非空研究定义集合。</param>
     public void ShowRoute(IEnumerable<ResearchDefinition> definitions)
     {
         Layout = new ResearchTreeLayout(definitions);
@@ -83,6 +97,8 @@ public sealed class ResearchGraphControl : UserControl
         _scroll.Offset = default;
     }
 
+    /// <summary>限制缩放倍率并保持原视口中心对应的研究位置。</summary>
+    /// <param name="zoom">期望缩放倍率，限制在 0.12 至 1.5。</param>
     public void SetZoom(double zoom)
     {
         var center = (_scroll.Offset + new Vector(_scroll.Viewport.Width / 2, _scroll.Viewport.Height / 2)) / Zoom;
@@ -91,6 +107,7 @@ public sealed class ResearchGraphControl : UserControl
         _scroll.Offset = center * Zoom - new Vector(_scroll.Viewport.Width / 2, _scroll.Viewport.Height / 2);
     }
 
+    /// <summary>按视口尺寸缩放以容纳当前研究树，并移回画布起点。</summary>
     public void Fit()
     {
         if (_scroll.Viewport.Width <= 0 || _scroll.Viewport.Height <= 0) return;
@@ -98,6 +115,8 @@ public sealed class ResearchGraphControl : UserControl
         _scroll.Offset = default;
     }
 
+    /// <summary>将当前路线中的指定研究节点移到视口中心。</summary>
+    /// <param name="kind">希望居中显示的研究节点。</param>
     public void Focus(ResearchKind kind)
     {
         if (!Layout.Nodes.TryGetValue(kind, out var bounds)) return;
@@ -105,6 +124,7 @@ public sealed class ResearchGraphControl : UserControl
             bounds.Center.Y * Zoom - _scroll.Viewport.Height / 2);
     }
 
+    /// <summary>请求重绘研究连接线，以反映选择和完成状态。</summary>
     public void RefreshConnections()
     {
         _connections.InvalidateVisual();
@@ -161,8 +181,7 @@ public sealed class ResearchGraphControl : UserControl
         var current = e.GetPosition(this);
         var delta = new Vector(current.X - start.X, current.Y - start.Y);
         if (!_dragging && delta.Length < 7) return;
-        // A handled pointer event still reaches Avalonia's gesture recognizers.
-        // Once the graph owns a drag, nested scroll views must not capture it again.
+        // 已处理事件仍会进入手势识别；研究树取得拖动后须阻止嵌套滚动视图再次捕获。
         e.PreventGestureRecognition();
         _dragging = true;
         e.Pointer.Capture(this);
@@ -182,6 +201,10 @@ public sealed class ResearchGraphControl : UserControl
         _dragging = false;
     }
 
+    /// <summary>研究树的缩放、滚动位置和前置路径显示设置。</summary>
+    /// <param name="Zoom">当前缩放倍率。</param>
+    /// <param name="Offset">视口滚动偏移，以控件布局单位计。</param>
+    /// <param name="ShowFullPath">是否显示选中研究的全部递归前置路径。</param>
     public readonly record struct ViewportState(double Zoom, Vector Offset, bool ShowFullPath);
 
     private sealed class Connections(ResearchGraphControl owner) : Control
@@ -213,7 +236,7 @@ public sealed class ResearchGraphControl : UserControl
             foreach (var lane in owner.Layout.Lanes)
                 context.DrawRectangle(Brush.Parse("#10212D"), null,
                     new Rect(lane.Left, 38, lane.Width, laneBottom - 38), 8, 8);
-            // Draw the selected prerequisite path last so crossings remain easy to follow.
+            // 选中前置路径最后绘制，使交叉处仍能清晰追踪。
             foreach (var edge in
                      owner.Layout.Edges.OrderBy(e => ancestors.Contains(e.To) && ancestors.Contains(e.From)))
             {

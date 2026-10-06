@@ -2,17 +2,23 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>判断地形是否属于海洋、河流或湖泊水域。</summary>
+    /// <param name="terrain">待查询或设置的地形类别。</param>
     public static bool IsWaterTerrain(TerrainType terrain)
     {
         return terrain is TerrainType.Water or TerrainType.DeepWater or TerrainType.River or TerrainType.Stream
             or TerrainType.LargeRiver or TerrainType.Lake;
     }
 
+    /// <summary>判断地格是否为小溪、河流、大江或湖泊淡水源。</summary>
+    /// <param name="tile">待查询或操作的地格状态。</param>
     public static bool IsFreshWater(Tile tile)
     {
         return tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Lake;
     }
 
+    /// <summary>判断地格是否可提供自然淡水。</summary>
+    /// <param name="tile">待查询或操作的地格状态。</param>
     public static bool IsWaterSource(Tile tile)
     {
         return IsFreshWater(tile) || tile.NaturalWaterYield > 0;
@@ -40,7 +46,7 @@ public sealed partial class WorldEngine
     private void TickPlants()
     {
         if (!State.Rules.ResourceRegeneration) return;
-        // Each row is updated once per 120-day year, with no yearly full-map spike.
+        // 将每年植物复评分摊到每日各行，避免年末全图更新峰值。
         var band = (int)((State.Tick - 1) % 120);
         var firstRow = band * State.Height / 120;
         var lastRow = (band + 1) * State.Height / 120;

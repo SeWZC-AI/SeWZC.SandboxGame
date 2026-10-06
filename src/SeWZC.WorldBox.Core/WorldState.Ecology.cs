@@ -2,78 +2,128 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
+/// <summary>地格内野生动物和设施养殖动物的物种。</summary>
 public enum WildlifeKind
 {
+    /// <summary>无动物。</summary>
     None,
+    /// <summary>野兔。</summary>
     Rabbit,
+    /// <summary>鹿。</summary>
     Deer,
+    /// <summary>野猪。</summary>
     Boar,
+    /// <summary>山羊。</summary>
     Goat,
+    /// <summary>狼。</summary>
     Wolf,
+    /// <summary>水鸟。</summary>
     Waterfowl,
+    /// <summary>植食小鱼。</summary>
     Fish,
+    /// <summary>狐狸。</summary>
     Fox,
+    /// <summary>棕熊。</summary>
     Bear,
+    /// <summary>野牛。</summary>
     Bison,
+    /// <summary>牦牛。</summary>
     Yak,
+    /// <summary>跳鼠。</summary>
     Jerboa,
+    /// <summary>羚羊。</summary>
     Gazelle,
+    /// <summary>野骆驼。</summary>
     Camel,
+    /// <summary>耳廓狐。</summary>
     Fennec,
+    /// <summary>胡狼。</summary>
     Jackal,
+    /// <summary>狮子。</summary>
     Lion,
+    /// <summary>水豚。</summary>
     Capybara,
+    /// <summary>河马。</summary>
     Hippo,
+    /// <summary>水獭。</summary>
     Otter,
+    /// <summary>鳄鱼。</summary>
     Crocodile,
+    /// <summary>草鱼。</summary>
     GrassCarp,
+    /// <summary>海牛。</summary>
     Manatee,
+    /// <summary>掠食小鱼。</summary>
     PredatoryFish,
+    /// <summary>鲈鱼。</summary>
     Pike,
+    /// <summary>鲨鱼。</summary>
     Shark,
+    /// <summary>海龟。</summary>
     SeaTurtle,
+    /// <summary>海洋海牛。</summary>
     SeaCow,
+    /// <summary>麝牛。</summary>
     MuskOx,
+    /// <summary>北极熊。</summary>
     PolarBear,
+    /// <summary>雪豹。</summary>
     SnowLeopard,
 }
 
+/// <summary>动物体型等级，用于生物量和捕食关系计算。</summary>
 public enum AnimalSize
 {
+    /// <summary>小型。</summary>
     Small,
+    /// <summary>中型。</summary>
     Medium,
+    /// <summary>大型。</summary>
     Large,
 }
 
+/// <summary>动物的食性类别。</summary>
 public enum AnimalDiet
 {
+    /// <summary>食草。</summary>
     Herbivore,
+    /// <summary>食肉。</summary>
     Carnivore,
 }
 
+/// <summary>局部资源冲突的升级或解决阶段。</summary>
 public enum ConflictStage
 {
+    /// <summary>争执。</summary>
     Dispute,
+    /// <summary>对峙。</summary>
     Confrontation,
+    /// <summary>暴力冲突。</summary>
     Violence,
+    /// <summary>已经解决。</summary>
     Resolved,
 }
 
+/// <summary>局部冲突影响到的参与者范围。</summary>
 public enum ConflictScope
 {
+    /// <summary>个人之间。</summary>
     Individual,
+    /// <summary>群体之间。</summary>
     Group,
+    /// <summary>聚落层面。</summary>
     Settlement,
 }
 
 public sealed partial class Tile
 {
-    // 255 means uncomputed; None (0) is a valid cached result for empty tiles.
+    // 用 255 区分尚未计算与有效的空物种结果，避免空地反复计算。
     private byte _edibleLandAnimal = byte.MaxValue, _edibleWaterAnimal = byte.MaxValue;
     private WildlifePopulations _otherWildlife;
     private WildlifeKind _wildlife;
     private double _wildlifePopulation;
 
+    /// <summary>单独存储的主种群物种。</summary>
     [JsonRequired]
     public WildlifeKind Wildlife
     {
@@ -85,6 +135,7 @@ public sealed partial class Tile
         }
     }
 
+    /// <summary>主种群数量，允许小数表示连续种群变化。</summary>
     [JsonRequired]
     public double WildlifePopulation
     {
@@ -96,7 +147,7 @@ public sealed partial class Tile
         }
     }
 
-    // A zero-valued population set is the safe default for existing format 8 worlds.
+    /// <summary>除主种群外，按物种存储的动物数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public WildlifePopulations OtherWildlife
     {
@@ -108,6 +159,7 @@ public sealed partial class Tile
         }
     }
 
+    /// <summary>当前数量大于零的物种位掩码，位序对应物种编号。</summary>
     [JsonIgnore]
     public int WildlifeMask => OtherWildlife.ActiveMask | (WildlifePopulation > 0 ? 1 << (int)Wildlife : 0);
 
@@ -136,6 +188,8 @@ public sealed partial class Tile
         return (WildlifeKind)cached;
     }
 
+    /// <summary>查询此格指定物种的数量，同时覆盖主种群和其他种群。</summary>
+    /// <param name="kind">动物物种。</param>
     public double AnimalPopulation(WildlifeKind kind)
     {
         return kind == Wildlife ? WildlifePopulation : OtherWildlife.Get(kind);
@@ -163,127 +217,176 @@ public sealed partial class Tile
 
 public sealed partial class WorldState
 {
+    /// <summary>当前保留的局部资源冲突记录。</summary>
     [JsonRequired]
     public List<LocalConflict> Conflicts { get; set; } = [];
 }
 
+/// <summary>居民之间资源冲突的参与者、紧张度、位置和阶段记录。</summary>
 public sealed class LocalConflict
 {
+    /// <summary>局部冲突的稳定 ID。</summary>
     public int Id { get; set; }
+    /// <summary>最初参与冲突的第一位居民 ID。</summary>
     public int FirstResidentId { get; set; }
+    /// <summary>最初参与冲突的第二位居民 ID。</summary>
     public int SecondResidentId { get; set; }
+    /// <summary>关联或归属聚落的稳定 ID。</summary>
     public int SettlementId { get; set; }
+    /// <summary>所在地点的横向地格坐标。</summary>
     public int X { get; set; }
+    /// <summary>所在地点的纵向地格坐标。</summary>
     public int Y { get; set; }
+    /// <summary>冲突目前影响的参与者范围。</summary>
     public ConflictScope Scope { get; set; }
+    /// <summary>当前冲突阶段。</summary>
     public ConflictStage Stage { get; set; }
+    /// <summary>当前紧张程度，影响升级或缓和。</summary>
     public double Tension { get; set; }
+    /// <summary>冲突开始的模拟日序。</summary>
     public long StartedTick { get; set; }
+    /// <summary>进入当前阶段的模拟日序。</summary>
     public long StageStartedTick { get; set; }
+    /// <summary>最近一次冲突状态变化的模拟日序。</summary>
     public long LastChangedTick { get; set; }
+    /// <summary>最近一次冲突关联的事件 ID。</summary>
     public int LastEventId { get; set; }
+    /// <summary>当前参与冲突的居民 ID 集合。</summary>
     public List<int> Participants { get; set; } = [];
 }
 
-// Value storage avoids allocating a collection for every map tile. Format 16
-// serializes exact nonzero populations as species ID / population pairs.
+// 使用值类型避免每格分配集合；稀疏存档按物种编号保存精确的非零数量。
+/// <summary>按物种保存的动物数量，可与地格主种群合并查询。</summary>
 [JsonConverter(typeof(WildlifePopulationsJsonConverter))]
 public struct WildlifePopulations : IEquatable<WildlifePopulations>
 {
+    /// <summary>野兔的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Rabbit { get; set; }
 
+    /// <summary>鹿的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Deer { get; set; }
 
+    /// <summary>野猪的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Boar { get; set; }
 
+    /// <summary>山羊的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Goat { get; set; }
 
+    /// <summary>狼的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Wolf { get; set; }
 
+    /// <summary>水鸟的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Waterfowl { get; set; }
 
+    /// <summary>植食小鱼的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Fish { get; set; }
 
+    /// <summary>狐狸的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Fox { get; set; }
 
+    /// <summary>棕熊的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Bear { get; set; }
 
+    /// <summary>野牛的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Bison { get; set; }
 
+    /// <summary>牦牛的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Yak { get; set; }
 
+    /// <summary>跳鼠的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Jerboa { get; set; }
 
+    /// <summary>羚羊的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Gazelle { get; set; }
 
+    /// <summary>野骆驼的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Camel { get; set; }
 
+    /// <summary>耳廓狐的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Fennec { get; set; }
 
+    /// <summary>胡狼的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Jackal { get; set; }
 
+    /// <summary>狮子的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Lion { get; set; }
 
+    /// <summary>水豚的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Capybara { get; set; }
 
+    /// <summary>河马的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Hippo { get; set; }
 
+    /// <summary>水獭的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Otter { get; set; }
 
+    /// <summary>鳄鱼的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Crocodile { get; set; }
 
+    /// <summary>草鱼的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double GrassCarp { get; set; }
 
+    /// <summary>海牛的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Manatee { get; set; }
 
+    /// <summary>掠食小鱼的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double PredatoryFish { get; set; }
 
+    /// <summary>鲈鱼的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Pike { get; set; }
 
+    /// <summary>鲨鱼的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Shark { get; set; }
 
+    /// <summary>海龟的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double SeaTurtle { get; set; }
 
+    /// <summary>海洋海牛的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double SeaCow { get; set; }
 
+    /// <summary>麝牛的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double MuskOx { get; set; }
 
+    /// <summary>北极熊的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double PolarBear { get; set; }
 
+    /// <summary>雪豹的种群数量，允许小数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double SnowLeopard { get; set; }
 
-    // JSON default omission must not box and reflect over every population.
+    // 显式逐物种比较，避免省略默认值时为每格装箱并反射查询种群。
+    /// <summary>逐物种比较动物数量是否相等。</summary>
+    /// <param name="other">用于比较的同类型值。</param>
     public readonly bool Equals(WildlifePopulations other)
     {
         return Rabbit.Equals(other.Rabbit) && Deer.Equals(other.Deer) && Boar.Equals(other.Boar) &&
@@ -300,11 +403,14 @@ public struct WildlifePopulations : IEquatable<WildlifePopulations>
                SnowLeopard.Equals(other.SnowLeopard);
     }
 
+    /// <summary>逐物种比较动物数量是否相等。</summary>
+    /// <param name="obj">用于比较的对象，空值或其他类型均不相等。</param>
     public readonly override bool Equals(object? obj)
     {
         return obj is WildlifePopulations other && Equals(other);
     }
 
+    /// <summary>根据各物种数量计算哈希值。</summary>
     public readonly override int GetHashCode()
     {
         var hash = new HashCode();
@@ -342,6 +448,7 @@ public struct WildlifePopulations : IEquatable<WildlifePopulations>
         return hash.ToHashCode();
     }
 
+    /// <summary>数量大于零的物种位掩码，位序对应物种编号。</summary>
     [JsonIgnore]
     public readonly int ActiveMask => (Rabbit > 0 ? 1 << (int)WildlifeKind.Rabbit : 0) |
                                       (Deer > 0 ? 1 << (int)WildlifeKind.Deer : 0) |
@@ -411,6 +518,8 @@ public struct WildlifePopulations : IEquatable<WildlifePopulations>
         destination[(int)WildlifeKind.SnowLeopard] = SnowLeopard;
     }
 
+    /// <summary>读取指定物种的数量，无对应物种时返回零。</summary>
+    /// <param name="kind">动物物种。</param>
     public readonly double Get(WildlifeKind kind)
     {
         return kind switch
@@ -450,6 +559,9 @@ public struct WildlifePopulations : IEquatable<WildlifePopulations>
         };
     }
 
+    /// <summary>替换指定物种的数量，不处理 <c>None</c>。</summary>
+    /// <param name="kind">动物物种。</param>
+    /// <param name="population">要设置的动物数量，允许小数。</param>
     public void Set(WildlifeKind kind, double population)
     {
         switch (kind)
