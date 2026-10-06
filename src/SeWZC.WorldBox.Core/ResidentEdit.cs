@@ -1,65 +1,65 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>居民修改补丁；空值保留原字段，认知和经历编辑只影响未来行为。</summary>
+/// <summary>居民修改补丁；空值保留原字段，初始化后不可替换，认知和经历编辑只影响未来行为。</summary>
 public sealed class ResidentEdit
 {
     /// <summary>要设置的姓名。</summary>
-    public string? Name { get; set; }
+    public string? Name { get; init; }
 
     /// <summary>要设置的种族。</summary>
-    public RaceKind? Race { get; set; }
+    public RaceKind? Race { get; init; }
 
     /// <summary>要设置的文化 ID。</summary>
-    public int? CultureId { get; set; }
+    public int? CultureId { get; init; }
 
     /// <summary>要设置的归属聚落 ID。</summary>
-    public int? SettlementId { get; set; }
+    public int? SettlementId { get; init; }
 
     /// <summary>要设置的横向地格坐标。</summary>
-    public int? X { get; set; }
+    public int? X { get; init; }
 
     /// <summary>要设置的纵向地格坐标。</summary>
-    public int? Y { get; set; }
+    public int? Y { get; init; }
 
     /// <summary>要设置的军队 ID。</summary>
-    public int? ArmyId { get; set; }
+    public int? ArmyId { get; init; }
 
     /// <summary>要设置的疫病剩余日数。</summary>
-    public int? SicknessTicks { get; set; }
+    public int? SicknessTicks { get; init; }
 
     /// <summary>要设置的随身资源。</summary>
-    public ResourceStock? Inventory { get; set; }
+    public ResourceStock? Inventory { get; init; }
 
     /// <summary>要设置的职业。</summary>
-    public Profession? Profession { get; set; }
+    public Profession? Profession { get; init; }
 
     /// <summary>要设置的年龄，以模拟年计。</summary>
-    public double? Age { get; set; }
+    public double? Age { get; init; }
 
     /// <summary>要设置的生命值。</summary>
-    public double? Health { get; set; }
+    public double? Health { get; init; }
 
     /// <summary>要设置的饥饿程度。</summary>
-    public double? Hunger { get; set; }
+    public double? Hunger { get; init; }
 
     /// <summary>要设置的口渴程度。</summary>
-    public double? Thirst { get; set; }
+    public double? Thirst { get; init; }
 
     /// <summary>要设置的性格描述。</summary>
-    public string? Trait { get; set; }
+    public string? Trait { get; init; }
 
     /// <summary>要设置的当前魔力。</summary>
-    public double? Mana { get; set; }
+    public double? Mana { get; init; }
 
     /// <summary>要设置的魔法天赋。</summary>
-    public double? MagicTalent { get; set; }
+    public double? MagicTalent { get; init; }
 
     /// <summary>要设置的魔法训练程度。</summary>
-    public double? MagicTraining { get; set; }
+    public double? MagicTraining { get; init; }
 
     /// <summary>要设置的认知和行动状态。</summary>
-    public AgentState? Agent { get; set; }
+    public AgentState? Agent { get; init; }
 
     /// <summary>要设置的个人经历记录。</summary>
-    public List<ResidentHistoryEntry>? History { get; set; }
+    public List<ResidentHistoryEntry>? History { get; init; }
 }

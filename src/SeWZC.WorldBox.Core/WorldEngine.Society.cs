@@ -1937,6 +1937,20 @@ public sealed partial class WorldEngine
         foreach (var kind in MineralAndVehicleResources) stock.Set(kind, Math.Max(0, stock.Get(kind) - cost.Get(kind)));
     }
 
+    private static void Spend(ResourceStock stock, ResourceAmounts cost)
+    {
+        if (MissingResources(stock, cost) is not null)
+            throw new InvalidOperationException("当地材料不足；" + MissingResources(stock, cost));
+        stock.Food = Math.Max(0, stock.Food - cost.Food);
+        stock.Wood = Math.Max(0, stock.Wood - cost.Wood);
+        stock.Stone = Math.Max(0, stock.Stone - cost.Stone);
+        stock.Ore = Math.Max(0, stock.Ore - cost.Ore);
+        stock.Alloy = Math.Max(0, stock.Alloy - cost.Alloy);
+        stock.EnergyCells = Math.Max(0, stock.EnergyCells - cost.EnergyCells);
+        stock.Crystals = Math.Max(0, stock.Crystals - cost.Crystals);
+        foreach (var kind in MineralAndVehicleResources) stock.Set(kind, Math.Max(0, stock.Get(kind) - cost.Get(kind)));
+    }
+
     private Settlement RequireTown(int id)
     {
         return _settlements.TryGetValue(id, out var town) ? town : throw new ArgumentException("聚落不存在。");

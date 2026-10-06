@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Avalonia;
 using SeWZC.WorldBox.Core;
 
@@ -73,13 +74,13 @@ public sealed class ResearchTreeLayout
 
         string Lane(ResearchDefinition d)
         {
-            return d.Shared ? "共同基础" : d.Magic ? d.Branch : d.Branch == "知识与通信" ? "运输与计算" : d.Branch;
+            return d.Branch.Lane;
         }
 
-        Lanes = items.GroupBy(Lane).Select(g => new ResearchTreeLane(g.Key,
+        Lanes = Array.AsReadOnly(items.GroupBy(Lane).Select(g => new ResearchTreeLane(g.Key,
                 g.Min(d => nodes[d.Kind].Left) - 14,
                 g.Max(d => nodes[d.Kind].Right) - g.Min(d => nodes[d.Kind].Left) + 28))
-            .ToArray();
+            .ToArray());
         var edges = new List<ResearchTreeEdge>();
         foreach (var d in items)
             for (var index = 0; index < d.Prerequisites.Length; index++)
@@ -110,8 +111,8 @@ public sealed class ResearchTreeLayout
                 edges.Add(new ResearchTreeEdge(p, d.Kind, points));
             }
 
-        Nodes = nodes;
-        Edges = edges;
+        Nodes = new ReadOnlyDictionary<ResearchKind, Rect>(nodes);
+        Edges = edges.AsReadOnly();
         Size = new Size(nodes.Values.Max(r => r.Right) + 32, nodes.Values.Max(r => r.Bottom) + 24);
     }
 

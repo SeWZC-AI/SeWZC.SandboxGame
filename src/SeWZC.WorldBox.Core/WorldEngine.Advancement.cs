@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -9,8 +11,19 @@ public sealed partial class WorldEngine
     {
         var definition = ResearchRules.For(kind);
         if (definition.Magic && !State.Society.MagicEnabled) return "世界规则已关闭新的魔法发展";
-        var missing = definition.Prerequisites.Where(p => !HasResearch(settlementId, p)).Select(ResearchName).ToArray();
-        return missing.Length == 0 ? null : "需要先掌握" + string.Join("、", missing);
+        List<string>? missing = null;
+        foreach (var prerequisite in definition.Prerequisites.AsSpan())
+            if (!HasResearch(settlementId, prerequisite))
+                (missing ??= []).Add(ResearchName(prerequisite));
+        return missing is null ? null : "需要先掌握" + string.Join("、", missing);
+    }
+
+    // 热点校验直接遍历不可变数组，不为每栋设施或岗位创建捕获聚落编号的委托。
+    private bool HasResearchPrerequisites(int settlementId, ImmutableArray<ResearchKind> prerequisites)
+    {
+        foreach (var prerequisite in prerequisites.AsSpan())
+            if (!HasResearch(settlementId, prerequisite)) return false;
+        return true;
     }
 
     /// <summary>返回研究所属分支、阶段、前置知识及实际效果的说明。</summary>
@@ -64,7 +77,7 @@ public sealed partial class WorldEngine
         if (building.Health < 50) return "设施受损，需要修复后运营";
         if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return "设施所在地正在燃烧，暂停生产";
         if (!HasResearch(building.SettlementId, a.Research)
-            || a.Prerequisites.Any(p => !HasResearch(building.SettlementId, p)))
+            || !HasResearchPrerequisites(building.SettlementId, a.Prerequisites))
             return "缺少当地运营知识：" + ResearchName(a.Research) + "及其前置";
         return null;
     }
@@ -209,7 +222,7 @@ public sealed partial class WorldEngine
         var reserve = _localWorkQueriesActive
             ? _productionReserves.GetValueOrDefault(town.Id)
             : LocalDevelopmentReserve(town);
-        for (var i = 0; i < a.InputResources.Count; i++)
+        for (var i = 0; i < a.InputResources.Length; i++)
         {
             var k = a.InputResources[i];
             var available = town.Resources.Get(k) + .000001;
@@ -223,7 +236,7 @@ public sealed partial class WorldEngine
 
     private static bool HasProductionInputs(ResourceStock stock, Advancement recipe)
     {
-        for (var i = 0; i < recipe.InputResources.Count; i++)
+        for (var i = 0; i < recipe.InputResources.Length; i++)
         {
             var kind = recipe.InputResources[i];
             if (stock.Get(kind) + .000001 < recipe.Input.Get(kind)) return false;

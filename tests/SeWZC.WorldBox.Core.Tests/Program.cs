@@ -78,7 +78,7 @@ var tests = new (string Name, Action Run)[]
     .Concat(DevelopmentPlanningTests.Cases).Concat(PerformanceBehaviorTests.Cases)
     .Concat(ProvisioningAndClaimsTests.Cases).Concat(SurvivalAndDisasterTests.Cases)
     .Concat(TownInfrastructureTests.Cases).Concat(GeographyEcologyTests.Cases).Concat(TownActivityTests.Cases)
-    .Concat(SimulationOptimizationTests.Cases).Concat(ActionEcologyRegressionTests.Cases).ToArray();
+    .Concat(StrongTypeTests.Cases).Concat(SimulationOptimizationTests.Cases).Concat(ActionEcologyRegressionTests.Cases).ToArray();
 var filterOption = Array.IndexOf(args, "--filter");
 var suiteOption = Array.IndexOf(args, "--suite");
 var suite = suiteOption < 0 ? "unit" : args.ElementAtOrDefault(suiteOption + 1);

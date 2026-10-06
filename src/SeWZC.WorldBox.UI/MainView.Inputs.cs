@@ -18,7 +18,7 @@ public sealed partial class MainView
     private bool _mapPickInspectorVisible, _mapPickToolsOpen;
     private Control? _mapPickModal;
     private WorldMapControl.MapSelectionState _mapPickSelection;
-    private string _mapPickTool = "pan";
+    private MapTool _mapPickTool = MapTool.Pan;
 
     private void AddMapPicker(StackPanel panel, NumericUpDown x, NumericUpDown y, Action? onLocationPicked = null)
     {
@@ -39,7 +39,7 @@ public sealed partial class MainView
                 onLocationPicked?.Invoke();
             };
             _map.PickingLocation = true;
-            _map.ActiveTool = "inspect";
+            _map.ActiveTool = MapTool.Inspect;
             _modal.IsVisible = false;
             _mobilePanel = false;
             _toolsOpen = false;
@@ -72,7 +72,7 @@ public sealed partial class MainView
         _mapPickEngine = null;
         _mapPickModal = null;
         _map.PickingLocation = false;
-        _map.ActiveTool = restorePresentation ? _mapPickTool : "pan";
+        _map.ActiveTool = restorePresentation ? _mapPickTool : MapTool.Pan;
         if (restorePresentation)
         {
             _map.RestoreMapSelection(_mapPickSelection);

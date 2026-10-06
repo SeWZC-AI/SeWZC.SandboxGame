@@ -36,6 +36,7 @@ var tests = new (string Name, Action Test)[]
     ("Autosave skips unchanged worlds and tracks edits simulation and failed writes", AutosaveChanges),
     ("Desktop saves compress exact chunks and preserve the last file on encoding failure", DesktopSave),
     ("Paged tools expose every building and keep previews outside toolbar layout", ToolPagination),
+    ("Typed map tools preserve stroke and one-shot editing behavior", TypedMapTools),
     ("Building damage stays visible without expanding secondary details", BuildingDamage),
     ("Building details show concrete effects and blockers without boilerplate", BuildingDetailCopy),
     ("Tall buildings keep the plot behind clickable and roofs still select their footprint", BuildingOcclusion),
@@ -142,39 +143,77 @@ static void TownInformationAndMobileHeight()
     Assert(engine.ExportJson() == before, "Town navigation or panel expansion changed the world");
 }
 
+static void TypedMapTools()
+{
+    var engine = TwoTownWorld();
+    var map = new WorldMapControl { Engine = engine, BrushRadius = 0 };
+    map.Measure(new Size(800, 800));
+    map.Arrange(new Rect(0, 0, 800, 800));
+    map.FitWorld();
+    var edits = 0;
+    var starts = 0;
+    map.WorldEditing += (_, _) => starts++;
+    map.WorldEdited += (_, _) => edits++;
+    map.ActiveTool = MapTool.ForTerrain(TerrainType.Sand);
+    Call(map, "ApplyTool", map.GetTileScreenPosition(25, 25));
+    Call(map, "ApplyTool", map.GetTileScreenPosition(28, 25));
+    Assert(Enumerable.Range(25, 4).All(x => engine.State.Tiles[25 * engine.State.Width + x].Terrain == TerrainType.Sand)
+           && edits == 2 && starts == 1, "Typed terrain tool lost continuous painting or its undo boundary");
+
+    var town = engine.State.Settlements.First();
+    var population = engine.State.Population;
+    map.ActiveTool = MapTool.ForResidents(RaceKind.Human);
+    map.SpawnCount = 1;
+    Call(map, "ApplyTool", map.GetTileScreenPosition(town.X, town.Y));
+    Call(map, "ApplyTool", map.GetTileScreenPosition(town.X + 1, town.Y));
+    Assert(engine.State.Population == population + 1 && edits == 3 && starts == 2,
+        "Dragging a typed spawn tool placed more than one group");
+
+    map.ActiveTool = MapTool.ForResidents(RaceKind.Elf);
+    Call(map, "ApplyTool", map.GetTileScreenPosition(town.X, town.Y));
+    Assert(engine.State.Population == population + 2 && starts == 3,
+        "Changing a typed tool retained the previous stroke");
+    var before = engine.ExportJson();
+    map.ActiveTool = MapTool.Pan;
+    Call(map, "ApplyTool", map.GetTileScreenPosition(26, 26));
+    Assert(engine.ExportJson() == before && edits == 4, "Navigation tool mutated the world");
+    Assert(ReferenceEquals(MapTool.ForBuilding(BuildingKind.Bridge), MapTool.ForBuilding(BuildingKind.Bridge)),
+        "A cached tool was reallocated on selection");
+}
+
 static void ToolPagination()
 {
     var engine = TwoTownWorld();
     var view = View(engine);
     var map = Map(view);
     var before = engine.ExportJson();
-    Call(view, "SetCategory", "build");
+    Call(view, "SetCategory", ToolCategory.Build);
     var found = new HashSet<string>();
     var pageCount = (Enum.GetValues<BuildingKind>().Length + 7) / 8;
     for (var page = 0; page < pageCount; page++)
     {
-        foreach (var tool in Field<string?[]>(view, "_slotTools"))
+        foreach (var tool in Field<MapTool?[]>(view, "_slotTools"))
             if (tool is not null)
-                found.Add(tool);
+                found.Add(tool.Id);
         if (page < pageCount - 1) Click(view, "tool-page-next");
     }
 
     Assert(
         Enum.GetValues<BuildingKind>().Where(k => k != BuildingKind.TownCenter)
             .All(k => found.Contains("build:" + k)) && found.Contains("road:Road"), "Pagination hid a real tool");
-    Call(view, "SetCategory", "terrain");
+    Call(view, "SetCategory", ToolCategory.Terrain);
     found.Clear();
     pageCount = (Enum.GetValues<TerrainType>().Length + 7) / 8;
     for (var page = 0; page < pageCount; page++)
     {
-        foreach (var tool in Field<string?[]>(view, "_slotTools"))
+        foreach (var tool in Field<MapTool?[]>(view, "_slotTools"))
             if (tool is not null)
-                found.Add(tool);
+                found.Add(tool.Id);
         if (page < pageCount - 1) Click(view, "tool-page-next");
     }
 
     Assert(Enum.GetValues<TerrainType>().All(t => found.Contains(t.ToString())), "Pagination hid a terrain tool");
-    Call(view, "SelectTool", "Human");
+    Call(view, "SelectTool", MapTool.ForResidents(RaceKind.Human));
     Call(map, "PreviewPlacement", map.GetTileScreenPosition(12, 12), false);
     Assert(!Field<Border>(view, "_placementBar").IsVisible, "Mouse hover opened a shifting option bar");
     Preview(map, 12, 12);
@@ -867,7 +906,7 @@ static void DeferredMapStrokes()
         var map = Map(view);
         Call(view, "TogglePause");
         var before = engine.ExportJson();
-        map.ActiveTool = "Grass";
+        map.ActiveTool = MapTool.ForTerrain(TerrainType.Grass);
         var gate = Field<SemaphoreSlim>(view, "_saveGate");
         gate.Wait();
         Task pending;
@@ -1123,15 +1162,15 @@ static void MapPickerContextIsolation()
     var selection = map.CaptureMapSelection();
     Click(view, "map-pick-resident_goal_x");
     var mode = Field<string>(view, "_inspectorMode");
-    var category = Field<string>(view, "_category");
+    var category = Field<ToolCategory>(view, "_category");
     var nation = Field<int>(view, "_selectedNationId");
     var town = Field<int>(view, "_inspectorSettlementId");
     var tile = Field<(int X, int Y)?>(view, "_selectedTile");
     var selectedBuilding = Field<int>(view, "_selectedBuildingId");
     var history = Field<ICollection>(view, "_navigation").Count;
     Call(view, "ToggleTools");
-    Call(view, "SelectTool", "Grass");
-    Call(view, "SetCategory", "build");
+    Call(view, "SelectTool", MapTool.ForTerrain(TerrainType.Grass));
+    Call(view, "SetCategory", ToolCategory.Build);
     Call(view, "SuspendTool");
     Call(view, "CloseInspector");
     Call(view, "OpenInspector", "overview", true);
@@ -1143,10 +1182,10 @@ static void MapPickerContextIsolation()
     Call(view, "OpenBuilding", engine.State.Society.Buildings[0]);
     Call(view, "FocusEvent", engine.State.Events[0]);
     Assert(
-        map.PickingLocation && map.ActiveTool == "inspect" && !Field<bool>(view, "_mobilePanel") &&
+        map.PickingLocation && map.ActiveTool == MapTool.Inspect && !Field<bool>(view, "_mobilePanel") &&
         !Field<bool>(view, "_toolsOpen"),
         "Tools or navigation escaped the active map picker");
-    Assert(Field<string>(view, "_inspectorMode") == mode && Field<string>(view, "_category") == category
+    Assert(Field<string>(view, "_inspectorMode") == mode && Field<ToolCategory>(view, "_category") == category
                                                          && Field<int>(view, "_selectedResidentId") == resident.Id &&
                                                          Field<int>(view, "_selectedNationId") == nation
                                                          && Field<int>(view, "_inspectorSettlementId") == town &&
@@ -1156,7 +1195,7 @@ static void MapPickerContextIsolation()
                                                          Field<ICollection>(view, "_navigation").Count == history
                                                          && map.CaptureMapSelection() == selection,
         "A hidden navigation action altered the picker's source context");
-    map.ActiveTool = "Grass";
+    map.ActiveTool = MapTool.ForTerrain(TerrainType.Grass);
     Call(map, "ApplyTool", map.GetTileScreenPosition(20, 21));
     Assert(!map.PickingLocation && Field<Border>(view, "_modal").IsVisible && Field<bool>(view, "_mobilePanel")
            && Field<string>(view, "_inspectorMode") == mode && Field<int>(view, "_selectedResidentId") == resident.Id,
@@ -1232,8 +1271,8 @@ static void ResearchNavigationState()
         var restored = Control<ResearchGraphControl>(view, "research-graph");
         Assert(Field<int>(view, "_inspectorSettlementId") == engine.State.Settlements[0].Id
                && Field<ResearchKind>(view, "_selectedResearch") == ResearchKind.EnergyRecycling
-               && Field<string>(view, "_researchRoute") == "technology" &&
-               Field<string>(view, "_researchBranch") == "工业与能源"
+               && Field<ResearchRoute>(view, "_researchRoute") == ResearchRoute.Technology &&
+               Field<ResearchBranch>(view, "_researchBranch") == ResearchBranch.Industry
                && Field<bool>(view, "_civilizationDetails"),
             "Returning restored the town but discarded its research selection or filters");
         Assert(restored.CaptureViewport() == viewport,
@@ -1371,7 +1410,7 @@ static void AdvancedResearchUi()
             Assert(graph.Layout.Nodes.Where(n => n.Key != kind).All(n => !n.Value.Intersects(rect)),
                 "Research nodes overlap");
             foreach (var edge in graph.Layout.Edges)
-                for (var i = 1; i < edge.Points.Length; i++)
+                for (var i = 1; i < edge.Points.Count; i++)
                 {
                     var a = edge.Points[i - 1];
                     var b = edge.Points[i];
@@ -1872,7 +1911,7 @@ static void SaveCaptureBoundary()
     Call(view, "OnTick", null, EventArgs.Empty);
     Assert(engine.State.Tick == tick, "Simulation advanced while a save was reading the world");
     Call(view, "FinishSaveCapture", capture);
-    map.ActiveTool = "Grass";
+    map.ActiveTool = MapTool.ForTerrain(TerrainType.Grass);
     Call(map, "ApplyTool", map.GetTileScreenPosition(30, 30));
     using var continuing = new CancellationTokenSource();
     Set("_saveCapture", continuing);
@@ -1922,7 +1961,7 @@ static void AutosaveChanges()
         Save();
         Assert(storage.Calls == 7 && storage.Chunks > 1, "Replacement or chunked storage was skipped");
         var map = Map(view);
-        map.ActiveTool = "Grass";
+        map.ActiveTool = MapTool.ForTerrain(TerrainType.Grass);
         SetField(view, "_lastSave", -31d);
         Call(map, "ApplyTool", map.GetTileScreenPosition(30, 30));
         Call(view, "OnTick", null, EventArgs.Empty);
@@ -2368,7 +2407,7 @@ static void PlacementBounds()
 {
     var engine = EmptyWorld(42, 32);
     var map = Map(View(engine));
-    map.ActiveTool = "Human";
+    map.ActiveTool = MapTool.ForResidents(RaceKind.Human);
     var before = engine.ExportJson();
     foreach (var tile in new[] { (engine.State.Width, 0), (0, engine.State.Height), (-1, 0), (0, -1) })
     {
@@ -2459,7 +2498,7 @@ static WorldMapControl Map(MainView view)
 
 static void Preview(WorldMapControl map, int x, int y)
 {
-    map.ActiveTool = "Human";
+    map.ActiveTool = MapTool.ForResidents(RaceKind.Human);
     Call(map, "PreviewPlacement", map.GetTileScreenPosition(x, y), true);
     Assert(map.HasPendingPlacement, "Fixture must create a touch preview");
 }

@@ -81,7 +81,7 @@ public sealed partial class MainView
             SaveCaptureActive = _saveCapture is not null,
             EditCaptureActive = _prepareEditTask is not null,
             Speed = _speed,
-            ActiveTool = _map.ActiveTool,
+            ActiveTool = _map.ActiveTool.Id,
             RenderedWildlifeCount = _map.RenderedWildlifeCount,
             RenderedEffectCount = _map.RenderedEffectCount,
             RenderedEffectTime = _map.RenderedEffectTime,
@@ -90,7 +90,7 @@ public sealed partial class MainView
             RenderedBuildingLabelCount = _map.RenderedBuildingLabelCount,
             WorldTick = _engine.State.Tick,
             SelectedResidentPoint = residentPoint,
-            Category = _category,
+            Category = _category.Id,
             Inspector = _inspectorMode,
             Status = _status.Text,
             SelectedBuildingId = _map.SelectedBuildingId,
@@ -103,7 +103,7 @@ public sealed partial class MainView
             ToolsOpen = _toolsOpen,
             InspectorOpen = _mobilePanel,
             PendingPlacement = _map.HasPendingPlacement,
-            ToolSlots = _slotTools.ToArray(),
+            ToolSlots = _slotTools.Select(t => t?.Id).ToArray(),
             Controls = controls,
             ResearchGraph = graph is null
                 ? null

@@ -144,8 +144,7 @@ public sealed partial class WorldEngine
             return "需要当地掌握奥术基础";
         if (gift) return null;
         if (ResearchRules.Unlocking(kind) is { } unlock && (!HasResearch(settlementId, unlock.Kind)
-                                                            || unlock.Prerequisites.Any(p =>
-                                                                !HasResearch(settlementId, p))))
+                                                            || !HasResearchPrerequisites(settlementId, unlock.Prerequisites)))
             return "当地尚未掌握" + unlock.Name + "及其前置";
         if (kind is BuildingKind.Bridge or BuildingKind.MountainPass &&
             !HasResearch(settlementId, ResearchKind.Logistics)) return "需要先掌握驿路运输";
@@ -156,8 +155,7 @@ public sealed partial class WorldEngine
         if (kind == BuildingKind.ArcaneSanctum && !HasResearch(settlementId, ResearchKind.ArcaneArts))
             return "当地尚未掌握奥术基础";
         if (AdvancementRules.For(kind) is { } advancement && (!HasResearch(settlementId, advancement.Research)
-                                                              || advancement.Prerequisites.Any(p =>
-                                                                  !HasResearch(settlementId, p))))
+                                                              || !HasResearchPrerequisites(settlementId, advancement.Prerequisites)))
             return "当地尚未掌握" + ResearchName(advancement.Research) + "及其前置";
         return MissingResources(town.Resources, FacilityCost(kind, bridgeLevel));
     }
@@ -166,6 +164,18 @@ public sealed partial class WorldEngine
     /// <param name="stock">当前资源库存。</param>
     /// <param name="cost">操作所需的资源数量。</param>
     public static string? MissingResources(ResourceStock stock, ResourceStock cost)
+    {
+        var missing = new List<string>();
+        foreach (var kind in AdvancementRules.Resources)
+            if (stock.Get(kind) + .000001 < cost.Get(kind))
+                missing.Add($"{ResourceStock.Name(kind)}缺 {cost.Get(kind) - stock.Get(kind):0.#}");
+        return missing.Count == 0 ? null : string.Join("\n", missing);
+    }
+
+    /// <summary>检查不可变成本对应的资源缺口。</summary>
+    /// <param name="stock">实际可变库存。</param>
+    /// <param name="cost">不可变资源成本。</param>
+    public static string? MissingResources(ResourceStock stock, ResourceAmounts cost)
     {
         var missing = new List<string>();
         foreach (var kind in AdvancementRules.Resources)
@@ -194,8 +204,8 @@ public sealed partial class WorldEngine
         return IsFacilityOperating(building)
                && (building.Kind != BuildingKind.Well || WellWaterYield(State.Tiles[Index(building.X, building.Y)]) > 0)
                && (ResearchRules.Unlocking(building.Kind) is not { } unlock ||
-                   (HasResearch(building.SettlementId, unlock.Kind)
-                    && unlock.Prerequisites.All(p => HasResearch(building.SettlementId, p))))
+                   HasResearch(building.SettlementId, unlock.Kind)
+                   && HasResearchPrerequisites(building.SettlementId, unlock.Prerequisites))
                && (building.Kind != BuildingKind.SignalTower ||
                    (HasResearch(building.SettlementId, ResearchKind.SignalNetwork) &&
                     HasResearch(building.SettlementId, ResearchKind.Electrification)));
