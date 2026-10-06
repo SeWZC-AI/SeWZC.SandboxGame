@@ -151,9 +151,9 @@ src/
   SeWZC.WorldBox.Desktop/    # 桌面入口与文件适配
 tests/
   SeWZC.WorldBox.Core.Tests/ # 无界面的模拟与存档验证
-scripts/                    # 静态发布与资源检查
+scripts/                    # CI 构建、快速检查、浏览器发布与回归夹具
 ```
 
-模块关系见 [架构说明](docs/architecture.md)，当前产品边界与验收目标见 [产品约定](docs/product.md)；[第二轮范围](docs/iteration-2-spec.md) 保留当时的问答输入。后续先完善古代生产、交通、政治与战争的平衡及可解释性，验证规模与真机表现，继续丰富科技与魔法各自的内容，避免强制融合。
+模块关系见 [架构说明](docs/architecture.md)，当前产品边界与验收目标见 [产品约定](docs/product.md)。后续先完善古代生产、交通、政治与战争的平衡及可解释性，验证规模与真机表现，继续丰富科技与魔法各自的内容，避免强制融合。
 
 中文字体随应用打包，使用 Noto CJK 字体；其版权及许可见 [字体许可文件](src/SeWZC.WorldBox.UI/Assets/Fonts/LICENSE.txt)。

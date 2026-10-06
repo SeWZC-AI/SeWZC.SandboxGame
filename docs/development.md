@@ -88,17 +88,7 @@
 
 ### 浏览器速度调查
 
-`scripts/profile-browser-stages.py <新目录>` 将 Core、UI、Browser 复制到独立目录，插入有界的阶段计时和只读计时导出；不修改生产源码。发布打印出的 Browser 项目，使用该静态产物单独服务，再运行以下命令：
-
-```bash
-python3 scripts/profile-browser-stages.py /tmp/worldbox-speed-probe
-dotnet publish /tmp/worldbox-speed-probe/src/SeWZC.WorldBox.Browser/SeWZC.WorldBox.Browser.csproj -c Release -o /tmp/worldbox-speed-probe/publish
-WORLDBOX_BASE_URL=http://127.0.0.1:8080/probe/ CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/browser/five-speed-profile.cjs artifacts/separator-verification/baseline.worldbox.json artifacts/speed-investigation/probe
-```
-
-需先将 `publish/wwwroot` 放在上述 `/probe/` 服务路径；夹具可以由现有 `--export-browser-fixture` 生成。`WORLDBOX_PROFILE_CASES` 可筛选 `default-far-1,default-far-5,default-near-5,large-far-1,large-far-5,large-near-5,large-auto-5`，默认普通场景观察 15 秒，自动保存场景 38 秒。`WORLDBOX_PROFILE_SECONDS` 设置普通场景时长；`WORLDBOX_PROFILE_DEFAULT_FIXTURE` 可指定此前保存的默认世界，避免两个版本初次启动后日序或群落数量不同。对正式产物运行同一脚本会只记录推进、长任务和浏览器动画帧机会，不要求它暴露探针。
-
-隔离副本额外允许 `WORLDBOX_PROFILE_EXACT_TERRAIN=1` 做地形资源失效条件的实验对照；这个开关只存在于副本中，不是正式产品选项。它限定资源量只影响森林树桩阈值，不改变世界；当前正式实现已采用此条件，隔离副本可用 `WORLDBOX_PROFILE_LEGACY_TERRAIN=1` 恢复旧失效条件作对照；需用相同夹具、相同视角与无并发负载分别测原条件与实验条件。嵌套计时不能直接全部相加，`Save.Serialize` 在缓冲保存实现中包含让出执行权的等待（格式 16 的自动保存使用 `ExportJsonChunksAsync`），异步存储等待也不能全部归为主线程阻塞；动画帧机会不等于实际绘制 FPS。原始逐次计时与汇总一起保留，并补一轮未插桩对照以检查探针对结论的影响。
+使用现成的原生模拟、保存和浏览器吞吐入口，命令见 [性能说明](performance.md#复现测量)。对比版本时复用同一存档、视角和环境，串行测量；逐次 JSON、截图和日志写入 `artifacts/`。正式产物不暴露托管阶段探针，动画帧机会不能当作实际绘制 FPS。
 
 `tests/browser/saving.cjs <当前格式大世界存档>` 通过实际按钮与拖动验证保存时镜头可用、日序一致、编辑取消与 Worker 不可用时的回退；CI 使用构建任务生成并上传的同一大世界夹具。存储 Worker 不继承文档 import map，必须使用发布后实际解析的模块 URL。
 
@@ -149,8 +139,6 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 
 性能测量不与其他浏览器压力任务争抢资源，功能验证与测量结论分别记录。存档大小测量实际写入的 UTF-8 内容，不能把解析后重新序列化的体积冒充真实载荷。
 
-原生阶段调查用 `scripts/profile-simulation-stages.py <新目录>` 创建隔离副本，生产 Core 不插桩。副本支持 `--profile-simulation --ecology-only --dense-ecology --warmup 0 --ticks 512 --repetitions 3 --output <文件>`：仅推进动物和植物，使用高肥力高供水、可适应物种齐备的森林，覆盖大图两个完整动物周期，每轮包含缓冲首分配。进程 JIT 仍先预热；不能把此场景的均值或峰值当成含居民行动、GC、浏览器绘图的全游戏硬实时保证。另跑普通完整模拟和未插桩原生测量，报告生态合计的均值、P95、最大值及完整步进。探针记录包含调度和运行时停顿，阶段采样数组在测量前预分配。当前功能和实际参数见 [生态性能记录](performance.md)。
-
 当前工作流自动验证 `main` 推送与 PR，其他分支可手动运行，避免功能分支 push／PR 双跑。原生 `build` 与浏览器 `publish` 任务在独立 runner 并行执行：前者只还原和构建 `scripts/ci-build.slnf` 中的桌面与测试依赖，不安装 WASM 工作负载；后者只还原浏览器项目并发布一次。新增项目时同步维护筛选文件。CI 发布传 `--no-restore`，本地独立发布仍自动还原。
 
 日常浏览器矩阵只执行 `deploy-smoke.cjs`；`full_regression=true` 时加上完整交互回归（包含真实帝国存档、科技树和界面入口），下载同一静态产物，在独立 runner 并行执行，避免运动／特效测量争抢 CPU。大世界保存夹具只在完整回归时生成和上传。部署依赖原生构建、发布及本次选择的全部浏览器检查成功。共享浏览器安装 action 按操作系统、架构及 lockfile 缓存 Chromium 下载，缓存命中仍检查系统依赖。
@@ -163,7 +151,7 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 
 功能变化更新 [product.md](product.md) 中的能力与验收；模块变化更新 [architecture.md](architecture.md)；重要取舍新增或替代 [ADR](decisions/README.md)。纯重命名、局部参数或一般修复通常不需要单独写 ADR。
 
-验证记录写明对应提交、命令、环境、结果、证据和未覆盖范围。历史证据保留其归属，不能只更新日期就把旧结果归给新代码。临时计划与排查过程完成后提炼成简短原因，不把整段聊天或短期状态堆进长期文档。
+验证记录写明对应提交、命令、环境、结果与未覆盖范围，只维护最近的有效结论，历史通过 Git 查阅。旧结果保留提交归属，不能只更新日期就归给新代码。原始证据写入 `artifacts/` 或 Actions 产物；临时计划与排查过程完成后提炼成简短原因。
 
 ## 本轮增量刷新与软键盘处理（2026-10-03）
 
@@ -175,10 +163,6 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 
 百年研究／生产与法术传承回归位于 `DevelopmentPlanningTests`；诊断入口 `--simulate-development <目录> [种子] [尺寸] [日序] --technology` 或 `--magic-practice` 仅指定国家发展偏好，不赠送物资或知识。普通模式不加方向参数。
 
-
-细分性能调查使用 `python3 scripts/profile-simulation-details.py <新目录>`，在隔离副本中生成整数索引的无分配嵌套计时器，记录方法 inclusive / self 耗时与调用次数，并单独测量通信邻居收集、收件人排名选择，以及共享可达性缓存查询／标记与实际 BFS；缓存查询次数减 BFS 次数得到共享缓存命中数。动物缓存仅计数请求与种群扫描，避免每次地格查询的计时干扰。按阶段区分环境观察和通信的共享记忆方法。默认跳过高频叶查询计时，`--deep` 用于调用次数诊断，必须量化额外开销。`self` 扣除已计时子方法；inclusive 不能相加。另跑未插桩的相同负载，比较终态存档摘要与探针开销。具体方法内仍未测量的部分保留为残余。报告只保留能支撑结论的热点、优化依据与验证，不罗列无关细碎操作或未量化的改造设想。
-
-生态结构默认值比较和空世界保存可用 `python3 scripts/profile-ecology-values.py <已构建的 Core.dll> <输出.json>` 调查，SDK 路径通过 `WORLDBOX_DOTNET` 指定。脚本在临时目录编译独立探针，分别记录泛型比较器的调用耗时／分配与 32×32 空世界实际序列化耗时、载荷和摘要。优化前后 DLL 先后串行运行；微基准不能冒充真实生态或整场游戏的 CPU 百分比。
 
 原生 `--profile-simulation` 同时记录整个测量窗口的进程 CPU 时间和每 tick 墙钟耗时。CPU 包含该进程的 GC、JIT 和工作线程，可能大于墙钟；不包含生成、预热或保存，也不能当成模拟主线程或单个方法的 CPU 百分比。分批与交替复测结论不一致时保留所有组，不将负“探针开销”当成优化、不将异常直接归因于 GC／调度，记录独立的配对 CPU 与墙钟证据。
 

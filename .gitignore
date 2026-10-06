@@ -19,6 +19,10 @@ __pycache__/
 *.pyc
 node_modules/
 
+# Dated investigation outputs belong in artifacts/
+/docs/*-20??????*.json
+/docs/images/*-20??????.png
+
 # Local configuration and saves
 .env
 .env.*

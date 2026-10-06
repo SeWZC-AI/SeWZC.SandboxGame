@@ -1,5 +1,5 @@
 // Optional investigation: same saved worlds, real speed buttons and independent runs.
-// An isolated build from scripts/profile-browser-stages.py supplies managed timings.
+// Reports throughput and browser timings; optional probes supply managed timings.
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
