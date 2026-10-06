@@ -1,24 +1,4 @@
-using System.Text.Json.Serialization;
-
 namespace SeWZC.WorldBox.Core;
-
-public sealed partial class Tile
-{
-    /// <summary>最近一次记录扑救效果的模拟日序。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public long FireSuppressionTick { get; set; }
-
-    /// <summary>在最近记录的模拟日内，扑救累计缩短的火灾日数。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public int FireSuppressed { get; set; }
-}
-
-public sealed partial class Resident
-{
-    /// <summary>疫病康复后的暂时免疫截止日序。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public long DiseaseImmuneUntilTick { get; set; }
-}
 
 public sealed partial class WorldEngine
 {

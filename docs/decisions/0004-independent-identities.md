@@ -30,7 +30,7 @@
 
 ## 实现与验证
 
-- [基础世界模型](../../src/SeWZC.WorldBox.Core/WorldState.cs)、[认知与身份扩展](../../src/SeWZC.WorldBox.Core/WorldState.V2.cs)、[社会类型](../../src/SeWZC.WorldBox.Core/SocietyRules.cs)。
+- [基础世界模型](../../src/SeWZC.WorldBox.Core/WorldState.cs)、[居民身份](../../src/SeWZC.WorldBox.Core/Resident.cs)、[居民认知](../../src/SeWZC.WorldBox.Core/AgentState.cs)、[社会状态](../../src/SeWZC.WorldBox.Core/SocietyState.cs)。
 - [社会行为测试](../../tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs)中的 `CulturalExchange` 验证接触改变文化时种族与国籍保持独立。
 - [核心场景](../../tests/SeWZC.WorldBox.Core.Tests/Program.cs)中的 `SpawnOnOwnedLand` 与[浏览器编辑检查](../../tests/browser/smoke.cjs)验证混合种族归属和国家文化编辑边界。
 

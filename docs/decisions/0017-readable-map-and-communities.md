@@ -24,4 +24,4 @@
 
 ## 实现与验证
 
-实现见 `WorldState.Ecology.cs`、`WorldEngine.Ecology.cs`、`PlantResources.cs`、`WorldMapControl.Sprites.cs` 与 `MainView.Buildings.cs`。共存、迁移、衰减和保存回归在 `EcologyAndConflictTests.cs`；紧凑生命详情在 Headless UI；`tests/browser/visuals.cjs` 验证真实桌面／触屏观察。具体源码归属、百年演化与负载结果见 [验证记录](../verification.md) 和 [性能记录](../performance.md)。
+实现见 `Tile.Ecology.cs`、`WildlifePopulations.cs`、`WorldEngine.Ecology.cs`、`PlantResources.cs`、`WorldMapControl.Sprites.cs` 与 `MainView.Buildings.cs`。共存、迁移、衰减和保存回归在 `EcologyAndConflictTests.cs`；紧凑生命详情在 Headless UI；`tests/browser/visuals.cjs` 验证真实桌面／触屏观察。具体源码归属、百年演化与负载结果见 [验证记录](../verification.md) 和 [性能记录](../performance.md)。

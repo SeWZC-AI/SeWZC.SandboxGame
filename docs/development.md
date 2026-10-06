@@ -29,16 +29,24 @@
 
 下表中的文件名相对于对应目录；同一 `partial` 类按机制分文件，新代码尽量进入已有责任范围。
 
+类型与文件名应保持明确关系，适用于 `src/` 和 `tests/`：
+
+- 每个类型定义文件应有一个主类型，文件名与其同名，或使用接口前缀、抽象类后缀等明确对应的命名。
+- 只在该文件中使用的辅助类型可以随主类型保留；跨文件使用的类型应放到同名文件中，不能仅因类型较小或业务相关而混放。
+- 嵌套辅助类型属于主类型的内部实现，可以在该主类型的多个分部文件间共用，保留在现有文件中。
+- 复杂类型可以按机制使用 `类型名.机制.cs` 分部文件，必须有不带机制后缀的 `类型名.cs` 主文件，在主文件维护类型的文档注释。只有源生成器要求的 `partial` 不需要人为拆分。
+- 数据实体的分部文件以实体类型命名，不能把 `Tile`、`Resident` 等实体定义放到 `WorldEngine.*.cs` 或其他类型的分部文件中。保留有明确职责的机制分部，合并没有独立职责的零散扩展。
+
 | 修改内容 | 主要入口 | 相关验证 |
 | --- | --- | --- |
-| 世界数据、版本和基本编辑 | [Core](../src/SeWZC.WorldBox.Core/) 中 `WorldState*.cs`、`WorldEngine.Commands.cs`、`WorldEngine.NationEditing.cs` | [Program.cs](../tests/SeWZC.WorldBox.Core.Tests/Program.cs) |
-| 有限战争、战报与故事观察 | Core 中 `WorldEngine.Campaigns.cs`、`WorldEngine.Stories.cs`、`WorldState.Stories.cs`；UI 中 `MainView.Stories.cs` | `StoryTests.cs`、`tests/browser/stories.cjs` |
+| 世界数据、版本和基本编辑 | [Core](../src/SeWZC.WorldBox.Core/) 中 `WorldState.cs`、各实体同名文件、`WorldEngine.Commands.cs`、`WorldEngine.NationEditing.cs` | [Program.cs](../tests/SeWZC.WorldBox.Core.Tests/Program.cs) |
+| 有限战争、战报与故事观察 | Core 中 `WorldEngine.Campaigns.cs`、`WorldEngine.Stories.cs`、`Army.Campaigns.cs`、`WorldEvent.cs`、`WorldStories.cs`；UI 中 `MainView.Stories.cs` | `StoryTests.cs`、`tests/browser/stories.cjs` |
 | 世界规则、发展与自主外交 | Core 中 `WorldEngine.Evolution.cs` | `EvolutionTests.cs`、`--evolution` 长程探查 |
 | 动物、局部冲突与死亡 | Core 中 `WorldEngine.Ecology.cs`、`WorldEngine.Conflicts.cs`、`WorldEngine.Mortality.cs`；UI 中 `MainView.Buildings.cs`、`WorldMapControl.Ecology.cs` | `EcologyAndConflictTests.cs`、Headless、桌面／触屏浏览器与五种子演化 |
 | 目标、知识与通信 | Core 中 `WorldEngine.Agents.cs`、`WorldEngine.Communication.cs` | [AgentBehaviorTests.cs](../tests/SeWZC.WorldBox.Core.Tests/AgentBehaviorTests.cs) |
 | 时代路线、配方与加工运输 | Core 中 `AdvancementRules.cs`、`WorldEngine.Advancement.cs`；UI 中 `MainView.Society.cs` | `AdvancementTests.cs`、`tests/browser/advancement.cjs` |
-| 地块改造、矿藏与载具 | Core 中 `WorldEngine.Land.cs`、`WorldEngine.Transport.cs`、`WorldState.Land.cs`；UI 中 `MainView.Selection.cs`、`WorldMapControl.Transport.cs` | `LandTransportTests.cs`、`tests/browser/land.cjs` |
-| 制度、文化、研究、建设与魔法 | Core 中 `WorldEngine.Society.cs`、`SocietyRules.cs` | [SocietyBehaviorTests.cs](../tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs) |
+| 地块改造、矿藏与载具 | Core 中 `WorldEngine.Land.cs`、`WorldEngine.Transport.cs`、`Tile.Land.cs`、`Resident.cs`；UI 中 `MainView.Selection.cs`、`WorldMapControl.Transport.cs` | `LandTransportTests.cs`、`tests/browser/land.cjs` |
+| 制度、文化、研究、建设与魔法 | Core 中 `WorldEngine.Society.cs`、`SocietyState.cs`、`CultureDefinition.cs`、`SettlementResearch.cs`、`TerrainRules.cs` | [SocietyBehaviorTests.cs](../tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs) |
 | 科技树的节点、连线与视野 | UI 中 `MainView.Research.cs`、`Controls/ResearchTreeLayout.cs`、`Controls/ResearchGraphControl.cs` | `AdvancedResearchUi`、`tests/browser/research-trees.cjs` |
 | 城镇扩充、设施选址与建设地图 | Core 中 `WorldEngine.Towns.cs`、`BuildingSites.cs`、`Claims.cs`；UI 中 `MainView.Buildings.cs`、`WorldMapControl.Infrastructure.cs` | [TownInfrastructureTests.cs](../tests/SeWZC.WorldBox.Core.Tests/TownInfrastructureTests.cs)、[infrastructure.cjs](../tests/browser/infrastructure.cjs) |
 | 角色编辑、存档校验 | Core 中 `WorldEngine.ResidentEditing.cs`、`WorldEngine.ValidationV2.cs`、`WorldEngine.Persistence.cs`、`WorldJsonContext.cs` | [EditorAndMigrationTests.cs](../tests/SeWZC.WorldBox.Core.Tests/EditorAndMigrationTests.cs)、`Program.cs`；文件名不表示支持旧存档迁移 |

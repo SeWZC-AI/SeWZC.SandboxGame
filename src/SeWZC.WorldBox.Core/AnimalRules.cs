@@ -2,51 +2,6 @@ using System.Numerics;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>可组合的动物栖息地类别，用于匹配地形环境。</summary>
-[Flags]
-public enum AnimalHabitat
-{
-    /// <summary>无匹配栖息地。</summary>
-    None = 0,
-    /// <summary>草地及适宜绿色植被地带。</summary>
-    Green = 1,
-    /// <summary>森林地带。</summary>
-    Forest = 2,
-    /// <summary>高地和山地。</summary>
-    High = 4,
-    /// <summary>寒冷地带。</summary>
-    Cold = 8,
-    /// <summary>干旱地带。</summary>
-    Dry = 16,
-    /// <summary>湿地。</summary>
-    Wet = 32,
-    /// <summary>淡水水域。</summary>
-    Fresh = 64,
-    /// <summary>海洋水域。</summary>
-    Marine = 128,
-}
-
-/// <summary>物种的体型、食性、适宜栖息地，以及最低肥力和供水要求。</summary>
-/// <param name="Name">物种显示名称。</param>
-/// <param name="Size">物种体型等级。</param>
-/// <param name="Diet">物种食性。</param>
-/// <param name="Habitats">可组合的适宜栖息地类别。</param>
-/// <param name="MinimumFertility">允许该物种生存的最低地格肥力。</param>
-/// <param name="MinimumWater">允许该物种生存的最低每日自然供水量。</param>
-public readonly record struct AnimalDefinition(
-    string Name,
-    AnimalSize Size,
-    AnimalDiet Diet,
-    AnimalHabitat Habitats,
-    byte MinimumFertility,
-    double MinimumWater)
-{
-    /// <summary>按体型折算的相对生物量，用于共享食物和猎物预算。</summary>
-    public double BodyMass => Size == AnimalSize.Small ? 1 : Size == AnimalSize.Medium ? 2 : 4;
-    /// <summary>物种的适宜栖息地是否包含淡水或海洋。</summary>
-    public bool Aquatic => (Habitats & (AnimalHabitat.Fresh | AnimalHabitat.Marine)) != 0;
-}
-
 /// <summary>模拟与查看共用的物种定义、捕食关系和栖息地容量计算。</summary>
 public static class AnimalRules
 {
