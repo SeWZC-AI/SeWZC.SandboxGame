@@ -70,14 +70,14 @@ public static class AnimalRules
         .Select(i => Species.Where(p => CanPreyOn(p, (WildlifeKind)i)).ToArray()).ToArray();
 
     internal static readonly int HerbivoreMask = Species.Where(k => For(k).Diet == AnimalDiet.Herbivore)
-        .Aggregate(0, (mask, k) => mask | 1 << (int)k);
+        .Aggregate(0, (mask, k) => mask | (1 << (int)k));
 
     private static readonly int[] HabitatMasks = Enum.GetValues<TerrainType>()
         .Select(t => Species.Where(k => (For(k).Habitats & Habitat(t)) != 0)
-            .Aggregate(0, (mask, k) => mask | 1 << (int)k)).ToArray();
+            .Aggregate(0, (mask, k) => mask | (1 << (int)k))).ToArray();
 
     private static readonly int[] PredatorMasks = Predators
-        .Select(kinds => kinds.Aggregate(0, (mask, k) => mask | 1 << (int)k)).ToArray();
+        .Select(kinds => kinds.Aggregate(0, (mask, k) => mask | (1 << (int)k))).ToArray();
 
     private static readonly double[] BodyMasses = Definitions.Select(a => a.BodyMass).ToArray();
 

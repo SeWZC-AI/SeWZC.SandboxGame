@@ -96,9 +96,13 @@ public sealed partial class WorldEngine
             throw new InvalidOperationException("拆分需要原国家至少拥有两个聚落。");
         var nation = new Nation
         {
-            Id = NewId(), Name = name, CapitalId = town.Id, Technology = parent.Technology,
+            Id = NewId(),
+            Name = name,
+            CapitalId = town.Id,
+            Technology = parent.Technology,
             DevelopmentFocus = parent.DevelopmentFocus,
-            ColorArgb = NationColors[State.Nations.Count % NationColors.Length], FoundingRace = parent.FoundingRace,
+            ColorArgb = NationColors[State.Nations.Count % NationColors.Length],
+            FoundingRace = parent.FoundingRace,
             Decision = "独立建国：储备资源，建立外交关系",
         };
         foreach (var other in State.Nations)

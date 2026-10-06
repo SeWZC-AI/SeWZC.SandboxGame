@@ -29,9 +29,21 @@ internal static class SocietyRegressionTests
 
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false, Construction = false,
-            Research = false, Expansion = false, Trade = false, Wars = true, Alliances = false,
-            Peace = true, Migration = false, Secession = false, Conflict = 3,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Trade = false,
+            Wars = true,
+            Alliances = false,
+            Peace = true,
+            Migration = false,
+            Secession = false,
+            Conflict = 3,
         }, false, false);
         if (pair && reverseFounding) engine.SpawnResidents(otherX, 24, RaceKind.Human, population);
         engine.SpawnResidents(14, 24, RaceKind.Human, population);
@@ -59,8 +71,12 @@ internal static class SocietyRegressionTests
         resident.Inventory = new ResourceStock { Food = 1.2 };
         resident.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Rest, TargetX = x, TargetY = y,
-            PlayerDirected = true, ReviewTick = 10000, Reason = "Held society regression fixture",
+            Kind = AgentGoalKind.Rest,
+            TargetX = x,
+            TargetY = y,
+            PlayerDirected = true,
+            ReviewTick = 10000,
+            Reason = "Held society regression fixture",
         };
     }
 
@@ -75,8 +91,12 @@ internal static class SocietyRegressionTests
         Hold(worker, 18, 24);
         worker.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Study, TargetX = 18, TargetY = 24, TargetEntityId = id,
-            PlayerDirected = true, ReviewTick = 10000,
+            Kind = AgentGoalKind.Study,
+            TargetX = 18,
+            TargetY = 24,
+            TargetEntityId = id,
+            PlayerDirected = true,
+            ReviewTick = 10000,
         };
         engine.State.Tick++;
         Check(engine.TryWorkAtBuilding(worker), "The research fixture did not make actual progress.");
@@ -99,8 +119,12 @@ internal static class SocietyRegressionTests
         Hold(worker, replacement!.X, replacement.Y);
         worker.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Work, TargetX = replacement.X, TargetY = replacement.Y,
-            TargetEntityId = replacement.Id, PlayerDirected = true, ReviewTick = 10000,
+            Kind = AgentGoalKind.Work,
+            TargetX = replacement.X,
+            TargetY = replacement.Y,
+            TargetEntityId = replacement.Id,
+            PlayerDirected = true,
+            ReviewTick = 10000,
         };
         while (!replacement.IsCompleted)
         {
@@ -119,10 +143,17 @@ internal static class SocietyRegressionTests
     {
         recipient.PublicKnowledge.Add(new AgentFact
         {
-            Id = engine.State.NextId++, Kind = AgentFactKind.SettlementLocation, SubjectId = observed.Id,
-            X = observed.X, Y = observed.Y, Value = observed.NationId, ObservedTick = engine.State.Tick,
-            LearnedTick = engine.State.Tick, OriginResidentId = recipient.RepresentativeId,
-            SourceResidentId = recipient.RepresentativeId, OriginProfession = Profession.Representative,
+            Id = engine.State.NextId++,
+            Kind = AgentFactKind.SettlementLocation,
+            SubjectId = observed.Id,
+            X = observed.X,
+            Y = observed.Y,
+            Value = observed.NationId,
+            ObservedTick = engine.State.Tick,
+            LearnedTick = engine.State.Tick,
+            OriginResidentId = recipient.RepresentativeId,
+            SourceResidentId = recipient.RepresentativeId,
+            OriginProfession = Profession.Representative,
             Text = "A physically delivered neighboring settlement report",
         });
     }

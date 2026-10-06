@@ -23,7 +23,9 @@ public sealed partial class WorldEngine
     {
         return kind switch
         {
-            LandImprovement.Farmland => "耕地", LandImprovement.MountainPass => "山路", LandImprovement.Bridge => "桥梁",
+            LandImprovement.Farmland => "耕地",
+            LandImprovement.MountainPass => "山路",
+            LandImprovement.Bridge => "桥梁",
             _ => "自然地块",
         };
     }
@@ -34,8 +36,10 @@ public sealed partial class WorldEngine
     {
         return kind switch
         {
-            ResourceKind.Coal => ResearchKind.Industry, ResourceKind.Oil => ResearchKind.Electrification,
-            ResourceKind.RareEarth => ResearchKind.AdvancedComputing, _ => null,
+            ResourceKind.Coal => ResearchKind.Industry,
+            ResourceKind.Oil => ResearchKind.Electrification,
+            ResourceKind.RareEarth => ResearchKind.AdvancedComputing,
+            _ => null,
         };
     }
 
@@ -50,7 +54,10 @@ public sealed partial class WorldEngine
         hash = (hash ^ (hash >> 13)) * 1274126177;
         tile.Deposit = (hash % 43) switch
         {
-            0 or 1 => ResourceKind.Coal, 2 => ResourceKind.Oil, 3 => ResourceKind.RareEarth, _ => null,
+            0 or 1 => ResourceKind.Coal,
+            2 => ResourceKind.Oil,
+            3 => ResourceKind.RareEarth,
+            _ => null,
         };
         if (tile.Deposit.HasValue) tile.DepositAmount = 120 + hash % 181;
     }
@@ -379,8 +386,11 @@ public sealed partial class WorldEngine
         else
         {
             if (ResourceSiteYield(Index(x, y), Profession.Farmer) > 0)
+            {
                 products.AddRange(plants.Where(p => p.Kind != PlantKind.Trees)
                     .Select(p => PlantResources.ProductName(p.Kind)));
+            }
+
             if (ResourceSiteYield(Index(x, y), Profession.Lumberjack) > 0) products.Add("木材");
             if (ResourceSiteYield(Index(x, y), Profession.Miner) > 0) products.Add("石材、矿石");
         }

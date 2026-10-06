@@ -5,6 +5,7 @@ public enum WarObjective
 {
     /// <summary>有限占领目标聚落。</summary>
     OccupySettlement,
+
     /// <summary>防御家园。</summary>
     DefendHomeland,
 }

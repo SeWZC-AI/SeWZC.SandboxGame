@@ -200,9 +200,14 @@ internal static class DiplomacyKnowledgeTests
             "A duplicate delivered ceasefire reset later local assessments.");
         var newerWar = new AgentFact
         {
-            Id = engine.State.NextId++, Kind = AgentFactKind.WarOrder,
-            SubjectId = a.NationId, TargetNationId = b.NationId, X = a.X, Y = a.Y,
-            ObservedTick = engine.State.Tick, LearnedTick = engine.State.Tick,
+            Id = engine.State.NextId++,
+            Kind = AgentFactKind.WarOrder,
+            SubjectId = a.NationId,
+            TargetNationId = b.NationId,
+            X = a.X,
+            Y = a.Y,
+            ObservedTick = engine.State.Tick,
+            LearnedTick = engine.State.Tick,
             Text = "A newer locally received war order",
         };
         b.PublicKnowledge.Add(newerWar);
@@ -225,9 +230,13 @@ internal static class DiplomacyKnowledgeTests
         carrier.Profession = Profession.Messenger;
         carrier.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.DeliverMessage, TargetSettlementId = destination.Id,
-            TargetX = destination.X, TargetY = destination.Y, StartedTick = engine.State.Tick,
-            PlayerDirected = true, ReviewTick = engine.State.Tick + 240,
+            Kind = AgentGoalKind.DeliverMessage,
+            TargetSettlementId = destination.Id,
+            TargetX = destination.X,
+            TargetY = destination.Y,
+            StartedTick = engine.State.Tick,
+            PlayerDirected = true,
+            ReviewTick = engine.State.Tick + 240,
         };
         carrier.Agent.CarriedMessages = [fact];
         carrier.Agent.DestinationSettlementId = destination.Id;
@@ -276,9 +285,21 @@ internal static class DiplomacyKnowledgeTests
 
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
-            Construction = false, Research = false, Expansion = false, Trade = false, Wars = true, Alliances = false,
-            Peace = false, Migration = false, Secession = false, Conflict = 3,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Trade = false,
+            Wars = true,
+            Alliances = false,
+            Peace = false,
+            Migration = false,
+            Secession = false,
+            Conflict = 3,
         }, false, false);
         foreach (var (x, population) in locations) engine.SpawnResidents(x, 24, RaceKind.Human, population);
         foreach (var culture in engine.State.Society.Cultures) culture.Cooperation = .8;
@@ -296,8 +317,11 @@ internal static class DiplomacyKnowledgeTests
                 resident.Inventory = new ResourceStock { Food = 1.2 };
                 resident.Agent.Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.Rest, TargetX = town.X, TargetY = town.Y,
-                    PlayerDirected = true, ReviewTick = 10000,
+                    Kind = AgentGoalKind.Rest,
+                    TargetX = town.X,
+                    TargetY = town.Y,
+                    PlayerDirected = true,
+                    ReviewTick = 10000,
                 };
             }
         }
@@ -309,11 +333,17 @@ internal static class DiplomacyKnowledgeTests
     {
         recipient.PublicKnowledge.Add(new AgentFact
         {
-            Id = engine.State.NextId++, Kind = AgentFactKind.SettlementLocation,
-            SubjectId = observed.Id, X = knownX ?? observed.X, Y = observed.Y, Value = observed.NationId,
-            ObservedTick = engine.State.Tick, LearnedTick = engine.State.Tick,
+            Id = engine.State.NextId++,
+            Kind = AgentFactKind.SettlementLocation,
+            SubjectId = observed.Id,
+            X = knownX ?? observed.X,
+            Y = observed.Y,
+            Value = observed.NationId,
+            ObservedTick = engine.State.Tick,
+            LearnedTick = engine.State.Tick,
             OriginResidentId = recipient.RepresentativeId,
-            SourceResidentId = recipient.RepresentativeId, OriginProfession = Profession.Representative,
+            SourceResidentId = recipient.RepresentativeId,
+            OriginProfession = Profession.Representative,
             Text = "Previously delivered contact",
         });
     }

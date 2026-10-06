@@ -4,6 +4,7 @@ public sealed partial class WorldEngine
 {
     // 行动通知仅用于呈现并限制数量，不能作为模拟输入。
     private readonly Queue<WorldVisual> _visuals = new();
+
     /// <summary>最近发出的地图动画通知序号。</summary>
     public long VisualSequence { get; private set; }
 
@@ -53,7 +54,13 @@ public sealed partial class WorldEngine
         }
 
         var cursor = new Resident
-            { X = person.X, Y = person.Y, FromX = person.FromX, FromY = person.FromY, TravelMode = person.TravelMode };
+        {
+            X = person.X,
+            Y = person.Y,
+            FromX = person.FromX,
+            FromY = person.FromY,
+            TravelMode = person.TravelMode,
+        };
         cursor.Agent.Goal.NavigationTarget = goal.NavigationTarget;
         cursor.Agent.Goal.NavigationVisited = new List<int>(goal.NavigationVisited);
         cursor.Agent.Goal.NavigationBestDistance = goal.NavigationBestDistance;

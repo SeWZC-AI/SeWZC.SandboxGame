@@ -6,6 +6,7 @@ public sealed partial class Building
 {
     /// <summary>规划此设施用途的理由。</summary>
     public string PlanningReason { get; set; } = "";
+
     /// <summary>选择此地建造的理由。</summary>
     public string SiteReason { get; set; } = "";
 
@@ -15,10 +16,13 @@ public sealed partial class Building
 
     /// <summary>本轮升级或改向已累计的施工量。</summary>
     public double UpgradeProgress { get; set; }
+
     /// <summary>本轮升级或改向所需的总施工量，0 表示没有项目。</summary>
     public double UpgradeRequired { get; set; }
+
     /// <summary>桥梁当前允许通行的轴向。</summary>
     public BridgeDirection Direction { get; set; }
+
     /// <summary>改造完成后采用的桥梁轴向，空值表示未安排改向。</summary>
     public BridgeDirection? PendingDirection { get; set; }
 

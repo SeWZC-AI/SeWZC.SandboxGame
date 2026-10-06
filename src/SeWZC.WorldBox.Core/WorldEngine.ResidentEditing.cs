@@ -146,14 +146,20 @@ public sealed partial class WorldEngine
         if (patch.MagicTalent is { } talent) candidate.MagicTalent = talent;
         if (patch.MagicTraining is { } training) candidate.MagicTraining = training;
         if (patch.Agent is not null)
+        {
             candidate.Agent =
                 JsonSerializer.Deserialize(JsonSerializer.Serialize(patch.Agent, WorldJsonContext.Default.AgentState),
                     WorldJsonContext.Default.AgentState)!;
+        }
+
         if (patch.History is not null)
+        {
             candidate.History =
                 JsonSerializer.Deserialize(
                     JsonSerializer.Serialize(patch.History, WorldJsonContext.Default.ListResidentHistoryEntry),
                     WorldJsonContext.Default.ListResidentHistoryEntry)!;
+        }
+
         ValidateResidentV2(candidate, State.Tick, State.Width, State.Height);
         ValidateStoryReferences(candidate, State.NextId);
         if (isLive)
@@ -230,11 +236,17 @@ public sealed partial class WorldEngine
                 if (candidate.Agent.Memory.Count == 16) candidate.Agent.Memory.RemoveAt(0);
                 candidate.Agent.Memory.Add(new AgentFact
                 {
-                    Kind = AgentFactKind.SettlementLocation, SubjectId = destination.Id, X = destination.X,
+                    Kind = AgentFactKind.SettlementLocation,
+                    SubjectId = destination.Id,
+                    X = destination.X,
                     Y = destination.Y,
-                    Value = destination.NationId, ObservedTick = State.Tick, LearnedTick = State.Tick,
-                    OriginResidentId = candidate.Id, SourceResidentId = candidate.Id,
-                    OriginProfession = candidate.Profession, Text = "玩家告知了本次递送的目的地",
+                    Value = destination.NationId,
+                    ObservedTick = State.Tick,
+                    LearnedTick = State.Tick,
+                    OriginResidentId = candidate.Id,
+                    SourceResidentId = candidate.Id,
+                    OriginProfession = candidate.Profession,
+                    Text = "玩家告知了本次递送的目的地",
                 });
             }
 

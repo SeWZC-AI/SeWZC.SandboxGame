@@ -13,29 +13,46 @@ public sealed class ResearchTreeLayout
     private static readonly IReadOnlyDictionary<ResearchKind, (int Column, int Row)> Positions =
         new Dictionary<ResearchKind, (int, int)>
         {
-            [ResearchKind.Agriculture] = (0, 0), [ResearchKind.Logistics] = (2, 0),
-            [ResearchKind.Irrigation] = (0, 1), [ResearchKind.Medicine] = (1, 1), [ResearchKind.Forestry] = (2, 1),
+            [ResearchKind.Agriculture] = (0, 0),
+            [ResearchKind.Logistics] = (2, 0),
+            [ResearchKind.Irrigation] = (0, 1),
+            [ResearchKind.Medicine] = (1, 1),
+            [ResearchKind.Forestry] = (2, 1),
             [ResearchKind.Education] = (3, 1),
-            [ResearchKind.CivilEngineering] = (0, 2), [ResearchKind.Pharmacology] = (1, 2),
+            [ResearchKind.CivilEngineering] = (0, 2),
+            [ResearchKind.Pharmacology] = (1, 2),
             [ResearchKind.Cartography] = (3, 2),
-            [ResearchKind.FireEngineering] = (0, 3), [ResearchKind.Sanitation] = (1, 3),
-            [ResearchKind.ScientificMethod] = (4, 1), [ResearchKind.Industry] = (6, 1),
-            [ResearchKind.MechanicalEngineering] = (4, 2), [ResearchKind.EfficientSmelting] = (6, 2),
+            [ResearchKind.FireEngineering] = (0, 3),
+            [ResearchKind.Sanitation] = (1, 3),
+            [ResearchKind.ScientificMethod] = (4, 1),
+            [ResearchKind.Industry] = (6, 1),
+            [ResearchKind.MechanicalEngineering] = (4, 2),
+            [ResearchKind.EfficientSmelting] = (6, 2),
             [ResearchKind.Electrification] = (7, 2),
-            [ResearchKind.Toolmaking] = (4, 3), [ResearchKind.EnergyRecycling] = (7, 3),
-            [ResearchKind.SignalNetwork] = (8, 3), [ResearchKind.Automation] = (9, 3),
+            [ResearchKind.Toolmaking] = (4, 3),
+            [ResearchKind.EnergyRecycling] = (7, 3),
+            [ResearchKind.SignalNetwork] = (8, 3),
+            [ResearchKind.Automation] = (9, 3),
             [ResearchKind.RailTransport] = (10, 3),
-            [ResearchKind.Aviation] = (8, 4), [ResearchKind.AdvancedComputing] = (9, 4),
+            [ResearchKind.Aviation] = (8, 4),
+            [ResearchKind.AdvancedComputing] = (9, 4),
             [ResearchKind.Observation] = (10, 4),
-            [ResearchKind.Ballistics] = (11, 3), [ResearchKind.ProtectiveEquipment] = (12, 4),
-            [ResearchKind.ArcaneArts] = (5, 0), [ResearchKind.ManaAttunement] = (4, 1),
+            [ResearchKind.Ballistics] = (11, 3),
+            [ResearchKind.ProtectiveEquipment] = (12, 4),
+            [ResearchKind.ArcaneArts] = (5, 0),
+            [ResearchKind.ManaAttunement] = (4, 1),
             [ResearchKind.Crystalcraft] = (6, 1),
-            [ResearchKind.Restoration] = (4, 2), [ResearchKind.ArcaneScholarship] = (6, 2),
+            [ResearchKind.Restoration] = (4, 2),
+            [ResearchKind.ArcaneScholarship] = (6, 2),
             [ResearchKind.RunicEngineering] = (8, 2),
-            [ResearchKind.Alchemy] = (6, 3), [ResearchKind.NatureBinding] = (4, 3), [ResearchKind.Leylines] = (8, 3),
+            [ResearchKind.Alchemy] = (6, 3),
+            [ResearchKind.NatureBinding] = (4, 3),
+            [ResearchKind.Leylines] = (8, 3),
             [ResearchKind.AetherMastery] = (9, 3),
-            [ResearchKind.Elementalism] = (10, 2), [ResearchKind.Warding] = (11, 3),
-            [ResearchKind.BattleMagic] = (10, 4), [ResearchKind.SpatialMagic] = (8, 4),
+            [ResearchKind.Elementalism] = (10, 2),
+            [ResearchKind.Warding] = (11, 3),
+            [ResearchKind.BattleMagic] = (10, 4),
+            [ResearchKind.SpatialMagic] = (8, 4),
         };
 
     /// <summary>为非空的研究定义集合计算稳定分支布局及集合内的前置连线。</summary>
@@ -100,10 +117,13 @@ public sealed class ResearchTreeLayout
 
     /// <summary>各研究节点在未缩放画布中的矩形。</summary>
     public IReadOnlyDictionary<ResearchKind, Rect> Nodes { get; }
+
     /// <summary>当前布局内研究节点之间的前置连接折线。</summary>
     public IReadOnlyList<ResearchTreeEdge> Edges { get; }
+
     /// <summary>当前布局的分支标题及横向背景范围。</summary>
     public IReadOnlyList<ResearchTreeLane> Lanes { get; }
+
     /// <summary>容纳节点和留白所需的未缩放画布尺寸。</summary>
     public Size Size { get; }
 }

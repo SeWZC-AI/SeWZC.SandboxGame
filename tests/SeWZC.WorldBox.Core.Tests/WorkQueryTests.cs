@@ -19,9 +19,20 @@ internal static class WorkQueryTests
 
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false, Construction = false,
-            Research = false, Expansion = false, Trade = false, Wars = false, Alliances = false,
-            Peace = false, Migration = false, Secession = false,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Trade = false,
+            Wars = false,
+            Alliances = false,
+            Peace = false,
+            Migration = false,
+            Secession = false,
         }, false, false);
         engine.SpawnResidents(16, 32, RaceKind.Human, 6);
         TestLand.ClaimAllTowns(engine);
@@ -44,8 +55,12 @@ internal static class WorkQueryTests
         resident.Inventory.Food = 2;
         resident.Agent.Goal = new AgentGoal
         {
-            Kind = goal, TargetX = x, TargetY = y,
-            PlayerDirected = true, ReviewTick = 1_000, Reason = "A held work-query fixture",
+            Kind = goal,
+            TargetX = x,
+            TargetY = y,
+            PlayerDirected = true,
+            ReviewTick = 1_000,
+            Reason = "A held work-query fixture",
         };
     }
 
@@ -53,8 +68,14 @@ internal static class WorkQueryTests
     {
         return new Building
         {
-            Id = engine.State.NextId++, SettlementId = town.Id, Kind = kind, X = x, Y = y,
-            ConstructionRequired = 30, ConstructionProgress = 30, WorkSlots = 3,
+            Id = engine.State.NextId++,
+            SettlementId = town.Id,
+            Kind = kind,
+            X = x,
+            Y = y,
+            ConstructionRequired = 30,
+            ConstructionProgress = 30,
+            WorkSlots = 3,
         };
     }
 

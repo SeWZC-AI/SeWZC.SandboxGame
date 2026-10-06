@@ -94,14 +94,23 @@ public sealed partial class MainView
         };
         var shape = new Path
         {
-            Data = Geometry.Parse(path), Stroke = Mint, StrokeThickness = 1.8,
-            Width = 14, Height = 14, Stretch = Stretch.Uniform,
+            Data = Geometry.Parse(path),
+            Stroke = Mint,
+            StrokeThickness = 1.8,
+            Width = 14,
+            Height = 14,
+            Stretch = Stretch.Uniform,
         };
         var button = Named(new Button
         {
-            Content = shape, Width = 30, Height = 30, MinHeight = 30, Padding = new Thickness(7),
+            Content = shape,
+            Width = 30,
+            Height = 30,
+            MinHeight = 30,
+            Padding = new Thickness(7),
             Margin = new Thickness(2, 0),
-            HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center,
         }, id);
         AutomationProperties.SetName(button, label);
         ToolTip.SetTip(button, label);
@@ -119,8 +128,10 @@ public sealed partial class MainView
             entries.Add(new EntityChoice(selected, $"历史记录 #{selected}（已不存在）"));
         var picker = Named(new ComboBox
         {
-            ItemsSource = entries, SelectedItem = entries.FirstOrDefault(e => e.Id == selected),
-            HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 36,
+            ItemsSource = entries,
+            SelectedItem = entries.FirstOrDefault(e => e.Id == selected),
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            MinHeight = 36,
         }, id);
         panel.Children.Add(picker);
         return picker;
@@ -148,11 +159,15 @@ public sealed partial class MainView
             : label.Contains("日序") ? _engine.State.Tick : 1_000_000);
         var box = Named(new NumericUpDown
         {
-            Minimum = impact ? -1 : 0, Maximum = (decimal)maximum,
+            Minimum = impact ? -1 : 0,
+            Maximum = (decimal)maximum,
             Increment = ratio || impact ? .05m : integer ? 1 : .1m,
-            Value = (decimal)value, Tag = value, FormatString = integer ? "0" : "0.##",
+            Value = (decimal)value,
+            Tag = value,
+            FormatString = integer ? "0" : "0.##",
             NumberFormat = CultureInfo.InvariantCulture.NumberFormat,
-            HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 36,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            MinHeight = 36,
         }, id);
         panel.Children.Add(box);
         return box;

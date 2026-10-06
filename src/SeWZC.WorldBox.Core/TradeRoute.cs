@@ -5,12 +5,16 @@ public sealed class TradeRoute
 {
     /// <summary>粮食运输记录的出发聚落 ID。</summary>
     public int FromSettlementId { get; set; }
+
     /// <summary>粮食运输记录的目的聚落 ID。</summary>
     public int ToSettlementId { get; set; }
+
     /// <summary>记录中的全程运输模拟日数。</summary>
     public int TravelTicks { get; set; }
+
     /// <summary>记录中的剩余运输模拟日数。</summary>
     public int RemainingTicks { get; set; }
+
     /// <summary>记录中的粮食货物数量。</summary>
     public double FoodCargo { get; set; }
 }

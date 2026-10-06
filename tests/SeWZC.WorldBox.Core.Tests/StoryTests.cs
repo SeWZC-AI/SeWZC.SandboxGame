@@ -36,8 +36,16 @@ internal static class StoryTests
         if (twoNations) engine.SpawnResidents(42, 24, RaceKind.Elf, 24);
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
-            Construction = false, Research = false, Expansion = false, Wars = false, Migration = false,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Wars = false,
+            Migration = false,
             Secession = false,
         }, false, false);
         foreach (var person in engine.State.Residents)
@@ -49,7 +57,11 @@ internal static class StoryTests
             person.Y = person.FromY = town.Y;
             person.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Rest, TargetX = town.X, TargetY = town.Y, PlayerDirected = true, ReviewTick = 3000,
+                Kind = AgentGoalKind.Rest,
+                TargetX = town.X,
+                TargetY = town.Y,
+                PlayerDirected = true,
+                ReviewTick = 3000,
             };
         }
 
@@ -178,9 +190,15 @@ internal static class StoryTests
         var commander = engine.State.Residents.Single(r => r.Id == army.CommanderId);
         var order = new AgentFact
         {
-            Id = engine.State.NextId++, Kind = AgentFactKind.WarOrder,
-            SubjectId = army.TargetNationId, TargetNationId = army.NationId, X = army.TargetX, Y = army.TargetY,
-            ObservedTick = engine.State.Tick, LearnedTick = engine.State.Tick, OriginResidentId = commander.Id,
+            Id = engine.State.NextId++,
+            Kind = AgentFactKind.WarOrder,
+            SubjectId = army.TargetNationId,
+            TargetNationId = army.NationId,
+            X = army.TargetX,
+            Y = army.TargetY,
+            ObservedTick = engine.State.Tick,
+            LearnedTick = engine.State.Tick,
+            OriginResidentId = commander.Id,
             SourceResidentId = commander.Id,
         };
         commander.Agent.Memory.Add(order);
@@ -305,8 +323,13 @@ internal static class StoryTests
     {
         var entries = Enumerable.Range(1, 4).Select(i => new WorldEvent
         {
-            Id = i, Tick = i * 10, Kind = WorldEventKind.Trade,
-            Action = EventAction.Delivery, SettlementId = 4, ResidentId = 5, NationId = 6,
+            Id = i,
+            Tick = i * 10,
+            Kind = WorldEventKind.Trade,
+            Action = EventAction.Delivery,
+            SettlementId = 4,
+            ResidentId = 5,
+            NationId = 6,
         }).ToList();
         entries[2].SettlementId = 7;
         entries[3].Importance = EventImportance.Major;

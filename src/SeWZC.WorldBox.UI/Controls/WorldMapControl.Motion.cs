@@ -74,6 +74,7 @@ public sealed partial class WorldMapControl
 
     /// <summary>当前选中的居民 ID，空值表示未选中居民。</summary>
     public int? SelectedResidentId { get; private set; }
+
     /// <summary>当前选中的建筑 ID，空值表示未选中建筑。</summary>
     public int? SelectedBuildingId { get; private set; }
 
@@ -99,6 +100,7 @@ public sealed partial class WorldMapControl
 
     /// <summary>通过地图交互选中居民时发出其 ID。</summary>
     public event Action<int>? ResidentSelected;
+
     /// <summary>通过地图交互选中建筑时发出其 ID。</summary>
     public event Action<int>? BuildingSelected;
 
@@ -257,8 +259,11 @@ public sealed partial class WorldMapControl
             if (!_motionAttached || IsSimulationPaused) return;
             var frameTime = PresentationTime;
             // 总览保留 15 Hz；五倍近景合并为 20 Hz，给真实模拟步留下绘制预算。
-            var cadence = _zoom < 1 ? 1d / 15 : _zoom >= 3 && SimulationTickDurationSeconds <= .040001
-                ? 1d / 20 : 1d / 30;
+            var cadence = _zoom < 1
+                ? 1d / 15
+                : _zoom >= 3 && SimulationTickDurationSeconds <= .040001
+                    ? 1d / 20
+                    : 1d / 30;
             if (frameTime - _lastAnimatedFrameTime >= cadence)
             {
                 _lastAnimatedFrameTime = frameTime;

@@ -15,8 +15,8 @@ public sealed partial class MainView
     private bool IsEditingText()
     {
         return TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is TextBox
-               || TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is Control control &&
-               control.GetVisualAncestors().Any(c => c is TextBox);
+               || (TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is Control control &&
+                   control.GetVisualAncestors().Any(c => c is TextBox));
     }
 
     private void BindSearch(TextBox input, Action<string> changed)

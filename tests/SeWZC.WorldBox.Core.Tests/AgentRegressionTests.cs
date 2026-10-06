@@ -247,9 +247,17 @@ internal static class AgentRegressionTests
     {
         return new AgentFact
         {
-            Id = engine.State.NextId++, Kind = kind, SubjectId = enemyId, TargetNationId = commander.NationId,
-            X = commander.X, Y = commander.Y, ObservedTick = engine.State.Tick, LearnedTick = engine.State.Tick,
-            OriginResidentId = commander.Id, SourceResidentId = commander.Id, OriginProfession = commander.Profession,
+            Id = engine.State.NextId++,
+            Kind = kind,
+            SubjectId = enemyId,
+            TargetNationId = commander.NationId,
+            X = commander.X,
+            Y = commander.Y,
+            ObservedTick = engine.State.Tick,
+            LearnedTick = engine.State.Tick,
+            OriginResidentId = commander.Id,
+            SourceResidentId = commander.Id,
+            OriginProfession = commander.Profession,
         };
     }
 
@@ -285,8 +293,10 @@ internal static class AgentRegressionTests
                     "The miner skipped the remaining local deposit before mining the adjacent mountain.");
             }
             else
+            {
                 Check(mountain.ResourceAmount < 100,
                     "An exhausted work site prevented mining the stocked adjacent mountain.");
+            }
 
             engine.Step(5);
             var carried = miner.Inventory.Stone + miner.Inventory.Ore;
@@ -308,9 +318,20 @@ internal static class AgentRegressionTests
 
         engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
-            Construction = false, Research = false, Expansion = false, Trade = false, Wars = false,
-            Alliances = false, Peace = false, Migration = false, Secession = false,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Trade = false,
+            Wars = false,
+            Alliances = false,
+            Peace = false,
+            Migration = false,
+            Secession = false,
         }, false, false);
         return engine;
     }
@@ -323,8 +344,11 @@ internal static class AgentRegressionTests
         person.Y = person.FromY = y;
         person.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Rest, TargetX = x, TargetY = y,
-            PlayerDirected = true, ReviewTick = 10000,
+            Kind = AgentGoalKind.Rest,
+            TargetX = x,
+            TargetY = y,
+            PlayerDirected = true,
+            ReviewTick = 10000,
         };
     }
 

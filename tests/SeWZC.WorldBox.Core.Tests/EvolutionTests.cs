@@ -40,9 +40,18 @@ internal static class EvolutionTests
     {
         return new AgentFact
         {
-            Id = engine.State.NextId++, Kind = kind, SubjectId = subject, X = x, Y = y, Value = value,
-            ObservedTick = engine.State.Tick, LearnedTick = engine.State.Tick, OriginResidentId = source,
-            SourceResidentId = source, OriginProfession = Profession.Messenger, Text = "实际送达的测试报告",
+            Id = engine.State.NextId++,
+            Kind = kind,
+            SubjectId = subject,
+            X = x,
+            Y = y,
+            Value = value,
+            ObservedTick = engine.State.Tick,
+            LearnedTick = engine.State.Tick,
+            OriginResidentId = source,
+            SourceResidentId = source,
+            OriginProfession = Profession.Messenger,
+            Text = "实际送达的测试报告",
         };
     }
 
@@ -51,8 +60,14 @@ internal static class EvolutionTests
         var engine = Flat();
         var rules = WorldRules.For(WorldPreset.Flourishing) with
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false, Construction = false,
-            Research = false, Trade = false,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Trade = false,
         };
         engine.ConfigureWorld(rules, false, false);
         var before = engine.ExportJson();
@@ -134,7 +149,11 @@ internal static class EvolutionTests
             resident.Inventory.Food = 100;
             resident.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Rest, TargetX = town.X, TargetY = town.Y, PlayerDirected = true, ReviewTick = 1000,
+                Kind = AgentGoalKind.Rest,
+                TargetX = town.X,
+                TargetY = town.Y,
+                PlayerDirected = true,
+                ReviewTick = 1000,
             };
         }
 
@@ -163,15 +182,24 @@ internal static class EvolutionTests
         engine.ConfigureWorld(
             new WorldRules
             {
-                Births = false, Aging = false, Hunger = false, Thirst = false, Construction = false, Research = false,
-                Expansion = false, Conflict = 3,
+                Births = false,
+                Aging = false,
+                Hunger = false,
+                Thirst = false,
+                Construction = false,
+                Research = false,
+                Expansion = false,
+                Conflict = 3,
             }, false, false);
         foreach (var resident in engine.State.Residents)
         {
             resident.Age = 24;
             resident.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Rest, TargetX = resident.X, TargetY = resident.Y, PlayerDirected = true,
+                Kind = AgentGoalKind.Rest,
+                TargetX = resident.X,
+                TargetY = resident.Y,
+                PlayerDirected = true,
                 ReviewTick = 3000,
             };
         }
@@ -207,13 +235,22 @@ internal static class EvolutionTests
         engine.ConfigureWorld(
             new WorldRules
             {
-                Births = false, Aging = false, Hunger = false, Thirst = false, Construction = false, Research = false,
-                Expansion = false, Wars = false,
+                Births = false,
+                Aging = false,
+                Hunger = false,
+                Thirst = false,
+                Construction = false,
+                Research = false,
+                Expansion = false,
+                Wars = false,
             }, false, false);
         foreach (var resident in engine.State.Residents)
             resident.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Rest, TargetX = resident.X, TargetY = resident.Y, PlayerDirected = true,
+                Kind = AgentGoalKind.Rest,
+                TargetX = resident.X,
+                TargetY = resident.Y,
+                PlayerDirected = true,
                 ReviewTick = 3000,
             };
         var a = engine.State.Settlements[0];
@@ -243,7 +280,10 @@ internal static class EvolutionTests
         carrier.FromY = a.Y;
         carrier.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.DeliverMessage, TargetSettlementId = b.Id, TargetX = b.X, TargetY = b.Y,
+            Kind = AgentGoalKind.DeliverMessage,
+            TargetSettlementId = b.Id,
+            TargetX = b.X,
+            TargetY = b.Y,
             StartedTick = engine.State.Tick,
         };
         carrier.Agent.Memory.Add(Fact(engine, AgentFactKind.SettlementLocation, b.Id, b.X, b.Y, b.NationId,
@@ -267,7 +307,14 @@ internal static class EvolutionTests
         var a = engine.State.Settlements[0];
         var b = engine.State.Settlements[1];
         engine.ConfigureWorld(
-            new WorldRules { Births = false, Wars = false, Expansion = false, Construction = false, Research = false },
+            new WorldRules
+            {
+                Births = false,
+                Wars = false,
+                Expansion = false,
+                Construction = false,
+                Research = false,
+            },
             false, false);
         b.Resources.Food = 1000;
         var person = engine.State.Residents[0];
@@ -275,7 +322,11 @@ internal static class EvolutionTests
         person.Inventory.Food = 50;
         person.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Migrate, TargetX = b.X, TargetY = b.Y, TargetSettlementId = b.Id, ReviewTick = 360,
+            Kind = AgentGoalKind.Migrate,
+            TargetX = b.X,
+            TargetY = b.Y,
+            TargetSettlementId = b.Id,
+            ReviewTick = 360,
             Reason = "已收到目标粮情，步行迁居",
         };
         person.Agent.NextThinkTick = 300;

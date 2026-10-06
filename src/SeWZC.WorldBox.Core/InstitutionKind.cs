@@ -5,8 +5,10 @@ public enum InstitutionKind
 {
     /// <summary>议事会。</summary>
     Council,
+
     /// <summary>君主制。</summary>
     Monarchy,
+
     /// <summary>行会议会。</summary>
     GuildCouncil,
 }

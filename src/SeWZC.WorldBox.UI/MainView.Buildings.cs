@@ -105,9 +105,12 @@ public sealed partial class MainView
         if (building.Kind == BuildingKind.Bridge)
             actions.Children.Add(Named(Button("改造桥梁方向", () => ShowBuildingUpgrade(id, true)), "building-reorient"));
         if (!building.IsCompleted)
+        {
             actions.Children.Add(Named(
                 Button("赐予完工", () => RunEdit(() => _engine.RestoreBuilding(id, true), "已赐予完工；运营仍需实际条件")),
                 "building-finish"));
+        }
+
         if (building.Kind != BuildingKind.TownCenter)
         {
             var toggle = Named(Button(building.Enabled ? "停用建筑" : "恢复运营", () =>
@@ -132,8 +135,11 @@ public sealed partial class MainView
         LiveRows(condition, OnSiteWorkers, r => r.Id.ToString(),
             r => r.Name + "   " + ProfessionName(r.Profession) + "\n" + ResidentTask(r), r => OpenResident(r.Id));
         if (building.Kind != BuildingKind.TownCenter)
+        {
             panel.Children.Add(Named(Button("查看归属城镇信息", () => OpenSettlement(building.SettlementId)),
                 "building-town-info"));
+        }
+
         panel.Children.Add(Named(Button("查看所在土地", () => OpenTile(building.X, building.Y)), "building-ground"));
     }
 
@@ -200,12 +206,14 @@ public sealed partial class MainView
         BuildMapHighlights(panel);
         panel.Children.Add(Named(Button("收起面板查看地图", CloseInspector), "structures-map"));
         var towns = _engine.State.Settlements.OrderBy(t => t.Id).ToArray();
-        var townFilter = Named(new ComboBox
-        {
-            ItemsSource = new[] { "全部城镇" }.Concat(towns.Select(t => t.Name)).ToArray(),
-            SelectedIndex = Math.Max(0, Array.FindIndex(towns, t => t.Id == _structuresTownId) + 1),
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        }, "structures-town");
+        var townFilter =
+            Named(
+                new ComboBox
+                {
+                    ItemsSource = new[] { "全部城镇" }.Concat(towns.Select(t => t.Name)).ToArray(),
+                    SelectedIndex = Math.Max(0, Array.FindIndex(towns, t => t.Id == _structuresTownId) + 1),
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                }, "structures-town");
         townFilter.SelectionChanged += (_, _) =>
         {
             _structuresTownId = townFilter.SelectedIndex > 0 ? towns[townFilter.SelectedIndex - 1].Id : 0;
@@ -217,12 +225,15 @@ public sealed partial class MainView
         };
         panel.Children.Add(townFilter);
         var kinds = Enum.GetValues<BuildingKind>();
-        var kindFilter = Named(new ComboBox
-        {
-            ItemsSource = new[] { "全部建筑种类" }.Concat(kinds.Select(WorldEngine.BuildingName)).ToArray(),
-            SelectedIndex = _structuresBuildingKind is { } selectedKind ? Array.IndexOf(kinds, selectedKind) + 1 : 0,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        }, "structures-building-kind");
+        var kindFilter =
+            Named(
+                new ComboBox
+                {
+                    ItemsSource = new[] { "全部建筑种类" }.Concat(kinds.Select(WorldEngine.BuildingName)).ToArray(),
+                    SelectedIndex =
+                        _structuresBuildingKind is { } selectedKind ? Array.IndexOf(kinds, selectedKind) + 1 : 0,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                }, "structures-building-kind");
         kindFilter.SelectionChanged += (_, _) =>
         {
             _structuresBuildingKind = kindFilter.SelectedIndex > 0 ? kinds[kindFilter.SelectedIndex - 1] : null;
@@ -249,11 +260,13 @@ public sealed partial class MainView
             _map.RefreshWorld();
         };
         panel.Children.Add(showRoads);
-        var mode = Named(new ComboBox
-        {
-            ItemsSource = new[] { "建筑", "道路地块" }, SelectedIndex = _listRoads ? 1 : 0,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-        }, "structures-kind");
+        var mode = Named(
+            new ComboBox
+            {
+                ItemsSource = new[] { "建筑", "道路地块" },
+                SelectedIndex = _listRoads ? 1 : 0,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+            }, "structures-kind");
         mode.SelectionChanged += (_, _) =>
         {
             _listRoads = mode.SelectedIndex == 1;
@@ -384,9 +397,14 @@ public sealed partial class MainView
         {
             mind.Goal = new AgentGoal
             {
-                Kind = kind.Value, TargetX = town.X, TargetY = town.Y,
-                TargetSettlementId = town.Id, StartedTick = _engine.State.Tick, ReviewTick = _engine.State.Tick + 48,
-                PlayerDirected = true, Reason = kind == AgentGoalKind.Rest ? "玩家安排返回家园休息" : "玩家安排返回家园交付物资",
+                Kind = kind.Value,
+                TargetX = town.X,
+                TargetY = town.Y,
+                TargetSettlementId = town.Id,
+                StartedTick = _engine.State.Tick,
+                ReviewTick = _engine.State.Tick + 48,
+                PlayerDirected = true,
+                Reason = kind == AgentGoalKind.Rest ? "玩家安排返回家园休息" : "玩家安排返回家园交付物资",
             };
         }
         else

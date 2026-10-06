@@ -5,8 +5,10 @@ public enum ObservedObjectKind
 {
     /// <summary>国家。</summary>
     Nation,
+
     /// <summary>聚落。</summary>
     Settlement,
+
     /// <summary>居民。</summary>
     Resident,
 }

@@ -37,7 +37,9 @@ internal static class EditorAndMigrationTests
             [
                 new ResidentHistoryEntry
                 {
-                    Tick = engine.State.Tick, Text = "Recorded hardship", Experience = PersonalExperienceKind.Hardship,
+                    Tick = engine.State.Tick,
+                    Text = "Recorded hardship",
+                    Experience = PersonalExperienceKind.Hardship,
                     Impact = 1,
                 },
             ],
@@ -53,9 +55,16 @@ internal static class EditorAndMigrationTests
         var mind = JsonNode.Parse(engine.ExportResidentMind(actorId))!;
         mind["Memory"]!.AsArray().Add(new JsonObject
         {
-            ["Id"] = 0, ["Kind"] = (int)AgentFactKind.Personal, ["SubjectId"] = actorId,
-            ["X"] = actor.X, ["Y"] = actor.Y, ["Value"] = 0, ["ObservedTick"] = engine.State.Tick,
-            ["LearnedTick"] = engine.State.Tick, ["Confidence"] = 1, ["Text"] = "An edited personal observation",
+            ["Id"] = 0,
+            ["Kind"] = (int)AgentFactKind.Personal,
+            ["SubjectId"] = actorId,
+            ["X"] = actor.X,
+            ["Y"] = actor.Y,
+            ["Value"] = 0,
+            ["ObservedTick"] = engine.State.Tick,
+            ["LearnedTick"] = engine.State.Tick,
+            ["Confidence"] = 1,
+            ["Text"] = "An edited personal observation",
         });
         mind["Personality"]!["Courage"] = 0;
         mind["Personality"]!["Diligence"] = 0;
@@ -69,8 +78,13 @@ internal static class EditorAndMigrationTests
             "A new memory did not receive a persistent identity and provenance.");
         engine.EditResident(actorId, new ResidentEdit
         {
-            Age = 0, Health = 0, Hunger = 0, Mana = 0,
-            MagicTalent = 0, MagicTraining = 0, Inventory = new ResourceStock(),
+            Age = 0,
+            Health = 0,
+            Hunger = 0,
+            Mana = 0,
+            MagicTalent = 0,
+            MagicTraining = 0,
+            Inventory = new ResourceStock(),
         });
         var restored = WorldEngine.ImportJson(engine.ExportJson()).GetResident(actorId)!;
         Require(restored.Age == 0 && restored.Health == 0 && restored.Mana == 0 && restored.MagicTalent == 0
@@ -85,9 +99,14 @@ internal static class EditorAndMigrationTests
             var editedMind = JsonNode.Parse(missionWorld.ExportResidentMind(courier.Id))!;
             editedMind["Goal"] = new JsonObject
             {
-                ["Kind"] = (int)kind, ["TargetX"] = target.X, ["TargetY"] = target.Y,
-                ["TargetSettlementId"] = target.Id, ["StartedTick"] = missionWorld.State.Tick,
-                ["ReviewTick"] = 300, ["PlayerDirected"] = true, ["Reason"] = "A deliberate player instruction",
+                ["Kind"] = (int)kind,
+                ["TargetX"] = target.X,
+                ["TargetY"] = target.Y,
+                ["TargetSettlementId"] = target.Id,
+                ["StartedTick"] = missionWorld.State.Tick,
+                ["ReviewTick"] = 300,
+                ["PlayerDirected"] = true,
+                ["Reason"] = "A deliberate player instruction",
             };
             missionWorld.EditResidentMindJson(courier.Id, editedMind.ToJsonString());
             courier = missionWorld.GetResident(courier.Id)!;
@@ -121,8 +140,11 @@ internal static class EditorAndMigrationTests
             person.Inventory.Food = 20;
             person.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Rest, TargetX = origin.X + 2, TargetY = origin.Y,
-                ReviewTick = 1000, PlayerDirected = true,
+                Kind = AgentGoalKind.Rest,
+                TargetX = origin.X + 2,
+                TargetY = origin.Y,
+                ReviewTick = 1000,
+                PlayerDirected = true,
             };
         }
 
@@ -131,9 +153,17 @@ internal static class EditorAndMigrationTests
         var scout = engine.State.Residents[0];
         origin.PublicKnowledge.Add(new AgentFact
         {
-            Id = engine.State.NextId++, Kind = AgentFactKind.FoundingSite,
-            SubjectId = origin.Id, X = 42, Y = 24, Value = 80, ObservedTick = 0, LearnedTick = 0,
-            OriginResidentId = scout.Id, SourceResidentId = scout.Id, OriginProfession = scout.Profession,
+            Id = engine.State.NextId++,
+            Kind = AgentFactKind.FoundingSite,
+            SubjectId = origin.Id,
+            X = 42,
+            Y = 24,
+            Value = 80,
+            ObservedTick = 0,
+            LearnedTick = 0,
+            OriginResidentId = scout.Id,
+            SourceResidentId = scout.Id,
+            OriginProfession = scout.Profession,
             Text = "已实际递送的建村勘察报告",
         });
         engine.Step(118);

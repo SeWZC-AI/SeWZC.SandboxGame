@@ -101,8 +101,12 @@ public sealed partial class WorldEngine
         {
             person.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, TargetSettlementId = home.Id,
-                StartedTick = State.Tick, Reason = "亲自运回特殊设施的劳动产出",
+                Kind = AgentGoalKind.ReturnHome,
+                TargetX = home.X,
+                TargetY = home.Y,
+                TargetSettlementId = home.Id,
+                StartedTick = State.Tick,
+                Reason = "亲自运回特殊设施的劳动产出",
             };
             person.Agent.NextThinkTick = State.Tick + 24;
         }

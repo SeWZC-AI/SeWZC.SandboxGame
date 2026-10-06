@@ -51,7 +51,8 @@ public sealed partial class WorldEngine
                         Profession.Archivist => Facility(BuildingKind.Library),
                         Profession.Battlemage => Facility(BuildingKind.StormSpire),
                         Profession.Surveyor => Facility(BuildingKind.SurveyOffice),
-                        Profession.Gardener => Facility(BuildingKind.GroveSanctuary), _ => false,
+                        Profession.Gardener => Facility(BuildingKind.GroveSanctuary),
+                        _ => false,
                     })) continue;
                 var unlock = ResearchRules.Unlocking(job);
                 if (unlock is null || !HasResearch(town.Id, unlock.Kind) ||

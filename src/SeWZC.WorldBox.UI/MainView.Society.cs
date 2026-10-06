@@ -16,7 +16,12 @@ public sealed partial class MainView
 
     private static string InstitutionName(InstitutionKind value)
     {
-        return value switch { InstitutionKind.Council => "居民议事会", InstitutionKind.Monarchy => "君主制", _ => "行会议会" };
+        return value switch
+        {
+            InstitutionKind.Council => "居民议事会",
+            InstitutionKind.Monarchy => "君主制",
+            _ => "行会议会",
+        };
     }
 
     private static string SpellName(SpellKind value)
@@ -188,7 +193,9 @@ public sealed partial class MainView
             "settlement-context"));
         var tabs = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*,*"), ColumnSpacing = 4 };
         var entries = new[]
-            { ("概况", "settlement"), ("建设", "infrastructure"), ("研究", "research"), ("通信", "communication") };
+        {
+            ("概况", "settlement"), ("建设", "infrastructure"), ("研究", "research"), ("通信", "communication"),
+        };
         for (var i = 0; i < entries.Length; i++)
         {
             var (label, mode) = entries[i];
@@ -216,11 +223,14 @@ public sealed partial class MainView
         var selected = Math.Max(0, Array.FindIndex(towns, t => t.Id == _inspectorSettlementId));
         var town = towns[selected];
         _inspectorSettlementId = town.Id;
-        var picker = Named(new ComboBox
-        {
-            ItemsSource = towns.Select(t => $"{t.Name}\n{NationName(t.NationId)}").ToArray(),
-            SelectedIndex = selected, HorizontalAlignment = HorizontalAlignment.Stretch,
-        }, "infrastructure-town");
+        var picker =
+            Named(
+                new ComboBox
+                {
+                    ItemsSource = towns.Select(t => $"{t.Name}\n{NationName(t.NationId)}").ToArray(),
+                    SelectedIndex = selected,
+                    HorizontalAlignment = HorizontalAlignment.Stretch,
+                }, "infrastructure-town");
         picker.SelectionChanged += (_, _) =>
         {
             if (picker.SelectedIndex >= 0) OpenSettlement(towns[picker.SelectedIndex].Id, _inspectorMode);
@@ -441,15 +451,20 @@ public sealed partial class MainView
                 RunEdit(() =>
                 {
                     if (gift.IsChecked == true)
+                    {
                         _engine.GrantFacility(townId, (BuildingKind)type.SelectedItem!, xx, yy,
                             (BuildingKind)type.SelectedItem! == BuildingKind.Bridge
                                 ? (BridgeDirection?)direction.SelectedItem
                                 : null, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? Integer(level) : 1);
+                    }
                     else
+                    {
                         _engine.BuildFacility(townId, (BuildingKind)type.SelectedItem!, xx, yy,
                             (BuildingKind)type.SelectedItem! == BuildingKind.Bridge
                                 ? (BridgeDirection?)direction.SelectedItem
                                 : null, (BuildingKind)type.SelectedItem! == BuildingKind.Bridge ? Integer(level) : 1);
+                    }
+
                     CloseModal();
                 }, gift.IsChecked == true ? "设施已赐予；效果按各建筑的生效条件提供" : "设施已立项，继续模拟后居民会施工");
             }

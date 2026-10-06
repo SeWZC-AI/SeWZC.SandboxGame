@@ -43,7 +43,9 @@ public sealed partial class WorldEngine
     {
         return mode switch
         {
-            TravelMode.Aircraft => "航空运输", TravelMode.Boat => "舟船运输（水上航行／陆地搬运）", _ => "步行",
+            TravelMode.Aircraft => "航空运输",
+            TravelMode.Boat => "舟船运输（水上航行／陆地搬运）",
+            _ => "步行",
         };
     }
 }

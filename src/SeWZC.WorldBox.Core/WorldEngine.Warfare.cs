@@ -32,12 +32,20 @@ public sealed partial class WorldEngine
                 r.NationId == nationId && Distance(r.X, r.Y, capital.X, capital.Y) <= 4);
         var fact = new AgentFact
         {
-            Id = NewId(), EventId = eventId, CampaignEventId = eventId, WarObjective = objective,
+            Id = NewId(),
+            EventId = eventId,
+            CampaignEventId = eventId,
+            WarObjective = objective,
             Kind = status == DiplomaticStatus.War ? AgentFactKind.WarOrder : AgentFactKind.PeaceOrder,
-            SubjectId = enemyId, TargetNationId = nationId, X = knownX ?? enemyCapital.X, Y = knownY ?? enemyCapital.Y,
+            SubjectId = enemyId,
+            TargetNationId = nationId,
+            X = knownX ?? enemyCapital.X,
+            Y = knownY ?? enemyCapital.Y,
             Value = targetSettlementId > 0 ? targetSettlementId : knownX.HasValue ? 0 : enemyCapital.Id,
             ObservedTick = observedTick ?? State.Tick,
-            LearnedTick = State.Tick, OriginResidentId = witness?.Id ?? 0, SourceResidentId = witness?.Id ?? 0,
+            LearnedTick = State.Tick,
+            OriginResidentId = witness?.Id ?? 0,
+            SourceResidentId = witness?.Id ?? 0,
             Text = status == DiplomaticStatus.War ? "首都宣布开战，征召当地志愿者" : "首都宣布停止敌对，前线须等待消息送达",
         };
         var military = _nations[nationId].Military;
@@ -103,14 +111,26 @@ public sealed partial class WorldEngine
                 nation.Military.LastMobilizedOrderId = order.Id;
                 var army = new Army
                 {
-                    Id = NewId(), CampaignEventId = order.CampaignEventId, Objective = order.WarObjective,
-                    InitialSoldiers = count, StartedTick = State.Tick, NationId = nation.Id,
+                    Id = NewId(),
+                    CampaignEventId = order.CampaignEventId,
+                    Objective = order.WarObjective,
+                    InitialSoldiers = count,
+                    StartedTick = State.Tick,
+                    NationId = nation.Id,
                     TargetNationId = order.SubjectId,
-                    TargetX = order.X, TargetY = order.Y, TargetSettlementId = (int)order.Value,
-                    X = capital.X, Y = capital.Y, FromX = capital.X, FromY = capital.Y,
-                    Soldiers = count, Supplies = provisions, WaterSupplies = waterProvisions,
+                    TargetX = order.X,
+                    TargetY = order.Y,
+                    TargetSettlementId = (int)order.Value,
+                    X = capital.X,
+                    Y = capital.Y,
+                    FromX = capital.X,
+                    FromY = capital.Y,
+                    Soldiers = count,
+                    Supplies = provisions,
+                    WaterSupplies = waterProvisions,
                     CommanderId = recruits[0].Id,
-                    LastOrderTick = order.ObservedTick, LastOrderFactId = order.Id,
+                    LastOrderTick = order.ObservedTick,
+                    LastOrderFactId = order.Id,
                 };
                 State.Armies.Add(army);
                 foreach (var resident in recruits.Take(count))
@@ -120,7 +140,10 @@ public sealed partial class WorldEngine
                         resident.Profession = Profession.Soldier;
                     resident.Agent.Goal = new AgentGoal
                     {
-                        Kind = AgentGoalKind.March, TargetX = capital.X, TargetY = capital.Y, StartedTick = State.Tick,
+                        Kind = AgentGoalKind.March,
+                        TargetX = capital.X,
+                        TargetY = capital.Y,
+                        StartedTick = State.Tick,
                         Reason = "听到当地征召，步行前往集结点",
                     };
                     RememberAgentFact(resident, order);
@@ -290,10 +313,13 @@ public sealed partial class WorldEngine
                 army.Status = "交战";
                 RecordBattle(army, soldiers);
                 if (State.Tick % 3 == 0)
+                {
                     ApplyDamage(
                         State.Residents.Where(r =>
                             r.ArmyId == opponent.Id && r.Health > 0 && Distance(r.X, r.Y, army.X, army.Y) <= 3),
                         soldiers.Count(r => Distance(r.X, r.Y, army.X, army.Y) <= 2) * 5 * army.Morale / 100);
+                }
+
                 continue;
             }
 
@@ -455,11 +481,19 @@ public sealed partial class WorldEngine
             if (soldier.Profession is not (Profession.Ranger or Profession.Battlemage))
                 soldier.Profession = AssignProfession();
             if (_settlements.TryGetValue(soldier.SettlementId, out var home))
+            {
                 soldier.Agent.Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, TargetSettlementId = home.Id,
-                    StartedTick = State.Tick, ReviewTick = State.Tick + 200, PlayerDirected = true, Reason = "退伍后步行返回家园",
+                    Kind = AgentGoalKind.ReturnHome,
+                    TargetX = home.X,
+                    TargetY = home.Y,
+                    TargetSettlementId = home.Id,
+                    StartedTick = State.Tick,
+                    ReviewTick = State.Tick + 200,
+                    PlayerDirected = true,
+                    Reason = "退伍后步行返回家园",
                 };
+            }
         }
 
         State.Armies.Remove(army);

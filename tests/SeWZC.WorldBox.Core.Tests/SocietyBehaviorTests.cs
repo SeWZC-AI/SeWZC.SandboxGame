@@ -54,8 +54,12 @@ internal static class SocietyBehaviorTests
         worker.Profession = Profession.Builder;
         worker.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Work, TargetX = facility.X, TargetY = facility.Y,
-            StartedTick = engine.State.Tick, ReviewTick = engine.State.Tick + 100, PlayerDirected = true,
+            Kind = AgentGoalKind.Work,
+            TargetX = facility.X,
+            TargetY = facility.Y,
+            StartedTick = engine.State.Tick,
+            ReviewTick = engine.State.Tick + 100,
+            PlayerDirected = true,
         };
         while (!facility.IsCompleted)
         {
@@ -131,9 +135,18 @@ internal static class SocietyBehaviorTests
         {
             return new AgentFact
             {
-                Id = engine.State.NextId++, Kind = topic, SubjectId = town.Id, X = town.X, Y = town.Y, Value = severity,
-                OriginResidentId = originId, OriginProfession = originProfession, SourceResidentId = carrier.Id,
-                ObservedTick = engine.State.Tick, LearnedTick = engine.State.Tick, Text = "A delivered civic report",
+                Id = engine.State.NextId++,
+                Kind = topic,
+                SubjectId = town.Id,
+                X = town.X,
+                Y = town.Y,
+                Value = severity,
+                OriginResidentId = originId,
+                OriginProfession = originProfession,
+                SourceResidentId = carrier.Id,
+                ObservedTick = engine.State.Tick,
+                LearnedTick = engine.State.Tick,
+                Text = "A delivered civic report",
             };
         }
 
@@ -352,8 +365,12 @@ internal static class SocietyBehaviorTests
         // Equal priority used to send this worker to the adjacent farm instead of the selected workshop.
         worker.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Work, TargetX = workshop.X, TargetY = workshop.Y,
-            TargetEntityId = workshop.Id, StartedTick = engine.State.Tick, ReviewTick = engine.State.Tick + 100,
+            Kind = AgentGoalKind.Work,
+            TargetX = workshop.X,
+            TargetY = workshop.Y,
+            TargetEntityId = workshop.Id,
+            StartedTick = engine.State.Tick,
+            ReviewTick = engine.State.Tick + 100,
         };
         var before = worker.Inventory.Wood;
         Check(engine.TryWorkAtBuilding(worker) && worker.Inventory.Wood > before,
@@ -377,8 +394,12 @@ internal static class SocietyBehaviorTests
             Place(resident, town.X, town.Y);
             resident.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Rest, TargetX = town.X, TargetY = town.Y,
-                StartedTick = engine.State.Tick, ReviewTick = 100, PlayerDirected = true,
+                Kind = AgentGoalKind.Rest,
+                TargetX = town.X,
+                TargetY = town.Y,
+                StartedTick = engine.State.Tick,
+                ReviewTick = 100,
+                PlayerDirected = true,
             };
         }
 
@@ -405,8 +426,14 @@ internal static class SocietyBehaviorTests
         foreach (var person in engine.State.Residents)
             person.Agent.Memory.Add(new AgentFact
             {
-                Id = engine.State.NextId++, Kind = AgentFactKind.SettlementLocation, SubjectId = 999,
-                X = 20, Y = 20, Value = town.NationId, Confidence = 1, ObservedTick = engine.State.Tick,
+                Id = engine.State.NextId++,
+                Kind = AgentFactKind.SettlementLocation,
+                SubjectId = 999,
+                X = 20,
+                Y = 20,
+                Value = town.NationId,
+                Confidence = 1,
+                ObservedTick = engine.State.Tick,
                 LearnedTick = engine.State.Tick,
             });
         engine.State.Tick += 60;

@@ -25,12 +25,20 @@ public sealed partial class MainView : UserControl
     private readonly TextBlock _brandName = Text("SeWZC. WORLDBOX", 15, null, true);
 
     private readonly StackPanel _bridgeSettings = new()
-        { Orientation = Orientation.Horizontal, Spacing = 8, IsVisible = false };
+    {
+        Orientation = Orientation.Horizontal, Spacing = 8, IsVisible = false,
+    };
 
     private readonly ComboBox _brushPicker = new() { Width = 100, MinHeight = 36, FontSize = 11 };
 
     private readonly ComboBox _buildMode = new()
-        { Width = 132, MinHeight = 36, FontSize = 11, ItemsSource = new[] { "直接赐予", "居民施工" }, SelectedIndex = 0 };
+    {
+        Width = 132,
+        MinHeight = 36,
+        FontSize = 11,
+        ItemsSource = new[] { "直接赐予", "居民施工" },
+        SelectedIndex = 0,
+    };
 
     private readonly List<Button> _categoryButtons = [];
     private readonly Stopwatch _clock = Stopwatch.StartNew();
@@ -139,12 +147,18 @@ public sealed partial class MainView : UserControl
         _map.ToolError += message => SetStatus("工具未应用：" + message);
 
         var header = new Grid
-            { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Margin = new Thickness(8, 0) };
+        {
+            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Margin = new Thickness(8, 0),
+        };
         var brand = new StackPanel
-            { Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center };
+        {
+            Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center,
+        };
         var logo = new Grid
         {
-            Width = 28, Height = 28, ColumnDefinitions = new ColumnDefinitions("*,*"),
+            Width = 28,
+            Height = 28,
+            ColumnDefinitions = new ColumnDefinitions("*,*"),
             RowDefinitions = new RowDefinitions("*,*"),
         };
         var colors = new[] { "#B8E9BC", "#E4C889", "#558F88", "#88BBA0" };
@@ -164,7 +178,9 @@ public sealed partial class MainView : UserControl
         header.Children.Add(brand);
         var stats = new StackPanel
         {
-            Orientation = Orientation.Horizontal, Spacing = 10, HorizontalAlignment = HorizontalAlignment.Center,
+            Orientation = Orientation.Horizontal,
+            Spacing = 10,
+            HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
         };
         stats.Children.Add(_date);
@@ -173,7 +189,9 @@ public sealed partial class MainView : UserControl
         Grid.SetColumn(stats, 1);
         header.Children.Add(stats);
         var actions = new StackPanel
-            { Orientation = Orientation.Horizontal, Spacing = 7, VerticalAlignment = VerticalAlignment.Center };
+        {
+            Orientation = Orientation.Horizontal, Spacing = 7, VerticalAlignment = VerticalAlignment.Center,
+        };
         _headerActions = actions;
         actions.Children.Add(Button("新世界", ShowNewWorld, "创建一片新的大陆"));
         actions.Children.Add(Button("存档", ShowStorage, "保存、导出或导入世界"));
@@ -194,7 +212,9 @@ public sealed partial class MainView : UserControl
         mapLayer.Children.Add(_map);
         var camera = new StackPanel
         {
-            Spacing = 3, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top,
+            Spacing = 3,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Top,
             Margin = new Thickness(6),
         };
         camera.Children.Add(IconButton("plus", () => _map.ZoomIn(), "放大地图", "map-zoom-in"));
@@ -203,13 +223,17 @@ public sealed partial class MainView : UserControl
         mapLayer.Children.Add(camera);
         var bottom = new StackPanel
         {
-            Spacing = 4, VerticalAlignment = VerticalAlignment.Bottom, HorizontalAlignment = HorizontalAlignment.Center,
+            Spacing = 4,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            HorizontalAlignment = HorizontalAlignment.Center,
             Margin = new Thickness(6, 4),
         };
         var toolsPanel = new StackPanel { Spacing = 4 };
         var categories = new UniformGrid { Columns = 4, Rows = 1 };
         foreach (var (label, category) in new[]
-                     { ("山海", "terrain"), ("众生", "life"), ("天灾", "disaster"), ("建设", "build") })
+                 {
+                     ("山海", "terrain"), ("众生", "life"), ("天灾", "disaster"), ("建设", "build"),
+                 })
         {
             var categoryButton = Named(Button(label, () => SetCategory(category)), "tool-category-" + category);
             categoryButton.Tag = category;
@@ -235,7 +259,9 @@ public sealed partial class MainView : UserControl
             var slot = i;
             var swatch = new Border
             {
-                Width = 22, Height = 15, CornerRadius = new CornerRadius(3),
+                Width = 22,
+                Height = 15,
+                CornerRadius = new CornerRadius(3),
                 HorizontalAlignment = HorizontalAlignment.Center,
             };
             var label = Text("—", 10);
@@ -247,9 +273,14 @@ public sealed partial class MainView : UserControl
                 Named(
                     new Button
                     {
-                        Content = content, HorizontalAlignment = HorizontalAlignment.Stretch, Height = 44,
-                        Padding = new Thickness(3, 3), Margin = new Thickness(2), BorderThickness = new Thickness(1),
-                        CornerRadius = new CornerRadius(6), HorizontalContentAlignment = HorizontalAlignment.Center,
+                        Content = content,
+                        HorizontalAlignment = HorizontalAlignment.Stretch,
+                        Height = 44,
+                        Padding = new Thickness(3, 3),
+                        Margin = new Thickness(2),
+                        BorderThickness = new Thickness(1),
+                        CornerRadius = new CornerRadius(6),
+                        HorizontalContentAlignment = HorizontalAlignment.Center,
                     }, $"tool-slot-{i}");
             button.Click += (_, _) =>
             {
@@ -264,7 +295,9 @@ public sealed partial class MainView : UserControl
         toolsPanel.Children.Add(_toolChoices);
         var pagination = new StackPanel
         {
-            Orientation = Orientation.Horizontal, Spacing = 10, Height = 32,
+            Orientation = Orientation.Horizontal,
+            Spacing = 10,
+            Height = 32,
             HorizontalAlignment = HorizontalAlignment.Center,
         };
         _toolPrevious = Named(Button("上一页", () =>
@@ -282,7 +315,9 @@ public sealed partial class MainView : UserControl
         pagination.Children.Add(_toolNext);
         toolsPanel.Children.Add(pagination);
         var settings = new Grid
-            { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = 5, Height = 36 };
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = 5, Height = 36,
+        };
         Named(_toolContext, "tool-context");
         _toolContext.SelectionChanged += (_, _) => OnToolContextChanged();
         var hint = new StackPanel { Spacing = 2 };
@@ -302,7 +337,9 @@ public sealed partial class MainView : UserControl
             Named(
                 new ComboBox
                 {
-                    ItemsSource = new[] { "1 级：离岸 2 格", "2 级：离岸 4 格", "3 级：离岸 6 格" }, SelectedIndex = 0, Width = 165,
+                    ItemsSource = new[] { "1 级：离岸 2 格", "2 级：离岸 4 格", "3 级：离岸 6 格" },
+                    SelectedIndex = 0,
+                    Width = 165,
                 }, "bridge-level");
         bridgeDirection.SelectionChanged += (_, _) =>
         {
@@ -367,8 +404,11 @@ public sealed partial class MainView : UserControl
         };
         var eventButton = Named(new Button
         {
-            Content = _eventText, Padding = new Thickness(8, 3), MinHeight = 28,
-            HorizontalAlignment = HorizontalAlignment.Stretch, Background = Panel,
+            Content = _eventText,
+            Padding = new Thickness(8, 3),
+            MinHeight = 28,
+            HorizontalAlignment = HorizontalAlignment.Stretch,
+            Background = Panel,
         }, "event-spotlight");
         _eventText.TextTrimming = TextTrimming.CharacterEllipsis;
         eventButton.Click += (_, _) =>
@@ -380,7 +420,9 @@ public sealed partial class MainView : UserControl
         bottom.Children.Add(BuildSelectionBar());
         bottom.Children.Add(eventButton);
         var timeControls = new StackPanel
-            { Orientation = Orientation.Horizontal, Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center };
+        {
+            Orientation = Orientation.Horizontal, Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center,
+        };
         timeControls.Children.Add(Named(Button("工具", ToggleTools, "展开或收起地图工具", 48), "tools-toggle"));
         timeControls.Children.Add(Named(Button("漫游", SuspendTool, "停用当前工具并移动地图", 48), "tool-suspend"));
         _play = Named(Button("暂停", TogglePause, "空格：暂停或继续", 64), "time-toggle");
@@ -436,7 +478,9 @@ public sealed partial class MainView : UserControl
         footer.Children.Add(_version);
         var shell = new Grid { RowDefinitions = new RowDefinitions("48,*,22") };
         shell.Children.Add(new Border
-            { Child = header, BorderBrush = Line, BorderThickness = new Thickness(0, 0, 0, 1) });
+        {
+            Child = header, BorderBrush = Line, BorderThickness = new Thickness(0, 0, 0, 1),
+        });
         Grid.SetRow(_body, 1);
         shell.Children.Add(_body);
         Grid.SetRow(footer, 2);
@@ -945,7 +989,10 @@ public sealed partial class MainView : UserControl
         var seed = Named(
             new NumericUpDown
             {
-                Minimum = int.MinValue, Maximum = int.MaxValue, Increment = 1, Value = Random.Shared.Next(10000, 99999),
+                Minimum = int.MinValue,
+                Maximum = int.MaxValue,
+                Increment = 1,
+                Value = Random.Shared.Next(10000, 99999),
                 FormatString = "0",
             }, "world-seed");
         panel.Children.Add(seed);
@@ -953,7 +1000,8 @@ public sealed partial class MainView : UserControl
         var size = Named(
             new ComboBox
             {
-                ItemsSource = new[] { "小型世界（128 × 128）", "中型世界（256 × 256）" }, SelectedIndex = 1,
+                ItemsSource = new[] { "小型世界（128 × 128）", "中型世界（256 × 256）" },
+                SelectedIndex = 1,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             }, "world-size");
         panel.Children.Add(size);
@@ -1025,12 +1073,18 @@ public sealed partial class MainView : UserControl
         var palette = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
         var swatches = new List<(uint Color, Button Button)>();
         foreach (var argb in new[]
-                     { 0xFFE7AD62, 0xFF63CCA7, 0xFF8C9DEB, 0xFFE27A7C, 0xFFDFC16E, 0xFFB593DB, 0xFF74BBDC, 0xFFD294C8 })
+                 {
+                     0xFFE7AD62, 0xFF63CCA7, 0xFF8C9DEB, 0xFFE27A7C, 0xFFDFC16E, 0xFFB593DB, 0xFF74BBDC, 0xFFD294C8,
+                 })
         {
             var swatch = new Button
             {
-                Width = 34, Height = 34, MinHeight = 34, Padding = new Thickness(0),
-                Background = new SolidColorBrush(Color.FromUInt32(argb)), BorderThickness = new Thickness(2),
+                Width = 34,
+                Height = 34,
+                MinHeight = 34,
+                Padding = new Thickness(0),
+                Background = new SolidColorBrush(Color.FromUInt32(argb)),
+                BorderThickness = new Thickness(2),
                 BorderBrush = argb == color ? Brushes.White : Brushes.Transparent,
             };
             swatch.Click += (_, _) =>
@@ -1055,11 +1109,13 @@ public sealed partial class MainView : UserControl
                 }, "nation-technology");
         panel.Children.Add(technology);
         panel.Children.Add(Text("自主发展方向", 12, Muted));
-        var focus = Named(new ComboBox
-        {
-            ItemsSource = Enum.GetValues<DevelopmentFocus>().Select(WorldEngine.DevelopmentFocusName).ToArray(),
-            SelectedIndex = (int)nation.DevelopmentFocus, HorizontalAlignment = HorizontalAlignment.Stretch,
-        }, "nation-development-focus");
+        var focus = Named(
+            new ComboBox
+            {
+                ItemsSource = Enum.GetValues<DevelopmentFocus>().Select(WorldEngine.DevelopmentFocusName).ToArray(),
+                SelectedIndex = (int)nation.DevelopmentFocus,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+            }, "nation-development-focus");
         panel.Children.Add(focus);
         panel.Children.Add(Paragraph("科技优先工业与能源；法术传承依靠施法者与训练，不要求魔晶设施。魔法工艺与兼修路线才会自主建设魔晶生产链。"));
         var fields = new List<NumericUpDown>();
@@ -1075,14 +1131,16 @@ public sealed partial class MainView : UserControl
         var other = Named(
             new ComboBox
             {
-                ItemsSource = others.Select(n => n.Name).ToArray(), SelectedIndex = others.Count > 0 ? 0 : -1,
+                ItemsSource = others.Select(n => n.Name).ToArray(),
+                SelectedIndex = others.Count > 0 ? 0 : -1,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             }, "nation-diplomacy-target");
         var diplomacy =
             Named(
                 new ComboBox
                 {
-                    ItemsSource = new[] { "保持现有关系", "和平", "结盟", "宣战" }, SelectedIndex = 0,
+                    ItemsSource = new[] { "保持现有关系", "和平", "结盟", "宣战" },
+                    SelectedIndex = 0,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                 }, "nation-diplomacy");
         if (others.Count > 0)
@@ -1136,11 +1194,16 @@ public sealed partial class MainView : UserControl
                 _engine.SetNationColor(nationId, nextColor);
                 _engine.SetNationTechnology(nationId, nextTechnology);
                 if (diplomacyChoice > 0 && otherId > 0)
+                {
                     _engine.SetDiplomacy(nationId, otherId,
                         diplomacyChoice switch
                         {
-                            2 => DiplomaticStatus.Allied, 3 => DiplomaticStatus.War, _ => DiplomaticStatus.Neutral,
+                            2 => DiplomaticStatus.Allied,
+                            3 => DiplomaticStatus.War,
+                            _ => DiplomaticStatus.Neutral,
                         });
+                }
+
                 CloseModal();
                 _map.RefreshWorld();
                 RefreshUi(true);
@@ -1186,7 +1249,8 @@ public sealed partial class MainView : UserControl
             panel.Children.Add(Text("选择一处聚落独立建国", 12, Muted));
             var townPicker = new ComboBox
             {
-                ItemsSource = towns.Select(t => t.Name).ToArray(), SelectedIndex = 0,
+                ItemsSource = towns.Select(t => t.Name).ToArray(),
+                SelectedIndex = 0,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             };
             panel.Children.Add(townPicker);
@@ -1277,12 +1341,18 @@ public sealed partial class MainView : UserControl
         layout.Children.Add(scroll);
         _modal.Child = new Border
         {
-            Background = Panel, CornerRadius = new CornerRadius(8), BorderBrush = Line,
-            BorderThickness = new Thickness(1), Padding = new Thickness(12), Margin = new Thickness(14),
+            Background = Panel,
+            CornerRadius = new CornerRadius(8),
+            BorderBrush = Line,
+            BorderThickness = new Thickness(1),
+            Padding = new Thickness(12),
+            Margin = new Thickness(14),
             Width = Math.Min(520, Math.Max(280, Bounds.Width - 28)),
             Height = hasPrimary ? Math.Min(760, Math.Max(220, Bounds.Height - 28)) : double.NaN,
-            MaxHeight = Math.Max(220, Bounds.Height - 28), HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center, Child = layout,
+            MaxHeight = Math.Max(220, Bounds.Height - 28),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Child = layout,
         };
         _modalHasPrimary = hasPrimary;
         UpdateModalBounds();
@@ -1350,8 +1420,11 @@ public sealed partial class MainView : UserControl
     {
         return new TextBlock
         {
-            Text = DisplayFormat.Text(text), FontSize = size, Foreground = color ?? Brush.Parse("#E9EFEB"),
-            FontWeight = bold ? FontWeight.SemiBold : FontWeight.Normal, VerticalAlignment = VerticalAlignment.Center,
+            Text = DisplayFormat.Text(text),
+            FontSize = size,
+            Foreground = color ?? Brush.Parse("#E9EFEB"),
+            FontWeight = bold ? FontWeight.SemiBold : FontWeight.Normal,
+            VerticalAlignment = VerticalAlignment.Center,
         };
     }
 
@@ -1359,7 +1432,10 @@ public sealed partial class MainView : UserControl
     {
         return new TextBlock
         {
-            Text = DisplayFormat.Text(text), FontSize = 12, Foreground = Muted, TextWrapping = TextWrapping.Wrap,
+            Text = DisplayFormat.Text(text),
+            FontSize = 12,
+            Foreground = Muted,
+            TextWrapping = TextWrapping.Wrap,
             LineHeight = 16,
         };
     }
@@ -1368,19 +1444,36 @@ public sealed partial class MainView : UserControl
     {
         var button = new Button
         {
-            Content = label, MinWidth = minWidth, MinHeight = 30, FontSize = 12,
-            Padding = new Thickness(8, 3), Margin = new Thickness(2, 0), HorizontalAlignment = HorizontalAlignment.Left,
-            HorizontalContentAlignment = HorizontalAlignment.Center, VerticalContentAlignment = VerticalAlignment.Center,
+            Content = label,
+            MinWidth = minWidth,
+            MinHeight = 30,
+            FontSize = 12,
+            Padding = new Thickness(8, 3),
+            Margin = new Thickness(2, 0),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            HorizontalContentAlignment = HorizontalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center,
         };
         button.Click += (_, _) => action();
         if (tooltip is not null) ToolTip.SetTip(button, tooltip);
         var id = label switch
         {
-            "新世界" => "header-new-world", "存档" => "header-storage", "概览" => "header-overview", "+" => "map-zoom-in",
-            "-" => "map-zoom-out", "全图" => "map-fit",
-            "保存到本机" => "storage-save", "读取本机存档" => "storage-load", "导出世界文件" => "storage-export",
-            "导入世界文件" => "storage-import", "撤销本轮编辑" => "storage-undo", "撤销" => "world-undo",
-            "创造世界" => "world-create-apply", "应用变更" => "nation-apply", "编辑这个国家" => "nation-edit", _ => null,
+            "新世界" => "header-new-world",
+            "存档" => "header-storage",
+            "概览" => "header-overview",
+            "+" => "map-zoom-in",
+            "-" => "map-zoom-out",
+            "全图" => "map-fit",
+            "保存到本机" => "storage-save",
+            "读取本机存档" => "storage-load",
+            "导出世界文件" => "storage-export",
+            "导入世界文件" => "storage-import",
+            "撤销本轮编辑" => "storage-undo",
+            "撤销" => "world-undo",
+            "创造世界" => "world-create-apply",
+            "应用变更" => "nation-apply",
+            "编辑这个国家" => "nation-edit",
+            _ => null,
         };
         if (id is not null) Named(button, id);
         return button;
@@ -1396,7 +1489,9 @@ public sealed partial class MainView : UserControl
     private static Border Card(Control child)
     {
         return new Border
-            { Child = child, Background = Ink, CornerRadius = new CornerRadius(9), Padding = new Thickness(8) };
+        {
+            Child = child, Background = Ink, CornerRadius = new CornerRadius(9), Padding = new Thickness(8),
+        };
     }
 
     private static Border StatCard(string label, string value, string hint)
@@ -1410,21 +1505,42 @@ public sealed partial class MainView : UserControl
 
     private static string RaceName(RaceKind race)
     {
-        return race switch { RaceKind.Human => "人类", RaceKind.Elf => "精灵", RaceKind.Dwarf => "矮人", _ => "兽人" };
+        return race switch
+        {
+            RaceKind.Human => "人类",
+            RaceKind.Elf => "精灵",
+            RaceKind.Dwarf => "矮人",
+            _ => "兽人",
+        };
     }
 
     private static string TerrainName(TerrainType terrain)
     {
         return terrain switch
         {
-            TerrainType.DeepWater => "深海", TerrainType.Water => "浅海", TerrainType.Sand => "沙地",
-            TerrainType.Grass => "草地", TerrainType.Forest => "森林", TerrainType.Mountain => "山脉",
-            TerrainType.Snow => "雪原", TerrainType.Hills => "丘陵", TerrainType.Wetland => "湿地",
-            TerrainType.Desert => "荒漠", TerrainType.River => "河流", TerrainType.Lake => "湖泊",
-            TerrainType.DryFertile => "旱原", TerrainType.Stream => "小溪", TerrainType.LargeRiver => "江",
-            TerrainType.Meadow => "草甸", TerrainType.Woodland => "疏林", TerrainType.Rainforest => "雨林",
-            TerrainType.Savanna => "稀树草原", TerrainType.Scrub => "灌丛", TerrainType.Floodplain => "河漫滩",
-            TerrainType.AlpineMeadow => "高山草甸", _ => "苔原",
+            TerrainType.DeepWater => "深海",
+            TerrainType.Water => "浅海",
+            TerrainType.Sand => "沙地",
+            TerrainType.Grass => "草地",
+            TerrainType.Forest => "森林",
+            TerrainType.Mountain => "山脉",
+            TerrainType.Snow => "雪原",
+            TerrainType.Hills => "丘陵",
+            TerrainType.Wetland => "湿地",
+            TerrainType.Desert => "荒漠",
+            TerrainType.River => "河流",
+            TerrainType.Lake => "湖泊",
+            TerrainType.DryFertile => "旱原",
+            TerrainType.Stream => "小溪",
+            TerrainType.LargeRiver => "江",
+            TerrainType.Meadow => "草甸",
+            TerrainType.Woodland => "疏林",
+            TerrainType.Rainforest => "雨林",
+            TerrainType.Savanna => "稀树草原",
+            TerrainType.Scrub => "灌丛",
+            TerrainType.Floodplain => "河漫滩",
+            TerrainType.AlpineMeadow => "高山草甸",
+            _ => "苔原",
         };
     }
 
@@ -1437,11 +1553,18 @@ public sealed partial class MainView : UserControl
     {
         return activity switch
         {
-            ResidentActivity.Wandering => "探索土地", ResidentActivity.Working => "正在工作",
-            ResidentActivity.Hungry => "寻找食物", ResidentActivity.Marching => "正在行军", ResidentActivity.Sick => "正在养病",
-            ResidentActivity.Eating => "正在进食", ResidentActivity.Resting => "正在休息",
-            ResidentActivity.Talking => "交换消息", ResidentActivity.Delivering => "执行运输",
-            ResidentActivity.Studying => "正在学习", ResidentActivity.Casting => "正在施法", _ => "躲避危险",
+            ResidentActivity.Wandering => "探索土地",
+            ResidentActivity.Working => "正在工作",
+            ResidentActivity.Hungry => "寻找食物",
+            ResidentActivity.Marching => "正在行军",
+            ResidentActivity.Sick => "正在养病",
+            ResidentActivity.Eating => "正在进食",
+            ResidentActivity.Resting => "正在休息",
+            ResidentActivity.Talking => "交换消息",
+            ResidentActivity.Delivering => "执行运输",
+            ResidentActivity.Studying => "正在学习",
+            ResidentActivity.Casting => "正在施法",
+            _ => "躲避危险",
         };
     }
 }

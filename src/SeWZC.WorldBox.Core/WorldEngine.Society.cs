@@ -12,13 +12,37 @@ public sealed partial class WorldEngine
         {
             State.Society.Cultures.AddRange([
                 new CultureDefinition
-                    { Id = 1, Name = "河谷互助", Cooperation = 0.85, Innovation = 0.45, NatureAffinity = 0.65 },
+                {
+                    Id = 1,
+                    Name = "河谷互助",
+                    Cooperation = 0.85,
+                    Innovation = 0.45,
+                    NatureAffinity = 0.65,
+                },
                 new CultureDefinition
-                    { Id = 2, Name = "山地工艺", Cooperation = 0.55, Innovation = 0.85, NatureAffinity = 0.3 },
+                {
+                    Id = 2,
+                    Name = "山地工艺",
+                    Cooperation = 0.55,
+                    Innovation = 0.85,
+                    NatureAffinity = 0.3,
+                },
                 new CultureDefinition
-                    { Id = 3, Name = "林地共生", Cooperation = 0.65, Innovation = 0.5, NatureAffinity = 0.95 },
+                {
+                    Id = 3,
+                    Name = "林地共生",
+                    Cooperation = 0.65,
+                    Innovation = 0.5,
+                    NatureAffinity = 0.95,
+                },
                 new CultureDefinition
-                    { Id = 4, Name = "远行求知", Cooperation = 0.4, Innovation = 0.95, NatureAffinity = 0.45 },
+                {
+                    Id = 4,
+                    Name = "远行求知",
+                    Cooperation = 0.4,
+                    Innovation = 0.95,
+                    NatureAffinity = 0.45,
+                },
             ]);
         }
 
@@ -26,8 +50,11 @@ public sealed partial class WorldEngine
         {
             var capital = State.Settlements.FirstOrDefault(s => s.Id == nation.CapitalId);
             if (!State.Society.Cultures.Any(c => c.Id == nation.CultureId))
+            {
                 nation.CultureId =
                     capital is null ? State.Society.Cultures[0].Id : InitialCulture(capital.X, capital.Y);
+            }
+
             if (!State.Society.Institutions.Any(i => i.NationId == nation.Id))
                 State.Society.Institutions.Add(new NationInstitution { NationId = nation.Id });
         }
@@ -36,13 +63,18 @@ public sealed partial class WorldEngine
         foreach (var town in State.Settlements)
         {
             if (!State.Society.Cultures.Any(c => c.Id == town.CultureId))
+            {
                 town.CultureId = State.Nations.FirstOrDefault(n => n.Id == town.NationId)?.CultureId ??
                                  State.Society.Cultures[0].Id;
+            }
+
             if (!State.Society.Policies.Any(p => p.SettlementId == town.Id))
             {
                 var manual = State.Society.Institutions.FirstOrDefault(i => i.NationId == town.NationId)?.PlayerPolicy;
                 State.Society.Policies.Add(new LocalPolicy
-                    { SettlementId = town.Id, Kind = manual ?? PolicyKind.Balanced, PlayerOverride = manual.HasValue });
+                {
+                    SettlementId = town.Id, Kind = manual ?? PolicyKind.Balanced, PlayerOverride = manual.HasValue,
+                });
             }
 
             if (State.Society.Research.Any(r => r.SettlementId == town.Id)) continue;
@@ -61,7 +93,13 @@ public sealed partial class WorldEngine
             resident.CultureId = State.Settlements.FirstOrDefault(s => s.Id == resident.SettlementId)?.CultureId ??
                                  State.Society.Cultures[0].Id;
             var baseTalent =
-                resident.Race switch { RaceKind.Elf => 45, RaceKind.Dwarf => 23, RaceKind.Orc => 28, _ => 32 };
+                resident.Race switch
+                {
+                    RaceKind.Elf => 45,
+                    RaceKind.Dwarf => 23,
+                    RaceKind.Orc => 28,
+                    _ => 32,
+                };
             resident.MagicTalent = baseTalent + unchecked(((uint)resident.Id * 2654435761u) ^ (uint)State.Seed) % 36;
         }
 
@@ -74,8 +112,10 @@ public sealed partial class WorldEngine
     {
         var preferred = State.Tiles[Index(x, y)].Terrain switch
         {
-            TerrainType.Forest => 3, TerrainType.Hills or TerrainType.Snow or TerrainType.Tundra => 2,
-            TerrainType.Desert or TerrainType.Sand => 4, _ => 1,
+            TerrainType.Forest => 3,
+            TerrainType.Hills or TerrainType.Snow or TerrainType.Tundra => 2,
+            TerrainType.Desert or TerrainType.Sand => 4,
+            _ => 1,
         };
         return State.Society.Cultures.Any(c => c.Id == preferred) ? preferred : State.Society.Cultures[0].Id;
     }
@@ -88,8 +128,12 @@ public sealed partial class WorldEngine
         {
             var building = new Building
             {
-                Id = NewId(), SettlementId = town.Id, Kind = kind,
-                X = position % State.Width, Y = position / State.Width, ConstructionProgress = 30,
+                Id = NewId(),
+                SettlementId = town.Id,
+                Kind = kind,
+                X = position % State.Width,
+                Y = position / State.Width,
+                ConstructionProgress = 30,
                 ConstructionRequired = 30,
             };
             State.Society.Buildings.Add(building);
@@ -105,9 +149,13 @@ public sealed partial class WorldEngine
         {
             BuildingKind.TownCenter => new ResourceStock { Wood = 12, Stone = 3 },
             BuildingKind.AssemblyHall or BuildingKind.TradeGuild => new ResourceStock
-                { Food = 15, Wood = 30, Stone = 20 },
+            {
+                Food = 15, Wood = 30, Stone = 20,
+            },
             BuildingKind.SacredGrove or BuildingKind.HerbGarden => new ResourceStock
-                { Food = 20, Wood = 25, Stone = 15 },
+            {
+                Food = 20, Wood = 25, Stone = 15,
+            },
             BuildingKind.MiningHall => new ResourceStock { Wood = 20, Stone = 35, Ore = 8 },
             BuildingKind.HuntingCamp or BuildingKind.WarDrum => new ResourceStock { Food = 15, Wood = 25, Stone = 10 },
             BuildingKind.Farm => new ResourceStock { Wood = 12, Stone = 3 },
@@ -171,7 +219,11 @@ public sealed partial class WorldEngine
         if (!gift) Spend(town.Resources, FacilityCost(kind, bridgeLevel));
         var building = new Building
         {
-            Id = NewId(), SettlementId = settlementId, Kind = kind, X = x, Y = y,
+            Id = NewId(),
+            SettlementId = settlementId,
+            Kind = kind,
+            X = x,
+            Y = y,
             Level = kind == BuildingKind.Bridge ? bridgeLevel : 1,
             Direction = kind == BuildingKind.Bridge
                 ? direction ?? InferBridgeDirection(x, y)
@@ -252,7 +304,9 @@ public sealed partial class WorldEngine
         var start = AddEvent(WorldEventKind.Research, $"{town.Name}投入材料，开始研究{ResearchName(kind)}。", town.X, town.Y,
             EventAction.Started, town.Id);
         research.Observation = new ProjectObservation
-            { StartEventId = start.Id, DevelopmentRate = State.Rules.DevelopmentRate };
+        {
+            StartEventId = start.Id, DevelopmentRate = State.Rules.DevelopmentRate,
+        };
         ObserveProject(research.Observation, 0);
         RefreshTotals();
     }
@@ -582,10 +636,18 @@ public sealed partial class WorldEngine
                     GrantReceivedResearch(town.Id, completed, research.Observation.StartEventId);
                     var fact = new AgentFact
                     {
-                        Id = NewId(), EventId = research.LastCompletionEventId, Kind = AgentFactKind.Research,
-                        SubjectId = town.Id, X = town.X, Y = town.Y, Value = (int)completed,
-                        ObservedTick = State.Tick, LearnedTick = State.Tick, OriginResidentId = resident.Id,
-                        OriginProfession = resident.Profession, SourceResidentId = resident.Id,
+                        Id = NewId(),
+                        EventId = research.LastCompletionEventId,
+                        Kind = AgentFactKind.Research,
+                        SubjectId = town.Id,
+                        X = town.X,
+                        Y = town.Y,
+                        Value = (int)completed,
+                        ObservedTick = State.Tick,
+                        LearnedTick = State.Tick,
+                        OriginResidentId = resident.Id,
+                        OriginProfession = resident.Profession,
+                        SourceResidentId = resident.Id,
                         Text = $"{town.Name}已完成{ResearchName(completed)}研究",
                     };
                     AddPublicFact(town, fact);
@@ -658,9 +720,12 @@ public sealed partial class WorldEngine
         if (!InBounds(x, y)) return double.PositiveInfinity;
         var tile = State.Tiles[Index(x, y)];
         if (tile.Improvement == LandImprovement.MountainPass && tile.Terrain == TerrainType.Mountain)
+        {
             return race == RaceKind.Dwarf
                 ? Math.Min(2, 3.5 / (1 + Math.Max(0, tile.RoadLevel - 1) * .25))
                 : 3.5 / (1 + Math.Max(0, tile.RoadLevel - 1) * .25);
+        }
+
         if (tile.Improvement == LandImprovement.Bridge && tile.Terrain is TerrainType.River or TerrainType.Stream
                 or TerrainType.LargeRiver or TerrainType.Water
                 or TerrainType.Lake) return 1.2 / (1 + Math.Max(0, tile.BridgeLevel - 1) * .25);
@@ -875,11 +940,18 @@ public sealed partial class WorldEngine
         if (State.Society.Reports.Any(r => r.RecipientSettlementId == target.Id && r.FactId == fact.Id)) return;
         State.Society.Reports.Add(new InstitutionReport
         {
-            EventId = fact.EventId, RecipientSettlementId = target.Id, FactId = fact.Id,
+            EventId = fact.EventId,
+            RecipientSettlementId = target.Id,
+            FactId = fact.Id,
             OriginResidentId = fact.OriginResidentId,
-            RepresentativeId = carrier.Id, ReportedProfession = fact.OriginProfession, Topic = fact.Kind,
-            SubjectId = fact.SubjectId, Value = fact.Value,
-            Confidence = fact.Confidence, ObservedTick = fact.ObservedTick, ReceivedTick = State.Tick,
+            RepresentativeId = carrier.Id,
+            ReportedProfession = fact.OriginProfession,
+            Topic = fact.Kind,
+            SubjectId = fact.SubjectId,
+            Value = fact.Value,
+            Confidence = fact.Confidence,
+            ObservedTick = fact.ObservedTick,
+            ReceivedTick = State.Tick,
         });
         if (State.Society.Reports.Count > 2_048)
             State.Society.Reports.RemoveRange(0, State.Society.Reports.Count - 2_048);
@@ -910,7 +982,8 @@ public sealed partial class WorldEngine
             var policy = report.Topic switch
             {
                 AgentFactKind.FoodSupply or AgentFactKind.ReliefRequest => PolicyKind.FoodSecurity,
-                AgentFactKind.Danger => PolicyKind.Defense, AgentFactKind.Research => PolicyKind.Scholarship,
+                AgentFactKind.Danger => PolicyKind.Defense,
+                AgentFactKind.Research => PolicyKind.Scholarship,
                 _ => PolicyKind.PublicHealth,
             };
             var urgency = report.Topic == AgentFactKind.FoodSupply ? 100 - Math.Clamp(report.Value, 0, 100) :
@@ -960,11 +1033,18 @@ public sealed partial class WorldEngine
                 town.Y, EventAction.Policy, town.Id, causeEventId: strongest.EventId, evidenceFactId: strongest.FactId);
             AddPublicFact(town, new AgentFact
             {
-                Id = NewId(), EventId = policyEvent.Id, Kind = AgentFactKind.Policy, SubjectId = town.Id, X = town.X,
+                Id = NewId(),
+                EventId = policyEvent.Id,
+                Kind = AgentFactKind.Policy,
+                SubjectId = town.Id,
+                X = town.X,
                 Y = town.Y,
-                Value = (int)local.Kind, ObservedTick = State.Tick, LearnedTick = State.Tick,
+                Value = (int)local.Kind,
+                ObservedTick = State.Tick,
+                LearnedTick = State.Tick,
                 OriginResidentId = town.RepresentativeId,
-                OriginProfession = Profession.Representative, SourceResidentId = town.RepresentativeId,
+                OriginProfession = Profession.Representative,
+                SourceResidentId = town.RepresentativeId,
                 Text = local.Reason,
             });
         }
@@ -1190,15 +1270,19 @@ public sealed partial class WorldEngine
 
         EmitVisual(spell switch
         {
-            SpellKind.Heal => WorldVisualKind.Heal, SpellKind.HarvestBlessing => WorldVisualKind.Harvest,
+            SpellKind.Heal => WorldVisualKind.Heal,
+            SpellKind.HarvestBlessing => WorldVisualKind.Harvest,
             SpellKind.Shield or SpellKind.RuneWard => WorldVisualKind.Shield,
-            SpellKind.FrostBolt => WorldVisualKind.Frost, SpellKind.ChainLightning => WorldVisualKind.Lightning,
-            SpellKind.RainCall => WorldVisualKind.Rain, _ => WorldVisualKind.Ember,
+            SpellKind.FrostBolt => WorldVisualKind.Frost,
+            SpellKind.ChainLightning => WorldVisualKind.Lightning,
+            SpellKind.RainCall => WorldVisualKind.Rain,
+            _ => WorldVisualKind.Ember,
         }, x, y, 2, caster.X, caster.Y);
         var detail = SpellName(spell);
         caster.Agent.Decisions.Add(new AgentDecision
         {
-            Tick = State.Tick, Goal = spell == SpellKind.Ember ? AgentGoalKind.Flee : AgentGoalKind.Work,
+            Tick = State.Tick,
+            Goal = spell == SpellKind.Ember ? AgentGoalKind.Flee : AgentGoalKind.Work,
             Reason = $"在 {x},{y} 施放{detail}，消耗 {cost:0.#} 法力；天赋和训练决定效果",
         });
         if (caster.Agent.Decisions.Count > 6) caster.Agent.Decisions.RemoveAt(0);
@@ -1626,8 +1710,11 @@ public sealed partial class WorldEngine
         if (magic && HasResearch(town.Id, ResearchKind.ArcaneArts) &&
             !buildings.Any(b => b.Kind == BuildingKind.ArcaneSanctum)
             && FacilityNeeded(demand, BuildingKind.ArcaneSanctum))
+        {
             yield return new LocalDevelopmentPlan(BuildingKind.ArcaneSanctum, null,
                 GetBuildingCost(BuildingKind.ArcaneSanctum));
+        }
+
         var wanted = ResearchRules.All.Where(definition => definition.Shared || (definition.Magic
             ? magicalIndustry || (magic && definition.Kind is ResearchKind.ArcaneArts or ResearchKind.ManaAttunement
                 or ResearchKind.Restoration or ResearchKind.Elementalism or ResearchKind.NatureBinding)
@@ -1651,17 +1738,14 @@ public sealed partial class WorldEngine
         {
             (BuildingKind.Infirmary, GetLocalPolicy(town.Id) == PolicyKind.PublicHealth),
             (BuildingKind.ArcaneSanctum, magic && HasResearch(town.Id, ResearchKind.ArcaneArts)),
-            (BuildingKind.Waystation, HasResearch(town.Id, ResearchKind.Logistics)),
-            (BuildingKind.SignalTower,
+            (BuildingKind.Waystation, HasResearch(town.Id, ResearchKind.Logistics)), (BuildingKind.SignalTower,
                 technology && HasResearch(town.Id, ResearchKind.SignalNetwork) &&
                 HasResearch(town.Id, ResearchKind.Electrification)),
             (BuildingKind.Dock, HasResearch(town.Id, ResearchKind.Logistics)),
             (BuildingKind.Shipyard, HasResearch(town.Id, ResearchKind.Logistics)),
-            (BuildingKind.LumberCamp, town.Population >= 24),
-            (BuildingKind.Quarry, town.Population >= 24),
+            (BuildingKind.LumberCamp, town.Population >= 24), (BuildingKind.Quarry, town.Population >= 24),
             (BuildingKind.Well, town.Resources.Water < town.Population * 2),
-            (BuildingKind.Granary, town.Population >= 40),
-            (BuildingKind.Housing, town.Population >= 30),
+            (BuildingKind.Granary, town.Population >= 40), (BuildingKind.Housing, town.Population >= 30),
             (BuildingKind.Market, town.Tier >= SettlementTier.Town),
             (BuildingKind.Watchtower, town.Tier >= SettlementTier.Town),
         };
@@ -1879,20 +1963,44 @@ public sealed partial class WorldEngine
     {
         return kind switch
         {
-            BuildingKind.Pasture => "牧场", BuildingKind.Aquaculture => "水产养殖厂", BuildingKind.Shipyard => "船坞",
-            BuildingKind.Dock => "码头", BuildingKind.LumberCamp => "林场", BuildingKind.Quarry => "采石场",
-            BuildingKind.Well => "水井", BuildingKind.Granary => "粮仓", BuildingKind.Housing => "住宅",
-            BuildingKind.Market => "集市", BuildingKind.Watchtower => "瞭望塔", BuildingKind.TownCenter => "城镇中心",
-            BuildingKind.Farm => "农田", BuildingKind.Workshop => "工坊", BuildingKind.Academy => "学舍",
-            BuildingKind.Waystation => "驿站", BuildingKind.SignalTower => "无线信号塔", BuildingKind.Bridge => "桥梁",
-            BuildingKind.MountainPass => "山路", BuildingKind.ArcaneSanctum => "奥术研习所",
-            BuildingKind.Infirmary => "医馆", BuildingKind.AssemblyHall => "议事厅", BuildingKind.TradeGuild => "商贸公会",
-            BuildingKind.SacredGrove => "精灵圣林", BuildingKind.HerbGarden => "草药园",
-            BuildingKind.MiningHall => "矮人矿业工坊", BuildingKind.HuntingCamp => "兽人狩猎营", BuildingKind.WarDrum => "战鼓营",
-            BuildingKind.Reservoir => "蓄水站", BuildingKind.Hospital => "医院", BuildingKind.FireStation => "消防站",
-            BuildingKind.Library => "图书馆", BuildingKind.SurveyOffice => "勘测所", BuildingKind.Armory => "装备工坊",
-            BuildingKind.WardTower => "结界塔", BuildingKind.StormSpire => "风暴尖塔",
-            BuildingKind.GroveSanctuary => "共生林苑", BuildingKind.Waygate => "折跃门",
+            BuildingKind.Pasture => "牧场",
+            BuildingKind.Aquaculture => "水产养殖厂",
+            BuildingKind.Shipyard => "船坞",
+            BuildingKind.Dock => "码头",
+            BuildingKind.LumberCamp => "林场",
+            BuildingKind.Quarry => "采石场",
+            BuildingKind.Well => "水井",
+            BuildingKind.Granary => "粮仓",
+            BuildingKind.Housing => "住宅",
+            BuildingKind.Market => "集市",
+            BuildingKind.Watchtower => "瞭望塔",
+            BuildingKind.TownCenter => "城镇中心",
+            BuildingKind.Farm => "农田",
+            BuildingKind.Workshop => "工坊",
+            BuildingKind.Academy => "学舍",
+            BuildingKind.Waystation => "驿站",
+            BuildingKind.SignalTower => "无线信号塔",
+            BuildingKind.Bridge => "桥梁",
+            BuildingKind.MountainPass => "山路",
+            BuildingKind.ArcaneSanctum => "奥术研习所",
+            BuildingKind.Infirmary => "医馆",
+            BuildingKind.AssemblyHall => "议事厅",
+            BuildingKind.TradeGuild => "商贸公会",
+            BuildingKind.SacredGrove => "精灵圣林",
+            BuildingKind.HerbGarden => "草药园",
+            BuildingKind.MiningHall => "矮人矿业工坊",
+            BuildingKind.HuntingCamp => "兽人狩猎营",
+            BuildingKind.WarDrum => "战鼓营",
+            BuildingKind.Reservoir => "蓄水站",
+            BuildingKind.Hospital => "医院",
+            BuildingKind.FireStation => "消防站",
+            BuildingKind.Library => "图书馆",
+            BuildingKind.SurveyOffice => "勘测所",
+            BuildingKind.Armory => "装备工坊",
+            BuildingKind.WardTower => "结界塔",
+            BuildingKind.StormSpire => "风暴尖塔",
+            BuildingKind.GroveSanctuary => "共生林苑",
+            BuildingKind.Waygate => "折跃门",
             _ => AdvancementRules.For(kind)?.FacilityName ?? kind.ToString(),
         };
     }
@@ -1910,8 +2018,11 @@ public sealed partial class WorldEngine
     {
         return kind switch
         {
-            PolicyKind.FoodSecurity => "粮食保障", PolicyKind.Defense => "防务优先", PolicyKind.Scholarship => "求知兴学",
-            PolicyKind.PublicHealth => "公共医疗", _ => "均衡发展",
+            PolicyKind.FoodSecurity => "粮食保障",
+            PolicyKind.Defense => "防务优先",
+            PolicyKind.Scholarship => "求知兴学",
+            PolicyKind.PublicHealth => "公共医疗",
+            _ => "均衡发展",
         };
     }
 

@@ -186,8 +186,10 @@ public sealed partial class WorldEngine
             tile.NaturalWaterYield = tile.Rainfall;
             return race switch
             {
-                RaceKind.Elf => TerrainType.Forest, RaceKind.Dwarf => TerrainType.AlpineMeadow,
-                RaceKind.Orc => TerrainType.Savanna, _ => TerrainType.Meadow,
+                RaceKind.Elf => TerrainType.Forest,
+                RaceKind.Dwarf => TerrainType.AlpineMeadow,
+                RaceKind.Orc => TerrainType.Savanna,
+                _ => TerrainType.Meadow,
             };
         }
 
@@ -195,13 +197,19 @@ public sealed partial class WorldEngine
         if (tile.Elevation > 197) return TerrainType.Snow;
         if (tile.Elevation > 180) return TerrainType.Mountain;
         if (tile.Elevation > 149)
+        {
             return tile.Fertility >= 55 && tile.NaturalWaterYield >= .032
                 ? TerrainType.AlpineMeadow
                 : TerrainType.Hills;
+        }
+
         if (Math.Abs((y + .5) / State.Height * 2 - 1) > .72) return TerrainType.Tundra;
         if (tile.NaturalWaterYield < .016)
+        {
             return tile.Fertility >= 65 ? TerrainType.DryFertile :
                 tile.Fertility < 30 ? TerrainType.Desert : TerrainType.Savanna;
+        }
+
         if (tile.Fertility < 30) return TerrainType.Scrub;
         if (waterDistance <= 3 && tile.Fertility >= 70 && tile.Elevation < 135) return TerrainType.Floodplain;
         if (tile.NaturalWaterYield >= .132) return tile.Fertility >= 65 ? TerrainType.Rainforest : TerrainType.Wetland;

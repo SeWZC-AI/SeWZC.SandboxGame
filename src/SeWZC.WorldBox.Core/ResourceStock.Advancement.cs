@@ -58,12 +58,22 @@ public sealed partial class ResourceStock
     {
         return kind switch
         {
-            ResourceKind.Water => Water, ResourceKind.Food => Food, ResourceKind.Wood => Wood,
+            ResourceKind.Water => Water,
+            ResourceKind.Food => Food,
+            ResourceKind.Wood => Wood,
             ResourceKind.Stone => Stone,
-            ResourceKind.Ore => Ore, ResourceKind.Alloy => Alloy, ResourceKind.EnergyCells => EnergyCells,
-            ResourceKind.Crystals => Crystals, ResourceKind.Coal => Coal, ResourceKind.Oil => Oil,
-            ResourceKind.RareEarth => RareEarth, ResourceKind.Boats => Boats, ResourceKind.Aircraft => Aircraft,
-            ResourceKind.Tools => Tools, ResourceKind.Medicine => Medicine, ResourceKind.Ammunition => Ammunition,
+            ResourceKind.Ore => Ore,
+            ResourceKind.Alloy => Alloy,
+            ResourceKind.EnergyCells => EnergyCells,
+            ResourceKind.Crystals => Crystals,
+            ResourceKind.Coal => Coal,
+            ResourceKind.Oil => Oil,
+            ResourceKind.RareEarth => RareEarth,
+            ResourceKind.Boats => Boats,
+            ResourceKind.Aircraft => Aircraft,
+            ResourceKind.Tools => Tools,
+            ResourceKind.Medicine => Medicine,
+            ResourceKind.Ammunition => Ammunition,
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
     }
@@ -100,10 +110,22 @@ public sealed partial class ResourceStock
     {
         return new ResourceStock
         {
-            Water = Water, Food = Food, Wood = Wood, Stone = Stone, Ore = Ore,
-            Alloy = Alloy, EnergyCells = EnergyCells, Crystals = Crystals, Coal = Coal, Oil = Oil,
-            RareEarth = RareEarth, Boats = Boats, Aircraft = Aircraft,
-            Tools = Tools, Medicine = Medicine, Ammunition = Ammunition,
+            Water = Water,
+            Food = Food,
+            Wood = Wood,
+            Stone = Stone,
+            Ore = Ore,
+            Alloy = Alloy,
+            EnergyCells = EnergyCells,
+            Crystals = Crystals,
+            Coal = Coal,
+            Oil = Oil,
+            RareEarth = RareEarth,
+            Boats = Boats,
+            Aircraft = Aircraft,
+            Tools = Tools,
+            Medicine = Medicine,
+            Ammunition = Ammunition,
         };
     }
 
@@ -113,12 +135,22 @@ public sealed partial class ResourceStock
     {
         return kind switch
         {
-            ResourceKind.Water => "饮水", ResourceKind.Food => "粮食", ResourceKind.Wood => "木材",
+            ResourceKind.Water => "饮水",
+            ResourceKind.Food => "粮食",
+            ResourceKind.Wood => "木材",
             ResourceKind.Stone => "石材",
-            ResourceKind.Ore => "矿石", ResourceKind.Alloy => "合金", ResourceKind.EnergyCells => "动力单元",
-            ResourceKind.Crystals => "魔晶", ResourceKind.Coal => "煤", ResourceKind.Oil => "石油",
-            ResourceKind.RareEarth => "稀土", ResourceKind.Boats => "舟船", ResourceKind.Aircraft => "运输机",
-            ResourceKind.Tools => "工具", ResourceKind.Medicine => "药品", ResourceKind.Ammunition => "弹药",
+            ResourceKind.Ore => "矿石",
+            ResourceKind.Alloy => "合金",
+            ResourceKind.EnergyCells => "动力单元",
+            ResourceKind.Crystals => "魔晶",
+            ResourceKind.Coal => "煤",
+            ResourceKind.Oil => "石油",
+            ResourceKind.RareEarth => "稀土",
+            ResourceKind.Boats => "舟船",
+            ResourceKind.Aircraft => "运输机",
+            ResourceKind.Tools => "工具",
+            ResourceKind.Medicine => "药品",
+            ResourceKind.Ammunition => "弹药",
             _ => kind.ToString(),
         };
     }

@@ -9,8 +9,7 @@ public sealed partial class WorldEngine
     public const int MaxSaveBytes = 64 * 1024 * 1024;
 
     private static readonly WorldJsonContext StreamingJson = new(
-        new JsonSerializerOptions(WorldJsonContext.Default.Options)
-            { DefaultBufferSize = 16 * 1024 });
+        new JsonSerializerOptions(WorldJsonContext.Default.Options) { DefaultBufferSize = 16 * 1024 });
 
     /// <summary>同步把当前世界序列化为 JSON，用于存档或编辑恢复点。</summary>
     public string ExportJson()

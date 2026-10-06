@@ -17,9 +17,19 @@ internal static class TradeRegressionTests
         var fixture = AgentBehaviorTests.TradeWorld();
         fixture.Engine.ConfigureWorld(new WorldRules
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false,
-            Disease = false, Construction = false, Research = false, Expansion = false,
-            Wars = false, Alliances = false, Peace = false, Migration = false, Secession = false,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Wars = false,
+            Alliances = false,
+            Peace = false,
+            Migration = false,
+            Secession = false,
         }, false, false);
         foreach (var person in fixture.Engine.State.Residents)
         {
@@ -47,8 +57,11 @@ internal static class TradeRegressionTests
                     person.Inventory.Food = 1.2;
                     person.Agent.Goal = new AgentGoal
                     {
-                        Kind = AgentGoalKind.Rest, TargetX = person.X, TargetY = person.Y,
-                        PlayerDirected = true, ReviewTick = 1000,
+                        Kind = AgentGoalKind.Rest,
+                        TargetX = person.X,
+                        TargetY = person.Y,
+                        PlayerDirected = true,
+                        ReviewTick = 1000,
                     };
                 }
             }
@@ -59,8 +72,12 @@ internal static class TradeRegressionTests
             trader.Agent.MissionOriginSettlementId = source.Id;
             trader.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Trade, TargetSettlementId = destination.Id,
-                TargetX = source.X, TargetY = source.Y, PlayerDirected = true, ReviewTick = 1000,
+                Kind = AgentGoalKind.Trade,
+                TargetSettlementId = destination.Id,
+                TargetX = source.X,
+                TargetY = source.Y,
+                PlayerDirected = true,
+                ReviewTick = 1000,
             };
             var total = Totals(engine);
             engine.Step();
@@ -144,8 +161,11 @@ internal static class TradeRegressionTests
                   && Math.Abs(trader.Inventory.Wood - wood - freeSpace * .4) < 1e-7,
                 "The exchange exceeded actual receiving capacity.");
             if (freeSpace == 0)
+            {
                 Check(!engine.State.Events.Any(e => e.Kind == WorldEventKind.Trade),
                     "A full receiver still generated a successful exchange.");
+            }
+
             CheckTotals(engine, total);
             _ = WorldEngine.ImportJson(engine.ExportJson());
         }

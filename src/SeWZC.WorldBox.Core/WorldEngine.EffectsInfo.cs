@@ -53,8 +53,11 @@ public sealed partial class WorldEngine
             "种族与当前地形"));
         effects.Add(new EffectInfo("勤勉", $"野外采集效率 ×{.75 + person.Agent.Personality.Diligence * .5:0.00}", ""));
         if (GatheringTerritoryMultiplier(person, State.Tiles[Index(person.X, person.Y)]) < 1)
+        {
             effects.Add(new EffectInfo("领地外采集", $"食物、木材、石矿、矿藏、狩猎、捕鱼与取水速度 ×{OutsideTerritoryGatheringMultiplier:0.00}",
                 "资源来源未登记给本城镇"));
+        }
+
         foreach (var town in State.Settlements)
         {
             if (town.NationId != person.NationId || Distance(town.X, town.Y, person.X, person.Y) > 5) continue;
@@ -68,8 +71,10 @@ public sealed partial class WorldEngine
         {
             var instruction = LatestAgentFact(person.Agent.Memory, AgentFactKind.Policy, home.Id);
             if (instruction?.Value == (int)PolicyKind.FoodSecurity)
+            {
                 effects.Add(new EffectInfo("已获知粮食政策", $"个人粮食采集倍率 ×{AgentFoodPolicyMultiplier(person):0.00}",
                     home.Name + "实际收到的政策"));
+            }
         }
 
         var resting = HomeRestMultiplier(person);
@@ -130,8 +135,11 @@ public sealed partial class WorldEngine
         if (AdvancementRules.For(building.Kind) is { Magic: true })
             effect += "\n施作者要求：天赋至少 25、训练至少 8，并携带本批原料与所需魔力";
         if (building.Kind == BuildingKind.TownCenter && !IsSettlementActive(building.SettlementId))
+        {
             effect =
                 $"仓库领取补给、交付物资与建村施工仍可使用；城镇等级及中心等级的休息加成暂停，需独占陆地 {GetSettlementArea(building.SettlementId)}/{SettlementActivationArea} 格";
+        }
+
         if (BuildingRace(building.Kind) is not null && AdvancementRules.For(building.Kind) is null)
         {
             var input = RacialWorkInput(building.Kind);
@@ -143,8 +151,11 @@ public sealed partial class WorldEngine
             Active: active));
         if (!PassiveFacility(building) &&
             building.Kind is not (BuildingKind.TownCenter or BuildingKind.Bridge or BuildingKind.MountainPass))
+        {
             effects.Add(new EffectInfo("岗位容量", $"最多 {building.WorkSlots} 名到场工作人员", source,
                 Active: IsBuildingOperational(building)));
+        }
+
         effects.Add(new EffectInfo("建筑耐火", $"着火时每日损失生命 {1.5 * BuildingFlammability(building):0.00}"
                                            + (building.Level < 3 && BuildingFlammability(building) > 0
                                                ? $"；升至 {building.Level + 1} 级后为 {1.5 * BuildingFlammability(building) * .75:0.00}"
@@ -187,9 +198,12 @@ public sealed partial class WorldEngine
         if (_settlements.TryGetValue(building.SettlementId, out var town))
         {
             if (building.Kind == BuildingKind.Academy && town.Tier > SettlementTier.Village)
+            {
                 effects.Add(new EffectInfo("城镇组织",
                     $"本地研究效率 ×{1 + EffectiveSettlementRank(town) * .1:0.00}" +
                     (IsSettlementActive(town.Id) ? "" : "，占地不足，加成暂停"), town.Name, Active: IsSettlementActive(town.Id)));
+            }
+
             if (building.Kind == BuildingKind.Farm && HasResearch(town.Id, ResearchKind.Agriculture))
                 effects.Add(new EffectInfo("农业知识", "农场粮食产出 ×1.35", town.Name));
 
@@ -225,8 +239,10 @@ public sealed partial class WorldEngine
             if (building.Kind == BuildingKind.Academy && GetLocalPolicy(town.Id) == PolicyKind.Scholarship)
                 effects.Add(new EffectInfo("学术政策", "研究效率 ×1.35", town.Name));
             if (building.Kind == BuildingKind.Farm && GetPolicyProductionMultiplier(town.Id) != 1)
+            {
                 effects.Add(new EffectInfo("当地生产政策", $"农场产出 ×{GetPolicyProductionMultiplier(town.Id):0.00}",
                     town.Name));
+            }
         }
 
         return effects;

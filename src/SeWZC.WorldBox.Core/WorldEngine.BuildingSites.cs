@@ -36,8 +36,11 @@ public sealed partial class WorldEngine
         }
 
         if (IsHusbandry(kind))
+        {
             return HusbandryStockAt(index % State.Width, index / State.Width, kind == BuildingKind.Aquaculture)
                 .Source >= 0;
+        }
+
         if (kind == BuildingKind.Well && WellWaterYield(tile) < .1) return false;
         if (kind == BuildingKind.HuntingCamp) return EdibleAnimal(tile) != WildlifeKind.None;
         return true;
@@ -168,9 +171,9 @@ public sealed partial class WorldEngine
     private bool BuildingGroundOwned(Building building)
     {
         return IsPublicInfrastructure(building.Kind)
-               || State.Tiles[Index(building.X, building.Y)].ClaimedSettlementId == building.SettlementId
-               && _settlements.TryGetValue(building.SettlementId, out var town)
-               && State.Tiles[Index(building.X, building.Y)].NationId == town.NationId;
+               || (State.Tiles[Index(building.X, building.Y)].ClaimedSettlementId == building.SettlementId
+                   && _settlements.TryGetValue(building.SettlementId, out var town)
+                   && State.Tiles[Index(building.X, building.Y)].NationId == town.NationId);
     }
 
     private bool PassiveFacility(Building building)

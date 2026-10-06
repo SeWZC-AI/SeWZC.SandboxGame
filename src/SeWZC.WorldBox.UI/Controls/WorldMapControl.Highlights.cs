@@ -36,8 +36,10 @@ public sealed partial class WorldMapControl
                     : resident.Activity == ResidentActivity.Resting ? RestingHighlight : TravelHighlight;
                 context.DrawRectangle(null, pen, new Rect(point.X - 3, point.Y - 3, 6, 6));
                 if (Overlay == 10)
+                {
                     context.DrawImage(ActivityPreview(Engine!.GetResidentTaskIcon(resident)),
                         new Rect(point.X + 3, point.Y - 4, 3, 3));
+                }
             }
 
             return;

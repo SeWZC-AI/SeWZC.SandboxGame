@@ -218,8 +218,10 @@ public sealed partial class WorldEngine
         {
             var atHome = Distance(person.X, person.Y, home.X, home.Y) <= 1;
             if (atHome && home.Resources.Water >= .3)
+            {
                 choices.Add(new GoalChoice(AgentGoalKind.Eat, home.X, home.Y, 75 + person.Thirst, "在家园领取随身饮水与口粮",
                     SettlementId: home.Id));
+            }
             else
             {
                 var water = FindWaterSite(person);
@@ -270,14 +272,20 @@ public sealed partial class WorldEngine
         }
 
         if (State.Rules.Thirst && person.Inventory.Water >= WaterReserve(person) + 2)
+        {
             choices.Add(new GoalChoice(AgentGoalKind.ReturnHome, home.X, home.Y, 110, "携带打来的饮水返仓，为家园补给",
                 SettlementId: home.Id));
+        }
+
         var homeDistance = Distance(person.X, person.Y, home.X, home.Y);
         var daysHome = homeDistance * 4 + 12;
         if (State.Rules.Hunger && homeDistance > 1 && person.Hunger < 20
             && person.Inventory.Food < FoodUse(person) * daysHome)
+        {
             choices.Add(new GoalChoice(AgentGoalKind.ReturnHome, home.X, home.Y, 85, "口粮接近保守返程需求，先实地返仓补给",
                 SettlementId: home.Id));
+        }
+
         if (person.Age < 14) return;
         var foodNeeded = FoodSupplyNeeded(person, home);
         if (foodNeeded) AddBoatFishingChoice(person, home, choices);

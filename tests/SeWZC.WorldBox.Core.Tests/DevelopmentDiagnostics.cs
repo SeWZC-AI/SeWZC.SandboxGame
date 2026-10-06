@@ -28,11 +28,14 @@ internal static class DevelopmentDiagnostics
         engine.State.NaturalDisasters = !args.Contains("--no-disasters");
         if (args.Contains("--peaceful")) engine.ConfigureWorld(WorldRules.For(WorldPreset.Flourishing), false, true);
         if (args.Contains("--technology") || args.Contains("--magic-practice") || args.Contains("--arcane-industry"))
+        {
             foreach (var nation in engine.State.Nations)
                 engine.SetDevelopmentFocus(nation.Id,
                     args.Contains("--technology") ? DevelopmentFocus.Technology :
                     args.Contains("--arcane-industry") ? DevelopmentFocus.ArcaneIndustry :
                     DevelopmentFocus.MagicPractice);
+        }
+
         var samples = new List<object>();
         var milestones = new Dictionary<int, long>();
         var observedEvents = new Dictionary<int, WorldEvent>();
@@ -95,13 +98,30 @@ internal static class DevelopmentDiagnostics
         var completeTowns = CompleteTowns(resumed);
         File.WriteAllText(Path.Combine(output, "report.json"), JsonSerializer.Serialize(new
         {
-            seed, size, ticks, completeResearchAgenda = args.Contains("--complete-agenda"),
-            simulatedTicks = engine.State.Tick - 24, completionTick, milestones, completeTowns,
-            deterministicContinuationTicks = 24, requiredResearch = targetRoute.Select(k => k.ToString()).ToArray(),
-            disasters = engine.State.NaturalDisasters, elapsedSeconds = elapsed.Elapsed.TotalSeconds,
-            saveBytes = Encoding.UTF8.GetByteCount(save), samples, observedEvents = observedEvents.Values,
+            seed,
+            size,
+            ticks,
+            completeResearchAgenda = args.Contains("--complete-agenda"),
+            simulatedTicks = engine.State.Tick - 24,
+            completionTick,
+            milestones,
+            completeTowns,
+            deterministicContinuationTicks = 24,
+            requiredResearch = targetRoute.Select(k => k.ToString()).ToArray(),
+            disasters = engine.State.NaturalDisasters,
+            elapsedSeconds = elapsed.Elapsed.TotalSeconds,
+            saveBytes = Encoding.UTF8.GetByteCount(save),
+            samples,
+            observedEvents = observedEvents.Values,
             deaths = observedDeaths.Values.Select(r => new
-                { r.Id, cause = r.DeathCause.ToString(), r.DeathTick, r.SettlementId, r.X, r.Y }),
+            {
+                r.Id,
+                cause = r.DeathCause.ToString(),
+                r.DeathTick,
+                r.SettlementId,
+                r.X,
+                r.Y,
+            }),
         }, new JsonSerializerOptions { WriteIndented = true }), new UTF8Encoding(false));
         Console.WriteLine($"Report and validated final save: {output}");
         return args.Contains("--require-empire") && completeTowns.Length == 0 ? 1 : 0;
@@ -119,11 +139,19 @@ internal static class DevelopmentDiagnostics
                     milestones.TryAdd(town.Id, state.Tick);
                 return new
                 {
-                    town.Id, town.Name, town.NationId, focus = engine.GetDevelopmentFocus(town.Id).ToString(), town.X,
-                    town.Y, town.Population,
-                    housing = engine.GetHousingCapacity(town.Id), tier = WorldEngine.SettlementTierName(town.Tier),
+                    town.Id,
+                    town.Name,
+                    town.NationId,
+                    focus = engine.GetDevelopmentFocus(town.Id).ToString(),
+                    town.X,
+                    town.Y,
+                    town.Population,
+                    housing = engine.GetHousingCapacity(town.Id),
+                    tier = WorldEngine.SettlementTierName(town.Tier),
                     exclusiveLand = engine.GetSettlementArea(town.Id),
-                    stock = town.Resources.Copy(), town.DevelopmentGoal, town.DevelopmentBlocker,
+                    stock = town.Resources.Copy(),
+                    town.DevelopmentGoal,
+                    town.DevelopmentBlocker,
                     civilization = engine.GetCivilizationProgress(town.Id, args.Contains("--arcane-industry")),
                     policy = engine.GetLocalPolicy(town.Id).ToString(),
                     hunger = people.Select(p => p.Hunger).DefaultIfEmpty().Average(),
@@ -137,20 +165,31 @@ internal static class DevelopmentDiagnostics
                         .ToDictionary(g => g.Key.ToString(), g => g.Count()),
                     research = new
                     {
-                        active = research.ActiveProject?.ToString(), research.Progress,
+                        active = research.ActiveProject?.ToString(),
+                        research.Progress,
                         completed = research.Completed.Select(k => k.ToString()).ToArray(),
                     },
                     buildings = state.Society.Buildings.Where(b => b.SettlementId == town.Id).Select(b => new
                     {
-                        kind = b.Kind.ToString(), b.X, b.Y, b.ConstructionProgress, b.ConstructionRequired,
-                        b.LastWorkedTick, b.ProductionBatches, b.ServiceActions,
+                        kind = b.Kind.ToString(),
+                        b.X,
+                        b.Y,
+                        b.ConstructionProgress,
+                        b.ConstructionRequired,
+                        b.LastWorkedTick,
+                        b.ProductionBatches,
+                        b.ServiceActions,
                     }).ToArray(),
                 };
             }).ToArray();
             samples.Add(new
             {
-                state.Tick, state.Population, nations = state.Nations.Count,
-                settlements = state.Settlements.Count, territory = state.Nations.Sum(n => n.Territory), towns,
+                state.Tick,
+                state.Population,
+                nations = state.Nations.Count,
+                settlements = state.Settlements.Count,
+                territory = state.Nations.Sum(n => n.Territory),
+                towns,
             });
             Console.WriteLine($"tick={state.Tick} population={state.Population} settlements={towns.Length} " +
                               $"buildings={state.Society.Buildings.Count} research={state.Society.Research.Sum(r => r.Completed.Count)} " +

@@ -29,7 +29,10 @@ public static class PlantResources
     {
         return kind switch
         {
-            PlantKind.Trees => "乔木", PlantKind.Shrubs => "灌木", PlantKind.Grass => "草本", PlantKind.Reeds => "芦苇",
+            PlantKind.Trees => "乔木",
+            PlantKind.Shrubs => "灌木",
+            PlantKind.Grass => "草本",
+            PlantKind.Reeds => "芦苇",
             _ => "作物",
         };
     }
@@ -40,8 +43,11 @@ public static class PlantResources
     {
         return kind switch
         {
-            PlantKind.Trees => "木材", PlantKind.Shrubs => "浆果", PlantKind.Grass => "草籽与嫩叶",
-            PlantKind.Reeds => "芦苇嫩芽", _ => "谷物",
+            PlantKind.Trees => "木材",
+            PlantKind.Shrubs => "浆果",
+            PlantKind.Grass => "草籽与嫩叶",
+            PlantKind.Reeds => "芦苇嫩芽",
+            _ => "谷物",
         };
     }
 }

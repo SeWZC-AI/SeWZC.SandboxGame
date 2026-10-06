@@ -10,7 +10,6 @@ using Avalonia.Headless;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.LogicalTree;
-using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
@@ -58,8 +57,8 @@ var tests = new (string Name, Action Test)[]
     ("Construction, spell and railway map pickers pause and restore their source", ActionMapPickers),
     ("Map picking isolates its original context from tools and navigation", MapPickerContextIsolation),
     ("Research spells default to local adults while resident spells prefer that resident", SpellContext),
-    ("Advanced research choices show separate prerequisites and commit only valid projects", AdvancedResearchUi),
-    ("Advanced resource editors preserve untouched stocks and gifted factories expose requirements",
+    ("Advanced research choices show separate prerequisites and commit only valid projects", AdvancedResearchUi), (
+        "Advanced resource editors preserve untouched stocks and gifted factories expose requirements",
         AdvancedResourcesUi),
     ("Paused goal edits refresh the selected resident route immediately", GoalRouteRefresh),
     ("Empty rule numbers stay in the form without changing world state", EmptyRuleNumber),
@@ -358,8 +357,11 @@ static void BuildingDetailCopy()
         var text = string.Join("\n", engine.GetBuildingEffects(b.Id));
         Assert(!text.Contains("需要完工、健康与运营条件") && !text.Contains("来源：升级完工后"), "Generic conditions survived for " + kind);
         if (kind == BuildingKind.Well)
+        {
             Assert(text.Contains("供水量") && !text.Contains("今日剩余") && !text.Contains("每日可取水"),
                 "Well inspection retained a separate water quota field");
+        }
+
         if (WorldEngine.BuildingRace(kind) is not null && kind != BuildingKind.DwarvenForge)
             Assert(!text.Contains("每批加工产出"), "Non-manufacturing racial facility describes a fictitious product");
     }
@@ -820,8 +822,10 @@ static void DeferredModalSubmissions()
                 ? "Leaving the research page committed its abandoned project"
                 : "Waiting for a checkpoint changed the clicked research to a later selection");
         if (leaveResearch)
+        {
             Assert(engine.ExportJson() == before && !Field<bool>(view, "_paused"),
                 "Leaving pending research changed the world or its running preference");
+        }
     }
 
     {
@@ -899,8 +903,10 @@ static void DeferredMapStrokes()
             !Field<bool>(view, "_paused"),
             "An abandoned map stroke changed terrain, published a checkpoint or paused a running world permanently");
         if (abandon == "pan")
+        {
             Assert(!Field<Border>(view, "_modal").IsVisible && !map.IsSimulationPaused,
                 "Switching to pan retained the abandoned stroke's temporary pause");
+        }
         else
         {
             Assert(ReferenceEquals(newerWindow, Field<Border>(view, "_modal").Child),
@@ -1684,6 +1690,7 @@ static void EcologyCache()
     map.FocusTile(16, 16);
     for (var i = 0; i < 7; i++) map.ZoomIn();
     using var target = new RenderTargetBitmap(new PixelSize(256, 256), new Vector(96, 96));
+
     void Draw()
     {
         using var context = target.CreateDrawingContext();
@@ -2177,8 +2184,12 @@ static void HistoricalGoals()
     var mind = JsonSerializer.Deserialize<AgentState>(engine.ExportResidentMind(returning.Id))!;
     mind.Goal = new AgentGoal
     {
-        Kind = AgentGoalKind.ReturnHome, TargetSettlementId = home.Id,
-        TargetX = home.X, TargetY = home.Y, StartedTick = engine.State.Tick, ReviewTick = engine.State.Tick + 20,
+        Kind = AgentGoalKind.ReturnHome,
+        TargetSettlementId = home.Id,
+        TargetX = home.X,
+        TargetY = home.Y,
+        StartedTick = engine.State.Tick,
+        ReviewTick = engine.State.Tick + 20,
     };
     engine.EditResident(returning.Id, new ResidentEdit { Agent = mind });
     engine.SpawnResidents(26, 26, RaceKind.Elf, 2);
@@ -2208,8 +2219,12 @@ static void ActiveMissionGoal()
     var mind = JsonSerializer.Deserialize<AgentState>(engine.ExportResidentMind(courier.Id))!;
     mind.Goal = new AgentGoal
     {
-        Kind = AgentGoalKind.DeliverMessage, TargetSettlementId = target.Id,
-        TargetX = target.X, TargetY = target.Y, ReviewTick = 100, PlayerDirected = true,
+        Kind = AgentGoalKind.DeliverMessage,
+        TargetSettlementId = target.Id,
+        TargetX = target.X,
+        TargetY = target.Y,
+        ReviewTick = 100,
+        PlayerDirected = true,
     };
     engine.EditResident(courier.Id, new ResidentEdit { X = home.X, Y = home.Y, Agent = mind });
     engine.Tick();
@@ -2263,8 +2278,11 @@ static string MissionSnapshot(Resident person)
     return JsonSerializer.Serialize(new
     {
         person.Inventory,
-        person.Agent.DestinationSettlementId, person.Agent.MissionOriginSettlementId, person.Agent.MissionStartedTick,
-        person.Agent.MissionRetryTick, person.Agent.CarriedMessages,
+        person.Agent.DestinationSettlementId,
+        person.Agent.MissionOriginSettlementId,
+        person.Agent.MissionStartedTick,
+        person.Agent.MissionRetryTick,
+        person.Agent.CarriedMessages,
     });
 }
 
@@ -2301,8 +2319,11 @@ static (WorldEngine Engine, int ResidentId, Building Target) WorkingWorld(Profes
     var id = engine.State.Residents[0].Id;
     engine.EditResident(id, new ResidentEdit
     {
-        Profession = profession, X = home.X, Y = home.Y,
-        Inventory = new ResourceStock { Food = 1 }, MagicTalent = 50,
+        Profession = profession,
+        X = home.X,
+        Y = home.Y,
+        Inventory = new ResourceStock { Food = 1 },
+        MagicTalent = 50,
     });
     engine.Tick();
     var target =
@@ -2388,7 +2409,9 @@ static WorldEngine TwoTownWorld(bool largeTotal = false)
     var towns = engine.State.Settlements.ToArray();
     Assert(towns.Length == 2, "Fixture requires two settlements");
     towns[0].Resources = new ResourceStock
-        { Food = largeTotal ? 900_000.25 : 100.2, Wood = 70.125, Stone = 8.3, Ore = 10.4 };
+    {
+        Food = largeTotal ? 900_000.25 : 100.2, Wood = 70.125, Stone = 8.3, Ore = 10.4,
+    };
     towns[1].Resources = new ResourceStock { Food = largeTotal ? 900_000.5 : .2, Wood = 1.75, Stone = .1, Ore = .375 };
     engine.TransferTerritory(towns[1].X, towns[1].Y, towns[0].NationId, 0);
     foreach (var town in towns) engine.TransferTerritory(town.X, town.Y, town.NationId, 5);
@@ -2495,10 +2518,13 @@ public sealed class CountingSaveStorage : IWorldStorage
 {
     /// <summary>已经尝试的分块保存次数，包含失败调用。</summary>
     public int Calls { get; private set; }
+
     /// <summary>最近一次保存收到的文本块数量。</summary>
     public int Chunks { get; private set; }
+
     /// <summary>是否让下一次分块保存抛出写入异常，触发后自动清除。</summary>
     public bool FailNext { get; set; }
+
     /// <summary>测试中始终将应用视为前台。</summary>
     public bool IsBackground => false;
 
@@ -2549,10 +2575,13 @@ public sealed class CountingSaveStorage : IWorldStorage
 public sealed class DeferredExportStorage : IWorldStorage
 {
     private readonly TaskCompletionSource _export = new();
+
     /// <summary>已经请求的导出次数。</summary>
     public int ExportCalls { get; private set; }
+
     /// <summary>最近一次导出请求收到的世界 JSON。</summary>
     public string? ExportedJson { get; private set; }
+
     /// <summary>测试中始终将应用视为前台。</summary>
     public bool IsBackground => false;
 

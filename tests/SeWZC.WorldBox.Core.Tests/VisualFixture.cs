@@ -36,7 +36,11 @@ internal static class VisualFixture
                 p.MoveDurationTicks = 1;
                 p.Agent.Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.Work, TargetX = p.X, TargetY = p.Y, ReviewTick = 100, PlayerDirected = true,
+                    Kind = AgentGoalKind.Work,
+                    TargetX = p.X,
+                    TargetY = p.Y,
+                    ReviewTick = 100,
+                    PlayerDirected = true,
                     Reason = "视觉夹具的现场工作",
                 };
             }
@@ -105,7 +109,14 @@ internal static class VisualFixture
         }
 
         engine.ConfigureWorld(
-            engine.State.Rules with { Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false },
+            engine.State.Rules with
+            {
+                Births = false,
+                Aging = false,
+                Hunger = false,
+                Thirst = false,
+                Disease = false,
+            },
             false, true);
         engine.Step(2);
         var json = engine.ExportJson();

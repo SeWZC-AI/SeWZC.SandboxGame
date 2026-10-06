@@ -9,8 +9,11 @@ public sealed partial class WorldEngine
     {
         var cost = GetBuildingCost(kind);
         if (kind == BuildingKind.Bridge)
+        {
             foreach (var resource in AdvancementRules.Resources)
                 cost.Set(resource, cost.Get(resource) * Math.Clamp(level, 1, 3));
+        }
+
         return cost;
     }
 

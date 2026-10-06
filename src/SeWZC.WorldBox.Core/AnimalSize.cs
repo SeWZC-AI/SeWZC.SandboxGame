@@ -5,8 +5,10 @@ public enum AnimalSize
 {
     /// <summary>小型。</summary>
     Small,
+
     /// <summary>中型。</summary>
     Medium,
+
     /// <summary>大型。</summary>
     Large,
 }

@@ -8,14 +8,27 @@ public sealed partial class WorldEngine
     {
         return job switch
         {
-            Profession.Child => "孩童", Profession.Farmer => "农民", Profession.Lumberjack => "伐木工",
-            Profession.Miner => "矿工", Profession.Soldier => "战士", Profession.Builder => "建造者",
-            Profession.Trader => "商人", Profession.Messenger => "信使", Profession.Representative => "代表",
-            Profession.Fisher => "渔民", Profession.Scholar => "学者", Profession.Mage => "法师",
-            Profession.Engineer => "工程师", Profession.Physician => "医师", Profession.Firefighter => "消防员",
+            Profession.Child => "孩童",
+            Profession.Farmer => "农民",
+            Profession.Lumberjack => "伐木工",
+            Profession.Miner => "矿工",
+            Profession.Soldier => "战士",
+            Profession.Builder => "建造者",
+            Profession.Trader => "商人",
+            Profession.Messenger => "信使",
+            Profession.Representative => "代表",
+            Profession.Fisher => "渔民",
+            Profession.Scholar => "学者",
+            Profession.Mage => "法师",
+            Profession.Engineer => "工程师",
+            Profession.Physician => "医师",
+            Profession.Firefighter => "消防员",
             Profession.Ranger => "游击射手",
-            Profession.Archivist => "文献师", Profession.Battlemage => "战斗法师", Profession.Surveyor => "测绘员",
-            Profession.Gardener => "园艺师", _ => "未知职业",
+            Profession.Archivist => "文献师",
+            Profession.Battlemage => "战斗法师",
+            Profession.Surveyor => "测绘员",
+            Profession.Gardener => "园艺师",
+            _ => "未知职业",
         };
     }
 
@@ -25,9 +38,11 @@ public sealed partial class WorldEngine
     public bool IsDepositVisible(Tile tile, ResourceVisibility visibility)
     {
         return tile.Deposit is { } kind
-               && (visibility == ResourceVisibility.All || visibility == ResourceVisibility.Researched
-                   && (tile.DepositDiscovered || DepositResearch(kind) is { } research &&
-                       State.Society.Research.Any(r => r.Completed.Contains(research))));
+               && (visibility == ResourceVisibility.All || (visibility == ResourceVisibility.Researched
+                                                            && (tile.DepositDiscovered || (DepositResearch(kind) is
+                                                                    { } research &&
+                                                                State.Society.Research.Any(r =>
+                                                                    r.Completed.Contains(research))))));
     }
 
     /// <summary>返回建筑的实际用途和运营条件说明。</summary>
@@ -298,22 +313,32 @@ public sealed partial class WorldEngine
                     ? person.Profession == Profession.Lumberjack ? "正在采伐木材" :
                     person.Profession == Profession.Miner ? "正在采收石材与矿石或已发现矿藏" : "正在采收粮食"
                     : "正在" + task,
-                AgentGoalKind.ExtinguishFire => "正在火场边缘持续用水扑救", AgentGoalKind.ClaimLand => "正在实地登记城镇地盘",
+                AgentGoalKind.ExtinguishFire => "正在火场边缘持续用水扑救",
+                AgentGoalKind.ClaimLand => "正在实地登记城镇地盘",
                 AgentGoalKind.FetchWater => "正在河湖或湿地打水或实地勘察水源",
-                AgentGoalKind.Hunt => "正在狩猎，实际消耗当地动物数量", AgentGoalKind.Fish => "正在岸边捕鱼，实际消耗鱼群数量",
-                AgentGoalKind.Gather => "正在采集可食资源", AgentGoalKind.Eat => "正在家园领取口粮",
-                AgentGoalKind.Rest => "正在休息恢复体力", AgentGoalKind.Socialize => "正在与附近居民交流消息",
-                AgentGoalKind.Study => "正在学舍推进研究", AgentGoalKind.TrainMagic => "正在进行魔法训练",
+                AgentGoalKind.Hunt => "正在狩猎，实际消耗当地动物数量",
+                AgentGoalKind.Fish => "正在岸边捕鱼，实际消耗鱼群数量",
+                AgentGoalKind.Gather => "正在采集可食资源",
+                AgentGoalKind.Eat => "正在家园领取口粮",
+                AgentGoalKind.Rest => "正在休息恢复体力",
+                AgentGoalKind.Socialize => "正在与附近居民交流消息",
+                AgentGoalKind.Study => "正在学舍推进研究",
+                AgentGoalKind.TrainMagic => "正在进行魔法训练",
                 AgentGoalKind.Trade => "正在交易与交付货物",
                 AgentGoalKind.DeliverMessage or AgentGoalKind.Petition => "正在递送消息或诉求",
-                AgentGoalKind.ReturnHome => "正在交付随身物资并补充口粮", AgentGoalKind.Flee => "正在离开危险区域",
-                AgentGoalKind.Migrate => "正在步行迁往新家园", AgentGoalKind.March => "正在执行实际收到的军令",
+                AgentGoalKind.ReturnHome => "正在交付随身物资并补充口粮",
+                AgentGoalKind.Flee => "正在离开危险区域",
+                AgentGoalKind.Migrate => "正在步行迁往新家园",
+                AgentGoalKind.March => "正在执行实际收到的军令",
                 _ => "正在重新选择可执行任务",
             };
         if (!moving && facility is not null && !BuildingHasWork(facility, person))
+        {
             current = "现场劳动受阻：" + (GetBuildingDetailStatus(facility.Id) is { Length: > 0 } status
                 ? status
                 : "岗位已满或当前角色不满足劳动条件");
+        }
+
         var next = goal.Kind switch
         {
             AgentGoalKind.Explore => exploringRoutes

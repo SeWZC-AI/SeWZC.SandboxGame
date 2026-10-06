@@ -6,6 +6,7 @@ public sealed record EventGroup(IReadOnlyList<WorldEvent> Entries)
 {
     /// <summary>本组按时间排列的最后一条记录。</summary>
     public WorldEvent Latest => Entries[^1];
+
     /// <summary>本组包含的事件数量。</summary>
     public int Count => Entries.Count;
 }

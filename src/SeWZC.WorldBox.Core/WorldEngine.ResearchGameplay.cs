@@ -103,10 +103,15 @@ public sealed partial class WorldEngine
     {
         return spell switch
         {
-            SpellKind.Heal => "治疗", SpellKind.HarvestBlessing => "丰饶祝福", SpellKind.Shield => "守护结界",
+            SpellKind.Heal => "治疗",
+            SpellKind.HarvestBlessing => "丰饶祝福",
+            SpellKind.Shield => "守护结界",
             SpellKind.Ember => "战斗火花",
-            SpellKind.FrostBolt => "寒冰箭", SpellKind.ChainLightning => "连锁闪电", SpellKind.RainCall => "唤雨",
-            SpellKind.RuneWard => "符文护盾", _ => spell.ToString(),
+            SpellKind.FrostBolt => "寒冰箭",
+            SpellKind.ChainLightning => "连锁闪电",
+            SpellKind.RainCall => "唤雨",
+            SpellKind.RuneWard => "符文护盾",
+            _ => spell.ToString(),
         };
     }
 
@@ -116,9 +121,14 @@ public sealed partial class WorldEngine
     {
         return spell switch
         {
-            SpellKind.Heal => 16, SpellKind.HarvestBlessing => 25, SpellKind.Shield => 22,
-            SpellKind.FrostBolt => 24, SpellKind.ChainLightning => 36, SpellKind.RainCall => 28,
-            SpellKind.RuneWard => 20, _ => 20,
+            SpellKind.Heal => 16,
+            SpellKind.HarvestBlessing => 25,
+            SpellKind.Shield => 22,
+            SpellKind.FrostBolt => 24,
+            SpellKind.ChainLightning => 36,
+            SpellKind.RainCall => 28,
+            SpellKind.RuneWard => 20,
+            _ => 20,
         };
     }
 
@@ -259,7 +269,9 @@ public sealed partial class WorldEngine
         person.MoveStartedTick = State.Tick;
         person.MoveDurationTicks = 1;
         person.Agent.Goal = new AgentGoal
-            { Kind = AgentGoalKind.Idle, TargetX = target.X, TargetY = target.Y, Reason = "本人携带背包经折跃门抵达" };
+        {
+            Kind = AgentGoalKind.Idle, TargetX = target.X, TargetY = target.Y, Reason = "本人携带背包经折跃门抵达",
+        };
         person.Agent.NextThinkTick = State.Tick + 1;
         source.ServiceActions = Math.Min(1_000_000_000, source.ServiceActions + 1);
         target.ServiceActions = Math.Min(1_000_000_000, target.ServiceActions + 1);
@@ -476,8 +488,11 @@ public sealed partial class WorldEngine
                 plants.Trees = Math.Min(.7, plants.Trees + .02 * effort);
                 var total = plants.Total;
                 if (total > 1)
+                {
                     for (var i = 0; i < 4; i++)
                         plants.Set((PlantKind)i, plants.Get((PlantKind)i) / total);
+                }
+
                 tile.Plants = plants;
                 if (plants.Trees >= .5 && tile.SettlementId == 0 &&
                     tile.Terrain is TerrainType.Grass or TerrainType.DryFertile) tile.Terrain = TerrainType.Woodland;
@@ -503,24 +518,32 @@ public sealed partial class WorldEngine
         var range = HasResearch(b.SettlementId, ResearchKind.Observation) ? 6 : 4;
         foreach (var town in State.Settlements)
             if (Distance(b.X, b.Y, town.X, town.Y) <= range && ClearSignalLine(b.X, b.Y, town.X, town.Y))
+            {
                 RememberAgentFact(person,
                     MakeAgentFact(person, AgentFactKind.SettlementLocation, town.Id, town.X, town.Y, town.NationId,
                         "从勘测所实际观察到城镇"), false);
+            }
+
         var danger = Circle(b.X, b.Y, range).FirstOrDefault(i =>
             Distance(b.X, b.Y, i % State.Width, i / State.Width) <= range
             && State.Tiles[i].FireTicks > 0 && ClearSignalLine(b.X, b.Y, i % State.Width, i / State.Width), -1);
         if (danger >= 0)
+        {
             RememberAgentFact(person,
                 MakeAgentFact(person, AgentFactKind.Danger, 0, danger % State.Width, danger / State.Width,
                     State.Tiles[danger].FireTicks, "从勘测所观察到火情"), false);
+        }
+
         var water = Circle(b.X, b.Y, range).FirstOrDefault(i =>
             Distance(b.X, b.Y, i % State.Width, i / State.Width) <= range
             && IsWaterSource(State.Tiles[i]) && AvailableWater(i % State.Width, i / State.Width) > .05
             && ClearSignalLine(b.X, b.Y, i % State.Width, i / State.Width), -1);
         if (water >= 0)
+        {
             RememberAgentFact(person,
                 MakeAgentFact(person, AgentFactKind.WaterSource, water + 1, water % State.Width, water / State.Width, 1,
                     "从勘测所观察到实际水源"), false);
+        }
     }
 
     private static bool CanRestoreTrees(Tile tile)
@@ -533,11 +556,14 @@ public sealed partial class WorldEngine
     {
         return kind switch
         {
-            BuildingKind.MachineWorkshop => Profession.Engineer, BuildingKind.Hospital => Profession.Physician,
+            BuildingKind.MachineWorkshop => Profession.Engineer,
+            BuildingKind.Hospital => Profession.Physician,
             BuildingKind.FireStation => Profession.Firefighter,
-            BuildingKind.Arsenal => Profession.Ranger, BuildingKind.Library => Profession.Archivist,
+            BuildingKind.Arsenal => Profession.Ranger,
+            BuildingKind.Library => Profession.Archivist,
             BuildingKind.StormSpire => Profession.Battlemage,
-            BuildingKind.SurveyOffice => Profession.Surveyor, BuildingKind.GroveSanctuary => Profession.Gardener,
+            BuildingKind.SurveyOffice => Profession.Surveyor,
+            BuildingKind.GroveSanctuary => Profession.Gardener,
             _ => null,
         };
     }
@@ -590,10 +616,13 @@ public sealed partial class WorldEngine
     {
         return kind switch
         {
-            BuildingKind.Hospital => (ResourceKind.Medicine, 2), BuildingKind.FireStation => (ResourceKind.Water, 5.5),
-            BuildingKind.Armory => (ResourceKind.Alloy, 2), BuildingKind.WardTower => (ResourceKind.Crystals, 1),
+            BuildingKind.Hospital => (ResourceKind.Medicine, 2),
+            BuildingKind.FireStation => (ResourceKind.Water, 5.5),
+            BuildingKind.Armory => (ResourceKind.Alloy, 2),
+            BuildingKind.WardTower => (ResourceKind.Crystals, 1),
             BuildingKind.StormSpire => (ResourceKind.Crystals, 2),
-            BuildingKind.GroveSanctuary => (ResourceKind.Water, 3), _ => null,
+            BuildingKind.GroveSanctuary => (ResourceKind.Water, 3),
+            _ => null,
         };
     }
 
@@ -652,8 +681,13 @@ public sealed partial class WorldEngine
 
         var minimum = b.Kind switch
         {
-            BuildingKind.Hospital => .25, BuildingKind.Armory => 2d, BuildingKind.WardTower => .25,
-            BuildingKind.StormSpire => .5, BuildingKind.GroveSanctuary => .75, BuildingKind.FireStation => 5.5, _ => 0,
+            BuildingKind.Hospital => .25,
+            BuildingKind.Armory => 2d,
+            BuildingKind.WardTower => .25,
+            BuildingKind.StormSpire => .5,
+            BuildingKind.GroveSanctuary => .75,
+            BuildingKind.FireStation => 5.5,
+            _ => 0,
         };
         if (ExpansionSupply(b.Kind) is { } supply && person.Inventory.Get(supply.Kind) + .000001 < minimum)
         {
@@ -687,7 +721,10 @@ public sealed partial class WorldEngine
         {
             person.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, TargetSettlementId = home.Id,
+                Kind = AgentGoalKind.ReturnHome,
+                TargetX = home.X,
+                TargetY = home.Y,
+                TargetSettlementId = home.Id,
                 Reason = "蓄水站取水后亲自运回粮仓",
             };
             person.Agent.NextThinkTick = State.Tick + 30;

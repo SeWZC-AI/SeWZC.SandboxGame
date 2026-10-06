@@ -64,8 +64,11 @@ internal static class GeographyEcologyTests
                 if (s.Tiles[i].RiverWidth > 0)
                     Check(reached[i], $"River disconnected from sea: seed {seed}, tile {i}");
             if (size == 256)
+            {
                 Check(s.Tiles.Any(t => t.RiverWidth is 2 or 3) && s.Tiles.Any(t => t.RiverWidth is 4 or 5),
                     "Missing intermediate or broad rivers");
+            }
+
             Array.Clear(reached);
             for (var i = 0; i < s.Tiles.Length; i++)
             {
@@ -130,9 +133,21 @@ internal static class GeographyEcologyTests
 
         e.ConfigureWorld(new WorldRules
         {
-            Aging = false, Births = false, Hunger = false, Thirst = false, Disease = false,
-            Construction = false, Research = false, Expansion = false, Migration = false, Trade = false, Wars = false,
-            Peace = false, Alliances = false, Secession = false, ResourceRegeneration = false,
+            Aging = false,
+            Births = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Migration = false,
+            Trade = false,
+            Wars = false,
+            Peace = false,
+            Alliances = false,
+            Secession = false,
+            ResourceRegeneration = false,
         }, false, true);
         return e;
     }
@@ -193,7 +208,13 @@ internal static class GeographyEcologyTests
         foreach (var terrain in Enum.GetValues<TerrainType>())
         {
             var habitat = new Tile
-                { Terrain = terrain, Fertility = 100, ResourceAmount = 100, Rainfall = .2, NaturalWaterYield = .2 };
+            {
+                Terrain = terrain,
+                Fertility = 100,
+                ResourceAmount = 100,
+                Rainfall = .2,
+                NaturalWaterYield = .2,
+            };
             foreach (var size in Enum.GetValues<AnimalSize>())
             foreach (var diet in Enum.GetValues<AnimalDiet>())
                 Check(AnimalRules.Species.Any(s => AnimalRules.For(s).Size == size && AnimalRules.For(s).Diet == diet
@@ -208,7 +229,9 @@ internal static class GeographyEcologyTests
             "Predator hunts prey two size classes away");
         Check(!AnimalRules.CanPreyOn(WildlifeKind.Wolf, WildlifeKind.Fox), "Carnivores hunt other carnivores");
         var t = new Tile
-            { Terrain = TerrainType.Grass, Fertility = 100, NaturalWaterYield = .03, ResourceAmount = 100 };
+        {
+            Terrain = TerrainType.Grass, Fertility = 100, NaturalWaterYield = .03, ResourceAmount = 100,
+        };
         Check(WorldEngine.WildlifeCapacity(t, WildlifeKind.Bison) > 0, "Productive habitat excludes large herbivores");
         t.NaturalWaterYield = .001;
         Check(
@@ -337,7 +360,9 @@ internal static class GeographyEcologyTests
             worker.MoveDurationTicks = 1;
             worker.Inventory.Food = worker.Inventory.Water = 1;
             worker.Agent.Goal = new AgentGoal
-                { Kind = AgentGoalKind.Work, TargetEntityId = facility.Id, TargetX = facility.X, TargetY = facility.Y };
+            {
+                Kind = AgentGoalKind.Work, TargetEntityId = facility.Id, TargetX = facility.X, TargetY = facility.Y,
+            };
         }
 
         Building Add(BuildingKind kind)
@@ -364,8 +389,12 @@ internal static class GeographyEcologyTests
         Check(e.TryWorkAtBuilding(human) && e.IsBuildingOperational(guild), "Guild never becomes staffed");
         human.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Explore, TargetX = guild.X + 4, TargetY = guild.Y,
-            PlayerDirected = true, StartedTick = e.State.Tick, ReviewTick = e.State.Tick + 100,
+            Kind = AgentGoalKind.Explore,
+            TargetX = guild.X + 4,
+            TargetY = guild.Y,
+            PlayerDirected = true,
+            StartedTick = e.State.Tick,
+            ReviewTick = e.State.Tick + 100,
         };
         e.Step();
         Check(human.MoveDurationTicks < (int)Math.Round(2 * e.GetTerrainMoveCost(human.X, human.Y, human.Race)),

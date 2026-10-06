@@ -124,8 +124,10 @@ public sealed partial class WorldMapControl : Control
 
     /// <summary>地形和领土笔刷半径，以地格为单位。</summary>
     public int BrushRadius { get; set; } = 2;
+
     /// <summary>领土绘制等工具当前使用的国家 ID。</summary>
     public int SelectedNationId { get; set; }
+
     /// <summary>建设工具当前使用的归属聚落 ID。</summary>
     public int SelectedSettlementId { get; set; }
 
@@ -207,10 +209,13 @@ public sealed partial class WorldMapControl : Control
 
     /// <summary>实际修改世界之前发出的通知，供主界面取消失效的异步操作。</summary>
     public event EventHandler? WorldMutationStarting;
+
     /// <summary>地图工具完成世界修改后发出的通知。</summary>
     public event EventHandler? WorldEdited;
+
     /// <summary>通过地图交互选中地格时发出横向和纵向地格坐标。</summary>
     public event Action<int, int>? TileSelected;
+
     /// <summary>地图工具无法执行时发出的错误说明。</summary>
     public event Action<string>? ToolError;
 

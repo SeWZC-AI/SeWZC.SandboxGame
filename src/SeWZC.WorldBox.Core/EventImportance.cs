@@ -5,10 +5,13 @@ public enum EventImportance
 {
     /// <summary>日常。</summary>
     Routine,
+
     /// <summary>值得关注。</summary>
     Notable,
+
     /// <summary>重大。</summary>
     Major,
+
     /// <summary>历史性。</summary>
     Historic,
 }
