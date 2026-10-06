@@ -4,6 +4,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <Deterministic>true</Deterministic>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
     <Version>0.0.1-alpha.1.1</Version>
     <AvaloniaVersion>12.1.3</AvaloniaVersion>
   </PropertyGroup>

@@ -20,47 +20,63 @@ public abstract record MapTool
             ? (MapTool)new BridgeTool()
             : new BuildingTool { Building = k });
 
+    /// <summary>选择并查看地图对象的工具。</summary>
     public static MapTool Inspect { get; } = new NavigationTool("inspect");
+    /// <summary>平移地图镜头的工具。</summary>
     public static MapTool Pan { get; } = new NavigationTool("pan");
+    /// <summary>修改国家领土归属的工具。</summary>
     public static MapTool Territory { get; } = new TerritoryTool();
+    /// <summary>建设道路的工具。</summary>
     public static MapTool Road { get; } = new RoadTool();
+    /// <summary>建设铁路的工具。</summary>
     public static MapTool Rail { get; } = new RailTool();
 
+    /// <summary>工具的稳定标识。</summary>
     public abstract string Id { get; }
+    /// <summary>是否只操作镜头与选择而不修改世界。</summary>
     public virtual bool IsNavigation => false;
+    /// <summary>触屏放置时是否需要先预览再确认。</summary>
     public virtual bool RequiresTouchConfirmation => false;
+    /// <summary>是否使用方形范围显示工具预览。</summary>
     public virtual bool SquarePreview => false;
 
+    /// <summary>返回绘制指定地形的工具。</summary>
     public static MapTool ForTerrain(TerrainType terrain)
     {
         return TerrainTools[terrain];
     }
 
+    /// <summary>返回投放指定种族居民的工具。</summary>
     public static MapTool ForResidents(RaceKind race)
     {
         return ResidentTools[race];
     }
 
+    /// <summary>返回施加指定灾害的工具。</summary>
     public static MapTool ForDisaster(DisasterKind disaster)
     {
         return DisasterTools[disaster];
     }
 
+    /// <summary>返回建设指定建筑的工具。</summary>
     public static MapTool ForBuilding(BuildingKind building)
     {
         return BuildingTools[building];
     }
 
+    /// <summary>计算工具当前预览半径，以地格为单位。</summary>
     public virtual int PreviewRadius(WorldMapControl map)
     {
         return Math.Clamp(map.BrushRadius, 0, 16);
     }
 
+    /// <summary>返回工具当前参数的中文说明。</summary>
     public virtual string Describe(WorldMapControl map)
     {
         return $"绘制范围：{map.BrushRadius} 格";
     }
 
+    /// <summary>检查指定位置的放置条件；允许操作时返回空值，否则返回原因。</summary>
     public virtual string? PlacementError(WorldMapControl map, int x, int y)
     {
         return null;

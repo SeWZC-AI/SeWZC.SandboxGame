@@ -7,20 +7,33 @@ public abstract class ToolCategory
 {
     private static readonly IReadOnlyList<string> BrushSizes = Array.AsReadOnly(new[] { "小笔刷", "中笔刷", "大笔刷" });
     private protected ToolCategory() { }
+    /// <summary>工具分类的稳定标识。</summary>
     public abstract string Id { get; }
+    /// <summary>工具分类的中文显示标题。</summary>
     public abstract string Title { get; }
+    /// <summary>工具分类的操作提示。</summary>
     public abstract string Hint { get; }
+    /// <summary>当前分类可选的地图工具。</summary>
     public abstract IReadOnlyList<MapToolChoice> Choices { get; }
+    /// <summary>笔刷大小选项的显示名称。</summary>
     public virtual IReadOnlyList<string> BrushLabels => BrushSizes;
+    /// <summary>分类默认选中的笔刷选项索引。</summary>
     public virtual int DefaultBrushIndex => 0;
+    /// <summary>是否显示笔刷大小选项。</summary>
     public virtual bool HasBrush => true;
+    /// <summary>是否属于需要聚落及建设参数的工具分类。</summary>
     public virtual bool IsConstruction => false;
 
+    /// <summary>地形绘制工具分类。</summary>
     public static ToolCategory Terrain { get; } = new TerrainCategory();
+    /// <summary>居民投放工具分类。</summary>
     public static ToolCategory Life { get; } = new LifeCategory();
+    /// <summary>灾害工具分类。</summary>
     public static ToolCategory Disaster { get; } = new DisasterCategory();
+    /// <summary>建筑、道路及铁路建设工具分类。</summary>
     public static ToolCategory Build { get; } = new BuildCategory();
 
+    /// <summary>将笔刷选项应用到地图工具的半径或投放参数。</summary>
     public virtual void SetBrush(WorldMapControl map, int index)
     {
         map.BrushRadius = Size(index);

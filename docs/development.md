@@ -22,6 +22,8 @@
 
 ## 主分支与环境迁移
 
+拉取远端更新使用 rebase，不创建 merge 提交；本仓库设置 `pull.rebase=true`，使用 `git pull --rebase` 或先 `git fetch` 再 `git rebase`。
+
 `main` 是唯一长期主分支及 Pages 发布分支；alpha 是当前产品阶段，应用版本由 [Directory.Build.props](../Directory.Build.props) 统一设置，仍不提供旧存档或内部接口兼容。切换分支不代表进入稳定阶段。
 
 从 `alpha` 迁移时，先将其全部提交保留在 `main`，再完成以下仓库与环境设置：
@@ -65,7 +67,7 @@
 
 `Core` 不依赖 Avalonia、浏览器或桌面文件系统。共享界面通过平台接口访问存储；不要为了一个功能把平台 API 引入模拟。C# 延续现有命名与文件风格，保持 nullable 检查；SDK、语言与依赖版本查看 [global.json](../global.json)、[Directory.Build.props](../Directory.Build.props) 和对应项目配置。
 
-代码注释使用中文，只描述代码职责、语义和必要的设计原因，避免复述显而易见的实现或夹带无关说明。
+代码注释使用中文，只描述代码职责、语义和必要的设计原因，避免复述显而易见的实现或夹带无关说明。公开及受保护的类型、构造函数、方法、属性、字段、事件和枚举成员必须提供 XML 文档注释；位置式 record 用 `<param>` 说明自动生成的属性。实现接口或重写框架成员可用 `<inheritdoc />` 继承契约。构建生成 XML 文档，并将缺失公开 API 注释的 `CS1591` 视为错误。
 
 ### 强类型与不可变边界
 
