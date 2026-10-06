@@ -27,7 +27,7 @@ function fixture(world) {
         MoveStartedTick: world.Tick, MoveDurationTicks: 1 });
     Object.assign(actor, { MagicTalent: 80, MagicTraining: 50, Mana: 100 });
     const research = world.Society.Research.find(r => r.SettlementId === home.Id);
-    Object.assign(research, { Completed: Array.from({ length: 42 }, (_, i) => i).filter(i => i !== 18 && i !== 23),
+    Object.assign(research, { Completed: Array.from({ length: 40 }, (_, i) => i),
         ActiveProject: null, Progress: 0, RequiredProgress: 0 });
     const candidates = [[4, 2], [4, 3], [3, 4], [-4, 3], [-4, -3], [4, -3]]
         .map(([dx, dy]) => ({ x: x + dx, y: y + dy }));

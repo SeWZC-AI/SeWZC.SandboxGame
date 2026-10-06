@@ -57,9 +57,8 @@ public enum ResearchKind
     /// <summary>能源回收。</summary>
     EnergyRecycling,
 
-    // 编号 18 和 23 曾误用于文明结果，保留这些编号以避免混淆研究含义。
     /// <summary>魔力协调。</summary>
-    ManaAttunement = 19,
+    ManaAttunement,
 
     /// <summary>修复法术。</summary>
     Restoration,
@@ -71,7 +70,7 @@ public enum ResearchKind
     Leylines,
 
     /// <summary>土木工程。</summary>
-    CivilEngineering = 24,
+    CivilEngineering,
 
     /// <summary>公共卫生。</summary>
     Sanitation,

@@ -7,7 +7,7 @@ public sealed class WorldState
 {
     /// <summary>存档数据结构版本，用于拒绝不兼容的格式。</summary>
     [JsonRequired]
-    public int FormatVersion { get; set; } = 16;
+    public int FormatVersion { get; set; } = 17;
 
     /// <summary>生成世界时使用的整数种子。</summary>
     public int Seed { get; set; }
@@ -48,9 +48,6 @@ public sealed class WorldState
     /// <summary>容量受限的世界编年史记录。</summary>
     public List<WorldEvent> Events { get; set; } = [];
 
-    /// <summary>存档中的粮食运输记录集合。</summary>
-    public List<TradeRoute> TradeRoutes { get; set; } = [];
-
     /// <summary>是否允许模拟自主产生自然灾害。</summary>
     public bool NaturalDisasters { get; set; } = true;
 
@@ -75,7 +72,7 @@ public sealed class WorldState
 
     /// <summary>模拟规则版本，用于校验存档的续演兼容性。</summary>
     [JsonRequired]
-    public int SimulationVersion { get; set; } = 15;
+    public int SimulationVersion { get; set; } = 16;
 
     /// <summary>文化、设施、研究、制度及已收到报告的状态。</summary>
     public SocietyState Society { get; set; } = new();

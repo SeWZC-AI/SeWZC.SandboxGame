@@ -102,7 +102,7 @@ public sealed partial class WorldEngine
             return PositionValid(x, y) && state.Tiles[y * state.Width + x].IsWalkable;
         }
 
-        Require(state.FormatVersion == 16, "不支持该存档版本，请为本版新建世界。");
+        Require(state.FormatVersion == 17, "不支持该存档版本，请为本版新建世界。");
         Require(state.Width is >= 32 and <= 256 && state.Height is >= 32 and <= 256, "地图尺寸超出范围。");
         Require(
             state.Tick is >= 0 and <= 120_000_000 && state.RandomState != 0 && state.NextId is > 0 and < 2_000_000_000,
@@ -113,10 +113,10 @@ public sealed partial class WorldEngine
             state.Settlements.Count <= 256 && state.Nations is not null && state.Nations.Count <= 64, "实体数量超出范围。");
         Require(
             state.Armies is not null && state.Armies.Count <= 64 && state.Diplomacies is not null &&
-            state.Diplomacies.Count <= 2016 && state.TradeRoutes is not null && state.TradeRoutes.Count <= 256 &&
+            state.Diplomacies.Count <= 2016 &&
             state.Events is not null && state.Events.Count <= 400, "世界记录数量超出范围。");
         Require(
-            state.SimulationVersion == 15 && state.PendingMessages is not null &&
+            state.SimulationVersion == 16 && state.PendingMessages is not null &&
             state.PendingMessages.Count <= MaxPopulation * 2 && state.ArchivedResidents is not null &&
             state.ArchivedResidents.Count <= 256 && state.Society is not null, "认知或社会记录无效。");
         var ids = new HashSet<int>();
@@ -135,7 +135,7 @@ public sealed partial class WorldEngine
         foreach (var town in state.Settlements!)
             Require(
                 town is not null && IdValid(town.Id) && TextValid(town.Name, 80) && PositionValid(town.X, town.Y) &&
-                town.Housing is >= 0 and <= 20_000 && town.Level is >= 1 and <= 5 &&
+                town.Housing is >= 0 and <= 20_000 &&
                 town.MaxClaimRadius is >= 1 and <= 17 && StockValid(town.Resources), "聚落数据无效。");
         foreach (var town in state.Settlements!)
             Require(Enum.IsDefined(town.Tier) && double.IsFinite(town.ExpansionRequired)
@@ -248,12 +248,6 @@ public sealed partial class WorldEngine
                         MidpointRounding.AwayFromZero)
                     && pairs.Add((Math.Min(relation.FirstNationId, relation.SecondNationId),
                         Math.Max(relation.FirstNationId, relation.SecondNationId))), "外交关系无效或重复。");
-        foreach (var route in state.TradeRoutes!)
-            Require(
-                route is not null && towns.ContainsKey(route.FromSettlementId) &&
-                towns.ContainsKey(route.ToSettlementId) && route.FromSettlementId != route.ToSettlementId &&
-                route.TravelTicks is > 0 and <= 200_000 && route.RemainingTicks > 0 &&
-                route.RemainingTicks <= route.TravelTicks && FiniteRange(route.FoodCargo, 1_000_000), "贸易路线无效。");
         foreach (var entry in state.Events!)
             Require(
                 entry is not null && Enum.IsDefined(entry.Kind) && Enum.IsDefined(entry.Importance) &&
@@ -268,15 +262,10 @@ public sealed partial class WorldEngine
         foreach (var town in state.Settlements)
         {
             Require(
-                town.PublicKnowledge is not null && town.PublicKnowledge.Count <= 24 && town.Petitions is not null &&
-                town.Petitions.Count <= 128 && town.FertilityBoostTicks is >= 0 and <= 100_000 &&
+                town.PublicKnowledge is not null && town.PublicKnowledge.Count <= 24 &&
+                town.FertilityBoostTicks is >= 0 and <= 100_000 &&
                 town.ShieldTicks is >= 0 and <= 100_000, "聚落认知记录无效。");
             foreach (var fact in town.PublicKnowledge!) ValidateFactV2(fact, state.Tick, state.Width, state.Height);
-            foreach (var petition in town.Petitions!)
-                Require(
-                    petition is not null && Enum.IsDefined(petition.Topic) && double.IsFinite(petition.Value) &&
-                    double.IsFinite(petition.Weight) && petition.Weight >= 0 && petition.ObservedTick >= 0 &&
-                    petition.ObservedTick <= petition.ReceivedTick && petition.ReceivedTick <= state.Tick, "递送意见无效。");
         }
 
         foreach (var pending in state.PendingMessages!)

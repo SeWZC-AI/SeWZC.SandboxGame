@@ -3,7 +3,7 @@ namespace SeWZC.WorldBox.Core;
 /// <summary>需要保存的文化、设施、本地研究、制度，以及机构实际收到的报告。</summary>
 public sealed class SocietyState
 {
-    /// <summary>是否允许新的魔法发展和施法。</summary>
+    /// <summary>是否允许新的魔法发展；已有施法能力不受此开关影响。</summary>
     public bool MagicEnabled { get; set; } = true;
 
     /// <summary>独立的文化定义集合。</summary>

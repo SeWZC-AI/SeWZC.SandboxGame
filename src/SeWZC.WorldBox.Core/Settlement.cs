@@ -29,9 +29,6 @@ public sealed partial class Settlement
     /// <summary>本聚落的基础住房容量，不含已运营住宅的额外容量。</summary>
     public int Housing { get; set; } = 40;
 
-    /// <summary>存档保留的基础等级字段，当前村镇城晋升使用 <c>Tier</c>。</summary>
-    public int Level { get; set; } = 1;
-
     /// <summary>建村材料是否仍在运输、尚未完成交付。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool FoundationPending { get; set; }
@@ -48,9 +45,6 @@ public sealed partial class Settlement
 
     /// <summary>实际在本地观察或收到的公开信息，可能已经过时。</summary>
     public List<AgentFact> PublicKnowledge { get; set; } = [];
-
-    /// <summary>存档保留的请愿记录；当前制度决策使用已收到的机构报告。</summary>
-    public List<CivicOpinion> Petitions { get; set; } = [];
 
     /// <summary>丰饶祝福剩余模拟日数。</summary>
     public int FertilityBoostTicks { get; set; }

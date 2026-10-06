@@ -410,7 +410,7 @@ public sealed partial class WorldEngine
 
         RecordBattle(army, soldiers, defenders);
         var attack = soldiers.Length * (6 + _nations[army.NationId].Technology) * army.Morale / 100;
-        var defense = defenders.Length * 1.7 * (1 + target.Level * 0.1);
+        var defense = defenders.Length * 1.7;
         ApplyDamage(defenders, attack);
         ApplyDamage(soldiers, defense);
         army.Morale = Math.Max(0, army.Morale - 0.2);
@@ -570,7 +570,6 @@ public sealed partial class WorldEngine
         State.Settlements.Remove(settlement);
         _settlements.Remove(settlement.Id);
         _citizens.Remove(settlement.Id);
-        State.TradeRoutes.RemoveAll(r => r.FromSettlementId == settlement.Id || r.ToSettlementId == settlement.Id);
         if (_nations.TryGetValue(settlement.NationId, out var nation) && nation.CapitalId == settlement.Id)
             nation.CapitalId = destination?.Id ?? 0;
     }
