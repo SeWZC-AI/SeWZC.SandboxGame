@@ -206,8 +206,6 @@ internal static class ResearchGameplayTests
         Check(
             ResearchRules.All.Count == 40 && ResearchRules.Route(false).Count == 26 &&
             ResearchRules.Route(true).Count == 25, "Actual research routes are incomplete");
-        Check(!Enum.IsDefined((ResearchKind)18) && !Enum.IsDefined((ResearchKind)23),
-            "Fake empire knowledge remains valid");
         Check(!e.GetCivilizationProgress(town.Id, false).Achieved, "Knowledge alone magically created an empire");
         var facilities =
             new[]
@@ -448,6 +446,14 @@ internal static class ResearchGameplayTests
         var resumed = WorldEngine.ImportJson(json);
         Check(resumed.ExportJson() == json, "Current-format research gameplay did not round trip");
         var bad = JsonNode.Parse(json)!;
+        Check(!bad.AsObject().ContainsKey("TradeRoutes")
+              && bad["Settlements"]!.AsArray().All(t => !t!.AsObject().ContainsKey("Petitions")
+                                                       && !t.AsObject().ContainsKey("Level")),
+            "Current saves still contain unused trade, petition or settlement-level state");
+        Check(resumed.State.Society.Research.Single().Completed.SequenceEqual(
+                e.State.Society.Research.Single().Completed)
+              && ResearchRules.All.All(r => resumed.HasResearch(town.Id, r.Kind)),
+            "Saved research changed meaning during restoration");
         bad["Residents"]![0]!["FrozenUntilTick"] = 10000;
         try
         {

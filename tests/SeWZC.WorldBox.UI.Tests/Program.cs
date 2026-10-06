@@ -931,9 +931,12 @@ static void SettlementEntrypoints()
     var engine = TwoTownWorld();
     var view = View(engine);
     var town = engine.State.Settlements[1];
+    town.Tier = SettlementTier.City;
     var before = engine.ExportJson();
     Call(view, "OpenInspector", "overview", true);
     Click(view, "overview-settlements");
+    Assert((Control<Button>(view, $"settlement-row-{town.Id}").Content as TextBlock)?.Text?.Contains("城镇等级 城") == true,
+        "Settlement list showed a stale numeric level instead of its actual city tier");
     Click(view, $"settlement-row-{town.Id}");
     foreach (var mode in new[] { "settlement", "infrastructure", "research", "communication", "settlement" })
     {

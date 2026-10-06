@@ -245,7 +245,7 @@ public sealed partial class MainView
         LiveRows(panel, () => _engine.State.Settlements.OrderBy(t => t.NationId).ThenBy(t => t.Id),
             t => t.Id.ToString(),
             t =>
-                $"{t.Name}   {NationName(t.NationId)}\n人口 {t.Population}   城镇等级 {t.Level}\n{_engine.GetDevelopment(t.Id).Stage}",
+                $"{t.Name}   {NationName(t.NationId)}\n人口 {t.Population}   城镇等级 {WorldEngine.SettlementTierName(t.Tier)}\n{_engine.GetDevelopment(t.Id).Stage}",
             t => OpenSettlement(t.Id));
     }
 

@@ -13,7 +13,7 @@ internal static class PersistenceRegressionTests
         ("directional diplomacy and remembered order identifiers preserve nonzero and zero values",
             DirectionalStateRoundTrip),
         ("directional diplomacy and order snapshots reject invalid or missing fields", InvalidDirectionalState),
-        ("format four rejects legacy format and simulation versions", RejectLegacyVersions),
+        ("current saves reject unsupported format and simulation versions", RejectUnsupportedVersions),
     ];
 
     private static void MaximumAge()
@@ -215,7 +215,7 @@ internal static class PersistenceRegressionTests
         relation.Opinion = 0;
         foreach (var army in engine.State.Armies) army.LastOrderFactId = 0;
         var saved = JsonNode.Parse(engine.ExportJson())!;
-        Require(saved["FormatVersion"]!.GetValue<int>() == 16 && saved["SimulationVersion"]!.GetValue<int>() == 15,
+        Require(saved["FormatVersion"]!.GetValue<int>() == 17 && saved["SimulationVersion"]!.GetValue<int>() == 16,
             "New worlds did not explicitly save both current version fields.");
         Require(saved["Diplomacies"]![0]!["FirstOpinion"]?.GetValue<int>() == 0
                 && saved["Diplomacies"]![0]!["SecondOpinion"]?.GetValue<int>() == 0
@@ -232,7 +232,7 @@ internal static class PersistenceRegressionTests
     private static void InvalidDirectionalState()
     {
         var engine = CreateMilitaryWorld();
-        RejectInvalidSave(engine, json => json["FormatVersion"] = 15, "Legacy format 15 was accepted.");
+        RejectInvalidSave(engine, json => json["FormatVersion"] = 16, "Previous format 16 was accepted.");
         foreach (var property in new[] { "FirstOpinion", "SecondOpinion", "Opinion" })
         foreach (var value in new[] { -101, 101 })
             RejectInvalidSave(engine, json => json["Diplomacies"]![0]![property] = value,
@@ -259,19 +259,24 @@ internal static class PersistenceRegressionTests
                 $"Missing required version field {property} silently adopted the current version.");
     }
 
-    private static void RejectLegacyVersions()
+    private static void RejectUnsupportedVersions()
     {
         var engine = CreateMilitaryWorld();
+        var current = engine.State;
         foreach (var (format, simulation) in new[]
                  {
-                     (3, 5), (5, 3), (3, 3), (4, 5), (5, 4), (4, 4), (5, 6), (6, 5), (5, 5), (6, 6), (6, 7), (7, 6),
-                     (7, 7), (8, 7), (7, 8), (9, 9), (10, 9), (9, 10), (12, 12),
+                     (16, 15),
+                     (current.FormatVersion - 1, current.SimulationVersion),
+                     (current.FormatVersion, current.SimulationVersion - 1),
+                     (current.FormatVersion + 1, current.SimulationVersion),
+                     (current.FormatVersion, current.SimulationVersion + 1),
+                     (0, current.SimulationVersion), (current.FormatVersion, 0),
                  })
             RejectInvalidSave(engine, json =>
                 {
                     json["FormatVersion"] = format;
                     json["SimulationVersion"] = simulation;
-                }, $"Legacy format/simulation versions {format}/{simulation} were accepted.");
+                }, $"Unsupported format/simulation versions {format}/{simulation} were accepted.");
     }
 
     private static WorldEngine CreateMilitaryWorld()

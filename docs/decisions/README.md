@@ -33,11 +33,12 @@
 | [0025](0025-research-trees-and-empire-simulation.md) | 科技树、帝国研究与实物发展预算 | 部分采用；帝国项目被 0028 替代 |
 | [0026](0026-connected-research-graph.md) | 有真实依赖连线的科技树 | 采用；混排与外围连线被 0027 替代 |
 | [0027](0027-readable-research-branches.md) | 两条帝国路线分别成树，支线独占位置 | 部分采用；帝国汇合被 0028 替代 |
-| [0028](0028-civilization-outcomes-and-research-gameplay.md) | 文明结果与研究解锁玩法 | 采用 |
+| [0028](0028-civilization-outcomes-and-research-gameplay.md) | 文明结果与研究解锁玩法 | 采用；空编号保留被 0033 取消 |
 | [0029](0029-balanced-ecology-and-demand-planning.md) | 平衡食物网、真实养殖与按需建设／研究 | 采用 |
 | [0030](0030-sustainable-collection-and-compact-selection.md) | 低密度采集、缓慢扩散与紧凑选择概览 | 采用 |
 | [0031](0031-contextual-navigation-and-modal-pause.md) | 聚落分区、完整返回与窗口临时暂停 | 采用 |
 | [0032](0032-compact-chunked-saves.md) | 明确零值语义、精确稀疏种群与分块压缩保存 | 采用 |
+| [0033](0033-remove-unfounded-constraints.md) | 清理无现行依据的历史约束与废弃状态 | 采用 |
 
 ## 何时新增或替代
 
