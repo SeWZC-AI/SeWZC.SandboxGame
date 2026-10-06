@@ -7,6 +7,7 @@ Run the functional suite first. Build/run the printed project with
 rich forest. These options exist only in the disposable probe copy.
 """
 import argparse
+import re
 from pathlib import Path
 import shutil
 
@@ -47,7 +48,7 @@ stages = [
     ("RefreshTerritoryClaims", "if (State.Tick % 30 == 0) RefreshTerritoryClaims();"),
     ("UpdateArmies", "UpdateArmies();"),
     ("ArchiveDeadResidents", "ArchiveDeadResidents();"),
-    ("RemoveSettlements", 'foreach (var settlement in State.Settlements.Where(s => _citizens[s.Id].Count == 0).ToArray()) RemoveSettlement(settlement, "居民离散，聚落成为遗址");'),
+    ("RemoveSettlements", 'foreach (var settlement in State.Settlements.Where(s => _citizens[s.Id].Count == 0).ToArray())\n                    RemoveSettlement(settlement, "居民离散，聚落成为遗址");'),
     ("RemoveEmptyNations", "RemoveEmptyNations();"),
     ("ReconcileSocietyTopology", "ReconcileSocietyTopology();"),
     ("RefreshTotals", "RefreshTotals();"),
@@ -58,24 +59,20 @@ end = simulation.index("    private static void CapResources", start)
 step = simulation[start:end]
 for name, statement in stages:
     expected = 3 if name == "Reindex" else 1
-    if sum(line.strip() == statement for line in step.splitlines()) != expected:
+    if step.count(statement) != expected:
         raise SystemExit(f"Step changed: expected {expected} occurrences of {name}; review probes before running.")
 # Separate local names for repeated calls, aggregate them into one stage.
-counts = {}
-instrumented = []
-for line in step.splitlines(keepends=True):
-    match = next(((i, name) for i, (name, statement) in enumerate(stages)
-                  if line.strip() == statement), None)
-    if match is None:
-        instrumented.append(line)
-        continue
-    index, name = match
-    call = counts.get(name, 0)
-    counts[name] = call + 1
-    local = f"probe{index}_{call}"
-    indent = line[:len(line) - len(line.lstrip())]
-    instrumented.extend([f"{indent}var {local} = SimulationStageProbe.Begin();\n", line,
-                         f"{indent}SimulationStageProbe.End({index}, {local});\n"])
+instrumented = step
+for index, (name, statement) in enumerate(stages):
+    call = 0
+    def insert(match):
+        global call
+        local = f"probe{index}_{call}"
+        call += 1
+        indent = match.group(1)
+        return (f"{indent}var {local} = SimulationStageProbe.Begin();\n" + match.group(0)
+                + f"{indent}SimulationStageProbe.End({index}, {local});\n")
+    instrumented = re.sub(r"(?m)^([ \t]*)" + re.escape(statement) + r"\n", insert, instrumented)
 
 shutil.copytree(root / "src/SeWZC.WorldBox.Core", destination / "src/SeWZC.WorldBox.Core",
                 ignore=shutil.ignore_patterns("bin", "obj"))
@@ -84,7 +81,7 @@ shutil.copytree(root / "tests/SeWZC.WorldBox.Core.Tests", destination / "tests/S
 for name in ("global.json", "Directory.Build.props"):
     shutil.copy2(root / name, destination / name)
 (destination / "src/SeWZC.WorldBox.Core/WorldEngine.Simulation.cs").write_text(
-    simulation[:start] + "".join(instrumented) + simulation[end:])
+    simulation[:start] + instrumented + simulation[end:])
 
 names = ", ".join('"' + name + '"' for name, _ in stages)
 probe_source = """using System.Diagnostics;

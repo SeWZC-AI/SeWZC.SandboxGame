@@ -1,0 +1,1343 @@
+{
+  "recordedAtUtc": "2026-10-06T03:49:36.992121+00:00",
+  "baseCommit": "5906ff7af5ceaf4e49b6a6342d642f93fbb75942",
+  "source": {
+    "status": "uncommitted workspace",
+    "csharpFiles": 97,
+    "sha256Algorithm": "sorted relative source path UTF-8 + NUL + file bytes + NUL",
+    "before": "323ecc5dc4c33f8c798084aa2a44c257cbd6f5e0e2641ce47060e38ed670f1e6",
+    "after": "c22f06a02d4a4ce8ad459135a8115b74bd5b05c670663a15314188e9a17a8f86"
+  },
+  "baselineCorrections": [
+    "Both baselines include the same static initialization fixes in AdvancementRules and ResearchRules; the original HEAD fails during initialization."
+  ],
+  "targetSimulationDaysPerSecondAt5x": 25,
+  "environment": {
+    "browser": "Chromium 151.0.7922.173",
+    "node": "22.23.3",
+    "playwright": "1.57.0",
+    "rendering": "headless Chromium with SwiftShader; desktop 1440x960, touch emulation 390x844"
+  },
+  "native": {
+    "denseEcology": {
+      "before": {
+        "timestampUtc": "2026-10-06T02:47:19.5627363+00:00",
+        "framework": ".NET 10.0.12",
+        "os": "Debian GNU/Linux 13 (trixie)",
+        "architecture": "X64",
+        "processorCount": 4,
+        "serverGc": false,
+        "seed": 451,
+        "width": 256,
+        "height": 256,
+        "initialPopulation": 16,
+        "initialNations": 16,
+        "wars": 8,
+        "terrain": "flat grass",
+        "naturalDisasters": false,
+        "ecologyOnly": true,
+        "denseEcology": true,
+        "warmupTicks": 256,
+        "measuredTicks": 512,
+        "repetitions": 3,
+        "limitation": "Native simulation only. Timings exclude generation, warmup, serialization, UI and browser execution. Sampling adds overhead; use a separate untraced run for timing.",
+        "measurements": [
+          {
+            "repetition": 0,
+            "elapsedMs": 384.8449,
+            "meanMs": 0.7514291015624995,
+            "processCpuMs": 391.535,
+            "processCpuMsPerTick": 0.764716796875,
+            "medianMs": 0.7343,
+            "p95Ms": 0.8159,
+            "maxMs": 3.7317,
+            "allocatedBytesPerTick": 0,
+            "gcCollections": [
+              0,
+              0,
+              0
+            ],
+            "finalTick": 768,
+            "finalPopulation": 16,
+            "nations": 16,
+            "armies": 0,
+            "rememberedFacts": 32,
+            "saveBytes": 27201057,
+            "saveWithinLimit": true,
+            "saveSha256": "3D2DC9AEFA311C1FE615DBB3BE3C6EC02A1809944BA3133F359C32A2758E7386",
+            "wildlife": {
+              "name": "TickWildlife",
+              "elapsedMs": 346.000329,
+              "maxMs": 3.65411,
+              "p95Ms": 0.732296,
+              "allocatedBytes": 0,
+              "calls": 512
+            }
+          },
+          {
+            "repetition": 1,
+            "elapsedMs": 396.271,
+            "meanMs": 0.7737499999999998,
+            "processCpuMs": 396.186,
+            "processCpuMsPerTick": 0.77380078125,
+            "medianMs": 0.7356,
+            "p95Ms": 1.0856,
+            "maxMs": 1.4053,
+            "allocatedBytesPerTick": 0,
+            "gcCollections": [
+              0,
+              0,
+              0
+            ],
+            "finalTick": 768,
+            "finalPopulation": 16,
+            "nations": 16,
+            "armies": 0,
+            "rememberedFacts": 32,
+            "saveBytes": 27201057,
+            "saveWithinLimit": true,
+            "saveSha256": "3D2DC9AEFA311C1FE615DBB3BE3C6EC02A1809944BA3133F359C32A2758E7386",
+            "wildlife": {
+              "name": "TickWildlife",
+              "elapsedMs": 360.89563,
+              "maxMs": 1.304725,
+              "p95Ms": 0.986482,
+              "allocatedBytes": 0,
+              "calls": 512
+            }
+          },
+          {
+            "repetition": 2,
+            "elapsedMs": 376.6221,
+            "meanMs": 0.7354533203124987,
+            "processCpuMs": 376.642,
+            "processCpuMsPerTick": 0.73562890625,
+            "medianMs": 0.7241,
+            "p95Ms": 0.8047,
+            "maxMs": 1.8148,
+            "allocatedBytesPerTick": 0,
+            "gcCollections": [
+              0,
+              0,
+              0
+            ],
+            "finalTick": 768,
+            "finalPopulation": 16,
+            "nations": 16,
+            "armies": 0,
+            "rememberedFacts": 32,
+            "saveBytes": 27201057,
+            "saveWithinLimit": true,
+            "saveSha256": "3D2DC9AEFA311C1FE615DBB3BE3C6EC02A1809944BA3133F359C32A2758E7386",
+            "wildlife": {
+              "name": "TickWildlife",
+              "elapsedMs": 342.70918,
+              "maxMs": 1.723877,
+              "p95Ms": 0.736435,
+              "allocatedBytes": 0,
+              "calls": 512
+            }
+          }
+        ],
+        "meanOfRepetitionsMs": 0.7535441406249994
+      },
+      "after": {
+        "timestampUtc": "2026-10-06T03:44:13.9573557+00:00",
+        "framework": ".NET 10.0.12",
+        "os": "Debian GNU/Linux 13 (trixie)",
+        "architecture": "X64",
+        "processorCount": 4,
+        "serverGc": false,
+        "seed": 451,
+        "width": 256,
+        "height": 256,
+        "initialPopulation": 16,
+        "initialNations": 16,
+        "wars": 8,
+        "terrain": "flat grass",
+        "naturalDisasters": false,
+        "ecologyOnly": true,
+        "denseEcology": true,
+        "warmupTicks": 256,
+        "measuredTicks": 512,
+        "repetitions": 3,
+        "limitation": "Native simulation only. Timings exclude generation, warmup, serialization, UI and browser execution. Sampling adds overhead; use a separate untraced run for timing.",
+        "measurements": [
+          {
+            "repetition": 0,
+            "elapsedMs": 223.7958,
+            "meanMs": 0.436924609375,
+            "processCpuMs": 232.817,
+            "processCpuMsPerTick": 0.454720703125,
+            "medianMs": 0.4241,
+            "p95Ms": 0.5098,
+            "maxMs": 0.797,
+            "allocatedBytesPerTick": 0,
+            "gcCollections": [
+              0,
+              0,
+              0
+            ],
+            "finalTick": 768,
+            "finalPopulation": 16,
+            "nations": 16,
+            "armies": 0,
+            "rememberedFacts": 32,
+            "saveBytes": 27201057,
+            "saveWithinLimit": true,
+            "saveSha256": "3D2DC9AEFA311C1FE615DBB3BE3C6EC02A1809944BA3133F359C32A2758E7386",
+            "wildlife": {
+              "name": "TickWildlife",
+              "elapsedMs": 189.872985,
+              "maxMs": 0.68014,
+              "p95Ms": 0.419212,
+              "allocatedBytes": 0,
+              "calls": 512
+            }
+          },
+          {
+            "repetition": 1,
+            "elapsedMs": 219.3326,
+            "meanMs": 0.42818417968749983,
+            "processCpuMs": 398.184,
+            "processCpuMsPerTick": 0.777703125,
+            "medianMs": 0.4205,
+            "p95Ms": 0.4918,
+            "maxMs": 0.721,
+            "allocatedBytesPerTick": 0,
+            "gcCollections": [
+              0,
+              0,
+              0
+            ],
+            "finalTick": 768,
+            "finalPopulation": 16,
+            "nations": 16,
+            "armies": 0,
+            "rememberedFacts": 32,
+            "saveBytes": 27201057,
+            "saveWithinLimit": true,
+            "saveSha256": "3D2DC9AEFA311C1FE615DBB3BE3C6EC02A1809944BA3133F359C32A2758E7386",
+            "wildlife": {
+              "name": "TickWildlife",
+              "elapsedMs": 187.143722,
+              "maxMs": 0.631299,
+              "p95Ms": 0.409465,
+              "allocatedBytes": 0,
+              "calls": 512
+            }
+          },
+          {
+            "repetition": 2,
+            "elapsedMs": 219.3902,
+            "meanMs": 0.4283203124999997,
+            "processCpuMs": 219.579,
+            "processCpuMsPerTick": 0.428865234375,
+            "medianMs": 0.4223,
+            "p95Ms": 0.4687,
+            "maxMs": 0.7108,
+            "allocatedBytesPerTick": 0,
+            "gcCollections": [
+              0,
+              0,
+              0
+            ],
+            "finalTick": 768,
+            "finalPopulation": 16,
+            "nations": 16,
+            "armies": 0,
+            "rememberedFacts": 32,
+            "saveBytes": 27201057,
+            "saveWithinLimit": true,
+            "saveSha256": "3D2DC9AEFA311C1FE615DBB3BE3C6EC02A1809944BA3133F359C32A2758E7386",
+            "wildlife": {
+              "name": "TickWildlife",
+              "elapsedMs": 187.884321,
+              "maxMs": 0.644694,
+              "p95Ms": 0.402902,
+              "allocatedBytes": 0,
+              "calls": 512
+            }
+          }
+        ],
+        "meanOfRepetitionsMs": 0.43114303385416647
+      },
+      "actualWorkload": {
+        "terrain": "forest",
+        "fertility": 100,
+        "resourceAmount": 100,
+        "naturalWaterYield": 0.2,
+        "initialPlants": {
+          "trees": 0.7,
+          "shrubs": 0.3
+        },
+        "populationSeeding": "0.8 times environmental capacity for all species, before warmup",
+        "advance": "wildlife and plants only; 256-day warmup, 512 measured days, three repetitions",
+        "metadataNote": "The generic driver retains its flat-grass metadata; this override describes the dense-ecology probe workload."
+      }
+    },
+    "wholeSimulation2000": {
+      "before": {
+        "timestampUtc": "2026-10-06T02:56:55.6728172+00:00",
+        "framework": ".NET 10.0.12",
+        "os": "Debian GNU/Linux 13 (trixie)",
+        "architecture": "X64",
+        "processorCount": 4,
+        "serverGc": false,
+        "seed": 451,
+        "width": 256,
+        "height": 256,
+        "initialPopulation": 2000,
+        "initialNations": 16,
+        "wars": 8,
+        "terrain": "flat grass",
+        "naturalDisasters": false,
+        "warmupTicks": 60,
+        "measuredTicks": 120,
+        "repetitions": 3,
+        "limitation": "Native simulation only. Timings exclude generation, warmup, serialization, UI and browser execution. Sampling adds overhead; use a separate untraced run for timing.",
+        "measurements": [
+          {
+            "repetition": 0,
+            "elapsedMs": 700.2786,
+            "meanMs": 5.834831666666664,
+            "processCpuMs": 943.429,
+            "processCpuMsPerTick": 7.861908333333333,
+            "medianMs": 4.8625,
+            "p95Ms": 9.9163,
+            "maxMs": 44.431,
+            "allocatedBytesPerTick": 1774668.4666666666,
+            "gcCollections": [
+              13,
+              1,
+              0
+            ],
+            "finalTick": 180,
+            "finalPopulation": 2035,
+            "nations": 16,
+            "armies": 16,
+            "rememberedFacts": 15456,
+            "saveBytes": 36871429,
+            "saveWithinLimit": true,
+            "saveSha256": "9FDF0ADAD9E5B02032705BB3F6E93FAB7FBF13A9217EFC240ABB7C22AE389B71"
+          },
+          {
+            "repetition": 1,
+            "elapsedMs": 667.8294,
+            "meanMs": 5.564887500000001,
+            "processCpuMs": 679.384,
+            "processCpuMsPerTick": 5.661533333333334,
+            "medianMs": 4.8447,
+            "p95Ms": 10.0955,
+            "maxMs": 15.4917,
+            "allocatedBytesPerTick": 1775461.8666666667,
+            "gcCollections": [
+              13,
+              2,
+              0
+            ],
+            "finalTick": 180,
+            "finalPopulation": 2035,
+            "nations": 16,
+            "armies": 16,
+            "rememberedFacts": 15456,
+            "saveBytes": 36871429,
+            "saveWithinLimit": true,
+            "saveSha256": "9FDF0ADAD9E5B02032705BB3F6E93FAB7FBF13A9217EFC240ABB7C22AE389B71"
+          },
+          {
+            "repetition": 2,
+            "elapsedMs": 844.0049,
+            "meanMs": 7.032860833333336,
+            "processCpuMs": 854.56,
+            "processCpuMsPerTick": 7.121333333333333,
+            "medianMs": 5.937,
+            "p95Ms": 12.392,
+            "maxMs": 20.6944,
+            "allocatedBytesPerTick": 1775461.8666666667,
+            "gcCollections": [
+              13,
+              2,
+              0
+            ],
+            "finalTick": 180,
+            "finalPopulation": 2035,
+            "nations": 16,
+            "armies": 16,
+            "rememberedFacts": 15456,
+            "saveBytes": 36871429,
+            "saveWithinLimit": true,
+            "saveSha256": "9FDF0ADAD9E5B02032705BB3F6E93FAB7FBF13A9217EFC240ABB7C22AE389B71"
+          }
+        ],
+        "meanOfRepetitionsMs": 6.144193333333334
+      },
+      "after": {
+        "timestampUtc": "2026-10-06T03:44:24.7703554+00:00",
+        "framework": ".NET 10.0.12",
+        "os": "Debian GNU/Linux 13 (trixie)",
+        "architecture": "X64",
+        "processorCount": 4,
+        "serverGc": false,
+        "seed": 451,
+        "width": 256,
+        "height": 256,
+        "initialPopulation": 2000,
+        "initialNations": 16,
+        "wars": 8,
+        "terrain": "flat grass",
+        "naturalDisasters": false,
+        "warmupTicks": 60,
+        "measuredTicks": 120,
+        "repetitions": 3,
+        "limitation": "Native simulation only. Timings exclude generation, warmup, serialization, UI and browser execution. Sampling adds overhead; use a separate untraced run for timing.",
+        "measurements": [
+          {
+            "repetition": 0,
+            "elapsedMs": 752.0237,
+            "meanMs": 6.2659608333333345,
+            "processCpuMs": 1084.761,
+            "processCpuMsPerTick": 9.039674999999999,
+            "medianMs": 5.0707,
+            "p95Ms": 12.1195,
+            "maxMs": 31.8438,
+            "allocatedBytesPerTick": 1775944.1333333333,
+            "gcCollections": [
+              13,
+              2,
+              0
+            ],
+            "finalTick": 180,
+            "finalPopulation": 2035,
+            "nations": 16,
+            "armies": 16,
+            "rememberedFacts": 15456,
+            "saveBytes": 36871429,
+            "saveWithinLimit": true,
+            "saveSha256": "9FDF0ADAD9E5B02032705BB3F6E93FAB7FBF13A9217EFC240ABB7C22AE389B71"
+          },
+          {
+            "repetition": 1,
+            "elapsedMs": 601.7918,
+            "meanMs": 5.0144150000000005,
+            "processCpuMs": 689.037,
+            "processCpuMsPerTick": 5.741975,
+            "medianMs": 4.3195,
+            "p95Ms": 8.4241,
+            "maxMs": 13.137,
+            "allocatedBytesPerTick": 1774742.9333333333,
+            "gcCollections": [
+              13,
+              1,
+              0
+            ],
+            "finalTick": 180,
+            "finalPopulation": 2035,
+            "nations": 16,
+            "armies": 16,
+            "rememberedFacts": 15456,
+            "saveBytes": 36871429,
+            "saveWithinLimit": true,
+            "saveSha256": "9FDF0ADAD9E5B02032705BB3F6E93FAB7FBF13A9217EFC240ABB7C22AE389B71"
+          },
+          {
+            "repetition": 2,
+            "elapsedMs": 597.947,
+            "meanMs": 4.982570833333333,
+            "processCpuMs": 624.895,
+            "processCpuMsPerTick": 5.207458333333333,
+            "medianMs": 4.1922,
+            "p95Ms": 9.1864,
+            "maxMs": 15.5253,
+            "allocatedBytesPerTick": 1775501.1333333333,
+            "gcCollections": [
+              14,
+              3,
+              1
+            ],
+            "finalTick": 180,
+            "finalPopulation": 2035,
+            "nations": 16,
+            "armies": 16,
+            "rememberedFacts": 15456,
+            "saveBytes": 36871429,
+            "saveWithinLimit": true,
+            "saveSha256": "9FDF0ADAD9E5B02032705BB3F6E93FAB7FBF13A9217EFC240ABB7C22AE389B71"
+          }
+        ],
+        "meanOfRepetitionsMs": 5.420982222222222
+      }
+    }
+  },
+  "browser": {
+    "baselineProbe": [
+      {
+        "name": "default-far-5",
+        "speed": 5,
+        "population": 144,
+        "width": 256,
+        "height": 256,
+        "exactTerrainCounterfactual": false,
+        "legacyTerrainCounterfactual": false,
+        "tickBefore": 11,
+        "tickAfter": 317,
+        "elapsedMs": 15069.699999999953,
+        "ticksPerSecond": 20.305646429590567,
+        "longTasks": {
+          "count": 59,
+          "totalMs": 3921,
+          "meanMs": 66.45762711864407,
+          "p50Ms": 64,
+          "p95Ms": 93,
+          "maxMs": 94
+        },
+        "frameGaps": {
+          "count": 211,
+          "totalMs": 15049.400000000001,
+          "meanMs": 71.32417061611375,
+          "p50Ms": 66.70000000000073,
+          "p95Ms": 133.20000000000073,
+          "maxMs": 183.40000000000146
+        },
+        "gapsOver100ms": 36,
+        "metricDelta": {
+          "TaskDuration": 17324.158,
+          "ScriptDuration": 12447.421999999999,
+          "LayoutDuration": 0,
+          "RecalcStyleDuration": 14.975
+        },
+        "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+        "tileSize": 3.3359375,
+        "errors": [],
+        "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+        "managed": {
+          "Map.Ecology": {
+            "count": 191,
+            "totalMs": 0.49999799999999994,
+            "meanMs": 0.00261779057591623,
+            "p50Ms": 0,
+            "p95Ms": 0,
+            "maxMs": 0.1
+          },
+          "Map.Render": {
+            "count": 191,
+            "totalMs": 774.4000010000005,
+            "meanMs": 4.054450267015709,
+            "p50Ms": 3.5,
+            "p95Ms": 6.8,
+            "maxMs": 11.9
+          },
+          "Core.Wildlife": {
+            "count": 306,
+            "totalMs": 1692.6000020000004,
+            "meanMs": 5.531372555555556,
+            "p50Ms": 5.5,
+            "p95Ms": 6.6,
+            "maxMs": 15.800001
+          },
+          "Core.Actions": {
+            "count": 306,
+            "totalMs": 3464.2999900000004,
+            "meanMs": 11.321241797385623,
+            "p50Ms": 11.6,
+            "p95Ms": 16.199999,
+            "maxMs": 30.299999
+          },
+          "Core.Communication": {
+            "count": 306,
+            "totalMs": 266.00001699999984,
+            "meanMs": 0.869281101307189,
+            "p50Ms": 0.799999,
+            "p95Ms": 1.5,
+            "maxMs": 3.300001
+          },
+          "Engine.Step": {
+            "count": 306,
+            "totalMs": 6076.199996999997,
+            "meanMs": 19.856862735294108,
+            "p50Ms": 19.799999,
+            "p95Ms": 25.700001,
+            "maxMs": 40.5
+          },
+          "Map.RefreshWorld": {
+            "count": 242,
+            "totalMs": 2405.5999900000015,
+            "meanMs": 9.940495826446288,
+            "p50Ms": 9.700001,
+            "p95Ms": 10.900001,
+            "maxMs": 15.4
+          },
+          "UI.OnTick": {
+            "count": 243,
+            "totalMs": 8523.699988000002,
+            "meanMs": 35.07695468312758,
+            "p50Ms": 32.699999,
+            "p95Ms": 48.700001,
+            "maxMs": 60.4
+          },
+          "UI.RefreshUi": {
+            "count": 20,
+            "totalMs": 22.699999,
+            "meanMs": 1.1349999499999999,
+            "p50Ms": 0.9,
+            "p95Ms": 2.299999,
+            "maxMs": 3.199999
+          }
+        }
+      },
+      {
+        "name": "default-near-5",
+        "speed": 5,
+        "population": 144,
+        "width": 256,
+        "height": 256,
+        "exactTerrainCounterfactual": false,
+        "legacyTerrainCounterfactual": false,
+        "tickBefore": 9,
+        "tickAfter": 338,
+        "elapsedMs": 15017.900000000023,
+        "ticksPerSecond": 21.907190752368805,
+        "longTasks": {
+          "count": 86,
+          "totalMs": 5096,
+          "meanMs": 59.25581395348837,
+          "p50Ms": 55,
+          "p95Ms": 83,
+          "maxMs": 97
+        },
+        "frameGaps": {
+          "count": 339,
+          "totalMs": 15049.399999999998,
+          "meanMs": 44.39351032448377,
+          "p50Ms": 49.900000000001455,
+          "p95Ms": 83.40000000000146,
+          "maxMs": 133.3000000000029
+        },
+        "gapsOver100ms": 10,
+        "metricDelta": {
+          "TaskDuration": 14956.624999999998,
+          "ScriptDuration": 12268.887,
+          "LayoutDuration": 0,
+          "RecalcStyleDuration": 12.874
+        },
+        "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+        "tileSize": 71.28825599999982,
+        "errors": [],
+        "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+        "managed": {
+          "Map.Ecology": {
+            "count": 191,
+            "totalMs": 1285.0000010000006,
+            "meanMs": 6.727748696335081,
+            "p50Ms": 6.599999,
+            "p95Ms": 7.4,
+            "maxMs": 11.1
+          },
+          "Map.Render": {
+            "count": 191,
+            "totalMs": 2072.699999,
+            "meanMs": 10.851832455497382,
+            "p50Ms": 10.6,
+            "p95Ms": 13.400001,
+            "maxMs": 17.700001
+          },
+          "Core.Wildlife": {
+            "count": 329,
+            "totalMs": 1786.299980999999,
+            "meanMs": 5.4294832249240095,
+            "p50Ms": 5.4,
+            "p95Ms": 6.1,
+            "maxMs": 12.1
+          },
+          "Core.Actions": {
+            "count": 329,
+            "totalMs": 3727.7000139999996,
+            "meanMs": 11.330395179331306,
+            "p50Ms": 11.4,
+            "p95Ms": 15.9,
+            "maxMs": 48
+          },
+          "Core.Communication": {
+            "count": 329,
+            "totalMs": 306.20001099999996,
+            "meanMs": 0.930699121580547,
+            "p50Ms": 0.8,
+            "p95Ms": 1.699999,
+            "maxMs": 8.200001
+          },
+          "Engine.Step": {
+            "count": 329,
+            "totalMs": 6508.100019000002,
+            "meanMs": 19.781459024316117,
+            "p50Ms": 19.799999,
+            "p95Ms": 25,
+            "maxMs": 56.800001
+          },
+          "Map.RefreshWorld": {
+            "count": 215,
+            "totalMs": 186.29999199999978,
+            "meanMs": 0.8665115906976734,
+            "p50Ms": 0.700001,
+            "p95Ms": 1.5,
+            "maxMs": 3
+          },
+          "UI.OnTick": {
+            "count": 242,
+            "totalMs": 6735.999998000002,
+            "meanMs": 27.8347107355372,
+            "p50Ms": 26.599999,
+            "p95Ms": 46.6,
+            "maxMs": 57.6
+          },
+          "UI.RefreshUi": {
+            "count": 20,
+            "totalMs": 21.199996000000002,
+            "meanMs": 1.0599998000000002,
+            "p50Ms": 0.9,
+            "p95Ms": 1.799999,
+            "maxMs": 2.199999
+          }
+        }
+      },
+      {
+        "name": "large-far-5",
+        "speed": 5,
+        "population": 2000,
+        "width": 256,
+        "height": 256,
+        "exactTerrainCounterfactual": false,
+        "legacyTerrainCounterfactual": false,
+        "tickBefore": 7,
+        "tickAfter": 88,
+        "elapsedMs": 15014.300000000047,
+        "ticksPerSecond": 5.394856903085708,
+        "longTasks": {
+          "count": 141,
+          "totalMs": 13258,
+          "meanMs": 94.02836879432624,
+          "p50Ms": 107,
+          "p95Ms": 148,
+          "maxMs": 193
+        },
+        "frameGaps": {
+          "count": 114,
+          "totalMs": 15016.099999999999,
+          "meanMs": 131.72017543859647,
+          "p50Ms": 166.60000000000218,
+          "p95Ms": 216.70000000000073,
+          "maxMs": 250
+        },
+        "gapsOver100ms": 81,
+        "metricDelta": {
+          "TaskDuration": 15805.548,
+          "ScriptDuration": 12382.703,
+          "LayoutDuration": 0,
+          "RecalcStyleDuration": 6.311
+        },
+        "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+        "tileSize": 3.3359375,
+        "errors": [],
+        "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+        "managed": {
+          "Map.Ecology": {
+            "count": 82,
+            "totalMs": 0.30000000000000004,
+            "meanMs": 0.0036585365853658543,
+            "p50Ms": 0,
+            "p95Ms": 0,
+            "maxMs": 0.1
+          },
+          "Map.Render": {
+            "count": 82,
+            "totalMs": 1146.7000039999998,
+            "meanMs": 13.9841463902439,
+            "p50Ms": 13.300001,
+            "p95Ms": 18.1,
+            "maxMs": 26
+          },
+          "Core.Wildlife": {
+            "count": 81,
+            "totalMs": 353.4000019999999,
+            "meanMs": 4.36296298765432,
+            "p50Ms": 5,
+            "p95Ms": 5.5,
+            "maxMs": 10.1
+          },
+          "Core.Actions": {
+            "count": 81,
+            "totalMs": 4994.000004000001,
+            "meanMs": 61.65432103703705,
+            "p50Ms": 56.299999,
+            "p95Ms": 88.700001,
+            "maxMs": 136.6
+          },
+          "Core.Communication": {
+            "count": 81,
+            "totalMs": 926.3999940000001,
+            "meanMs": 11.437036962962964,
+            "p50Ms": 11.1,
+            "p95Ms": 14.899999,
+            "maxMs": 17.9
+          },
+          "Engine.Step": {
+            "count": 81,
+            "totalMs": 7519.5000089999985,
+            "meanMs": 92.83333344444442,
+            "p50Ms": 87.4,
+            "p95Ms": 127.700001,
+            "maxMs": 160.1
+          },
+          "Map.RefreshWorld": {
+            "count": 81,
+            "totalMs": 1119.1999989999995,
+            "meanMs": 13.817283938271599,
+            "p50Ms": 13.1,
+            "p95Ms": 17.9,
+            "maxMs": 27.100001
+          },
+          "UI.OnTick": {
+            "count": 91,
+            "totalMs": 8683.600013,
+            "meanMs": 95.42417596703297,
+            "p50Ms": 99.699999,
+            "p95Ms": 141.3,
+            "maxMs": 174.4
+          },
+          "UI.RefreshUi": {
+            "count": 18,
+            "totalMs": 32.900007,
+            "meanMs": 1.8277781666666668,
+            "p50Ms": 1.700001,
+            "p95Ms": 2.699999,
+            "maxMs": 2.699999
+          }
+        }
+      }
+    ],
+    "finalProbe": [
+      {
+        "name": "default-far-5",
+        "speed": 5,
+        "population": 144,
+        "width": 256,
+        "height": 256,
+        "exactTerrainCounterfactual": false,
+        "legacyTerrainCounterfactual": false,
+        "tickBefore": 18,
+        "tickAfter": 394,
+        "elapsedMs": 15038,
+        "ticksPerSecond": 25.003324910227423,
+        "longTasks": {
+          "count": 115,
+          "totalMs": 6962,
+          "meanMs": 60.53913043478261,
+          "p50Ms": 58,
+          "p95Ms": 80,
+          "maxMs": 115
+        },
+        "frameGaps": {
+          "count": 219,
+          "totalMs": 15049.500000000004,
+          "meanMs": 68.7191780821918,
+          "p50Ms": 66.70000000000073,
+          "p95Ms": 133.29999999999927,
+          "maxMs": 166.70000000000073
+        },
+        "gapsOver100ms": 37,
+        "metricDelta": {
+          "TaskDuration": 16669.993,
+          "ScriptDuration": 12486.148,
+          "LayoutDuration": 0,
+          "RecalcStyleDuration": 13.350000000000001
+        },
+        "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+        "tileSize": 3.3359375,
+        "errors": [],
+        "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+        "managed": {
+          "Core.Wildlife": {
+            "count": 376,
+            "totalMs": 1380.0999980000001,
+            "meanMs": 3.6704787180851066,
+            "p50Ms": 3.699999,
+            "p95Ms": 4.1,
+            "maxMs": 8.100001
+          },
+          "Core.Actions": {
+            "count": 376,
+            "totalMs": 4314.799998000002,
+            "meanMs": 11.475531909574475,
+            "p50Ms": 11.700001,
+            "p95Ms": 16.399999,
+            "maxMs": 20.7
+          },
+          "Core.Communication": {
+            "count": 376,
+            "totalMs": 358.70001000000013,
+            "meanMs": 0.9539893882978727,
+            "p50Ms": 0.899999,
+            "p95Ms": 1.8,
+            "maxMs": 3.300001
+          },
+          "Engine.Step": {
+            "count": 376,
+            "totalMs": 6853.199993000002,
+            "meanMs": 18.226595726063834,
+            "p50Ms": 18.200001,
+            "p95Ms": 24.5,
+            "maxMs": 33.4
+          },
+          "Map.RefreshWorld": {
+            "count": 202,
+            "totalMs": 2137.0000010000012,
+            "meanMs": 10.57920792574258,
+            "p50Ms": 10.4,
+            "p95Ms": 11.9,
+            "maxMs": 14.5
+          },
+          "UI.OnTick": {
+            "count": 202,
+            "totalMs": 9027.599998000003,
+            "meanMs": 44.691089099009915,
+            "p50Ms": 48,
+            "p95Ms": 60.299999,
+            "maxMs": 68.800001
+          },
+          "Map.Ecology": {
+            "count": 173,
+            "totalMs": 0.2,
+            "meanMs": 0.0011560693641618498,
+            "p50Ms": 0,
+            "p95Ms": 0,
+            "maxMs": 0.1
+          },
+          "Map.Render": {
+            "count": 173,
+            "totalMs": 706.2000080000001,
+            "meanMs": 4.082080971098267,
+            "p50Ms": 3.599999,
+            "p95Ms": 6.600001,
+            "maxMs": 15.300001
+          },
+          "UI.RefreshUi": {
+            "count": 20,
+            "totalMs": 22.799995999999997,
+            "meanMs": 1.1399997999999998,
+            "p50Ms": 0.900001,
+            "p95Ms": 2.299999,
+            "maxMs": 2.799999
+          }
+        }
+      },
+      {
+        "name": "default-near-5",
+        "speed": 5,
+        "population": 144,
+        "width": 256,
+        "height": 256,
+        "exactTerrainCounterfactual": false,
+        "legacyTerrainCounterfactual": false,
+        "tickBefore": 13,
+        "tickAfter": 352,
+        "elapsedMs": 15013.099999999627,
+        "ticksPerSecond": 22.58027988889759,
+        "longTasks": {
+          "count": 55,
+          "totalMs": 3193,
+          "meanMs": 58.054545454545455,
+          "p50Ms": 54,
+          "p95Ms": 80,
+          "maxMs": 89
+        },
+        "frameGaps": {
+          "count": 391,
+          "totalMs": 14999.400000000001,
+          "meanMs": 38.36163682864451,
+          "p50Ms": 16.700000000004366,
+          "p95Ms": 83.40000000000146,
+          "maxMs": 166.60000000000218
+        },
+        "gapsOver100ms": 12,
+        "metricDelta": {
+          "TaskDuration": 14791.843,
+          "ScriptDuration": 11810.072,
+          "LayoutDuration": 0,
+          "RecalcStyleDuration": 12.937000000000001
+        },
+        "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+        "tileSize": 71.28825599999982,
+        "errors": [],
+        "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+        "managed": {
+          "Map.Ecology": {
+            "count": 197,
+            "totalMs": 930.3000019999994,
+            "meanMs": 4.722335035532992,
+            "p50Ms": 4.599999,
+            "p95Ms": 5.700001,
+            "maxMs": 8
+          },
+          "Map.Render": {
+            "count": 197,
+            "totalMs": 1751.2000100000005,
+            "meanMs": 8.889340152284266,
+            "p50Ms": 8.7,
+            "p95Ms": 10.799999,
+            "maxMs": 21.700001
+          },
+          "Core.Wildlife": {
+            "count": 339,
+            "totalMs": 1251.9999980000002,
+            "meanMs": 3.693215333333334,
+            "p50Ms": 3.699999,
+            "p95Ms": 4.199999,
+            "maxMs": 8.4
+          },
+          "Core.Actions": {
+            "count": 339,
+            "totalMs": 3924.799978000001,
+            "meanMs": 11.577581056047201,
+            "p50Ms": 11.9,
+            "p95Ms": 16.800001,
+            "maxMs": 30.8
+          },
+          "Core.Communication": {
+            "count": 339,
+            "totalMs": 320.1000240000001,
+            "meanMs": 0.9442478584070799,
+            "p50Ms": 0.800001,
+            "p95Ms": 1.800001,
+            "maxMs": 3.7
+          },
+          "Engine.Step": {
+            "count": 339,
+            "totalMs": 6195.299991999997,
+            "meanMs": 18.275221215339222,
+            "p50Ms": 18.299999,
+            "p95Ms": 23.900001,
+            "maxMs": 45.5
+          },
+          "Map.RefreshWorld": {
+            "count": 263,
+            "totalMs": 214.39999899999953,
+            "meanMs": 0.815209121673002,
+            "p50Ms": 0.700001,
+            "p95Ms": 1.4,
+            "maxMs": 3
+          },
+          "UI.OnTick": {
+            "count": 291,
+            "totalMs": 6452.799985000002,
+            "meanMs": 22.17457039518901,
+            "p50Ms": 18.700001,
+            "p95Ms": 46,
+            "maxMs": 74.5
+          },
+          "UI.RefreshUi": {
+            "count": 20,
+            "totalMs": 20.599997,
+            "meanMs": 1.0299998499999998,
+            "p50Ms": 0.899999,
+            "p95Ms": 2.1,
+            "maxMs": 2.200001
+          }
+        }
+      },
+      {
+        "name": "large-far-5",
+        "speed": 5,
+        "population": 2000,
+        "width": 256,
+        "height": 256,
+        "exactTerrainCounterfactual": false,
+        "legacyTerrainCounterfactual": false,
+        "tickBefore": 7,
+        "tickAfter": 88,
+        "elapsedMs": 15010.5,
+        "ticksPerSecond": 5.396222644149096,
+        "longTasks": {
+          "count": 138,
+          "totalMs": 13180,
+          "meanMs": 95.5072463768116,
+          "p50Ms": 109,
+          "p95Ms": 149,
+          "maxMs": 199
+        },
+        "frameGaps": {
+          "count": 110,
+          "totalMs": 15015.900000000001,
+          "meanMs": 136.50818181818184,
+          "p50Ms": 166.6999999999971,
+          "p95Ms": 216.60000000000218,
+          "maxMs": 250
+        },
+        "gapsOver100ms": 81,
+        "metricDelta": {
+          "TaskDuration": 15852.952,
+          "ScriptDuration": 12480.935,
+          "LayoutDuration": 0,
+          "RecalcStyleDuration": 6.3629999999999995
+        },
+        "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+        "tileSize": 3.3359375,
+        "errors": [],
+        "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+        "managed": {
+          "Map.Ecology": {
+            "count": 82,
+            "totalMs": 0.40000100000000005,
+            "meanMs": 0.004878060975609757,
+            "p50Ms": 0,
+            "p95Ms": 0,
+            "maxMs": 0.100001
+          },
+          "Map.Render": {
+            "count": 82,
+            "totalMs": 1164.2999920000002,
+            "meanMs": 14.198780390243904,
+            "p50Ms": 13.5,
+            "p95Ms": 18.600001,
+            "maxMs": 27.199999
+          },
+          "Core.Wildlife": {
+            "count": 81,
+            "totalMs": 283.0999970000001,
+            "meanMs": 3.4950616913580257,
+            "p50Ms": 3.7,
+            "p95Ms": 4.5,
+            "maxMs": 7.6
+          },
+          "Core.Actions": {
+            "count": 81,
+            "totalMs": 5074.499995,
+            "meanMs": 62.64814808641975,
+            "p50Ms": 57.5,
+            "p95Ms": 90.300001,
+            "maxMs": 141.4
+          },
+          "Core.Communication": {
+            "count": 81,
+            "totalMs": 932.0000040000001,
+            "meanMs": 11.50617288888889,
+            "p50Ms": 11.199999,
+            "p95Ms": 14.199999,
+            "maxMs": 15.900001
+          },
+          "Engine.Step": {
+            "count": 81,
+            "totalMs": 7555.499995999999,
+            "meanMs": 93.27777772839505,
+            "p50Ms": 88.799999,
+            "p95Ms": 116.799999,
+            "maxMs": 166.3
+          },
+          "Map.RefreshWorld": {
+            "count": 81,
+            "totalMs": 1156.2000040000003,
+            "meanMs": 14.274074123456794,
+            "p50Ms": 13.599999,
+            "p95Ms": 17.899999,
+            "maxMs": 32.1
+          },
+          "UI.OnTick": {
+            "count": 90,
+            "totalMs": 8759.800003000002,
+            "meanMs": 97.33111114444446,
+            "p50Ms": 101.199999,
+            "p95Ms": 132,
+            "maxMs": 181.199999
+          },
+          "UI.RefreshUi": {
+            "count": 18,
+            "totalMs": 35.700002,
+            "meanMs": 1.9833334444444444,
+            "p50Ms": 1.899999,
+            "p95Ms": 3.6,
+            "maxMs": 3.6
+          }
+        }
+      }
+    ],
+    "finalProduction": [
+      {
+        "name": "default-far-5",
+        "speed": 5,
+        "population": 144,
+        "width": 256,
+        "height": 256,
+        "exactTerrainCounterfactual": false,
+        "legacyTerrainCounterfactual": false,
+        "tickBefore": 16,
+        "tickAfter": 392,
+        "elapsedMs": 15020.900000000373,
+        "ticksPerSecond": 25.031789040602806,
+        "longTasks": {
+          "count": 129,
+          "totalMs": 7794,
+          "meanMs": 60.41860465116279,
+          "p50Ms": 59,
+          "p95Ms": 74,
+          "maxMs": 115
+        },
+        "frameGaps": {
+          "count": 196,
+          "totalMs": 15032.599999999999,
+          "meanMs": 76.69693877551019,
+          "p50Ms": 83.29999999999927,
+          "p95Ms": 133.3000000000029,
+          "maxMs": 166.59999999999854
+        },
+        "gapsOver100ms": 42,
+        "metricDelta": {
+          "TaskDuration": 16310.140000000001,
+          "ScriptDuration": 12594.556,
+          "LayoutDuration": 0,
+          "RecalcStyleDuration": 13.315999999999999
+        },
+        "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+        "tileSize": 3.3359375,
+        "errors": [],
+        "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+        "managed": {}
+      },
+      {
+        "name": "default-near-5",
+        "speed": 5,
+        "population": 144,
+        "width": 256,
+        "height": 256,
+        "exactTerrainCounterfactual": false,
+        "legacyTerrainCounterfactual": false,
+        "tickBefore": 13,
+        "tickAfter": 353,
+        "elapsedMs": 15012.30000000028,
+        "ticksPerSecond": 22.64809522857881,
+        "longTasks": {
+          "count": 54,
+          "totalMs": 3100,
+          "meanMs": 57.407407407407405,
+          "p50Ms": 54,
+          "p95Ms": 73,
+          "maxMs": 83
+        },
+        "frameGaps": {
+          "count": 393,
+          "totalMs": 15016,
+          "meanMs": 38.208651399491096,
+          "p50Ms": 16.799999999999272,
+          "p95Ms": 83.40000000000146,
+          "maxMs": 166.59999999999854
+        },
+        "gapsOver100ms": 12,
+        "metricDelta": {
+          "TaskDuration": 14346.578,
+          "ScriptDuration": 11674.016,
+          "LayoutDuration": 0,
+          "RecalcStyleDuration": 13.035
+        },
+        "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+        "tileSize": 71.28825599999982,
+        "errors": [],
+        "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+        "managed": {}
+      },
+      {
+        "name": "large-far-5",
+        "speed": 5,
+        "population": 2000,
+        "width": 256,
+        "height": 256,
+        "exactTerrainCounterfactual": false,
+        "legacyTerrainCounterfactual": false,
+        "tickBefore": 7,
+        "tickAfter": 88,
+        "elapsedMs": 15011.100000000093,
+        "ticksPerSecond": 5.396006954853375,
+        "longTasks": {
+          "count": 135,
+          "totalMs": 12793,
+          "meanMs": 94.76296296296296,
+          "p50Ms": 108,
+          "p95Ms": 149,
+          "maxMs": 205
+        },
+        "frameGaps": {
+          "count": 124,
+          "totalMs": 15016.100000000002,
+          "meanMs": 121.0975806451613,
+          "p50Ms": 166.59999999999854,
+          "p95Ms": 200.09999999999854,
+          "maxMs": 250
+        },
+        "gapsOver100ms": 81,
+        "metricDelta": {
+          "TaskDuration": 15451.276,
+          "ScriptDuration": 12202.030999999999,
+          "LayoutDuration": 0,
+          "RecalcStyleDuration": 6.869
+        },
+        "metricDeltaScope": "CDP metrics also include observer setup, snapshot/probe export and pause interaction outside the observation window.",
+        "tileSize": 3.3359375,
+        "errors": [],
+        "limitation": "Independent headless Chromium software-rendered runs; timing probes add overhead. Frame gaps are animation-frame opportunities, not rendered FPS.",
+        "managed": {}
+      }
+    ]
+  },
+  "fixtures": {
+    "large.worldbox.json": {
+      "bytes": 23439123,
+      "sha256": "29e2ab232a19cb18031849742d8a1059e9fb92cfbcbf7d9387ba96d112dbe3c5"
+    },
+    "default.worldbox.json": {
+      "bytes": 19353086,
+      "sha256": "06c3ef6b628b2f19c54f770a0039ffd930489a7ae4760665e2885054f014b35e"
+    },
+    "visual.worldbox.json": {
+      "bytes": 843736,
+      "sha256": "a2aa29f37a1c39a39f38c4bb07d3aee14ee987efc311a6414bfc22b844fa473d"
+    }
+  },
+  "modules": {
+    "baselineProbe": {
+      "SeWZC.WorldBox.Browser.e5paujhfun.wasm": "d277b272e2460ef40c1929628c8756d5891b030a85555cb2914f17d6b7562534",
+      "SeWZC.WorldBox.Core.q0iqe8s9lt.wasm": "4634a23b3a73273c89c09c4aceb153ede6e4642858df12ee508e89f07452f9b9",
+      "SeWZC.WorldBox.UI.wr43aida86.wasm": "ec5c947b931199ea2882f5d727b3be1ab01f46307eef1d542e064867138723fe",
+      "dotnet.native.1im3uy15mg.wasm": "a98ad93b66f4b9423cce765eaa2c2ec3acef5ea51ed61449acc65d7e579d0c1f"
+    },
+    "finalProbe": {
+      "SeWZC.WorldBox.Browser.knu3j4mphq.wasm": "f0e01c1d885deb004c6f4a5661e8b88d304b658fc27936291a2ab4de5dae3697",
+      "SeWZC.WorldBox.Core.2fi8ls2y0z.wasm": "3ed4f8174d6ab92d730e4559a929d8b40ccf2ceb90e9fbf8eb2236158ce942b9",
+      "SeWZC.WorldBox.UI.il8u96brwt.wasm": "0678f6235d3cd53013e6adef5195e90fa7dfdbeff8e99feeb754b545fccc20bf",
+      "dotnet.native.1im3uy15mg.wasm": "a98ad93b66f4b9423cce765eaa2c2ec3acef5ea51ed61449acc65d7e579d0c1f"
+    },
+    "finalProduction": {
+      "SeWZC.WorldBox.Browser.ypavko3g9j.wasm": "066c6c8ba3d24804314f0423b6ab885c2dfe38cfa7fc9e731d806a7cb502a565",
+      "SeWZC.WorldBox.Core.y5g8t0i4k0.wasm": "2a9f7655f5bb95d4d581a079c1bb52ffab4894195b86d10c24c243375936f31a",
+      "SeWZC.WorldBox.UI.f69quf4ks9.wasm": "099513d1de7470a38e32cf1cbc186a1c0388eaa86e7575efbb63174565de138c",
+      "dotnet.native.1im3uy15mg.wasm": "a98ad93b66f4b9423cce765eaa2c2ec3acef5ea51ed61449acc65d7e579d0c1f"
+    }
+  },
+  "validation": {
+    "releaseBuild": "0 warnings, 0 errors; native solution filter plus trimmed browser publish",
+    "coreUnit": "91/91",
+    "headlessUi": "56/56",
+    "fastChecksSeconds": 9.87,
+    "coreIntegration": "122/122",
+    "ecologyLong": "3/3; large-map deterministic resume, mixed food webs, inhabited diversity",
+    "browser": [
+      "motion including pause, live speed, selection and follow",
+      "desktop and touch visual ecology checks",
+      "exact base revision, actual rendering, simulation, IndexedDB save and reload"
+    ],
+    "staticAssets": "passed",
+    "publicDeployment": false
+  },
+  "limitations": [
+    "Independent serial runs in the current cloud environment; no physical Android/iOS or user-device measurement.",
+    "Native timing excludes UI and WASM; timing probes add overhead, and animation-frame opportunities are not rendered FPS.",
+    "Default full-map 5x reaches about 25 days/second. Close view and 2000-resident stress remain below this target.",
+    "Exact save digests match only the measured native worlds; this is not a proof for every possible world.",
+    "Final raw samples, fixtures, logs and source probes remain in the ignored artifacts/animal-performance-20261006 directory."
+  ]
+}

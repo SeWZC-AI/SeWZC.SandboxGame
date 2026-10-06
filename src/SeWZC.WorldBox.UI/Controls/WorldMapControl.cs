@@ -216,7 +216,8 @@ public sealed partial class WorldMapControl : Control
 
     /// <summary>重新检查世界呈现缓存、运动轨迹和动画通知，刷新地图显示。</summary>
     /// <param name="resetCamera">是否同时将镜头恢复为全图视野。</param>
-    public void RefreshWorld(bool resetCamera = false)
+    /// <param name="deferAnimation">是否在近景已有动画帧等待时合并本次显示刷新。</param>
+    public void RefreshWorld(bool resetCamera = false, bool deferAnimation = false)
     {
         if (Engine is null)
         {
@@ -249,7 +250,9 @@ public sealed partial class WorldMapControl : Control
         CaptureEffects();
         CaptureSelectedRoute();
         CaptureMotionSnapshots();
-        InvalidateVisual();
+        // 五倍近景已有动画帧待执行时合并模拟刷新；编辑、停表及静止场景仍立即绘制。
+        if (!deferAnimation || resetCamera || _zoom < 3 || IsSimulationPaused || !_framePending)
+            InvalidateVisual();
     }
 
     /// <summary>调整镜头以容纳完整世界，并停止跟随居民。</summary>

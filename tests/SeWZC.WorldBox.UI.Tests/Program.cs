@@ -10,6 +10,8 @@ using Avalonia.Headless;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.LogicalTree;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
 using Avalonia.Themes.Fluent;
 using Avalonia.Threading;
 using SeWZC.WorldBox.Core;
@@ -28,6 +30,7 @@ var tests = new (string Name, Action Test)[]
     ("Close terrain refresh scans visible chunks without modifying the world", VisibleTerrain),
     ("Terrain images ignore invisible resource changes and retain the forest stump threshold", TerrainResourceImages),
     ("Incremental terrain matches a fresh image across chunk borders and edits", IncrementalTerrain),
+    ("Ecology reuses unchanged visible inputs and refreshes real edits and visibility", EcologyCache),
     ("Pixel rectangles preserve RGBA order and clip at canvas edges", PixelRectangles),
     ("Resident geometry includes only the layers drawn at the current zoom", ResidentGeometryLayers),
     ("Save capture suspends stepping and continuing map strokes cancel it", SaveCaptureBoundary),
@@ -1661,6 +1664,79 @@ static void TerrainResourceImages()
     map.RefreshWorld();
     Assert(!ReferenceEquals(stump, Image()) && engine.ExportJson() == before,
         "Forest recovery remained stale or observation changed the world");
+}
+
+static void EcologyCache()
+{
+    var engine = EmptyWorld(42, 32);
+    foreach (var tile in engine.State.Tiles)
+    {
+        tile.Terrain = TerrainType.Grass;
+        tile.Fertility = 100;
+        tile.ResourceAmount = 150;
+        tile.NaturalWaterYield = .02;
+        tile.Plants = new PlantCoverage { Grass = .6 };
+        tile.Wildlife = WildlifeKind.Rabbit;
+        tile.WildlifePopulation = .5;
+    }
+
+    var map = Map(View(engine));
+    map.FocusTile(16, 16);
+    for (var i = 0; i < 7; i++) map.ZoomIn();
+    using var target = new RenderTargetBitmap(new PixelSize(256, 256), new Vector(96, 96));
+    void Draw()
+    {
+        using var context = target.CreateDrawingContext();
+        Call(map, "DrawEcology", context, engine.State);
+    }
+
+    var before = engine.ExportJson();
+    Draw();
+    var builds = map.EcologyCacheBuildCount;
+    var plants = map.RenderedPlantCount;
+    Assert(map.RenderedWildlifeCount > 0 && plants > 0, "Ecology fixture is not visible");
+    engine.State.Tick++;
+    map.RefreshWorld();
+    Draw();
+    Assert(map.EcologyCacheBuildCount == builds, "An unrelated simulation day rebuilt ecology");
+    engine.State.Tick--;
+    Assert(engine.ExportJson() == before, "Drawing ecology changed the saved world");
+    foreach (var tile in engine.State.Tiles) tile.ResourceAmount = 200;
+    map.RefreshWorld();
+    Draw();
+    Assert(map.EcologyCacheBuildCount == builds, "Saturated resources rebuilt identical ecology");
+    var center = engine.State.Tiles[16 * 32 + 16];
+    center.WildlifePopulation = 2;
+    map.RefreshWorld();
+    Draw();
+    Assert(map.EcologyCacheBuildCount == ++builds, "A real animal edit remained stale");
+    center.ResourceAmount = 0;
+    map.RefreshWorld();
+    Draw();
+    Assert(map.EcologyCacheBuildCount == ++builds && map.RenderedPlantCount == plants - 1,
+        "Resource exhaustion left a plant icon behind");
+    map.ShowWildlife = false;
+    map.RefreshWorld();
+    Draw();
+    Assert(map.EcologyCacheBuildCount == ++builds && map.RenderedWildlifeCount == 0,
+        "The animal visibility control retained cached icons");
+    center.Deposit = ResourceKind.Coal;
+    map.ResourceVisibility = ResourceVisibility.All;
+    map.RefreshWorld();
+    Draw();
+    Assert(map.EcologyCacheBuildCount == ++builds, "A newly visible deposit remained stale");
+    var viewport = ((int Left, int Right, int Top, int Bottom))Call(map, "VisibleTiles", engine.State, 2)!;
+    Assert(viewport.Bottom + 1 < engine.State.Height, "Water-flow fixture requires an offscreen neighbour");
+    engine.State.Tiles[viewport.Bottom * 32 + 16].Terrain = TerrainType.River;
+    map.RefreshWorld();
+    Draw();
+    builds = map.EcologyCacheBuildCount;
+    engine.State.Tiles[(viewport.Bottom + 1) * 32 + 16].Terrain = TerrainType.River;
+    map.RefreshWorld();
+    Draw();
+    var streams = Field<List<(Point Start, Point End)>>(map, "_waterStreams");
+    Assert(map.EcologyCacheBuildCount == builds + 1 && streams.Single().Start.X == streams.Single().End.X,
+        "An offscreen river neighbour left the cached flow direction stale");
 }
 
 static void PixelRectangles()

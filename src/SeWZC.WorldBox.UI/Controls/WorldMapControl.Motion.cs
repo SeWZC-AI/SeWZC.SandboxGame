@@ -256,8 +256,10 @@ public sealed partial class WorldMapControl
             _framePending = false;
             if (!_motionAttached || IsSimulationPaused) return;
             var frameTime = PresentationTime;
-            // 总览下的小幅移动不足一个像素，无需每次显示刷新都重建几何。
-            if (frameTime - _lastAnimatedFrameTime >= (_zoom < 1 ? 1d / 15 : 1d / 30))
+            // 总览保留 15 Hz；五倍近景合并为 20 Hz，给真实模拟步留下绘制预算。
+            var cadence = _zoom < 1 ? 1d / 15 : _zoom >= 3 && SimulationTickDurationSeconds <= .040001
+                ? 1d / 20 : 1d / 30;
+            if (frameTime - _lastAnimatedFrameTime >= cadence)
             {
                 _lastAnimatedFrameTime = frameTime;
                 _residentGeometryDirty = true;

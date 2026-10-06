@@ -17,6 +17,7 @@ internal static class PerformanceBehaviorTests
         ("save text chunks preserve UTF-8 split across writes and chunk boundaries", Utf8Chunks),
         ("ecological value equality covers every saved field and preserves default omission", EcologicalValueEquality),
         ("edible animals reflect edits ecology and cold save restoration", EdibleAnimals),
+        ("batch wildlife capacities match individual queries through habitat and population edits", BatchWildlifeCapacities),
     ];
 
     private static WorldEngine Flat()
@@ -40,6 +41,54 @@ internal static class PerformanceBehaviorTests
     private static void Check(bool valid, string message)
     {
         if (!valid) throw new InvalidOperationException(message);
+    }
+
+    [UnitTest]
+    private static void BatchWildlifeCapacities()
+    {
+        Span<double> capacities = stackalloc double[AnimalRules.SpeciesCount];
+        Span<WildlifeKind> groups = stackalloc WildlifeKind[6];
+        foreach (var terrain in Enum.GetValues<TerrainType>())
+        {
+            var tile = new Tile
+            {
+                Terrain = terrain, Fertility = 100, ResourceAmount = 100, NaturalWaterYield = .02,
+                Plants = new PlantCoverage { Grass = .3, Trees = .4, Shrubs = .2, Reeds = .1 },
+                Wildlife = WildlifeKind.Rabbit, WildlifePopulation = .5,
+                OtherWildlife = new WildlifePopulations
+                {
+                    Deer = .3, Fish = .2, Bison = .1, SeaCow = .2,
+                    Wolf = .04, Fox = .020001, Bear = .05, SnowLeopard = .04,
+                },
+            };
+            for (var edit = 0; edit < 8; edit++)
+            {
+                switch (edit)
+                {
+                    case 1: tile.OtherWildlife = new WildlifePopulations { Fish = .04, Hippo = 2 }; break;
+                    case 2: tile.WildlifePopulation = 0; tile.NaturalWaterYield = .001; break;
+                    case 3: tile.Fertility = 20; break;
+                    case 4: tile.Improvement = LandImprovement.Farmland; tile.SettlementId = 1; break;
+                    case 5: tile.ResourceAmount = 0; break;
+                    case 6: tile.DroughtTicks = 1; break;
+                    case 7: tile.FireTicks = 1; break;
+                }
+
+                WorldEngine.FillWildlifeCapacities(tile, capacities);
+                WorldEngine.FillVisibleWildlife(tile, groups);
+                for (var group = 0; group < 6; group++)
+                    Check(groups[group] == WorldEngine.VisibleWildlife(tile, group), "Batch visible species differ");
+                Check(capacities[0] == 0, "None has an ecological capacity");
+                foreach (var kind in AnimalRules.Species)
+                    Check(capacities[(int)kind] == WorldEngine.WildlifeCapacity(tile, kind),
+                        $"Batch capacity differs for {terrain}, {kind}, edit {edit}");
+            }
+        }
+
+        var engine = Flat();
+        var before = engine.ExportJson();
+        WorldEngine.FillWildlifeCapacities(engine.State.Tiles[0], capacities);
+        Check(before == engine.ExportJson(), "Capacity observation changed the saved world");
     }
 
     [UnitTest]

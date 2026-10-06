@@ -17,6 +17,8 @@ public sealed partial class WorldEngine
     private double[]? _wildlifePressure;
     private byte[]? _wildlifePreyCompetitors;
     private double[]? _wildlifeReplacement;
+    private double[]? _wildlifeBiomass;
+    private double[]? _wildlifeSharedBiomass;
 
     /// <summary>受每日地格预算限制，完成一轮全部动物复评所需的模拟日数。</summary>
     public int WildlifeCycleDays => Math.Max(6, (State.Tiles.Length + WildlifeTilesPerDay - 1) / WildlifeTilesPerDay);
@@ -57,6 +59,28 @@ public sealed partial class WorldEngine
         return selected;
     }
 
+    /// <summary>一次选择六个体型与食性分组的代表物种，保持逐组查询的阈值和同量次序。</summary>
+    /// <param name="tile">待查看当前种群的地格。</param>
+    /// <param name="groups">至少六项的输出缓冲，按 <c>size * 2 + diet</c> 编码保存代表物种。</param>
+    public static void FillVisibleWildlife(Tile tile, Span<WildlifeKind> groups)
+    {
+        if (groups.Length < 6) throw new ArgumentException("显示缓冲必须覆盖六个分组。", nameof(groups));
+        groups.Clear();
+        Span<double> largest = stackalloc double[6];
+        largest.Fill(.02);
+        var mask = tile.WildlifeMask;
+        while (mask != 0)
+        {
+            var kind = (WildlifeKind)NextWildlife(ref mask);
+            var animal = AnimalRules.For(kind);
+            var group = (int)animal.Size * 2 + (int)animal.Diet;
+            var population = tile.AnimalPopulation(kind);
+            if (population <= largest[group]) continue;
+            groups[group] = kind;
+            largest[group] = population;
+        }
+    }
+
     /// <summary>计算地格当前容量；食肉动物还受可分配的猎物生物量限制。</summary>
     /// <param name="tile">待查询或操作的地格状态。</param>
     /// <param name="kind">动物物种。</param>
@@ -70,6 +94,29 @@ public sealed partial class WorldEngine
             prey += tile.AnimalPopulation(species) * AnimalRules.For(species).BodyMass /
                     AnimalRules.PredatorCompetitors(tile, species);
         return Math.Min(capacity, prey * .12 / AnimalRules.For(kind).BodyMass);
+    }
+
+    /// <summary>一次取得全部物种的当前容量，供近景显示复用；不改变世界或消耗随机数。</summary>
+    /// <param name="tile">待查询当前容量的地格。</param>
+    /// <param name="capacities">覆盖全部物种的输出缓冲，以物种编号作为索引。</param>
+    public static void FillWildlifeCapacities(Tile tile, Span<double> capacities)
+    {
+        if (capacities.Length < AnimalRules.SpeciesCount)
+            throw new ArgumentException("容量缓冲必须覆盖全部物种。", nameof(capacities));
+        Span<byte> competitors = stackalloc byte[AnimalRules.SpeciesCount];
+        var mask = AnimalRules.FillCapacities(tile, capacities, competitors) & ~AnimalRules.HerbivoreMask;
+        if (mask == 0) return;
+        Span<double> populations = stackalloc double[AnimalRules.SpeciesCount];
+        tile.CopyAnimalPopulations(populations);
+        Span<double> biomass = stackalloc double[3];
+        Span<double> sharedBiomass = stackalloc double[3];
+        AnimalRules.FillPreyBiomass(populations, competitors, biomass, sharedBiomass);
+        while (mask != 0)
+        {
+            var species = NextWildlife(ref mask);
+            var animal = AnimalRules.For((WildlifeKind)species);
+            capacities[species] = Math.Min(capacities[species], sharedBiomass[(int)animal.Size] * .12 / animal.BodyMass);
+        }
     }
 
     private void SeedWildlife()
@@ -123,6 +170,8 @@ public sealed partial class WorldEngine
         _wildlifeReplacement ??= new double[bufferTiles * AnimalRules.SpeciesCount];
         _wildlifePredatorLimits ??= new double[bufferTiles * AnimalRules.SpeciesCount];
         _wildlifeHerbivoreKinds ??= new byte[bufferTiles];
+        _wildlifeBiomass ??= new double[bufferTiles * 3];
+        _wildlifeSharedBiomass ??= new double[bufferTiles * 3];
         var cycle = WildlifeCycleDays;
         // 从存档中的模拟时间推导分区，载入后即可接续复评顺序，无需另存游标。
         var phase = (int)((State.Tick - 1) % cycle);
@@ -140,6 +189,8 @@ public sealed partial class WorldEngine
         // 长复评周期下繁殖量有上限，捕食也须使用同一有效间隔，避免捕食增长超过可恢复供给。
         var predationRate = .035 * (growthRate / .018);
         var migrationRate = Math.Min(.12, .02 * elapsed);
+        Span<double> capacityBiomass = stackalloc double[3];
+        Span<double> capacitySharedBiomass = stackalloc double[3];
         // 仅保存当前分区及四邻边界的快照，使本日增长、消费和迁移使用同一初始种群。
         for (var i = snapshotFirst; i < snapshotLast; i++)
         {
@@ -151,8 +202,7 @@ public sealed partial class WorldEngine
             // 环境缓存按固定地格索引存储，使相邻日期的边界地格复用已计算的容量。
             var habitatSlot = i % bufferTiles;
             var capacityOffset = habitatSlot * AnimalRules.SpeciesCount;
-            tile.OtherWildlife.CopyTo(_wildlifePopulations.AsSpan(offset, AnimalRules.SpeciesCount));
-            _wildlifePopulations[offset + (int)tile.Wildlife] = tile.WildlifePopulation;
+            tile.CopyAnimalPopulations(_wildlifePopulations.AsSpan(offset, AnimalRules.SpeciesCount));
             _wildlifeMasks[local] = mask;
             // 食物供给饱和后，更多资源不应使环境容量缓存反复失效。
             var habitat = new WildlifeHabitat(tile.Terrain, Math.Clamp(tile.ResourceAmount / 100, 0, 1), tile.Fertility,
@@ -162,28 +212,22 @@ public sealed partial class WorldEngine
             if (_wildlifeHabitats[habitatSlot] != habitat)
             {
                 _wildlifeHabitats[habitatSlot] = habitat;
-                _wildlifeHerbivoreKinds[habitatSlot] = 0;
                 Array.Clear(_wildlifeReplacement, capacityOffset, AnimalRules.SpeciesCount);
-                AnimalRules.FillCapacities(tile, _wildlifeCapacities.AsSpan(capacityOffset, AnimalRules.SpeciesCount),
+                Array.Clear(_wildlifePredatorLimits, capacityOffset, AnimalRules.SpeciesCount);
+                var eligible = AnimalRules.FillCapacities(tile, _wildlifeCapacities.AsSpan(capacityOffset, AnimalRules.SpeciesCount),
                     _wildlifePreyCompetitors.AsSpan(capacityOffset, AnimalRules.SpeciesCount));
-                for (var species = 1; species < AnimalRules.SpeciesCount; species++)
-                    if (_wildlifeCapacities[capacityOffset + species] > 0 &&
-                        AnimalRules.For((WildlifeKind)species).Diet == AnimalDiet.Herbivore)
-                        _wildlifeHerbivoreKinds[habitatSlot]++;
+                _wildlifeHerbivoreKinds[habitatSlot] = (byte)BitOperations.PopCount((uint)(eligible & AnimalRules.HerbivoreMask));
+                AnimalRules.FillPreyBiomass(_wildlifeCapacities.AsSpan(capacityOffset, AnimalRules.SpeciesCount),
+                    _wildlifePreyCompetitors.AsSpan(capacityOffset, AnimalRules.SpeciesCount),
+                    capacityBiomass, capacitySharedBiomass);
                 // 食草动物在容量处的恢复量须覆盖同一食物网推导的可持续捕食，避免稳定环境仍持续衰减。
-                foreach (var predator in AnimalRules.Species)
+                var predators = eligible & ~AnimalRules.HerbivoreMask;
+                while (predators != 0)
                 {
+                    var predator = (WildlifeKind)NextWildlife(ref predators);
                     var definition = AnimalRules.For(predator);
-                    if (definition.Diet != AnimalDiet.Carnivore ||
-                        _wildlifeCapacities[capacityOffset + (int)predator] <= 0) continue;
-                    var biomass = 0d;
-                    var share = 0d;
-                    foreach (var prey in AnimalRules.PreyFor(predator))
-                    {
-                        var mass = _wildlifeCapacities[capacityOffset + (int)prey] * AnimalRules.For(prey).BodyMass;
-                        biomass += mass;
-                        share += mass / _wildlifePreyCompetitors[capacityOffset + (int)prey];
-                    }
+                    var biomass = capacityBiomass[(int)definition.Size];
+                    var share = capacitySharedBiomass[(int)definition.Size];
 
                     if (biomass == 0) continue;
                     var capacity = Math.Min(_wildlifeCapacities[capacityOffset + (int)predator],
@@ -194,11 +238,25 @@ public sealed partial class WorldEngine
                 }
             }
 
-            while (mask != 0)
+            // 所有源格及邻格使用同一快照；同体型捕食者复用猎物汇总，迁移时不再重扫。
+            var biomassSnapshot = _wildlifeBiomass.AsSpan(local * 3, 3);
+            var sharedBiomassSnapshot = _wildlifeSharedBiomass.AsSpan(local * 3, 3);
+            if ((mask & AnimalRules.HerbivoreMask) == 0)
             {
-                var species = NextWildlife(ref mask);
+                biomassSnapshot.Clear();
+                sharedBiomassSnapshot.Clear();
+            }
+            else
+                AnimalRules.FillPreyBiomass(_wildlifePopulations.AsSpan(offset, AnimalRules.SpeciesCount),
+                    _wildlifePreyCompetitors.AsSpan(capacityOffset, AnimalRules.SpeciesCount),
+                    biomassSnapshot, sharedBiomassSnapshot);
+
+            var herbivores = mask & AnimalRules.HerbivoreMask;
+            while (herbivores != 0)
+            {
+                var species = NextWildlife(ref herbivores);
                 var capacity = _wildlifeCapacities[capacityOffset + species];
-                if (capacity > 0 && AnimalRules.For((WildlifeKind)species).Diet == AnimalDiet.Herbivore)
+                if (capacity > 0)
                     pressure += _wildlifePopulations[offset + species] / capacity;
             }
 
@@ -226,21 +284,14 @@ public sealed partial class WorldEngine
             if (y + 1 < State.Height) neighbours[count++] = i + State.Width;
             if (x > 0) neighbours[count++] = i - 1;
             if (y > 0) neighbours[count++] = i - State.Width;
-            var predators = mask;
+            var predators = mask & ~AnimalRules.HerbivoreMask;
             while (predators != 0)
             {
                 var species = NextWildlife(ref predators);
                 var kind = (WildlifeKind)species;
                 var animal = AnimalRules.For(kind);
-                if (animal.Diet != AnimalDiet.Carnivore) continue;
-                var biomass = 0d;
-                var sharedBiomass = 0d;
-                foreach (var prey in AnimalRules.PreyFor(kind))
-                {
-                    var mass = _wildlifePopulations[offset + (int)prey] * AnimalRules.For(prey).BodyMass;
-                    biomass += mass;
-                    sharedBiomass += mass / _wildlifePreyCompetitors[capacityOffset + (int)prey];
-                }
+                var biomass = _wildlifeBiomass[local * 3 + (int)animal.Size];
+                var sharedBiomass = _wildlifeSharedBiomass[local * 3 + (int)animal.Size];
 
                 predatorCapacities[species] = Math.Min(_wildlifeCapacities[capacityOffset + species],
                     sharedBiomass * .12 / animal.BodyMass);
@@ -252,7 +303,7 @@ public sealed partial class WorldEngine
                 var demand = population * animal.BodyMass * predationRate;
                 // 先结算捕食者饥饿死亡，再由存活个体捕食；极端过密时允许猎物耗尽，不人为设置猎物下限。
                 var fed = demand > 0 ? Math.Min(1, sharedBiomass / demand) : 1;
-                predatorSurvivors[species] = Math.Max(0, population + normalGrowth) * Math.Pow(fed, .75);
+                predatorSurvivors[species] = Math.Max(0, population + normalGrowth) * (fed < 1 ? Math.Pow(fed, .75) : 1);
                 if (biomass <= 0) continue;
                 var consumption = predatorSurvivors[species] * animal.BodyMass * predationRate / biomass;
                 var limit = _wildlifePredatorLimits[capacityOffset + species];
@@ -275,17 +326,19 @@ public sealed partial class WorldEngine
                 var capacity = animal.Diet == AnimalDiet.Carnivore
                     ? predatorCapacities[species]
                     : _wildlifeCapacities[capacityOffset + species];
-                var density = capacity > 0 ? population / capacity : 0;
-                var growth = capacity > 0
-                    ? Math.Max(-population * deathRate, growthRate * population
-                                                                   * (1 - density - .35 * Math.Max(0,
-                                                                       _wildlifePressure[local] - 1)))
-                    : -population * deathRate;
-                if (animal.Diet == AnimalDiet.Herbivore) growth += preyRenewal[species] * Math.Min(1, density);
-                var loss = Math.Min(Math.Max(0, population + growth), preyLosses[species]);
-                var available = animal.Diet == AnimalDiet.Carnivore
-                    ? predatorSurvivors[species]
-                    : Math.Max(0, population + growth - loss);
+                var available = 0d;
+                if (animal.Diet == AnimalDiet.Herbivore)
+                {
+                    var density = capacity > 0 ? population / capacity : 0;
+                    var growth = capacity > 0
+                        ? Math.Max(-population * deathRate, growthRate * population
+                            * (1 - density - .35 * Math.Max(0, _wildlifePressure[local] - 1)))
+                        : -population * deathRate;
+                    growth += preyRenewal[species] * Math.Min(1, density);
+                    var loss = Math.Min(Math.Max(0, population + growth), preyLosses[species]);
+                    available = Math.Max(0, population + growth - loss);
+                }
+                else available = predatorSurvivors[species];
                 _wildlifeChanges[offset + species] += available - population;
                 // 迁移只能使用捕食后的存活量，避免负库存被截为零后凭空增加动物。
                 for (var n = 0; n < count; n++)
@@ -299,11 +352,7 @@ public sealed partial class WorldEngine
                     var targetCapacity = _wildlifeCapacities[targetCapacityOffset + species];
                     if (animal.Diet == AnimalDiet.Carnivore && targetCapacity > 0)
                     {
-                        var preyMass = 0d;
-                        foreach (var prey in AnimalRules.PreyFor(kind))
-                            preyMass += _wildlifePopulations[targetLocal * AnimalRules.SpeciesCount + (int)prey] *
-                                        AnimalRules.For(prey).BodyMass /
-                                        _wildlifePreyCompetitors[targetCapacityOffset + (int)prey];
+                        var preyMass = _wildlifeSharedBiomass[targetLocal * 3 + (int)animal.Size];
                         targetCapacity = Math.Min(targetCapacity, preyMass * .12 / animal.BodyMass);
                     }
 

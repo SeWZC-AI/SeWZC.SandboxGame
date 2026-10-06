@@ -42,26 +42,26 @@ public sealed record ResearchDefinition(
 /// <summary>提供研究树、玩家命令和自主规划共用的知识节点及解锁关系。</summary>
 public static class ResearchRules
 {
-    private static readonly IReadOnlyDictionary<ResearchKind, ResearchDefinition>
+    private static readonly IReadOnlyDictionary<ResearchKind, ResearchDefinition> ByKind;
+    private static readonly IReadOnlyList<ResearchKind> TechnologyRoute;
+    private static readonly IReadOnlyList<ResearchKind> MagicRoute;
+    private static readonly IReadOnlyDictionary<BuildingKind, ResearchDefinition> ByBuilding;
+    private static readonly IReadOnlyDictionary<Profession, ResearchDefinition> ByProfession;
+    private static readonly IReadOnlyDictionary<SpellKind, ResearchDefinition> BySpell;
+
+    static ResearchRules()
+    {
+        // 索引与路线必须等待知识图谱初始化完成。
         ByKind = All.ToDictionary(r => r.Kind);
-
-    private static readonly IReadOnlyList<ResearchKind> TechnologyRoute =
-        Array.AsReadOnly(All.Where(r => !r.Magic || r.Shared).Select(r => r.Kind).ToArray());
-
-    private static readonly IReadOnlyList<ResearchKind> MagicRoute =
-        Array.AsReadOnly(All.Where(r => r.Magic || r.Shared).Select(r => r.Kind).ToArray());
-
-    private static readonly IReadOnlyDictionary<BuildingKind, ResearchDefinition> ByBuilding =
-        All.SelectMany(r => r.UnlockedBuildings.Select(k => (Kind: k, Definition: r)))
+        TechnologyRoute = Array.AsReadOnly(All.Where(r => !r.Magic || r.Shared).Select(r => r.Kind).ToArray());
+        MagicRoute = Array.AsReadOnly(All.Where(r => r.Magic || r.Shared).Select(r => r.Kind).ToArray());
+        ByBuilding = All.SelectMany(r => r.UnlockedBuildings.Select(k => (Kind: k, Definition: r)))
             .ToDictionary(p => p.Kind, p => p.Definition);
-
-    private static readonly IReadOnlyDictionary<Profession, ResearchDefinition> ByProfession =
-        All.SelectMany(r => r.UnlockedProfessions.Select(k => (Kind: k, Definition: r)))
+        ByProfession = All.SelectMany(r => r.UnlockedProfessions.Select(k => (Kind: k, Definition: r)))
             .ToDictionary(p => p.Kind, p => p.Definition);
-
-    private static readonly IReadOnlyDictionary<SpellKind, ResearchDefinition> BySpell =
-        All.SelectMany(r => r.UnlockedSpells.Select(k => (Kind: k, Definition: r)))
+        BySpell = All.SelectMany(r => r.UnlockedSpells.Select(k => (Kind: k, Definition: r)))
             .ToDictionary(p => p.Kind, p => p.Definition);
+    }
 
     /// <summary>全部研究节点的定义。</summary>
     public static IReadOnlyList<ResearchDefinition> All { get; } = Array.AsReadOnly(new[]
