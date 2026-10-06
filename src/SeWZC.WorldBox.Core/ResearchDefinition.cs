@@ -31,15 +31,25 @@ public sealed class ResearchDefinition(
     IReadOnlyList<SpellKind>? Spells = null,
     ResearchAction? Action = null)
 {
+    /// <summary>研究项目类别。</summary>
     public ResearchKind Kind { get; } = kind;
+    /// <summary>研究显示名称。</summary>
     public string Name { get; } = name;
+    /// <summary>研究所属分支。</summary>
     public ResearchBranch Branch { get; } = branch;
+    /// <summary>研究所属发展阶段名称。</summary>
     public string Stage { get; } = stage;
+    /// <summary>该研究是否属于魔法路线。</summary>
     public bool Magic { get; } = magic;
+    /// <summary>开始或使用该研究所需的前置知识。</summary>
     public ImmutableArray<ResearchKind> Prerequisites { get; } = prerequisites.ToImmutableArray();
+    /// <summary>开始研究时投入的资源成本。</summary>
     public ResourceAmounts Cost { get; } = cost;
+    /// <summary>完成研究需要的总工作量。</summary>
     public double Work { get; } = work;
+    /// <summary>实际研究效果的说明文字。</summary>
     public string Effect { get; } = effect;
+    /// <summary>解锁的操作入口，空值表示没有额外入口。</summary>
     public ResearchAction? Action { get; } = Action;
 
     /// <summary>是否属于两条路线共同使用的基础分支。</summary>

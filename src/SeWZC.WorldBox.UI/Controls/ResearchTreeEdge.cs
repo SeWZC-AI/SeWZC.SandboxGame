@@ -9,7 +9,9 @@ namespace SeWZC.WorldBox.UI.Controls;
 /// <param name="points">在未缩放画布中的连接折线顶点。</param>
 public sealed class ResearchTreeEdge(ResearchKind from, ResearchKind to, Point[] points)
 {
+    /// <summary>依赖连线起点的研究项目。</summary>
     public ResearchKind From { get; } = from;
+    /// <summary>依赖连线终点的研究项目。</summary>
     public ResearchKind To { get; } = to;
 
     /// <summary>在未缩放画布中的连接折线顶点。</summary>
