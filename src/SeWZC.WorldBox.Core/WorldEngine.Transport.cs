@@ -8,13 +8,15 @@ public sealed partial class WorldEngine
         ResourceKind.Water,
     ];
 
-    /// <summary>Vehicles are manufactured, carried to the warehouse and borrowed there by actual travellers.</summary>
+    /// <summary>在实际到达的聚落仓库借用载具，并预留旅程所需燃料。</summary>
+    /// <param name="person">参与当前操作的居民状态。</param>
+    /// <param name="home">出借载具的本地聚落仓库。</param>
     private void PrepareJourneyTransport(Resident person, Settlement home)
     {
         if (person.TravelMode != TravelMode.Foot || Distance(person.X, person.Y, home.X, home.Y) > 1) return;
         var distance = Distance(home.X, home.Y, person.Agent.Goal.TargetX, person.Agent.Goal.TargetY);
         if (distance < 6 && person.Agent.Goal.Kind != AgentGoalKind.Fish) return;
-        // Reserve an entire out-and-back flight at takeoff. No remote warehouse supplies fuel en route.
+        // 起飞时预留往返燃料，避免途中凭空从远方仓库补给。
         var fuel = Math.Max(1, distance * .04);
         if (person.Agent.Goal.Kind != AgentGoalKind.Fish && HasResearch(home.Id, ResearchKind.Aviation) &&
             HasResearch(home.Id, ResearchKind.Electrification)
@@ -35,6 +37,8 @@ public sealed partial class WorldEngine
         }
     }
 
+    /// <summary>返回交通方式的中文名称。</summary>
+    /// <param name="mode">待判断的交通方式。</param>
     public static string TravelModeName(TravelMode mode)
     {
         return mode switch

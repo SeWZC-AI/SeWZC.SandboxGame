@@ -49,7 +49,7 @@ public sealed partial class WorldEngine
                 EmitVisual(WorldVisualKind.Battle, conflict.X, conflict.Y);
             }
 
-            // Other people participate only after witnessing a persistent dispute locally.
+            // 其他居民须在本地目击持续争端后才参与，避免冲突隔空扩散。
             if (pressured && State.Tick - conflict.StartedTick >= 72 && conflict.Participants.Count < 16)
             {
                 var witness = _citizens[conflict.SettlementId].Where(r => r.Age >= 14 && r.ArmyId == 0

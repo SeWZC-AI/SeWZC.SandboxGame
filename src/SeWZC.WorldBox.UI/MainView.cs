@@ -12,7 +12,7 @@ using SeWZC.WorldBox.UI.Controls;
 
 namespace SeWZC.WorldBox.UI;
 
-/// <summary>协调模拟计时、地图与详情展示、玩家编辑和平台存储。</summary>
+/// <summary>组织世界模拟、编辑、详情查看和存档操作的共享游戏界面。</summary>
 public sealed partial class MainView : UserControl
 {
     private static readonly IBrush Ink = Brush.Parse("#111E29");
@@ -100,10 +100,13 @@ public sealed partial class MainView : UserControl
     private bool _updatingToolContext;
     private long _worldEditRevision, _savedEditRevision = -1, _savedTick = -1;
 
+    /// <summary>创建共享游戏界面，绑定世界引擎及地图、模拟和存档操作。</summary>
     public MainView() : this(null)
     {
     }
 
+    /// <summary>创建共享游戏界面，绑定世界引擎及地图、模拟和存档操作。</summary>
+    /// <param name="engine">初始世界引擎，空值时创建默认示例世界。</param>
     public MainView(WorldEngine? engine)
     {
         _engine = engine ?? WorldEngine.Create(73921);
@@ -492,6 +495,8 @@ public sealed partial class MainView : UserControl
     }
 
     /// <summary>在回调预算内推进到期的模拟日，再刷新界面并调度保存。</summary>
+    /// <param name="sender">触发回调的模拟计时器。</param>
+    /// <param name="e">计时器事件参数。</param>
     private void OnTick(object? sender, EventArgs e)
     {
         var now = _clock.Elapsed.TotalSeconds;
@@ -520,13 +525,11 @@ public sealed partial class MainView : UserControl
             _accumulator = Math.Min(.8, _accumulator + elapsed * _speed);
             var work = Stopwatch.GetTimestamp();
             var count = 0;
-            // Fast simulation may need two days in one callback to recover a
-            // missed display frame. Reserve map work within one bounded 48 ms slice.
+            // 高速模拟可能需一轮推进两日补回漏帧，须在有界回调时间内为地图刷新预留预算。
             var budgetMilliseconds = _speed == 1 ? 12 : 48;
             while (_accumulator >= .2 && count < 4)
             {
-                // Reserve the preceding map cost before adding another atomic
-                // step. An expensive first step still progresses the world.
+                // 追加模拟日前先预留上一轮地图刷新耗时；首日再贵也须推进，避免世界停滞。
                 if (count > 0 && Stopwatch.GetElapsedTime(work).TotalMilliseconds
                     + _lastStepMilliseconds + _lastMapRefreshMilliseconds > budgetMilliseconds) break;
                 var stepStarted = Stopwatch.GetTimestamp();
@@ -567,8 +570,7 @@ public sealed partial class MainView : UserControl
     private void ScheduleNextTick()
     {
         var idle = !_ready || WorldTimeStopped;
-        // DispatcherTimer waits after the callback. Count its work against the next
-        // day's deadline instead of adding a fixed 16 ms wait to every expensive step.
+        // 计时器在回调结束后才等待，须把回调耗时计入下日截止时间，避免重步骤额外叠加固定等待。
         var workMilliseconds = (_clock.Elapsed.TotalSeconds - _previousTime) * 1000;
         var delay = idle ? 50 : Math.Clamp((.2 - _accumulator) * 1000 / _speed - workMilliseconds, 1, 50);
         _timer.Interval = TimeSpan.FromMilliseconds(delay);
@@ -824,7 +826,7 @@ public sealed partial class MainView : UserControl
         using var capture = new CancellationTokenSource();
         try
         {
-            // A queued request must not capture a world selected after its original window closed.
+            // 排队请求须绑定原窗口和世界，避免窗口关闭后捕获新选中的世界。
             if (!OriginalWindowOpen()) return;
             _saving = true;
             _saveCapture = capture;
@@ -912,8 +914,7 @@ public sealed partial class MainView : UserControl
                                                        || _savedEditRevision != _worldEditRevision;
     }
 
-    // A large undo capture may outlast a canceled save's retry delay. Start the
-    // remaining quiet period after the edit, avoiding another immediate capture.
+    // 大型撤销捕获可能超过保存重试延迟，须从编辑结束重新计算静默期，避免立即再捕获一次。
     private void DeferAutosaveAfterEdit()
     {
         _lastSave = Math.Max(_lastSave, _clock.Elapsed.TotalSeconds - 25);

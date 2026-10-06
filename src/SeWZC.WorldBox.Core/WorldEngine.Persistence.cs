@@ -5,6 +5,7 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>未压缩存档的 UTF-8 字节数上限。</summary>
     public const int MaxSaveBytes = 64 * 1024 * 1024;
 
     private static readonly WorldJsonContext StreamingJson = new(
@@ -29,6 +30,8 @@ public sealed partial class WorldEngine
 
     /// <summary>将当前世界捕获为不可变的 JSON 文本块，在序列化期间让出执行权并检查存档大小上限。</summary>
     /// <remarks>调用方须暂停模拟，并在修改或替换世界前取消仍在进行的捕获。</remarks>
+    /// <param name="yield">在缓冲写入之间让界面处理事件的回调。</param>
+    /// <param name="cancellationToken">取消操作的令牌；取消时不提交不完整结果。</param>
     public async Task<string[]> ExportJsonChunksAsync(Func<CancellationToken, ValueTask> yield,
         CancellationToken cancellationToken = default)
     {
@@ -40,6 +43,7 @@ public sealed partial class WorldEngine
 
     /// <summary>解析并校验当前格式的存档，再构造引擎并重建运行时索引。</summary>
     /// <exception cref="ArgumentException">存档为空、超出大小上限、格式错误或不满足世界数据约束。</exception>
+    /// <param name="json">待处理的 JSON 文本。</param>
     public static WorldEngine ImportJson(string json)
     {
         if (string.IsNullOrWhiteSpace(json) || json.Length > MaxSaveBytes ||
@@ -327,6 +331,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>将 UTF-8 写入数据解码为文本块，检查大小并在分块间让出执行权。</summary>
+    /// <param name="yield">在分块写入之间让界面处理事件的回调。</param>
     private sealed class YieldingSaveStream(Func<CancellationToken, ValueTask> yield) : Stream
     {
         private static readonly UTF8Encoding Utf8 = new(false, true);
@@ -404,8 +409,7 @@ public sealed partial class WorldEngine
                 }
 
                 buffer = buffer[count..];
-                // Complete a code point split by our own chunk boundary before
-                // processing any later bytes from the same serializer write.
+                // 先拼完跨文本块边界的 UTF-8 字符，再处理本次写入的后续字节，避免拆分多字节字符。
                 if (_pendingCount > 0 && !buffer.IsEmpty)
                 {
                     var expected = SequenceLength(_pending[0]);

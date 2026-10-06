@@ -4,19 +4,32 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class Resident
 {
+    /// <summary>当前个人护甲强度。</summary>
     [JsonRequired]
     public double Armor { get; set; }
 
+    /// <summary>当前可吸收伤害的个人符文护甲余量。</summary>
     [JsonRequired]
     public double PersonalWard { get; set; }
 
+    /// <summary>冰霜减速效果的截止日序。</summary>
     [JsonRequired]
     public long FrozenUntilTick { get; set; }
 
+    /// <summary>最近一次远程攻击的模拟日序。</summary>
     [JsonRequired]
     public long LastRangedAttackTick { get; set; } = -100;
 }
 
+/// <summary>科技或魔法文明目标的研究、设施与实际生产达成情况。</summary>
+/// <param name="Magic">是否为魔法文明路线，关闭时为科技路线。</param>
+/// <param name="KnownResearch">本地已经掌握的路线研究数。</param>
+/// <param name="TotalResearch">该路线要求掌握的研究总数。</param>
+/// <param name="ReadyFacilities">已经满足就绪条件的必需设施类别数。</param>
+/// <param name="TotalFacilities">文明目标要求的设施类别总数。</param>
+/// <param name="MissingResearch">仍未掌握的研究名称。</param>
+/// <param name="MissingFacilities">仍未具备就绪设施的类别名称。</param>
+/// <param name="UnprovenProduction">尚无实际生产批次记录的必需设施类别名称。</param>
 public sealed record CivilizationProgress(
     bool Magic,
     int KnownResearch,
@@ -27,14 +40,19 @@ public sealed record CivilizationProgress(
     IReadOnlyList<string> MissingFacilities,
     IReadOnlyList<string> UnprovenProduction)
 {
+    /// <summary>是否已掌握路线全部研究、具备所需设施并证明实际生产。</summary>
     public bool Achieved => KnownResearch == TotalResearch && ReadyFacilities == TotalFacilities &&
                             UnprovenProduction.Count == 0;
 
+    /// <summary>该路线达成时展示的文明名称。</summary>
     public string Name => Magic ? "魔法帝国" : "科技帝国";
 }
 
 public sealed partial class WorldEngine
 {
+    /// <summary>校验本地研究和居民条件后指定研究解锁的职业。</summary>
+    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="job">要查询或指定的职业。</param>
     public void AssignResearchProfession(int residentId, Profession job)
     {
         var person = State.Residents.FirstOrDefault(r => r.Id == residentId) ?? throw new ArgumentException("居民不存在");
@@ -53,6 +71,9 @@ public sealed partial class WorldEngine
         RecordLife(person, "根据已掌握的研究，接受" + ProfessionName(job) + "岗位。");
     }
 
+    /// <summary>让已到场的本地建造者、工程师或消防员消耗随身石材修复邻近建筑。</summary>
+    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="buildingId">待操作建筑的稳定 ID。</param>
     public void RepairBuilding(int residentId, int buildingId)
     {
         var person = State.Residents.FirstOrDefault(r => r.Id == residentId);
@@ -72,13 +93,15 @@ public sealed partial class WorldEngine
         EmitVisual(WorldVisualKind.Construction, b.X, b.Y);
     }
 
+    /// <summary>核对路线研究、设施就绪和实际生产记录，返回文明目标达成情况。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="magic">是否查询魔法路线；关闭时查询科技路线。</param>
     public CivilizationProgress GetCivilizationProgress(int settlementId, bool magic)
     {
         _ = RequireTown(settlementId);
         var route = ResearchRules.Route(magic);
         var missingResearch = route.Where(k => !HasResearch(settlementId, k)).Select(ResearchName).ToArray();
-        // Civilization is demonstrated by the working production chain. A peaceful
-        // town need not build idle defenses or geography-specific transport sites.
+        // 文明目标以实际生产链为依据，避免和平聚落被迫建造闲置军备或不适用本地地形的运输设施。
         var required = AdvancementRules.All.Where(a => route.Contains(a.Research)
                                                        && a.Output is not (ResourceKind.Medicine
                                                            or ResourceKind.Ammunition))
@@ -104,6 +127,8 @@ public sealed partial class WorldEngine
             required.Length, missingResearch, missingFacilities, unproven);
     }
 
+    /// <summary>返回职业的实际劳动职责说明。</summary>
+    /// <param name="job">要查询或指定的职业。</param>
     public static string ProfessionDescription(Profession job)
     {
         return job switch
@@ -120,6 +145,8 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>返回法术的中文名称。</summary>
+    /// <param name="spell">待查询或施放的法术。</param>
     public static string SpellName(SpellKind spell)
     {
         return spell switch
@@ -131,6 +158,8 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>返回施放一次法术所需的魔力量。</summary>
+    /// <param name="spell">待查询或施放的法术。</param>
     public static double SpellManaCost(SpellKind spell)
     {
         return spell switch
@@ -141,6 +170,9 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>检查施法者是否掌握法术及前置研究；已解锁时返回空值，否则返回原因。</summary>
+    /// <param name="casterId">施法居民的稳定 ID。</param>
+    /// <param name="spell">待查询或施放的法术。</param>
     public string? SpellUnlockError(int casterId, SpellKind spell)
     {
         var caster = State.Residents.FirstOrDefault(r => r.Id == casterId);
@@ -152,6 +184,11 @@ public sealed partial class WorldEngine
             : null;
     }
 
+    /// <summary>检查本地研究、地点和材料后铺设笔刷范围内的铁路。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="radius">铁路笔刷的作用半径，以地格为单位。</param>
     public void BuildRail(int settlementId, int x, int y, int radius = 1)
     {
         var town = RequireTown(settlementId);
@@ -172,6 +209,11 @@ public sealed partial class WorldEngine
         RefreshTotals();
     }
 
+    /// <summary>检查铺设铁路的条件；可铺设时返回空值，否则返回原因。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="radius">铁路笔刷的作用半径，以地格为单位。</param>
     public string? RailPlacementError(int settlementId, int x, int y, int radius = 0)
     {
         if (!_settlements.TryGetValue(settlementId, out var town)) return "先选择负责铺轨的聚落";
@@ -214,6 +256,9 @@ public sealed partial class WorldEngine
                + (b.Kind == BuildingKind.Reservoir ? "\n共享本格自然供水，邻接河湖可取淡水；水装入背包后返仓" : "");
     }
 
+    /// <summary>检查居民经折跃门到达指定目标门的条件；可旅行时返回空值，否则返回原因。</summary>
+    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="destinationId">目的地折跃门的建筑 ID。</param>
     public string? WaygateTravelError(int residentId, int destinationId)
     {
         var person = State.Residents.FirstOrDefault(r => r.Id == residentId);
@@ -243,6 +288,9 @@ public sealed partial class WorldEngine
                && ResearchPrerequisiteError(b.SettlementId, ResearchKind.SpatialMagic) is null;
     }
 
+    /// <summary>消耗居民随身魔晶及魔力，使其从附近可用折跃门抵达指定目标门。</summary>
+    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="destinationId">目的地折跃门的建筑 ID。</param>
     public void TravelByWaygate(int residentId, int destinationId)
     {
         if (WaygateTravelError(residentId, destinationId) is { } error) throw new InvalidOperationException(error);
@@ -269,6 +317,9 @@ public sealed partial class WorldEngine
             residentId: person.Id);
     }
 
+    /// <summary>检查射手、目标、距离和弹药；可攻击时返回空值，否则返回原因。</summary>
+    /// <param name="attackerId">发起远程攻击的居民 ID。</param>
+    /// <param name="targetId">要攻击的敌方居民 ID。</param>
     public string? RangedAttackError(int attackerId, int targetId)
     {
         var person = State.Residents.FirstOrDefault(r => r.Id == attackerId);
@@ -284,6 +335,9 @@ public sealed partial class WorldEngine
         return person.Inventory.Ammunition < 1 ? "随身弹药不足 1" : null;
     }
 
+    /// <summary>校验攻击条件后消耗随身弹药，对指定敌方居民造成远程伤害。</summary>
+    /// <param name="attackerId">发起远程攻击的居民 ID。</param>
+    /// <param name="targetId">要攻击的敌方居民 ID。</param>
     public void RangedAttack(int attackerId, int targetId)
     {
         if (RangedAttackError(attackerId, targetId) is { } error) throw new InvalidOperationException(error);
@@ -362,7 +416,7 @@ public sealed partial class WorldEngine
 
     private bool WorkExpansionFacility(Building b, Resident person, Settlement town, double effort)
     {
-        // Staff first take a bounded physical supply from the home warehouse, then walk it to work.
+        // 服务人员须先从家乡仓库实际携带限量物资到岗，避免远程消耗库存。
         bool Supply(ResourceKind kind, double amount, double reserve = 0)
         {
             if (person.Inventory.Get(kind) + .000001 >= amount + reserve) return true;

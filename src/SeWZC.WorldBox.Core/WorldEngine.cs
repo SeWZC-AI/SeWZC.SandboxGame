@@ -1,8 +1,9 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>Deterministic, single-threaded world simulation with no UI or platform dependencies.</summary>
+/// <summary>不依赖界面和平台的单线程世界引擎，负责生成、模拟、编辑与保存续演。</summary>
 public sealed partial class WorldEngine
 {
+    /// <summary>世界存活居民数量的上限。</summary>
     public const int MaxPopulation = 10_000;
     private static readonly (int X, int Y)[] Directions = [(1, 0), (0, 1), (-1, 0), (0, -1)];
 
@@ -147,6 +148,15 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>创建并返回编年史记录；即使该记录被容量淘汰规则立即移除，也返回该对象。</summary>
+    /// <param name="kind">编年史事件类别，用于选择默认重要程度。</param>
+    /// <param name="message">事件的描述文字。</param>
+    /// <param name="x">事件地点的横向地格坐标，-1 表示无具体地点。</param>
+    /// <param name="y">事件地点的纵向地格坐标，-1 表示无具体地点。</param>
+    /// <param name="action">事件记录的具体行动。</param>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="causeEventId">关联的前因事件 ID，0 表示未指定前因。</param>
+    /// <param name="evidenceFactId">关联的信息依据 ID，0 表示未指定依据。</param>
     private WorldEvent AddEvent(WorldEventKind kind, string message, int x = -1, int y = -1,
         EventAction action = EventAction.General, int settlementId = 0, int residentId = 0, int causeEventId = 0,
         int evidenceFactId = 0)

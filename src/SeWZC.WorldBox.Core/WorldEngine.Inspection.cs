@@ -1,14 +1,20 @@
 namespace SeWZC.WorldBox.Core;
 
+/// <summary>观察者查看矿藏的显示策略，不改变居民掌握的知识。</summary>
 public enum ResourceVisibility
 {
+    /// <summary>显示已发现或已有聚落掌握开采技术的矿藏。</summary>
     Researched,
+    /// <summary>显示全部矿藏。</summary>
     All,
+    /// <summary>隐藏矿藏。</summary>
     None,
 }
 
 public sealed partial class WorldEngine
 {
+    /// <summary>返回职业的中文名称。</summary>
+    /// <param name="job">要查询或指定的职业。</param>
     public static string ProfessionName(Profession job)
     {
         return job switch
@@ -24,6 +30,9 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>按观察者显示策略、发现标记和已有研究判断矿藏是否可见。</summary>
+    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="visibility">观察者的矿藏显示策略。</param>
     public bool IsDepositVisible(Tile tile, ResourceVisibility visibility)
     {
         return tile.Deposit is { } kind
@@ -32,6 +41,8 @@ public sealed partial class WorldEngine
                        State.Society.Research.Any(r => r.Completed.Contains(research))));
     }
 
+    /// <summary>返回建筑的实际用途和运营条件说明。</summary>
+    /// <param name="kind">设施类别。</param>
     public static string BuildingDescription(BuildingKind kind)
     {
         return kind switch
@@ -72,7 +83,8 @@ public sealed partial class WorldEngine
         };
     }
 
-    // Detail status contains current obstacles and progress, never the static description.
+    /// <summary>返回建筑的施工、生命、运营和劳动状态说明。</summary>
+    /// <param name="id">建筑的稳定 ID。</param>
     public string GetBuildingDetailStatus(int id)
     {
         var b = State.Society.Buildings.FirstOrDefault(building => building.Id == id);
@@ -144,6 +156,9 @@ public sealed partial class WorldEngine
         return IsFacilityOperating(b) ? "" : "暂无在场工作人员";
     }
 
+    /// <summary>设置建筑是否允许运营，并记录玩家干预。</summary>
+    /// <param name="id">建筑的稳定 ID。</param>
+    /// <param name="enabled">是否允许运营该建筑。</param>
     public void SetBuildingEnabled(int id, bool enabled)
     {
         var building = State.Society.Buildings.FirstOrDefault(b => b.Id == id) ??
@@ -155,6 +170,9 @@ public sealed partial class WorldEngine
             building.Y);
     }
 
+    /// <summary>直接恢复建筑生命，可选择同时赐予建造完工。</summary>
+    /// <param name="id">建筑的稳定 ID。</param>
+    /// <param name="finish">是否同时将建造进度设为完工；升级项目仍按原状态保留。</param>
     public void RestoreBuilding(int id, bool finish = false)
     {
         var building = State.Society.Buildings.FirstOrDefault(b => b.Id == id) ??
@@ -170,6 +188,8 @@ public sealed partial class WorldEngine
             building.Y);
     }
 
+    /// <summary>返回居民当前任务、目标地点和执行条件的说明。</summary>
+    /// <param name="id">居民的稳定 ID。</param>
     public string GetResidentTaskSummary(int id)
     {
         var person = GetResident(id);
@@ -242,6 +262,8 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>返回居民正在执行的动作摘要。</summary>
+    /// <param name="id">居民的稳定 ID。</param>
     public string GetResidentActionSummary(int id)
     {
         var person = GetResident(id);

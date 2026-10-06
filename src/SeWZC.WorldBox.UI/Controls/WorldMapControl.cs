@@ -10,10 +10,7 @@ using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
-/// <summary>
-///     A single map surface: cached pixel chunks, batched resident geometry, and no per-entity controls.
-///     The camera uses artwork pixels; the simulation always uses tile coordinates.
-/// </summary>
+/// <summary>绘制世界地图、实体和行动动画，并处理镜头、选择及地图工具交互。</summary>
 public sealed partial class WorldMapControl : Control
 {
     private const int TilePixels = 8;
@@ -79,6 +76,7 @@ public sealed partial class WorldMapControl : Control
     private long _visibleResidentTick = -1;
     private double _zoom = 0.4;
 
+    /// <summary>创建可聚焦、裁剪边界且使用清晰像素缩放的地图控件。</summary>
     public WorldMapControl()
     {
         ClipToBounds = true;
@@ -86,6 +84,7 @@ public sealed partial class WorldMapControl : Control
         RenderOptions.SetBitmapInterpolationMode(this, BitmapInterpolationMode.None);
     }
 
+    /// <summary>当前显示的世界引擎；切换时清除选择、动画与地图缓存。</summary>
     public WorldEngine? Engine
     {
         get => _engine;
@@ -110,6 +109,7 @@ public sealed partial class WorldMapControl : Control
         }
     }
 
+    /// <summary>当前工具标识，如 <c>inspect</c>、种族名或 <c>build:</c> 建筑标识。</summary>
     public string ActiveTool
     {
         get => _activeTool;
@@ -122,10 +122,14 @@ public sealed partial class WorldMapControl : Control
         }
     }
 
+    /// <summary>地形和领土笔刷半径，以地格为单位。</summary>
     public int BrushRadius { get; set; } = 2;
+    /// <summary>领土绘制等工具当前使用的国家 ID。</summary>
     public int SelectedNationId { get; set; }
+    /// <summary>建设工具当前使用的归属聚落 ID。</summary>
     public int SelectedSettlementId { get; set; }
 
+    /// <summary>是否绘制国家领土边界。</summary>
     public bool ShowBorders
     {
         get => _showBorders;
@@ -145,16 +149,21 @@ public sealed partial class WorldMapControl : Control
             Math.Min((Bounds.Width - 36) / (Engine.State.Width * TilePixels),
                 (Bounds.Height - 36) / (Engine.State.Height * TilePixels)));
 
+    /// <summary>本次地形缓存检查扫描的地格数，用于呈现诊断。</summary>
     public int TerrainTilesScanned { get; private set; }
 
+    /// <summary>执行地图编辑前异步准备暂停和撤销恢复点的回调。</summary>
     public Func<Task>? PrepareWorldEdit { get; set; }
 
+    /// <summary>捕获地图选择及跟随设置，用于界面导航返回。</summary>
     public MapSelectionState CaptureMapSelection()
     {
         return new MapSelectionState(SelectedResidentId, SelectedBuildingId,
             _selection, FollowSelectedResident, SelectedNationId, SelectedSettlementId);
     }
 
+    /// <summary>恢复地图选择和跟随设置，优先恢复居民或建筑选择。</summary>
+    /// <param name="selection">此前捕获的地图选择和跟随设置。</param>
     public void RestoreMapSelection(MapSelectionState selection)
     {
         ClearMapSelection();
@@ -168,6 +177,9 @@ public sealed partial class WorldMapControl : Control
             SelectMapTile(tile.X, tile.Y);
     }
 
+    /// <summary>选择有效地格并清除其他对象选择，不发送点击通知。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
     public void SelectMapTile(int x, int y)
     {
         ClearMapSelection();
@@ -176,6 +188,8 @@ public sealed partial class WorldMapControl : Control
         InvalidateVisual();
     }
 
+    /// <summary>选择仍存在的建筑及其地格，不发送点击通知。</summary>
+    /// <param name="id">要选择的建筑 ID。</param>
     public void SelectMapBuilding(int id)
     {
         ClearMapSelection();
@@ -188,14 +202,20 @@ public sealed partial class WorldMapControl : Control
         InvalidateVisual();
     }
 
-    /// <summary>Raised once before a tool stroke, allowing the shell to pause and capture an undo snapshot.</summary>
+    /// <summary>工具操作开始时发出的通知，供主界面准备编辑状态。</summary>
     public event EventHandler? WorldEditing;
 
+    /// <summary>实际修改世界之前发出的通知，供主界面取消失效的异步操作。</summary>
     public event EventHandler? WorldMutationStarting;
+    /// <summary>地图工具完成世界修改后发出的通知。</summary>
     public event EventHandler? WorldEdited;
+    /// <summary>通过地图交互选中地格时发出横向和纵向地格坐标。</summary>
     public event Action<int, int>? TileSelected;
+    /// <summary>地图工具无法执行时发出的错误说明。</summary>
     public event Action<string>? ToolError;
 
+    /// <summary>重新检查世界呈现缓存、运动轨迹和动画通知，刷新地图显示。</summary>
+    /// <param name="resetCamera">是否同时将镜头恢复为全图视野。</param>
     public void RefreshWorld(bool resetCamera = false)
     {
         if (Engine is null)
@@ -232,6 +252,7 @@ public sealed partial class WorldMapControl : Control
         InvalidateVisual();
     }
 
+    /// <summary>调整镜头以容纳完整世界，并停止跟随居民。</summary>
     public void FitWorld()
     {
         if (Engine is null || Bounds.Width < 1 || Bounds.Height < 1) return;
@@ -243,16 +264,21 @@ public sealed partial class WorldMapControl : Control
         InvalidateVisual();
     }
 
+    /// <summary>以当前视口中心为锚点放大地图。</summary>
     public void ZoomIn()
     {
         ZoomAt(new Point(Bounds.Width / 2, Bounds.Height / 2), _zoom * 1.3);
     }
 
+    /// <summary>以当前视口中心为锚点缩小地图。</summary>
     public void ZoomOut()
     {
         ZoomAt(new Point(Bounds.Width / 2, Bounds.Height / 2), _zoom / 1.3);
     }
 
+    /// <summary>将指定地格移到镜头中心，并放大到定位视野。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
     public void FocusTile(int x, int y)
     {
         if (Engine is null) return;
@@ -265,6 +291,8 @@ public sealed partial class WorldMapControl : Control
         InvalidateVisual();
     }
 
+    /// <summary>在控件尺寸变化时使地图视野缓存失效，并初始化镜头。</summary>
+    /// <param name="change">发生变化的 Avalonia 属性及其新旧值。</param>
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -274,6 +302,8 @@ public sealed partial class WorldMapControl : Control
             _origin += new Vector((newBounds.Width - oldBounds.Width) / 2, (newBounds.Height - oldBounds.Height) / 2);
     }
 
+    /// <summary>绘制地形缓存、实体、动画、地图图层和当前选择。</summary>
+    /// <param name="context">本帧绘制使用的 Avalonia 绘图上下文。</param>
     public override void Render(DrawingContext context)
     {
         base.Render(context);
@@ -409,14 +439,13 @@ public sealed partial class WorldMapControl : Control
             var terrainHash = 2166136261;
             var territoryHash = colorHash;
             var containsTerritory = false;
-            // Include a one-tile apron so edited coastlines and borders invalidate their neighbours.
+            // 缓存摘要包含一格邻域，使岸线和边界编辑也能令相邻分块失效。
             for (var y = Math.Max(0, cy - 1); y < Math.Min(state.Height, cy + ChunkTiles + 1); y++)
             for (var x = Math.Max(0, cx - 1); x < Math.Min(state.Width, cx + ChunkTiles + 1); x++)
             {
                 TerrainTilesScanned++;
                 var tile = state.Tiles[y * state.Width + x];
-                // Resources change this image only when a forest becomes a stump.
-                // Animal and plant quantities belong to the separate ecology layer.
+                // 地形图像只需关注森林变树桩的资源阈值；动物和植物数量由独立图层刷新，避免频繁重建地形。
                 terrainHash = unchecked((terrainHash ^ TerrainImageInput(tile)) * 16777619);
                 territoryHash = unchecked((territoryHash ^ (uint)tile.NationId) * 16777619);
                 containsTerritory |= tile.NationId != 0 && x >= cx && x < cx + ChunkTiles && y >= cy &&
@@ -436,10 +465,7 @@ public sealed partial class WorldMapControl : Control
 
             if (chunk.Terrain is null || chunk.TerrainHash != terrainHash)
             {
-                // Adjacent opaque images otherwise expose hairline background seams when
-                // the camera maps chunk edges to fractional screen pixels. A one-art-pixel
-                // gutter repeats actual neighbouring terrain at its original scale.
-                // Transparent territory overlays deliberately do not overlap.
+                // 分块边缘落在小数屏幕坐标时会露出细缝，须用一像素邻格图案补边；透明领地图层不能重叠以免加深颜色。
                 var left = cx > 0 ? 1 : 0;
                 var top = cy > 0 ? 1 : 0;
                 var right = cx + ChunkTiles < state.Width ? 1 : 0;
@@ -458,8 +484,7 @@ public sealed partial class WorldMapControl : Control
                 chunk.Territory = null;
                 chunk.TerritoryHash = territoryHash;
                 chunk.TerritoryCached = true;
-                // Unclaimed chunks need no transparent GPU texture. A mostly natural
-                // 256×256 world saves nearly 16 MiB compared with allocating every overlay.
+                // 无归属分块不分配透明纹理，避免自然地形占多数时浪费显存。
                 if (!containsTerritory) continue;
                 var canvas = new PixelCanvas((int)chunk.Bounds.Width, (int)chunk.Bounds.Height);
                 for (var y = cy; y < Math.Min(state.Height, cy + ChunkTiles); y++)
@@ -541,7 +566,7 @@ public sealed partial class WorldMapControl : Control
             if (LandAt(x - 1, y)) canvas.Rect(px, py, 1, 8, coast);
             if (LandAt(x, y + 1)) canvas.Rect(px, py + 7, 8, 1, coast);
             if (LandAt(x + 1, y)) canvas.Rect(px + 7, py, 1, 8, coast);
-            // Round outside banks; connected water shares an uninterrupted centre.
+            // 只圆化外岸，保持相连水域中心连续，避免河道出现拼接断口。
             if (LandAt(x, y - 1) && LandAt(x - 1, y)) canvas.Rect(px, py, 2, 2, coast);
             if (LandAt(x, y - 1) && LandAt(x + 1, y)) canvas.Rect(px + 6, py, 2, 2, coast);
             if (LandAt(x, y + 1) && LandAt(x - 1, y)) canvas.Rect(px, py + 6, 2, 2, coast);
@@ -566,7 +591,7 @@ public sealed partial class WorldMapControl : Control
 
             var light = tile.Terrain == TerrainType.Mountain ? 0xB2BEADFFu : 0xADB17BFFu;
             var dark = tile.Terrain == TerrainType.Mountain ? 0x596D67FFu : 0x7F875CFFu;
-            // The same edge height on neighbouring tiles joins ridges across cells and chunks.
+            // 相邻地格共享边缘高度，使山脊跨地格和分块连续。
             canvas.Rect(px, py + 5, 8, 3, PixelCanvas.Shade(color, -8));
             canvas.Line(px + 4, py + 2, px + 6, py + 6, dark, 2);
             canvas.Line(px + 4, py + 2, px + 2, py + 6, light, 2);
@@ -743,8 +768,7 @@ public sealed partial class WorldMapControl : Control
                 if (!Visible(new Rect(x - 2, y - 3, 6, 7))) continue;
                 _renderedResidentPoints[resident.Id] =
                     ToScreen((position.X + .5) * TilePixels, (position.Y + .5) * TilePixels);
-                // Near-scene sprites already draw these features; overview badges
-                // below .7 scale are subpixel and do not need separate geometry.
+                // 近景精灵已包含职业细节，总览小图标又不足一个像素，因此无需另建重复几何。
                 if (!silhouettes) continue;
                 var race = Math.Clamp((int)resident.Race, 0, 3);
                 if (ShowVehicle(resident)) continue;
@@ -846,7 +870,7 @@ public sealed partial class WorldMapControl : Control
     {
         RenderedBuildingLabelCount = 0;
         if (_zoom < .22) return;
-        // Keep tiny mobile maps legible by rejecting overlapping labels.
+        // 拒绝重叠名称，使小尺寸地图上的标签仍可辨读。
         var occupied = new List<Rect>();
         foreach (var settlement in _labelSettlements)
         {
@@ -988,6 +1012,8 @@ public sealed partial class WorldMapControl : Control
         InvalidateVisual();
     }
 
+    /// <summary>以指针位置为锚点处理滚轮缩放。</summary>
+    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         base.OnPointerWheelChanged(e);
@@ -995,6 +1021,8 @@ public sealed partial class WorldMapControl : Control
         e.Handled = true;
     }
 
+    /// <summary>开始地图选择、镜头拖动或工具操作，并捕获指针。</summary>
+    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
@@ -1033,6 +1061,8 @@ public sealed partial class WorldMapControl : Control
         e.Handled = true;
     }
 
+    /// <summary>根据当前指针状态更新镜头拖动、触屏缩放和工具预览。</summary>
+    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
@@ -1085,14 +1115,15 @@ public sealed partial class WorldMapControl : Control
         InvalidateVisual();
     }
 
+    /// <summary>结束当前手势，并按点击或放置状态处理地图交互。</summary>
+    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
         var point = e.GetPosition(this);
         if (e.Pointer.Type == PointerType.Touch)
         {
-            // A capture-lost/canceled touch can deliver a late release. Only a still-active,
-            // single-finger tap may apply a tool; a pinch remains navigation until all fingers lift.
+            // 取消触摸后可能迟到释放事件，只有仍有效的单指轻点才执行工具；捏合须等全部手指离开才结束。
             if (_touches.ContainsKey(e.Pointer) && !_gestureMoved && !_pinching)
             {
                 if (PickingLocation) SelectTile(point);
@@ -1113,6 +1144,8 @@ public sealed partial class WorldMapControl : Control
         e.Handled = true;
     }
 
+    /// <summary>指针捕获丢失时清除未完成的拖动及触屏手势。</summary>
+    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
     {
         base.OnPointerCaptureLost(e);
@@ -1121,6 +1154,8 @@ public sealed partial class WorldMapControl : Control
         _lastPaint = null;
     }
 
+    /// <summary>指针离开地图时清除悬停预览。</summary>
+    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnPointerExited(PointerEventArgs e)
     {
         base.OnPointerExited(e);
@@ -1187,8 +1222,7 @@ public sealed partial class WorldMapControl : Control
         var prefix = tool.IndexOf(':');
         if (prefix >= 0) tool = tool[(prefix + 1)..];
         var edited = false;
-        // Every stroke point cancels a pending save, including a continuing
-        // stroke for which WorldEditing has already established an undo point.
+        // 连续笔刷虽已有撤销恢复点，每个新落点仍须取消正在捕获的存档，避免保存混入编辑中间状态。
         WorldMutationStarting?.Invoke(this, EventArgs.Empty);
         if (TryApplyConstructionTool(tool, tile, out var constructionEdited))
         {
@@ -1216,7 +1250,7 @@ public sealed partial class WorldMapControl : Control
         }
         else if (Enum.TryParse<RaceKind>(tool, true, out var race))
         {
-            // Each stroke deposits one group. Dragging a species tool should not create thousands of residents.
+            // 每次按下只投放一组居民，避免拖动种族工具瞬间创建大量人口。
             if (_lastPaint is null)
             {
                 WorldEditing?.Invoke(this, EventArgs.Empty);
@@ -1252,6 +1286,8 @@ public sealed partial class WorldMapControl : Control
         }
     }
 
+    /// <summary>地图离开可视树时停止动画请求并清理手势状态。</summary>
+    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
@@ -1263,6 +1299,8 @@ public sealed partial class WorldMapControl : Control
         _framePending = false;
     }
 
+    /// <summary>地图进入可视树时允许动画调度。</summary>
+    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);
@@ -1281,6 +1319,13 @@ public sealed partial class WorldMapControl : Control
         _chunks.Clear();
     }
 
+    /// <summary>地图当前选择和跟随设置，用于界面导航返回时恢复。</summary>
+    /// <param name="ResidentId">选中的居民 ID，空值表示未选中。</param>
+    /// <param name="BuildingId">选中的建筑 ID，空值表示未选中。</param>
+    /// <param name="Tile">选中的地格坐标，空值表示未选中。</param>
+    /// <param name="Follow">是否跟随所选居民。</param>
+    /// <param name="NationId">工具选定的国家 ID。</param>
+    /// <param name="SettlementId">工具选定的聚落 ID。</param>
     public readonly record struct MapSelectionState(
         int? ResidentId,
         int? BuildingId,

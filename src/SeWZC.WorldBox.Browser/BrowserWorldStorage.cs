@@ -9,21 +9,23 @@ namespace SeWZC.WorldBox.Browser;
 [SupportedOSPlatform("browser")]
 internal sealed partial class BrowserWorldStorage : IWorldStorage
 {
+    /// <inheritdoc />
     public bool IsBackground => GetIsBackground();
 
+    /// <inheritdoc />
     public Task SaveAsync(string json)
     {
         return Save(json);
     }
 
+    /// <inheritdoc />
     public async Task SaveChunksAsync(string[] chunks)
     {
         var id = BeginSave();
         try
         {
             var started = Stopwatch.GetTimestamp();
-            // Bound both WASM string marshaling and worker structured cloning.
-            // The captured chunks are immutable; simulation may run during transfer.
+            // 限制每轮字符串互操作和 Worker 复制量，避免阻塞界面；传输的是已捕获的不可变文本块，期间可继续模拟。
             for (var offset = 0; offset < chunks.Length; offset++)
             {
                 AppendSave(id, chunks[offset]);
@@ -42,16 +44,19 @@ internal sealed partial class BrowserWorldStorage : IWorldStorage
         }
     }
 
+    /// <inheritdoc />
     public Task<string?> LoadAsync()
     {
         return Load();
     }
 
+    /// <inheritdoc />
     public Task ExportAsync(string json, string fileName)
     {
         return ExportFile(json, fileName);
     }
 
+    /// <inheritdoc />
     public Task<string?> ImportAsync()
     {
         return ImportFile();

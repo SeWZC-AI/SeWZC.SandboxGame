@@ -21,7 +21,7 @@ public sealed partial class MainView
 
     private void BindSearch(TextBox input, Action<string> changed)
     {
-        // Keep the focused editor attached and process a burst of IME/input events once.
+        // 搜索刷新合并连续输入事件，并保留获得焦点的编辑器，避免打断输入法组合。
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(220) };
         var viewKey = _inspectorKey;
         timer.Tick += (_, _) =>
@@ -50,14 +50,13 @@ public sealed partial class MainView
     }
 }
 
-// Imported names and historical messages can retain the former separator.
-// Normalize only presentation, keeping every saved name and event untouched.
+// 只在呈现时替换旧分隔符，避免修改存档中的名称和历史事件。
 internal static class DisplayFormat
 {
     internal static string Text(string value)
     {
         return value.Replace('\u00B7', ' ').Replace('\u2022', ' ')
             .Replace("→", "至").Replace("↔", "与");
-        // The bundled font has no arrow glyphs.
+        // 内置字体缺少箭头字形，使用已有字符避免显示缺字方框。
     }
 }

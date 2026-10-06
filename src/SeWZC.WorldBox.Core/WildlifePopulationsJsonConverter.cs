@@ -3,11 +3,10 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-// Format 16 stores sparse [species ID, exact population] pairs. No rounding,
-// thresholds or inferred species: even very small and invalid values survive
-// writing so the normal input validator can reject invalid world states.
+/// <summary>以物种编号和精确数量组成的稀疏数组读写动物种群。</summary>
 internal sealed class WildlifePopulationsJsonConverter : JsonConverter<WildlifePopulations>
 {
+    /// <inheritdoc />
     public override WildlifePopulations Read(ref Utf8JsonReader reader, Type typeToConvert,
         JsonSerializerOptions options)
     {
@@ -29,6 +28,8 @@ internal sealed class WildlifePopulationsJsonConverter : JsonConverter<WildlifeP
         return populations;
     }
 
+    // 写入时保留非零小量和异常值，避免过滤后掩盖无效状态；读取时再由校验器拒绝。
+    /// <inheritdoc />
     public override void Write(Utf8JsonWriter writer, WildlifePopulations value, JsonSerializerOptions options)
     {
         writer.WriteStartArray();

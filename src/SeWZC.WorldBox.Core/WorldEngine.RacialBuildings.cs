@@ -2,6 +2,8 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>返回种族专属设施所需的种族，普通设施返回空值。</summary>
+    /// <param name="kind">设施类别。</param>
     public static RaceKind? BuildingRace(BuildingKind kind)
     {
         return kind switch
@@ -14,6 +16,9 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>判断聚落是否具有建造该种族设施所需的成年居民。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="kind">设施类别。</param>
     public bool CanBuildRacialFacility(int settlementId, BuildingKind kind)
     {
         return BuildingRace(kind) is not { } race
@@ -118,7 +123,7 @@ public sealed partial class WorldEngine
                     if (other.Health > 0 && Distance(other.X, other.Y, building.X, building.Y) <= 2)
                         other.Agent.SocialNeed = Math.Max(0, other.Agent.SocialNeed - effort);
                 return true;
-            case BuildingKind.TradeGuild: return true; // Staffed local communication and trader travel service.
+            case BuildingKind.TradeGuild: return true; // 运营效果由实际到岗人员提供，不能仅凭建筑建成启用。
             case BuildingKind.SacredGrove:
                 person.MagicTraining = Math.Min(100, person.MagicTraining + .1 * effort * State.Rules.MagicRate);
                 person.Mana = Math.Min(100, person.Mana + .3 * effort);
@@ -177,6 +182,8 @@ public sealed partial class WorldEngine
         return bonus;
     }
 
+    /// <summary>判断地形是否属于森林、疏林或雨林。</summary>
+    /// <param name="terrain">待查询或设置的地形类别。</param>
     public static bool IsForestTerrain(TerrainType terrain)
     {
         return terrain is TerrainType.Forest or TerrainType.Woodland or TerrainType.Rainforest;

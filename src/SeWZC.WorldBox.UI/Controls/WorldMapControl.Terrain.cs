@@ -6,6 +6,7 @@ public sealed partial class WorldMapControl
 {
     private const int TerrainInputStride = ChunkTiles + 2;
     private readonly bool[] _dirtyTerrainTiles = new bool[TerrainInputStride * TerrainInputStride];
+    /// <summary>最近一帧地形绘制覆盖的地格数。</summary>
     public int TerrainTilesDrawn { get; private set; }
 
     private static uint TerrainImageInput(Tile tile)
@@ -31,8 +32,7 @@ public sealed partial class WorldMapControl
             var input = TerrainImageInput(state.Tiles[y * state.Width + x]);
             if (!first && chunk.TerrainInputs[slot] == input) continue;
             chunk.TerrainInputs[slot] = input;
-            // Coast corners, mountain ridges, road links and the one-pixel gutter
-            // depend on neighbours. Mark before drawing so updates keep row order.
+            // 岸线、山脊、道路及像素边缘依赖邻格；先标记再绘制，避免更新顺序破坏邻接关系。
             for (var dy = -1; dy <= 1; dy++)
             for (var dx = -1; dx <= 1; dx++)
             {

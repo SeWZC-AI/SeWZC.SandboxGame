@@ -2,11 +2,15 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>返回战役目标的中文名称。</summary>
+    /// <param name="objective">战役的军事目标。</param>
     public static string ObjectiveName(WarObjective objective)
     {
         return objective == WarObjective.OccupySettlement ? "有限占领" : "保卫家园";
     }
 
+    /// <summary>返回战役结果或撤退原因的中文说明。</summary>
+    /// <param name="outcome">战役结果或撤退原因。</param>
     public static string OutcomeName(WarOutcome outcome)
     {
         return outcome switch
@@ -30,7 +34,7 @@ public sealed partial class WorldEngine
         entry.NationId = army.NationId;
         entry.SecondNationId = army.TargetNationId;
         army.LastEventId = entry.Id;
-        // The event is a world fact. Only actual witnesses receive the report.
+        // 编年史记录世界事实，但战报只能由实际目击者获得。
         var witnesses = soldiers.Where(r => r.Health > 0 && Distance(r.X, r.Y, army.X, army.Y) <= 3).ToArray();
         if (witnesses.Length == 0) return;
         var witness = witnesses.FirstOrDefault(r => r.Id == army.CommanderId) ?? witnesses[0];
@@ -87,7 +91,7 @@ public sealed partial class WorldEngine
         if (!State.Rules.Peace || !_nations.TryGetValue(fact.SubjectId, out var other)) return;
         var relation = Relation(nation.Id, other.Id);
         if (relation.Status != DiplomaticStatus.War) return;
-        // The report itself is sufficient evidence: a fresh settlement contact is not required.
+        // 已收到的战报本身足以作为依据，不应再要求额外的新聚落接触。
         ChangeAutonomousDiplomacy(nation, other, relation, fact, DiplomaticStatus.Neutral, "收到撤军战报，停止作战并进入恢复期");
     }
 }

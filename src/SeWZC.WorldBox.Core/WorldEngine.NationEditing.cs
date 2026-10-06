@@ -2,6 +2,9 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>修改国家的旗帜和领土显示颜色，并记录玩家编辑。</summary>
+    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="colorArgb">新的 ARGB 编码颜色。</param>
     public void SetNationColor(int nationId, uint colorArgb)
     {
         if (!_nations.TryGetValue(nationId, out var nation)) throw new ArgumentException("国家不存在。", nameof(nationId));
@@ -9,6 +12,8 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>将国家的古代工具等级设为 1 至 5，独立于聚落研究的完成情况。</summary>
+    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="level">古代工具等级，范围为 1 至 5。</param>
     public void SetNationTechnology(int nationId, int level)
     {
         if (!_nations.TryGetValue(nationId, out var nation)) throw new ArgumentException("国家不存在。", nameof(nationId));
@@ -17,7 +22,11 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Editor, $"{nation.Name}的工具技术调整至 {level} 级。");
     }
 
-    /// <summary>Paints ownership on land. Towns whose centers are painted transfer as complete entities.</summary>
+    /// <summary>绘制陆地归属；聚落中心被覆盖时，一并转移整处聚落及相关实体。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="nationId">接收领土及笔刷覆盖聚落的国家 ID。</param>
+    /// <param name="radius">领土笔刷作用半径，以地格为单位。</param>
     public void TransferTerritory(int x, int y, int nationId, int radius = 3)
     {
         if (!_nations.TryGetValue(nationId, out var nation))
@@ -35,7 +44,7 @@ public sealed partial class WorldEngine
             }
 
         ReconcileConnectedClaims();
-        // Paint may extend a town's existing edge; a remote brush cannot create a floating enclave.
+        // 领土笔刷可延伸已有连通地盘，但不能为城镇创建远处悬空飞地。
         foreach (var town in State.Settlements.Where(t => t.NationId == nationId && !t.FoundationPending)
                      .OrderBy(t => t.Id))
         {
@@ -71,7 +80,9 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Editor, $"{nation.Name}的领土边界已调整，圈内聚落随领土转属。", x, y);
     }
 
-    /// <summary>Creates a sovereign nation from one town of a country with at least two towns.</summary>
+    /// <summary>将至少拥有两处聚落的国家中的一处聚落独立为新国家，并返回国家 ID。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="name">新的名称。</param>
     public int SplitSettlement(int settlementId, string name)
     {
         if (!_settlements.TryGetValue(settlementId, out var town))

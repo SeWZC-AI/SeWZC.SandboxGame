@@ -17,9 +17,13 @@ public sealed partial class WorldMapControl
     private readonly List<VisualEffect> _effects = [];
     private long _seenVisualSequence;
     private IReadOnlyList<RoutePoint> _selectedRoute = [];
+    /// <summary>最近一帧绘制的行动特效数。</summary>
     public int RenderedEffectCount { get; private set; }
+    /// <summary>最近一帧特效使用的呈现时钟秒数。</summary>
     public double RenderedEffectTime { get; private set; }
+    /// <summary>最近一帧绘制的居民路线段数。</summary>
     public int RenderedRouteSegmentCount { get; private set; }
+    /// <summary>是否绘制所选居民的当前目标路线。</summary>
     public bool ShowResidentRoute { get; set; } = true;
 
     private void CaptureSelectedRoute()

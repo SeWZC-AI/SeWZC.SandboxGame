@@ -7,8 +7,7 @@ public sealed partial class WorldEngine
 
     private readonly List<List<Building>> _localWorkBuildingBuffers = [];
 
-    // Scratch groups are rebuilt after resident deaths and cleared after the agent phase.
-    // Outside that phase public work commands read the authoritative collections directly.
+    // 劳动索引在居民死亡后重建、行动阶段后清除；公开命令在阶段外读取权威集合，避免使用失效分组。
     private readonly Dictionary<int, List<Building>> _localWorkBuildings = [];
     private readonly List<List<Resident>> _localWorkResidentBuffers = [];
     private readonly Dictionary<int, List<Resident>> _localWorkResidents = [];

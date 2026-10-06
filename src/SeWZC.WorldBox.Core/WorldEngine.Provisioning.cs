@@ -2,11 +2,15 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>计算居民每日所需粮食资源量。</summary>
+    /// <param name="person">参与当前操作的居民状态。</param>
     public static double FoodUse(Resident person)
     {
         return person.Age < 14 ? .02 : person.Race == RaceKind.Orc ? .052 : .04;
     }
 
+    /// <summary>计算居民每日所需饮水资源量。</summary>
+    /// <param name="person">参与当前操作的居民状态。</param>
     public static double WaterUse(Resident person)
     {
         return person.Age < 14 ? .015 : .025;
@@ -20,8 +24,7 @@ public sealed partial class WorldEngine
 
     private void ProvisionAtHome(Resident person, Settlement home)
     {
-        // A meal comes before travel stockpiling. Leave a day's shared meals in
-        // the warehouse so earlier residents cannot take everybody else's food.
+        // 先保障当日进食并为其他居民保留共同口粮，避免先处理的居民囤走全体食物。
         var available = Math.Max(Math.Min(home.Resources.Food, FoodUse(person)),
             home.Resources.Food - home.Population * .06);
         var food = State.Rules.Hunger
@@ -58,7 +61,7 @@ public sealed partial class WorldEngine
         }
 
         var use = WaterUse(person);
-        // Draw before drinking so water at one's feet helps on the same day.
+        // 先就地取水再饮用，使脚下的水源能在当日缓解缺水。
         if (person.Inventory.Water < use && State.Tick - person.MoveStartedTick >= person.MoveDurationTicks)
             DrawWater(person, Index(person.X, person.Y), use - person.Inventory.Water);
         var drink = Math.Min(use, person.Inventory.Water);
@@ -67,6 +70,9 @@ public sealed partial class WorldEngine
         if (person.Thirst > 95) DamageResident(person, .25, DeathCause.Dehydration);
     }
 
+    /// <summary>计算此格当日扣除已取水量后的可用供水；淡水水域可为正无穷。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
     public double AvailableWater(int x, int y)
     {
         if (!InBounds(x, y)) return 0;
@@ -76,7 +82,9 @@ public sealed partial class WorldEngine
         return Math.Max(0, supply - (tile.WaterDrawTick == State.Tick ? tile.WaterDrawn : 0));
     }
 
-    // Unlimited supply is a derived query result, never a stored resource amount.
+    // 无限供水只由查询推导，避免把无穷值写入存档资源。
+    /// <summary>计算受干旱影响后的每日自然供水量；河湖等淡水水域返回正无穷。</summary>
+    /// <param name="tile">待查询或操作的地格状态。</param>
     public static double DailyWaterYield(Tile tile)
     {
         return IsFreshWater(tile)
@@ -84,6 +92,8 @@ public sealed partial class WorldEngine
             : tile.NaturalWaterYield * (tile.DroughtTicks > 0 ? .2 : 1);
     }
 
+    /// <summary>计算此格水井的每日增量供水，水域返回零。</summary>
+    /// <param name="tile">待查询或操作的地格状态。</param>
     public static double WellWaterYield(Tile tile)
     {
         return IsWaterTerrain(tile.Terrain)
@@ -91,6 +101,9 @@ public sealed partial class WorldEngine
             : Math.Max(0, 30 * DailyWaterYield(tile) - .6);
     }
 
+    /// <summary>计算此格自然水源及本地运营供水设施提供的每日总量。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
     public double GetWaterSupply(int x, int y)
     {
         if (!InBounds(x, y)) return 0;
@@ -131,7 +144,7 @@ public sealed partial class WorldEngine
     private (int Bank, int Source) FindWaterSite(Resident person)
     {
         var reachable = 0;
-        // Sources outside the visible circle must have an actually learned address.
+        // 可见范围之外的水源须有实际获知的地址，避免居民凭全图状态找水。
         var bestBank = -1;
         var bestSource = -1;
         var bestScore = 0d;
@@ -181,8 +194,7 @@ public sealed partial class WorldEngine
             if (bestScore == 1) break;
         }
 
-        // Distant learned sources can guide later exploration; a daily refill
-        // must use a bank reachable within the currently visible terrain.
+        // 远方已知水源可引导探索，但当日补水须使用当前可见且可达的岸边。
         if (bestSource >= 0 && Distance(person.X, person.Y, bestSource % State.Width, bestSource / State.Width) <= 6)
         {
             var existing = person.Agent.Memory.FirstOrDefault(f =>
@@ -299,6 +311,8 @@ public sealed partial class WorldEngine
         }
     }
 
+    /// <summary>尝试从当前任务的实际水源取水放入随身库存；返回是否取到水。</summary>
+    /// <param name="person">参与当前操作的居民状态。</param>
     public bool TryFetchWater(Resident person)
     {
         if (person.Agent.Goal.Kind != AgentGoalKind.FetchWater || person.Health <= 0) return false;
@@ -310,8 +324,7 @@ public sealed partial class WorldEngine
                     : 0, WaterReserve(person) + 3 - person.Inventory.Water));
         if (source < 0 || amount <= 0)
         {
-            // Continue each outward leg; rotating after every arrival only
-            // walked the same small square. Turn when the visible edge is blocked.
+            // 完成探索段后继续向外，边界受阻才转向，避免每次到达都转向而绕同一小圈。
             if (source >= 0 || person.Agent.Goal.WorkTicks > 1)
                 person.Agent.ExplorationHeading = (person.Agent.ExplorationHeading + 1) % 8;
             person.Agent.NextThinkTick = State.Tick;
@@ -328,8 +341,7 @@ public sealed partial class WorldEngine
         var bestScore = 0d;
         foreach (var offset in VisibleResourceOffsets)
         {
-            // A shore fisher can reach a bank six steps away beside a fish
-            // source seven steps away. Land prey itself must be within six.
+            // 岸边可达距离为六步时，相邻鱼源可在第七格；陆地猎物仍须在六格可见范围内。
             if (offset.Distance > 7) break;
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
@@ -415,6 +427,8 @@ public sealed partial class WorldEngine
         return tile.EdibleAnimal(aquatic);
     }
 
+    /// <summary>尝试在当前位置狩猎或捕鱼，将实际减少的动物转为随身粮食；返回是否取得产物。</summary>
+    /// <param name="person">参与当前操作的居民状态。</param>
     public bool TryHarvestWildlife(Resident person)
     {
         var goal = person.Agent.Goal;

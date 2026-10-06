@@ -3,6 +3,8 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     /// <summary>汇总附近劳动力和资源条件，以及从居民记忆中推断的需求。</summary>
+    /// <param name="town">需要评估发展需求的本地聚落。</param>
+    /// <param name="buildings">本地已有设施，用于核对劳动与供给缺口。</param>
     private LocalDemand InspectLocalDemand(Settlement town, IReadOnlyList<Building> buildings)
     {
         var residents = _localWorkQueriesActive
@@ -132,7 +134,7 @@ public sealed partial class WorldEngine
             _ => true,
         };
         if (!useful) return 0;
-        // Basic livelihoods and the next usable production chain outrank refinements.
+        // 基本生计和下一条可用生产链优先，避免资源先被次要改进占用。
         return research.Kind switch
         {
             ResearchKind.Agriculture => 100,
@@ -146,6 +148,18 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>建设与研究规划使用的当地劳动力、设施和需求信号。</summary>
+    /// <param name="Town">本次评估的本地聚落。</param>
+    /// <param name="Adults">参与需求评估的本地成年居民。</param>
+    /// <param name="Buildings">本地已有设施。</param>
+    /// <param name="Defense">是否具有本地防御需求。</param>
+    /// <param name="Patients">是否存在需要治疗的居民。</param>
+    /// <param name="Water">是否具有饮水供给需求。</param>
+    /// <param name="Coast">本地是否有可利用的岸线。</param>
+    /// <param name="Timber">本地是否有可利用的木材来源。</param>
+    /// <param name="Stone">本地是否有可利用的石矿来源。</param>
+    /// <param name="Contacts">是否掌握外地聚落接触信息。</param>
+    /// <param name="MagicTalent">是否有适合魔法发展的本地人才。</param>
+    /// <param name="Roads">是否具有道路和交通发展需求。</param>
     private sealed record LocalDemand(
         Settlement Town,
         Resident[] Adults,

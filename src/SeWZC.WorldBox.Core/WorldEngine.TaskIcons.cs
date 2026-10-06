@@ -1,47 +1,83 @@
 namespace SeWZC.WorldBox.Core;
 
+/// <summary>地图上显示居民当前具体任务的图标类别。</summary>
 public enum ResidentTaskIcon
 {
+    /// <summary>探索。</summary>
     Explore,
+    /// <summary>伐木。</summary>
     Log,
+    /// <summary>采矿。</summary>
     Mine,
+    /// <summary>采集食物。</summary>
     Gather,
+    /// <summary>耕作。</summary>
     Farm,
+    /// <summary>施工。</summary>
     Build,
+    /// <summary>升级或改造。</summary>
     Upgrade,
+    /// <summary>研究。</summary>
     Research,
+    /// <summary>魔法训练。</summary>
     Magic,
+    /// <summary>治疗。</summary>
     Heal,
+    /// <summary>返仓取料。</summary>
     Pickup,
+    /// <summary>运回物资。</summary>
     Deliver,
+    /// <summary>递送消息。</summary>
     Message,
+    /// <summary>贸易。</summary>
     Trade,
+    /// <summary>占领地块。</summary>
     Claim,
+    /// <summary>取水。</summary>
     Water,
+    /// <summary>狩猎。</summary>
     Hunt,
+    /// <summary>捕鱼。</summary>
     Fish,
+    /// <summary>休息。</summary>
     Rest,
+    /// <summary>进食。</summary>
     Eat,
+    /// <summary>交谈。</summary>
     Talk,
+    /// <summary>逃离危险。</summary>
     Flee,
+    /// <summary>行军。</summary>
     March,
+    /// <summary>冶炼。</summary>
     Smelt,
+    /// <summary>生产动力。</summary>
     Power,
+    /// <summary>制造。</summary>
     Craft,
+    /// <summary>造船。</summary>
     Ship,
+    /// <summary>造飞机。</summary>
     Plane,
+    /// <summary>凝炼魔晶。</summary>
     Crystal,
+    /// <summary>符文生产。</summary>
     Runic,
+    /// <summary>以太生产。</summary>
     Aether,
+    /// <summary>扑灭火灾。</summary>
     Extinguish,
 }
 
 public sealed partial class WorldEngine
 {
+    /// <summary>根据居民目标、职业和设施状态选择当前具体任务图标。</summary>
+    /// <param name="person">参与当前操作的居民状态。</param>
+    /// <param name="facility">已查到的目标设施，空值时按任务查找；非设施任务忽略此值。</param>
     public ResidentTaskIcon GetResidentTaskIcon(Resident person, Building? facility = null)
     {
         var goal = person.Agent.Goal;
-        // A source-tile ID used for fishing or water is not a building ID.
+        // 取水和捕鱼的目标编号表示资源地格，不能作为建筑 ID 查找。
         if (goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic)
             facility ??= FindBuilding(goal.TargetEntityId);
         else facility = null;
@@ -92,6 +128,8 @@ public sealed partial class WorldEngine
         };
     }
 
+    /// <summary>返回任务图标对应的中文动作名称。</summary>
+    /// <param name="icon">居民任务图标类别。</param>
     public static string TaskIconName(ResidentTaskIcon icon)
     {
         return icon switch

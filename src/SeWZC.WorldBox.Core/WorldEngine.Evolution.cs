@@ -1,38 +1,68 @@
 namespace SeWZC.WorldBox.Core;
 
+/// <summary>一组世界规则的预设选择。</summary>
 public enum WorldPreset
 {
+    /// <summary>繁荣发展。</summary>
     Flourishing,
+    /// <summary>常规活世界。</summary>
     LivingWorld,
+    /// <summary>动荡世界。</summary>
     Turbulent,
 }
 
+/// <summary>控制自主模拟机制的开关、强度和速率参数。</summary>
 public sealed record WorldRules
 {
+    /// <summary>是否允许自然资源恢复。</summary>
     public bool ResourceRegeneration { get; set; } = true;
+    /// <summary>是否允许现有火灾向邻格蔓延。</summary>
     public bool FireSpread { get; set; } = true;
+    /// <summary>资源采集速率倍率，范围为 0.25 至 3。</summary>
     public double GatheringRate { get; set; } = 1;
+    /// <summary>战斗伤害倍率，范围为 0.25 至 3。</summary>
     public double CombatDamageRate { get; set; } = 1;
+    /// <summary>是否允许自主出生。</summary>
     public bool Births { get; set; } = true;
+    /// <summary>是否推进居民年龄及衰老。</summary>
     public bool Aging { get; set; } = true;
+    /// <summary>是否启用居民饥饿与粮食需求。</summary>
     public bool Hunger { get; set; } = true;
+    /// <summary>是否启用居民口渴与饮水需求。</summary>
     public bool Thirst { get; set; } = true;
+    /// <summary>是否启用疫病传播和损伤。</summary>
     public bool Disease { get; set; } = true;
+    /// <summary>是否允许自主安排建设。</summary>
     public bool Construction { get; set; } = true;
+    /// <summary>是否允许自主安排研究。</summary>
     public bool Research { get; set; } = true;
+    /// <summary>是否允许自主安排城镇扩充。</summary>
     public bool Expansion { get; set; } = true;
+    /// <summary>是否允许自主贸易。</summary>
     public bool Trade { get; set; } = true;
+    /// <summary>是否允许自主缔结联盟。</summary>
     public bool Alliances { get; set; } = true;
+    /// <summary>是否允许自主宣战。</summary>
     public bool Wars { get; set; } = true;
+    /// <summary>是否允许自主协商停战。</summary>
     public bool Peace { get; set; } = true;
+    /// <summary>是否允许居民自主迁徙。</summary>
     public bool Migration { get; set; } = true;
+    /// <summary>是否允许地方自主分裂建国。</summary>
     public bool Secession { get; set; } = true;
+    /// <summary>局部资源冲突强度，0 表示关闭，最高为 3。</summary>
     public int Conflict { get; set; } = 1;
+    /// <summary>自然灾害频率等级，0 表示关闭，最高为 3。</summary>
     public int DisasterFrequency { get; set; } = 1;
+    /// <summary>自然灾害强度等级，范围为 1 至 3。</summary>
     public int DisasterStrength { get; set; } = 1;
+    /// <summary>建设和研究的推进倍率，范围为 0.5 至 3。</summary>
     public double DevelopmentRate { get; set; } = 1;
+    /// <summary>魔法发展速率倍率，范围为 0.5 至 3。</summary>
     public double MagicRate { get; set; } = 1;
 
+    /// <summary>创建指定预设的独立世界规则对象。</summary>
+    /// <param name="preset">要采用的世界规则预设。</param>
     public static WorldRules For(WorldPreset preset)
     {
         return preset switch
@@ -47,18 +77,29 @@ public sealed record WorldRules
 
 public sealed partial class WorldState
 {
+    /// <summary>当前世界采用的模拟规则。</summary>
     public WorldRules Rules { get; set; } = new();
 }
 
 public sealed partial class Settlement
 {
+    /// <summary>当前自主发展计划的目标说明。</summary>
     public string DevelopmentGoal { get; set; } = "稳定粮食，准备发展";
+    /// <summary>当前发展计划遇到的限制说明。</summary>
     public string DevelopmentBlocker { get; set; } = "等待当地居民议事";
+    /// <summary>最近一次评估自主发展计划的模拟日序。</summary>
     public long LastDevelopmentTick { get; set; }
+    /// <summary>根据已收到的困苦报告形成的地方不满程度。</summary>
     public double Unrest { get; set; }
+    /// <summary>最近一次政治归属变化的模拟日序。</summary>
     public long LastPoliticalChangeTick { get; set; }
 }
 
+/// <summary>聚落当前发展阶段、目标、阻碍及项目完成比例。</summary>
+/// <param name="Stage">当前发展阶段名称。</param>
+/// <param name="Goal">当前项目或发展计划的目标说明。</param>
+/// <param name="Blocker">项目执行条件或发展阻碍说明。</param>
+/// <param name="Progress">当前项目已完成的比例，没有项目时为零。</param>
 public readonly record struct DevelopmentSummary(string Stage, string Goal, string Blocker, double Progress);
 
 public sealed partial class WorldEngine
@@ -74,6 +115,10 @@ public sealed partial class WorldEngine
             throw new ArgumentException("世界规则数值超出范围。");
     }
 
+    /// <summary>校验并复制新的模拟规则，同时设置自然灾害和魔法开关。</summary>
+    /// <param name="rules">校验后复制并使用的世界规则。</param>
+    /// <param name="disasters">是否允许自主自然灾害。</param>
+    /// <param name="magic">是否允许新的魔法发展和施法。</param>
     public void ConfigureWorld(WorldRules rules, bool disasters, bool magic)
     {
         ValidateWorldRules(rules);
@@ -83,6 +128,8 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Editor, "玩家调整世界规则，新的选择按新规则执行；已有项目与成果保留。");
     }
 
+    /// <summary>查询聚落当前发展阶段、项目目标、阻碍和完成比例。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
     public DevelopmentSummary GetDevelopment(int settlementId)
     {
         var town = RequireTown(settlementId);
@@ -111,7 +158,15 @@ public sealed partial class WorldEngine
         return new DevelopmentSummary(stage, town.DevelopmentGoal, town.DevelopmentBlocker, 0);
     }
 
-    /// <summary>Read-only validation shared by the map preview and the committing command.</summary>
+    /// <summary>检查设施放置、研究和材料条件；可放置时返回空值，否则返回原因。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="kind">设施类别。</param>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="gift">是否按赐予方式校验，跳过普通研究前置和材料检查；地形及运营限制仍适用。</param>
+    /// <param name="direction">桥梁通行轴向，空值时根据现场连岸条件推断。</param>
+    /// <param name="bridgeLevel">建造的桥梁等级，范围为 1 至 3；普通建筑忽略此参数。</param>
+    /// <param name="founding">是否为建村选址，允许在可登记地块安排初始设施。</param>
     public string? FacilityPlacementError(int settlementId, BuildingKind kind, int x, int y, bool gift = false,
         BridgeDirection? direction = null, int bridgeLevel = 1, bool founding = false)
     {
@@ -200,6 +255,9 @@ public sealed partial class WorldEngine
         return MissingResources(town.Resources, FacilityCost(kind, bridgeLevel));
     }
 
+    /// <summary>比较现有库存与所需成本，返回缺少的资源说明；足够时返回空值。</summary>
+    /// <param name="stock">当前资源库存。</param>
+    /// <param name="cost">操作所需的资源数量。</param>
     public static string? MissingResources(ResourceStock stock, ResourceStock cost)
     {
         var missing = new List<string>();
@@ -209,12 +267,21 @@ public sealed partial class WorldEngine
         return missing.Count == 0 ? null : string.Join("\n", missing);
     }
 
+    /// <summary>按赐予规则直接放置完工设施，并返回新建筑 ID。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="kind">设施类别。</param>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="direction">桥梁通行轴向，空值时根据现场连岸条件推断。</param>
+    /// <param name="bridgeLevel">建造的桥梁等级，范围为 1 至 3；普通建筑忽略此参数。</param>
     public int GrantFacility(int settlementId, BuildingKind kind, int x, int y, BridgeDirection? direction = null,
         int bridgeLevel = 1)
     {
         return PlaceFacility(settlementId, kind, x, y, true, direction, bridgeLevel);
     }
 
+    /// <summary>判断建筑是否满足本地运营条件。</summary>
+    /// <param name="building">待查询或操作的建筑状态。</param>
     public bool IsBuildingOperational(Building building)
     {
         return IsFacilityOperating(building)
@@ -227,6 +294,11 @@ public sealed partial class WorldEngine
                    HasResearch(building.SettlementId, ResearchKind.Electrification));
     }
 
+    /// <summary>检查笔刷范围内修建道路的条件；可修建时返回空值，否则返回原因。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="radius">道路笔刷的作用半径，以地格为单位。</param>
     public string? RoadPlacementError(int settlementId, int x, int y, int radius = 0)
     {
         if (!_settlements.TryGetValue(settlementId, out var town)) return "先选择负责修路的聚落";
@@ -275,7 +347,7 @@ public sealed partial class WorldEngine
         if (fact.Kind != AgentFactKind.DiplomaticNotice || fact.SubjectId == town.NationId || fact.Value is < 0 or > 2
             || !_nations.ContainsKey(fact.SubjectId) || fact.Confidence < .4 ||
             town.Id != _nations[town.NationId].CapitalId) return;
-        // Only a delivered declaration addressed to this nation can become a local military order.
+        // 宣战须实际递送且指向本国，才能成为本地军令，避免机构直接读取远方事实。
         if (fact.TargetNationId != town.NationId) return;
         var status = (DiplomaticStatus)(int)fact.Value;
         if (status == DiplomaticStatus.Allied)
@@ -375,8 +447,7 @@ public sealed partial class WorldEngine
             }
         }
 
-        // Each capital remembers only its own assessments. The displayed pair average is never
-        // an input to a nation's choices, and ordering uses the locations in delivered reports.
+        // 各首都只使用自己收到的评估和地点；展示用的双方态度均值不能进入国家决策。
         foreach (var group in assessments.GroupBy(a => a.Relation)
                      .OrderBy(group => group.Key.FirstNationId).ThenBy(group => group.Key.SecondNationId))
         {
@@ -412,8 +483,7 @@ public sealed partial class WorldEngine
 
             relation.Reason = sides.Length == 1 ? sides[0].Reason : "双方各自依据已送达消息与当地情况累计态度；所示关系为双方态度均值";
             if (State.Tick - relation.LastChangedTick < 360) continue;
-            // Resolve at most one action: either side can end an existing war; otherwise a war
-            // declaration takes precedence over an alliance offer. No same-tick reversal follows.
+            // 每轮只处理一种外交动作，停战或宣战优先于结盟，避免同日立即反转关系。
             if (relation.Status == DiplomaticStatus.War)
             {
                 var peacemaker = sides.Where(a => State.Rules.Peace && (State.Tick - relation.LastChangedTick >= 720

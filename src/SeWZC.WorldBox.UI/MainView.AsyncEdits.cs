@@ -71,6 +71,9 @@ public sealed partial class MainView
     }
 
     /// <summary>捕获指定世界的可取消撤销快照，期间临时停止模拟。</summary>
+    /// <param name="source">本次捕获绑定的原世界引擎。</param>
+    /// <param name="cancellationToken">取消操作的令牌；取消时不提交不完整结果。</param>
+    /// <param name="current">检查原世界和界面会话是否仍有效的回调。</param>
     private async Task<string> PrepareCheckpointAsync(WorldEngine source, CancellationToken cancellationToken,
         Func<bool>? current = null)
     {
@@ -93,7 +96,7 @@ public sealed partial class MainView
         }
     }
 
-    // A map stroke owns its tool/engine checks in WorldMapControl. Modal commands use SubmitEditAsync.
+    // 地图笔刷自行校验工具和世界，窗口命令则绑定提交会话，避免套用错误的有效性检查。
     private async Task PrepareEditAsync()
     {
         var source = _engine;
@@ -153,7 +156,7 @@ public sealed partial class MainView
                     () => SubmissionCurrent(request))
                 : previousCheckpoint;
             if (!SubmissionCurrent(request)) return false;
-            // Publish only while the original request is still valid, immediately before its synchronous commit.
+            // 只在原请求仍有效且即将同步提交时发布恢复点，避免失效请求覆盖当前世界的撤销状态。
             _checkpoint = checkpoint;
             _paused = true;
             _map.IsSimulationPaused = true;
@@ -167,7 +170,7 @@ public sealed partial class MainView
             var partialChange = false;
             if (ReferenceEquals(request.Source, _engine) && request.Committing)
             {
-                // A multi-command edit or its refresh can fail after changing the world. Keep its undo point.
+                // 复合命令或界面刷新可能在世界已变更后失败，仍须保留恢复点供撤销。
                 var unchanged = false;
                 try
                 {
@@ -207,6 +210,10 @@ public sealed partial class MainView
     }
 
     /// <summary>将待提交的命令绑定到原世界及界面会话，并记录恢复输入控件所需的状态。</summary>
+    /// <param name="source">本次命令绑定的原世界引擎。</param>
+    /// <param name="generation">异步编辑会话版本号，用于拒绝失效提交。</param>
+    /// <param name="modal">本次命令是否来自操作窗口。</param>
+    /// <param name="navigation">发起提交时的界面导航版本号。</param>
     private sealed class EditSubmission(WorldEngine source, int generation, bool modal, int navigation)
     {
         public WorldEngine Source { get; } = source;

@@ -1,11 +1,17 @@
 namespace SeWZC.WorldBox.Core;
 
+/// <summary>自然植物和农田作物的类别。</summary>
 public enum PlantKind
 {
+    /// <summary>乔木。</summary>
     Trees,
+    /// <summary>灌木。</summary>
     Shrubs,
+    /// <summary>草本。</summary>
     Grass,
+    /// <summary>芦苇。</summary>
     Reeds,
+    /// <summary>农田作物。</summary>
     Crops,
 }
 
@@ -13,6 +19,7 @@ public enum PlantKind
 public static class PlantResources
 {
     /// <summary>枚举各类植物的份额或农田作物，跳过正在燃烧或资源耗尽的地格。</summary>
+    /// <param name="tile">待查询或操作的地格状态。</param>
     public static IEnumerable<(PlantKind Kind, double Cover, double Quantity)> At(Tile tile)
     {
         if (tile.FireTicks > 0 || tile.ResourceAmount <= 0) yield break;
@@ -31,6 +38,8 @@ public static class PlantResources
         }
     }
 
+    /// <summary>返回植物类别的中文名称。</summary>
+    /// <param name="kind">植物类别。</param>
     public static string Name(PlantKind kind)
     {
         return kind switch
@@ -40,6 +49,8 @@ public static class PlantResources
         };
     }
 
+    /// <summary>返回该类植物可以采集的产物名称。</summary>
+    /// <param name="kind">植物类别。</param>
     public static string ProductName(PlantKind kind)
     {
         return kind switch

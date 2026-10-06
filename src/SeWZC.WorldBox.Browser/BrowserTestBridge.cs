@@ -6,11 +6,13 @@ using SeWZC.WorldBox.UI;
 
 namespace SeWZC.WorldBox.Browser;
 
+/// <summary>向浏览器自动化检查提供只读的界面状态入口。</summary>
 [SupportedOSPlatform("browser")]
 public static partial class BrowserTestBridge
 {
     internal static bool Enabled { get; set; }
 
+    /// <summary>在启用浏览器测试入口后读取主界面的只读 JSON 状态快照。</summary>
     [JSExport]
     public static string ReadSnapshot()
     {

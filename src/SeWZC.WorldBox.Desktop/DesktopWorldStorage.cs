@@ -9,6 +9,7 @@ using SeWZC.WorldBox.UI.Platform;
 namespace SeWZC.WorldBox.Desktop;
 
 /// <summary>保存压缩的本地自动存档，并通过系统文件选择器导入或导出 UTF-8 世界文件。</summary>
+/// <param name="savePath">自动存档文件路径，空值时使用系统本地应用数据目录中的默认路径。</param>
 internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStorage
 {
     private const int MaxFileBytes = 64 * 1024 * 1024;
@@ -29,13 +30,16 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
     private static Window? MainWindow =>
         (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow;
 
+    /// <inheritdoc />
     public bool IsBackground => MainWindow is { IsActive: false };
 
+    /// <inheritdoc />
     public Task SaveAsync(string json)
     {
         return SaveChunksAsync([json]);
     }
 
+    /// <inheritdoc />
     public async Task SaveChunksAsync(string[] chunks)
     {
         await _saveLock.WaitAsync();
@@ -43,7 +47,7 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
         try
         {
             temporaryPath = _savePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            // Encoding, compression and file replacement must not block Avalonia.
+            // 编码、压缩及文件替换可能耗时，须移出界面线程以保持响应。
             await Task.Run(() =>
             {
                 long bytes = 0;
@@ -61,7 +65,7 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
                     foreach (var chunk in chunks) writer.Write(chunk);
                 }
 
-                // Same-directory rename replaces only a complete snapshot.
+                // 同目录重命名只替换完整写入的快照，避免失败后留下半个自动存档。
                 File.Move(temporaryPath, _savePath, true);
             });
         }
@@ -78,6 +82,7 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
         }
     }
 
+    /// <inheritdoc />
     public async Task<string?> LoadAsync()
     {
         await _saveLock.WaitAsync();
@@ -94,6 +99,7 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
         }
     }
 
+    /// <inheritdoc />
     public async Task ExportAsync(string json, string fileName)
     {
         CheckSize(json);
@@ -117,6 +123,7 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
         }
     }
 
+    /// <inheritdoc />
     public async Task<string?> ImportAsync()
     {
         var provider = GetStorageProvider();

@@ -85,11 +85,15 @@ public sealed partial class WorldEngine
         return id;
     }
 
+    /// <summary>判断设施是否必须建在水中并贴近陆岸。</summary>
+    /// <param name="kind">设施类别。</param>
     public static bool IsWaterfrontBuilding(BuildingKind kind)
     {
         return kind is BuildingKind.Dock or BuildingKind.Shipyard;
     }
 
+    /// <summary>判断设施是否为供所有人通行的桥梁或山路。</summary>
+    /// <param name="kind">设施类别。</param>
     public static bool IsPublicInfrastructure(BuildingKind kind)
     {
         return kind is BuildingKind.Bridge or BuildingKind.MountainPass;
@@ -100,6 +104,11 @@ public sealed partial class WorldEngine
         return kind is BuildingKind.Workshop or BuildingKind.LumberCamp or BuildingKind.Quarry;
     }
 
+    /// <summary>按资源、地形、道路和邻近设施计算选址评分；聚落或地点不存在时返回负无穷。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="kind">设施类别。</param>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
     public double BuildingSiteScore(int settlementId, BuildingKind kind, int x, int y)
     {
         if (!_settlements.TryGetValue(settlementId, out var town) || !InBounds(x, y)) return double.NegativeInfinity;
@@ -169,6 +178,8 @@ public sealed partial class WorldEngine
         return building.Kind is BuildingKind.Housing or BuildingKind.Granary or BuildingKind.Watchtower;
     }
 
+    /// <summary>计算本地基础住房与正在运营的住宅提供的总容量。</summary>
+    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
     public int GetHousingCapacity(int settlementId)
     {
         var town = RequireTown(settlementId);
@@ -191,6 +202,10 @@ public sealed partial class WorldEngine
         return bonus;
     }
 
+    /// <summary>计算附近本国运营码头对舟船速度提供的倍率。</summary>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
     public double BoatTravelMultiplier(int x, int y, int nationId)
     {
         var bonus = 1d;

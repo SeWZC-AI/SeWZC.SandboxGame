@@ -2411,20 +2411,30 @@ static void Assert(bool condition, string message)
     if (!condition) throw new Exception(message);
 }
 
+/// <summary>承载 Headless 界面回归检查的最小 Avalonia 应用。</summary>
 public sealed class TestApp : Application;
 
+/// <summary>记录分块保存调用并模拟写入失败，用于检查自动存档路径。</summary>
 public sealed class CountingSaveStorage : IWorldStorage
 {
+    /// <summary>已经尝试的分块保存次数，包含失败调用。</summary>
     public int Calls { get; private set; }
+    /// <summary>最近一次保存收到的文本块数量。</summary>
     public int Chunks { get; private set; }
+    /// <summary>是否让下一次分块保存抛出写入异常，触发后自动清除。</summary>
     public bool FailNext { get; set; }
+    /// <summary>测试中始终将应用视为前台。</summary>
     public bool IsBackground => false;
 
+    /// <summary>拒绝单字符串保存，确保被测界面使用分块路径。</summary>
+    /// <param name="json">被测界面传入的世界 JSON。</param>
     public Task SaveAsync(string json)
     {
         throw new Exception("Autosave used the monolithic path");
     }
 
+    /// <summary>记录文本块数量，并按设置模拟下一次保存失败。</summary>
+    /// <param name="chunks">按顺序传入的世界 JSON 文本块。</param>
     public Task SaveChunksAsync(string[] chunks)
     {
         Calls++;
@@ -2438,44 +2448,60 @@ public sealed class CountingSaveStorage : IWorldStorage
         return Task.CompletedTask;
     }
 
+    /// <summary>返回空值，模拟没有本地自动存档。</summary>
     public Task<string?> LoadAsync()
     {
         return Task.FromResult<string?>(null);
     }
 
+    /// <summary>立即完成导出，以供测试继续运行。</summary>
+    /// <param name="json">被测界面传入的世界 JSON。</param>
+    /// <param name="fileName">被测界面建议的文件名。</param>
     public Task ExportAsync(string json, string fileName)
     {
         return Task.CompletedTask;
     }
 
+    /// <summary>返回空值，模拟取消文件导入。</summary>
     public Task<string?> ImportAsync()
     {
         return Task.FromResult<string?>(null);
     }
 }
 
+/// <summary>保持导出任务未完成，供测试检查存储等待期间的界面响应。</summary>
 public sealed class DeferredExportStorage : IWorldStorage
 {
     private readonly TaskCompletionSource _export = new();
+    /// <summary>已经请求的导出次数。</summary>
     public int ExportCalls { get; private set; }
+    /// <summary>最近一次导出请求收到的世界 JSON。</summary>
     public string? ExportedJson { get; private set; }
+    /// <summary>测试中始终将应用视为前台。</summary>
     public bool IsBackground => false;
 
+    /// <summary>立即完成自动保存，以便测试聚焦导出等待。</summary>
+    /// <param name="json">被测界面传入的世界 JSON。</param>
     public Task SaveAsync(string json)
     {
         return Task.CompletedTask;
     }
 
+    /// <summary>返回空值，模拟没有本地自动存档。</summary>
     public Task<string?> LoadAsync()
     {
         return Task.FromResult<string?>(null);
     }
 
+    /// <summary>返回空值，模拟取消文件导入。</summary>
     public Task<string?> ImportAsync()
     {
         return Task.FromResult<string?>(null);
     }
 
+    /// <summary>记录导出内容，返回等待测试显式完成的任务。</summary>
+    /// <param name="json">被测界面传入的世界 JSON。</param>
+    /// <param name="fileName">被测界面建议的文件名。</param>
     public Task ExportAsync(string json, string fileName)
     {
         ExportCalls++;
@@ -2483,6 +2509,7 @@ public sealed class DeferredExportStorage : IWorldStorage
         return _export.Task;
     }
 
+    /// <summary>完成尚在等待的导出任务。</summary>
     public void CompleteExport()
     {
         _export.TrySetResult();

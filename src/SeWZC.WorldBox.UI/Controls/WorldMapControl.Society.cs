@@ -154,8 +154,7 @@ public sealed partial class WorldMapControl
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
         {
-            // A road stroke may contain completed segments before a later tile is rejected.
-            // Keep those real edits visible and report the concrete simulation constraint.
+            // 道路笔刷可能先完成部分地块再遇到限制；失败时仍须刷新已有改动并显示具体原因。
             edited = isRoad;
             ToolError?.Invoke(exception.Message);
         }

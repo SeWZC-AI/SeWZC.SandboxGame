@@ -105,8 +105,7 @@ public sealed partial class WorldEngine
         foreach (var town in State.Settlements.ToArray())
         {
             var citizens = _citizens[town.Id];
-            // Housing and the local planner share a material budget; growth must leave the next
-            // school, research or facility able to start when its physical deliveries arrive.
+            // 住宅与发展项目共享材料预算，须为下一项本地建设或研究留出实际交付的材料。
             var developmentReserve = LocalDevelopmentReserve(town);
             if (State.Rules.Construction && State.Rules.Expansion && SettlementExpansionError(town.Id) is null
                 && AdvancementRules.Resources.All(k =>
@@ -169,7 +168,7 @@ public sealed partial class WorldEngine
                                            Distance(p.X, p.Y, origin.X, origin.Y) <= 3)
             .OrderByDescending(p => p.Agent.Personality.Ambition).ThenBy(p => p.Id).Take(12).ToArray();
         if (pioneers.Length < 6 || MissingResources(origin.Resources, VillageFoundingCost) is not null) return;
-        // A previously observed site must have been reported to the origin before departure.
+        // 建村地点须在出发前报告给原聚落，避免迁徙队伍使用未送达的信息。
         var location = origin.PublicKnowledge.Where(f => f.Kind == AgentFactKind.FoundingSite &&
                                                          f.LearnedTick < State.Tick
                                                          && State.Tick - f.ObservedTick <= 600 && f.Confidence >= .5 &&
@@ -242,8 +241,7 @@ public sealed partial class WorldEngine
     {
         var x = index % State.Width;
         var y = index / State.Width;
-        // The crew must be able to establish the minimum footprint, rather
-        // than settling on a fertile single tile surrounded by unusable land.
+        // 建村地点须能连通取得最小占地范围，避免定居在四周无法利用的单个肥沃地格。
         return Circle(x, y, 3).Count(i => !IsWaterTerrain(State.Tiles[i].Terrain) && State.Tiles[i].FireTicks == 0
             && State.Tiles[i].ClaimedSettlementId == 0 &&
             races.All(race => RaceTerrainRules.CanWalk(State.Tiles[i], race))) >= SettlementActivationArea;
