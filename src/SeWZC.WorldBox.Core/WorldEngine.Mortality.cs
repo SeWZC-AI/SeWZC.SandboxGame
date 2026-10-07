@@ -29,10 +29,12 @@ public sealed partial class WorldEngine
     {
         if (person.Health <= 0)
             return;
-        person.Health = Math.Max(0, person.Health - damage);
-        if (person.Health <= 0)
+        var health = Math.Max(0, person.Health - damage);
+        person.Replace(person.Value with
         {
-            person.Replace(person.Value with { DeathCause = cause, DeathTick = Current.Tick });
-        }
+            Health = health,
+            DeathCause = health <= 0 ? cause : person.DeathCause,
+            DeathTick = health <= 0 ? Current.Tick : person.DeathTick,
+        });
     }
 }

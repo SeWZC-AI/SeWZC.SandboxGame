@@ -25,27 +25,29 @@ public sealed partial class WorldEngine
 
     private void ProvisionAtHome(ResidentCursor person, SettlementCursor home)
     {
+        var inventory = person.Inventory;
+        var warehouse = home.Resources;
         // 先保障当日进食并为其他居民保留共同口粮，避免先处理的居民囤走全体食物。
-        var available = Math.Max(Math.Min(home.Resources.Food, FoodUse(person)),
-            home.Resources.Food - home.Population * .06);
+        var available = Math.Max(Math.Min(warehouse.Food, FoodUse(person)),
+            warehouse.Food - home.Population * .06);
         var food = Current.Rules.Hunger
             ? Math.Min(available, Math.Max(0, TravelReserve(person) - person.Inventory.Food))
             : 0;
-        home.Resources = home.Resources with { Food = home.Resources.Food - food };
-        person.Inventory = person.Inventory with { Food = person.Inventory.Food + food };
-        available = Math.Max(Math.Min(home.Resources.Water, WaterUse(person)),
-            home.Resources.Water - home.Population * .03);
+        warehouse = warehouse with { Food = warehouse.Food - food };
+        inventory = inventory with { Food = inventory.Food + food };
+        available = Math.Max(Math.Min(warehouse.Water, WaterUse(person)),
+            warehouse.Water - home.Population * .03);
         var water = Current.Rules.Thirst
             ? Math.Min(available, Math.Max(0, WaterReserve(person) - person.Inventory.Water))
             : 0;
-        home.Resources = home.Resources with { Water = home.Resources.Water - water };
-        person.Inventory = person.Inventory with { Water = person.Inventory.Water + water };
+        warehouse = warehouse with { Water = warehouse.Water - water };
+        inventory = inventory with { Water = inventory.Water + water };
 
         void TakeJobSupply(ResourceKind kind, double target)
         {
-            var take = Math.Min(home.Resources.Get(kind), Math.Max(0, target - person.Inventory.Get(kind)));
-            home.Resources = home.Resources.WithAmount(kind, home.Resources.Get(kind) - take);
-            person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + take);
+            var take = Math.Min(warehouse.Get(kind), Math.Max(0, target - inventory.Get(kind)));
+            warehouse = warehouse.WithAmount(kind, warehouse.Get(kind) - take);
+            inventory = inventory.WithAmount(kind, inventory.Get(kind) + take);
         }
 
         if (person.Profession == Profession.Engineer)
@@ -54,6 +56,22 @@ public sealed partial class WorldEngine
             TakeJobSupply(ResourceKind.Medicine, 2);
         if (person.Profession == Profession.Ranger)
             TakeJobSupply(ResourceKind.Ammunition, 8);
+        home.Resources = warehouse;
+        person.Inventory = inventory;
+    }
+
+    private void AdvanceDailyNeeds(ResidentCursor person)
+    {
+        RefillDailyWater(person);
+        person.Replace(person.Value.AdvanceNeeds(Current.Rules, Current.Tick));
+    }
+
+    private void RefillDailyWater(ResidentCursor person)
+    {
+        var use = WaterUse(person);
+        if (Current.Rules.Thirst && person.Inventory.Water < use &&
+            Current.Tick - person.MoveStartedTick >= person.MoveDurationTicks)
+            DrawWater(person, Index(person.X, person.Y), use - person.Inventory.Water);
     }
 
     private void DrinkCarriedWater(ResidentCursor person)
@@ -64,9 +82,8 @@ public sealed partial class WorldEngine
             return;
         }
 
+        RefillDailyWater(person);
         var use = WaterUse(person);
-        if (person.Inventory.Water < use && Current.Tick - person.MoveStartedTick >= person.MoveDurationTicks)
-            DrawWater(person, Index(person.X, person.Y), use - person.Inventory.Water);
         var drink = Math.Min(use, person.Inventory.Water);
         person.Replace(person.Value with { Inventory = person.Inventory with { Water = person.Inventory.Water - drink }, Thirst = Math.Clamp(person.Thirst + (drink >= use - .000001 ? -3 : .6 * (1 - drink / use)), 0, 100) });
         if (person.Thirst > 95)
@@ -136,12 +153,11 @@ public sealed partial class WorldEngine
         amount = Math.Min(amount, 1_000_000 - person.Inventory.Water);
         if (!IsFreshWater(tile))
         {
-            if (tile.WaterDrawTick != Current.Tick)
+            tile.Replace(tile.Value with
             {
-                tile.Replace(tile.Value with { WaterDrawTick = Current.Tick, WaterDrawn = 0 });
-            }
-
-            tile.WaterDrawn += amount;
+                WaterDrawTick = Current.Tick,
+                WaterDrawn = (tile.WaterDrawTick == Current.Tick ? tile.WaterDrawn : 0) + amount,
+            });
         }
 
         person.Inventory = person.Inventory with { Water = person.Inventory.Water + amount };

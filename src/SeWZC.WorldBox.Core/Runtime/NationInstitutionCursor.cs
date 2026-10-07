@@ -9,9 +9,9 @@ internal sealed partial class NationInstitutionCursor : StateCursor<global::SeWZ
     public NationInstitutionCursor(global::SeWZC.WorldBox.Core.NationInstitution value) : base(value) { }
     public static implicit operator global::SeWZC.WorldBox.Core.NationInstitution(NationInstitutionCursor cursor) => cursor.Value;
     public static implicit operator NationInstitutionCursor(global::SeWZC.WorldBox.Core.NationInstitution value) => new(value);
-    public int NationId { get => Value.NationId; set { if (!EqualityComparer<int>.Default.Equals(Value.NationId, value)) Replace(Value with { NationId = value }); } }
-    public InstitutionKind Kind { get => Value.Kind; set { if (!EqualityComparer<InstitutionKind>.Default.Equals(Value.Kind, value)) Replace(Value with { Kind = value }); } }
-    public PolicyKind? PlayerPolicy { get => Value.PlayerPolicy; set { if (!EqualityComparer<PolicyKind?>.Default.Equals(Value.PlayerPolicy, value)) Replace(Value with { PlayerPolicy = value }); } }
-    public string LastDecision { get => Value.LastDecision; set { if (!EqualityComparer<string>.Default.Equals(Value.LastDecision, value)) Replace(Value with { LastDecision = value }); } }
-    public long LastDecisionTick { get => Value.LastDecisionTick; set { if (!EqualityComparer<long>.Default.Equals(Value.LastDecisionTick, value)) Replace(Value with { LastDecisionTick = value }); } }
+    public int NationId { get => Value.NationId; set { if (!EqualityComparer<int>.Default.Equals(Value.NationId, value)) ReplaceChanged(Value with { NationId = value }); } }
+    public InstitutionKind Kind { get => Value.Kind; set { if (!EqualityComparer<InstitutionKind>.Default.Equals(Value.Kind, value)) ReplaceChanged(Value with { Kind = value }); } }
+    public PolicyKind? PlayerPolicy { get => Value.PlayerPolicy; set { if (!EqualityComparer<PolicyKind?>.Default.Equals(Value.PlayerPolicy, value)) ReplaceChanged(Value with { PlayerPolicy = value }); } }
+    public string LastDecision { get => Value.LastDecision; set { if (!EqualityComparer<string>.Default.Equals(Value.LastDecision, value)) ReplaceChanged(Value with { LastDecision = value }); } }
+    public long LastDecisionTick { get => Value.LastDecisionTick; set { if (!EqualityComparer<long>.Default.Equals(Value.LastDecisionTick, value)) ReplaceChanged(Value with { LastDecisionTick = value }); } }
 }

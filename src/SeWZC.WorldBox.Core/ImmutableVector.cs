@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>按索引保存不可变对象的持久化序列；更新只复制通往目标项的数组路径。</summary>
+/// <summary>按索引保存不可变对象的持久化序列；连续替换同一项时共享树并保留单项差异。</summary>
 /// <typeparam name="T">不可变对象类型。</typeparam>
 [CollectionBuilder(typeof(ImmutableVectorBuilder), nameof(ImmutableVectorBuilder.Create))]
 public sealed class ImmutableVector<T> : IReadOnlyList<T> where T : class
@@ -13,18 +13,28 @@ public sealed class ImmutableVector<T> : IReadOnlyList<T> where T : class
     private const int Mask = Width - 1;
     private readonly object?[] _root;
     private readonly int _shift;
+    private readonly int _changedIndex;
+    private readonly T? _changedValue;
 
     /// <summary>集合中的对象数量。</summary>
     public int Count { get; }
 
     /// <summary>建立空序列。</summary>
-    public ImmutableVector() : this([], 0, 0) { }
+    public ImmutableVector() : this(new object?[Width], 0, 0) { }
 
-    private ImmutableVector(object?[] root, int shift, int count)
+    /// <summary>共享已建立的不可变树，并保存当前版本的单项差异。</summary>
+    /// <param name="root">不再写入的树节点数组。</param>
+    /// <param name="shift">根节点所对应的索引位移。</param>
+    /// <param name="count">序列中的对象数量。</param>
+    /// <param name="changedIndex">差异索引，无差异时为负一。</param>
+    /// <param name="changedValue">该版本在差异索引处的对象。</param>
+    private ImmutableVector(object?[] root, int shift, int count, int changedIndex = -1, T? changedValue = null)
     {
         _root = root;
         _shift = shift;
         Count = count;
+        _changedIndex = changedIndex;
+        _changedValue = changedValue;
     }
 
     /// <summary>读取指定索引的对象。</summary>
@@ -34,6 +44,7 @@ public sealed class ImmutableVector<T> : IReadOnlyList<T> where T : class
         get
         {
             if ((uint)index >= (uint)Count) throw new ArgumentOutOfRangeException(nameof(index));
+            if (index == _changedIndex) return _changedValue!;
             var node = _root;
             for (var shift = _shift; shift > 0; shift -= Bits)
                 node = (object?[])node[(index >> shift) & Mask]!;
@@ -80,22 +91,27 @@ public sealed class ImmutableVector<T> : IReadOnlyList<T> where T : class
     {
         if ((uint)index >= (uint)Count) throw new ArgumentOutOfRangeException(nameof(index));
         if (ReferenceEquals(this[index], value)) return this;
-        return new(Set(_root, _shift, index, value), _shift, Count);
+        // 差异属于当前不可变版本，既不串成查找链，也不修改任何旧节点。
+        var root = index == _changedIndex ? _root : MergeChange();
+        return new(root, _shift, Count, index, value);
     }
+
+    private object?[] MergeChange() => _changedIndex < 0 ? _root : Set(_root, _shift, _changedIndex, _changedValue!);
 
     private static object?[] Set(object?[]? previous, int shift, int index, T value)
     {
-        var next = previous is null || previous.Length == 0 ? new object?[Width] : previous.AsSpan().ToArray();
+        var node = previous is null ? new object?[Width] : previous.AsSpan().ToArray();
         var slot = (index >> shift) & Mask;
-        next[slot] = shift == 0 ? value : Set((object?[]?)next[slot], shift - Bits, index, value);
-        return next;
+        if (shift == 0) node[slot] = value;
+        else node[slot] = Set((object?[]?)node[slot], shift - Bits, index, value);
+        return node;
     }
 
     /// <summary>返回在末尾添加对象后的序列。</summary>
     /// <param name="value">要添加的不可变对象。</param>
     public ImmutableVector<T> Add(T value)
     {
-        var root = _root;
+        var root = MergeChange();
         var shift = _shift;
         if (Count == (1L << (shift + Bits)))
         {
@@ -129,7 +145,8 @@ public sealed class ImmutableVector<T> : IReadOnlyList<T> where T : class
             for (var shift = _shift; shift > 0; shift -= Bits)
                 leaf = (object?[])leaf[(index >> shift) & Mask]!;
             var length = Math.Min(Width, Count - index);
-            for (var slot = 0; slot < length; slot++) yield return (T)leaf[slot]!;
+            for (var slot = 0; slot < length; slot++)
+                yield return index + slot == _changedIndex ? _changedValue! : (T)leaf[slot]!;
         }
     }
 
