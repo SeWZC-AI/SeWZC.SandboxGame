@@ -52,19 +52,24 @@ public sealed class ImmutableVectorTests
     {
         var before = ImmutableVector<Item>.CreateRange(Enumerable.Range(0, count).Select(id => new Item(id)));
         var first = before.SetItem(0, new Item(-1));
-        var second = first.SetItem(0, new Item(-2));
-        var third = second.SetItem(count - 1, new Item(-3));
-        var appended = third.Add(new Item(count));
+        var second = first.SetItem(1, new Item(-2));
+        var third = second.SetItem(0, new Item(-3));
+        var fourth = third.SetItem(count - 1, new Item(-4));
+        var appended = fourth.Add(new Item(count));
 
         Assert.Equal(Enumerable.Range(0, count), before.Select(item => item.Id));
         Assert.Equal(-1, first[0].Id);
         Assert.Equal(count - 1, first[count - 1].Id);
-        Assert.Equal(-2, second[0].Id);
+        Assert.Equal(1, first[1].Id);
+        Assert.Equal(-1, second[0].Id);
+        Assert.Equal(-2, second[1].Id);
         Assert.Equal(count - 1, second[count - 1].Id);
-        Assert.Equal(-2, third[0].Id);
-        Assert.Equal(-3, third[count - 1].Id);
-        Assert.Equal(third.Select(item => item.Id).Append(count), appended.Select(item => item.Id));
-        Assert.Same(third, third.SetItem(count - 1, third[count - 1]));
+        Assert.Equal(-3, third[0].Id);
+        Assert.Equal(-2, third[1].Id);
+        Assert.Equal(count - 1, third[count - 1].Id);
+        Assert.Equal(-4, fourth[count - 1].Id);
+        Assert.Equal(fourth.Select(item => item.Id).Append(count), appended.Select(item => item.Id));
+        Assert.Same(fourth, fourth.SetItem(count - 1, fourth[count - 1]));
     }
 
     /// <summary>输入数组的后续替换不能改变持久化序列。</summary>

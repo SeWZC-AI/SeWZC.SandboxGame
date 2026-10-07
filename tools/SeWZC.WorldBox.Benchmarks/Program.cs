@@ -26,7 +26,8 @@ if (args.Length == 2 && args[1] == "--verify")
         var restored = WorldEngine.ImportJson(engine.ExportJson());
         engine.Step(120);
         restored.Step(120);
-        var state = CanonicalState(engine.ExportJson());
+        var saved = engine.ExportJson();
+        var state = CanonicalState(saved);
         if (!state.AsSpan().SequenceEqual(CanonicalState(restored.ExportJson())))
             throw new InvalidOperationException("默认规则下中途保存恢复后的续演结果不同。");
         results.Add(new
@@ -35,6 +36,8 @@ if (args.Length == 2 && args[1] == "--verify")
             FinalPopulation = engine.State.Population, Rules = rules, NaturalDisasters = true,
             CoreAssemblySha256 = coreSha256,
             StateSha256 = Convert.ToHexString(SHA256.HashData(state)), SaveContinuationVerified = true,
+            ResidenceNormalizedSha256 = Convert.ToHexString(SHA256.HashData(CanonicalState(saved, true))),
+            engine.State.FormatVersion, engine.State.SimulationVersion,
         });
         Console.WriteLine($"Verified seed {seed}, {size}x{size}, 240 days, population {engine.State.Population}");
     }
@@ -78,6 +81,7 @@ foreach (var scenario in cases)
     var allocations = new List<long>();
     var collections = new List<int[]>();
     string? checksum = null;
+    string? normalizedChecksum = null;
     var finalPopulation = 0;
     for (var repetition = 0; repetition < 7; repetition++)
     {
@@ -100,6 +104,7 @@ foreach (var scenario in cases)
         if (checksum is not null && checksum != observed)
             throw new InvalidOperationException("相同初态的重复模拟产生了不同结果。");
         checksum = observed;
+        normalizedChecksum = Convert.ToHexString(SHA256.HashData(CanonicalState(saved, true)));
         finalPopulation = engine.State.Population;
         var restored = WorldEngine.ImportJson(saved);
         engine.Step(1);
@@ -117,6 +122,7 @@ foreach (var scenario in cases)
         TieredCompilation = Environment.GetEnvironmentVariable("DOTNET_TieredCompilation"),
         TimesMsPerDay = times, BytesPerDay = allocations, GcCollections = collections,
         FinalPopulation = finalPopulation, StateSha256 = checksum, SaveContinuationVerified = true,
+        ResidenceNormalizedSha256 = normalizedChecksum, engine.State.FormatVersion, engine.State.SimulationVersion,
         Runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
         Architecture = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString(),
     });
@@ -124,24 +130,33 @@ foreach (var scenario in cases)
 File.WriteAllText(args[0], JsonSerializer.Serialize(results, new JsonSerializerOptions { WriteIndented = true }));
 
 // 属性顺序不影响存档语义；数组顺序属于模拟状态，原样保留。
-static byte[] CanonicalState(string json)
+static byte[] CanonicalState(string json, bool normalizeResidence = false)
 {
     using var document = JsonDocument.Parse(json);
     using var stream = new MemoryStream();
     using (var writer = new Utf8JsonWriter(stream))
-        WriteCanonical(writer, document.RootElement);
+        WriteCanonical(writer, document.RootElement, normalizeResidence);
     return stream.ToArray();
 }
 
-static void WriteCanonical(Utf8JsonWriter writer, JsonElement element)
+static void WriteCanonical(Utf8JsonWriter writer, JsonElement element, bool normalizeResidence)
 {
     if (element.ValueKind == JsonValueKind.Object)
     {
         writer.WriteStartObject();
         foreach (var property in element.EnumerateObject().OrderBy(property => property.Name, StringComparer.Ordinal))
         {
+            if (normalizeResidence && property.Name is "FormatVersion" or "SimulationVersion") continue;
             writer.WritePropertyName(property.Name);
-            WriteCanonical(writer, property.Value);
+            // 对照驻留计数重构：保留一、二日等待，已完成的等待归于三日；完整续演仍用全部状态校验。
+            if (normalizeResidence && property.Name == "WorkTicks")
+            {
+                var kind = (AgentGoalKind)element.GetProperty("Kind").GetInt32();
+                var needed = kind is AgentGoalKind.ReturnHome or AgentGoalKind.ClaimLand or AgentGoalKind.FetchWater
+                    or AgentGoalKind.DeliverMessage or AgentGoalKind.Trade or AgentGoalKind.Petition;
+                writer.WriteNumberValue(needed ? Math.Min(3, property.Value.GetInt32()) : 0);
+            }
+            else WriteCanonical(writer, property.Value, normalizeResidence);
         }
         writer.WriteEndObject();
     }
@@ -149,7 +164,7 @@ static void WriteCanonical(Utf8JsonWriter writer, JsonElement element)
     {
         writer.WriteStartArray();
         foreach (var item in element.EnumerateArray())
-            WriteCanonical(writer, item);
+            WriteCanonical(writer, item, normalizeResidence);
         writer.WriteEndArray();
     }
     else

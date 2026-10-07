@@ -104,7 +104,8 @@ public sealed partial class WorldEngine
             Enum.IsDefined(goal.Kind) && Coordinates(goal.TargetX, goal.TargetY, width, height) &&
             goal.TargetEntityId >= 0 && goal.TargetSettlementId >= 0 && goal.StartedTick >= 0 &&
             goal.StartedTick <= tick && goal.ReviewTick is >= 0 && goal.ReviewTick <= tick + 100_000 &&
-            goal.WorkTicks is >= 0 and <= 1_000_000 && BoundedText(goal.Reason, 400), "目标位置、时间或内容无效。");
+            goal.WorkTicks is >= 0 and <= AgentGoal.MaximumResidenceTicks &&
+            BoundedText(goal.Reason, 400), "目标位置、时间或内容无效。");
         CheckV2(
             agent.JobChangedTick >= -120 && agent.JobChangedTick <= tick && agent.NextThinkTick >= 0 &&
             agent.NextThinkTick <= tick + 100_000 && agent.LastConversationTick >= 0 &&

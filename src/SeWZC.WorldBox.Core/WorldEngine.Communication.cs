@@ -42,34 +42,7 @@ public sealed partial class WorldEngine
 
     private void RememberAgentFact(ResidentCursor person, AgentFact fact)
     {
-        var memory = person.Agent.Memory;
-        for (var i = 0; i < memory.Count; i++)
-        {
-            var old = memory[i];
-            if (!fact.HasSameSubject(old))
-                continue;
-            if (!fact.Supersedes(old))
-                return;
-
-            memory.RemoveAt(i);
-            break;
-        }
-
-        memory.Add(fact);
-        if (memory.Count <= 16)
-            return;
-        var forgotten = 0;
-        var lowestPriority = memory[0].RetentionPriority(person.SettlementId);
-        for (var i = 1; i < memory.Count; i++)
-        {
-            var priority = memory[i].RetentionPriority(person.SettlementId);
-            if (priority >= lowestPriority)
-                continue;
-            forgotten = i;
-            lowestPriority = priority;
-        }
-
-        memory.RemoveAt(forgotten);
+        person.Agent.Replace(person.Agent.Value.Remember(fact, person.SettlementId));
     }
 
     /// <summary>将附近的观察和可接触的公开报告记录到该居民自己的记忆中。</summary>
@@ -625,10 +598,7 @@ public sealed partial class WorldEngine
             return;
         }
 
-        agent.Goal = goal = goal with
-        {
-            WorkTicks = goal.WorkTicks + 1,
-        };
+        agent.Goal = goal = goal.Attend();
         if (goal.WorkTicks < 3)
         {
             person.Activity = ResidentActivity.Talking;
@@ -744,6 +714,7 @@ public sealed partial class WorldEngine
             agent.Goal = goal = goal with
             {
                 Kind = AgentGoalKind.Idle,
+                WorkTicks = 0,
             };
 
         agent.NextThinkTick = Current.Tick + 12;

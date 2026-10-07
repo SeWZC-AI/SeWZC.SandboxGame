@@ -138,4 +138,19 @@ public sealed class WorldPersistenceTests
         Assert.Throws<ArgumentException>(() => WorldEngine.ImportJson(saved.ToJsonString()));
     }
 
+    /// <summary>驻留进度不能超出完成等待的上限，也不能为负数。</summary>
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(AgentGoal.MaximumResidenceTicks + 1)]
+    public void Import_rejects_invalid_residence_progress(int progress)
+    {
+        var fixture = new WorldFixture();
+        var before = fixture.Engine.State;
+        var saved = JsonNode.Parse(fixture.Engine.ExportJson())!;
+        saved["Residents"]![0]!["Agent"]!["Goal"]!["WorkTicks"] = progress;
+
+        Assert.Throws<ArgumentException>(() => WorldEngine.ImportJson(saved.ToJsonString()));
+        Assert.Equal(before, fixture.Engine.State);
+    }
+
 }

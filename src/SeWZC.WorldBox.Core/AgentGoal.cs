@@ -5,6 +5,9 @@ namespace SeWZC.WorldBox.Core;
 /// <summary>居民当前行动目标与导航进度的不可变值。</summary>
 public readonly record struct AgentGoal
 {
+    /// <summary>登记领地、交付建村物资和当面递送所需的最长驻留日数。</summary>
+    public const int MaximumResidenceTicks = 3;
+
     /// <summary>创建尚未开始导航的空闲目标。</summary>
     public AgentGoal() { }
 
@@ -47,7 +50,7 @@ public readonly record struct AgentGoal
     /// <summary>该目标开始执行的模拟日序。</summary>
     public long StartedTick { get; init; }
 
-    /// <summary>该目标已累计的劳动或驻留日数。</summary>
+    /// <summary>需要到场驻留的目标已完成的等待日数，达到三日后不再累积。</summary>
     public int WorkTicks { get; init; }
 
     /// <summary>下次重新评估该目标的模拟日序。</summary>
@@ -58,6 +61,14 @@ public readonly record struct AgentGoal
 
     /// <summary>选择该目标的理由。</summary>
     public string Reason { get; init; } = "";
+
+    internal bool NeedsResidence => Kind is AgentGoalKind.ReturnHome or AgentGoalKind.ClaimLand
+        or AgentGoalKind.FetchWater or AgentGoalKind.DeliverMessage or AgentGoalKind.Trade or AgentGoalKind.Petition;
+
+    /// <summary>到达且未被冻结后登记一天驻留；无需驻留的目标保持零，完成等待后保留原值。</summary>
+    public AgentGoal Attend() => NeedsResidence
+        ? WorkTicks < MaximumResidenceTicks ? this with { WorkTicks = WorkTicks + 1 } : this
+        : WorkTicks == 0 ? this : this with { WorkTicks = 0 };
 
     /// <summary>更换导航目的地时建立新的导航记录；目标未改变时继续使用原进度。</summary>
     /// <param name="target">目标地格索引。</param>
