@@ -46,7 +46,7 @@ public sealed class AgentMemoryTests
 
         var after = before.Remember(policy, 4);
 
-        Assert.Equal(16, before.Memory.Count);
+        Assert.Equal(16, before.Memory.Length);
         Assert.Equal<AgentFact>([home, .. other.Skip(1), policy], after.Memory);
         Assert.Same(other[0], before.Memory[1]);
     }

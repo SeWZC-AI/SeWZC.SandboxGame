@@ -108,7 +108,7 @@ public sealed class AgentGoalTests
         Assert.Equal(1, moved.MoveStartedTick);
         Assert.Equal(2, moved.MoveDurationTicks);
         Assert.Equal(2, moved.Agent.Goal.NavigationBestDistance);
-        Assert.Equal<int>([16 * 32 + 16], moved.Agent.Goal.NavigationVisited);
+        Assert.Empty(moved.Agent.Goal.NavigationVisited);
         Assert.Equal(.15, moved.Agent.Fatigue);
         Assert.Equal(ResidentActivity.Wandering, moved.Activity);
 

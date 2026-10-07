@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>居民当前行动目标与导航进度的不可变值。</summary>
-public readonly record struct AgentGoal
+public sealed record AgentGoal
 {
     /// <summary>登记领地、交付建村物资和当面递送所需的最长驻留日数。</summary>
     public const int MaximumResidenceTicks = 3;

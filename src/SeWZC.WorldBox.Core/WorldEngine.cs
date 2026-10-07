@@ -38,6 +38,7 @@ public sealed partial class WorldEngine
             if (Current.Tiles[i]?.DroughtTicks > 0)
                 _dryTiles.Add(i);
         }
+        _territoryCounts.Bind(Current.Tiles);
     }
 
     /// <summary>引擎持有的当前不可变世界快照；继续模拟或编辑不会修改已取得的快照。</summary>
@@ -237,8 +238,8 @@ public sealed partial class WorldEngine
                 importance: EventImportance.Major);
             if (resident.History.Count > 24)
                 resident.History.RemoveAt(0);
-            Current.ArchivedResidents.Add(resident);
             Current.Residents.Remove(resident);
+            Current.ArchivedResidents.Add(resident);
             if (_citizens.TryGetValue(resident.SettlementId, out var citizens))
                 citizens.Remove(resident);
         }

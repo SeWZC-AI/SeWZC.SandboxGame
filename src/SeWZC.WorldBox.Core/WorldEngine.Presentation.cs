@@ -89,7 +89,8 @@ public sealed partial class WorldEngine
             if (Distance(cursor.X, cursor.Y, targetX, targetY) <= interactionRange &&
                 Walkable(cursor.X, cursor.Y))
                 break;
-            var next = SelectAgentStep(cursor, targetX, targetY);
+            var next = SelectAgentStep(cursor, targetX, targetY, out var navigation);
+            cursor.Agent.Goal = navigation;
             if (next < 0 || !visited.Add(next))
                 break;
             cursor.Replace(cursor.Value with { FromX = cursor.X, FromY = cursor.Y, X = next % Current.Width, Y = next / Current.Width });

@@ -143,6 +143,30 @@ public sealed class ImmutableVector<T> : IReadOnlyList<T> where T : class
         return node;
     }
 
+    /// <summary>从当前序列转换整个逻辑阶段，只复制有变化的分支，保留输入快照。</summary>
+    /// <param name="transform">仅根据输入值产生新的不可变对象的转换。</param>
+    public ImmutableVector<T> Map(Func<T, T> transform)
+    {
+        var root = MergeChange();
+        var mapped = MapNode(root, _shift, Count, transform);
+        return ReferenceEquals(root, mapped) ? this : new(mapped, _shift, Count);
+    }
+
+    private static object?[] MapNode(object?[] previous, int shift, int count, Func<T, T> transform)
+    {
+        object?[]? changed = null;
+        var block = 1 << shift;
+        for (var slot = 0; slot < Width && slot * block < count; slot++)
+        {
+            var value = shift == 0 ? transform((T)previous[slot]!)
+                : (object)MapNode((object?[])previous[slot]!, shift - Bits, Math.Min(block, count - slot * block), transform);
+            if (ReferenceEquals(previous[slot], value)) continue;
+            changed ??= previous.AsSpan().ToArray();
+            changed[slot] = value;
+        }
+        return changed ?? previous;
+    }
+
     /// <summary>返回在末尾添加对象后的序列。</summary>
     /// <param name="value">要添加的不可变对象。</param>
     public ImmutableVector<T> Add(T value)

@@ -5,6 +5,52 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>居民基础生命状态的纯转换及伤害次序。</summary>
 public sealed class ResidentVitalsTests
 {
+    /// <summary>现场取得的日常饮水直接进入结算，不凭空留下额外瓶装库存。</summary>
+    [Fact]
+    public void Delivered_water_is_consumed_by_the_day_transition()
+    {
+        var before = new Resident { Age = 20, Thirst = 10, Inventory = new ResourceStock { Food = 1 } };
+
+        var after = before.AdvanceDay(new WorldRules(), new Tile(), 1, Profession.Farmer, 0, 0, true,
+            deliveredWater: .025);
+
+        Assert.Equal(7, after.Thirst);
+        Assert.Equal(0, after.Inventory.Water);
+        Assert.Equal(10, before.Thirst);
+        Assert.Equal(0, before.Inventory.Water);
+    }
+    /// <summary>合并日结算仍包含年龄、疫病、魔力和真实粮水消费，保留源值。</summary>
+    [Fact]
+    public void Combined_day_matches_body_then_needs_for_a_living_adult()
+    {
+        var before = new Resident { Age = 20, Health = 60, SicknessTicks = 2,
+            Inventory = new ResourceStock { Food = 1, Water = 1 } };
+        var rules = new WorldRules();
+        var tile = new Tile();
+
+        var after = before.AdvanceDay(rules, tile, 1, Profession.Farmer, 0, .1, true);
+        var expected = before.AdvanceVitals(rules, tile, 1, Profession.Farmer, 0, .1).AdvanceNeeds(rules, 1);
+
+        Assert.Equal(expected, after);
+        Assert.Equal(20, before.Age);
+        Assert.Equal(1, before.Inventory.Food);
+        Assert.Equal(1, before.Inventory.Water);
+    }
+
+    /// <summary>身体伤害当天致死时不再消耗已携带粮水。</summary>
+    [Fact]
+    public void Lethal_fire_prevents_consuming_supplies()
+    {
+        var before = new Resident { Age = 20, Health = 1,
+            Inventory = new ResourceStock { Food = 1, Water = 1 } };
+
+        var after = before.AdvanceDay(new WorldRules(), new Tile { FireTicks = 1 }, 2,
+            Profession.Farmer, 0, .1, true);
+
+        Assert.Equal(DeathCause.Fire, after.DeathCause);
+        Assert.Equal(2, after.DeathTick);
+        Assert.Equal(before.Inventory, after.Inventory);
+    }
     /// <summary>老龄、火灾与疾病连续伤害保留首先致死的原因。</summary>
     [Fact]
     public void Vitals_preserve_the_first_lethal_damage_and_the_source()

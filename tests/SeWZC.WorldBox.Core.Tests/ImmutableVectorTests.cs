@@ -7,6 +7,39 @@ public sealed class ImmutableVectorTests
 {
     private sealed record Item(int Id);
 
+    /// <summary>整批转换读取尚未合并的差异，并保留输入和未改变的对象。</summary>
+    [Theory]
+    [InlineData(9)]
+    [InlineData(65)]
+    [InlineData(513)]
+    public void Map_preserves_pending_updates_and_unchanged_values(int count)
+    {
+        var original = ImmutableVector<Item>.CreateRange(Enumerable.Range(0, count).Select(id => new Item(id)));
+        var before = original.SetItem(count - 1, new Item(-1));
+
+        var after = before.Map(item => item.Id < 0 ? new Item(-2) : item);
+
+        Assert.Equal(count - 1, original[count - 1].Id);
+        Assert.Equal(-1, before[count - 1].Id);
+        Assert.Equal(-2, after[count - 1].Id);
+        Assert.Same(before[0], after[0]);
+        Assert.Same(before, before.Map(item => item));
+    }
+
+    /// <summary>转换中途失败不会修改输入分支或已保留的差异。</summary>
+    [Fact]
+    public void Failing_map_preserves_the_input()
+    {
+        var before = ImmutableVector<Item>.CreateRange(Enumerable.Range(0, 9).Select(id => new Item(id)))
+            .SetItem(0, new Item(-1));
+
+        Assert.Throws<InvalidOperationException>(() => before.Map(item =>
+            item.Id == 8 ? throw new InvalidOperationException() : new Item(100)));
+
+        Assert.Equal<int>([-1, .. Enumerable.Range(1, 8)], before.Select(item => item.Id));
+        Assert.Empty(new ImmutableVector<Item>().Map(item => item));
+    }
+
     /// <summary>跨越叶和分支边界的读取、枚举及追加保持输入顺序。</summary>
     [Theory]
     [InlineData(0)]

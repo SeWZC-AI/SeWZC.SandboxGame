@@ -36,7 +36,7 @@ internal sealed partial class NationCursor : StateCursor<global::SeWZC.WorldBox.
     }
     public int CultureId { get => Value.CultureId; set { if (!EqualityComparer<int>.Default.Equals(Value.CultureId, value)) ReplaceChanged(Value with { CultureId = value }); } }
     public int RepresentativeId { get => Value.RepresentativeId; set { if (!EqualityComparer<int>.Default.Equals(Value.RepresentativeId, value)) ReplaceChanged(Value with { RepresentativeId = value }); } }
-    protected override void OnReplace(global::SeWZC.WorldBox.Core.Nation before, global::SeWZC.WorldBox.Core.Nation after)
+    protected override void OnReplace(in global::SeWZC.WorldBox.Core.Nation before, in global::SeWZC.WorldBox.Core.Nation after)
     {
         if (_Military is not null && !ReferenceEquals(_Military.Value, after.Military))
             _Military.Synchronize(after.Military);

@@ -6,6 +6,19 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>当前保存格式、必需字段和异步取消的检查。</summary>
 public sealed class WorldPersistenceTests
 {
+    /// <summary>行动目标成为引用记录后，空目标仍须在导入阶段拒绝。</summary>
+    [Fact]
+    public void Null_goal_is_rejected_without_changing_the_source_world()
+    {
+        var fixture = new WorldFixture();
+        var before = fixture.Engine.State;
+        var document = JsonNode.Parse(fixture.Engine.ExportJson())!;
+        document["Residents"]![0]!["Agent"]!["Goal"] = null;
+
+        Assert.Throws<ArgumentException>(() => WorldEngine.ImportJson(document.ToJsonString()));
+
+        Assert.Equal(before, fixture.Engine.State);
+    }
     /// <summary>输入为空或格式损坏时拒绝导入。</summary>
     [Theory]
     [InlineData("")]

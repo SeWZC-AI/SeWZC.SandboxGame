@@ -23,7 +23,7 @@ public sealed partial record AgentState
     public AgentGoal Goal { get; init; } = new();
 
     /// <summary>居民自己观察或收到的信息，可能已经过时。</summary>
-    public ImmutableList<AgentFact> Memory { get; init; } = [];
+    public ImmutableArray<AgentFact> Memory { get; init; } = [];
 
     /// <summary>近期行动决策的记录。</summary>
     public ImmutableList<AgentDecision> Decisions { get; init; } = [];

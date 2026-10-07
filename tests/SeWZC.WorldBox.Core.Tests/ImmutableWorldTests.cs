@@ -8,6 +8,45 @@ public sealed class ImmutableWorldTests
 {
     private static string Serialize(WorldState state) => JsonSerializer.Serialize(state, WorldJsonContext.Default.WorldState);
 
+    /// <summary>整批需求转换后，已有嵌套定位引用仍保留新身体和认知状态。</summary>
+    [Fact]
+    public void Batch_transition_synchronizes_existing_nested_cursors()
+    {
+        var fixture = new WorldFixture();
+        var agent = fixture.Resident.Agent;
+        var before = fixture.Engine.State;
+
+        fixture.Engine.Current.Residents.Transform(person => person with
+        {
+            Health = 80,
+            Agent = person.Agent with { Fatigue = 25 },
+        });
+        agent.Memory.Add(new AgentFact { SubjectId = 99 });
+
+        Assert.Equal(80, fixture.Engine.State.Residents[0].Health);
+        Assert.Equal(25, fixture.Engine.State.Residents[0].Agent.Fatigue);
+        Assert.Equal(99, fixture.Engine.State.Residents[0].Agent.Memory[^1].SubjectId);
+        Assert.Equal(100, before.Residents[0].Health);
+        Assert.Equal(0, before.Residents[0].Agent.Fatigue);
+    }
+
+    /// <summary>移除后重新绑定归档集合的定位引用不会继续改写原集合。</summary>
+    [Fact]
+    public void Removed_cursor_can_be_rebound_to_another_collection()
+    {
+        var fixture = new WorldFixture();
+        var person = fixture.Resident;
+        var before = fixture.Engine.State;
+
+        fixture.Engine.Current.Residents.Remove(person);
+        fixture.Engine.Current.ArchivedResidents.Add(person);
+        person.Name = "归档的新姓名";
+
+        Assert.Empty(fixture.Engine.State.Residents);
+        Assert.Equal("归档的新姓名", fixture.Engine.State.ArchivedResidents[0].Name);
+        Assert.NotEqual("归档的新姓名", before.Residents[0].Name);
+    }
+
     /// <summary>直接恢复快照可共享不可变集合，两台引擎独立转换并得到相同的续演结果。</summary>
     [Fact]
     public void Restoring_a_snapshot_shares_values_and_isolates_subsequent_transitions()
@@ -87,10 +126,10 @@ public sealed class ImmutableWorldTests
         fixture.Resident.Inventory = new ResourceStock { Food = 3 };
         var supplied = fixture.Engine.State;
 
-        Assert.Equal(initialKnowledge.Count + 1, observed.Residents[0].Agent.Memory.Count);
+        Assert.Equal(initialKnowledge.Length + 1, observed.Residents[0].Agent.Memory.Length);
         Assert.Equal(initial.Residents[0].Inventory, observed.Residents[0].Inventory);
         Assert.Equal(3, supplied.Residents[0].Inventory.Food);
-        Assert.Same(initialKnowledge, initial.Residents[0].Agent.Memory);
+        Assert.Equal(initialKnowledge, initial.Residents[0].Agent.Memory);
         Assert.Same(observed.Residents[0].Agent, supplied.Residents[0].Agent);
         Assert.Equal(initial.Tick, supplied.Tick);
     }

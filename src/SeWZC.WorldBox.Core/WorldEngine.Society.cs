@@ -526,6 +526,7 @@ public sealed partial class WorldEngine
         var building = FindLocalWorkBuilding(resident, 1, false, true);
         if (building is null || !_settlements.TryGetValue(building.SettlementId, out var town))
             return false;
+        if (!IsWorkDay(resident)) return true;
         if (building.IsCompleted && !building.IsUpgrading &&
             building.Kind is BuildingKind.Waystation or BuildingKind.SignalTower or BuildingKind.Dock
                 or BuildingKind.Market && town.Resources.Food < 0.01)
@@ -552,7 +553,7 @@ public sealed partial class WorldEngine
             return true;
         }
 
-        var effort = Math.Clamp((0.6 + resident.Agent.Personality.Diligence * 0.6) * LaborCondition(resident), 0.1,
+        var effort = WorkInterval(resident) * Math.Clamp((0.6 + resident.Agent.Personality.Diligence * 0.6) * LaborCondition(resident), 0.1,
             1.2);
         if ((!building.IsCompleted || building.IsUpgrading) && resident.Profession == Profession.Engineer
                                                             && HasResearch(town.Id,
@@ -983,7 +984,8 @@ public sealed partial class WorldEngine
         fact.Topic.Receive(this, target, carrier, fact);
         if (!fact.Topic.CreatesInstitutionReport)
             return;
-        if (Current.Society.Reports.Any(r => r.RecipientSettlementId == target.Id && r.FactId == fact.Id))
+        if (_knowledgeQueriesActive ? !_institutionReports.Add((target.Id, fact.Id))
+            : Current.Society.Reports.Any(r => r.RecipientSettlementId == target.Id && r.FactId == fact.Id))
             return;
         Current.Society.Reports.Add(new InstitutionReport
         {
@@ -1001,7 +1003,16 @@ public sealed partial class WorldEngine
             ReceivedTick = Current.Tick,
         });
         if (Current.Society.Reports.Count > 2_048)
+        {
+            var remove = Current.Society.Reports.Count - 2_048;
+            if (_knowledgeQueriesActive)
+                for (var index = 0; index < remove; index++)
+                {
+                    var old = Current.Society.Reports[index];
+                    _institutionReports.Remove((old.RecipientSettlementId, old.FactId));
+                }
             Current.Society.Reports.RemoveRange(0, Current.Society.Reports.Count - 2_048);
+        }
     }
 
     internal void ReceiveResearchFact(SettlementCursor target, AgentFact fact)
@@ -1505,11 +1516,6 @@ public sealed partial class WorldEngine
         {
             if (!InBounds(person.X, person.Y) || person.Health <= 0)
                 continue;
-            person.Mana = Math.Min(100,
-                person.Mana + 0.025 * Current.Rules.MagicRate *
-                TerrainRules.For(Current.Tiles[Index(person.X, person.Y)].Terrain).ManaRate *
-                (0.5 + person.MagicTalent / 100) *
-                (HasResearch(person.SettlementId, Advancement.ManaAttunement) ? 1.5 : 1));
             if (person.MagicTalent >= 25 && person.MagicTraining >= 8 && (Current.Tick + person.Id) % 12 == 0)
                 TryAutomaticMagic(person);
         }

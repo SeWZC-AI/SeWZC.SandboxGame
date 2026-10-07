@@ -62,7 +62,7 @@ internal sealed partial class ResidentCursor : StateCursor<global::SeWZC.WorldBo
         get => _History ??= new(Value.History, value => { if (!ReferenceEquals(Value.History, value)) ReplaceChanged(Value with { History = value }); });
         set { _History = null; Replace(Value with { History = value.Snapshot }); }
     }
-    protected override void OnReplace(global::SeWZC.WorldBox.Core.Resident before, global::SeWZC.WorldBox.Core.Resident after)
+    protected override void OnReplace(in global::SeWZC.WorldBox.Core.Resident before, in global::SeWZC.WorldBox.Core.Resident after)
     {
         if (_Agent is not null && !ReferenceEquals(_Agent.Value, after.Agent))
             _Agent.Synchronize(after.Agent);

@@ -84,15 +84,16 @@ public sealed partial class WorldEngine
                                                       person.Inventory.Boats >= 1), "运输工具状态无效。");
         var agent = person.Agent;
         CheckV2(
-            agent is not null && agent.Personality is not null && agent.Memory is not null &&
-            agent.Memory.Count <= 16 && agent.Decisions is not null && agent.Decisions.Count <= 6 &&
+            agent is not null && agent.Personality is not null && !agent.Memory.IsDefault &&
+            agent.Memory.Length <= 16 && agent.Decisions is not null && agent.Decisions.Count <= 6 &&
             agent.CarriedMessages is not null && agent.CarriedMessages.Count <= 8, "心智结构或容量无效。");
         var personality = agent!.Personality;
         CheckV2(
             Number(personality.Courage, 0, 1) && Number(personality.Diligence, 0, 1) &&
             Number(personality.Sociability, 0, 1) && Number(personality.Ambition, 0, 1) &&
             Number(agent.Fatigue, 0, 100) && Number(agent.SocialNeed, 0, 100), "性格或需求超出范围。");
-        var goal = agent.Goal;
+        CheckV2(agent.Goal is not null, "行动目标缺失。");
+        var goal = agent.Goal!;
         CheckV2(goal.NavigationTarget >= -1 && goal.NavigationTarget < width * height
                                             && !goal.NavigationVisited.IsDefault && goal.NavigationVisited.Length <= 256
                                             && goal.NavigationVisited.All(i => i >= 0 && i < width * height)
