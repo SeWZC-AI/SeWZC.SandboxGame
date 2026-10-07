@@ -14,7 +14,7 @@ public sealed partial class WorldEngine
                                            && Distance(p.X, p.Y, town.X, town.Y) <= 6).ToArray() ?? [];
         var defense = GetLocalPolicy(town.Id) == PolicyKind.Defense || adults.Any(p => p.Agent.Memory.Any(f =>
             f.Kind is AgentFactKind.Danger or AgentFactKind.WarOrder
-            && f.Value > 0 && State.Tick - f.ObservedTick < 120 && AgentFactReliability(f) >= .5));
+            && f.Value > 0 && State.Tick - f.ObservedTick < 120 && f.ReliabilityAt(State.Tick) >= .5));
         var coast = false;
         var timber = false;
         var stone = false;
@@ -38,7 +38,7 @@ public sealed partial class WorldEngine
                                    adults.Any(p => p.Thirst > 20)),
             coast, timber, stone,
             adults.Any(p => p.Agent.Memory.Any(f =>
-                f.Kind == AgentFactKind.SettlementLocation && f.SubjectId != town.Id && AgentFactReliability(f) >= .5)),
+                f.Kind == AgentFactKind.SettlementLocation && f.SubjectId != town.Id && f.ReliabilityAt(State.Tick) >= .5)),
             adults.Any(p => p.MagicTalent >= 35), roads);
     }
 

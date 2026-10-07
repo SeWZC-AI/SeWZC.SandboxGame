@@ -271,7 +271,7 @@ public sealed class ResearchGraphControl : UserControl
                 using (var path = geometry.Open())
                 {
                     path.BeginFigure(edge.Points[0], false);
-                    if (edge.Points.Count == 4)
+                    if (edge.Points.Length == 4)
                         path.CubicBezierTo(edge.Points[1], edge.Points[2], edge.Points[3]);
                     else
                     {

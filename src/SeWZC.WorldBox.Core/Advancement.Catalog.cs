@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-public sealed partial class Advancement
+public sealed partial record Advancement
 {
     private static readonly IReadOnlyDictionary<int, Advancement> ById;
 

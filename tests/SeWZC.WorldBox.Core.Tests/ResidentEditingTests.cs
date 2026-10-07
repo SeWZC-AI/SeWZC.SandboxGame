@@ -179,9 +179,30 @@ public sealed class ResidentEditingTests
         var history = new List<ResidentHistoryEntry> { new() { Tick = 0, Text = "原记录" } };
 
         fixture.Engine.EditResident(fixture.ResidentId, new ResidentEdit { History = history });
-        history[0].Text = "外部修改";
+        history[0] = history[0] with { Text = "外部修改" };
         history.Clear();
 
         Assert.Equal("原记录", Assert.Single(fixture.Resident.History).Text);
     }
+    /// <summary>编辑信息产生新身份，已公开的旧观察不被改写，决策依据同步修订。</summary>
+    [Fact]
+    public void Fact_revision_replaces_the_snapshot_and_updates_decision_evidence()
+    {
+        var fixture = new WorldFixture();
+        var prior = fixture.Resident.Agent.Memory.First();
+        fixture.Town.PublicKnowledge.Add(prior);
+        fixture.Resident.Agent.Decisions.Add(new AgentDecision { EvidenceFactId = prior.Id });
+        var mind = JsonNode.Parse(fixture.Engine.ExportResidentMind(fixture.ResidentId))!;
+        var memory = mind["Memory"]!.AsArray();
+        memory.First(node => node!["Id"]!.GetValue<int>() == prior.Id)!["Text"] = "新的观察描述";
+
+        fixture.Engine.EditResidentMindJson(fixture.ResidentId, mind.ToJsonString());
+
+        var revised = fixture.Resident.Agent.Memory.First(fact => fact.Text == "新的观察描述");
+        Assert.NotEqual(prior.Id, revised.Id);
+        Assert.Contains(prior, fixture.Town.PublicKnowledge);
+        Assert.Equal(revised.Id, fixture.Resident.Agent.Decisions.Last().EvidenceFactId);
+        Assert.NotEqual("新的观察描述", prior.Text);
+    }
+
 }

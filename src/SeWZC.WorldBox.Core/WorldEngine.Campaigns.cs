@@ -46,10 +46,13 @@ public sealed partial class WorldEngine
         var witness = witnesses.FirstOrDefault(r => r.Id == army.CommanderId) ?? witnesses[0];
         var report = MakeAgentFact(witness, AgentFactKind.WarReport, army.TargetNationId, army.X, army.Y, (int)outcome,
             $"{ObjectiveName(army.Objective)}：{OutcomeName(outcome)}；在场部队剩余 {soldiers.Length}/{army.InitialSoldiers} 人");
-        report.TargetNationId = army.NationId;
-        report.EventId = entry.Id;
-        report.CampaignEventId = army.CampaignEventId;
-        report.WarObjective = army.Objective;
+        report = report with
+        {
+            TargetNationId = army.NationId,
+            EventId = entry.Id,
+            CampaignEventId = army.CampaignEventId,
+            WarObjective = army.Objective,
+        };
         foreach (var person in witnesses)
         {
             RememberAgentFact(person, report);
@@ -75,7 +78,7 @@ public sealed partial class WorldEngine
             RecordLife(person, "亲历交战，战斗结果见关联世界事件。", entry, PersonalExperienceKind.Hardship, EventImportance.Major);
     }
 
-    private void ReceiveWarReport(Settlement town, AgentFact fact)
+    internal void ReceiveWarReport(Settlement town, AgentFact fact)
     {
         if (fact.Kind != AgentFactKind.WarReport || fact.TargetNationId != town.NationId || fact.Confidence < .4
             || !_nations.TryGetValue(town.NationId, out var nation) || nation.CapitalId != town.Id

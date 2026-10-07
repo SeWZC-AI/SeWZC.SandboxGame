@@ -180,10 +180,7 @@ public sealed partial class WorldEngine
 
         if (patch.History is not null)
         {
-            candidate.History =
-                JsonSerializer.Deserialize(
-                    JsonSerializer.Serialize(patch.History, WorldJsonContext.Default.ListResidentHistoryEntry),
-                    WorldJsonContext.Default.ListResidentHistoryEntry)!;
+            candidate.History = patch.History.ToList();
         }
 
         ValidateResidentV2(candidate, State.Tick, State.Width, State.Height);
@@ -221,8 +218,7 @@ public sealed partial class WorldEngine
             personality.Courage = Math.Clamp(personality.Courage + (achievement - hardship) * 0.1, 0, 1);
             personality.Sociability = Math.Clamp(personality.Sociability + (kindness - betrayal) * 0.1, 0, 1);
             personality.Diligence = Math.Clamp(personality.Diligence + learning * 0.1, 0, 1);
-            foreach (var entry in candidate.History)
-                entry.PlayerEdited = true;
+            candidate.History = candidate.History.Select(entry => entry with { PlayerEdited = true }).ToList();
         }
 
         if (patch.Agent is not null && candidate.Agent.Decisions.LastOrDefault() is { } thought &&
@@ -312,28 +308,30 @@ public sealed partial class WorldEngine
             foreach (var fact in changedFacts)
             {
                 var oldId = fact.Id;
-                if (oldId > 0 && revisions.TryGetValue(oldId, out var assigned))
-                    fact.Id = assigned;
-                else
+                if (oldId <= 0 || !revisions.TryGetValue(oldId, out var assigned))
                 {
-                    fact.Id = NewId();
+                    assigned = NewId();
                     if (oldId > 0)
-                        revisions[oldId] = fact.Id;
+                        revisions[oldId] = assigned;
                 }
 
-                if (fact.OriginResidentId == 0)
+                var revisedFact = fact with
                 {
-                    fact.OriginResidentId = candidate.Id;
-                    fact.OriginProfession = candidate.Profession;
-                }
-
-                if (fact.SourceResidentId == 0)
-                    fact.SourceResidentId = candidate.Id;
+                    Id = assigned,
+                    OriginResidentId = fact.OriginResidentId == 0 ? candidate.Id : fact.OriginResidentId,
+                    OriginProfession = fact.OriginResidentId == 0 ? candidate.Profession : fact.OriginProfession,
+                    SourceResidentId = fact.SourceResidentId == 0 ? candidate.Id : fact.SourceResidentId,
+                };
+                candidate.Agent.Memory = candidate.Agent.Memory
+                    .Select(item => ReferenceEquals(item, fact) ? revisedFact : item).ToList();
+                candidate.Agent.CarriedMessages = candidate.Agent.CarriedMessages
+                    .Select(item => ReferenceEquals(item, fact) ? revisedFact : item).ToList();
             }
 
-            foreach (var decision in candidate.Agent.Decisions)
-                if (revisions.TryGetValue(decision.EvidenceFactId, out var revised))
-                    decision.EvidenceFactId = revised;
+            candidate.Agent.Decisions = candidate.Agent.Decisions.Select(decision =>
+                revisions.TryGetValue(decision.EvidenceFactId, out var revised)
+                    ? decision with { EvidenceFactId = revised }
+                    : decision).ToList();
         }
 
         if (isLive)

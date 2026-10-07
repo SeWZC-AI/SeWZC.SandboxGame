@@ -32,11 +32,14 @@ public sealed class WorldPersistenceTests
         Assert.Equal(0, restored.Age);
     }
 
-    /// <summary>版本缺失不能静默采用当前版本。</summary>
+    /// <summary>版本与地图必需字段缺失时拒绝恢复。</summary>
     [Theory]
     [InlineData("FormatVersion")]
     [InlineData("SimulationVersion")]
-    public void Import_requires_explicit_versions(string field)
+    [InlineData("Width")]
+    [InlineData("Height")]
+    [InlineData("Tiles")]
+    public void Import_requires_explicit_world_metadata(string field)
     {
         var fixture = new WorldFixture();
         var saved = JsonNode.Parse(fixture.Engine.ExportJson())!.AsObject();
@@ -87,4 +90,43 @@ public sealed class WorldPersistenceTests
         Assert.Equal(expected, string.Concat(chunks));
         Assert.Equal(expected, fixture.Engine.ExportJson());
     }
+    /// <summary>保存恢复后仍按原始观察时间和议题规则计算可信度。</summary>
+    [Fact]
+    public void Round_trip_preserves_fact_snapshot_and_topic_behavior()
+    {
+        var fixture = new WorldFixture();
+        var fact = new AgentFact
+        {
+            Id = fixture.Engine.State.NextId++,
+            Kind = AgentFactKind.Danger, X = 16, Y = 16, Confidence = 0.8, Text = "现场危险观察",
+        };
+        fixture.Resident.Agent.Memory.Add(fact);
+        fixture.Engine.State.PendingMessages.Add(new PendingMessage
+        {
+            SenderId = fixture.ResidentId, RecipientId = fixture.ResidentId, DeliverTick = 1, Facts = [fact],
+        });
+
+        var restoredWorld = WorldEngine.ImportJson(fixture.Engine.ExportJson());
+        var savedFact = restoredWorld.GetResident(fixture.ResidentId)!.Agent.Memory.Last();
+
+        Assert.Equal(fact, Assert.Single(Assert.Single(restoredWorld.State.PendingMessages).Facts));
+        Assert.Equal(fact, savedFact);
+        Assert.Equal(0.4, savedFact.ReliabilityAt(12), 10);
+    }
+
+    /// <summary>空消息内容必须使用集合，不能用空引用替代。</summary>
+    [Fact]
+    public void Import_rejects_null_message_facts()
+    {
+        var fixture = new WorldFixture();
+        fixture.Engine.State.PendingMessages.Add(new PendingMessage
+        {
+            SenderId = fixture.ResidentId, RecipientId = fixture.ResidentId, DeliverTick = 1,
+        });
+        var saved = JsonNode.Parse(fixture.Engine.ExportJson())!;
+        saved["PendingMessages"]![0]!["Facts"] = null;
+
+        Assert.Throws<ArgumentException>(() => WorldEngine.ImportJson(saved.ToJsonString()));
+    }
+
 }

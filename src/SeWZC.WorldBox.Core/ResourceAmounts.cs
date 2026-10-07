@@ -1,7 +1,7 @@
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>配方和费用所用的不可变资源数量。</summary>
-public sealed class ResourceAmounts
+public sealed record ResourceAmounts
 {
     /// <summary>水数量。</summary>
     public double Water { get; init; }

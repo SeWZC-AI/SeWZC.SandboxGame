@@ -11,7 +11,7 @@ namespace SeWZC.WorldBox.Core;
 /// <param name="output">生产得到的资源种类。</param>
 /// <param name="yield">每批生产的基础产出数量。</param>
 /// <param name="mana">每批生产需要消耗的魔力，0 表示不消耗魔力。</param>
-public sealed class ProductionRecipe(
+public sealed record ProductionRecipe(
     Advancement research,
     BuildingKind facility,
     string facilityName,

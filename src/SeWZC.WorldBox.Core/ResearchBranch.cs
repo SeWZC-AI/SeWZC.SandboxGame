@@ -1,7 +1,7 @@
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>按研究领域划分的一组知识项目。</summary>
-public sealed class ResearchBranch
+public sealed record ResearchBranch
 {
     private ResearchBranch(string name, bool shared = false, string? lane = null)
     {

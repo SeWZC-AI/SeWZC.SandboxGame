@@ -1,41 +1,41 @@
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>聚落机构实际收到的一份议题报告。</summary>
-public sealed class InstitutionReport
+public sealed record InstitutionReport
 {
     /// <summary>关联的世界事件 ID，0 表示未关联事件。</summary>
-    public int EventId { get; set; }
+    public int EventId { get; init; }
 
     /// <summary>实际接收报告的聚落 ID。</summary>
-    public int RecipientSettlementId { get; set; }
+    public int RecipientSettlementId { get; init; }
 
     /// <summary>报告所依据的信息记录 ID。</summary>
-    public int FactId { get; set; }
+    public int FactId { get; init; }
 
     /// <summary>最初观察者的居民 ID。</summary>
-    public int OriginResidentId { get; set; }
+    public int OriginResidentId { get; init; }
 
     /// <summary>将报告递交给机构的代表居民 ID。</summary>
-    public int RepresentativeId { get; set; }
+    public int RepresentativeId { get; init; }
 
     /// <summary>最初观察者当时的职业，用于议题权重计算。</summary>
-    public Profession ReportedProfession { get; set; }
+    public Profession ReportedProfession { get; init; }
 
     /// <summary>报告的议题类别。</summary>
-    public AgentFactKind Topic { get; set; }
+    public AgentFactKind Topic { get; init; }
 
     /// <summary>议题关联主体的 ID，含义由议题类别决定。</summary>
-    public int SubjectId { get; set; }
+    public int SubjectId { get; init; }
 
     /// <summary>议题的观测值，含义由议题类别决定。</summary>
-    public double Value { get; set; }
+    public double Value { get; init; }
 
     /// <summary>报告的可信度。</summary>
-    public double Confidence { get; set; }
+    public double Confidence { get; init; }
 
     /// <summary>最初观察发生的模拟日序。</summary>
-    public long ObservedTick { get; set; }
+    public long ObservedTick { get; init; }
 
     /// <summary>机构实际收到报告的模拟日序。</summary>
-    public long ReceivedTick { get; set; }
+    public long ReceivedTick { get; init; }
 }

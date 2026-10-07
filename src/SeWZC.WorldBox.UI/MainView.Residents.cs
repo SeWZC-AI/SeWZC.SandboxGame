@@ -293,7 +293,7 @@ public sealed partial class MainView
         OpenModal(panel);
     }
 
-    private AgentState CloneMind(int id)
+    private AgentState CreateMindDraft(int id)
     {
         return JsonSerializer.Deserialize(_engine.ExportResidentMind(id), ResidentUiJsonContext.Default.AgentState) ??
                throw new ArgumentException("认知数据为空。");
@@ -305,7 +305,7 @@ public sealed partial class MainView
         if (resident is null)
             return;
         var panel = ModalPanel("目标、性格与需求", "目标在未来的行动中执行。只修改人格或需求会保留原目标；历史记录中的对象可以保留，自主思考仍会考虑危险与基本需求。");
-        var mind = CloneMind(id);
+        var mind = CreateMindDraft(id);
         var originalGoal = mind.Goal;
         var goal = EnumField(panel, "当前目标", mind.Goal.Kind, GoalName, "resident-goal");
         panel.Children.Add(Paragraph("选择目标、地点、对象和持续时间决定实际行动。"));
@@ -506,7 +506,7 @@ public sealed partial class MainView
 
     private void ShowMemoryEditor(int id, int? factId)
     {
-        var mind = CloneMind(id);
+        var mind = CreateMindDraft(id);
         var fact = factId.HasValue ? mind.Memory.FirstOrDefault(f => f.Id == factId) : null;
         var adding = fact is null;
         fact ??= new AgentFact
@@ -621,21 +621,27 @@ public sealed partial class MainView
                 return;
             try
             {
-                fact.Kind = (AgentFactKind)kind.SelectedItem!;
-                fact.Text = adding ? FactKindName(fact.Kind) + "（玩家设置）" : fact.Text;
-                fact.Value = choice.IsVisible ? Integer(choice) : Number(value);
-                fact.TargetNationId = addressed.IsVisible ? Integer(addressed) : 0;
-                fact.Confidence = Number(confidence);
-                fact.SubjectId = Integer(subject);
-                fact.X = Integer(x);
-                fact.Y = Integer(y);
-                fact.ObservedTick = Integer(observed);
-                fact.LearnedTick = Integer(learned);
-                fact.OriginResidentId = Integer(origin);
-                fact.SourceResidentId = Integer(source);
-                fact.Hops = Integer(hops);
+                var revisedFact = fact with
+                {
+                    Kind = (AgentFactKind)kind.SelectedItem!,
+                    Text = adding ? FactKindName((AgentFactKind)kind.SelectedItem!) + "（玩家设置）" : fact.Text,
+                    Value = choice.IsVisible ? Integer(choice) : Number(value),
+                    TargetNationId = addressed.IsVisible ? Integer(addressed) : 0,
+                    Confidence = Number(confidence),
+                    SubjectId = Integer(subject),
+                    X = Integer(x),
+                    Y = Integer(y),
+                    ObservedTick = Integer(observed),
+                    LearnedTick = Integer(learned),
+                    OriginResidentId = Integer(origin),
+                    SourceResidentId = Integer(source),
+                    Hops = Integer(hops),
+                };
                 if (adding)
-                    mind.Memory.Add(fact);
+                    mind.Memory.Add(revisedFact);
+                else
+                    mind.Memory[mind.Memory.IndexOf(fact)] = revisedFact;
+                fact = revisedFact;
                 if (!await SubmitEditAsync(() =>
                     {
                         _engine.EditResident(id, new ResidentEdit { Agent = mind });
@@ -741,16 +747,22 @@ public sealed partial class MainView
                 return;
             try
             {
-                entry.Text = adding
-                    ? ExperienceName((PersonalExperienceKind)experience.SelectedItem!) + "（玩家设置）"
-                    : entry.Text;
-                entry.Tick = Integer(tick);
-                entry.Importance = (EventImportance)importance.SelectedItem!;
-                entry.Experience = (PersonalExperienceKind)experience.SelectedItem!;
-                entry.Impact = Number(impact);
-                entry.PlayerEdited = true;
+                var revisedEntry = entry with
+                {
+                    Text = adding
+                        ? ExperienceName((PersonalExperienceKind)experience.SelectedItem!) + "（玩家设置）"
+                        : entry.Text,
+                    Tick = Integer(tick),
+                    Importance = (EventImportance)importance.SelectedItem!,
+                    Experience = (PersonalExperienceKind)experience.SelectedItem!,
+                    Impact = Number(impact),
+                    PlayerEdited = true,
+                };
                 if (adding)
-                    history.Add(entry);
+                    history.Add(revisedEntry);
+                else
+                    history[history.IndexOf(entry)] = revisedEntry;
+                entry = revisedEntry;
                 if (!await SubmitEditAsync(() =>
                     {
                         _engine.EditResident(id, new ResidentEdit { History = history });

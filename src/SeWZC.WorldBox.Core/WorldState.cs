@@ -2,21 +2,21 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>完整的世界模拟状态，可保存并恢复续演。</summary>
+/// <summary>可保存并恢复续演的可变世界状态；地图尺寸和种子在初始化后固定。</summary>
 public sealed class WorldState
 {
     /// <summary>存档数据结构版本，用于拒绝不兼容的格式。</summary>
     [JsonRequired]
-    public int FormatVersion { get; set; } = 17;
+    public int FormatVersion { get; init; } = 17;
 
     /// <summary>生成世界时使用的整数种子。</summary>
-    public int Seed { get; set; }
+    public int Seed { get; init; }
 
     /// <summary>地图宽度，以地格为单位。</summary>
-    public int Width { get; set; }
+    public required int Width { get; init; }
 
     /// <summary>地图高度，以地格为单位。</summary>
-    public int Height { get; set; }
+    public required int Height { get; init; }
 
     /// <summary>已经推进的模拟日数；每个模拟年包含 120 日。</summary>
     public long Tick { get; set; }
@@ -28,25 +28,25 @@ public sealed class WorldState
     public int NextId { get; set; } = 1;
 
     /// <summary>按行排列的地格数组，索引为 <c>y * Width + x</c>。</summary>
-    public Tile[] Tiles { get; set; } = [];
+    public required Tile[] Tiles { get; init; }
 
     /// <summary>当前存活居民的状态集合。</summary>
-    public List<Resident> Residents { get; set; } = [];
+    public List<Resident> Residents { get; init; } = [];
 
     /// <summary>世界中的聚落及其仓库状态。</summary>
-    public List<Settlement> Settlements { get; set; } = [];
+    public List<Settlement> Settlements { get; init; } = [];
 
     /// <summary>世界中的国家状态集合。</summary>
-    public List<Nation> Nations { get; set; } = [];
+    public List<Nation> Nations { get; init; } = [];
 
     /// <summary>仍在行动的军队状态集合。</summary>
-    public List<Army> Armies { get; set; } = [];
+    public List<Army> Armies { get; init; } = [];
 
     /// <summary>各国之间的外交关系记录。</summary>
-    public List<DiplomaticRelation> Diplomacies { get; set; } = [];
+    public List<DiplomaticRelation> Diplomacies { get; init; } = [];
 
     /// <summary>容量受限的世界编年史记录。</summary>
-    public List<WorldEvent> Events { get; set; } = [];
+    public List<WorldEvent> Events { get; init; } = [];
 
     /// <summary>是否允许模拟自主产生自然灾害。</summary>
     public bool NaturalDisasters { get; set; } = true;
@@ -68,18 +68,18 @@ public sealed class WorldState
 
     /// <summary>当前保留的局部资源冲突记录。</summary>
     [JsonRequired]
-    public List<LocalConflict> Conflicts { get; set; } = [];
+    public List<LocalConflict> Conflicts { get; init; } = [];
 
     /// <summary>模拟规则版本，用于校验存档的续演兼容性。</summary>
     [JsonRequired]
-    public int SimulationVersion { get; set; } = 16;
+    public int SimulationVersion { get; init; } = 16;
 
     /// <summary>世界的社会发展状态。</summary>
-    public SocietyState Society { get; set; } = new();
+    public SocietyState Society { get; init; } = new();
 
     /// <summary>等待送达的消息集合。</summary>
-    public List<PendingMessage> PendingMessages { get; set; } = [];
+    public List<PendingMessage> PendingMessages { get; init; } = [];
 
     /// <summary>已死亡居民的有限归档，供查看经历。</summary>
-    public List<Resident> ArchivedResidents { get; set; } = [];
+    public List<Resident> ArchivedResidents { get; init; } = [];
 }
