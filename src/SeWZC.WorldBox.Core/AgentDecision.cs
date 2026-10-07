@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>已记录的目标选择，包含当时的评分、理由和所用信息。</summary>
+/// <summary>居民一次行动决策的记录。</summary>
 public sealed class AgentDecision
 {
     /// <summary>作出目标选择的模拟日序。</summary>

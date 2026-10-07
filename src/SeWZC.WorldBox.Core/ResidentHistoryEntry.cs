@@ -1,15 +1,15 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>关联世界事件的个人经历；结构化编辑可影响未来性格。</summary>
+/// <summary>居民档案中的一条个人经历。</summary>
 public sealed class ResidentHistoryEntry
 {
     /// <summary>关联的世界事件 ID，0 表示未关联事件。</summary>
     public int EventId { get; set; }
 
-    /// <summary>关联或归属聚落的稳定 ID。</summary>
+    /// <summary>本次经历关联的聚落 ID。</summary>
     public int SettlementId { get; set; }
 
-    /// <summary>关联或归属国家的稳定 ID。</summary>
+    /// <summary>本次经历关联的国家 ID。</summary>
     public int NationId { get; set; }
 
     /// <summary>本次经历关联的信息依据 ID。</summary>

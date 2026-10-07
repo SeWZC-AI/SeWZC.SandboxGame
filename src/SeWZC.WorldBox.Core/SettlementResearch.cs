@@ -1,15 +1,15 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>聚落已掌握的研究及当前项目进度，包含从外地收到的知识。</summary>
+/// <summary>聚落的本地研究状态。</summary>
 public sealed class SettlementResearch
 {
-    /// <summary>当前研究项目的事件、贡献者和进度采样记录。</summary>
+    /// <summary>当前研究项目的进展观测记录。</summary>
     public ProjectObservation Observation { get; set; } = new();
 
     /// <summary>最近一次完成研究关联的事件 ID。</summary>
     public int LastCompletionEventId { get; set; }
 
-    /// <summary>关联或归属聚落的稳定 ID。</summary>
+    /// <summary>开展研究的聚落 ID。</summary>
     public int SettlementId { get; set; }
 
     /// <summary>当前研究项目，空值表示没有进行中的项目。</summary>

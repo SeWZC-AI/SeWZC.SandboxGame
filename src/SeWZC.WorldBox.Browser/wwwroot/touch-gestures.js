@@ -1,6 +1,4 @@
-// Keep native page zoom from magnifying the entire Avalonia canvas. Some mobile
-// browsers do not enforce touch-action or viewport zoom limits for every gesture.
-// Cancel only the native default; pointer events still reach the map and controls.
+// 部分移动浏览器会忽略 CSS 缩放限制；阻止整页缩放，保留地图与控件的指针事件。
 export function installTouchGestures(root) {
     const options = {capture: true, passive: false};
     const preventPinch = event => {

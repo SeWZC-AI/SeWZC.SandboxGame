@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>供详情界面展示的效果、来源、剩余日数和生效状态。</summary>
+/// <summary>供详情界面展示的一项效果说明。</summary>
 /// <param name="Name">效果名称。</param>
 /// <param name="Effect">实际效果或限制的说明。</param>
 /// <param name="Source">产生效果的来源。</param>
@@ -13,7 +13,7 @@ public readonly record struct EffectInfo(
     long? RemainingDays = null,
     bool Active = true)
 {
-    /// <summary>将效果、来源、剩余时间和生效状态格式化为详情文字。</summary>
+    /// <summary>返回效果的详情文字。</summary>
     public override string ToString()
     {
         return $"{Name}：{Effect}{(string.IsNullOrWhiteSpace(Source) ? "" : $"\n来源：{Source}")}" +

@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>具有实际中心、仓库、占领地块和本地已收到知识的聚落。</summary>
+/// <summary>居民共同生活和生产的聚居单位。</summary>
 public sealed partial class Settlement
 {
     /// <summary>聚落的稳定 ID。</summary>
@@ -11,13 +11,13 @@ public sealed partial class Settlement
     /// <summary>聚落的显示名称。</summary>
     public string Name { get; set; } = "";
 
-    /// <summary>所在地点的横向地格坐标。</summary>
+    /// <summary>聚落中心的横向地格坐标。</summary>
     public int X { get; set; }
 
-    /// <summary>所在地点的纵向地格坐标。</summary>
+    /// <summary>聚落中心的纵向地格坐标。</summary>
     public int Y { get; set; }
 
-    /// <summary>关联或归属国家的稳定 ID。</summary>
+    /// <summary>聚落所属国家的 ID。</summary>
     public int NationId { get; set; }
 
     /// <summary>本聚落仓库中的实际资源库存。</summary>

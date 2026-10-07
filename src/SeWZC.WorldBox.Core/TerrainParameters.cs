@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>地形的基础通行成本、肥力、采集产量和魔力恢复参数。</summary>
+/// <summary>一类地形的基础环境参数。</summary>
 /// <param name="MovementCost">基础步行成本，正无穷表示不可步行。</param>
 /// <param name="Fertility">生成地形时的基础肥力。</param>
 /// <param name="FoodYield">基础食物采集产量系数。</param>

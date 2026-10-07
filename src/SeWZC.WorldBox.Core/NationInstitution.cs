@@ -1,9 +1,9 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>国家的制度形式、可选的玩家指定政策及最近一次制度决策。</summary>
+/// <summary>国家的制度与议事决策状态。</summary>
 public sealed class NationInstitution
 {
-    /// <summary>关联或归属国家的稳定 ID。</summary>
+    /// <summary>实行此制度的国家 ID。</summary>
     public int NationId { get; set; }
 
     /// <summary>当前国家制度形式。</summary>

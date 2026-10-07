@@ -82,7 +82,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>计算地格当前容量；食肉动物还受可分配的猎物生物量限制。</summary>
-    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="tile">要评估种群容量的地格。</param>
     /// <param name="kind">动物物种。</param>
     public static double WildlifeCapacity(Tile tile, WildlifeKind kind)
     {

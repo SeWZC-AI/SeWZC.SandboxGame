@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>机构发布的军令及实际收到的战报记录，不直接反映实时前线状态。</summary>
+/// <summary>国家机构掌握的战役记录，可能落后于前线实况。</summary>
 public sealed class MilitaryRecord
 {
     /// <summary>机构记录的本轮战役起始事件 ID。</summary>

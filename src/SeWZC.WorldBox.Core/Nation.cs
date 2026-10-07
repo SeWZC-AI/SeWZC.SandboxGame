@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>关联聚落、首都、文化、制度与外交关系的国家状态。</summary>
+/// <summary>以聚落为成员的政治实体。</summary>
 public sealed class Nation
 {
     /// <summary>国家的稳定 ID。</summary>

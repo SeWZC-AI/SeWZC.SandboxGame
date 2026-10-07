@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>用于目标评分及结构化经历影响的性格权重。</summary>
+/// <summary>居民在自主决策中使用的性格倾向。</summary>
 public sealed class PersonalityProfile
 {
     /// <summary>勇气权重，范围为 0 至 1。</summary>

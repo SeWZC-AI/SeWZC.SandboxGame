@@ -67,7 +67,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>估算聚落当前建设或研究项目的剩余日数。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     public CompletionEstimate GetDevelopmentEstimate(int settlementId)
     {
         _ = RequireTown(settlementId);

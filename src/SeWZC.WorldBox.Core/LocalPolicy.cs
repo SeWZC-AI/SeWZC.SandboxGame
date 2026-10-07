@@ -1,9 +1,9 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>聚落选定的政策及其依据，也可由玩家覆盖选择。</summary>
+/// <summary>聚落当前采用的政策。</summary>
 public sealed class LocalPolicy
 {
-    /// <summary>关联或归属聚落的稳定 ID。</summary>
+    /// <summary>采用此政策的聚落 ID。</summary>
     public int SettlementId { get; set; }
 
     /// <summary>当前采用的本地政策。</summary>

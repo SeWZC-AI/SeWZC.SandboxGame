@@ -17,7 +17,7 @@ public sealed partial class WorldEngine
         return JsonSerializer.Serialize(State, WorldJsonContext.Default.WorldState);
     }
 
-    /// <summary>通过有界且可取消的分块捕获，将当前世界序列化为 JSON 字符串。</summary>
+    /// <summary>异步将当前世界导出为 JSON 字符串。</summary>
     /// <remarks>调用方须暂停模拟，并在修改或替换世界前取消仍在进行的捕获。</remarks>
     /// <param name="yield">在缓冲写入之间让界面有机会处理事件的回调。</param>
     /// <param name="cancellationToken">取消捕获，不返回不完整的存档。</param>
@@ -27,7 +27,7 @@ public sealed partial class WorldEngine
         return string.Concat(await ExportJsonChunksAsync(yield, cancellationToken));
     }
 
-    /// <summary>将当前世界捕获为不可变的 JSON 文本块，在序列化期间让出执行权并检查存档大小上限。</summary>
+    /// <summary>异步将当前世界导出为 JSON 文本块。</summary>
     /// <remarks>调用方须暂停模拟，并在修改或替换世界前取消仍在进行的捕获。</remarks>
     /// <param name="yield">在缓冲写入之间让界面处理事件的回调。</param>
     /// <param name="cancellationToken">取消操作的令牌；取消时不提交不完整结果。</param>
@@ -40,9 +40,9 @@ public sealed partial class WorldEngine
         return stream.Complete();
     }
 
-    /// <summary>解析并校验当前格式的存档，再构造引擎并重建运行时索引。</summary>
+    /// <summary>校验世界存档并恢复世界引擎。</summary>
     /// <exception cref="ArgumentException">存档为空、超出大小上限、格式错误或不满足世界数据约束。</exception>
-    /// <param name="json">待处理的 JSON 文本。</param>
+    /// <param name="json">待恢复的世界存档 JSON。</param>
     public static WorldEngine ImportJson(string json)
     {
         if (string.IsNullOrWhiteSpace(json) || json.Length > MaxSaveBytes ||
@@ -318,7 +318,7 @@ public sealed partial class WorldEngine
         ValidateConnectedClaims(state);
     }
 
-    /// <summary>将 UTF-8 写入数据解码为文本块，检查大小并在分块间让出执行权。</summary>
+    /// <summary>将 UTF-8 序列化数据转换为文本块的写入流。</summary>
     /// <param name="yield">在分块写入之间让界面处理事件的回调。</param>
     private sealed class YieldingSaveStream(Func<CancellationToken, ValueTask> yield) : Stream
     {

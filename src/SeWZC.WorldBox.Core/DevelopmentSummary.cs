@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>聚落当前发展阶段、目标、阻碍及项目完成比例。</summary>
+/// <summary>供界面展示的聚落发展概况。</summary>
 /// <param name="Stage">当前发展阶段名称。</param>
 /// <param name="Goal">当前项目或发展计划的目标说明。</param>
 /// <param name="Blocker">项目执行条件或发展阻碍说明。</param>

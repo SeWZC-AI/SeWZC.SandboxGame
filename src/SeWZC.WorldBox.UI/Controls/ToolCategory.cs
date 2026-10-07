@@ -2,7 +2,7 @@ using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
-/// <summary>地图工具分类、选项和笔刷设置。</summary>
+/// <summary>工具面板中按用途划分的一组地图工具。</summary>
 public abstract class ToolCategory
 {
     private static readonly IReadOnlyList<string> BrushSizes = Array.AsReadOnly(new[] { "小笔刷", "中笔刷", "大笔刷" });

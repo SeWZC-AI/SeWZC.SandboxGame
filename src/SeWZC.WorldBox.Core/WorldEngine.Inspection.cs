@@ -33,7 +33,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>按观察者显示策略、发现标记和已有研究判断矿藏是否可见。</summary>
-    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="tile">要检查矿藏可见性的地格。</param>
     /// <param name="visibility">观察者的矿藏显示策略。</param>
     public bool IsDepositVisible(Tile tile, ResourceVisibility visibility)
     {
@@ -87,7 +87,7 @@ public sealed partial class WorldEngine
         };
     }
 
-    /// <summary>返回建筑的施工、生命、运营和劳动状态说明。</summary>
+    /// <summary>返回建筑的详细状态说明。</summary>
     /// <param name="id">建筑的稳定 ID。</param>
     public string GetBuildingDetailStatus(int id)
     {
@@ -192,7 +192,7 @@ public sealed partial class WorldEngine
             building.Y);
     }
 
-    /// <summary>返回居民当前任务、目标地点和执行条件的说明。</summary>
+    /// <summary>返回居民当前任务的说明。</summary>
     /// <param name="id">居民的稳定 ID。</param>
     public string GetResidentTaskSummary(int id)
     {

@@ -3,9 +3,9 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     /// <summary>根据交通方式、种族和地块改良判断是否可进入地格。</summary>
-    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="tile">准备进入的地格。</param>
     /// <param name="mode">待判断的交通方式。</param>
-    /// <param name="race">居民种族，用于应用对应的通行或劳动规则。</param>
+    /// <param name="race">居民种族。</param>
     public static bool CanTraverse(Tile tile, TravelMode mode, RaceKind race = RaceKind.Human)
     {
         return mode switch
@@ -334,7 +334,7 @@ public sealed partial class WorldEngine
         return false;
     }
 
-    /// <summary>返回地格当前动物数量及植物存量、覆盖率的只读摘要。</summary>
+    /// <summary>返回地格的生态概况。</summary>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
     public string GetTileEcologySummary(int x, int y)
@@ -372,7 +372,7 @@ public sealed partial class WorldEngine
         return resources.Count > 0 ? string.Join("，", resources) : "暂无植物或矿物";
     }
 
-    /// <summary>返回地格资源、可采集产物、供水、通行和环境状态，矿藏按显示策略筛选。</summary>
+    /// <summary>返回地格的生产条件摘要，矿藏按显示策略筛选。</summary>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
     /// <param name="visibility">观察者的矿藏显示策略。</param>

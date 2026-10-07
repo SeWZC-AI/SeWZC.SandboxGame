@@ -2,10 +2,10 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>居民的需求、性格、记忆，以及当前行动或递送任务。</summary>
+/// <summary>居民的认知与自主行动状态。</summary>
 public sealed class AgentState
 {
-    /// <summary>是否已经初始化需求、性格和初始认知。</summary>
+    /// <summary>认知与行动状态是否已初始化。</summary>
     public bool Initialized { get; set; }
 
     /// <summary>疲劳程度，越高表示越需要休息。</summary>
@@ -17,13 +17,13 @@ public sealed class AgentState
     /// <summary>当前用于行动评分的性格权重。</summary>
     public PersonalityProfile Personality { get; set; } = new();
 
-    /// <summary>当前行动目标及其导航进度。</summary>
+    /// <summary>当前正在执行的行动目标。</summary>
     public AgentGoal Goal { get; set; } = new();
 
     /// <summary>居民自己观察或收到的信息，可能已经过时。</summary>
     public List<AgentFact> Memory { get; set; } = [];
 
-    /// <summary>近期目标选择的评分、理由和依据记录。</summary>
+    /// <summary>近期行动决策的记录。</summary>
     public List<AgentDecision> Decisions { get; set; } = [];
 
     /// <summary>下一次自主评估目标的模拟日序。</summary>

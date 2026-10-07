@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>模拟与查看共用的物种定义、捕食关系和栖息地容量计算。</summary>
+/// <summary>动物物种目录及生态规则。</summary>
 public static class AnimalRules
 {
     /// <summary>包含 <c>None</c> 在内的物种编号数量，用于按编号索引数组。</summary>
@@ -138,7 +138,7 @@ public static class AnimalRules
     }
 
     /// <summary>返回地形对应的可组合栖息地类别。</summary>
-    /// <param name="terrain">待查询或设置的地形类别。</param>
+    /// <param name="terrain">地形类别。</param>
     public static AnimalHabitat Habitat(TerrainType terrain)
     {
         return terrain switch
@@ -159,7 +159,7 @@ public static class AnimalRules
 
     // 捕食者共享同一种猎物的生物量预算，避免各自重复占用整个种群。
     /// <summary>计算此地可分配同一种猎物的捕食者种类数，至少返回 1。</summary>
-    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="tile">共享猎物的捕食者所在的地格。</param>
     /// <param name="prey">待判断的猎物物种。</param>
     public static int PredatorCompetitors(Tile tile, WildlifeKind prey)
     {
@@ -211,7 +211,7 @@ public static class AnimalRules
     }
 
     /// <summary>计算地形、供水与植被允许的物种容量，食草动物共享植物预算；不含实际猎物限制。</summary>
-    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="tile">要评估环境容量的地格。</param>
     /// <param name="kind">动物物种。</param>
     public static double EnvironmentalCapacity(Tile tile, WildlifeKind kind)
     {

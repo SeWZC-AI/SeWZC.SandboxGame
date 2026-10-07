@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>居民的身体状态、归属、随身资源、认知及已记录的经历。</summary>
+/// <summary>参与世界模拟的居民个体。</summary>
 public sealed class Resident
 {
     /// <summary>居民的稳定 ID。</summary>
@@ -23,10 +23,10 @@ public sealed class Resident
     /// <summary>年龄，以模拟年为单位，允许小数。</summary>
     public double Age { get; set; }
 
-    /// <summary>关联或归属国家的稳定 ID。</summary>
+    /// <summary>居民所属国家的 ID。</summary>
     public int NationId { get; set; }
 
-    /// <summary>关联或归属聚落的稳定 ID。</summary>
+    /// <summary>居民所属聚落的 ID。</summary>
     public int SettlementId { get; set; }
 
     /// <summary>当前职业分工。</summary>
@@ -89,7 +89,7 @@ public sealed class Resident
     /// <summary>文化归属的稳定 ID。</summary>
     public int CultureId { get; set; }
 
-    /// <summary>居民的需求、性格、记忆和行动目标。</summary>
+    /// <summary>居民的认知与自主行动状态。</summary>
     public AgentState Agent { get; set; } = new();
 
     /// <summary>居民实际随身携带的资源和物品。</summary>

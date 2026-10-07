@@ -1,4 +1,4 @@
-// All browser persistence stays on this device. No server or external storage is used.
+// 浏览器本机存档与文件导入导出。
 const DATABASE_NAME = "sewzc-worldbox";
 const STORE_NAME = "worlds";
 const AUTOSAVE_KEY = "autosave";
@@ -12,8 +12,7 @@ let yieldChannel;
 const pendingYields = [];
 
 export function yieldSave() {
-    // A continuation task gives input and rendering a turn without the nested
-    // timer delay imposed on thousands of WASM Task.Delay calls.
+    // 让输入和绘制获得执行机会，避免嵌套定时器给分块保存累积延迟。
     if (typeof globalThis.scheduler?.yield === "function") return globalThis.scheduler.yield();
     if (!yieldChannel) {
         yieldChannel = new MessageChannel();
@@ -71,13 +70,12 @@ function openDatabase() {
     return databasePromise;
 }
 
-// IndexedDB encoding and structured cloning of a large save belong off the
-// rendering thread. This ordinary worker needs no WASM threads or special headers.
+// 将大存档的编码和复制移到 Worker，避免阻塞界面。
 export function beginSave() {
     if (typeof Worker === "function" && !saveWorker) {
         try {
             saveWorker = new Worker(import.meta.resolve("./storage-worker.js"), {type: "module"});
-        } catch { /* Use bounded Blob chunks on browsers without a usable worker. */
+        } catch { /* Worker 不可用时回退到分块 Blob 保存。 */
         }
         if (saveWorker) {
             saveWorker.onmessage = ({data}) => {
@@ -140,7 +138,7 @@ export async function commitSave(id) {
     await new Promise((resolve, reject) => {
         request.resolve = resolve;
         request.reject = reject;
-        // Workers do not inherit the document import map. Pass the resolved URL.
+        // Worker 不继承页面的 import map，须传入解析后的模块 URL。
         request.worker.postMessage({id, op: "commit", moduleUrl: import.meta.url});
     });
 }
@@ -162,10 +160,9 @@ export async function save(json) {
     }
 }
 
-// Shared by the worker and the fallback for browsers without worker support.
+// Worker 与主线程回退路径共用的写入入口。
 export async function writeSave(json) {
-    // Keep the capture in chunks: joining/encoding a multi-megabyte string on
-    // the rendering thread would undo the cooperative serializer's benefit.
+    // 保留分块，避免在界面线程拼接和编码整个大存档。
     const blob = json instanceof Blob ? json : new Blob([checkSize(json)], {type: "application/json"});
     if (!blob.size || blob.size > MAX_FILE_BYTES) throw new Error("存档为空或超过 64 MiB。");
     const compressed = typeof CompressionStream === "function" && typeof DecompressionStream === "function";
@@ -239,13 +236,13 @@ export async function exportFile(json, fileName) {
         link.click();
     } finally {
         link.remove();
-        // Safari can consume the blob after click() returns.
+        // Safari 可能在 click() 返回后才读取 Blob，须延后释放 URL。
         setTimeout(() => URL.revokeObjectURL(url), 60_000);
     }
 }
 
 export function importFile() {
-    // Keep click() inside the original pointer event to preserve user activation.
+    // 文件选择须在原始指针事件中触发，才能保留浏览器的用户操作授权。
     if (pickerPending) return Promise.reject(new Error("文件选择窗口已经打开。"));
     pickerPending = true;
     return new Promise((resolve, reject) => {
@@ -267,7 +264,7 @@ export function importFile() {
             if (error) reject(error); else resolve(value);
         };
         const onFocus = () => {
-            // Older browsers have no cancel event. Allow change to arrive first.
+            // 旧浏览器没有 cancel 事件；延后检查，给文件选择的 change 事件留出时间。
             focusTimer = setTimeout(() => {
                 if (!reading && !input.files?.length) finish(null);
             }, 500);

@@ -179,7 +179,7 @@ public sealed partial class WorldEngine
         return true;
     }
 
-    /// <summary>返回聚落的等级、独占领地和城镇加成状态摘要。</summary>
+    /// <summary>返回聚落的规模与发展条件摘要。</summary>
     /// <param name="id">聚落的稳定 ID。</param>
     public string GetSettlementSummary(int id)
     {

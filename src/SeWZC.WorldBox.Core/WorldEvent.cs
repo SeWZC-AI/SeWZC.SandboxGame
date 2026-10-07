@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>世界编年史中的事件记录，关联主体、位置和已记录的前因。</summary>
+/// <summary>世界编年史中的一条事件记录。</summary>
 public sealed class WorldEvent
 {
     /// <summary>事件发生的模拟日序。</summary>
@@ -21,7 +21,7 @@ public sealed class WorldEvent
     /// <summary>事件记录的具体行动。</summary>
     public EventAction Action { get; set; }
 
-    /// <summary>关联或归属聚落的稳定 ID。</summary>
+    /// <summary>事件关联的聚落 ID。</summary>
     public int SettlementId { get; set; }
 
     /// <summary>事件涉及的另一聚落 ID。</summary>
@@ -42,7 +42,7 @@ public sealed class WorldEvent
     /// <summary>关联居民的稳定 ID。</summary>
     public int ResidentId { get; set; }
 
-    /// <summary>关联或归属国家的稳定 ID。</summary>
+    /// <summary>事件关联的国家 ID。</summary>
     public int NationId { get; set; }
 
     /// <summary>事件涉及的另一国家 ID。</summary>

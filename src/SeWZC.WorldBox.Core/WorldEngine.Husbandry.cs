@@ -10,7 +10,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>返回设施等级允许的养殖容量。</summary>
-    /// <param name="building">待查询或操作的建筑状态。</param>
+    /// <param name="building">要查询养殖容量的设施。</param>
     public static double LivestockCapacity(Building building)
     {
         return (building.Kind == BuildingKind.Pasture ? 8 : 12) * building.Efficiency;

@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>一个地格的地形、资源、归属、生态及局部灾害状态。</summary>
+/// <summary>世界地图的基本空间单元。</summary>
 public sealed partial class Tile
 {
     private int _fireTicks;

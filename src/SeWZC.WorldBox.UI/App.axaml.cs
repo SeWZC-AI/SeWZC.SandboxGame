@@ -7,7 +7,7 @@ using SeWZC.WorldBox.UI.Platform;
 
 namespace SeWZC.WorldBox.UI;
 
-/// <summary>加载共享应用样式，并为桌面或浏览器创建游戏主界面。</summary>
+/// <summary>桌面与浏览器共用的 Avalonia 应用入口。</summary>
 public class App : Application
 {
     /// <summary>平台入口提供的世界存储适配器。</summary>

@@ -34,7 +34,7 @@ public sealed partial class WorldEngine
         return bonus;
     }
 
-    /// <summary>列出居民当前的加成、减益、来源及生效条件。</summary>
+    /// <summary>列出居民当前受到的效果。</summary>
     /// <param name="id">居民的稳定 ID。</param>
     public IReadOnlyList<EffectInfo> GetResidentEffects(int id)
     {
@@ -82,7 +82,7 @@ public sealed partial class WorldEngine
         return effects;
     }
 
-    /// <summary>列出建筑当前的加成、减益和运营限制。</summary>
+    /// <summary>列出建筑当前受到的效果和运营限制。</summary>
     /// <param name="id">建筑的稳定 ID。</param>
     public IReadOnlyList<EffectInfo> GetBuildingEffects(int id)
     {
@@ -248,7 +248,7 @@ public sealed partial class WorldEngine
         return effects;
     }
 
-    /// <summary>列出地格当前的环境、资源、灾害和通行效果。</summary>
+    /// <summary>列出地格当前的环境效果。</summary>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
     public IReadOnlyList<EffectInfo> GetTileEffects(int x, int y)

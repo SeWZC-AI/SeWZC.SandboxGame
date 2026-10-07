@@ -8,7 +8,7 @@ public sealed partial class WorldEngine
         Step();
     }
 
-    /// <summary>按规则顺序完整推进模拟日，处理行动、通信及世界状态汇总。</summary>
+    /// <summary>将世界推进指定数量的模拟日。</summary>
     /// <param name="steps">推进的日数，范围为 0 至 10,000；为零时不改变世界。</param>
     public void Step(int steps = 1)
     {

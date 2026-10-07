@@ -2,7 +2,7 @@ using Avalonia;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
-/// <summary>按模拟时间保存并采样已提交的移动区段，不依赖界面快照频率。</summary>
+/// <summary>实体的显示移动轨迹，按模拟时间插值位置。</summary>
 /// <param name="position">初始逻辑位置，以地格坐标计。</param>
 internal sealed class EntityMotionTrack(Point position)
 {

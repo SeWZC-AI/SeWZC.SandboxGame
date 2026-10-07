@@ -84,7 +84,7 @@ public sealed partial class WorldEngine
 
     // 无限供水只由查询推导，避免把无穷值写入存档资源。
     /// <summary>计算受干旱影响后的每日自然供水量；河湖等淡水水域返回正无穷。</summary>
-    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="tile">要计算自然供水量的地格。</param>
     public static double DailyWaterYield(Tile tile)
     {
         return IsFreshWater(tile)
@@ -93,7 +93,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>计算此格水井的每日增量供水，水域返回零。</summary>
-    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="tile">水井所在的地格。</param>
     public static double WellWaterYield(Tile tile)
     {
         return IsWaterTerrain(tile.Terrain)

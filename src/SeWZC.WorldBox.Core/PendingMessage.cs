@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>等待按计划送达居民的信息，也可指定中继聚落作为接收地点。</summary>
+/// <summary>尚未送达接收者的消息。</summary>
 public sealed class PendingMessage
 {
     /// <summary>发送消息的居民 ID。</summary>

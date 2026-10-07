@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>研究树的路线及节点筛选规则。</summary>
+/// <summary>研究树中的发展路线，决定展示哪些知识项目。</summary>
 public abstract class ResearchRoute
 {
     private protected ResearchRoute() { }
@@ -16,7 +16,7 @@ public abstract class ResearchRoute
     public static ResearchRoute Technology { get; } = new TechnologyRoute();
     /// <summary>魔法研究路线。</summary>
     public static ResearchRoute Magic { get; } = new MagicRoute();
-    /// <summary>两条路线共同使用的基础研究。</summary>
+    /// <summary>共同基础研究路线。</summary>
     public static ResearchRoute Common { get; } = new CommonRoute();
     /// <summary>判断研究节点是否应包含在此路线中。</summary>
     public abstract bool Includes(ResearchDefinition definition);

@@ -1,10 +1,10 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>提供采集、移动和本地魔法共用的地形基础参数。</summary>
+/// <summary>各类地形的基础环境参数目录。</summary>
 public static class TerrainRules
 {
     /// <summary>返回地形的基础通行、肥力、采集和魔力参数。</summary>
-    /// <param name="terrain">待查询或设置的地形类别。</param>
+    /// <param name="terrain">地形类别。</param>
     public static TerrainParameters For(TerrainType terrain)
     {
         return terrain switch
@@ -37,14 +37,14 @@ public static class TerrainRules
     }
 
     /// <summary>返回地形的基础肥力。</summary>
-    /// <param name="terrain">待查询或设置的地形类别。</param>
+    /// <param name="terrain">地形类别。</param>
     public static byte Fertility(TerrainType terrain)
     {
         return For(terrain).Fertility;
     }
 
     /// <summary>返回地形基础步行成本，不可步行时为正无穷。</summary>
-    /// <param name="terrain">待查询或设置的地形类别。</param>
+    /// <param name="terrain">地形类别。</param>
     public static double MovementCost(TerrainType terrain)
     {
         return For(terrain).MovementCost;

@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>物种的体型、食性、适宜栖息地，以及最低肥力和供水要求。</summary>
+/// <summary>动物物种的生态特征定义。</summary>
 /// <param name="Name">物种显示名称。</param>
 /// <param name="Size">物种体型等级。</param>
 /// <param name="Diet">物种食性。</param>

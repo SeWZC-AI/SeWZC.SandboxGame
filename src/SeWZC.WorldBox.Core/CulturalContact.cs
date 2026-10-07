@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>居民接触某种文化的累计程度和最近接触时间。</summary>
+/// <summary>居民与某种文化的接触记录。</summary>
 public sealed class CulturalContact
 {
     /// <summary>关联居民的稳定 ID。</summary>

@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>可序列化的世界事实、实体关系、时间和随机状态，用于保存与续演。</summary>
+/// <summary>完整的世界模拟状态，可保存并恢复续演。</summary>
 public sealed class WorldState
 {
     /// <summary>存档数据结构版本，用于拒绝不兼容的格式。</summary>
@@ -74,7 +74,7 @@ public sealed class WorldState
     [JsonRequired]
     public int SimulationVersion { get; set; } = 16;
 
-    /// <summary>文化、设施、研究、制度及已收到报告的状态。</summary>
+    /// <summary>世界的社会发展状态。</summary>
     public SocietyState Society { get; set; } = new();
 
     /// <summary>等待送达的消息集合。</summary>

@@ -3,7 +3,7 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     /// <summary>根据地形燃料、资源和供水计算 0 至 1 的可燃性。</summary>
-    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="tile">要评估可燃性的地格。</param>
     public static double TerrainFlammability(Tile tile)
     {
         var fuel = tile.Terrain switch
@@ -22,7 +22,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>根据建筑用途和等级计算可燃性。</summary>
-    /// <param name="building">待查询或操作的建筑状态。</param>
+    /// <param name="building">要评估可燃性的建筑。</param>
     public static double BuildingFlammability(Building building)
     {
         return building.Kind switch

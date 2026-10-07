@@ -2,13 +2,13 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>军队的位置、补给、战役目标和最近收到的军令。</summary>
+/// <summary>由士兵组成、接受军令的作战单位。</summary>
 public sealed partial class Army
 {
     /// <summary>军队的稳定 ID。</summary>
     public int Id { get; set; }
 
-    /// <summary>关联或归属国家的稳定 ID。</summary>
+    /// <summary>军队所属国家的 ID。</summary>
     public int NationId { get; set; }
 
     /// <summary>当前军事目标国家的 ID。</summary>

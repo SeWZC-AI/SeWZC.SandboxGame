@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>地图动画通知的位置、范围和起点，仅用于呈现。</summary>
+/// <summary>一次地图动画的呈现通知。</summary>
 /// <param name="Sequence">该通知在当前引擎中的递增序号。</param>
 /// <param name="Kind">行动特效类别。</param>
 /// <param name="X">特效目标的横向地格坐标。</param>

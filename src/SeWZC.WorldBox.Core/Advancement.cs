@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>生产技术的研究要求、设施成本、每批原料与产出，以及可选的魔力消耗。</summary>
+/// <summary>一种生产技术的定义。</summary>
 /// <param name="research">解锁该生产技术的研究项目。</param>
 /// <param name="name">生产技术名称。</param>
 /// <param name="stage">所属发展阶段名称。</param>

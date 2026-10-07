@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>居民可施放的治疗、增益、战斗和环境法术。</summary>
+/// <summary>居民可施放的法术类别。</summary>
 public enum SpellKind
 {
     /// <summary>治疗。</summary>

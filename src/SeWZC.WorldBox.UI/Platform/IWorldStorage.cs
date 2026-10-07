@@ -1,13 +1,13 @@
 namespace SeWZC.WorldBox.UI.Platform;
 
-/// <summary>序列化世界的平台存储及文件交换接口；世界数据由引擎校验。</summary>
+/// <summary>世界存档的跨平台存储接口。</summary>
 public interface IWorldStorage
 {
     /// <summary>平台是否隐藏或失去活动状态，此时应临时停止模拟。</summary>
     bool IsBackground { get; }
 
     /// <summary>用传入的世界 JSON 替换平台本地自动存档。</summary>
-    /// <param name="json">待处理的 JSON 文本。</param>
+    /// <param name="json">要写入本地自动存档的世界 JSON。</param>
     Task SaveAsync(string json);
 
     /// <summary>用按顺序排列的 JSON 文本块替换本地自动存档；默认实现先拼接各块。</summary>
@@ -21,7 +21,7 @@ public interface IWorldStorage
     Task<string?> LoadAsync();
 
     /// <summary>将传入的 JSON 以建议文件名提供给用户保存。</summary>
-    /// <param name="json">待处理的 JSON 文本。</param>
+    /// <param name="json">要导出的世界 JSON。</param>
     /// <param name="fileName">提供给用户保存时建议使用的文件名。</param>
     Task ExportAsync(string json, string fileName);
 

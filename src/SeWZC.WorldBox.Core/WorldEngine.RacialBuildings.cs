@@ -17,7 +17,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>判断聚落是否具有建造该种族设施所需的成年居民。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="kind">设施类别。</param>
     public bool CanBuildRacialFacility(int settlementId, BuildingKind kind)
     {
@@ -187,7 +187,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>判断地形是否属于森林、疏林或雨林。</summary>
-    /// <param name="terrain">待查询或设置的地形类别。</param>
+    /// <param name="terrain">地形类别。</param>
     public static bool IsForestTerrain(TerrainType terrain)
     {
         return terrain is TerrainType.Forest or TerrainType.Woodland or TerrainType.Rainforest;

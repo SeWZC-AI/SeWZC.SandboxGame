@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>提供研究树、玩家命令和自主规划共用的知识节点及解锁关系。</summary>
+/// <summary>研究项目目录及知识解锁规则。</summary>
 public static class ResearchRules
 {
     private static readonly IReadOnlyDictionary<ResearchKind, ResearchDefinition> ByKind;

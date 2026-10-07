@@ -4,7 +4,7 @@ using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
-/// <summary>根据研究定义计算节点矩形、分支范围和前置连接线。</summary>
+/// <summary>研究树在画布中的几何布局。</summary>
 public sealed class ResearchTreeLayout
 {
     /// <summary>未缩放的研究节点宽度和高度，以控件布局单位计。</summary>
