@@ -143,16 +143,16 @@ public static class AnimalRules
     {
         return terrain switch
         {
-            TerrainType.Forest or TerrainType.Woodland or TerrainType.Rainforest => Green | Forest,
+            TerrainType.DeepWater or TerrainType.Water => Marine,
+            TerrainType.Sand or TerrainType.Desert or TerrainType.DryFertile or TerrainType.Savanna
+                or TerrainType.Scrub => Dry,
             TerrainType.Grass or TerrainType.Meadow => Green,
-            TerrainType.Floodplain => Green | Wet,
-            TerrainType.Wetland => Wet,
-            TerrainType.Hills or TerrainType.Mountain or TerrainType.AlpineMeadow => High,
+            TerrainType.Forest or TerrainType.Woodland or TerrainType.Rainforest => Green | Forest,
+            TerrainType.Mountain or TerrainType.Hills or TerrainType.AlpineMeadow => High,
             TerrainType.Snow or TerrainType.Tundra => Cold,
-            TerrainType.Sand or TerrainType.Desert or TerrainType.Savanna or TerrainType.Scrub
-                or TerrainType.DryFertile => Dry,
-            TerrainType.Stream or TerrainType.River or TerrainType.LargeRiver or TerrainType.Lake => Fresh,
-            TerrainType.Water or TerrainType.DeepWater => Marine,
+            TerrainType.Wetland => Wet,
+            TerrainType.River or TerrainType.Lake or TerrainType.Stream or TerrainType.LargeRiver => Fresh,
+            TerrainType.Floodplain => Green | Wet,
             _ => AnimalHabitat.None,
         };
     }

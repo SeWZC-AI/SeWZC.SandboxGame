@@ -439,7 +439,7 @@ internal static class GeographyEcologyTests
         var town = e.State.Settlements.Single();
         TestLand.ClaimAllTowns(e);
         e.State.Society.Research.Single().Completed =
-            [ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Industry];
+            [Advancement.Agriculture, Advancement.Logistics, Advancement.Industry];
         var id = e.GrantFacility(town.Id, BuildingKind.DwarvenForge, 20, 16);
         var dwarf = e.State.Residents.Single();
         dwarf.Age = 25;

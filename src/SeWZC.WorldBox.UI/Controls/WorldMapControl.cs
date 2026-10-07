@@ -538,9 +538,9 @@ public sealed partial class WorldMapControl : Control
             TerrainType.Wetland => 0x58887DFF,
             TerrainType.Desert => 0xCEAE75FF,
             TerrainType.River => 0x428E9CFF,
+            TerrainType.Tundra => 0x99A88CFF,
             TerrainType.Lake => 0x559BA8FF,
             TerrainType.DryFertile => 0xA3A66BFF,
-            TerrainType.Tundra => 0x99A88CFF,
             TerrainType.Stream => 0x65A6A0FF,
             TerrainType.LargeRiver => 0x347FA0FF,
             TerrainType.Meadow => 0x8FAF65FF,
@@ -552,7 +552,7 @@ public sealed partial class WorldMapControl : Control
             TerrainType.AlpineMeadow => 0xA0AF7BFF,
             _ => 0x719262FF,
         };
-        if (tile.DroughtTicks > 0 && tile.Terrain is TerrainType.Grass or TerrainType.Forest or TerrainType.Sand
+        if (tile.DroughtTicks > 0 && tile.Terrain is TerrainType.Sand or TerrainType.Grass or TerrainType.Forest
                 or TerrainType.Hills or TerrainType.Wetland)
             color = 0xB59D62FF;
         color = PixelCanvas.Shade(color, variation);

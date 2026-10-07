@@ -108,7 +108,7 @@ public sealed partial class WorldEngine
             // 住宅与发展项目共享材料预算，须为下一项本地建设或研究留出实际交付的材料。
             var developmentReserve = LocalDevelopmentReserve(town);
             if (State.Rules.Construction && State.Rules.Expansion && SettlementExpansionError(town.Id) is null
-                && AdvancementRules.Resources.All(k =>
+                && ResourceStock.Kinds.All(k =>
                     town.Resources.Get(k) >= SettlementExpansionCost(town.Tier).Get(k) + developmentReserve.Get(k)))
                 ExpandTown(town.Id);
             if (State.Rules.Construction && town.Resources.Food >= citizens.Count * 2 + developmentReserve.Food
@@ -154,7 +154,7 @@ public sealed partial class WorldEngine
             }
 
             if (State.Rules.Expansion && State.Tick % 120 == 0 && citizens.Count >= 80 && !town.IsExpanding
-                && AdvancementRules.Resources.All(k =>
+                && ResourceStock.Kinds.All(k =>
                     town.Resources.Get(k) >= VillageFoundingCost.Get(k) + developmentReserve.Get(k)) &&
                 State.Settlements.Count < 256)
                 ExpandSettlement(town, citizens);
@@ -211,7 +211,7 @@ public sealed partial class WorldEngine
         _citizens[town.Id] = [];
         foreach (var pioneer in pioneers)
         {
-            foreach (var resource in AdvancementRules.Resources)
+            foreach (var resource in ResourceStock.Kinds)
                 pioneer.Inventory.Set(resource,
                     pioneer.Inventory.Get(resource) + VillageFoundingCost.Get(resource) / pioneers.Length);
             pioneer.SettlementId = town.Id;

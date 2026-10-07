@@ -10,9 +10,9 @@ public sealed partial class WorldEngine
     {
         return mode switch
         {
+            TravelMode.Boat => tile.IsWalkable || tile.Terrain is TerrainType.DeepWater or TerrainType.Water
+                or TerrainType.River or TerrainType.Lake or TerrainType.Stream or TerrainType.LargeRiver,
             TravelMode.Aircraft => true,
-            TravelMode.Boat => tile.IsWalkable || tile.Terrain is TerrainType.River or TerrainType.Stream
-                or TerrainType.LargeRiver or TerrainType.Water or TerrainType.DeepWater or TerrainType.Lake,
             _ => RaceTerrainRules.CanWalk(tile, race),
         };
     }
@@ -32,13 +32,13 @@ public sealed partial class WorldEngine
 
     /// <summary>返回开采该类矿藏所需的研究；不属于阶段矿藏时返回空值。</summary>
     /// <param name="kind">资源种类。</param>
-    public static ResearchKind? DepositResearch(ResourceKind kind)
+    public static Advancement? DepositResearch(ResourceKind kind)
     {
         return kind switch
         {
-            ResourceKind.Coal => ResearchKind.Industry,
-            ResourceKind.Oil => ResearchKind.Electrification,
-            ResourceKind.RareEarth => ResearchKind.AdvancedComputing,
+            ResourceKind.Coal => Advancement.Industry,
+            ResourceKind.Oil => Advancement.Electrification,
+            ResourceKind.RareEarth => Advancement.AdvancedComputing,
             _ => null,
         };
     }
@@ -48,8 +48,8 @@ public sealed partial class WorldEngine
         tile.Deposit = null;
         tile.DepositAmount = 0;
         tile.DepositDiscovered = false;
-        if (tile.Terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.River or TerrainType.Stream
-            or TerrainType.LargeRiver or TerrainType.Lake) return;
+        if (tile.Terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.River or TerrainType.Lake
+            or TerrainType.Stream or TerrainType.LargeRiver) return;
         var hash = unchecked((uint)(x * 374761393 + y * 668265263 + State.Seed * 31 + 937));
         hash = (hash ^ (hash >> 13)) * 1274126177;
         tile.Deposit = (hash % 43) switch
@@ -96,12 +96,12 @@ public sealed partial class WorldEngine
     {
         return kind switch
         {
-            BuildingKind.Bridge => tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver
-                or TerrainType.Water or TerrainType.Lake,
             BuildingKind.MountainPass => tile.Terrain == TerrainType.Mountain,
+            BuildingKind.Bridge => tile.Terrain is TerrainType.Water or TerrainType.River or TerrainType.Lake
+                or TerrainType.Stream or TerrainType.LargeRiver,
+            BuildingKind.Dock or BuildingKind.Shipyard => tile.Terrain is TerrainType.Water or TerrainType.River
+                or TerrainType.Lake or TerrainType.Stream or TerrainType.LargeRiver,
             BuildingKind.SacredGrove => IsForestTerrain(tile.Terrain),
-            BuildingKind.Dock or BuildingKind.Shipyard => tile.Terrain is TerrainType.River or TerrainType.Stream
-                or TerrainType.LargeRiver or TerrainType.Water or TerrainType.Lake,
             _ => !IsWaterTerrain(tile.Terrain) && (tile.IsWalkable || tile.Terrain == TerrainType.Mountain),
         };
     }
@@ -133,8 +133,8 @@ public sealed partial class WorldEngine
     private void PlanVisibleCrossing(Resident person, int targetX, int targetY)
     {
         if (!State.Rules.Construction || person.TravelMode != TravelMode.Foot || person.ArmyId != 0 || person.Age < 14
-            || !HasResearch(person.SettlementId, ResearchKind.Logistics)
-            || person.Agent.Goal.Kind is AgentGoalKind.Explore or AgentGoalKind.Gather or AgentGoalKind.FetchWater
+            || !HasResearch(person.SettlementId, Advancement.Logistics)
+            || person.Agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Explore or AgentGoalKind.FetchWater
             || (person.Agent.Goal.TargetSettlementId == 0 && person.Agent.Goal.TargetEntityId == 0)) return;
         if (State.Society.Buildings.Any(b =>
                 b.SettlementId == person.SettlementId && (!b.IsCompleted || b.IsUpgrading))) return;
@@ -149,8 +149,8 @@ public sealed partial class WorldEngine
                 Distance(x, y, targetX, targetY) >= Distance(person.X, person.Y, targetX, targetY)) continue;
             var direction = dx != 0 ? BridgeDirection.Horizontal : BridgeDirection.Vertical;
             var first = State.Tiles[Index(x, y)];
-            if (first.Terrain is not (TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver
-                    or TerrainType.Water or TerrainType.Lake) || first.Improvement == LandImprovement.Bridge) continue;
+            if (first.Terrain is not (TerrainType.Water or TerrainType.River or TerrainType.Lake
+                    or TerrainType.Stream or TerrainType.LargeRiver) || first.Improvement == LandImprovement.Bridge) continue;
             // 两岸及沿途桥段须在同一轴向可见且可用，异向桥段是障碍，不能据此横向接桥。
             var farBank = false;
             var span = 0;
@@ -187,7 +187,7 @@ public sealed partial class WorldEngine
             var home = _settlements[person.SettlementId];
             var reserve = LocalDevelopmentReserve(home);
             var cost = FacilityCost(BuildingKind.Bridge, level);
-            if (AdvancementRules.Resources.Any(k => home.Resources.Get(k) < cost.Get(k) * unfinished + reserve.Get(k)))
+            if (ResourceStock.Kinds.Any(k => home.Resources.Get(k) < cost.Get(k) * unfinished + reserve.Get(k)))
                 continue;
             if (FacilityPlacementError(home.Id, BuildingKind.Bridge, x, y, direction: direction, bridgeLevel: level) is
                 not null) continue;
@@ -266,9 +266,9 @@ public sealed partial class WorldEngine
     {
         if (person.Profession != Profession.Miner ||
             !_settlements.TryGetValue(person.SettlementId, out var home)) return -1;
-        var coal = HasResearch(home.Id, ResearchKind.Industry);
-        var oil = HasResearch(home.Id, ResearchKind.Electrification);
-        var rare = HasResearch(home.Id, ResearchKind.AdvancedComputing);
+        var coal = HasResearch(home.Id, Advancement.Industry);
+        var oil = HasResearch(home.Id, Advancement.Electrification);
+        var rare = HasResearch(home.Id, Advancement.AdvancedComputing);
         if (!coal && !oil && !rare) return -1;
         var best = -1;
         var bestDistance = int.MaxValue;
@@ -321,7 +321,7 @@ public sealed partial class WorldEngine
             var amount = Math.Min(tile.DepositAmount,
                 .4 * State.Rules.GatheringRate * GatheringCondition(person) *
                 GatheringTerritoryMultiplier(person, tile) *
-                (HasResearch(person.SettlementId, ResearchKind.Forestry) ? 1.25 : 1));
+                (HasResearch(person.SettlementId, Advancement.Forestry) ? 1.25 : 1));
             amount = Math.Min(amount, 1_000_000 - person.Inventory.Get(kind));
             tile.DepositAmount -= amount;
             person.Inventory.Set(kind, person.Inventory.Get(kind) + amount);
@@ -382,7 +382,7 @@ public sealed partial class WorldEngine
         var tile = State.Tiles[Index(x, y)];
         var plants = PlantResources.At(tile).ToArray();
         var products = new List<string>();
-        if (tile.Improvement is LandImprovement.Bridge or LandImprovement.MountainPass) products.Add("通行设施");
+        if (tile.Improvement is LandImprovement.MountainPass or LandImprovement.Bridge) products.Add("通行设施");
         else
         {
             if (ResourceSiteYield(Index(x, y), Profession.Farmer) > 0)

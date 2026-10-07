@@ -170,7 +170,7 @@ internal static class TownInfrastructureTests
         {
             var paid = Flat();
             var home = paid.State.Settlements.Single();
-            paid.GrantReceivedResearch(home.Id, ResearchKind.Logistics);
+            paid.GrantReceivedResearch(home.Id, Advancement.Logistics);
             var water = paid.State.Tiles[16 * 32 + 15];
             water.Terrain = TerrainType.River;
             water.NationId = water.ClaimedSettlementId = 0;
@@ -193,7 +193,7 @@ internal static class TownInfrastructureTests
 
         var e = Flat();
         var town = e.State.Settlements.Single();
-        e.GrantReceivedResearch(town.Id, ResearchKind.Logistics);
+        e.GrantReceivedResearch(town.Id, Advancement.Logistics);
         Check(e.FacilityPlacementError(town.Id, BuildingKind.Shipyard, 15, 16, true) is not null,
             "Dry shipyard was accepted.");
         e.State.Tiles[16 * 32 + 15].Terrain = TerrainType.River;
@@ -321,7 +321,7 @@ internal static class TownInfrastructureTests
         var e = Flat();
         var town = e.State.Settlements.Single();
         var worker = e.State.Residents.Single();
-        e.GrantReceivedResearch(town.Id, ResearchKind.Logistics);
+        e.GrantReceivedResearch(town.Id, Advancement.Logistics);
         e.State.Rules.Construction = true;
         for (var y = 0; y < 32; y++)
         {
@@ -377,7 +377,7 @@ internal static class TownInfrastructureTests
             var e = Flat();
             var town = e.State.Settlements.Single();
             var worker = e.State.Residents.Single();
-            e.GrantReceivedResearch(town.Id, ResearchKind.Logistics);
+            e.GrantReceivedResearch(town.Id, Advancement.Logistics);
             e.State.Rules.Construction = true;
             for (var y = 0; y < 32; y++) e.State.Tiles[y * 32 + 13].Terrain = TerrainType.River;
             town.Resources.Wood = town.Resources.Stone = affordable ? 1000 : 0;

@@ -6,15 +6,15 @@ public sealed partial class WorldEngine
     /// <param name="terrain">地形类别。</param>
     public static bool IsWaterTerrain(TerrainType terrain)
     {
-        return terrain is TerrainType.Water or TerrainType.DeepWater or TerrainType.River or TerrainType.Stream
-            or TerrainType.LargeRiver or TerrainType.Lake;
+        return terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.River or TerrainType.Lake
+            or TerrainType.Stream or TerrainType.LargeRiver;
     }
 
     /// <summary>判断地格是否为淡水水域。</summary>
     /// <param name="tile">要判断水域类型的地格。</param>
     public static bool IsFreshWater(Tile tile)
     {
-        return tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Lake;
+        return tile.Terrain is TerrainType.River or TerrainType.Lake or TerrainType.Stream or TerrainType.LargeRiver;
     }
 
     /// <summary>判断地格是否可提供自然淡水。</summary>
@@ -33,13 +33,13 @@ public sealed partial class WorldEngine
     {
         tile.Plants = tile.Terrain switch
         {
-            TerrainType.Forest or TerrainType.Rainforest or TerrainType.Woodland => new PlantCoverage
+            TerrainType.Grass or TerrainType.Hills or TerrainType.Tundra or TerrainType.DryFertile or TerrainType.Meadow
+                or TerrainType.Savanna or TerrainType.Scrub or TerrainType.Floodplain
+                or TerrainType.AlpineMeadow => new PlantCoverage { Grass = .6, Shrubs = .15 },
+            TerrainType.Forest or TerrainType.Woodland or TerrainType.Rainforest => new PlantCoverage
             {
                 Trees = .7, Shrubs = .3,
             },
-            TerrainType.Grass or TerrainType.DryFertile or TerrainType.Hills or TerrainType.Tundra or TerrainType.Meadow
-                or TerrainType.Savanna or TerrainType.Scrub or TerrainType.Floodplain
-                or TerrainType.AlpineMeadow => new PlantCoverage { Grass = .6, Shrubs = .15 },
             TerrainType.Wetland => new PlantCoverage { Reeds = .6, Grass = .3 },
             _ => new PlantCoverage(),
         };

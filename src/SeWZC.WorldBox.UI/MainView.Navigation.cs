@@ -189,7 +189,7 @@ public sealed partial class MainView
         ResearchViewState Research);
 
     private sealed record ResearchViewState(
-        ResearchKind Selected,
+        Advancement Selected,
         ResearchRoute Route,
         ResearchBranch? Branch,
         bool CivilizationDetails,

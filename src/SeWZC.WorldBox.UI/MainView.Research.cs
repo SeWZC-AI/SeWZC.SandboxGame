@@ -13,7 +13,7 @@ public sealed partial class MainView : IResearchActionHandler
     private ResearchBranch? _researchBranch;
     private bool _researchExpanded;
     private ResearchRoute _researchRoute = ResearchRoute.Technology;
-    private ResearchKind _selectedResearch = ResearchKind.Agriculture;
+    private Advancement _selectedResearch = Advancement.Agriculture;
 
     void IResearchActionHandler.ShowRailEditor(int settlementId)
     {
@@ -41,11 +41,11 @@ public sealed partial class MainView : IResearchActionHandler
         {
             var r = _engine.State.Society.Research.First(x => x.SettlementId == town.Id);
             return $"已掌握 {r.Completed.Count} / {ResearchRules.All.Count}\n" + (r.ActiveProject is { } active
-                ? $"正在研究：{WorldEngine.ResearchName(active)}\n进度 {r.Progress:0.#} / {r.RequiredProgress:0}\n{_engine.GetCompletionEstimate(r.Observation, r.Progress, r.RequiredProgress).Explanation}"
+                ? $"正在研究：{active.Name}\n进度 {r.Progress:0.#} / {r.RequiredProgress:0}\n{_engine.GetCompletionEstimate(r.Observation, r.Progress, r.RequiredProgress).Explanation}"
                 : "学舍可立项新研究");
         }), "research-summary"));
 
-        string? Blocker(ResearchKind kind)
+        string? Blocker(Advancement kind)
         {
             var r = _engine.State.Society.Research.First(x => x.SettlementId == town.Id);
             if (r.Completed.Contains(kind)) return "当地已经掌握";
@@ -58,7 +58,7 @@ public sealed partial class MainView : IResearchActionHandler
                    ?? WorldEngine.MissingResources(town.Resources, WorldEngine.GetResearchCost(kind));
         }
 
-        var nodes = new Dictionary<ResearchKind, Button>();
+        var nodes = new Dictionary<Advancement, Button>();
         foreach (var definition in ResearchRules.All)
         {
             var content = new StackPanel { Spacing = 2 };
@@ -67,16 +67,16 @@ public sealed partial class MainView : IResearchActionHandler
             content.Children.Add(Named(LiveText(() =>
             {
                 var r = _engine.State.Society.Research.First(x => x.SettlementId == town.Id);
-                return r.Completed.Contains(definition.Kind)
+                return r.Completed.Contains(definition)
                     ? "已掌握"
-                    : r.ActiveProject == definition.Kind
+                    : r.ActiveProject == definition
                         ? $"研究中 {r.Progress / r.RequiredProgress:P0}"
-                        : _engine.ResearchPrerequisiteError(town.Id, definition.Kind) is not null
+                        : _engine.ResearchPrerequisiteError(town.Id, definition) is not null
                             ? "前置未解锁"
-                            : Blocker(definition.Kind) is null
+                            : Blocker(definition) is null
                                 ? "可研究"
                                 : "待投入";
-            }, 11, Mint), "research-state-" + definition.Kind));
+            }, 11, Mint), "research-state-" + definition.Key));
             var node = Named(new Button
             {
                 Content = content,
@@ -85,22 +85,22 @@ public sealed partial class MainView : IResearchActionHandler
                 BorderThickness = new Thickness(1.5),
                 Margin = new Thickness(0),
                 Padding = new Thickness(8, 5),
-            }, "research-node-" + definition.Kind);
+            }, "research-node-" + definition.Key);
             ToolTip.SetTip(node, definition.Name + "\n" + definition.Effect);
             node.Click += (_, _) =>
             {
-                _selectedResearch = definition.Kind;
+                _selectedResearch = definition;
                 RefreshInspector();
             };
             _inspectorUpdates.Add(() =>
             {
-                node.BorderBrush = _selectedResearch == definition.Kind ? Brush.Parse("#F1CD83")
-                    : _engine.HasResearch(town.Id, definition.Kind) ? Brush.Parse("#65B995")
-                    : Blocker(definition.Kind) is null ? Brush.Parse("#80CED1")
+                node.BorderBrush = _selectedResearch == definition ? Brush.Parse("#F1CD83")
+                    : _engine.HasResearch(town.Id, definition) ? Brush.Parse("#65B995")
+                    : Blocker(definition) is null ? Brush.Parse("#80CED1")
                     : definition.Magic ? Brush.Parse("#A996D8") : Line;
-                node.Background = _engine.HasResearch(town.Id, definition.Kind) ? Brush.Parse("#19352C") : Ink;
+                node.Background = _engine.HasResearch(town.Id, definition) ? Brush.Parse("#19352C") : Ink;
             });
-            nodes.Add(definition.Kind, node);
+            nodes.Add(definition, node);
         }
 
         var graph = Named(
@@ -111,20 +111,21 @@ public sealed partial class MainView : IResearchActionHandler
                 Selected = _selectedResearch,
             }, "research-graph");
 
-        IEnumerable<ResearchDefinition> Route()
+        IEnumerable<Advancement> Route()
         {
             var route = ResearchRules.All.Where(_researchRoute.Includes);
             if (_researchBranch is null) return route;
-            var wanted = new HashSet<ResearchKind>();
+            var requiredResearch = new HashSet<Advancement>();
 
-            void Add(ResearchKind kind)
+            void IncludePrerequisites(Advancement research)
             {
-                if (!wanted.Add(kind)) return;
-                foreach (var p in ResearchRules.For(kind).Prerequisites) Add(p);
+                if (!requiredResearch.Add(research)) return;
+                foreach (var prerequisite in research.Prerequisites) IncludePrerequisites(prerequisite);
             }
 
-            foreach (var d in route.Where(d => d.Branch == _researchBranch)) Add(d.Kind);
-            return route.Where(d => wanted.Contains(d.Kind));
+            foreach (var research in route.Where(research => research.Branch == _researchBranch))
+                IncludePrerequisites(research);
+            return route.Where(requiredResearch.Contains);
         }
 
         graph.ShowRoute(Route());
@@ -235,12 +236,12 @@ public sealed partial class MainView : IResearchActionHandler
             RefreshInspector();
         }), "research-development"));
         panel.Children.Add(tools);
-        panel.Children.Add(Named(LiveText(() => "所选：" + WorldEngine.ResearchName(_selectedResearch) + "\n直接前置："
-                                                + (ResearchRules.For(_selectedResearch).Prerequisites.Length == 0
+        panel.Children.Add(Named(LiveText(() => "所选：" + _selectedResearch.Name + "\n直接前置："
+                                                + (_selectedResearch.Prerequisites.Length == 0
                                                     ? "根部研究，无前置"
                                                     : string.Join("、",
-                                                        ResearchRules.For(_selectedResearch).Prerequisites
-                                                            .Select(WorldEngine.ResearchName))), 12, Muted),
+                                                        _selectedResearch.Prerequisites
+                                                            .Select(research => research.Name))), 12, Muted),
             "research-path-caption"));
         panel.Children.Add(new Border
         {
@@ -257,21 +258,21 @@ public sealed partial class MainView : IResearchActionHandler
             graph.RefreshConnections();
         });
         var detail = new StackPanel { Spacing = 6 };
-        detail.Children.Add(Named(LiveText(() => WorldEngine.ResearchName(_selectedResearch), 15, Mint),
+        detail.Children.Add(Named(LiveText(() => _selectedResearch.Name, 15, Mint),
             "research-selected"));
         detail.Children.Add(Named(LiveText(() =>
         {
-            var definition = ResearchRules.For(_selectedResearch);
-            return WorldEngine.ResearchDescription(_selectedResearch)
+            var definition = _selectedResearch;
+            return _selectedResearch.Description
                    + "\n前置知识：" + (definition.Prerequisites.Length == 0
                        ? "根部研究，无前置知识"
-                       : string.Join("、", definition.Prerequisites.Select(WorldEngine.ResearchName)))
+                       : string.Join("、", definition.Prerequisites.Select(research => research.Name)))
                    + "\n投入材料：" + StockLabel(WorldEngine.GetResearchCost(_selectedResearch))
                    + "\n" + (Blocker(_selectedResearch) ?? "前置知识与魔法规则已满足，研究材料充足");
         }), "research-requirements"));
         var unlocks = Named(new StackPanel { Spacing = 5 }, "research-unlocks");
         detail.Children.Add(unlocks);
-        ResearchKind? shown = null;
+        Advancement? shown = null;
         bool? shownKnown = null;
         _inspectorUpdates.Add(() =>
         {
@@ -280,7 +281,7 @@ public sealed partial class MainView : IResearchActionHandler
             shown = _selectedResearch;
             shownKnown = known;
             unlocks.Children.Clear();
-            var definition = ResearchRules.For(_selectedResearch);
+            var definition = _selectedResearch;
             foreach (var kind in definition.UnlockedBuildings)
             {
                 var button =

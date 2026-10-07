@@ -10,7 +10,7 @@ public sealed partial class WorldEngine
         var cost = GetBuildingCost(kind);
         if (kind == BuildingKind.Bridge)
         {
-            foreach (var resource in AdvancementRules.Resources)
+            foreach (var resource in ResourceStock.Kinds)
                 cost.Set(resource, cost.Get(resource) * Math.Clamp(level, 1, 3));
         }
 
@@ -84,8 +84,8 @@ public sealed partial class WorldEngine
     public string? BridgePlacementError(int x, int y, BridgeDirection direction, int level = 1)
     {
         if (!Enum.IsDefined(direction) || level is < 1 or > 3) return "桥梁方向或等级无效";
-        if (!InBounds(x, y) || State.Tiles[Index(x, y)].Terrain is not (TerrainType.River or TerrainType.Stream
-                or TerrainType.LargeRiver or TerrainType.Water or TerrainType.Lake)) return "桥梁需要河流、湖泊或浅水";
+        if (!InBounds(x, y) || State.Tiles[Index(x, y)].Terrain is not (TerrainType.Water or TerrainType.River
+                or TerrainType.Lake or TerrainType.Stream or TerrainType.LargeRiver)) return "桥梁需要河流、湖泊或浅水";
         if (BridgeShoreDistance(x, y, direction) > BridgeShoreLimit(level))
             return $"此方向离自然岸超过 {BridgeShoreLimit(level)} 格，需升级桥梁技术或换址";
         var dx = direction == BridgeDirection.Horizontal ? 1 : 0;
@@ -117,7 +117,7 @@ public sealed partial class WorldEngine
     {
         var cost = GetBuildingCost(building.Kind);
         var scale = reorient ? .5 : building.Level * .75;
-        foreach (var kind in AdvancementRules.Resources) cost.Set(kind, cost.Get(kind) * scale);
+        foreach (var kind in ResourceStock.Kinds) cost.Set(kind, cost.Get(kind) * scale);
         return cost;
     }
 
@@ -140,8 +140,8 @@ public sealed partial class WorldEngine
         if (building.Kind == BuildingKind.Bridge && BridgePlacementError(building.X, building.Y,
                 direction ?? building.Direction,
                 direction.HasValue ? building.Level : building.Level + 1) is { } crossingError) return crossingError;
-        if (!gift && building.Kind is BuildingKind.Bridge or BuildingKind.MountainPass &&
-            !HasResearch(building.SettlementId, ResearchKind.Logistics)) return "需要先掌握驿路运输";
+        if (!gift && building.Kind is BuildingKind.MountainPass or BuildingKind.Bridge &&
+            !HasResearch(building.SettlementId, Advancement.Logistics)) return "需要先掌握驿路运输";
         return gift
             ? null
             : MissingResources(RequireTown(building.SettlementId).Resources,
@@ -197,9 +197,9 @@ public sealed partial class WorldEngine
             if (building.Level >= 3 || State.Tick - building.LastWorkedTick > 24 ||
                 BuildingUpgradeError(building.Id) is not null) continue;
             var cost = GetUpgradeCost(building);
-            if (AdvancementRules.Resources.Any(k => town.Resources.Get(k) < cost.Get(k) + reserve.Get(k) +
-                    (k == ResourceKind.Food && building.Kind is not (BuildingKind.Farm or BuildingKind.Pasture
-                        or BuildingKind.Aquaculture or BuildingKind.AutomatedFarm or BuildingKind.RunicGarden)
+            if (ResourceStock.Kinds.Any(k => town.Resources.Get(k) < cost.Get(k) + reserve.Get(k) +
+                    (k == ResourceKind.Food && building.Kind is not (BuildingKind.Farm or BuildingKind.AutomatedFarm
+                        or BuildingKind.RunicGarden or BuildingKind.Pasture or BuildingKind.Aquaculture)
                         ? town.Population * 2
                         : 0))) continue;
             UpgradeBuilding(building.Id);

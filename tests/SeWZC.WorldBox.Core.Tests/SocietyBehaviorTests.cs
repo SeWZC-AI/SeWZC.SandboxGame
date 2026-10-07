@@ -85,7 +85,7 @@ internal static class SocietyBehaviorTests
         Check(!engine.TryWorkAtBuilding(worker) && facility.ConstructionProgress == 0,
             "An absent worker remotely constructed the academy.");
         Work(engine, worker, facility);
-        engine.StartResearch(town.Id, ResearchKind.Agriculture);
+        engine.StartResearch(town.Id, Advancement.Agriculture);
         var project = engine.State.Society.Research.Single();
         var initial = project.Progress;
         Place(worker, 40, 32);
@@ -100,21 +100,21 @@ internal static class SocietyBehaviorTests
             Check(engine.TryWorkAtBuilding(worker), "Researcher did not advance the project.");
         }
 
-        Check(project.Progress > 0 && !project.Completed.Contains(ResearchKind.Agriculture),
+        Check(project.Progress > 0 && !project.Completed.Contains(Advancement.Agriculture),
             "Research never accumulated intermediate progress.");
         var resumed = WorldEngine.ImportJson(engine.ExportJson());
         Check(resumed.ExportJson() == engine.ExportJson(),
             "Saving changed construction or in-progress research state.");
-        for (var i = 0; i < 150 && !engine.HasResearch(town.Id, ResearchKind.Agriculture); i++)
+        for (var i = 0; i < 150 && !engine.HasResearch(town.Id, Advancement.Agriculture); i++)
         {
             engine.State.Tick++;
             engine.TryWorkAtBuilding(worker);
         }
 
-        Check(engine.HasResearch(town.Id, ResearchKind.Agriculture),
+        Check(engine.HasResearch(town.Id, Advancement.Agriculture),
             "Completed physical research did not unlock local knowledge.");
         Check(
-            town.PublicKnowledge.Any(f => f.Kind == AgentFactKind.Research && f.Value == (int)ResearchKind.Agriculture),
+            town.PublicKnowledge.Any(f => f.Kind == AgentFactKind.Research && f.Value == Advancement.Agriculture.Id),
             "Research produced no transmissible knowledge.");
         Check(worker.Agent.Memory.Any(f => f.Kind == AgentFactKind.Research),
             "The actual researcher did not learn their result.");
@@ -274,15 +274,15 @@ internal static class SocietyBehaviorTests
         var to = engine.State.Settlements.Last();
         engine.TransferTerritory(to.X, to.Y, from.NationId, 0);
         engine.SetNationResources(from.NationId, 2000, 2000, 2000, 1000, 1000, 1000);
-        engine.GrantReceivedResearch(from.Id, ResearchKind.Electrification);
-        engine.GrantReceivedResearch(to.Id, ResearchKind.Electrification);
+        engine.GrantReceivedResearch(from.Id, Advancement.Electrification);
+        engine.GrantReceivedResearch(to.Id, Advancement.Electrification);
         var originalCost = engine.GetTerrainMoveCost(17, 33);
         var stone = from.Resources.Stone;
         engine.BuildRoad(from.Id, 17, 33, 0);
         Check(engine.GetTerrainMoveCost(17, 33) < originalCost && from.Resources.Stone < stone,
             "Roads did not consume materials and improve physical travel.");
-        engine.GrantReceivedResearch(from.Id, ResearchKind.SignalNetwork);
-        engine.GrantReceivedResearch(to.Id, ResearchKind.SignalNetwork);
+        engine.GrantReceivedResearch(from.Id, Advancement.SignalNetwork);
+        engine.GrantReceivedResearch(to.Id, Advancement.SignalNetwork);
         Check(!engine.CanRelayInformation(from.Id, to.Id, out _),
             "Technology alone enabled a global information broadcast.");
         TestLand.ClaimAllTowns(engine, 9);
@@ -338,9 +338,9 @@ internal static class SocietyBehaviorTests
         engine.Step(1200);
         Check(engine.State.Society.Buildings.Any(b => b.Kind == BuildingKind.Academy && b.IsCompleted),
             "The application's default world still has no completed school after ten simulated years.");
-        Check(engine.State.Society.Research.Any(r => r.Completed.Contains(ResearchKind.Agriculture)),
+        Check(engine.State.Society.Research.Any(r => r.Completed.Contains(Advancement.Agriculture)),
             "The application's default world never completes its first local research project.");
-        Check(engine.State.Society.Research.Any(r => r.Completed.Contains(ResearchKind.Logistics)),
+        Check(engine.State.Society.Research.Any(r => r.Completed.Contains(Advancement.Logistics)),
             "An unaffordable optional project blocked every settlement's basic transport research.");
         var resumed = WorldEngine.ImportJson(engine.ExportJson());
         engine.Step(120);
@@ -411,17 +411,17 @@ internal static class SocietyBehaviorTests
         engine.TickSociety();
         var academy = engine.State.Society.Buildings.Single(b => b.Kind == BuildingKind.Academy);
         Work(engine, engine.State.Residents.First(r => r.Age >= 16 && r.Id != town.RepresentativeId), academy);
-        engine.GrantReceivedResearch(town.Id, ResearchKind.Agriculture);
+        engine.GrantReceivedResearch(town.Id, Advancement.Agriculture);
         foreach (var resident in engine.State.Residents) resident.MagicTalent = 60;
         engine.SetNationResources(town.NationId, 500, 100, 20, 0);
         engine.State.Tick += (60 - (engine.State.Tick + town.Id) % 60) % 60;
         engine.TickSociety();
-        Check(engine.State.Society.Research.Single().ActiveProject == ResearchKind.Logistics,
+        Check(engine.State.Society.Research.Single().ActiveProject == Advancement.Logistics,
             "Lacking ore for optional magic prevented funded transport research from starting.");
-        engine.GrantReceivedResearch(town.Id, ResearchKind.Logistics);
-        engine.GrantReceivedResearch(town.Id, ResearchKind.ArcaneArts);
+        engine.GrantReceivedResearch(town.Id, Advancement.Logistics);
+        engine.GrantReceivedResearch(town.Id, Advancement.ArcaneArts);
         foreach (var r in ResearchRules.All.Where(r => r.Branch == ResearchBranch.Resources))
-            engine.GrantReceivedResearch(town.Id, r.Kind);
+            engine.GrantReceivedResearch(town.Id, r);
         engine.SetNationResources(town.NationId, 500, 100, 15, 0);
         foreach (var person in engine.State.Residents)
             person.Agent.Memory.Add(new AgentFact

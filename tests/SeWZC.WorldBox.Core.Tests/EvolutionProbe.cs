@@ -52,9 +52,9 @@ internal static class EvolutionProbe
                         Nations = e.State.Nations.Count,
                         Towns = e.State.Settlements.Count,
                         Research = e.State.Society.Research.Sum(r => r.Completed.Count),
-                        ResearchByKind = Enum.GetValues<ResearchKind>().ToDictionary(k => k.ToString(),
+                        ResearchByKind = Advancement.All.OrderBy(research => research.Id).ToDictionary(k => k.Key,
                             k => e.State.Society.Research.Count(r => r.Completed.Contains(k))),
-                        ProductionByKind = AdvancementRules.All.ToDictionary(a => a.Facility.ToString(),
+                        ProductionByKind = ProductionRules.All.ToDictionary(a => a.Facility.ToString(),
                             a => e.State.Society.Buildings.Where(b => b.Kind == a.Facility)
                                 .Sum(b => (long)b.ProductionBatches)),
                         Buildings = e.State.Society.Buildings.Count,

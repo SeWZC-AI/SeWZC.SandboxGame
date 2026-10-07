@@ -62,11 +62,11 @@ public abstract class ToolCategory
             new(MapTool.ForBuilding(BuildingKind.Dock), "码头", "#91C7B1"), new(MapTool.Road, "道路", "#B0A28B"),
             new(MapTool.Rail, "铁路", "#ADC1D3"),
         }.Concat(Enum.GetValues<BuildingKind>()
-            .Where(k => k is not (BuildingKind.TownCenter or BuildingKind.Farm or BuildingKind.Workshop
-                or BuildingKind.Academy or BuildingKind.Waystation or BuildingKind.Bridge or BuildingKind.MountainPass
-                or BuildingKind.Dock)).Select(k => new MapToolChoice(MapTool.ForBuilding(k),
+            .Where(k => k is not (BuildingKind.Farm or BuildingKind.Workshop or BuildingKind.Academy
+                or BuildingKind.Waystation or BuildingKind.MountainPass or BuildingKind.Bridge or BuildingKind.Dock
+                or BuildingKind.TownCenter)).Select(k => new MapToolChoice(MapTool.ForBuilding(k),
                 WorldEngine.BuildingName(k),
-                AdvancementRules.For(k)?.Magic == true ? "#B598D1" : "#91B0C8"))).ToArray();
+                ProductionRules.For(k)?.Research.Magic == true ? "#B598D1" : "#91B0C8"))).ToArray();
     }
 
     private sealed class TerrainCategory : ToolCategory

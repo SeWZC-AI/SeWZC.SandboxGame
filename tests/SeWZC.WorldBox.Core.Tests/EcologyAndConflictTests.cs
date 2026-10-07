@@ -231,7 +231,7 @@ internal static class EcologyAndConflictTests
             "Unknown research reveals oil by default");
         Require(engine.ExportJson() == before && !tile.DepositDiscovered,
             "Player inspection taught residents or changed the world");
-        engine.GrantReceivedResearch(engine.State.Settlements[0].Id, ResearchKind.Electrification);
+        engine.GrantReceivedResearch(engine.State.Settlements[0].Id, Advancement.Electrification);
         Require(engine.IsDepositVisible(tile, ResourceVisibility.Researched),
             "Latest researched stage did not reveal oil");
     }
@@ -393,9 +393,9 @@ internal static class EcologyAndConflictTests
         var town = engine.State.Settlements.Single();
         var person = engine.State.Residents.Single();
         person.Age = 25;
-        foreach (var knowledge in new[] { ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Industry })
+        foreach (var knowledge in new[] { Advancement.Agriculture, Advancement.Logistics, Advancement.Industry })
             engine.GrantReceivedResearch(town.Id, knowledge);
-        foreach (var kind in AdvancementRules.Resources) town.Resources.Set(kind, 100);
+        foreach (var kind in ResourceStock.Kinds) town.Resources.Set(kind, 100);
         town.Resources.Alloy = 0; // The assigned foundry has an actual unmet output demand.
         var factory = engine.GrantFacility(town.Id, BuildingKind.Foundry, 20, 16);
         person.X = person.FromX = 18;
@@ -407,8 +407,8 @@ internal static class EcologyAndConflictTests
         Require(engine.GetResidentActionSummary(person.Id).Contains("仓库取料"),
             "Factory work described the wrong current destination");
         Require(engine.ExportJson() == before, "Action inspection changed the world");
-        var recipe = AdvancementRules.For(BuildingKind.Foundry)!;
-        foreach (var kind in AdvancementRules.Resources) person.Inventory.Set(kind, recipe.Input.Get(kind));
+        var recipe = ProductionRules.For(BuildingKind.Foundry)!;
+        foreach (var kind in ResourceStock.Kinds) person.Inventory.Set(kind, recipe.Input.Get(kind));
         Require(engine.GetResidentActionSummary(person.Id).Contains("携带原料前往"),
             "Loaded worker was still described as fetching inputs");
         engine.SetBuildingEnabled(factory, false);

@@ -27,14 +27,14 @@ public sealed partial class WorldMapControl
     {
         return kind switch
         {
-            BuildingKind.SignalTower or BuildingKind.Watchtower or BuildingKind.StormSpire or BuildingKind.WardTower
-                or BuildingKind.Waygate => 16,
-            BuildingKind.TownCenter or BuildingKind.PowerPlant => 13,
-            BuildingKind.Academy or BuildingKind.Foundry or BuildingKind.AetherForge => 12,
             BuildingKind.Farm or BuildingKind.AutomatedFarm => 6.4,
+            BuildingKind.Academy or BuildingKind.Foundry or BuildingKind.AetherForge => 12,
+            BuildingKind.SignalTower or BuildingKind.Watchtower or BuildingKind.WardTower or BuildingKind.StormSpire
+                or BuildingKind.Waygate => 16,
+            BuildingKind.PowerPlant or BuildingKind.TownCenter => 13,
+            BuildingKind.MountainPass => 4,
             BuildingKind.Bridge => 8,
             BuildingKind.Dock => 6,
-            BuildingKind.MountainPass => 4,
             _ => 9.6,
         };
     }

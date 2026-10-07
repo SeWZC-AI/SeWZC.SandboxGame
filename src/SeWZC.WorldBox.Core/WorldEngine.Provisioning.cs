@@ -392,7 +392,7 @@ public sealed partial class WorldEngine
         if (person.Profession != Profession.Fisher || person.Age < 14
                                                    || (person.TravelMode != TravelMode.Boat &&
                                                        !(Distance(person.X, person.Y, home.X, home.Y) <= 1
-                                                         && HasResearch(home.Id, ResearchKind.Logistics) &&
+                                                         && HasResearch(home.Id, Advancement.Logistics) &&
                                                          home.Resources.Boats >= 1))) return;
         var reachable = 0;
         var best = -1;

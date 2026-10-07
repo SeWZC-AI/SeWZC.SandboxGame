@@ -14,38 +14,38 @@ public sealed partial class WorldEngine
         else facility = null;
         return goal.Kind switch
         {
+            AgentGoalKind.Eat => ResidentTaskIcon.Eat,
+            AgentGoalKind.Gather => ResidentTaskIcon.Gather,
+            AgentGoalKind.Work when facility is { IsUpgrading: true } => ResidentTaskIcon.Upgrade,
+            AgentGoalKind.Rest => ResidentTaskIcon.Rest,
+            AgentGoalKind.Flee => ResidentTaskIcon.Flee,
+            AgentGoalKind.Socialize => ResidentTaskIcon.Talk,
+            AgentGoalKind.DeliverMessage or AgentGoalKind.Petition => ResidentTaskIcon.Message,
+            AgentGoalKind.Trade => ResidentTaskIcon.Trade,
+            AgentGoalKind.Study => ResidentTaskIcon.Research,
+            AgentGoalKind.TrainMagic => ResidentTaskIcon.Magic,
+            AgentGoalKind.March => ResidentTaskIcon.March,
+            AgentGoalKind.ReturnHome => ResidentTaskIcon.Deliver,
             AgentGoalKind.ClaimLand => ResidentTaskIcon.Claim,
-            AgentGoalKind.ExtinguishFire => ResidentTaskIcon.Extinguish,
             AgentGoalKind.FetchWater => ResidentTaskIcon.Water,
             AgentGoalKind.Hunt => ResidentTaskIcon.Hunt,
             AgentGoalKind.Fish => ResidentTaskIcon.Fish,
-            AgentGoalKind.Gather => ResidentTaskIcon.Gather,
-            AgentGoalKind.Study => ResidentTaskIcon.Research,
-            AgentGoalKind.TrainMagic => ResidentTaskIcon.Magic,
-            AgentGoalKind.DeliverMessage or AgentGoalKind.Petition => ResidentTaskIcon.Message,
-            AgentGoalKind.Trade => ResidentTaskIcon.Trade,
-            AgentGoalKind.ReturnHome => ResidentTaskIcon.Deliver,
-            AgentGoalKind.Eat => ResidentTaskIcon.Eat,
-            AgentGoalKind.Rest => ResidentTaskIcon.Rest,
-            AgentGoalKind.Socialize => ResidentTaskIcon.Talk,
-            AgentGoalKind.Flee => ResidentTaskIcon.Flee,
-            AgentGoalKind.March => ResidentTaskIcon.March,
-            AgentGoalKind.Work when facility is { IsUpgrading: true } => ResidentTaskIcon.Upgrade,
+            AgentGoalKind.ExtinguishFire => ResidentTaskIcon.Extinguish,
             AgentGoalKind.Work when facility is { IsCompleted: false } => ResidentTaskIcon.Build,
-            AgentGoalKind.Work when facility is not null && AdvancementRules.For(facility.Kind) is { } recipe
+            AgentGoalKind.Work when facility is not null && ProductionRules.For(facility.Kind) is { } recipe
                 => MissingResources(person.Inventory, recipe.Input) is not null
                     ? ResidentTaskIcon.Pickup
                     : facility.Kind switch
                     {
                         BuildingKind.Foundry => ResidentTaskIcon.Smelt,
                         BuildingKind.PowerPlant => ResidentTaskIcon.Power,
-                        BuildingKind.Fabricator => ResidentTaskIcon.Craft,
-                        BuildingKind.Shipyard => ResidentTaskIcon.Ship,
-                        BuildingKind.Airfield => ResidentTaskIcon.Plane,
                         BuildingKind.AutomatedFarm => ResidentTaskIcon.Farm,
+                        BuildingKind.Fabricator => ResidentTaskIcon.Craft,
                         BuildingKind.Crystallizer => ResidentTaskIcon.Crystal,
                         BuildingKind.RunicGarden => ResidentTaskIcon.Runic,
                         BuildingKind.AetherForge => ResidentTaskIcon.Aether,
+                        BuildingKind.Airfield => ResidentTaskIcon.Plane,
+                        BuildingKind.Shipyard => ResidentTaskIcon.Ship,
                         _ => ResidentTaskIcon.Craft,
                     },
             AgentGoalKind.Work when facility?.Kind == BuildingKind.Well => ResidentTaskIcon.Water,
@@ -80,7 +80,6 @@ public sealed partial class WorldEngine
             ResidentTaskIcon.Message => "递送消息",
             ResidentTaskIcon.Trade => "贸易",
             ResidentTaskIcon.Claim => "占领地块",
-            ResidentTaskIcon.Extinguish => "用水扑救火灾",
             ResidentTaskIcon.Water => "打水或寻水",
             ResidentTaskIcon.Hunt => "狩猎",
             ResidentTaskIcon.Fish => "捕鱼",
@@ -97,6 +96,7 @@ public sealed partial class WorldEngine
             ResidentTaskIcon.Crystal => "凝炼魔晶",
             ResidentTaskIcon.Runic => "符文种植",
             ResidentTaskIcon.Aether => "以太转化",
+            ResidentTaskIcon.Extinguish => "用水扑救火灾",
             _ => "勘察或迁居",
         };
     }

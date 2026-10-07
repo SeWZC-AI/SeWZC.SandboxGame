@@ -12,20 +12,20 @@ public static class RaceTerrainRules
             or TerrainType.Floodplain;
         var suitable = race switch
         {
-            RaceKind.Elf => common || terrain is TerrainType.Forest or TerrainType.Rainforest or TerrainType.Wetland,
-            RaceKind.Dwarf => common || terrain is TerrainType.Hills or TerrainType.Mountain or TerrainType.AlpineMeadow
-                or TerrainType.Tundra or TerrainType.Scrub,
-            RaceKind.Orc => common || terrain is TerrainType.Hills or TerrainType.Savanna or TerrainType.DryFertile
-                or TerrainType.Scrub or TerrainType.Forest,
-            _ => common || terrain is TerrainType.Forest or TerrainType.Hills or TerrainType.Savanna
-                or TerrainType.DryFertile,
+            RaceKind.Elf => common || terrain is TerrainType.Forest or TerrainType.Wetland or TerrainType.Rainforest,
+            RaceKind.Dwarf => common || terrain is TerrainType.Mountain or TerrainType.Hills or TerrainType.Tundra
+                or TerrainType.Scrub or TerrainType.AlpineMeadow,
+            RaceKind.Orc => common || terrain is TerrainType.Forest or TerrainType.Hills or TerrainType.DryFertile
+                or TerrainType.Savanna or TerrainType.Scrub,
+            _ => common || terrain is TerrainType.Forest or TerrainType.Hills or TerrainType.DryFertile
+                or TerrainType.Savanna,
         };
         var favored = race switch
         {
-            RaceKind.Elf => terrain is TerrainType.Forest or TerrainType.Rainforest or TerrainType.Woodland
-                or TerrainType.Wetland,
-            RaceKind.Dwarf => terrain is TerrainType.Hills or TerrainType.Mountain or TerrainType.AlpineMeadow,
-            RaceKind.Orc => terrain is TerrainType.Savanna or TerrainType.DryFertile or TerrainType.Scrub,
+            RaceKind.Elf => terrain is TerrainType.Forest or TerrainType.Wetland or TerrainType.Woodland
+                or TerrainType.Rainforest,
+            RaceKind.Dwarf => terrain is TerrainType.Mountain or TerrainType.Hills or TerrainType.AlpineMeadow,
+            RaceKind.Orc => terrain is TerrainType.DryFertile or TerrainType.Savanna or TerrainType.Scrub,
             _ => terrain is TerrainType.Grass or TerrainType.Meadow or TerrainType.Floodplain,
         };
         return new TerrainAdaptation(suitable, favored ? .8 : suitable ? 1 : 1.25, favored ? 1.15 : suitable ? 1 : .75);

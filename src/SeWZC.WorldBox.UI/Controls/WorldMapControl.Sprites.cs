@@ -115,29 +115,30 @@ public sealed partial class WorldMapControl
         var skin = race switch
         {
             RaceKind.Elf => 0xD6E4C2FFu,
-            RaceKind.Orc => 0x91AD63FFu,
             RaceKind.Dwarf => 0xD9B18AFFu,
+            RaceKind.Orc => 0x91AD63FFu,
             _ => 0xF0D3A5FFu,
         };
         var hair = race switch
         {
             RaceKind.Elf => 0xE2DDAAFFu,
-            RaceKind.Orc => 0x343B30FFu,
             RaceKind.Dwarf => 0xB67540FFu,
+            RaceKind.Orc => 0x343B30FFu,
             _ => 0x624330FFu,
         };
         var shirt = job switch
         {
-            Profession.Fisher => 0x679FAEFFu,
             Profession.Farmer => 0x87A55EFFu,
             Profession.Lumberjack => 0xB16842FFu,
             Profession.Miner => 0x687B91FFu,
-            Profession.Builder => 0xD0A552FFu,
-            Profession.Mage => 0x8E6CADFFu,
             Profession.Soldier => 0x8397A5FFu,
-            Profession.Scholar => 0x527AABFFu,
-            Profession.Messenger => 0xB56666FFu,
+            Profession.Builder => 0xD0A552FFu,
             Profession.Trader => 0x7F7656FFu,
+            Profession.Messenger => 0xB56666FFu,
+            Profession.Representative => 0xE0C078FFu,
+            Profession.Scholar => 0x527AABFFu,
+            Profession.Mage => 0x8E6CADFFu,
+            Profession.Fisher => 0x679FAEFFu,
             Profession.Engineer => 0xE9B94DFFu,
             Profession.Physician => 0xE7ECEAFFu,
             Profession.Firefighter => 0xD25848FFu,
@@ -146,12 +147,11 @@ public sealed partial class WorldMapControl
             Profession.Battlemage => 0x7655BAFFu,
             Profession.Surveyor => 0x63B4BAFFu,
             Profession.Gardener => 0x67A85AFFu,
-            Profession.Representative => 0xE0C078FFu,
             _ => 0x78928CFFu,
         };
         const uint wood = 0x63472FFF, metal = 0xC6D4D4FF, paper = 0xFFF0C8FF;
         var headY = race == RaceKind.Dwarf ? 13 : race == RaceKind.Elf ? 6 : 9;
-        var width = race is RaceKind.Orc or RaceKind.Dwarf ? 12 : 9;
+        var width = race is RaceKind.Dwarf or RaceKind.Orc ? 12 : 9;
         var left = 16 - width / 2;
         if (race == RaceKind.Elf) c.Rect(left - 1, 18, width + 2, 16, 0x437B66FF);
         c.Rect(left, 19, width, 12, shirt);
@@ -194,6 +194,12 @@ public sealed partial class WorldMapControl
         var swing = pose == 3 ? -4 : pose == 4 ? 2 : 0;
         switch (job)
         {
+            case Profession.Farmer:
+                c.Rect(left - 3, headY - 2, width + 6, 3, 0xD6BD78FF);
+                c.Rect(left + 1, headY - 5, width - 2, 3, 0xB8A15FFF);
+                c.Line(25, 33, 29 + swing / 2, 20 + swing, wood);
+                c.Rect(23 + swing / 2, 19 + swing, 7, 2, metal);
+                break;
             case Profession.Lumberjack:
                 c.Line(23, 31, 29 + swing / 2, 16 + swing, wood, 2);
                 c.Rect(25 + swing / 2, 14 + swing, 6, 5, metal);
@@ -204,6 +210,52 @@ public sealed partial class WorldMapControl
                 c.Line(22 + swing / 2, 14 + swing, 30, 17 + swing, metal, 2);
                 c.Rect(left - 1, headY - 2, width + 2, 3, 0xD1AE51FF);
                 c.Rect(15, headY, 3, 2, paper);
+                break;
+            case Profession.Soldier:
+                c.Rect(left - 1, headY - 3, width + 2, 5, metal);
+                c.Rect(5, 22, 6, 10, 0x526D81FF);
+                c.Rect(7, 23, 2, 8, metal);
+                c.Rect(27, 17, 2, 15, metal);
+                c.Rect(24, 28, 7, 2, wood);
+                break;
+            case Profession.Builder:
+                c.Rect(left - 1, headY - 3, width + 2, 4, 0xE5B64FFF);
+                c.Line(25, 29, 27 + swing, 20 + swing, wood, 2);
+                c.Rect(24 + swing, 18 + swing, 6, 3, metal);
+                break;
+            case Profession.Trader:
+                c.Rect(4, 20, 7, 12, 0xA88551FF);
+                c.Rect(6, 18, 3, 2, wood);
+                c.Line(4, 26, 10, 26, wood);
+                c.Rect(24, 28, 5, 6, 0xD9B55DFF);
+                break;
+            case Profession.Messenger:
+                c.Line(left, 21, left + width, 29, wood);
+                c.Rect(23, 25, 7, 6, paper);
+                c.Line(23, 25, 26, 28, 0xB55B55FF);
+                c.Line(26, 28, 29, 25, 0xB55B55FF);
+                break;
+            case Profession.Representative:
+                c.Line(left, 21, left + width - 1, 29, paper, 2);
+                c.Rect(24, 23, 6, 10, paper);
+                c.Line(25, 25, 28, 25, wood);
+                break;
+            case Profession.Scholar:
+                c.Rect(left + 1, headY + 4, width - 2, 3, wood);
+                c.Rect(left + 2, headY + 5, 2, 1, paper);
+                c.Rect(21, 23, 9, 9, 0x355F8AFF);
+                c.Rect(23, 24, 6, 7, paper);
+                c.Line(26, 24, 26, 30, wood);
+                break;
+            case Profession.Mage:
+                for (var row = 0; row < 9; row++) c.Rect(15 - row / 2, headY - 9 + row, 2 + row, 1, 0x8162A1FF);
+                c.Line(28, 34, 28, 13, wood, 2);
+                c.Rect(26, 10, 5, 5, 0xC7ABE6FF);
+                c.Rect(28, 10, 1, 2, paper);
+                break;
+            case Profession.Fisher:
+                c.Line(12, 15, 16, 2, 0xC6AB7AFF);
+                c.Line(16, 2, 19, 12, 0xDEE9E9FF);
                 break;
             case Profession.Engineer:
                 c.Rect(left - 1, headY - 3, width + 2, 4, 0xE5B64FFF);
@@ -228,6 +280,17 @@ public sealed partial class WorldMapControl
                 c.Line(26, 16, 26, 33, paper);
                 c.Line(22, 24, 31, 24, metal);
                 break;
+            case Profession.Archivist:
+                c.Rect(21, 23, 9, 9, 0xA17C50FF);
+                c.Rect(23, 24, 6, 7, paper);
+                c.Rect(24, 27, 5, 1, wood);
+                break;
+            case Profession.Battlemage:
+                c.Rect(left - 1, headY - 3, width + 2, 4, metal);
+                c.Rect(5, 23, 6, 9, 0x7854AEFF);
+                c.Line(28, 15, 28, 34, wood, 2);
+                c.Rect(26, 11, 5, 6, 0x9EE2E7FF);
+                break;
             case Profession.Surveyor:
                 c.Line(23, 24, 30, 19, metal, 3);
                 c.Rect(29, 17, 2, 4, paper);
@@ -238,69 +301,6 @@ public sealed partial class WorldMapControl
                 c.Line(27, 20, 27, 32, wood);
                 c.Rect(24, 18, 6, 6, 0x57A25CFF);
                 c.Rect(24, 26, 6, 7, metal);
-                break;
-            case Profession.Builder:
-                c.Rect(left - 1, headY - 3, width + 2, 4, 0xE5B64FFF);
-                c.Line(25, 29, 27 + swing, 20 + swing, wood, 2);
-                c.Rect(24 + swing, 18 + swing, 6, 3, metal);
-                break;
-            case Profession.Fisher:
-                c.Line(12, 15, 16, 2, 0xC6AB7AFF);
-                c.Line(16, 2, 19, 12, 0xDEE9E9FF);
-                break;
-            case Profession.Farmer:
-                c.Rect(left - 3, headY - 2, width + 6, 3, 0xD6BD78FF);
-                c.Rect(left + 1, headY - 5, width - 2, 3, 0xB8A15FFF);
-                c.Line(25, 33, 29 + swing / 2, 20 + swing, wood);
-                c.Rect(23 + swing / 2, 19 + swing, 7, 2, metal);
-                break;
-            case Profession.Soldier:
-                c.Rect(left - 1, headY - 3, width + 2, 5, metal);
-                c.Rect(5, 22, 6, 10, 0x526D81FF);
-                c.Rect(7, 23, 2, 8, metal);
-                c.Rect(27, 17, 2, 15, metal);
-                c.Rect(24, 28, 7, 2, wood);
-                break;
-            case Profession.Battlemage:
-                c.Rect(left - 1, headY - 3, width + 2, 4, metal);
-                c.Rect(5, 23, 6, 9, 0x7854AEFF);
-                c.Line(28, 15, 28, 34, wood, 2);
-                c.Rect(26, 11, 5, 6, 0x9EE2E7FF);
-                break;
-            case Profession.Mage:
-                for (var row = 0; row < 9; row++) c.Rect(15 - row / 2, headY - 9 + row, 2 + row, 1, 0x8162A1FF);
-                c.Line(28, 34, 28, 13, wood, 2);
-                c.Rect(26, 10, 5, 5, 0xC7ABE6FF);
-                c.Rect(28, 10, 1, 2, paper);
-                break;
-            case Profession.Archivist:
-                c.Rect(21, 23, 9, 9, 0xA17C50FF);
-                c.Rect(23, 24, 6, 7, paper);
-                c.Rect(24, 27, 5, 1, wood);
-                break;
-            case Profession.Scholar:
-                c.Rect(left + 1, headY + 4, width - 2, 3, wood);
-                c.Rect(left + 2, headY + 5, 2, 1, paper);
-                c.Rect(21, 23, 9, 9, 0x355F8AFF);
-                c.Rect(23, 24, 6, 7, paper);
-                c.Line(26, 24, 26, 30, wood);
-                break;
-            case Profession.Representative:
-                c.Line(left, 21, left + width - 1, 29, paper, 2);
-                c.Rect(24, 23, 6, 10, paper);
-                c.Line(25, 25, 28, 25, wood);
-                break;
-            case Profession.Messenger:
-                c.Line(left, 21, left + width, 29, wood);
-                c.Rect(23, 25, 7, 6, paper);
-                c.Line(23, 25, 26, 28, 0xB55B55FF);
-                c.Line(26, 28, 29, 25, 0xB55B55FF);
-                break;
-            case Profession.Trader:
-                c.Rect(4, 20, 7, 12, 0xA88551FF);
-                c.Rect(6, 18, 3, 2, wood);
-                c.Line(4, 26, 10, 26, wood);
-                c.Rect(24, 28, 5, 6, 0xD9B55DFF);
                 break;
         }
 
@@ -374,6 +374,70 @@ public sealed partial class WorldMapControl
                 c.Rect(9, 5, 6, 15, green);
                 c.Rect(5, 9, 15, 6, green);
                 break;
+            case ResidentTaskIcon.Pickup:
+            case ResidentTaskIcon.Deliver:
+            case ResidentTaskIcon.Trade:
+                c.Rect(4, 8, 12, 11, gold);
+                c.Line(10, 8, 10, 18, brown, 2);
+                c.Line(4, 11, 15, 11, brown);
+                var right = kind == ResidentTaskIcon.Deliver ? 16 : 20;
+                var left = kind == ResidentTaskIcon.Deliver ? 20 : 16;
+                c.Line(left, 5, right, 5, blue, 2);
+                c.Line(right, 5, right == 20 ? 17 : 19, 2, blue, 2);
+                break;
+            case ResidentTaskIcon.Message:
+            case ResidentTaskIcon.Talk:
+                c.Rect(4, 6, 16, 11, light);
+                c.Line(4, 6, 12, 12, blue, 2);
+                c.Line(12, 12, 19, 6, blue, 2);
+                if (kind == ResidentTaskIcon.Talk) c.Rect(6, 17, 3, 4, light);
+                break;
+            case ResidentTaskIcon.Claim:
+                c.Line(6, 4, 6, 21, brown, 2);
+                c.Rect(8, 4, 12, 8, green);
+                c.Line(10, 8, 12, 10, light, 2);
+                c.Line(12, 10, 17, 6, light, 2);
+                break;
+            case ResidentTaskIcon.Water:
+                for (var i = 0; i < 6; i++) c.Rect(12 - i, 4 + i * 2, i * 2 + 1, 3, blue);
+                c.Rect(6, 16, 13, 3, blue);
+                c.Rect(8, 19, 9, 2, blue);
+                c.Rect(9, 13, 2, 4, light);
+                break;
+            case ResidentTaskIcon.Hunt:
+                c.Line(6, 4, 11, 9, brown, 2);
+                c.Line(11, 9, 11, 15, brown, 2);
+                c.Line(11, 15, 6, 20, brown, 2);
+                c.Line(6, 4, 6, 20, light);
+                c.Line(4, 12, 20, 12, gold, 2);
+                c.Line(16, 8, 20, 12, gold, 2);
+                c.Line(20, 12, 16, 16, gold, 2);
+                break;
+            case ResidentTaskIcon.Fish:
+                c.Rect(6, 9, 11, 7, blue);
+                c.Line(5, 12, 2, 9, blue, 2);
+                c.Line(2, 9, 2, 16, blue, 2);
+                c.Line(2, 16, 5, 12, blue, 2);
+                c.Rect(14, 10, 2, 2, light);
+                c.Line(17, 4, 20, 4, brown, 2);
+                c.Line(20, 4, 20, 19, light);
+                c.Line(20, 19, 17, 19, light);
+                break;
+            case ResidentTaskIcon.Rest:
+                c.Rect(5, 4, 8, 15, blue);
+                c.Rect(10, 3, 8, 12, 0x122938FF);
+                c.Rect(17, 5, 3, 3, light);
+                break;
+            case ResidentTaskIcon.Eat:
+                c.Rect(4, 9, 16, 9, gold);
+                c.Line(7, 8, 16, 8, light, 2);
+                c.Line(7, 12, 15, 12, light, 2);
+                break;
+            case ResidentTaskIcon.Flee:
+            case ResidentTaskIcon.March:
+                c.Line(6, 18, 16, 8, kind == ResidentTaskIcon.Flee ? gold : metal, 3);
+                c.Rect(14, 5, 5, 6, metal);
+                break;
             case ResidentTaskIcon.Smelt:
                 c.Rect(4, 6, 16, 15, metal);
                 c.Rect(7, 11, 10, 8, brown);
@@ -434,70 +498,6 @@ public sealed partial class WorldMapControl
                 c.Line(18, 5, 20, 9, gold, 2);
                 c.Rect(19, 10, 3, 3, gold);
                 break;
-            case ResidentTaskIcon.Water:
-                for (var i = 0; i < 6; i++) c.Rect(12 - i, 4 + i * 2, i * 2 + 1, 3, blue);
-                c.Rect(6, 16, 13, 3, blue);
-                c.Rect(8, 19, 9, 2, blue);
-                c.Rect(9, 13, 2, 4, light);
-                break;
-            case ResidentTaskIcon.Claim:
-                c.Line(6, 4, 6, 21, brown, 2);
-                c.Rect(8, 4, 12, 8, green);
-                c.Line(10, 8, 12, 10, light, 2);
-                c.Line(12, 10, 17, 6, light, 2);
-                break;
-            case ResidentTaskIcon.Hunt:
-                c.Line(6, 4, 11, 9, brown, 2);
-                c.Line(11, 9, 11, 15, brown, 2);
-                c.Line(11, 15, 6, 20, brown, 2);
-                c.Line(6, 4, 6, 20, light);
-                c.Line(4, 12, 20, 12, gold, 2);
-                c.Line(16, 8, 20, 12, gold, 2);
-                c.Line(20, 12, 16, 16, gold, 2);
-                break;
-            case ResidentTaskIcon.Fish:
-                c.Rect(6, 9, 11, 7, blue);
-                c.Line(5, 12, 2, 9, blue, 2);
-                c.Line(2, 9, 2, 16, blue, 2);
-                c.Line(2, 16, 5, 12, blue, 2);
-                c.Rect(14, 10, 2, 2, light);
-                c.Line(17, 4, 20, 4, brown, 2);
-                c.Line(20, 4, 20, 19, light);
-                c.Line(20, 19, 17, 19, light);
-                break;
-            case ResidentTaskIcon.Message:
-            case ResidentTaskIcon.Talk:
-                c.Rect(4, 6, 16, 11, light);
-                c.Line(4, 6, 12, 12, blue, 2);
-                c.Line(12, 12, 19, 6, blue, 2);
-                if (kind == ResidentTaskIcon.Talk) c.Rect(6, 17, 3, 4, light);
-                break;
-            case ResidentTaskIcon.Pickup:
-            case ResidentTaskIcon.Deliver:
-            case ResidentTaskIcon.Trade:
-                c.Rect(4, 8, 12, 11, gold);
-                c.Line(10, 8, 10, 18, brown, 2);
-                c.Line(4, 11, 15, 11, brown);
-                var right = kind == ResidentTaskIcon.Deliver ? 16 : 20;
-                var left = kind == ResidentTaskIcon.Deliver ? 20 : 16;
-                c.Line(left, 5, right, 5, blue, 2);
-                c.Line(right, 5, right == 20 ? 17 : 19, 2, blue, 2);
-                break;
-            case ResidentTaskIcon.Rest:
-                c.Rect(5, 4, 8, 15, blue);
-                c.Rect(10, 3, 8, 12, 0x122938FF);
-                c.Rect(17, 5, 3, 3, light);
-                break;
-            case ResidentTaskIcon.Eat:
-                c.Rect(4, 9, 16, 9, gold);
-                c.Line(7, 8, 16, 8, light, 2);
-                c.Line(7, 12, 15, 12, light, 2);
-                break;
-            case ResidentTaskIcon.Flee:
-            case ResidentTaskIcon.March:
-                c.Line(6, 18, 16, 8, kind == ResidentTaskIcon.Flee ? gold : metal, 3);
-                c.Rect(14, 5, 5, 6, metal);
-                break;
             default:
                 c.Line(4, 12, 20, 12, blue, 3);
                 c.Line(13, 5, 20, 12, blue, 3);
@@ -526,16 +526,16 @@ public sealed partial class WorldMapControl
         const uint timber = 0x6C4C31FF, metal = 0xB6C6C5FF, paper = 0xFFF0C8FF, green = 0x709957FF;
         var wall = race switch
         {
+            RaceKind.Elf => 0xC5D3A4FFu,
             RaceKind.Dwarf => 0x929E9DFFu,
             RaceKind.Orc => 0x9A8060FFu,
-            RaceKind.Elf => 0xC5D3A4FFu,
             _ => 0xDEC9A0FFu,
         };
         var roof = race switch
         {
+            RaceKind.Elf => 0x4E865EFFu,
             RaceKind.Dwarf => 0x617780FFu,
             RaceKind.Orc => 0x675948FFu,
-            RaceKind.Elf => 0x4E865EFFu,
             _ => 0xB8754BFFu,
         };
 
@@ -583,24 +583,164 @@ public sealed partial class WorldMapControl
 
         switch (kind)
         {
-            case BuildingKind.Pasture:
-                c.Rect(3, 19, 34, 24, green);
-                c.Rect(3, 19, 34, 2, timber);
-                c.Rect(3, 41, 34, 2, timber);
-                for (var x = 3; x <= 35; x += 8) c.Rect(x, 17, 2, 28, timber);
-                c.Rect(10, 28, 12, 7, paper);
-                c.Rect(21, 26, 6, 6, wall);
-                c.Rect(11, 34, 2, 5, paper);
-                c.Rect(20, 34, 2, 5, paper);
+            case BuildingKind.Farm:
+            case BuildingKind.AutomatedFarm:
+            case BuildingKind.RunicGarden:
+            case BuildingKind.HerbGarden:
+            case BuildingKind.HuntingCamp:
+                c.Rect(3, 24, 34, 20, timber);
+                c.Rect(5, 25, 30, 18, 0x5B7746FF);
+                for (var row = 0; row < 3; row++)
+                {
+                    c.Rect(6, 27 + row * 5, 28, 2, green);
+                    for (var col = 0; col < 5; col++)
+                        c.Line(8 + col * 5, 29 + row * 5, 9 + col * 5, 26 + row * 5, 0xD5BB69FF);
+                }
+
+                if (kind == BuildingKind.AutomatedFarm)
+                {
+                    c.Rect(5, 19, 30, 3, metal);
+                    c.Rect(7, 19, 2, 23, metal);
+                    c.Rect(31, 19, 2, 23, metal);
+                }
+
+                if (kind == BuildingKind.RunicGarden)
+                {
+                    c.Rect(17, 12, 6, 10, 0xAB83C4FF);
+                    c.Rect(19, 13, 2, 6, paper);
+                }
+
                 break;
-            case BuildingKind.Aquaculture:
-                c.Rect(3, 22, 34, 21, metal);
-                c.Rect(6, 25, 13, 15, 0x548DB5FF);
-                c.Rect(22, 25, 12, 15, 0x548DB5FF);
-                c.Rect(10, 31, 6, 3, paper);
-                c.Rect(25, 32, 6, 3, paper);
-                c.Rect(14, 30, 2, 5, paper);
-                c.Rect(29, 31, 2, 5, paper);
+            case BuildingKind.SignalTower:
+                c.Rect(12, 17, 16, 27, metal);
+                c.Rect(8, 16, 24, 4, roof);
+                c.Rect(18, 4, 3, 13, timber);
+                c.Line(10, 5, 28, 5, paper);
+                c.Line(13, 9, 25, 9, paper);
+                c.Rect(18, 35, 4, 9, timber);
+                break;
+            case BuildingKind.ArcaneSanctum:
+            case BuildingKind.Crystallizer:
+            case BuildingKind.AetherForge:
+            case BuildingKind.SacredGrove:
+            case BuildingKind.WarDrum:
+                c.Rect(5, 37, 30, 7, metal);
+                c.Rect(10, 21, 20, 16, wall);
+                for (var y = 7; y < 25; y++)
+                {
+                    var half = y < 16 ? (y - 5) / 2 : (27 - y) / 2;
+                    c.Rect(20 - half, y, half * 2, 1, 0xA67DC3FF);
+                }
+
+                c.Line(20, 9, 20, 23, paper);
+                if (kind != BuildingKind.ArcaneSanctum)
+                {
+                    c.Rect(5, 21, 4, 16, roof);
+                    c.Rect(31, 21, 4, 16, roof);
+                }
+
+                if (kind == BuildingKind.AetherForge)
+                {
+                    c.Rect(3, 10, 3, 27, metal);
+                    c.Rect(34, 10, 3, 27, metal);
+                }
+
+                break;
+            case BuildingKind.Foundry:
+            case BuildingKind.PowerPlant:
+            case BuildingKind.Fabricator:
+            case BuildingKind.DwarvenForge:
+                House();
+                c.Rect(28, 6, 6, 24, metal);
+                c.Rect(27, 4, 8, 3, timber);
+                c.Rect(9, 31, 9, 10, kind == BuildingKind.Foundry ? 0xE9A04CFFu : 0x6594ACFFu);
+                if (kind == BuildingKind.PowerPlant)
+                {
+                    c.Line(18, 24, 14, 30, paper, 2);
+                    c.Line(14, 30, 21, 30, paper, 2);
+                    c.Line(21, 30, 17, 36, paper, 2);
+                }
+
+                if (kind == BuildingKind.Fabricator)
+                {
+                    c.Rect(22, 30, 9, 9, metal);
+                    c.Rect(24, 32, 5, 5, timber);
+                }
+
+                break;
+            case BuildingKind.MountainPass:
+                c.Rect(3, 29, 34, 12, metal);
+                c.Line(3, 31, 36, 31, paper);
+                c.Line(3, 39, 36, 39, paper);
+                break;
+            case BuildingKind.Bridge:
+                c.Rect(4, 27, 32, 15, timber);
+                for (var y = 27; y < 42; y += 3) c.Line(4, y, 35, y, wall);
+                c.Rect(4, 25, 32, 2, metal);
+                c.Rect(4, 42, 32, 2, metal);
+                break;
+            case BuildingKind.Dock:
+                c.Rect(3, 34, 34, 7, timber);
+                c.Rect(7, 32, 3, 13, metal);
+                c.Rect(29, 32, 3, 13, metal);
+                c.Line(19, 18, 19, 34, timber, 2);
+                c.Rect(21, 20, 10, 7, paper);
+                break;
+            case BuildingKind.Airfield:
+                c.Rect(3, 26, 34, 18, metal);
+                c.Line(6, 36, 33, 36, paper, 2);
+                c.Rect(5, 17, 11, 11, roof);
+                c.Line(24, 26, 24, 39, paper, 2);
+                c.Line(18, 30, 30, 30, paper, 2);
+                break;
+            case BuildingKind.Shipyard:
+                c.Rect(3, 34, 34, 9, timber);
+                c.Rect(5, 9, 3, 29, metal);
+                c.Rect(5, 9, 28, 3, metal);
+                c.Line(28, 12, 28, 27, timber);
+                c.Rect(11, 30, 20, 5, roof);
+                c.Line(14, 35, 28, 35, paper, 2);
+                break;
+            case BuildingKind.LumberCamp:
+                c.Rect(5, 21, 20, 20, wall);
+                c.Rect(3, 18, 24, 4, roof);
+                for (var row = 0; row < 3; row++) c.Rect(24, 32 + row * 4, 13, 3, timber);
+                c.Line(10, 27, 20, 39, timber, 2);
+                c.Rect(6, 25, 10, 4, metal);
+                break;
+            case BuildingKind.Quarry:
+            case BuildingKind.MiningHall:
+                c.Rect(4, 26, 32, 17, metal);
+                c.Rect(6, 23, 10, 8, wall);
+                c.Rect(23, 21, 12, 12, wall);
+                c.Line(12, 27, 25, 39, timber, 2);
+                c.Line(6, 29, 21, 23, paper, 2);
+                break;
+            case BuildingKind.Well:
+                c.Rect(9, 31, 22, 12, metal);
+                c.Rect(13, 33, 14, 5, 0x467AA6FF);
+                c.Rect(8, 16, 3, 25, timber);
+                c.Rect(29, 16, 3, 25, timber);
+                c.Rect(6, 14, 28, 4, roof);
+                c.Line(20, 18, 20, 35, paper);
+                break;
+            case BuildingKind.Market:
+            case BuildingKind.AssemblyHall:
+            case BuildingKind.TradeGuild:
+                c.Rect(5, 24, 3, 19, timber);
+                c.Rect(32, 24, 3, 19, timber);
+                c.Rect(4, 37, 32, 5, timber);
+                for (var col = 0; col < 6; col++) c.Rect(2 + col * 6, 16, 6, 9, col % 2 == 0 ? roof : paper);
+                c.Rect(9, 32, 7, 5, green);
+                c.Rect(21, 32, 7, 5, 0xE9A04CFF);
+                break;
+            case BuildingKind.Watchtower:
+                c.Rect(10, 8, 20, 13, wall);
+                c.Rect(7, 6, 26, 3, roof);
+                c.Rect(12, 21, 3, 22, timber);
+                c.Rect(25, 21, 3, 22, timber);
+                c.Line(14, 22, 26, 40, timber, 2);
+                c.Rect(17, 11, 6, 6, paper);
                 break;
             case BuildingKind.Reservoir:
                 c.Rect(4, 30, 32, 13, metal);
@@ -685,164 +825,24 @@ public sealed partial class WorldMapControl
                 c.Rect(16, 21, 8, 20, 0x9D8AD2FF);
                 c.Rect(18, 25, 4, 14, 0xCEE9EDFF);
                 break;
-            case BuildingKind.Dock:
-                c.Rect(3, 34, 34, 7, timber);
-                c.Rect(7, 32, 3, 13, metal);
-                c.Rect(29, 32, 3, 13, metal);
-                c.Line(19, 18, 19, 34, timber, 2);
-                c.Rect(21, 20, 10, 7, paper);
+            case BuildingKind.Pasture:
+                c.Rect(3, 19, 34, 24, green);
+                c.Rect(3, 19, 34, 2, timber);
+                c.Rect(3, 41, 34, 2, timber);
+                for (var x = 3; x <= 35; x += 8) c.Rect(x, 17, 2, 28, timber);
+                c.Rect(10, 28, 12, 7, paper);
+                c.Rect(21, 26, 6, 6, wall);
+                c.Rect(11, 34, 2, 5, paper);
+                c.Rect(20, 34, 2, 5, paper);
                 break;
-            case BuildingKind.Shipyard:
-                c.Rect(3, 34, 34, 9, timber);
-                c.Rect(5, 9, 3, 29, metal);
-                c.Rect(5, 9, 28, 3, metal);
-                c.Line(28, 12, 28, 27, timber);
-                c.Rect(11, 30, 20, 5, roof);
-                c.Line(14, 35, 28, 35, paper, 2);
-                break;
-            case BuildingKind.Well:
-                c.Rect(9, 31, 22, 12, metal);
-                c.Rect(13, 33, 14, 5, 0x467AA6FF);
-                c.Rect(8, 16, 3, 25, timber);
-                c.Rect(29, 16, 3, 25, timber);
-                c.Rect(6, 14, 28, 4, roof);
-                c.Line(20, 18, 20, 35, paper);
-                break;
-            case BuildingKind.Watchtower:
-                c.Rect(10, 8, 20, 13, wall);
-                c.Rect(7, 6, 26, 3, roof);
-                c.Rect(12, 21, 3, 22, timber);
-                c.Rect(25, 21, 3, 22, timber);
-                c.Line(14, 22, 26, 40, timber, 2);
-                c.Rect(17, 11, 6, 6, paper);
-                break;
-            case BuildingKind.LumberCamp:
-                c.Rect(5, 21, 20, 20, wall);
-                c.Rect(3, 18, 24, 4, roof);
-                for (var row = 0; row < 3; row++) c.Rect(24, 32 + row * 4, 13, 3, timber);
-                c.Line(10, 27, 20, 39, timber, 2);
-                c.Rect(6, 25, 10, 4, metal);
-                break;
-            case BuildingKind.MiningHall:
-            case BuildingKind.Quarry:
-                c.Rect(4, 26, 32, 17, metal);
-                c.Rect(6, 23, 10, 8, wall);
-                c.Rect(23, 21, 12, 12, wall);
-                c.Line(12, 27, 25, 39, timber, 2);
-                c.Line(6, 29, 21, 23, paper, 2);
-                break;
-            case BuildingKind.AssemblyHall:
-            case BuildingKind.TradeGuild:
-            case BuildingKind.Market:
-                c.Rect(5, 24, 3, 19, timber);
-                c.Rect(32, 24, 3, 19, timber);
-                c.Rect(4, 37, 32, 5, timber);
-                for (var col = 0; col < 6; col++) c.Rect(2 + col * 6, 16, 6, 9, col % 2 == 0 ? roof : paper);
-                c.Rect(9, 32, 7, 5, green);
-                c.Rect(21, 32, 7, 5, 0xE9A04CFF);
-                break;
-            case BuildingKind.HerbGarden:
-            case BuildingKind.HuntingCamp:
-            case BuildingKind.Farm:
-            case BuildingKind.AutomatedFarm:
-            case BuildingKind.RunicGarden:
-                c.Rect(3, 24, 34, 20, timber);
-                c.Rect(5, 25, 30, 18, 0x5B7746FF);
-                for (var row = 0; row < 3; row++)
-                {
-                    c.Rect(6, 27 + row * 5, 28, 2, green);
-                    for (var col = 0; col < 5; col++)
-                        c.Line(8 + col * 5, 29 + row * 5, 9 + col * 5, 26 + row * 5, 0xD5BB69FF);
-                }
-
-                if (kind == BuildingKind.AutomatedFarm)
-                {
-                    c.Rect(5, 19, 30, 3, metal);
-                    c.Rect(7, 19, 2, 23, metal);
-                    c.Rect(31, 19, 2, 23, metal);
-                }
-
-                if (kind == BuildingKind.RunicGarden)
-                {
-                    c.Rect(17, 12, 6, 10, 0xAB83C4FF);
-                    c.Rect(19, 13, 2, 6, paper);
-                }
-
-                break;
-            case BuildingKind.Bridge:
-                c.Rect(4, 27, 32, 15, timber);
-                for (var y = 27; y < 42; y += 3) c.Line(4, y, 35, y, wall);
-                c.Rect(4, 25, 32, 2, metal);
-                c.Rect(4, 42, 32, 2, metal);
-                break;
-            case BuildingKind.MountainPass:
-                c.Rect(3, 29, 34, 12, metal);
-                c.Line(3, 31, 36, 31, paper);
-                c.Line(3, 39, 36, 39, paper);
-                break;
-            case BuildingKind.SignalTower:
-                c.Rect(12, 17, 16, 27, metal);
-                c.Rect(8, 16, 24, 4, roof);
-                c.Rect(18, 4, 3, 13, timber);
-                c.Line(10, 5, 28, 5, paper);
-                c.Line(13, 9, 25, 9, paper);
-                c.Rect(18, 35, 4, 9, timber);
-                break;
-            case BuildingKind.SacredGrove:
-            case BuildingKind.WarDrum:
-            case BuildingKind.ArcaneSanctum:
-            case BuildingKind.Crystallizer:
-            case BuildingKind.AetherForge:
-                c.Rect(5, 37, 30, 7, metal);
-                c.Rect(10, 21, 20, 16, wall);
-                for (var y = 7; y < 25; y++)
-                {
-                    var half = y < 16 ? (y - 5) / 2 : (27 - y) / 2;
-                    c.Rect(20 - half, y, half * 2, 1, 0xA67DC3FF);
-                }
-
-                c.Line(20, 9, 20, 23, paper);
-                if (kind != BuildingKind.ArcaneSanctum)
-                {
-                    c.Rect(5, 21, 4, 16, roof);
-                    c.Rect(31, 21, 4, 16, roof);
-                }
-
-                if (kind == BuildingKind.AetherForge)
-                {
-                    c.Rect(3, 10, 3, 27, metal);
-                    c.Rect(34, 10, 3, 27, metal);
-                }
-
-                break;
-            case BuildingKind.DwarvenForge:
-            case BuildingKind.Foundry:
-            case BuildingKind.PowerPlant:
-            case BuildingKind.Fabricator:
-                House();
-                c.Rect(28, 6, 6, 24, metal);
-                c.Rect(27, 4, 8, 3, timber);
-                c.Rect(9, 31, 9, 10, kind == BuildingKind.Foundry ? 0xE9A04CFFu : 0x6594ACFFu);
-                if (kind == BuildingKind.PowerPlant)
-                {
-                    c.Line(18, 24, 14, 30, paper, 2);
-                    c.Line(14, 30, 21, 30, paper, 2);
-                    c.Line(21, 30, 17, 36, paper, 2);
-                }
-
-                if (kind == BuildingKind.Fabricator)
-                {
-                    c.Rect(22, 30, 9, 9, metal);
-                    c.Rect(24, 32, 5, 5, timber);
-                }
-
-                break;
-            case BuildingKind.Airfield:
-                c.Rect(3, 26, 34, 18, metal);
-                c.Line(6, 36, 33, 36, paper, 2);
-                c.Rect(5, 17, 11, 11, roof);
-                c.Line(24, 26, 24, 39, paper, 2);
-                c.Line(18, 30, 30, 30, paper, 2);
+            case BuildingKind.Aquaculture:
+                c.Rect(3, 22, 34, 21, metal);
+                c.Rect(6, 25, 13, 15, 0x548DB5FF);
+                c.Rect(22, 25, 12, 15, 0x548DB5FF);
+                c.Rect(10, 31, 6, 3, paper);
+                c.Rect(25, 32, 6, 3, paper);
+                c.Rect(14, 30, 2, 5, paper);
+                c.Rect(29, 31, 2, 5, paper);
                 break;
             default:
                 House();

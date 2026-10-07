@@ -205,7 +205,7 @@ internal static class SimulationOptimizationTests
             var town = e.State.Settlements.Single();
             Claim(e, 181);
             town.Resources = new ResourceStock { Food = 1000, Wood = 1000, Stone = 1000 };
-            e.GrantReceivedResearch(town.Id, ResearchKind.Logistics);
+            e.GrantReceivedResearch(town.Id, Advancement.Logistics);
             e.State.Rules.Construction = true;
             var person = e.State.Residents.Single();
             var farm = e.GrantFacility(town.Id, BuildingKind.Farm, 18, 16);

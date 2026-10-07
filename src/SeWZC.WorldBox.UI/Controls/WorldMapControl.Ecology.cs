@@ -119,12 +119,12 @@ public sealed partial class WorldMapControl
         var canvas = new PixelCanvas(32, 32);
         var color = kind switch
         {
-            WildlifeKind.Fish => 0x86CEDBFFu,
-            WildlifeKind.Waterfowl => 0xE2EBDBFFu,
-            WildlifeKind.Wolf => 0xB1B9BAFFu,
+            WildlifeKind.Deer => 0xDCB578FFu,
             WildlifeKind.Boar => 0xA8805FFFu,
             WildlifeKind.Goat => 0xD9D1B5FFu,
-            WildlifeKind.Deer => 0xDCB578FFu,
+            WildlifeKind.Wolf => 0xB1B9BAFFu,
+            WildlifeKind.Waterfowl => 0xE2EBDBFFu,
+            WildlifeKind.Fish => 0x86CEDBFFu,
             _ => AnimalRules.For(kind).Diet == AnimalDiet.Carnivore ? 0xB39179FFu : 0xCCB285FFu,
         };
 
@@ -208,7 +208,7 @@ public sealed partial class WorldMapControl
         }
 
         if (kind == WildlifeKind.Shark) Box(-.4, -3.2, .6, 1.5);
-        if (kind is WildlifeKind.SeaTurtle or WildlifeKind.SeaCow or WildlifeKind.Manatee)
+        if (kind is WildlifeKind.Manatee or WildlifeKind.SeaTurtle or WildlifeKind.SeaCow)
         {
             color = 0x68AA99FF;
             Box(-1.5, -.2, .8, 2);

@@ -18,8 +18,8 @@ public sealed partial class WorldEngine
         if (distance < 6 && person.Agent.Goal.Kind != AgentGoalKind.Fish) return;
         // 起飞时预留往返燃料，避免途中凭空从远方仓库补给。
         var fuel = Math.Max(1, distance * .04);
-        if (person.Agent.Goal.Kind != AgentGoalKind.Fish && HasResearch(home.Id, ResearchKind.Aviation) &&
-            HasResearch(home.Id, ResearchKind.Electrification)
+        if (person.Agent.Goal.Kind != AgentGoalKind.Fish && HasResearch(home.Id, Advancement.Aviation) &&
+            HasResearch(home.Id, Advancement.Electrification)
             && home.Resources.Aircraft >= 1 && home.Resources.Oil >= fuel)
         {
             home.Resources.Aircraft--;
@@ -29,7 +29,7 @@ public sealed partial class WorldEngine
             AddEvent(WorldEventKind.Trade, $"{person.Name}在{home.Name}装载运输机，携带货物与消息启程；已消耗往返燃料 {fuel:0.#}。",
                 home.X, home.Y, EventAction.Started, home.Id, person.Id);
         }
-        else if (HasResearch(home.Id, ResearchKind.Logistics) && home.Resources.Boats >= 1)
+        else if (HasResearch(home.Id, Advancement.Logistics) && home.Resources.Boats >= 1)
         {
             home.Resources.Boats--;
             person.Inventory.Boats++;
@@ -43,8 +43,8 @@ public sealed partial class WorldEngine
     {
         return mode switch
         {
-            TravelMode.Aircraft => "航空运输",
             TravelMode.Boat => "舟船运输（水上航行／陆地搬运）",
+            TravelMode.Aircraft => "航空运输",
             _ => "步行",
         };
     }

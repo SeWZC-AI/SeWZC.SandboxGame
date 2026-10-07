@@ -77,7 +77,7 @@ public sealed partial class WorldEngine
             var path = new List<int>();
             var current = source;
             var reserved = false;
-            while (current >= 0 && tiles[current].Terrain is not (TerrainType.Water or TerrainType.DeepWater))
+            while (current >= 0 && tiles[current].Terrain is not (TerrainType.DeepWater or TerrainType.Water))
             {
                 if (_demoHabitat?[current] >= 0)
                 {
@@ -111,7 +111,7 @@ public sealed partial class WorldEngine
                 if (!InBounds(x, y)) continue;
                 var next = Index(x, y);
                 var tile = tiles[next];
-                if (tile.Terrain is TerrainType.Water or TerrainType.DeepWater or TerrainType.Lake ||
+                if (tile.Terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.Lake ||
                     _demoHabitat?[next] >= 0) continue;
                 var riverWidth = Math.Max(tile.RiverWidth, width);
                 tile.Terrain = riverWidth == 1 ? TerrainType.Stream :

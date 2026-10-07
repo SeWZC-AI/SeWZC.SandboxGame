@@ -188,7 +188,7 @@ internal static class ActionEcologyRegressionTests
         }, false, true);
         e.State.Tick = 120;
         var t = e.State.Settlements.Single();
-        foreach (var k in AdvancementRules.Resources) t.Resources.Set(k, 200);
+        foreach (var k in ResourceStock.Kinds) t.Resources.Set(k, 200);
         foreach (var p in e.State.Residents)
         {
             p.Age = 30;
@@ -369,7 +369,7 @@ internal static class ActionEcologyRegressionTests
     private static void Cargo()
     {
         var (e, t, p) = World();
-        foreach (var k in new[] { ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Industry })
+        foreach (var k in new[] { Advancement.Agriculture, Advancement.Logistics, Advancement.Industry })
             e.GrantReceivedResearch(t.Id, k);
         var id = e.GrantFacility(t.Id, BuildingKind.Foundry, 19, 16);
         var b = e.State.Society.Buildings.Single(b => b.Id == id);
@@ -389,7 +389,7 @@ internal static class ActionEcologyRegressionTests
     private static void Husbandry()
     {
         var (e, t, p) = World();
-        foreach (var k in new[] { ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Industry })
+        foreach (var k in new[] { Advancement.Agriculture, Advancement.Logistics, Advancement.Industry })
             e.GrantReceivedResearch(t.Id, k);
         var source = e.State.Tiles[16 * 32 + 19];
         source.OtherWildlife = new WildlifePopulations { Goat = 2 };
@@ -437,12 +437,12 @@ internal static class ActionEcologyRegressionTests
         e.ConfigureWorld(e.State.Rules with { Construction = true, Research = true, Thirst = true }, false, true);
         foreach (var k in new[]
                  {
-                     ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Industry,
-                     ResearchKind.Ballistics,
+                     Advancement.Agriculture, Advancement.Logistics, Advancement.Industry,
+                     Advancement.Ballistics,
                  }) e.GrantReceivedResearch(t.Id, k);
         e.GrantFacility(t.Id, BuildingKind.Academy, 18, 18);
         var research = e.State.Society.Research.Single();
-        research.ActiveProject = ResearchKind.ScientificMethod;
+        research.ActiveProject = Advancement.ScientificMethod;
         research.RequiredProgress = 100;
         t.Resources.Water = 0;
         var pending = e.State.Society.Buildings.First(b => b.Kind == BuildingKind.Workshop);
@@ -455,7 +455,7 @@ internal static class ActionEcologyRegressionTests
         Check(!e.State.Society.Buildings.Any(b => b.Kind == BuildingKind.Arsenal),
             "No-defense town built an idle arsenal");
         e.Step(120);
-        Check(e.State.Society.Research.Single().Progress > 0 || e.HasResearch(t.Id, ResearchKind.ScientificMethod),
+        Check(e.State.Society.Research.Single().Progress > 0 || e.HasResearch(t.Id, Advancement.ScientificMethod),
             "Useful research never gained an actual worker");
     }
 

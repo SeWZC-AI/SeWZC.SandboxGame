@@ -39,7 +39,7 @@ public sealed partial class WorldEngine
             if (!building.IsCompleted)
                 ObserveProject(building.Observation, building.ConstructionProgress);
         foreach (var research in State.Society.Research)
-            if (research.ActiveProject.HasValue)
+            if (research.ActiveProject is not null)
                 ObserveProject(research.Observation, research.Progress);
     }
 
@@ -79,7 +79,7 @@ public sealed partial class WorldEngine
         }
 
         var research = State.Society.Research.First(r => r.SettlementId == settlementId);
-        return research.ActiveProject.HasValue
+        return research.ActiveProject is not null
             ? GetCompletionEstimate(research.Observation, research.Progress, research.RequiredProgress)
             : new CompletionEstimate(null, "尚无进行中的建设或研究");
     }

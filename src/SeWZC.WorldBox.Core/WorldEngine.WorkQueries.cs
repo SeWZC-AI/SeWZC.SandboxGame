@@ -111,8 +111,8 @@ public sealed partial class WorldEngine
         Building? selected = null;
         var bestPriority = 0;
         var bestDistance = 0;
-        var preferSpecialty = resident.Profession is Profession.Physician or Profession.Archivist or Profession.Surveyor
-                                  or Profession.Firefighter or Profession.Gardener
+        var preferSpecialty = resident.Profession is Profession.Physician or Profession.Firefighter or Profession.Archivist
+                                  or Profession.Surveyor or Profession.Gardener
                               && ExpansionJobHasNearbyWork(resident);
         foreach (var building in buildings)
         {
@@ -128,7 +128,7 @@ public sealed partial class WorldEngine
                                                                       || IsWaterTerrain(State
                                                                           .Tiles[Index(resident.X, resident.Y)]
                                                                           .Terrain))) continue;
-            var workRange = range > 1 && building.Kind is BuildingKind.Bridge or BuildingKind.MountainPass ? 24 : range;
+            var workRange = range > 1 && building.Kind is BuildingKind.MountainPass or BuildingKind.Bridge ? 24 : range;
             if (distance > workRange || !BuildingHasWork(building, resident)) continue;
             if (range > 1 && distance <= 6 && !VisibleWorkSiteReachable(resident, building.X, building.Y,
                     !building.IsCompleted || building.IsUpgrading || IsWaterfrontBuilding(building.Kind) ||

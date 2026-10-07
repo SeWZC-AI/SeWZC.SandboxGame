@@ -86,7 +86,7 @@ internal static class SocietyRegressionTests
         var town = engine.State.Settlements.Single();
         engine.ConfigureWorld(engine.State.Rules with { Construction = true, Research = true }, false, false);
         var id = engine.GrantFacility(town.Id, BuildingKind.Academy, 18, 24);
-        engine.StartResearch(town.Id, ResearchKind.Agriculture);
+        engine.StartResearch(town.Id, Advancement.Agriculture);
         var worker = engine.State.Residents[1];
         Hold(worker, 18, 24);
         worker.Agent.Goal = new AgentGoal
@@ -114,7 +114,7 @@ internal static class SocietyRegressionTests
             "Active research prevented rebuilding its destroyed academy.");
         Check(town.Housing == housing && town.Resources.Wood == 20 && town.Resources.Stone == 5,
             "Housing consumed the replacement academy's reserved materials.");
-        Check(project.ActiveProject == ResearchKind.Agriculture && project.Progress == progress,
+        Check(project.ActiveProject == Advancement.Agriculture && project.Progress == progress,
             "Rebuilding reset or remotely advanced the interrupted research.");
         Hold(worker, replacement!.X, replacement.Y);
         worker.Agent.Goal = new AgentGoal
@@ -135,7 +135,7 @@ internal static class SocietyRegressionTests
         var resumed = WorldEngine.ImportJson(engine.ExportJson());
         engine.Step(100);
         resumed.Step(100);
-        Check(engine.HasResearch(town.Id, ResearchKind.Agriculture), "Research did not resume in the rebuilt academy.");
+        Check(engine.HasResearch(town.Id, Advancement.Agriculture), "Research did not resume in the rebuilt academy.");
         Check(engine.ExportJson() == resumed.ExportJson(), "Rebuilt academy research diverged after saving.");
     }
 
@@ -292,7 +292,7 @@ internal static class SocietyRegressionTests
         research.GrantFacility(town.Id, BuildingKind.Academy, 18, 24);
         town.Resources.Food = 20 - 0.0000001;
         town.Resources.Wood = 15 - 0.0000001;
-        research.StartResearch(town.Id, ResearchKind.Agriculture);
+        research.StartResearch(town.Id, Advancement.Agriculture);
         Check(town.Resources.Food == 0 && town.Resources.Wood == 0,
             "Research spending uses a different material tolerance.");
 

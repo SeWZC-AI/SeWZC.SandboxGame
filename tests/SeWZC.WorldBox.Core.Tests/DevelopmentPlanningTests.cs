@@ -50,12 +50,12 @@ internal static class DevelopmentPlanningTests
             engine.SetDevelopmentFocus(nation.Id, DevelopmentFocus.MagicPractice);
         engine.ConfigureWorld(engine.State.Rules with { Wars = false, Secession = false }, false, true);
         engine.Step(3600);
-        Require(engine.State.Society.Research.Any(r => r.Completed.Contains(ResearchKind.ArcaneArts)),
+        Require(engine.State.Society.Research.Any(r => r.Completed.Contains(Advancement.ArcaneArts)),
             "Natural magic did not learn its foundation");
         Require(engine.State.Society.Buildings.Any(b => b.Kind == BuildingKind.ArcaneSanctum && b.IsCompleted),
             "Practitioners have no finished training place");
         Require(engine.State.Residents.Any(r => r.MagicTraining > 8), "No actual training took place");
-        Require(!engine.State.Society.Buildings.Any(b => AdvancementRules.For(b.Kind)?.Magic == true),
+        Require(!engine.State.Society.Buildings.Any(b => ProductionRules.For(b.Kind)?.Research.Magic == true),
             "Natural magic unnecessarily required crystal industry");
     }
 
@@ -80,7 +80,7 @@ internal static class DevelopmentPlanningTests
                 $"Seed {seed} made no actual industrial progress within a century");
             Require(
                 !engine.State.Society.Buildings.Any(b =>
-                    b.Kind == BuildingKind.ArcaneSanctum || AdvancementRules.For(b.Kind)?.Magic == true),
+                    b.Kind == BuildingKind.ArcaneSanctum || ProductionRules.For(b.Kind)?.Research.Magic == true),
                 "Technology route built unnecessary magical devices");
             var resumed = WorldEngine.ImportJson(engine.ExportJson());
             engine.Step(12);

@@ -8,7 +8,6 @@ public sealed partial class WorldEngine
     {
         return cause switch
         {
-            DeathCause.Dehydration => "长期缺水导致脱水致死",
             DeathCause.Starvation => "长期缺粮导致饥饿致死",
             DeathCause.OldAge => "超过种族寿命后衰老致死",
             DeathCause.Fire => "在燃烧地块受到致命灼伤",
@@ -20,6 +19,7 @@ public sealed partial class WorldEngine
             DeathCause.TerrainChange => "地形变化造成致命损伤",
             DeathCause.Conflict => "资源冲突斗殴中受到致命伤",
             DeathCause.PlayerIntervention => "玩家将生命设为零",
+            DeathCause.Dehydration => "长期缺水导致脱水致死",
             _ => "尚未死亡",
         };
     }

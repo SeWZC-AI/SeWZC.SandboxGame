@@ -55,7 +55,7 @@ public sealed partial class WorldEngine
                         _ => false,
                     })) continue;
                 var unlock = ResearchRules.Unlocking(job);
-                if (unlock is null || !HasResearch(town.Id, unlock.Kind) ||
+                if (unlock is null || !HasResearch(town.Id, unlock) ||
                     adults.Any(r => r.Profession == job)) continue;
                 var recruit = adults.Where(r =>
                         r.Profession is Profession.Farmer or Profession.Builder or Profession.Scholar or Profession.Mage

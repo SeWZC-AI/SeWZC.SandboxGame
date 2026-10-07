@@ -41,7 +41,6 @@ public sealed class ResourceAmounts
     {
         return kind switch
         {
-            ResourceKind.Water => Water,
             ResourceKind.Food => Food,
             ResourceKind.Wood => Wood,
             ResourceKind.Stone => Stone,
@@ -54,6 +53,7 @@ public sealed class ResourceAmounts
             ResourceKind.RareEarth => RareEarth,
             ResourceKind.Boats => Boats,
             ResourceKind.Aircraft => Aircraft,
+            ResourceKind.Water => Water,
             ResourceKind.Tools => Tools,
             ResourceKind.Medicine => Medicine,
             ResourceKind.Ammunition => Ammunition,

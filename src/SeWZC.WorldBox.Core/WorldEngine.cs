@@ -171,9 +171,9 @@ public sealed partial class WorldEngine
         var importance = kind switch
         {
             WorldEventKind.Founding => EventImportance.Historic,
-            WorldEventKind.War or WorldEventKind.Disaster or WorldEventKind.Research or WorldEventKind.Diplomacy =>
-                EventImportance.Major,
             WorldEventKind.Trade or WorldEventKind.Personal or WorldEventKind.Communication => EventImportance.Routine,
+            WorldEventKind.Diplomacy or WorldEventKind.War or WorldEventKind.Disaster or WorldEventKind.Research =>
+                EventImportance.Major,
             _ => EventImportance.Notable,
         };
         var entry = new WorldEvent

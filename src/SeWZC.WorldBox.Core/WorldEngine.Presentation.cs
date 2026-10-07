@@ -45,7 +45,7 @@ public sealed partial class WorldEngine
             ? State.Society.Buildings.FirstOrDefault(b =>
                 b.Id == goal.TargetEntityId && b.SettlementId == person.SettlementId && b.IsCompleted)
             : null;
-        var production = factory is null ? null : AdvancementRules.For(factory.Kind);
+        var production = factory is null ? null : ProductionRules.For(factory.Kind);
         if (production is not null && _settlements.TryGetValue(person.SettlementId, out var home))
         {
             var needsInputs = MissingResources(person.Inventory, production.Input) is not null;
@@ -70,7 +70,7 @@ public sealed partial class WorldEngine
         for (var i = 0; i < Math.Clamp(steps, 0, 64); i++)
         {
             var interactionRange = production is not null || goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest
-                                                              or AgentGoalKind.ReturnHome or AgentGoalKind.Socialize
+                                                              or AgentGoalKind.Socialize or AgentGoalKind.ReturnHome
                                                           || (goal.TargetEntityId != 0 &&
                                                               State.Society.Buildings.Any(b =>
                                                                   b.Id == goal.TargetEntityId &&
