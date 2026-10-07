@@ -20,10 +20,10 @@ python3 -m http.server 8080 --directory artifacts/site
 
 ## 发布到 GitHub Pages
 
-仓库已配置 [GitHub Actions 工作流](../.github/workflows/build-and-deploy.yml)。`main` 是 Pages 发布分支；主分支与旧环境的迁移见 [开发约定](development.md#主分支与环境迁移)。
+仓库已配置 [GitHub Actions 工作流](../.github/workflows/build-and-deploy.yml)。`main` 是 Pages 发布分支；分支和环境设置的关系见 [开发约定](development.md#主分支与环境迁移)。
 
 1. 在仓库 **Settings → Pages → Build and deployment** 中，将 **Source** 设置为 **GitHub Actions**。
-2. 如果 **Settings → Environments → github-pages** 设置了部署分支限制，确保允许 `main`；从 `alpha` 迁移时，删除旧的 `alpha` 部署分支规则并添加 `main`。
+2. 如果 **Settings → Environments → github-pages** 设置了部署分支限制，确保允许 `main`。
 3. 将代码推送到 `main`，构建及测试通过后自动部署。工作流已存在于默认分支时，也可在 **Actions → Build, test and deploy WorldBox** 中选择 `main` 手动运行。
 4. 部署完成后，从工作流的 `github-pages` 环境打开页面。该仓库的标准地址为 [SeWZC.WorldBox 浏览器版](https://SeWZC-AI.github.io/SeWZC.SandboxGame/)；仓库设置和实际部署结果决定最终地址。请访问以 `/` 结尾的项目地址。
 
