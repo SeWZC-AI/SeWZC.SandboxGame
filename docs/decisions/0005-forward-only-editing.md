@@ -32,7 +32,7 @@
 ## 实现与验证
 
 - [角色编辑](../../src/SeWZC.WorldBox.Core/WorldEngine.ResidentEditing.cs)、[角色校验](../../src/SeWZC.WorldBox.Core/WorldEngine.ValidationV2.cs)、[结构化档案界面](../../src/SeWZC.WorldBox.UI/MainView.Residents.cs)。
-- [角色编辑场景](../../tests/SeWZC.WorldBox.Core.Tests/EditorAndMigrationTests.cs)中的 `ResidentEditing` 验证拒绝半提交、经历影响人格、不回算事件库存及真实任务。
-- [浏览器检查](../../tests/browser/smoke.cjs)验证真实输入后档案变化、世界结果保持及整轮编辑撤销。
+- [角色编辑场景](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/SeWZC.WorldBox.Core.Tests/EditorAndMigrationTests.cs)中的 `ResidentEditing` 验证拒绝半提交、经历影响人格、不回算事件库存及真实任务。
+- [浏览器检查](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/browser/smoke.cjs)验证真实输入后档案变化、世界结果保持及整轮编辑撤销。
 
 相关文档：[产品约定](../product.md) · [决策索引](README.md)。

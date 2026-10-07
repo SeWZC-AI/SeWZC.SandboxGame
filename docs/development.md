@@ -70,23 +70,17 @@ dotnet run --project src/SeWZC.WorldBox.Browser
 - 复杂类型可以按机制使用 `类型名.机制.cs` 分部文件，必须有不带机制后缀的 `类型名.cs` 主文件，在主文件维护类型的文档注释。只有源生成器要求的 `partial` 不需要人为拆分。
 - 数据实体的分部文件以实体类型命名，不能把 `Tile`、`Resident` 等实体定义放到 `WorldEngine.*.cs` 或其他类型的分部文件中。保留有明确职责的机制分部，合并没有独立职责的零散扩展。
 
-| 修改内容 | 主要入口 | 相关验证 |
+| 修改内容 | 主要入口 | 相关单元测试 |
 | --- | --- | --- |
-| 世界数据、版本和基本编辑 | [Core](../src/SeWZC.WorldBox.Core/) 中 `WorldState.cs`、各实体同名文件、`WorldEngine.Commands.cs`、`WorldEngine.NationEditing.cs` | [Program.cs](../tests/SeWZC.WorldBox.Core.Tests/Program.cs) |
-| 有限战争、战报与故事观察 | Core 中 `WorldEngine.Campaigns.cs`、`WorldEngine.Stories.cs`、`Army.Campaigns.cs`、`WorldEvent.cs`、`WorldStories.cs`；UI 中 `MainView.Stories.cs` | `StoryTests.cs`、`tests/browser/stories.cjs` |
-| 世界规则、发展与自主外交 | Core 中 `WorldEngine.Evolution.cs` | `EvolutionTests.cs`、`--evolution` 长程探查 |
-| 动物、局部冲突与死亡 | Core 中 `WorldEngine.Ecology.cs`、`WorldEngine.Conflicts.cs`、`WorldEngine.Mortality.cs`；UI 中 `MainView.Buildings.cs`、`WorldMapControl.Ecology.cs` | `EcologyAndConflictTests.cs`、Headless、桌面／触屏浏览器与五种子演化 |
-| 目标、知识与通信 | Core 中 `WorldEngine.Agents.cs`、`WorldEngine.Communication.cs` | [AgentBehaviorTests.cs](../tests/SeWZC.WorldBox.Core.Tests/AgentBehaviorTests.cs) |
-| 时代路线、配方与加工运输 | Core 中 `Advancement.Catalog.cs`、`ProductionRules.cs`、`WorldEngine.Advancement.cs`；UI 中 `MainView.Society.cs` | `AdvancementTests.cs`、`tests/browser/advancement.cjs` |
-| 地块改造、矿藏与载具 | Core 中 `WorldEngine.Land.cs`、`WorldEngine.Transport.cs`、`Tile.Land.cs`、`Resident.cs`；UI 中 `MainView.Selection.cs`、`WorldMapControl.Transport.cs` | `LandTransportTests.cs`、`tests/browser/land.cjs` |
-| 制度、文化、研究、建设与魔法 | Core 中 `WorldEngine.Society.cs`、`SocietyState.cs`、`CultureDefinition.cs`、`SettlementResearch.cs`、`TerrainRules.cs` | [SocietyBehaviorTests.cs](../tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs) |
-| 科技树的节点、连线与视野 | UI 中 `MainView.Research.cs`、`Controls/ResearchTreeLayout.cs`、`Controls/ResearchGraphControl.cs` | `AdvancedResearchUi`、`tests/browser/research-trees.cjs` |
-| 城镇扩充、设施选址与建设地图 | Core 中 `WorldEngine.Towns.cs`、`BuildingSites.cs`、`Claims.cs`；UI 中 `MainView.Buildings.cs`、`WorldMapControl.Infrastructure.cs` | [TownInfrastructureTests.cs](../tests/SeWZC.WorldBox.Core.Tests/TownInfrastructureTests.cs)、[infrastructure.cjs](../tests/browser/infrastructure.cjs) |
-| 角色编辑、存档校验 | Core 中 `WorldEngine.ResidentEditing.cs`、`WorldEngine.ValidationV2.cs`、`WorldEngine.Persistence.cs`、`WorldJsonContext.cs` | [EditorAndMigrationTests.cs](../tests/SeWZC.WorldBox.Core.Tests/EditorAndMigrationTests.cs)、`Program.cs`；文件名不表示支持旧存档迁移 |
-| 界面、工具与表单 | [UI](../src/SeWZC.WorldBox.UI/) 中 `MainView*.cs` | [smoke.cjs](../tests/browser/smoke.cjs)、[mobile-smoke.cjs](../tests/browser/mobile-smoke.cjs) |
-| 地图、命中与运动 | [Controls](../src/SeWZC.WorldBox.UI/Controls/) 中 `WorldMapControl*.cs`、`EntityMotionTrack.cs` | [motion.cjs](../tests/browser/motion.cjs)、触屏检查 |
-| 平台存储和浏览器生命周期 | [IWorldStorage](../src/SeWZC.WorldBox.UI/Platform/IWorldStorage.cs)、[Browser](../src/SeWZC.WorldBox.Browser/)、[Desktop](../src/SeWZC.WorldBox.Desktop/) | 核心保存恢复、浏览器真实导入导出与刷新恢复 |
-| 静态发布和自动化 | [发布脚本](../scripts/publish-browser.sh)、[静态检查](../scripts/check-static-site.py)、[工作流](../.github/workflows/build-and-deploy.yml)、[浏览器驱动](../tests/browser/ui-driver.cjs) | 发布产物子路径检查，以及部署后的实际站点检查 |
+| 资源与费用 | Core 中 `ResourceStock`、`ResourceAmounts` | `ResourceStockTests`、`ResourceAmountsTests` |
+| 研究目录、解锁与接收 | Core 中 `Advancement`、`ResearchRules`、`WorldEngine.Society.cs` | `AdvancementTests`、`ResearchActionTests`、`ResearchCommandsTests` |
+| 现场加工与防护 | Core 中 `WorldEngine.Advancement.cs`、`WorldEngine.Society.cs` | `ProductionTests`、`DamageProtectionTests` |
+| 地形、交通与植物 | Core 中 `WorldEngine.Land.cs`、`PlantCoverage` | `TraversalTests`、`PlantCoverageTests` |
+| 居民与国家编辑 | Core 中 `WorldEngine.ResidentEditing.cs`、`WorldEngine.Commands.cs`、`WorldEngine.NationEditing.cs` | `ResidentEditingTests`、`NationEditingTests` |
+| 保存和动物载荷 | Core 中 `WorldEngine.Persistence.cs`、`WildlifePopulationsJsonConverter` | `WorldPersistenceTests`、`WildlifeSerializationTests` |
+| 文字、轨迹和研究树 | UI 中 `DisplayFormat`、`EntityMotionTrack`、`ResearchTreeLayout` | `DisplayFormatTests`、`EntityMotionTrackTests`、`ResearchTreeLayoutTests` |
+| 战争、自主演化、灾害、通信与 UI 操作 | 对应 `WorldEngine.*`、`MainView.*` 与地图控件 | 尚无替代专项验收，不能沿用旧测试结果 |
+| 平台存储和静态交付 | Browser、Desktop、发布脚本与工作流 | 需平台实际操作与静态资源检查 |
 
 `Core` 不依赖 Avalonia、浏览器或桌面文件系统。共享界面通过平台接口访问存储；不要为了一个功能把平台 API 引入模拟。C# 延续现有命名与文件风格，保持 nullable 检查；SDK、语言与依赖版本查看 [global.json](../global.json)、[Directory.Build.props](../Directory.Build.props) 和对应项目配置。
 
@@ -137,52 +131,37 @@ dotnet run --project src/SeWZC.WorldBox.Browser
 
 布局优先调整 Fluent 主题的 `ExpanderMinHeight`、`ExpanderHeaderPadding`、`ExpanderContentPadding` 和小箭头尺寸；内容与标题都核对折叠、展开后的真实高度。建筑生命与停工阈值必须在默认详情可见，不能依赖展开才能解释“受损”。按钮以内容居中、自然宽度和横向间距控制密度。
 
-可用 Core.Tests 的 `--export-visual-fixture <路径>` 导出四种族、职业、同类建筑、山河与多物种的受控画面夹具；发布后运行 `CHROMIUM_EXECUTABLE=/usr/bin/chromium node tests/browser/visuals.cjs <路径>` 验证桌面／触屏生命值、折叠高度、按钮间距、近景标记和观察不变性。定位建筑只移动镜头，检查近景须另行放大。夹具不是自主发展证据；百年晋升仍由核心长程场景验证。
+涉及图形与实际交互时，在裁剪发布后的真实浏览器中检查桌面和触屏表现。定位建筑只移动镜头，检查近景须另行放大；观察操作须保持世界及模拟随机数不变。当前没有受控画面自动夹具或长程验收入口。
 
 ### 浏览器速度调查
 
-使用现成的原生模拟、保存和浏览器吞吐入口，命令见 [性能说明](performance.md#复现测量)。对比版本时复用同一存档、视角和环境，串行测量；逐次 JSON、截图和日志写入 `artifacts/`。正式产物不暴露托管阶段探针，动画帧机会不能当作实际绘制 FPS。
+性能工具应与单元项目分开维护；旧测量入口已删除，背景见 [性能说明](performance.md#后续测量)。对比版本时复用同一存档、视角和环境，串行测量；逐次 JSON、截图和日志写入 `artifacts/`。正式产物不暴露托管阶段探针，动画帧机会不能当作实际绘制 FPS。
 
-`tests/browser/saving.cjs <当前格式大世界存档>` 通过实际按钮与拖动验证保存时镜头可用、日序一致、编辑取消与 Worker 不可用时的回退；CI 使用构建任务生成并上传的同一大世界夹具。存储 Worker 不继承文档 import map，必须使用发布后实际解析的模块 URL。
+平台保存需在真实浏览器中验证捕获时镜头可用、日序一致、编辑取消，以及 Worker 和压缩 API 缺失时的回退。存储 Worker 不继承文档 import map，必须使用发布后实际解析的模块 URL。当前单元只覆盖核心保存捕获，不证明平台压缩和落盘行为。
 
 ### 检查范围
 
-安装与启动命令见 [本地运行](#本地运行)，静态发布步骤见 [部署指南](deployment.md)，完整检查与浏览器复现步骤见 [验证记录](verification.md#复现命令)。以下是范围选择，不要求每次无关改动都重复全部压力测试。
+安装与启动命令见 [本地运行](#本地运行)，静态发布步骤见 [部署指南](deployment.md)，最近验证范围见 [验证记录](verification.md)。
 
 | 改动范围 | 应执行的检查 |
 | --- | --- |
-| 仅文档 | 核对描述与实现、相对链接及标题锚点，运行 `git diff --check`；不声称重跑游戏验收 |
-| 核心行为、数据或编辑 | Release 构建、快速检查、核心 `--suite integration`；针对因果关系或失效边界加回归场景 |
-| 存档格式或序列化 | 上述检查，加完整往返、合法零值、非法输入不改世界、中途保存续演；涉及平台时验证真实存储 |
-| 界面、输入或呈现 | 发布裁剪后的浏览器产物，在仓库子路径运行相关桌面／触屏／运动脚本；涉及渲染回退时复验软件路径 |
-| 资源、平台入口或部署 | 静态发布检查、真实浏览器加载和存储；发布后检查实际 Pages URL |
-| 性能、记录容量或大世界 | 先通过功能验证及相关 `--suite long`，再在独立负载下测量，记录种子、规模、配置、耗时、实际存档字节数与环境 |
-
-核心测试是可执行程序：
+| 仅文档 | 核对描述、链接和标题锚点，运行 `git diff --check` |
+| 核心规则、数据或编辑 | Release 构建和相关 xUnit 单元测试；拒绝输入时验证状态未部分提交 |
+| 存档格式或序列化 | 合法零值、编号恢复、非法输入、必需版本和取消捕获的单元测试 |
+| 界面纯逻辑 | 文字格式、运动轨迹、研究布局的 xUnit 单元测试 |
+| 浏览器、输入、平台存储或部署 | 裁剪发布和静态资源检查，再在真实浏览器中验证受影响操作 |
+| 性能或大世界 | 独立测量实际负载，记录源码状态、种子、配置、规模和完整结果 |
 
 ```bash
-dotnet build -c Release
-python3 scripts/run-fast-tests.py
-dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --suite integration
+dotnet build scripts/ci-build.slnf -c Release
+dotnet test scripts/ci-build.slnf -c Release --no-build --no-restore
 ```
 
-`dotnet test` 不能替代它；桌面构建也不能替代经过裁剪的 WASM 发布。测试失败返回非零退出码，先定位失败行为，不为过关删除约束或扩大误差。
+按 2026-10-07 用户明确决定，全部旧测试已删除，重新使用 xUnit 和 .NET Test SDK。没有自制 `Program.cs` 运行器、单元标记、集成／长程套件或浏览器自动脚本。标准 `dotnet test` 负责发现、断言失败和结果报告，CI 上传 TRX 结果。
 
-按本次用户决定，单元测试应聚焦单个行为；测试作者负责控制测试规模，使核心单元和 Headless UI 快速检查合计明显低于 **10 秒**，为运行波动留出余量。接近或超过上界应定位慢用例并缩小夹具，不能视作正常目标。这是编写与维护约定，不在 CI 或测试运行代码中设置硬超时、按耗时判失败。`scripts/run-fast-tests.py` 只报告实际墙钟耗时，包含两个进程启动；UI 控件回归仍属于组件检查，不因短小而改称纯单元。编译、还原、跨系统集成、浏览器验收与性能基准另计。
+每个用例验证一个现行规则、命令或查询，明确安排前置状态、执行操作和检查结果。使用 `[Fact]` 或 `[Theory]`；不同边界输入分别报告。期望值来自需求或独立的具体例子，不复刻被测算法。夹具直接创建规则所需的数据，世界命令通常使用最小 32×32 地图和必要实体，不用 `Step`、墙钟等待或界面遍历准备条件。测试实例互不共享可变世界；性能测量不作为单元断言。
 
-核心测试方法用 `[UnitTest]` 标记聚焦且有界的命令／查询／规则检查；未标记的方法归入 `integration`，避免新增长程场景无意挤入快速套件。`[LongRunningTest]` 标记混合编辑随机回归、五种子 6,000 tick 战争、大世界发展。CLI 默认 `unit`，另支持 `--suite integration|long|all`、`--list` 和 `--filter <名称片段>`；筛选零项视为错误。不得仅为达到耗时目标把普通单元标成集成，应先缩小夹具或直接构造前置状态。
-
-按 2026-10-03 用户关于避免浪费测试时间的决定，日常 CI 执行核心单元、Headless UI、静态资源与快速浏览器冒烟检查。普通集成、长程模拟和完整浏览器回归通过 Actions 手动输入 `full_regression=true` 运行，保留原种子、步数与断言；本地仍可运行对应套件。涉及战争长程恢复、自主发展或随机编辑存档的修改按范围补跑对应长程回归。全部核心检查使用 `--suite all`；仅调整 CI 编排时检查工作流语法、任务依赖、条件及脚本入口，不必重新构建游戏或执行完整回归。
-
-`SeWZC.WorldBox.UI.Tests` 使用 Avalonia Headless 运行共享界面的状态与控件事件回归，纳入解决方案和 CI。它适合精确复现对象消亡、编辑未变字段、世界切换等边界；真实浏览器仍负责验证裁剪发布、渲染、触屏与存储。
-
-浏览器验证尤其注意：
-
-- Avalonia 绘制在 canvas 上。`?e2e=1` 的只读快照用于定位实际控件，行为通过鼠标、键盘和触屏完成，再读取实际存档核对；不增加修改世界或推进时间的测试后门。
-- 平滑运动要观测**最后实际绘制的位置**在同一模拟 tick 内变化，并验证暂停冻结；只检查公式算出的目标位置无法证明用户看到了动画。
-- 触屏平移与捏合既要验证世界不变，也要确认镜头确实移动或缩放。固定布局等待按压动画结束后精确比较，不用宽松像素阈值掩盖持续跳动。
-- 软件渲染回退只允许已知、精确匹配的诊断，并检查实际游戏画布有有效像素。不要泛化忽略 `console.error` 或把空白页面当成成功。
-- 手机尺寸仿真不是实机，原生基准不是浏览器 FPS；未验证的输入法、浏览器和设备要如实保留边界。
+核心与界面单元测试执行合计应明显低于 10 秒，编译和还原另计；不设置按耗时判失败的机制。可通过 `--list-tests` 列出用例，通过 `--filter FullyQualifiedName~ResearchCommandsTests` 聚焦类型。共享界面项目目前只测试无窗口逻辑，不启动 Avalonia Headless。单元通过不能声称模拟长程、真实存储、浏览器交互、渲染或真机验收通过；缺口明确记录在 [验证记录](verification.md)。
 
 ## 并行协作与交付
 
@@ -194,9 +173,7 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 
 当前工作流自动验证 `main` 推送与 PR，其他分支可手动运行，避免功能分支 push／PR 双跑。原生 `build` 与浏览器 `publish` 任务在独立 runner 并行执行：前者只还原和构建 `scripts/ci-build.slnf` 中的桌面与测试依赖，不安装 WASM 工作负载；后者只还原浏览器项目并发布一次。新增项目时同步维护筛选文件。CI 发布传 `--no-restore`，本地独立发布仍自动还原。
 
-日常浏览器矩阵只执行 `deploy-smoke.cjs`；`full_regression=true` 时加上完整交互回归（包含真实帝国存档、科技树和界面入口），下载同一静态产物，在独立 runner 并行执行，避免运动／特效测量争抢 CPU。大世界保存夹具只在完整回归时生成和上传。部署依赖原生构建、发布及本次选择的全部浏览器检查成功。共享浏览器安装 action 按操作系统、架构及 lockfile 缓存 Chromium 下载，缓存命中仍检查系统依赖。
-
-只有 `main` 非 PR 运行会部署；部署前的本地产物和部署后的公网均用快速冒烟校验 HTML 提交标记、渲染、模拟推进、存档和刷新恢复。静态产物的提交标记由发布脚本生成，CI 使用 `GITHUB_SHA`。日常成功表示快速检查通过；触屏、编辑与其他完整行为只由对应回归结果证明。推送授权沿用当前任务与会话约定；本指南不增加新的授权，也不要求重复确认已有授权。已部署与已通过公网验收是两个状态，报告时分别说明。
+部署依赖原生构建、xUnit 单元测试、浏览器裁剪发布和静态资源检查成功。只有 `main` 非 PR 运行会部署；当前没有浏览器自动操作或部署后交互检查。推送授权沿用当前任务与会话约定；本指南不增加新的授权，也不要求重复确认已有授权。
 
 ## 文档随行为一起维护
 
@@ -212,38 +189,16 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 
 详情文本比较内容后再赋值，折叠区不做持续计算。道路／建筑名单按日序、搜索和最新事件标识缓存，事件焦点按保留事件与关注集合变化分组。搜索输入用 220 ms 合并刷新，焦点控件不拆换；选择变化才重建详情。
 
-`wwwroot/text-input.js` 是针对锁定 Avalonia 12.1.3 的输入适配：该版本只从键盘和 `compositionend` 接收字符，忽略 `beforeinput` 的普通插入。适配仅补齐未被既有输入路径消费的插入／删除，排除合成中事件、实体按键和输入法尾随提交，防止重复。升级框架时重跑 `details.cjs`，确认是否可以去掉此适配。桌面不经过该浏览器适配。
-
-百年研究／生产与法术传承回归位于 `DevelopmentPlanningTests`；诊断入口 `--simulate-development <目录> [种子] [尺寸] [日序] --technology` 或 `--magic-practice` 仅指定国家发展偏好，不赠送物资或知识。普通模式不加方向参数。
-
-
-原生 `--profile-simulation` 同时记录整个测量窗口的进程 CPU 时间和每 tick 墙钟耗时。CPU 包含该进程的 GC、JIT 和工作线程，可能大于墙钟；不包含生成、预热或保存，也不能当成模拟主线程或单个方法的 CPU 百分比。分批与交替复测结论不一致时保留所有组，不将负“探针开销”当成优化、不将异常直接归因于 GC／调度，记录独立的配对 CPU 与墙钟证据。
-
+`wwwroot/text-input.js` 是针对锁定 Avalonia 12.1.3 的输入适配：该版本只从键盘和 `compositionend` 接收字符，忽略 `beforeinput` 的普通插入。适配仅补齐未被既有输入路径消费的插入／删除，排除合成中事件、实体按键和输入法尾随提交，防止重复。升级框架时在真实浏览器中检查输入法和删除行为，确认是否可以去掉此适配。桌面不经过该浏览器适配。
 
 ### 帝国研究与存档模拟
 
 研究图、说明、成本和对象前置统一维护在 `Advancement` 及其 `Catalog` 分部，`ResearchRules` 负责路线和解锁索引，每批生产配方由 `ProductionRecipe` 与 `ProductionRules` 负责。新增知识的效果需进入实际采收、生产、训练等规则及对应效果展示，不能只新增界面节点。矿工材料目标是保存状态；生产预算缓存只在居民阶段存在，退出阶段必须清空。
 
-科技树布局只属于 UI。节点位置与每条实际依赖的线路由 `ResearchTreeLayout` 生成；`ResearchGraphControl` 保留拖动、缩放与定位，周期刷新不替换节点或复位视野。Headless 检查两条研究树与共同基础的连接覆盖、节点重叠、线路穿越和终点不绕外围；浏览器 `research-trees.cjs` 使用交付 ZIP 中的真实存档，检查节点上的鼠标／真实触摸横向与纵向拖动、缩放、完整概览与存档不变性。触屏回归须固定同一手势的触点编号，可用 `WORLDBOX_RESEARCH_CASES=technology-mobile,magic-mobile` 聚焦失败场景；默认执行桌面／触屏共四个场景。核心规则未变的图形修正无需重跑帝国模拟。
-
-复现完整自主科技路线：
-
-```bash
-dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --simulate-development artifacts/empires/technology 73921 128 24000 --peaceful --technology --require-empire --until-empire
-```
-
-将 `--technology` 替换为 `--arcane-industry` 可运行魔法帝国路线。`--require-empire` 失败时返回非零，要求同一聚落完整掌握路线并有各配套设施真实生产记录；`--until-empire` 达标后继续 1,200 日再保存。报告记录实际推进日数、首次达标、各采样、死亡原因和 24 日保存续演校验。繁荣规则场景与默认战争／灾害世界的结果须分别说明。
-
+科技树布局只属于 UI。节点位置与实际前置线路由 `ResearchTreeLayout` 生成；`ResearchGraphControl` 保留拖动、缩放与定位。`ResearchTreeLayoutTests` 检查选中集合内的依赖、集合外前置及空行列压缩；实际拖动、缩放和触屏行为需要浏览器验收。
 
 ### 格式 14 研究玩法扩展
 
-`WorldEngine.ResearchGameplay.cs` 负责文明条件、公共服务、新岗位、铁路、折跃与射击，`WorldEngine.KnowledgeQueries.cs` 负责逐日派生知识索引。研究声明的建筑／职业／法术与操作入口由 `MainView.ResearchActions.cs` 执行正常编辑命令，不能在测试桥中添加修改入口。可变保存字段必须同步验证；枚举槽 18、23 为已删除的错误帝国项目，不得复用。
+`WorldEngine.ResearchGameplay.cs` 负责文明条件、公共服务、新岗位、铁路、折跃与射击，`WorldEngine.KnowledgeQueries.cs` 负责逐日派生知识索引。研究声明的建筑／职业／法术与操作入口由 `MainView.ResearchActions.cs` 执行正常编辑命令。可变保存字段必须同步验证。
 
-完整模拟以 `GetCivilizationProgress` 为同一判据，必须检查配套设施的健康、停用、领地、完成状态及真实首批记录。`ResearchGameplayTests` 验证新机制的成本、范围、交战知识、拒绝时不变和保存续演；浏览器 `research-gameplay.cjs` 在桌面／触屏走实际岗位、建造、铁路、折跃与法术入口，`research-trees.cjs` 导入当前交付 ZIP 检查图形与只读行为。新增内容不能仅依赖 enum 数量测试。
-
-
-### 存档性能复现
-
-Release 构建后可独立运行 `dotnet tests/SeWZC.WorldBox.Core.Tests/bin/Release/net10.0/SeWZC.WorldBox.Core.Tests.dll --profile-save --output artifacts/save-performance.json`。该入口创建 256×256、2,000 居民的同一受控世界，预热一次并测量三次实际分块捕获，记录未压缩大小、耗时、最长同步切片、让出次数和总分配量。它与功能套件分开，禁止与构建、测试或浏览器负载并发测量；原生结果不能换算为浏览器帧率。零值／精确种群与确定续演由功能套件验证，真实压缩、无 Worker／无压缩 API、取消和损坏存储元数据由 `tests/browser/saving.cjs` 验证。
-
-保存浏览器套件额外验证真实自动保存及暂停后 33 秒内不重复保存。定位问题时可用 `WORLDBOX_SAVE_CASES=worker,fallback,uncompressed` 筛选路径；未设置时运行全部三种路径。`uncompressed` 同时禁用 scheduler，验证 MessageChannel 的让出回退；各场景均使用隔离的浏览器上下文。
+文明结果以 `GetCivilizationProgress` 为同一判据，检查设施的健康、停用、领地、完成状态与首批生产记录。当前单元覆盖研究开始、扣费、知识接收和到场生产；完整自主文明演化与研究解锁界面尚无替代回归。

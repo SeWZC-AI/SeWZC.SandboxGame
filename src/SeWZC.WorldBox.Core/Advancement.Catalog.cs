@@ -2,7 +2,12 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class Advancement
 {
-    private static readonly IReadOnlyDictionary<int, Advancement> ById = All.ToDictionary(research => research.Id);
+    private static readonly IReadOnlyDictionary<int, Advancement> ById;
+
+    static Advancement()
+    {
+        ById = All.ToDictionary(research => research.Id);
+    }
 
     /// <summary>农业改良。</summary>
     public static Advancement Agriculture { get; } = new(0, nameof(Agriculture), "农业改良", ResearchBranch.Resources,

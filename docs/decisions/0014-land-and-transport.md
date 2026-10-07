@@ -24,4 +24,4 @@
 
 格式 7 保存土地、矿藏和运输事实；拒绝格式 6 及更早版本。新增库存字段必须显式保存，地块与运输的默认零值省略须符合 [0008](0008-complete-save-state.md)。
 
-[LandTransportTests](../../tests/SeWZC.WorldBox.Core.Tests/LandTransportTests.cs) 验证通行能力、现场建设、阶段发现、载具生产、往返及恢复；[land.cjs](../../tests/browser/land.cjs) 验证实际地图选择、手机详情与桥梁施工；[motion.cjs](../../tests/browser/motion.cjs) 验证真实绘制位置。结果和性能归属见 [验证记录](../verification.md) 与 [性能记录](../performance.md)。
+[LandTransportTests](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/SeWZC.WorldBox.Core.Tests/LandTransportTests.cs) 验证通行能力、现场建设、阶段发现、载具生产、往返及恢复；[land.cjs](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/browser/land.cjs) 验证实际地图选择、手机详情与桥梁施工；[motion.cjs](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/browser/motion.cjs) 验证真实绘制位置。结果和性能归属见 [验证记录](../verification.md) 与 [性能记录](../performance.md)。

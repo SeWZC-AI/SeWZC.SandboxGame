@@ -24,8 +24,8 @@ Avalonia 在 canvas 内绘制，普通 DOM 选择器不能定位内部按钮。�
 
 ## 实现与验证
 
-- [浏览器测试桥](../../src/SeWZC.WorldBox.Browser/BrowserTestBridge.cs)、[只读界面快照](../../src/SeWZC.WorldBox.UI/MainView.Automation.cs)。
-- [真实输入驱动](../../tests/browser/ui-driver.cjs)、[错误及渲染检查](../../tests/browser/browser-support.cjs)、[运动检查](../../tests/browser/motion.cjs)。
+- [浏览器测试桥](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/src/SeWZC.WorldBox.Browser/BrowserTestBridge.cs)、[只读界面快照](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/src/SeWZC.WorldBox.UI/MainView.Automation.cs)。
+- [真实输入驱动](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/browser/ui-driver.cjs)、[错误及渲染检查](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/browser/browser-support.cjs)、[运动检查](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/browser/motion.cjs)。
 - [构建、部署、公网验收工作流](../../.github/workflows/build-and-deploy.yml)，执行结果和证据归属见 [验证记录](../verification.md)。
 
 相关：[产品约定](../product.md) · [开发验证规则](../development.md#按改动选择验证) · [决策索引](README.md)

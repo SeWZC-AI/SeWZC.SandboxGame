@@ -10,7 +10,6 @@ internal static class Program
 {
     private static Task Main(string[] args)
     {
-        BrowserTestBridge.Enabled = args.Contains("--e2e", StringComparer.Ordinal);
         App.Storage = new BrowserWorldStorage();
         return BuildAvaloniaApp().StartBrowserAppAsync("out");
     }

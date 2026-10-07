@@ -31,7 +31,7 @@
 ## 实现与验证
 
 - [基础世界模型](../../src/SeWZC.WorldBox.Core/WorldState.cs)、[居民身份](../../src/SeWZC.WorldBox.Core/Resident.cs)、[居民认知](../../src/SeWZC.WorldBox.Core/AgentState.cs)、[社会状态](../../src/SeWZC.WorldBox.Core/SocietyState.cs)。
-- [社会行为测试](../../tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs)中的 `CulturalExchange` 验证接触改变文化时种族与国籍保持独立。
-- [核心场景](../../tests/SeWZC.WorldBox.Core.Tests/Program.cs)中的 `SpawnOnOwnedLand` 与[浏览器编辑检查](../../tests/browser/smoke.cjs)验证混合种族归属和国家文化编辑边界。
+- [社会行为测试](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs)中的 `CulturalExchange` 验证接触改变文化时种族与国籍保持独立。
+- [核心场景](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/SeWZC.WorldBox.Core.Tests/Program.cs)中的 `SpawnOnOwnedLand` 与[浏览器编辑检查](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/browser/smoke.cjs)验证混合种族归属和国家文化编辑边界。
 
 相关文档：[产品约定](../product.md) · [决策索引](README.md)。

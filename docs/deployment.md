@@ -29,7 +29,7 @@ python3 -m http.server 8080 --directory artifacts/site
 
 首次部署需先完成仓库 Pages 设置。工作流使用 `configure-pages` 检查配置，部署任务仅申请 `pages: write` 与 `id-token: write` 权限；不需要另建 `gh-pages` 分支或在仓库中保存个人访问令牌。
 
-PR 和 `main` 推送执行日常检查，只有 `main` 的非 PR 运行在所有检查通过后部署。手动运行时可勾选 `full_regression` 执行完整回归；部署后会对真实站点执行 `deploy-smoke`，确认上线提交、渲染、模拟推进、存档和刷新恢复。详细检查矩阵与证据位置见 [CI 与部署验收](verification.md#ci-与部署验收)。
+PR 和 `main` 推送执行原生 Release 构建、xUnit 单元测试、浏览器裁剪发布及静态资源检查。只有 `main` 的非 PR 运行在上述任务全部通过后部署。旧浏览器矩阵、完整回归选项与部署后交互检查已删除；当前验证范围和 TRX 报告位置见 [CI 与部署验收](verification.md#ci-与部署验收)。
 
 ## 检查仓库子路径
 
@@ -41,4 +41,4 @@ cp -a artifacts/site/. artifacts/browser-preview/SeWZC.SandboxGame/
 python3 -m http.server 8080 --bind 127.0.0.1 --directory artifacts/browser-preview
 ```
 
-打开 `http://127.0.0.1:8080/SeWZC.SandboxGame/`。静态资源检查能够发现根路径引用与缺失文件，实际交互、存储、触控和浏览器兼容性仍需浏览器验证；依赖安装、套件命令及 `WORLDBOX_BASE_URL`、`CHROMIUM_EXECUTABLE` 参数见 [浏览器检查](verification.md#浏览器检查)。
+打开 `http://127.0.0.1:8080/SeWZC.SandboxGame/`。静态资源检查能够发现根路径引用与缺失文件，实际交互、存储、触控和浏览器兼容性仍需浏览器验证；本地预览和当前验证限制见 [浏览器检查](verification.md#浏览器检查)。

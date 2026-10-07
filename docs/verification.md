@@ -1,80 +1,48 @@
 # 构建与验证
 
-本页维护复现入口与最近的有效结果。历史记录通过 Git 查阅，逐次日志、JSON、截图和存档写入已忽略的 `artifacts/` 或 Actions 产物。各轮结果注明实际源码状态，未覆盖的范围不沿用此前的成功结论。
+本页维护当前测试入口和最近的实际结果。历史记录通过 Git 查阅，日志、TRX 和源码摘要放入已忽略的 `artifacts/`；旧套件结果不作为新测试的证据。
 
 ## 最近验证
 
-2026-10-07 代码质量重构，验证源码为 **`cdb31b7` 基线加本轮工作区修改**。环境为 Linux 云环境，.NET SDK 10.0.401、`wasm-tools` 与 Chromium。研究对象统一为 `Advancement`，配方独立为 `ProductionRecipe`，并整理枚举分支顺序、命名与资源规则归属。
+2026-10-07 重建单元测试，源码为 **`133b01f` 基线加本轮工作区修改**。环境为 Linux 云环境，.NET SDK 10.0.401／Runtime 10.0.12，Avalonia 12.1.3。
 
-- 全解决方案 Release 构建通过；最终源码再经 `scripts/ci-build.slnf -t:Rebuild` 重建，均为 **0 警告／错误**。
-- `python3 scripts/run-fast-tests.py`：**95/95 核心单元、57/57 Headless UI** 通过，分别为 **4.35 秒、7.31 秒**；含进程启动合计 **11.87 秒**，本机本轮仍高于期望的 10 秒，不将结果称为性能优化。
-- `--suite integration`：**122/122** 通过，耗时 **45.55 秒**，覆盖知识传播、生产、规划与保存续演。
-- 新增研究保存回归检查数字载荷、恢复后的共享对象身份，以及已知知识／进行中项目的非法编号和类型拒绝；继续验证研究图依赖和不可变规则目录。
-- `bash scripts/publish-browser.sh --no-restore` 通过，包含裁剪后的 WebAssembly 发布和子路径静态资源检查。
-- `tests/browser/research-gameplay.cjs` 的 Chromium 桌面／触屏场景均通过：当前存档导入、研究树和分支、岗位与建筑解锁、铁路、折跃、法术及真实资源扣除，且无浏览器错误。
-- `git diff --check` 通过。
+- 全部旧核心可执行测试、Headless UI、浏览器测试、混入测试程序的诊断工具及配套入口已删除；当前使用 xUnit 2.9.3、.NET Test SDK 18.0.1 与 Visual Studio 适配器 3.1.5。
+- 新研究目录初始化用例在修复前失败，报 `TypeInitializationException`，内因是尚未初始化的 `All` 被用于建立索引。索引改在静态构造函数中建立，修复后通过。
+- `dotnet build -c Release --no-restore` 全解决方案通过，**0 警告／错误**；清除旧测试 `bin/obj` 后再次还原、构建 `scripts/ci-build.slnf`，同样 **0 警告／错误**。
+- `dotnet test scripts/ci-build.slnf -c Release --no-build --no-restore`：**286/286 核心、26/26 界面逻辑**通过，无失败、无跳过。测试运行器分别报告 **885 ms、131 ms**；整个命令墙钟 **4.33 秒**，包含测试发现、运行器与进程启动，不含编译／还原。
+- `bash scripts/publish-browser.sh --no-restore` 通过，包含裁剪后的 WebAssembly 发布及相对路径、静态资源与运行时载荷检查。旧浏览器测试桥已从发布源码中移除。
+- 工作流已改为标准单元测试并上传 TRX，部署依赖原生验证和静态发布。旧浏览器矩阵、全量回归选项和部署后交互检查已移除。
 
-日志、源文件 SHA-256 清单及浏览器产物位于本地忽略目录 `artifacts/code-quality-20261007/`。本轮未运行长程／随机套件；触屏检查使用 Chromium 手机视口模拟，不代表真实手机性能。浏览器检查使用本地发布产物，没有部署线上站点。
+原始 TRX、测试日志、源码 SHA-256 清单和初始化修复前的失败日志位于 `artifacts/unit-tests/final/`。工作流依赖、现行及历史文档文件链接和 `git diff --check` 均通过。本轮没有运行长程模拟、真实浏览器交互或线上部署，不沿用旧测试的成功记录。
 
 ## 复现命令
 
-安装固定 SDK 与 `wasm-tools` 后，在仓库根目录运行：
-
 ```bash
-dotnet build -c Release
-python3 scripts/run-fast-tests.py
-dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --suite integration
-dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --suite long
-bash scripts/publish-browser.sh
+dotnet restore scripts/ci-build.slnf
+dotnet build scripts/ci-build.slnf -c Release --no-restore
+dotnet test scripts/ci-build.slnf -c Release --no-build --no-restore --logger trx --results-directory artifacts/unit-tests
 ```
 
-按 [开发约定](development.md#按改动选择验证) 选择相关范围。核心测试是可执行程序，不能用 `dotnet test` 代替；`--suite all` 运行全部核心检查，`--filter <名称片段>` 可聚焦场景。失败返回非零退出码。性能测量入口见 [性能说明](performance.md#复现测量)。
+用 `--list-tests` 查看标准发现结果，用 `--filter FullyQualifiedName~ResidentEditingTests` 运行指定类型。用例组织与夹具边界见 [测试说明](../tests/README.md)。
 
 ## 浏览器检查
 
-浏览器自动检查使用 Node.js 22 和 [package.json](../tests/browser/package.json) 锁定的 Playwright 版本，普通运行游戏不需要 Node.js。先按 [部署指南](deployment.md#本地发布与预览) 发布站点，再安装锁定依赖并准备仓库子路径：
+旧浏览器脚本与 `?e2e=1` 快照桥已移除。静态发布和本地预览见 [部署指南](deployment.md#本地发布与预览)，仍可使用：
 
 ```bash
-npm ci --prefix tests/browser
-cd tests/browser
-npx playwright install --with-deps chromium
-cd ../..
-mkdir -p artifacts/browser-preview/SeWZC.SandboxGame
-cp -a artifacts/site/. artifacts/browser-preview/SeWZC.SandboxGame/
-python3 -m http.server 8080 --bind 127.0.0.1 --directory artifacts/browser-preview
+bash scripts/publish-browser.sh
+python3 -m http.server 8080 --bind 127.0.0.1 --directory artifacts/site
 ```
 
-保持 HTTP 服务运行，在另一终端的仓库根目录执行相关套件：
-
-```bash
-npm test --prefix tests/browser
-npm run test:mobile --prefix tests/browser
-npm run test:motion --prefix tests/browser
-npm run test:entries --prefix tests/browser
-npm run test:deploy --prefix tests/browser
-```
-
-其余脚本与参数见 [浏览器测试目录](../tests/browser/) 和 [CI 工作流](../.github/workflows/build-and-deploy.yml)。保存及研究回归需要当前格式夹具；CI 在完整回归时生成并上传，研究夹具通过 `python3 scripts/prepare-research-fixtures.py` 生成。
-
-| 变量 | 用途 |
-| --- | --- |
-| `WORLDBOX_BASE_URL` | 站点完整地址，包含项目子路径及结尾 `/`；默认 `http://127.0.0.1:8080/SeWZC.SandboxGame/` |
-| `CHROMIUM_EXECUTABLE` | 已有 Chromium 的可执行文件路径；未设置时使用 Playwright 安装版本 |
-| `WORLDBOX_ARTIFACT_DIR` | 浏览器证据输出目录，默认写入 `artifacts/browser-tests` |
-| `WORLDBOX_TEST_DISABLE_WEBGL` | 值为 `1` 时复验软件渲染回退 |
-| `WORLDBOX_EXPECTED_REVISION` | 冒烟检查要求的完整 Git SHA；CI 必填，本地可选 |
-
-Avalonia 在 canvas 上绘制。`?e2e=1` 提供只读控件快照，交互仍通过实际鼠标、键盘与触屏。软件渲染回退只允许共享检查器明确列出的诊断，且必须验证当前页面的实际 2D 像素；页面异常或其他控制台错误仍失败。细节见 [共享浏览器检查器](../tests/browser/browser-support.cjs)。
+打开 `http://localhost:8080/` 进行实际操作。仓库子路径检查可把产物复制到临时 `SeWZC.SandboxGame/` 子目录，再从父目录提供 HTTP 服务。静态检查能发现缺失资源和错误根路径，不能证明游戏启动、触控、中文输入和存储恢复正常。
 
 ## CI 与部署验收
 
-日常 CI 执行原生构建、核心单元、Headless UI、浏览器发布、静态资源检查与 `deploy-smoke`。手动设置 `full_regression=true` 才执行集成、长程及完整浏览器矩阵。仅 `main` 的非 PR 运行部署，部署后对实际 Pages URL 再运行 `deploy-smoke`。
-
-CI 浏览器证据上传为 `worldbox-browser-tests-<suite>`，公网检查为 `worldbox-live-browser-tests`。本机子路径结果不替代部署后检查；实际上线提交以对应 Actions 和 `github-pages` 环境为准。
+日常流程执行原生 Release 构建、xUnit 单元测试、裁剪后的浏览器发布和静态资源检查；测试报告上传为 `worldbox-unit-tests`，静态文件上传为 `worldbox-static-site`。只有 `main` 的非 PR 运行部署。当前没有自动浏览器交互或部署后游戏验收。
 
 ## 验证边界
 
-- Chromium 手机尺寸模拟不能替代真实 Android／iOS；Firefox、Safari、真机性能及存储仍需验证。
-- 原生基准不含渲染；短时浏览器压力结果不能证明复杂地形、大人口长期稳定性或手机帧率。
-- 存档依赖本设备与站点存储，配额、多标签页与关闭浏览器等边界需按平台继续检查。
-- 当前能力与后续范围见 [产品约定](product.md)，避免用旧验收记录判断功能是否实现。
+- 单元覆盖资源隔离、通行与植物、研究目录／命令／操作、现场生产、防护、居民与国家编辑、保存格式与取消，以及文字、运动插值和研究布局。
+- 未覆盖完整战争、灾害、通信链、自主演化、长期保存续演和大规模人口平衡；删除旧套件后尚无这些场景的替代自动验收。
+- 未覆盖实际 UI 控件事件、浏览器输入／触屏／渲染、IndexedDB 或桌面压缩落盘。单元保存检查只验证核心捕获和 JSON。
+- 真机、Firefox／Safari、长期性能和线上部署均未验证。历史性能结果的源码归属见 [性能说明](performance.md)。

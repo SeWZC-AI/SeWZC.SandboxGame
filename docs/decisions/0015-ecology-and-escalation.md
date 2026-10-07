@@ -22,4 +22,4 @@
 
 ## 实现与验证
 
-主要入口见 [架构](../architecture.md#动物生态局部冲突与详情格式-8)，验收见 [产品约定](../product.md#城镇资源争夺与观察优化2026-10-03)。核心回归位于 [EcologyAndConflictTests.cs](../../tests/SeWZC.WorldBox.Core.Tests/EcologyAndConflictTests.cs)，实际结果见 [验证记录](../verification.md)。
+主要入口见 [架构](../architecture.md#动物生态局部冲突与详情格式-8)，验收见 [产品约定](../product.md#城镇资源争夺与观察优化2026-10-03)。核心回归位于 [EcologyAndConflictTests.cs](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/SeWZC.WorldBox.Core.Tests/EcologyAndConflictTests.cs)，实际结果见 [验证记录](../verification.md)。

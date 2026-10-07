@@ -32,7 +32,7 @@
 ## 实现与验证
 
 - [社会决策实现](../../src/SeWZC.WorldBox.Core/WorldEngine.Society.cs)中的 `ReceiveSocietyReport` 与 `DecideLocalPolicy`。
-- [社会行为测试](../../tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs)中的 `InstitutionalWeights` 验证来源职业、重复报告、制度差异、玩家覆盖及证据引用。
-- [角色行为测试](../../tests/SeWZC.WorldBox.Core.Tests/AgentBehaviorTests.cs)中的 `DeliveredPetition` 验证意见实际送达后才改变接收方政策。
+- [社会行为测试](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs)中的 `InstitutionalWeights` 验证来源职业、重复报告、制度差异、玩家覆盖及证据引用。
+- [角色行为测试](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/SeWZC.WorldBox.Core.Tests/AgentBehaviorTests.cs)中的 `DeliveredPetition` 验证意见实际送达后才改变接收方政策。
 
 相关文档：[产品约定](../product.md) · [决策索引](README.md)。
