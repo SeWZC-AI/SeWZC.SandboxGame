@@ -219,7 +219,7 @@ public sealed partial class WorldEngine
             if (existing is null || State.Tick - existing.ObservedTick >= 120)
             {
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.WaterSource, bestSource + 1,
-                    bestSource % State.Width, bestSource / State.Width, 1, "实地发现可取水的河湖或有供水的陆地"), false);
+                    bestSource % State.Width, bestSource / State.Width, 1, "实地发现可取水的河湖或有供水的陆地"));
             }
         }
 

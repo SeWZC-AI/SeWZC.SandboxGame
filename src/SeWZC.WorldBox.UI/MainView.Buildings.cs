@@ -393,7 +393,7 @@ public sealed partial class MainView
     {
         if (_engine.GetResident(id) is not { Health: > 0 } person)
             return;
-        var mind = CloneMind(id);
+        var mind = CreateMindDraft(id);
         var town = _engine.State.Settlements.FirstOrDefault(t => t.Id == person.SettlementId);
         if (kind.HasValue && person.ArmyId != 0)
         {

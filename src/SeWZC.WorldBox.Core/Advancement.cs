@@ -5,7 +5,7 @@ namespace SeWZC.WorldBox.Core;
 
 /// <summary>聚落可掌握的研究知识。</summary>
 [JsonConverter(typeof(AdvancementJsonConverter))]
-public sealed partial class Advancement
+public sealed partial record Advancement
 {
     private readonly string? _effect;
 

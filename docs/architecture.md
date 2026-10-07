@@ -25,7 +25,7 @@ Core 不引用 Avalonia、平台 API 或文件系统。UI 协调模拟、编辑�
 | 状态 | 权威来源与边界 |
 | --- | --- |
 | 世界事实 | [WorldState](../src/SeWZC.WorldBox.Core/WorldState.cs) 的固定地格、稳定 ID 实体、时间和随机状态 |
-| 居民认知 | [AgentState](../src/SeWZC.WorldBox.Core/AgentState.cs) 的目标、记忆、人格和经历；消息副本独立，保留来源及时效 |
+| 居民认知 | [AgentState](../src/SeWZC.WorldBox.Core/AgentState.cs) 的目标、记忆、人格和经历；信息快照不可变，传播时保留来源及时效 |
 | 制度材料 | [SocietyState](../src/SeWZC.WorldBox.Core/SocietyState.cs) 的 `Reports`；不读取未传达的全国居民思想 |
 | 资源 | 聚落 `Resources`、个人 `Inventory` 及军队补给分别记账；国家总量是聚合展示 |
 | 身份与归属 | 种族、文化、国家及聚落各自稳定 ID；转移通过统一命令维护首都和关联实体 |
@@ -35,7 +35,7 @@ Core 不引用 Avalonia、平台 API 或文件系统。UI 协调模拟、编辑�
 | 战争与故事 | 军队现场状态、机构已收军事报告、独立事件和真实经历分开；历史引用允许记录淘汰但不指向未来或形成循环 |
 | UI 会话 | 镜头、选择、跟随、关注、折叠、导航、研究视野和短暂效果不进入模拟存档 |
 
-实体、枚举和跨文件结果类型放各自同名文件，机制使用分部文件。共享规则与可变库存分开：费用使用 `ResourceAmounts`，前置与解锁复制为只读集合，运行库存使用 `ResourceStock`；显示标识不参与业务判断。地图工具使用 `MapTool`／`ToolCategory`，研究操作通过 `IResearchActionHandler` 调用界面命令，核心保持无 UI 依赖。
+实体、枚举和跨文件结果类型放各自同名文件，机制使用分部文件。世界及实体保留可变运行状态，地图尺寸和种子只在初始化时设置；信息、待递送消息、个人经历、决策、进度样本和机构报告使用不可变记录，信息议题的时效、记忆替换、传递优先级与接收行为由共享多态对象决定。共享规则与可变库存分开：费用使用 `ResourceAmounts`，前置与解锁复制为只读集合，运行库存使用 `ResourceStock`；显示标识不参与业务判断。地图工具使用 `MapTool`／`ToolCategory`，研究操作通过 `IResearchActionHandler` 调用界面命令，核心保持无 UI 依赖。
 
 ## 模块定位
 

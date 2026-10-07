@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Numerics;
 using System.Runtime.InteropServices;
 
@@ -38,84 +39,29 @@ public sealed partial class WorldEngine
         };
     }
 
-    /// <summary>复制信息记录，保留观察编号、来源和时间戳。</summary>
-    /// <param name="fact">需要复制并保留来源的信息记录。</param>
-    private static AgentFact CopyAgentFact(AgentFact fact)
-    {
-        return new AgentFact
-        {
-            Id = fact.Id,
-            EventId = fact.EventId,
-            CampaignEventId = fact.CampaignEventId,
-            WarObjective = fact.WarObjective,
-            Kind = fact.Kind,
-            SubjectId = fact.SubjectId,
-            TargetNationId = fact.TargetNationId,
-            X = fact.X,
-            Y = fact.Y,
-            Value = fact.Value,
-            ObservedTick = fact.ObservedTick,
-            LearnedTick = fact.LearnedTick,
-            OriginResidentId = fact.OriginResidentId,
-            SourceResidentId = fact.SourceResidentId,
-            OriginProfession = fact.OriginProfession,
-            Confidence = fact.Confidence,
-            Hops = fact.Hops,
-            Text = fact.Text,
-        };
-    }
-
-    /// <summary>根据原始观察时间和议题有效期，计算衰减后的报告可信度。</summary>
-    /// <param name="fact">需要按观察时间评估的信息记录。</param>
-    private double AgentFactReliability(AgentFact fact)
-    {
-        var lifetime = fact.Kind switch
-        {
-            AgentFactKind.FoodSupply or AgentFactKind.ReliefRequest => 180d,
-            AgentFactKind.Danger => 24d,
-            AgentFactKind.SettlementLocation => 1200d,
-            _ => 600d,
-        };
-        return Math.Clamp(fact.Confidence, 0, 1) * Math.Clamp(1 - (State.Tick - fact.ObservedTick) / lifetime, 0, 1);
-    }
-
-    private void RememberAgentFact(Resident person, AgentFact fact, bool copy = true)
+    private void RememberAgentFact(Resident person, AgentFact fact)
     {
         var memory = person.Agent.Memory;
         for (var i = 0; i < memory.Count; i++)
         {
             var old = memory[i];
-            if (old.Kind != fact.Kind || old.SubjectId != fact.SubjectId || old.TargetNationId != fact.TargetNationId
-                || (fact.Kind is AgentFactKind.Danger or AgentFactKind.Personal &&
-                    (old.X != fact.X || old.Y != fact.Y)))
+            if (!fact.HasSameSubject(old))
                 continue;
-            if (old.ObservedTick > fact.ObservedTick)
+            if (!fact.Supersedes(old))
                 return;
-            if (old.ObservedTick == fact.ObservedTick)
-            {
-                // 同日军令仍有编号顺序；新军令必须替换旧军令，不能因旧副本为亲闻或更可信而拒绝更新。
-                if (fact.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder && old.Id != fact.Id)
-                {
-                    if (old.Id > fact.Id)
-                        return;
-                }
-                else if (old.Confidence >= fact.Confidence)
-                    return;
-            }
 
             memory.RemoveAt(i);
             break;
         }
 
-        // 共享信息需复制，独立的观察和消息副本可直接交给接收者。
-        memory.Add(copy ? CopyAgentFact(fact) : fact);
+        memory.Add(fact);
         if (memory.Count <= 16)
             return;
         var forgotten = 0;
-        var lowestPriority = MemoryRetentionPriority(memory[0], person.SettlementId);
+        var lowestPriority = memory[0].RetentionPriority(person.SettlementId);
         for (var i = 1; i < memory.Count; i++)
         {
-            var priority = MemoryRetentionPriority(memory[i], person.SettlementId);
+            var priority = memory[i].RetentionPriority(person.SettlementId);
             if (priority >= lowestPriority)
                 continue;
             forgotten = i;
@@ -123,12 +69,6 @@ public sealed partial class WorldEngine
         }
 
         memory.RemoveAt(forgotten);
-    }
-
-    private static long MemoryRetentionPriority(AgentFact fact, int homeId)
-    {
-        return (fact.Kind == AgentFactKind.SettlementLocation && fact.SubjectId == homeId ? 100000 : 0)
-               + (fact.Kind is AgentFactKind.Policy or AgentFactKind.Research ? 60 : 0) + fact.LearnedTick;
     }
 
     /// <summary>将附近的观察和可接触的公开报告记录到该居民自己的记忆中。</summary>
@@ -157,8 +97,7 @@ public sealed partial class WorldEngine
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.FoundingSite, camp.Id, site % State.Width,
                         site / State.Width,
                         State.Tiles[site].Fertility,
-                        $"亲眼勘察到符合间距、周围有至少 {SettlementActivationArea} 格可用陆地的建村地块，肥力 {State.Tiles[site].Fertility}/100，需带回报告"),
-                    false);
+                        $"亲眼勘察到符合间距、周围有至少 {SettlementActivationArea} 格可用陆地的建村地块，肥力 {State.Tiles[site].Fertility}/100，需带回报告"));
             }
         }
 
@@ -167,16 +106,15 @@ public sealed partial class WorldEngine
             if (Distance(person.X, person.Y, town.X, town.Y) > 3)
                 continue;
             RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.SettlementLocation,
-                town.Id, town.X, town.Y, town.NationId, $"见到聚落 {town.Name}"), false);
+                town.Id, town.X, town.Y, town.NationId, $"见到聚落 {town.Name}"));
             if (Distance(person.X, person.Y, town.X, town.Y) > 1)
                 continue;
             RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.FoodSupply,
-                    town.Id, town.X, town.Y, town.Resources.Food, $"在{town.Name}粮仓见到 {town.Resources.Food:0.0} 份粮食"),
-                false);
+                    town.Id, town.X, town.Y, town.Resources.Food, $"在{town.Name}粮仓见到 {town.Resources.Food:0.0} 份粮食"));
             if (town.CultureId > 0)
             {
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.Culture,
-                    town.Id, town.X, town.Y, town.CultureId, $"在{town.Name}接触当地文化"), false);
+                    town.Id, town.X, town.Y, town.CultureId, $"在{town.Name}接触当地文化"));
             }
 
             _observedReports.Clear();
@@ -196,11 +134,13 @@ public sealed partial class WorldEngine
             {
                 if (report.LearnedTick >= State.Tick)
                     continue;
-                var learned = CopyAgentFact(report);
-                learned.LearnedTick = State.Tick;
-                learned.Hops = Math.Min(32, learned.Hops + 1);
-                learned.Confidence *= 0.98;
-                RememberAgentFact(person, learned, false);
+                var learned = report with
+                {
+                    LearnedTick = State.Tick,
+                    Hops = Math.Min(32, report.Hops + 1),
+                    Confidence = report.Confidence * 0.98,
+                };
+                RememberAgentFact(person, learned);
                 if (learned.Kind is AgentFactKind.Policy or AgentFactKind.Culture or AgentFactKind.Research
                     or AgentFactKind.DiplomaticNotice)
                     ReceiveSocietyReport(town, person, learned);
@@ -209,7 +149,7 @@ public sealed partial class WorldEngine
             if (town.Id == person.SettlementId && person.Hunger > 35 && town.Resources.Food < 12)
             {
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.ReliefRequest,
-                    town.Id, town.X, town.Y, person.Hunger, $"亲历饥饿 {person.Hunger:0}，家园粮少，请求救济"), false);
+                    town.Id, town.X, town.Y, person.Hunger, $"亲历饥饿 {person.Hunger:0}，家园粮少，请求救济"));
             }
         }
 
@@ -225,14 +165,14 @@ public sealed partial class WorldEngine
         {
             RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.Danger,
                 0, dangerIndex % State.Width, dangerIndex / State.Width,
-                State.Tiles[dangerIndex].FireTicks, "亲眼看见正在燃烧的土地"), false);
+                State.Tiles[dangerIndex].FireTicks, "亲眼看见正在燃烧的土地"));
         }
 
         foreach (var army in State.Armies)
             if (army.NationId != person.NationId && Distance(person.X, person.Y, army.X, army.Y) <= 4)
             {
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.Danger,
-                    army.Id, army.X, army.Y, army.Soldiers, "亲眼看见附近有外来军队"), false);
+                    army.Id, army.X, army.Y, army.Soldiers, "亲眼看见附近有外来军队"));
             }
     }
 
@@ -267,12 +207,14 @@ public sealed partial class WorldEngine
                 continue;
             foreach (var fact in message.Facts)
             {
-                var received = CopyAgentFact(fact);
-                received.LearnedTick = State.Tick;
-                received.SourceResidentId = message.SenderId;
-                received.Hops = Math.Min(32, fact.Hops + 1);
-                received.Confidence *= 0.96;
-                RememberAgentFact(recipient, received, false);
+                var received = fact with
+                {
+                    LearnedTick = State.Tick,
+                    SourceResidentId = message.SenderId,
+                    Hops = Math.Min(32, fact.Hops + 1),
+                    Confidence = fact.Confidence * 0.96,
+                };
+                RememberAgentFact(recipient, received);
                 if (_settlements.TryGetValue(recipient.SettlementId, out var home)
                     && Distance(recipient.X, recipient.Y, home.X, home.Y) <= 1
                     && (recipient.Profession == Profession.Representative || home.RepresentativeId == recipient.Id
@@ -333,7 +275,7 @@ public sealed partial class WorldEngine
             {
                 State.PendingMessages.Add(new PendingMessage
                 {
-                    SenderId = sender.Id, RecipientId = recipient.Id, DeliverTick = State.Tick + 1, Facts = facts,
+                    SenderId = sender.Id, RecipientId = recipient.Id, DeliverTick = State.Tick + 1, Facts = facts.ToImmutableArray(),
                 });
             }
 
@@ -433,7 +375,7 @@ public sealed partial class WorldEngine
                     RecipientId = recipient.Id,
                     TargetSettlementId = destination.Id,
                     DeliverTick = State.Tick + Math.Max(1, travelTicks),
-                    Facts = facts,
+                    Facts = facts.ToImmutableArray(),
                 });
             }
         }
@@ -462,25 +404,13 @@ public sealed partial class WorldEngine
             selected.Insert(at, fact);
         }
 
-        for (var i = 0; i < selected.Count; i++)
-            selected[i] = CopyAgentFact(selected[i]);
         return selected;
     }
 
     private static bool MessageFactPrecedes(AgentFact candidate, AgentFact current, bool relay)
     {
-        static bool Priority(AgentFact fact, bool relay)
-        {
-            return relay
-                ? fact.Kind is AgentFactKind.ReliefRequest or AgentFactKind.WarOrder or AgentFactKind.PeaceOrder
-                    or AgentFactKind.Research or AgentFactKind.DiplomaticNotice or AgentFactKind.WarReport
-                : fact.Kind is AgentFactKind.Danger or AgentFactKind.ReliefRequest or AgentFactKind.WarOrder
-                    or AgentFactKind.PeaceOrder or AgentFactKind.Research or AgentFactKind.DiplomaticNotice
-                    or AgentFactKind.WarReport;
-        }
-
-        var candidatePriority = Priority(candidate, relay);
-        var currentPriority = Priority(current, relay);
+        var candidatePriority = candidate.Topic.PrioritizeMessage(relay);
+        var currentPriority = current.Topic.PrioritizeMessage(relay);
         return candidatePriority != currentPriority ? candidatePriority : candidate.ObservedTick > current.ObservedTick;
     }
 
@@ -498,7 +428,7 @@ public sealed partial class WorldEngine
 
         AgentFact? relief = null;
         foreach (var fact in agent.Memory)
-            if (fact.Kind == AgentFactKind.ReliefRequest && fact.Value >= 35 && AgentFactReliability(fact) > 0.25
+            if (fact.Kind == AgentFactKind.ReliefRequest && fact.Value >= 35 && fact.ReliabilityAt(State.Tick) > 0.25
                 && State.Tick - fact.ObservedTick < 180 && (relief is null || fact.ObservedTick > relief.ObservedTick))
                 relief = fact;
         if (relief is not null)
@@ -513,7 +443,7 @@ public sealed partial class WorldEngine
             {
                 choices.Add(new GoalChoice(AgentGoalKind.Petition, address.X, address.Y,
                     (person.Profession == Profession.Representative ? 88 : 35 + agent.Personality.Courage * 20) *
-                    AgentFactReliability(relief),
+                    relief.ReliabilityAt(State.Tick),
                     "带着已收到且可信的缺粮报告，去向本地代表请求救济", relief, destination));
             }
         }
@@ -546,12 +476,12 @@ public sealed partial class WorldEngine
                         continue;
                     var knownFood = LatestAgentFact(agent.Memory, AgentFactKind.FoodSupply, address.SubjectId);
                     var ownFood = LatestAgentFact(agent.Memory, AgentFactKind.FoodSupply, home.Id);
-                    if (ownFood is null || ownFood.Value < 50 || AgentFactReliability(ownFood) < 0.25
+                    if (ownFood is null || ownFood.Value < 50 || ownFood.ReliabilityAt(State.Tick) < 0.25
                         || (knownFood is not null && knownFood.Value >= ownFood.Value * 0.7 &&
-                            AgentFactReliability(knownFood) > 0.5))
+                            knownFood.ReliabilityAt(State.Tick) > 0.5))
                         continue;
-                    var reliability = AgentFactReliability(address) *
-                                      (knownFood is null ? 0.75 : AgentFactReliability(knownFood));
+                    var reliability = address.ReliabilityAt(State.Tick) *
+                                      (knownFood is null ? 0.75 : knownFood.ReliabilityAt(State.Tick));
                     if (reliability < 0.4)
                     {
                         choices.Add(new GoalChoice(AgentGoalKind.DeliverMessage, address.X, address.Y,
@@ -568,10 +498,10 @@ public sealed partial class WorldEngine
                 }
                 else if (agent.Memory.Any(f => f.Kind != AgentFactKind.SettlementLocation
                                                && f.ObservedTick > agent.MissionStartedTick &&
-                                               AgentFactReliability(f) >= .5))
+                                               f.ReliabilityAt(State.Tick) >= .5))
                 {
                     choices.Add(new GoalChoice(AgentGoalKind.DeliverMessage, address.X, address.Y,
-                        (59 + agent.Personality.Sociability * 8) * AgentFactReliability(address),
+                        (59 + agent.Personality.Sociability * 8) * address.ReliabilityAt(State.Tick),
                         "带着自己已知的消息，拜访记忆中另一座聚落", address, address.SubjectId));
                 }
             }
@@ -609,7 +539,7 @@ public sealed partial class WorldEngine
                         or AgentFactKind.DiplomaticNotice or AgentFactKind.WarReport
                         ? 1
                         : 0)
-                .ThenByDescending(f => f.ObservedTick).Take(8).Select(CopyAgentFact).ToList();
+                .ThenByDescending(f => f.ObservedTick).Take(8).ToList();
             if (Distance(person.X, person.Y, home.X, home.Y) <= 1)
             {
                 var ration = Math.Min(home.Resources.Food, Math.Max(0,
@@ -661,7 +591,7 @@ public sealed partial class WorldEngine
 
             home.Resources.Food -= cargo;
             person.Inventory.Food += cargo;
-            agent.CarriedMessages = agent.Memory.OrderByDescending(f => f.ObservedTick).Take(8).Select(CopyAgentFact)
+            agent.CarriedMessages = agent.Memory.OrderByDescending(f => f.ObservedTick).Take(8)
                 .ToList();
             goal.TargetX = address.X;
             goal.TargetY = address.Y;
@@ -739,21 +669,23 @@ public sealed partial class WorldEngine
         {
             var outbound = MakeAgentFact(person, AgentFactKind.TradeExchange, person.NationId, destination.X,
                 destination.Y, 1, "商旅实际抵达并完成粮木交换");
-            outbound.EventId = tradeEvent.Id;
+            outbound = outbound with { EventId = tradeEvent.Id };
             AddPublicFact(destination, outbound);
             var inbound = MakeAgentFact(person, AgentFactKind.TradeExchange, destination.NationId, destination.X,
                 destination.Y, 1, "我与另一国家的聚落完成交易，返乡后可报告");
-            inbound.EventId = tradeEvent.Id;
+            inbound = inbound with { EventId = tradeEvent.Id };
             RememberAgentFact(person, inbound);
         }
 
         foreach (var fact in agent.CarriedMessages.ToArray())
         {
-            var delivered = CopyAgentFact(fact);
-            delivered.LearnedTick = State.Tick;
-            delivered.SourceResidentId = person.Id;
-            delivered.Hops = Math.Min(32, fact.Hops + 1);
-            delivered.Confidence *= 0.98;
+            var delivered = fact with
+            {
+                LearnedTick = State.Tick,
+                SourceResidentId = person.Id,
+                Hops = Math.Min(32, fact.Hops + 1),
+                Confidence = fact.Confidence * 0.98,
+            };
             AddPublicFact(destination, delivered);
             ReceiveSocietyReport(destination, person, delivered);
         }

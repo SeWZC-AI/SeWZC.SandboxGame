@@ -980,31 +980,8 @@ public sealed partial class WorldEngine
         if (Distance(carrier.X, carrier.Y, target.X, target.Y) > 2 || fact.ObservedTick > State.Tick ||
             fact.Confidence is < 0 or > 1 || !double.IsFinite(fact.Value))
             return;
-        ReceiveDiplomaticNotice(target, fact);
-        ReceiveWarReport(target, fact);
-        if (fact.Confidence >= 0.5 && fact.Kind == AgentFactKind.Research && fact.Value == Math.Truncate(fact.Value) &&
-            Advancement.Find((int)fact.Value) is { } receivedResearch)
-            GrantReceivedResearch(target.Id, receivedResearch, fact.EventId, fact.Id);
-        if (fact.Confidence >= 0.5 && fact.Kind == AgentFactKind.Policy && State.Tick - fact.ObservedTick <= 240 &&
-            fact.Value is >= 0 and <= 4 && fact.Value == Math.Truncate(fact.Value))
-        {
-            var policy = State.Society.Policies.First(p => p.SettlementId == target.Id);
-            if (fact.ObservedTick >= policy.EvidenceObservedTick)
-            {
-                ApplyReceivedPolicy(target.Id, (PolicyKind)(int)fact.Value);
-                if (!policy.PlayerOverride)
-                {
-                    policy.EvidenceFactId = fact.Id;
-                    policy.EvidenceObservedTick = fact.ObservedTick;
-                }
-            }
-        }
-
-        if (fact.Confidence >= 0.5 && fact.Kind == AgentFactKind.Culture && fact.Value is > 0 and <= 100_000 &&
-            fact.Value == Math.Truncate(fact.Value))
-            ObserveCulture(carrier, (int)fact.Value);
-        if (fact.Kind is not (AgentFactKind.FoodSupply or AgentFactKind.Danger or AgentFactKind.ReliefRequest
-            or AgentFactKind.Research or AgentFactKind.Personal))
+        fact.Topic.Receive(this, target, carrier, fact);
+        if (!fact.Topic.CreatesInstitutionReport)
             return;
         if (State.Society.Reports.Any(r => r.RecipientSettlementId == target.Id && r.FactId == fact.Id))
             return;
@@ -1025,6 +1002,36 @@ public sealed partial class WorldEngine
         });
         if (State.Society.Reports.Count > 2_048)
             State.Society.Reports.RemoveRange(0, State.Society.Reports.Count - 2_048);
+    }
+
+    internal void ReceiveResearchFact(Settlement target, AgentFact fact)
+    {
+        if (fact.Confidence >= 0.5 && fact.Value == Math.Truncate(fact.Value) &&
+            Advancement.Find((int)fact.Value) is { } receivedResearch)
+            GrantReceivedResearch(target.Id, receivedResearch, fact.EventId, fact.Id);
+    }
+
+    internal void ReceivePolicyFact(Settlement target, AgentFact fact)
+    {
+        if (fact.Confidence < 0.5 || State.Tick - fact.ObservedTick > 240 ||
+            fact.Value is < 0 or > 4 || fact.Value != Math.Truncate(fact.Value))
+            return;
+        var policy = State.Society.Policies.First(p => p.SettlementId == target.Id);
+        if (fact.ObservedTick < policy.EvidenceObservedTick)
+            return;
+        ApplyReceivedPolicy(target.Id, (PolicyKind)(int)fact.Value);
+        if (!policy.PlayerOverride)
+        {
+            policy.EvidenceFactId = fact.Id;
+            policy.EvidenceObservedTick = fact.ObservedTick;
+        }
+    }
+
+    internal void ReceiveCultureFact(Resident carrier, AgentFact fact)
+    {
+        if (fact.Confidence >= 0.5 && fact.Value is > 0 and <= 100_000 &&
+            fact.Value == Math.Truncate(fact.Value))
+            ObserveCulture(carrier, (int)fact.Value);
     }
 
     private void DecideLocalPolicy(Settlement town)
@@ -1051,15 +1058,9 @@ public sealed partial class WorldEngine
         var largest = new double[5];
         foreach (var report in reports)
         {
-            var policy = report.Topic switch
-            {
-                AgentFactKind.FoodSupply or AgentFactKind.ReliefRequest => PolicyKind.FoodSecurity,
-                AgentFactKind.Danger => PolicyKind.Defense,
-                AgentFactKind.Research => PolicyKind.Scholarship,
-                _ => PolicyKind.PublicHealth,
-            };
-            var urgency = report.Topic == AgentFactKind.FoodSupply ? 100 - Math.Clamp(report.Value, 0, 100) :
-                report.Topic == AgentFactKind.Research ? 40 : Math.Clamp(report.Value, 0, 100);
+            var topic = AgentFactTopic.For(report.Topic);
+            var policy = topic.SuggestedPolicy;
+            var urgency = topic.Urgency(report.Value);
             var relevance = policy == PolicyKind.FoodSecurity && report.ReportedProfession == Profession.Farmer ? 2 :
                 policy == PolicyKind.Defense && report.ReportedProfession == Profession.Soldier ? 2 :
                 policy == PolicyKind.Scholarship &&
@@ -1132,7 +1133,7 @@ public sealed partial class WorldEngine
         name = (name ?? "").Trim();
         if (name.Length is < 1 or > 40 || name.Any(char.IsControl))
             throw new ArgumentException("文化名称须为 1–40 个可见字符。", nameof(name));
-        culture.Name = name;
+        State.Society.Cultures[State.Society.Cultures.IndexOf(culture)] = culture with { Name = name };
     }
 
     /// <summary>设置文化的行为倾向权重。</summary>
@@ -1145,9 +1146,12 @@ public sealed partial class WorldEngine
         var culture = RequireCulture(cultureId);
         if (new[] { cooperation, innovation, natureAffinity }.Any(v => !double.IsFinite(v) || v is < 0 or > 1))
             throw new ArgumentOutOfRangeException(nameof(cooperation), "文化参数须在 0 到 1 之间。");
-        culture.Cooperation = cooperation;
-        culture.Innovation = innovation;
-        culture.NatureAffinity = natureAffinity;
+        State.Society.Cultures[State.Society.Cultures.IndexOf(culture)] = culture with
+        {
+            Cooperation = cooperation,
+            Innovation = innovation,
+            NatureAffinity = natureAffinity,
+        };
     }
 
     /// <summary>指定国家的文化归属。</summary>
@@ -2040,8 +2044,7 @@ public sealed partial class WorldEngine
         if (town.PublicKnowledge.Any(f => f.Id == fact.Id))
             return;
         var prior = town.PublicKnowledge.FirstOrDefault(f =>
-            f.Kind == fact.Kind && f.SubjectId == fact.SubjectId && f.TargetNationId == fact.TargetNationId
-            && (fact.Kind is not (AgentFactKind.Danger or AgentFactKind.Personal) || (f.X == fact.X && f.Y == fact.Y)));
+            fact.HasSameSubject(f));
         if (prior is not null)
         {
             if (prior.ObservedTick >= fact.ObservedTick)

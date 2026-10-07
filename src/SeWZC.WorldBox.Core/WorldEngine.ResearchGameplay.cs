@@ -551,7 +551,7 @@ public sealed partial class WorldEngine
             {
                 RememberAgentFact(person,
                     MakeAgentFact(person, AgentFactKind.SettlementLocation, town.Id, town.X, town.Y, town.NationId,
-                        "从勘测所实际观察到城镇"), false);
+                        "从勘测所实际观察到城镇"));
             }
 
         var danger = Circle(b.X, b.Y, range).FirstOrDefault(i =>
@@ -561,7 +561,7 @@ public sealed partial class WorldEngine
         {
             RememberAgentFact(person,
                 MakeAgentFact(person, AgentFactKind.Danger, 0, danger % State.Width, danger / State.Width,
-                    State.Tiles[danger].FireTicks, "从勘测所观察到火情"), false);
+                    State.Tiles[danger].FireTicks, "从勘测所观察到火情"));
         }
 
         var water = Circle(b.X, b.Y, range).FirstOrDefault(i =>
@@ -572,7 +572,7 @@ public sealed partial class WorldEngine
         {
             RememberAgentFact(person,
                 MakeAgentFact(person, AgentFactKind.WaterSource, water + 1, water % State.Width, water / State.Width, 1,
-                    "从勘测所观察到实际水源"), false);
+                    "从勘测所观察到实际水源"));
         }
     }
 

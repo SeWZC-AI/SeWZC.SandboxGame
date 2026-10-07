@@ -20,7 +20,7 @@ public sealed partial class WorldEngine
     public void ConfigureWorld(WorldRules rules, bool disasters, bool magic)
     {
         ValidateWorldRules(rules);
-        State.Rules = rules with { };
+        State.Rules = rules;
         State.NaturalDisasters = disasters;
         State.Society.MagicEnabled = magic;
         AddEvent(WorldEventKind.Editor, "玩家调整世界规则，新的选择按新规则执行；已有项目与成果保留。");
@@ -261,9 +261,7 @@ public sealed partial class WorldEngine
                 f.Kind == AgentFactKind.FoundingSite && f.SubjectId == site.SubjectId);
             if (prior is not null && prior.ObservedTick >= site.ObservedTick)
                 continue;
-            var delivered = CopyAgentFact(site);
-            delivered.LearnedTick = State.Tick;
-            delivered.SourceResidentId = person.Id;
+            var delivered = site with { LearnedTick = State.Tick, SourceResidentId = person.Id };
             AddPublicFact(home, delivered);
         }
 
@@ -280,15 +278,13 @@ public sealed partial class WorldEngine
                 f.Kind == fact.Kind && f.SubjectId == fact.SubjectId && f.TargetNationId == fact.TargetNationId);
             if (old is not null && old.ObservedTick >= fact.ObservedTick)
                 continue;
-            var delivered = CopyAgentFact(fact);
-            delivered.LearnedTick = State.Tick;
-            delivered.SourceResidentId = person.Id;
+            var delivered = fact with { LearnedTick = State.Tick, SourceResidentId = person.Id };
             AddPublicFact(home, delivered);
             ReceiveDiplomaticNotice(home, delivered);
         }
     }
 
-    private void ReceiveDiplomaticNotice(Settlement town, AgentFact fact)
+    internal void ReceiveDiplomaticNotice(Settlement town, AgentFact fact)
     {
         if (fact.Kind != AgentFactKind.DiplomaticNotice || fact.SubjectId == town.NationId || fact.Value is < 0 or > 2
             || !_nations.ContainsKey(fact.SubjectId) || fact.Confidence < .4 ||
@@ -608,7 +604,7 @@ public sealed partial class WorldEngine
                 continue;
             var destination = person.Agent.Memory.Where(f => f.Kind == AgentFactKind.FoodSupply &&
                                                              f.SubjectId != person.SettlementId
-                                                             && f.Value > 50 && AgentFactReliability(f) >= .5)
+                                                             && f.Value > 50 && f.ReliabilityAt(State.Tick) >= .5)
                 .OrderByDescending(f => f.Value).FirstOrDefault();
             if (destination is null || !_settlements.TryGetValue(destination.SubjectId, out var town))
                 continue;

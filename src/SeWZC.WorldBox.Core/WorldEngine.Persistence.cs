@@ -274,9 +274,9 @@ public sealed partial class WorldEngine
         {
             Require(
                 pending is not null && pending.SenderId > 0 && pending.RecipientId > 0 && pending.DeliverTick >= 0 &&
-                pending.DeliverTick <= state.Tick + 1000 && pending.Facts is not null && pending.Facts.Count <= 8,
+                pending.DeliverTick <= state.Tick + 1000 && !pending.Facts.IsDefault && pending.Facts.Length <= 8,
                 "待递送口信无效。");
-            foreach (var fact in pending!.Facts!)
+            foreach (var fact in pending!.Facts)
                 ValidateFactV2(fact, state.Tick, state.Width, state.Height);
         }
 

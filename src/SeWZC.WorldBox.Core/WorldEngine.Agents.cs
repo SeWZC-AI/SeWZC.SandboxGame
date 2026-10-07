@@ -262,7 +262,7 @@ public sealed partial class WorldEngine
             return true;
         var fact = LatestAgentFact(person.Agent.Memory, AgentFactKind.FoodSupply, home.Id);
         var known = Distance(person.X, person.Y, home.X, home.Y) <= 1 ? home.Resources.Food
-            : fact is not null && AgentFactReliability(fact) >= .5 ? fact.Value : 0;
+            : fact is not null && fact.ReliabilityAt(State.Tick) >= .5 ? fact.Value : 0;
         return known < ProductionStockTarget(home, ResourceKind.Food);
     }
 
@@ -322,7 +322,7 @@ public sealed partial class WorldEngine
         var foodFact = LatestAgentFact(agent.Memory, AgentFactKind.FoodSupply, home.Id);
         AgentFact? dangerFact = null;
         foreach (var fact in agent.Memory)
-            if (fact.Kind == AgentFactKind.Danger && fact.Value > 0 && AgentFactReliability(fact) > 0.25
+            if (fact.Kind == AgentFactKind.Danger && fact.Value > 0 && fact.ReliabilityAt(State.Tick) > 0.25
                 && State.Tick - fact.ObservedTick < 24 && Distance(person.X, person.Y, fact.X, fact.Y) <= 5
                 && (dangerFact is null || fact.ObservedTick > dangerFact.ObservedTick))
                 dangerFact = fact;
@@ -337,7 +337,7 @@ public sealed partial class WorldEngine
             {
                 choices.Add(new GoalChoice(AgentGoalKind.Flee, safe % State.Width, safe / State.Width,
                     (180 - personality.Courage * 30) *
-                    (dangerFact is null ? 1 : Math.Max(0.6, AgentFactReliability(dangerFact))),
+                    (dangerFact is null ? 1 : Math.Max(0.6, dangerFact.ReliabilityAt(State.Tick))),
                     dangerFact?.OriginResidentId == person.Id ? "亲眼见到附近危险，先离开危险区域" : "可信的近时报告指出附近危险，先离开核实",
                     dangerFact));
             }
@@ -424,7 +424,7 @@ public sealed partial class WorldEngine
         AddFirefightingChoice(person, choices);
         AddProvisionChoices(person, home, choices);
         if (person.Inventory.Food < 0.3 &&
-            (foodFact is null || foodFact.Value > 0 || AgentFactReliability(foodFact) < 0.5))
+            (foodFact is null || foodFact.Value > 0 || foodFact.ReliabilityAt(State.Tick) < 0.5))
         {
             choices.Add(new GoalChoice(AgentGoalKind.Eat, home.X, home.Y, 65 + person.Hunger,
                 foodFact is null ? "随身口粮不足，返回家园查看粮仓" : $"口粮不足；上次获知家乡有 {foodFact.Value:0.0} 份粮食", foodFact, home.Id));
@@ -474,7 +474,7 @@ public sealed partial class WorldEngine
             score += person.Hunger * (person.Inventory.Food < 0.3 ? 1.1 : 0.1);
             score *= AgentFoodPolicyMultiplier(person);
             if (foodFact is { Value: < 12 })
-                score += 18 * AgentFactReliability(foodFact);
+                score += 18 * foodFact.ReliabilityAt(State.Tick);
             if (State.Rules.Hunger && person.Inventory.Food < .3 && person.Hunger >= 20)
                 score = Math.Max(score, 100 + person.Hunger);
             choices.Add(new GoalChoice(AgentGoalKind.Gather, foodSite % State.Width, foodSite / State.Width, score,
@@ -510,7 +510,7 @@ public sealed partial class WorldEngine
             choices.Add(new GoalChoice(kind, work.X, work.Y, 42 + personality.Diligence * 12
                                                                 + (person.Profession == Profession.Farmer &&
                                                                    foodFact is { Value: < 12 }
-                                                                    ? 18 * AgentFactReliability(foodFact)
+                                                                    ? 18 * foodFact.ReliabilityAt(State.Tick)
                                                                     : 0),
                 kind == AgentGoalKind.Study ? "附近有可参与的研究设施，前往学习" :
                 kind == AgentGoalKind.TrainMagic ? "附近有可训练的魔法设施" : "附近有实际施工或生产工作", EntityId: work.Id));
@@ -877,7 +877,7 @@ public sealed partial class WorldEngine
                 if (Distance(person.X, person.Y, home.X, home.Y) <= 1)
                     ProvisionAtHome(person, home);
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.FoodSupply, home.Id,
-                    home.X, home.Y, home.Resources.Food, $"实地查看粮仓：{home.Resources.Food:0.0} 份粮食"), false);
+                    home.X, home.Y, home.Resources.Food, $"实地查看粮仓：{home.Resources.Food:0.0} 份粮食"));
                 person.Agent.NextThinkTick = State.Tick + 1;
                 break;
             case AgentGoalKind.Gather:
@@ -1194,7 +1194,7 @@ public sealed partial class WorldEngine
             return GetPolicyProductionMultiplier(home.Id);
         AgentFact? instruction = null;
         foreach (var fact in person.Agent.Memory)
-            if (fact.Kind == AgentFactKind.Policy && fact.SubjectId == home.Id && AgentFactReliability(fact) >= 0.5
+            if (fact.Kind == AgentFactKind.Policy && fact.SubjectId == home.Id && fact.ReliabilityAt(State.Tick) >= 0.5
                 && (instruction is null || fact.ObservedTick > instruction.ObservedTick))
                 instruction = fact;
         return instruction?.Value == (int)PolicyKind.FoodSecurity ? 1.25 : 1;
