@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -10,8 +11,7 @@ public sealed partial class WorldEngine
         var cost = GetBuildingCost(kind);
         if (kind == BuildingKind.Bridge)
         {
-            foreach (var resource in ResourceStock.Kinds)
-                cost.Set(resource, cost.Get(resource) * Math.Clamp(level, 1, 3));
+            cost = cost.Scale(Math.Clamp(level, 1, 3));
         }
 
         return cost;
@@ -41,13 +41,13 @@ public sealed partial class WorldEngine
     public bool CanTraverseStep(int fromX, int fromY, int toX, int toY, TravelMode mode, RaceKind race = RaceKind.Human)
     {
         if (!InBounds(fromX, fromY) || !InBounds(toX, toY) || Distance(fromX, fromY, toX, toY) != 1
-            || !CanTraverse(State.Tiles[Index(toX, toY)], mode, race))
+            || !CanTraverse(Current.Tiles[Index(toX, toY)], mode, race))
             return false;
         if (mode != TravelMode.Foot)
             return true;
         var horizontal = fromY == toY;
-        var from = State.Tiles[Index(fromX, fromY)];
-        var to = State.Tiles[Index(toX, toY)];
+        var from = Current.Tiles[Index(fromX, fromY)];
+        var to = Current.Tiles[Index(toX, toY)];
         return (from.Improvement != LandImprovement.Bridge ||
                 horizontal == (from.BridgeDirection == BridgeDirection.Horizontal))
                && (to.Improvement != LandImprovement.Bridge ||
@@ -64,19 +64,19 @@ public sealed partial class WorldEngine
         var dy = 1 - dx;
         var best = int.MaxValue;
         for (var sign = -1; sign <= 1; sign += 2)
-        for (var distance = 1; distance <= 6; distance++)
-        {
-            var xx = x + dx * sign * distance;
-            var yy = y + dy * sign * distance;
-            if (!InBounds(xx, yy))
+            for (var distance = 1; distance <= 6; distance++)
+            {
+                var xx = x + dx * sign * distance;
+                var yy = y + dy * sign * distance;
+                if (!InBounds(xx, yy))
+                    break;
+                var tile = Current.Tiles[Index(xx, yy)];
+                if (IsWaterTerrain(tile.Terrain))
+                    continue;
+                if (tile.IsWalkable && tile.Improvement != LandImprovement.Bridge)
+                    best = Math.Min(best, distance);
                 break;
-            var tile = State.Tiles[Index(xx, yy)];
-            if (IsWaterTerrain(tile.Terrain))
-                continue;
-            if (tile.IsWalkable && tile.Improvement != LandImprovement.Bridge)
-                best = Math.Min(best, distance);
-            break;
-        }
+            }
 
         return best;
     }
@@ -90,7 +90,7 @@ public sealed partial class WorldEngine
     {
         if (!Enum.IsDefined(direction) || level is < 1 or > 3)
             return "桥梁方向或等级无效";
-        if (!InBounds(x, y) || State.Tiles[Index(x, y)].Terrain is not (TerrainType.Water or TerrainType.River
+        if (!InBounds(x, y) || Current.Tiles[Index(x, y)].Terrain is not (TerrainType.Water or TerrainType.River
                 or TerrainType.Lake or TerrainType.Stream or TerrainType.LargeRiver))
             return "桥梁需要河流、湖泊或浅水";
         if (BridgeShoreDistance(x, y, direction) > BridgeShoreLimit(level))
@@ -103,7 +103,7 @@ public sealed partial class WorldEngine
             var yy = y + dy * sign;
             if (!InBounds(xx, yy))
                 continue;
-            var tile = State.Tiles[Index(xx, yy)];
+            var tile = Current.Tiles[Index(xx, yy)];
             if (tile.IsWalkable &&
                 (tile.Improvement != LandImprovement.Bridge || tile.BridgeDirection == direction))
                 return null;
@@ -126,9 +126,7 @@ public sealed partial class WorldEngine
     {
         var cost = GetBuildingCost(building.Kind);
         var scale = reorient ? .5 : building.Level * .75;
-        foreach (var kind in ResourceStock.Kinds)
-            cost.Set(kind, cost.Get(kind) * scale);
-        return cost;
+        return cost.Scale(scale);
     }
 
     /// <summary>检查建筑升级或改向的条件；可执行时返回空值，否则返回原因。</summary>
@@ -137,7 +135,7 @@ public sealed partial class WorldEngine
     /// <param name="direction">桥梁改向的目标轴向，空值表示升级一级。</param>
     public string? BuildingUpgradeError(int id, bool gift = false, BridgeDirection? direction = null)
     {
-        var building = State.Society.Buildings.FirstOrDefault(b => b.Id == id);
+        var building = Current.Society.Buildings.FirstOrDefault(b => b.Id == id);
         if (building is null)
             return "建筑已不存在";
         if (!building.IsCompleted || building.Health < 50)
@@ -146,7 +144,7 @@ public sealed partial class WorldEngine
             return "已有升级或改向项目";
         if (building.Kind == BuildingKind.TownCenter && RequireTown(building.SettlementId).IsExpanding)
             return "中心正在组织城镇扩充，完成后可单独升级建筑";
-        if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0)
+        if (Current.Tiles[Index(building.X, building.Y)].FireTicks > 0)
             return "所在地正在燃烧";
         if (direction.HasValue && (building.Kind != BuildingKind.Bridge || direction == building.Direction))
             return "只能将桥梁改为另一方向";
@@ -173,12 +171,10 @@ public sealed partial class WorldEngine
     {
         if (BuildingUpgradeError(id, gift, direction) is { } error)
             throw new InvalidOperationException(error);
-        var building = State.Society.Buildings.First(b => b.Id == id);
+        var building = Current.Society.Buildings.First(b => b.Id == id);
         if (!gift)
-            Spend(RequireTown(building.SettlementId).Resources, GetUpgradeCost(building, direction.HasValue));
-        building.PendingDirection = direction;
-        building.UpgradeProgress = 0;
-        building.UpgradeRequired = direction.HasValue ? 15 : 30 * building.Level;
+            RequireTown(building.SettlementId).Resources = Spend(RequireTown(building.SettlementId).Resources, GetUpgradeCost(building, direction.HasValue));
+        building.Replace(building.Value with { PendingDirection = direction, UpgradeProgress = 0, UpgradeRequired = direction.HasValue ? 15 : 30 * building.Level });
         building.Workers.Clear();
         building.LastWorkedTick = -100;
         var entry = AddEvent(WorldEventKind.Construction,
@@ -189,16 +185,13 @@ public sealed partial class WorldEngine
             FinishBuildingUpgrade(building);
     }
 
-    private void FinishBuildingUpgrade(Building building)
+    private void FinishBuildingUpgrade(BuildingCursor building)
     {
         if (building.PendingDirection is { } direction)
             building.Direction = direction;
         else
             building.Level++;
-        building.PendingDirection = null;
-        building.UpgradeProgress = 0;
-        building.UpgradeRequired = 0;
-        building.WorkSlots = Math.Min(20, (building.Kind == BuildingKind.Farm ? 5 : 3) + building.Level - 1);
+        building.Replace(building.Value with { PendingDirection = null, UpgradeProgress = 0, UpgradeRequired = 0, WorkSlots = Math.Min(20, (building.Kind == BuildingKind.Farm ? 5 : 3) + building.Level - 1) });
         CompleteLandImprovement(building);
         AddEvent(WorldEventKind.Construction, $"{BuildingName(building.Kind)}施工完成，当前 {building.Level} 级。",
             building.X, building.Y, EventAction.Completed, building.SettlementId,
@@ -206,9 +199,9 @@ public sealed partial class WorldEngine
         _armyPaths.Clear();
     }
 
-    private bool PlanBuildingUpgrade(Settlement town, Building[] buildings)
+    private bool PlanBuildingUpgrade(SettlementCursor town, BuildingCursor[] buildings)
     {
-        if (!State.Rules.Construction || buildings.Any(b => !b.IsCompleted || b.IsUpgrading))
+        if (!Current.Rules.Construction || buildings.Any(b => !b.IsCompleted || b.IsUpgrading))
             return false;
         var reserve = LocalDevelopmentReserve(town);
         var demand = InspectLocalDemand(town, buildings);
@@ -218,7 +211,7 @@ public sealed partial class WorldEngine
                                                            && building.Kind != BuildingKind.Housing &&
                                                            building.Workers.Count < building.WorkSlots))
                 continue;
-            if (building.Level >= 3 || State.Tick - building.LastWorkedTick > 24 ||
+            if (building.Level >= 3 || Current.Tick - building.LastWorkedTick > 24 ||
                 BuildingUpgradeError(building.Id) is not null)
                 continue;
             var cost = GetUpgradeCost(building);

@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -10,7 +11,7 @@ public sealed partial class WorldEngine
     private void BeginKnowledgeQueries()
     {
         _knowledgeByTown.Clear();
-        foreach (var research in State.Society.Research)
+        foreach (var research in Current.Society.Research)
         {
             var mask = 0UL;
             foreach (var kind in research.Completed)

@@ -73,4 +73,17 @@ public sealed class WildlifeSerializationTests
 
         Assert.Equal(default, populations);
     }
+
+    /// <summary>种群转换返回新值，原种群和其他物种数量保持不变。</summary>
+    [Fact]
+    public void WithPopulation_preserves_the_original_and_other_species()
+    {
+        var original = new WildlifePopulations { Rabbit = 2, Wolf = .5 };
+
+        var changed = original.WithPopulation(WildlifeKind.Rabbit, 4);
+
+        Assert.Equal(2, original.Rabbit);
+        Assert.Equal(4, changed.Rabbit);
+        Assert.Equal(.5, changed.Wolf);
+    }
 }

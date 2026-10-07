@@ -1,38 +1,39 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private readonly Dictionary<int, SettlementResearch> _localResearch = [];
-    private readonly Dictionary<int, Building> _localWaterWells = [];
+    private readonly Dictionary<int, SettlementResearchCursor> _localResearch = [];
+    private readonly Dictionary<int, BuildingCursor> _localWaterWells = [];
 
-    private readonly List<List<Building>> _localWorkBuildingBuffers = [];
+    private readonly List<List<BuildingCursor>> _localWorkBuildingBuffers = [];
 
     // 劳动索引在居民死亡后重建、行动阶段后清除；公开命令在阶段外读取权威集合，避免使用失效分组。
-    private readonly Dictionary<int, List<Building>> _localWorkBuildings = [];
-    private readonly List<List<Resident>> _localWorkResidentBuffers = [];
-    private readonly Dictionary<int, List<Resident>> _localWorkResidents = [];
+    private readonly Dictionary<int, List<BuildingCursor>> _localWorkBuildings = [];
+    private readonly List<List<ResidentCursor>> _localWorkResidentBuffers = [];
+    private readonly Dictionary<int, List<ResidentCursor>> _localWorkResidents = [];
     private readonly Dictionary<int, ResourceStock> _productionReserves = [];
-    private readonly Dictionary<int, Building> _workBuildingsById = [];
+    private readonly Dictionary<int, BuildingCursor> _workBuildingsById = [];
     private readonly Dictionary<int, int> _workReservations = [];
     private bool _localWorkQueriesActive;
 
-    private Building? FindBuilding(int id)
+    private BuildingCursor? FindBuilding(int id)
     {
         return id == 0
             ? null
             : _localWorkQueriesActive
                 ? _workBuildingsById.GetValueOrDefault(id)
-                : State.Society.Buildings.FirstOrDefault(b => b.Id == id);
+                : Current.Society.Buildings.FirstOrDefault(b => b.Id == id);
     }
 
-    private static int ReservedWork(AgentGoal goal)
+    private static int ReservedWork(in AgentGoal goal)
     {
         return goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic
             ? goal.TargetEntityId
             : 0;
     }
 
-    private void ChangeWorkReservation(AgentGoal previous, AgentGoal next)
+    private void ChangeWorkReservation(in AgentGoal previous, in AgentGoal next)
     {
         if (!_localWorkQueriesActive)
             return;
@@ -60,9 +61,9 @@ public sealed partial class WorldEngine
 
     private void BeginLocalWorkQueries()
     {
-        foreach (var research in State.Society.Research)
+        foreach (var research in Current.Society.Research)
             _localResearch[research.SettlementId] = research;
-        foreach (var building in State.Society.Buildings)
+        foreach (var building in Current.Society.Buildings)
         {
             _workBuildingsById[building.Id] = building;
             if (building.Kind == BuildingKind.Well)
@@ -70,7 +71,7 @@ public sealed partial class WorldEngine
             LocalWorkGroup(_localWorkBuildings, _localWorkBuildingBuffers, building.SettlementId).Add(building);
         }
 
-        foreach (var resident in State.Residents)
+        foreach (var resident in Current.Residents)
         {
             LocalWorkGroup(_localWorkResidents, _localWorkResidentBuffers, resident.SettlementId).Add(resident);
             var id = ReservedWork(resident.Agent.Goal);
@@ -79,7 +80,7 @@ public sealed partial class WorldEngine
         }
 
         _localWorkQueriesActive = true;
-        foreach (var town in State.Settlements)
+        foreach (var town in Current.Settlements)
             _productionReserves[town.Id] = LocalDevelopmentReserve(town);
     }
 
@@ -99,7 +100,7 @@ public sealed partial class WorldEngine
         _localWorkResidents.Clear();
     }
 
-    private void UpdateLocalWorkMembership(Resident resident, int previousSettlementId)
+    private void UpdateLocalWorkMembership(ResidentCursor resident, int previousSettlementId)
     {
         if (!_localWorkQueriesActive)
             return;
@@ -108,21 +109,21 @@ public sealed partial class WorldEngine
         LocalWorkGroup(_localWorkResidents, _localWorkResidentBuffers, resident.SettlementId).Add(resident);
     }
 
-    private List<Resident>? ResidentsForLocalWork(int settlementId)
+    private IReadOnlyList<ResidentCursor>? ResidentsForLocalWork(int settlementId)
     {
         return _localWorkQueriesActive
             ? _localWorkResidents.GetValueOrDefault(settlementId)
-            : State.Residents;
+            : Current.Residents;
     }
 
-    private Building? FindLocalWorkBuilding(Resident resident, int range, bool preferNearest, bool followTarget = false)
+    private BuildingCursor? FindLocalWorkBuilding(ResidentCursor resident, int range, bool preferNearest, bool followTarget = false)
     {
-        var buildings = _localWorkQueriesActive
+        IReadOnlyList<BuildingCursor>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(resident.SettlementId)
-            : State.Society.Buildings;
+            : Current.Society.Buildings;
         if (buildings is null)
             return null;
-        Building? selected = null;
+        BuildingCursor? selected = null;
         var bestPriority = 0;
         var bestDistance = 0;
         var preferSpecialty = resident.Profession is Profession.Physician or Profession.Firefighter
@@ -141,9 +142,9 @@ public sealed partial class WorldEngine
                 continue;
             var distance = Distance(resident.X, resident.Y, building.X, building.Y);
             if (range == 1 && IsWaterfrontBuilding(building.Kind) && (distance != 1
-                                                                      || !State.Tiles[Index(resident.X, resident.Y)]
+                                                                      || !Current.Tiles[Index(resident.X, resident.Y)]
                                                                           .IsWalkable
-                                                                      || IsWaterTerrain(State
+                                                                      || IsWaterTerrain(Current
                                                                           .Tiles[Index(resident.X, resident.Y)]
                                                                           .Terrain)))
                 continue;
@@ -155,7 +156,7 @@ public sealed partial class WorldEngine
                     building.Kind == BuildingKind.TownCenter))
                 continue;
             if (range > 1 && resident.Agent.Goal.NavigationTarget == Index(building.X, building.Y) &&
-                State.Tick < resident.Agent.Goal.NavigationRetryTick)
+                Current.Tick < resident.Agent.Goal.NavigationRetryTick)
                 continue;
             var priority = WorkPriority(building, resident, preferSpecialty);
             if (selected is not null && !(priority < bestPriority || (priority == bestPriority
@@ -172,12 +173,12 @@ public sealed partial class WorldEngine
         return selected;
     }
 
-    private Resident? FindLocalWorkPatient(Building building, bool firstOnly = false)
+    private ResidentCursor? FindLocalWorkPatient(BuildingCursor building, bool firstOnly = false)
     {
         var residents = ResidentsForLocalWork(building.SettlementId);
         if (residents is null)
             return null;
-        Resident? selected = null;
+        ResidentCursor? selected = null;
         foreach (var patient in residents)
         {
             if (patient.SettlementId != building.SettlementId || Distance(patient.X, patient.Y, building.X,

@@ -1,14 +1,15 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private void RecordLife(Resident person, string text, WorldEvent? entry = null,
+    private void RecordLife(ResidentCursor person, string text, WorldEventCursor? entry = null,
         PersonalExperienceKind experience = PersonalExperienceKind.Neutral,
         EventImportance importance = EventImportance.Notable)
     {
         person.History.Add(new ResidentHistoryEntry
         {
-            Tick = State.Tick,
+            Tick = Current.Tick,
             Text = text,
             Importance = importance,
             EventId = entry?.Id ?? 0,
@@ -21,29 +22,14 @@ public sealed partial class WorldEngine
             person.History.RemoveAt(0);
     }
 
-    private void ObserveProject(ProjectObservation observation, double progress)
-    {
-        if (observation.DevelopmentRate != State.Rules.DevelopmentRate)
-        {
-            observation.Samples.Clear();
-            observation.DevelopmentRate = State.Rules.DevelopmentRate;
-        }
-
-        if (observation.Samples.Count > 0 && State.Tick - observation.Samples[^1].Tick < 4)
-            return;
-        observation.Samples.Add(new ProgressSample { Tick = State.Tick, Progress = progress });
-        if (observation.Samples.Count > 7)
-            observation.Samples.RemoveAt(0);
-    }
-
     private void ObserveProjects()
     {
-        foreach (var building in State.Society.Buildings)
+        foreach (var building in Current.Society.Buildings)
             if (!building.IsCompleted)
-                ObserveProject(building.Observation, building.ConstructionProgress);
-        foreach (var research in State.Society.Research)
+                building.Observation = building.Observation.Observe(Current.Tick, Current.Rules.DevelopmentRate, building.ConstructionProgress);
+        foreach (var research in Current.Society.Research)
             if (research.ActiveProject is not null)
-                ObserveProject(research.Observation, research.Progress);
+                research.Observation = research.Observation.Observe(Current.Tick, Current.Rules.DevelopmentRate, research.Progress);
     }
 
     /// <summary>依据近期稳定的实际工作速率估算项目剩余日数；依据不足时给出原因。</summary>
@@ -55,10 +41,10 @@ public sealed partial class WorldEngine
         if (progress >= required)
             return new CompletionEstimate(0, "已完成");
         var samples = observation.Samples;
-        if (observation.DevelopmentRate != State.Rules.DevelopmentRate || samples.Count < 4)
+        if (observation.DevelopmentRate != Current.Rules.DevelopmentRate || samples.Length < 4)
             return new CompletionEstimate(null, "暂无法估算：等待足够的实际工作记录");
         var last = samples[^1];
-        if (State.Tick - last.Tick > 8 || samples[^1].Progress <= samples[^2].Progress)
+        if (Current.Tick - last.Tick > 8 || samples[^1].Progress <= samples[^2].Progress)
             return new CompletionEstimate(null, "暂停估算：近期未取得实际进度");
         var rates = samples.Zip(samples.Skip(1), (a, b) => (b.Progress - a.Progress) / (b.Tick - a.Tick)).ToArray();
         var mean = rates.Average();
@@ -76,14 +62,14 @@ public sealed partial class WorldEngine
     public CompletionEstimate GetDevelopmentEstimate(int settlementId)
     {
         _ = RequireTown(settlementId);
-        var building = State.Society.Buildings.FirstOrDefault(b => b.SettlementId == settlementId && !b.IsCompleted);
+        var building = Current.Society.Buildings.FirstOrDefault(b => b.SettlementId == settlementId && !b.IsCompleted);
         if (building is not null)
         {
             return GetCompletionEstimate(building.Observation, building.ConstructionProgress,
                 building.ConstructionRequired);
         }
 
-        var research = State.Society.Research.First(r => r.SettlementId == settlementId);
+        var research = Current.Society.Research.First(r => r.SettlementId == settlementId);
         return research.ActiveProject is not null
             ? GetCompletionEstimate(research.Observation, research.Progress, research.RequiredProgress)
             : new CompletionEstimate(null, "尚无进行中的建设或研究");
@@ -121,10 +107,10 @@ public sealed partial class WorldEngine
         {
             CheckV2(observation is not null && Reference(observation.StartEventId) &&
                     Number(observation.DevelopmentRate, .5, 3)
-                    && observation.Contributors is not null && observation.Contributors.Count <= 32 &&
+                    && !observation.Contributors.IsDefault && observation.Contributors.Length <= 32 &&
                     observation.Contributors.All(id => id > 0 && Reference(id)) &&
-                    observation.Contributors.Distinct().Count() == observation.Contributors.Count
-                    && observation.Samples is not null && observation.Samples.Count <= 7, "项目观察记录无效。");
+                    observation.Contributors.Distinct().Count() == observation.Contributors.Length
+                    && !observation.Samples.IsDefault && observation.Samples.Length <= 7, "项目观察记录无效。");
             long previousTick = -1;
             double previousProgress = 0;
             foreach (var sample in observation.Samples)
@@ -189,10 +175,10 @@ public sealed partial class WorldEngine
         foreach (var person in state.Residents.Concat(state.ArchivedResidents))
             ValidateStoryReferences(person, state.NextId);
         foreach (var person in state.Residents.Concat(state.ArchivedResidents))
-        foreach (var entry in person.History)
-            CheckV2(
-                Reference(entry.EventId) && Reference(entry.EvidenceFactId) && Reference(entry.SettlementId) &&
-                Reference(entry.NationId), "人物经历关联无效。");
+            foreach (var entry in person.History)
+                CheckV2(
+                    Reference(entry.EventId) && Reference(entry.EvidenceFactId) && Reference(entry.SettlementId) &&
+                    Reference(entry.NationId), "人物经历关联无效。");
         foreach (var fact in state.Residents.Concat(state.ArchivedResidents)
                      .SelectMany(r => r.Agent.Memory.Concat(r.Agent.CarriedMessages))
                      .Concat(state.Settlements.SelectMany(t => t.PublicKnowledge))

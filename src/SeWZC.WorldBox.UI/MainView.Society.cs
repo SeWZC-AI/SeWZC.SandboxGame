@@ -64,6 +64,7 @@ public sealed partial class MainView
             return;
         }
 
+        _inspectorUpdates.Add(() => nation = _engine.State.Nations.FirstOrDefault(n => n.Id == nation.Id) ?? nation);
         panel.Children.Add(LiveText(() => nation.Name, 18, Mint));
         panel.Children.Add(LiveText(() =>
             $"实际国家状态\n人口 {nation.Population}\n领土 {nation.Territory}\n{StockLabel(nation.Resources)}\n国家文化：{CultureName(nation.CultureId)}\n首都：{TownName(nation.CapitalId)}\n代表：{ResidentName(nation.RepresentativeId)}"));
@@ -263,6 +264,7 @@ public sealed partial class MainView
     {
         if (BuildSettlementPicker(panel) is not { } town)
             return;
+        _inspectorUpdates.Add(() => town = _engine.State.Settlements.FirstOrDefault(t => t.Id == town.Id) ?? town);
         panel.Children.Add(WatchControl(ObservedObjectKind.Settlement, town.Id, "settlement-watch"));
         panel.Children.Add(Named(LiveText(() => _engine.GetSettlementSummary(town.Id)), "town-expansion-summary"));
         panel.Children.Add(Named(Button("投入城镇扩充", () => RunEdit(() => _engine.ExpandTown(town.Id), "已投入扩充材料，居民将到中心施工")),
@@ -299,6 +301,7 @@ public sealed partial class MainView
     {
         if (BuildSettlementPicker(panel) is not { } town)
             return;
+        _inspectorUpdates.Add(() => town = _engine.State.Settlements.FirstOrDefault(t => t.Id == town.Id) ?? town);
         BuildResearchTree(panel, town);
     }
 
@@ -306,6 +309,7 @@ public sealed partial class MainView
     {
         if (BuildSettlementPicker(panel) is not { } town)
             return;
+        _inspectorUpdates.Add(() => town = _engine.State.Settlements.FirstOrDefault(t => t.Id == town.Id) ?? town);
         if (!communications)
         {
             var actions = new WrapPanel { Orientation = Orientation.Horizontal };

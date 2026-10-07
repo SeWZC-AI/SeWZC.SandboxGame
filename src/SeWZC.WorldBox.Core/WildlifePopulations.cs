@@ -4,192 +4,131 @@ namespace SeWZC.WorldBox.Core;
 
 /// <summary>按物种记录的一组动物种群数量。</summary>
 [JsonConverter(typeof(WildlifePopulationsJsonConverter))]
-public struct WildlifePopulations : IEquatable<WildlifePopulations>
+public readonly record struct WildlifePopulations
 {
     /// <summary>野兔数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Rabbit { get; set; }
+    public double Rabbit { get; init; }
 
     /// <summary>鹿数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Deer { get; set; }
+    public double Deer { get; init; }
 
     /// <summary>野猪数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Boar { get; set; }
+    public double Boar { get; init; }
 
     /// <summary>山羊数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Goat { get; set; }
+    public double Goat { get; init; }
 
     /// <summary>狼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Wolf { get; set; }
+    public double Wolf { get; init; }
 
     /// <summary>水鸟数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Waterfowl { get; set; }
+    public double Waterfowl { get; init; }
 
     /// <summary>植食小鱼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Fish { get; set; }
+    public double Fish { get; init; }
 
     /// <summary>狐狸数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Fox { get; set; }
+    public double Fox { get; init; }
 
     /// <summary>棕熊数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Bear { get; set; }
+    public double Bear { get; init; }
 
     /// <summary>野牛数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Bison { get; set; }
+    public double Bison { get; init; }
 
     /// <summary>牦牛数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Yak { get; set; }
+    public double Yak { get; init; }
 
     /// <summary>跳鼠数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Jerboa { get; set; }
+    public double Jerboa { get; init; }
 
     /// <summary>羚羊数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Gazelle { get; set; }
+    public double Gazelle { get; init; }
 
     /// <summary>野骆驼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Camel { get; set; }
+    public double Camel { get; init; }
 
     /// <summary>耳廓狐数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Fennec { get; set; }
+    public double Fennec { get; init; }
 
     /// <summary>胡狼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Jackal { get; set; }
+    public double Jackal { get; init; }
 
     /// <summary>狮子数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Lion { get; set; }
+    public double Lion { get; init; }
 
     /// <summary>水豚数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Capybara { get; set; }
+    public double Capybara { get; init; }
 
     /// <summary>河马数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Hippo { get; set; }
+    public double Hippo { get; init; }
 
     /// <summary>水獭数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Otter { get; set; }
+    public double Otter { get; init; }
 
     /// <summary>鳄鱼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Crocodile { get; set; }
+    public double Crocodile { get; init; }
 
     /// <summary>草鱼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double GrassCarp { get; set; }
+    public double GrassCarp { get; init; }
 
     /// <summary>海牛数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Manatee { get; set; }
+    public double Manatee { get; init; }
 
     /// <summary>掠食小鱼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double PredatoryFish { get; set; }
+    public double PredatoryFish { get; init; }
 
     /// <summary>鲈鱼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Pike { get; set; }
+    public double Pike { get; init; }
 
     /// <summary>鲨鱼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Shark { get; set; }
+    public double Shark { get; init; }
 
     /// <summary>海龟数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double SeaTurtle { get; set; }
+    public double SeaTurtle { get; init; }
 
     /// <summary>海洋海牛数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double SeaCow { get; set; }
+    public double SeaCow { get; init; }
 
     /// <summary>麝牛数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double MuskOx { get; set; }
+    public double MuskOx { get; init; }
 
     /// <summary>北极熊数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double PolarBear { get; set; }
+    public double PolarBear { get; init; }
 
     /// <summary>雪豹数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double SnowLeopard { get; set; }
-
-    /// <inheritdoc />
-    public readonly bool Equals(WildlifePopulations other)
-    {
-        return Rabbit.Equals(other.Rabbit) && Deer.Equals(other.Deer) && Boar.Equals(other.Boar) &&
-               Goat.Equals(other.Goat) && Wolf.Equals(other.Wolf) && Waterfowl.Equals(other.Waterfowl) &&
-               Fish.Equals(other.Fish) && Fox.Equals(other.Fox) && Bear.Equals(other.Bear) &&
-               Bison.Equals(other.Bison) && Yak.Equals(other.Yak) && Jerboa.Equals(other.Jerboa) &&
-               Gazelle.Equals(other.Gazelle) && Camel.Equals(other.Camel) && Fennec.Equals(other.Fennec) &&
-               Jackal.Equals(other.Jackal) && Lion.Equals(other.Lion) && Capybara.Equals(other.Capybara) &&
-               Hippo.Equals(other.Hippo) && Otter.Equals(other.Otter) && Crocodile.Equals(other.Crocodile) &&
-               GrassCarp.Equals(other.GrassCarp) && Manatee.Equals(other.Manatee) &&
-               PredatoryFish.Equals(other.PredatoryFish) &&
-               Pike.Equals(other.Pike) && Shark.Equals(other.Shark) && SeaTurtle.Equals(other.SeaTurtle) &&
-               SeaCow.Equals(other.SeaCow) && MuskOx.Equals(other.MuskOx) && PolarBear.Equals(other.PolarBear) &&
-               SnowLeopard.Equals(other.SnowLeopard);
-    }
-
-    /// <inheritdoc />
-    public readonly override bool Equals(object? obj)
-    {
-        return obj is WildlifePopulations other && Equals(other);
-    }
-
-    /// <inheritdoc />
-    public readonly override int GetHashCode()
-    {
-        var hash = new HashCode();
-        hash.Add(Rabbit);
-        hash.Add(Deer);
-        hash.Add(Boar);
-        hash.Add(Goat);
-        hash.Add(Wolf);
-        hash.Add(Waterfowl);
-        hash.Add(Fish);
-        hash.Add(Fox);
-        hash.Add(Bear);
-        hash.Add(Bison);
-        hash.Add(Yak);
-        hash.Add(Jerboa);
-        hash.Add(Gazelle);
-        hash.Add(Camel);
-        hash.Add(Fennec);
-        hash.Add(Jackal);
-        hash.Add(Lion);
-        hash.Add(Capybara);
-        hash.Add(Hippo);
-        hash.Add(Otter);
-        hash.Add(Crocodile);
-        hash.Add(GrassCarp);
-        hash.Add(Manatee);
-        hash.Add(PredatoryFish);
-        hash.Add(Pike);
-        hash.Add(Shark);
-        hash.Add(SeaTurtle);
-        hash.Add(SeaCow);
-        hash.Add(MuskOx);
-        hash.Add(PolarBear);
-        hash.Add(SnowLeopard);
-        return hash.ToHashCode();
-    }
+    public double SnowLeopard { get; init; }
 
     /// <summary>数量大于零的物种位掩码，位序对应物种编号。</summary>
     [JsonIgnore]
@@ -302,106 +241,42 @@ public struct WildlifePopulations : IEquatable<WildlifePopulations>
         };
     }
 
-    /// <summary>替换指定物种的数量，不处理 <c>None</c>。</summary>
+    /// <summary>返回替换指定物种数量后的值，不处理 <c>None</c>。</summary>
     /// <param name="kind">动物物种。</param>
     /// <param name="population">要设置的动物数量，允许小数。</param>
-    public void Set(WildlifeKind kind, double population)
+    public WildlifePopulations WithPopulation(WildlifeKind kind, double population) => kind switch
     {
-        switch (kind)
-        {
-            case WildlifeKind.Rabbit:
-                Rabbit = population;
-                break;
-            case WildlifeKind.Deer:
-                Deer = population;
-                break;
-            case WildlifeKind.Boar:
-                Boar = population;
-                break;
-            case WildlifeKind.Goat:
-                Goat = population;
-                break;
-            case WildlifeKind.Wolf:
-                Wolf = population;
-                break;
-            case WildlifeKind.Waterfowl:
-                Waterfowl = population;
-                break;
-            case WildlifeKind.Fish:
-                Fish = population;
-                break;
-            case WildlifeKind.Fox:
-                Fox = population;
-                break;
-            case WildlifeKind.Bear:
-                Bear = population;
-                break;
-            case WildlifeKind.Bison:
-                Bison = population;
-                break;
-            case WildlifeKind.Yak:
-                Yak = population;
-                break;
-            case WildlifeKind.Jerboa:
-                Jerboa = population;
-                break;
-            case WildlifeKind.Gazelle:
-                Gazelle = population;
-                break;
-            case WildlifeKind.Camel:
-                Camel = population;
-                break;
-            case WildlifeKind.Fennec:
-                Fennec = population;
-                break;
-            case WildlifeKind.Jackal:
-                Jackal = population;
-                break;
-            case WildlifeKind.Lion:
-                Lion = population;
-                break;
-            case WildlifeKind.Capybara:
-                Capybara = population;
-                break;
-            case WildlifeKind.Hippo:
-                Hippo = population;
-                break;
-            case WildlifeKind.Otter:
-                Otter = population;
-                break;
-            case WildlifeKind.Crocodile:
-                Crocodile = population;
-                break;
-            case WildlifeKind.GrassCarp:
-                GrassCarp = population;
-                break;
-            case WildlifeKind.Manatee:
-                Manatee = population;
-                break;
-            case WildlifeKind.PredatoryFish:
-                PredatoryFish = population;
-                break;
-            case WildlifeKind.Pike:
-                Pike = population;
-                break;
-            case WildlifeKind.Shark:
-                Shark = population;
-                break;
-            case WildlifeKind.SeaTurtle:
-                SeaTurtle = population;
-                break;
-            case WildlifeKind.SeaCow:
-                SeaCow = population;
-                break;
-            case WildlifeKind.MuskOx:
-                MuskOx = population;
-                break;
-            case WildlifeKind.PolarBear:
-                PolarBear = population;
-                break;
-            case WildlifeKind.SnowLeopard:
-                SnowLeopard = population;
-                break;
-        }
-    }
+        WildlifeKind.Rabbit => this with { Rabbit = population },
+        WildlifeKind.Deer => this with { Deer = population },
+        WildlifeKind.Boar => this with { Boar = population },
+        WildlifeKind.Goat => this with { Goat = population },
+        WildlifeKind.Wolf => this with { Wolf = population },
+        WildlifeKind.Waterfowl => this with { Waterfowl = population },
+        WildlifeKind.Fish => this with { Fish = population },
+        WildlifeKind.Fox => this with { Fox = population },
+        WildlifeKind.Bear => this with { Bear = population },
+        WildlifeKind.Bison => this with { Bison = population },
+        WildlifeKind.Yak => this with { Yak = population },
+        WildlifeKind.Jerboa => this with { Jerboa = population },
+        WildlifeKind.Gazelle => this with { Gazelle = population },
+        WildlifeKind.Camel => this with { Camel = population },
+        WildlifeKind.Fennec => this with { Fennec = population },
+        WildlifeKind.Jackal => this with { Jackal = population },
+        WildlifeKind.Lion => this with { Lion = population },
+        WildlifeKind.Capybara => this with { Capybara = population },
+        WildlifeKind.Hippo => this with { Hippo = population },
+        WildlifeKind.Otter => this with { Otter = population },
+        WildlifeKind.Crocodile => this with { Crocodile = population },
+        WildlifeKind.GrassCarp => this with { GrassCarp = population },
+        WildlifeKind.Manatee => this with { Manatee = population },
+        WildlifeKind.PredatoryFish => this with { PredatoryFish = population },
+        WildlifeKind.Pike => this with { Pike = population },
+        WildlifeKind.Shark => this with { Shark = population },
+        WildlifeKind.SeaTurtle => this with { SeaTurtle = population },
+        WildlifeKind.SeaCow => this with { SeaCow = population },
+        WildlifeKind.MuskOx => this with { MuskOx = population },
+        WildlifeKind.PolarBear => this with { PolarBear = population },
+        WildlifeKind.SnowLeopard => this with { SnowLeopard = population },
+        _ => this,
+    };
 }

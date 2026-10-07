@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -16,22 +17,15 @@ public sealed partial class WorldEngine
         radius = Math.Clamp(radius, 0, 32);
         foreach (var index in Circle(x, y, radius))
         {
-            var tile = State.Tiles[index];
+            var tile = Current.Tiles[index];
             tile.Terrain = terrain;
-            tile.Improvement = LandImprovement.None;
-            tile.RoadLevel = 0;
-            tile.BridgeLevel = 0;
-            tile.LastHarvestTick = 0;
-            tile.Harvested = 0;
-            SeedDeposit(tile, index % State.Width, index / State.Width);
+            tile.Replace(tile.Value with { Improvement = LandImprovement.None, RoadLevel = 0, BridgeLevel = 0, LastHarvestTick = 0, Harvested = 0 });
+            SeedDeposit(tile, index % Current.Width, index / Current.Width);
             tile.Fertility = TerrainRules.Fertility(terrain);
             tile.NaturalWaterYield = terrain == TerrainType.Wetland ? 1 :
                 terrain == TerrainType.DryFertile ? .001 :
                 IsWaterTerrain(terrain) ? 0 : .004;
-            tile.Rainfall = tile.NaturalWaterYield;
-            tile.RiverWidth = terrain == TerrainType.Stream ? (byte)1 :
-                terrain == TerrainType.River ? (byte)2 :
-                terrain == TerrainType.LargeRiver ? (byte)4 : (byte)0;
+            tile.Replace(tile.Value with { Rainfall = tile.NaturalWaterYield, RiverWidth = terrain == TerrainType.Stream ? (byte)1 : terrain == TerrainType.River ? (byte)2 : terrain == TerrainType.LargeRiver ? (byte)4 : (byte)0 });
             SeedPlants(tile);
             tile.ResourceAmount = NaturalResourceCapacity(tile);
             tile.Elevation = terrain switch
@@ -45,10 +39,7 @@ public sealed partial class WorldEngine
             };
             if (!tile.IsWalkable || IsWaterTerrain(tile.Terrain))
             {
-                tile.NationId = 0;
-                tile.ClaimedSettlementId = 0;
-                tile.FireTicks = 0;
-                tile.RoadLevel = 0;
+                tile.Replace(tile.Value with { NationId = 0, ClaimedSettlementId = 0, FireTicks = 0, RoadLevel = 0 });
                 _burningTiles.Remove(index);
             }
         }
@@ -72,27 +63,27 @@ public sealed partial class WorldEngine
         if (!InBounds(x, y))
             return;
         var index = FindWalkable(x, y, 8, race);
-        if (index < 0 || State.Residents.Count >= MaxPopulation)
+        if (index < 0 || Current.Residents.Count >= MaxPopulation)
             return;
-        x = index % State.Width;
-        y = index / State.Width;
-        count = Math.Clamp(count, 1, Math.Min(200, MaxPopulation - State.Residents.Count));
-        var owner = State.Tiles[index].NationId;
-        var settlement = State.Settlements
+        x = index % Current.Width;
+        y = index / Current.Width;
+        count = Math.Clamp(count, 1, Math.Min(200, MaxPopulation - Current.Residents.Count));
+        var owner = Current.Tiles[index].NationId;
+        var settlement = Current.Settlements
             .Where(s => owner > 0 ? s.NationId == owner : Distance(s.X, s.Y, x, y) < MinimumSettlementDistance)
             .OrderBy(s => Distance(s.X, s.Y, x, y)).FirstOrDefault();
         if (settlement is null)
         {
-            if (State.Nations.Count >= 64 || State.Settlements.Count >= 256)
+            if (Current.Nations.Count >= 64 || Current.Settlements.Count >= 256)
                 return;
-            var nation = new Nation
+            var nation = new NationCursor
             {
                 Id = NewId(),
                 FoundingRace = race,
                 Name = NewPlaceName("王国"),
-                ColorArgb = NationColors[State.Nations.Count % NationColors.Length],
+                ColorArgb = NationColors[Current.Nations.Count % NationColors.Length],
             };
-            settlement = new Settlement
+            settlement = new SettlementCursor
             {
                 Id = NewId(),
                 Name = NewPlaceName("村"),
@@ -109,10 +100,10 @@ public sealed partial class WorldEngine
                 },
             };
             nation.CapitalId = settlement.Id;
-            foreach (var other in State.Nations)
+            foreach (var other in Current.Nations)
             {
                 var opinion = RandomInt(41) - 10;
-                State.Diplomacies.Add(new DiplomaticRelation
+                Current.Diplomacies.Add(new DiplomaticRelationCursor
                 {
                     FirstNationId = other.Id,
                     SecondNationId = nation.Id,
@@ -122,12 +113,12 @@ public sealed partial class WorldEngine
                 });
             }
 
-            State.Nations.Add(nation);
-            State.Settlements.Add(settlement);
+            Current.Nations.Add(nation);
+            Current.Settlements.Add(settlement);
             _nations[nation.Id] = nation;
             _settlements[settlement.Id] = settlement;
             _citizens[settlement.Id] = [];
-            State.Tiles[Index(x, y)].SettlementId = settlement.Id;
+            Current.Tiles[Index(x, y)].SettlementId = settlement.Id;
             ClaimTerritory(settlement, 6);
             AddEvent(WorldEventKind.Founding, $"{RaceNames[(int)race]}在{settlement.Name}定居，建立了{nation.Name}。", x, y);
         }
@@ -138,11 +129,11 @@ public sealed partial class WorldEngine
         for (var site = 0; site < spawnSites.Count; site++)
             foreach (var (dx, dy) in Directions)
             {
-                var xx = spawnSites[site] % State.Width + dx;
-                var yy = spawnSites[site] / State.Width + dy;
+                var xx = spawnSites[site] % Current.Width + dx;
+                var yy = spawnSites[site] / Current.Width + dy;
                 if (!InBounds(xx, yy) || Distance(x, y, xx, yy) > 3
-                                      || !CanTraverseStep(spawnSites[site] % State.Width,
-                                          spawnSites[site] / State.Width, xx, yy, TravelMode.Foot, race))
+                                      || !CanTraverseStep(spawnSites[site] % Current.Width,
+                                          spawnSites[site] / Current.Width, xx, yy, TravelMode.Foot, race))
                     continue;
                 var next = Index(xx, yy);
                 if (spawnSeen.Add(next))
@@ -153,17 +144,17 @@ public sealed partial class WorldEngine
         {
             var person = NewResident(settlement, race, 16 + RandomInt(28));
             var position = spawnSites[RandomInt(spawnSites.Count)];
-            person.X = person.FromX = position % State.Width;
-            person.Y = person.FromY = position / State.Width;
-            State.Residents.Add(person);
+            person.X = person.FromX = position % Current.Width;
+            person.Y = person.FromY = position / Current.Width;
+            Current.Residents.Add(person);
             _citizens[settlement.Id].Add(person);
             // 开局口粮统一分配，避免职业和居民处理顺序造成不公平的库存差异。
-            var food = State.Rules.Hunger ? Math.Min(settlement.Resources.Food, 1) : 0;
-            var water = State.Rules.Thirst ? Math.Min(settlement.Resources.Water, .75) : 0;
-            settlement.Resources.Food -= food;
-            person.Inventory.Food += food;
-            settlement.Resources.Water -= water;
-            person.Inventory.Water += water;
+            var food = Current.Rules.Hunger ? Math.Min(settlement.Resources.Food, 1) : 0;
+            var water = Current.Rules.Thirst ? Math.Min(settlement.Resources.Water, .75) : 0;
+            settlement.Resources = settlement.Resources with { Food = settlement.Resources.Food - food };
+            person.Inventory = person.Inventory with { Food = person.Inventory.Food + food };
+            settlement.Resources = settlement.Resources with { Water = settlement.Resources.Water - water };
+            person.Inventory = person.Inventory with { Water = person.Inventory.Water + water };
         }
 
         InitializeSociety();
@@ -172,10 +163,10 @@ public sealed partial class WorldEngine
         RefreshTotals();
     }
 
-    private Resident NewResident(Settlement settlement, RaceKind race, double age)
+    private ResidentCursor NewResident(SettlementCursor settlement, RaceKind race, double age)
     {
         var id = NewId();
-        return new Resident
+        return new ResidentCursor
         {
             Id = id,
             Name = NewResidentName(id, race),
@@ -190,7 +181,7 @@ public sealed partial class WorldEngine
             SettlementId = settlement.Id,
             Profession = age < 14 ? Profession.Child : AssignProfession(),
             MagicTalent = (race == RaceKind.Elf ? 45 : race == RaceKind.Dwarf ? 23 : race == RaceKind.Orc ? 28 : 32) +
-                          unchecked(((uint)id * 2654435761u) ^ (uint)State.Seed) % 36,
+                          unchecked(((uint)id * 2654435761u) ^ (uint)Current.Seed) % 36,
             Trait = new[] { "勤劳", "勇敢", "好奇", "坚韧", "温和" }[RandomInt(5)],
         };
     }
@@ -222,7 +213,7 @@ public sealed partial class WorldEngine
         radius = Math.Clamp(radius, 1, 32);
         foreach (var index in Circle(x, y, radius))
         {
-            var tile = State.Tiles[index];
+            var tile = Current.Tiles[index];
             if (kind == DisasterKind.Drought && tile.IsWalkable)
             {
                 tile.DroughtTicks = 150;
@@ -234,7 +225,7 @@ public sealed partial class WorldEngine
         {
             var started = 0;
             var seeds = Math.Clamp(1 + radius / 10, 1, 3);
-            foreach (var index in Circle(x, y, radius).OrderBy(i => Distance(x, y, i % State.Width, i / State.Width))
+            foreach (var index in Circle(x, y, radius).OrderBy(i => Distance(x, y, i % Current.Width, i / Current.Width))
                          .ThenBy(i => i))
                 if (Ignite(index) && ++started >= seeds)
                     break;
@@ -246,24 +237,17 @@ public sealed partial class WorldEngine
         {
             foreach (var index in Circle(x, y, radius))
             {
-                var tile = State.Tiles[index];
+                var tile = Current.Tiles[index];
                 if (!tile.IsWalkable)
                     continue;
                 tile.Terrain = TerrainType.Sand;
-                tile.RiverWidth = 0;
-                tile.Improvement = LandImprovement.None;
-                tile.Fertility = 5;
-                tile.ResourceAmount = 0;
-                tile.RoadLevel = 0;
-                tile.BridgeLevel = 0;
-                tile.Plants = default;
-                tile.FireTicks = 12;
+                tile.Replace(tile.Value with { RiverWidth = 0, Improvement = LandImprovement.None, Fertility = 5, ResourceAmount = 0, RoadLevel = 0, BridgeLevel = 0, Plants = default, FireTicks = 12 });
                 _burningTiles.Add(index);
             }
 
-            foreach (var resident in State.Residents.Where(r => Distance(r.X, r.Y, x, y) <= radius))
+            foreach (var resident in Current.Residents.Where(r => Distance(r.X, r.Y, x, y) <= radius))
                 DamageResident(resident, 65, DeathCause.Meteor);
-            foreach (var building in State.Society.Buildings.Where(b => Distance(b.X, b.Y, x, y) <= radius))
+            foreach (var building in Current.Society.Buildings.Where(b => Distance(b.X, b.Y, x, y) <= radius))
                 building.Health = Math.Max(0, building.Health - 80);
         }
 
@@ -271,9 +255,9 @@ public sealed partial class WorldEngine
             EmitVisual(kind == DisasterKind.Drought ? WorldVisualKind.Drought : WorldVisualKind.Meteor, x, y, radius);
         if (kind == DisasterKind.Plague)
         {
-            foreach (var resident in State.Residents.Where(r => r.Health > 0 && r.SicknessTicks == 0
+            foreach (var resident in Current.Residents.Where(r => r.Health > 0 && r.SicknessTicks == 0
                                                                              && r.DiseaseImmuneUntilTick <=
-                                                                             State.Tick &&
+                                                                             Current.Tick &&
                                                                              Distance(r.X, r.Y, x, y) <= radius)
                          .OrderBy(r => Distance(r.X, r.Y, x, y)).ThenBy(r => r.Id)
                          .Take(Math.Clamp(1 + radius / 10, 1, 3)))
@@ -319,10 +303,7 @@ public sealed partial class WorldEngine
     /// <param name="boats">要设置的国家舟船总量，空值表示保留现有库存。</param>
     /// <param name="aircraft">要设置的国家运输机总量，空值表示保留现有库存。</param>
     /// <param name="water">要设置的国家饮水总量，空值表示保留现有库存。</param>
-    public void SetNationResources(int nationId, double? food = null, double? wood = null, double? stone = null,
-        double? ore = null, double? alloy = null, double? energyCells = null, double? crystals = null,
-        double? coal = null, double? oil = null, double? rareEarth = null, double? boats = null,
-        double? aircraft = null, double? water = null)
+    public void SetNationResources(int nationId, double? food = null, double? wood = null, double? stone = null, double? ore = null, double? alloy = null, double? energyCells = null, double? crystals = null, double? coal = null, double? oil = null, double? rareEarth = null, double? boats = null, double? aircraft = null, double? water = null)
     {
         if (!_nations.ContainsKey(nationId))
             throw new ArgumentException("国家不存在。", nameof(nationId));
@@ -334,37 +315,37 @@ public sealed partial class WorldEngine
             throw new ArgumentOutOfRangeException(nameof(food), "资源须在 0 到 1,000,000 之间。");
         if (amounts.All(v => !v.HasValue))
             return;
-        var towns = State.Settlements.Where(s => s.NationId == nationId).ToArray();
+        var towns = Current.Settlements.Where(s => s.NationId == nationId).ToArray();
         if (towns.Length == 0)
             return;
         foreach (var town in towns)
         {
             if (food is { } f)
-                town.Resources.Food = f / towns.Length;
+                town.Resources = town.Resources with { Food = f / towns.Length };
             if (wood is { } w)
-                town.Resources.Wood = w / towns.Length;
+                town.Resources = town.Resources with { Wood = w / towns.Length };
             if (stone is { } s)
-                town.Resources.Stone = s / towns.Length;
+                town.Resources = town.Resources with { Stone = s / towns.Length };
             if (ore is { } o)
-                town.Resources.Ore = o / towns.Length;
+                town.Resources = town.Resources with { Ore = o / towns.Length };
             if (alloy is { } a)
-                town.Resources.Alloy = a / towns.Length;
+                town.Resources = town.Resources with { Alloy = a / towns.Length };
             if (energyCells is { } e)
-                town.Resources.EnergyCells = e / towns.Length;
+                town.Resources = town.Resources with { EnergyCells = e / towns.Length };
             if (crystals is { } c)
-                town.Resources.Crystals = c / towns.Length;
+                town.Resources = town.Resources with { Crystals = c / towns.Length };
             if (coal is { } co)
-                town.Resources.Coal = co / towns.Length;
+                town.Resources = town.Resources with { Coal = co / towns.Length };
             if (oil is { } oi)
-                town.Resources.Oil = oi / towns.Length;
+                town.Resources = town.Resources with { Oil = oi / towns.Length };
             if (rareEarth is { } re)
-                town.Resources.RareEarth = re / towns.Length;
+                town.Resources = town.Resources with { RareEarth = re / towns.Length };
             if (boats is { } bo)
-                town.Resources.Boats = bo / towns.Length;
+                town.Resources = town.Resources with { Boats = bo / towns.Length };
             if (aircraft is { } ai)
-                town.Resources.Aircraft = ai / towns.Length;
+                town.Resources = town.Resources with { Aircraft = ai / towns.Length };
             if (water is { } wa)
-                town.Resources.Water = wa / towns.Length;
+                town.Resources = town.Resources with { Water = wa / towns.Length };
         }
 
         RefreshTotals();
@@ -385,15 +366,10 @@ public sealed partial class WorldEngine
         relation.Status = status;
         relation.FirstOpinion = relation.SecondOpinion = relation.Opinion =
             status == DiplomaticStatus.War ? -80 : status == DiplomaticStatus.Allied ? 80 : 0;
-        relation.LastChangedTick = State.Tick;
-        relation.Reason = "玩家直接调整外交关系";
-        relation.AllianceOfferNationId = 0;
+        relation.Replace(relation.Value with { LastChangedTick = Current.Tick, Reason = "玩家直接调整外交关系", AllianceOfferNationId = 0 });
         var diplomaticEvent = AddEvent(status == DiplomaticStatus.War ? WorldEventKind.War : WorldEventKind.Diplomacy,
             $"{_nations[first].Name}与{_nations[second].Name}{(status == DiplomaticStatus.War ? "开战" : status == DiplomaticStatus.Allied ? "结盟" : "恢复中立关系")}。");
-        diplomaticEvent.NationId = first;
-        diplomaticEvent.SecondNationId = second;
-        diplomaticEvent.Action = EventAction.Declaration;
-        diplomaticEvent.CauseEventId = relation.LastEventId;
+        diplomaticEvent.Replace(diplomaticEvent.Value with { NationId = first, SecondNationId = second, Action = EventAction.Declaration, CauseEventId = relation.LastEventId });
         PublishDiplomaticOrder(first, second, status, eventId: diplomaticEvent.Id);
         PublishDiplomaticOrder(second, first, status, eventId: diplomaticEvent.Id,
             objective: WarObjective.DefendHomeland);
@@ -407,39 +383,40 @@ public sealed partial class WorldEngine
     {
         return first == second
             ? DiplomaticStatus.Allied
-            : State.Diplomacies.FirstOrDefault(r =>
+            : Current.Diplomacies.FirstOrDefault(r =>
                 (r.FirstNationId == first && r.SecondNationId == second) ||
                 (r.FirstNationId == second && r.SecondNationId == first))?.Status ?? DiplomaticStatus.Neutral;
     }
 
-    private DiplomaticRelation Relation(int first, int second)
+    private DiplomaticRelationCursor Relation(int first, int second)
     {
-        var relation = State.Diplomacies.FirstOrDefault(r =>
+        var relation = Current.Diplomacies.FirstOrDefault(r =>
             (r.FirstNationId == first && r.SecondNationId == second) ||
             (r.FirstNationId == second && r.SecondNationId == first));
         if (relation is not null)
             return relation;
-        relation = new DiplomaticRelation
+        relation = new DiplomaticRelationCursor
         {
-            FirstNationId = Math.Min(first, second), SecondNationId = Math.Max(first, second),
+            FirstNationId = Math.Min(first, second),
+            SecondNationId = Math.Max(first, second),
         };
-        State.Diplomacies.Add(relation);
+        Current.Diplomacies.Add(relation);
         return relation;
     }
 
     private IEnumerable<int> Circle(int cx, int cy, int radius)
     {
-        for (var y = Math.Max(0, cy - radius); y <= Math.Min(State.Height - 1, cy + radius); y++)
-        for (var x = Math.Max(0, cx - radius); x <= Math.Min(State.Width - 1, cx + radius); x++)
-            if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= radius * radius)
-                yield return Index(x, y);
+        for (var y = Math.Max(0, cy - radius); y <= Math.Min(Current.Height - 1, cy + radius); y++)
+            for (var x = Math.Max(0, cx - radius); x <= Math.Min(Current.Width - 1, cx + radius); x++)
+                if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= radius * radius)
+                    yield return Index(x, y);
     }
 
     private void RelocateInvalidEntities()
     {
-        foreach (var settlement in State.Settlements.ToArray())
+        foreach (var settlement in Current.Settlements.ToArray())
         {
-            var center = State.Tiles[Index(settlement.X, settlement.Y)];
+            var center = Current.Tiles[Index(settlement.X, settlement.Y)];
             if ((center.IsWalkable && !IsWaterTerrain(center.Terrain)) || (center.Terrain == TerrainType.Mountain
                                                                            && _citizens.GetValueOrDefault(settlement.Id)
                                                                                ?.Any(p => p.Race == RaceKind.Dwarf &&
@@ -450,19 +427,18 @@ public sealed partial class WorldEngine
                 continue;
             }
 
-            State.Tiles[Index(settlement.X, settlement.Y)].SettlementId = 0;
+            Current.Tiles[Index(settlement.X, settlement.Y)].SettlementId = 0;
             var position = Circle(settlement.X, settlement.Y, 12)
-                .Where(i => State.Tiles[i].IsWalkable && !IsWaterTerrain(State.Tiles[i].Terrain) &&
-                            State.Tiles[i].SettlementId == 0 &&
-                            !State.Society.Buildings.Any(b => b.X == i % State.Width && b.Y == i / State.Width) &&
-                            (State.Tiles[i].NationId == 0 || State.Tiles[i].NationId == settlement.NationId))
-                .OrderBy(i => Distance(i % State.Width, i / State.Width, settlement.X, settlement.Y))
+                .Where(i => Current.Tiles[i].IsWalkable && !IsWaterTerrain(Current.Tiles[i].Terrain) &&
+                            Current.Tiles[i].SettlementId == 0 &&
+                            !Current.Society.Buildings.Any(b => b.X == i % Current.Width && b.Y == i / Current.Width) &&
+                            (Current.Tiles[i].NationId == 0 || Current.Tiles[i].NationId == settlement.NationId))
+                .OrderBy(i => Distance(i % Current.Width, i / Current.Width, settlement.X, settlement.Y))
                 .FirstOrDefault(-1);
             if (position >= 0)
             {
-                settlement.X = position % State.Width;
-                settlement.Y = position / State.Width;
-                State.Tiles[position].SettlementId = settlement.Id;
+                settlement.Replace(settlement.Value with { X = position % Current.Width, Y = position / Current.Width });
+                Current.Tiles[position].SettlementId = settlement.Id;
                 ClaimTerritory(settlement, 6);
                 AddEvent(WorldEventKind.Editor, $"地形改变，{settlement.Name}迁往可居住的土地。", settlement.X, settlement.Y);
             }
@@ -470,36 +446,34 @@ public sealed partial class WorldEngine
                 RemoveSettlement(settlement, "家园被地形变化摧毁");
         }
 
-        foreach (var resident in State.Residents)
+        foreach (var resident in Current.Residents)
         {
-            if (CanTraverse(State.Tiles[Index(resident.X, resident.Y)], resident.TravelMode, resident.Race))
+            if (CanTraverse(Current.Tiles[Index(resident.X, resident.Y)], resident.TravelMode, resident.Race))
                 continue;
             var position = FindWalkable(resident.X, resident.Y, 10, resident.Race);
             if (position >= 0)
             {
-                resident.X = position % State.Width;
-                resident.Y = position / State.Width;
+                resident.Replace(resident.Value with { X = position % Current.Width, Y = position / Current.Width });
                 DamageResident(resident, 15, DeathCause.TerrainChange);
             }
             else
             {
                 DamageResident(resident, resident.Health,
-                    IsWaterTerrain(State.Tiles[Index(resident.X, resident.Y)].Terrain)
+                    IsWaterTerrain(Current.Tiles[Index(resident.X, resident.Y)].Terrain)
                         ? DeathCause.Drowning
                         : DeathCause.TerrainChange);
             }
         }
 
         ArchiveDeadResidents();
-        foreach (var army in State.Armies.ToArray())
+        foreach (var army in Current.Armies.ToArray())
         {
             if (Walkable(army.X, army.Y))
                 continue;
             var position = FindWalkable(army.X, army.Y, 10);
             if (position >= 0)
             {
-                army.X = position % State.Width;
-                army.Y = position / State.Width;
+                army.Replace(army.Value with { X = position % Current.Width, Y = position / Current.Width });
             }
             else
                 DisbandArmy(army);

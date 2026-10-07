@@ -1,23 +1,28 @@
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.Core.Runtime;
 
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>到场加工的材料消耗、实物产出和拒绝边界。</summary>
 public sealed class ProductionTests
 {
-    private static (WorldFixture Fixture, Building Foundry) FoundryWorld()
+    private static (WorldFixture Fixture, BuildingCursor Foundry) FoundryWorld()
     {
         var fixture = new WorldFixture();
         foreach (var prerequisite in Advancement.Industry.Prerequisites)
             fixture.Engine.GrantReceivedResearch(fixture.Town.Id, prerequisite);
         fixture.Engine.GrantReceivedResearch(fixture.Town.Id, Advancement.Industry);
-        var foundry = new Building
+        var foundry = new BuildingCursor
         {
-            Id = fixture.Engine.State.NextId++, SettlementId = fixture.Town.Id,
-            Kind = BuildingKind.Foundry, X = 17, Y = 16, ConstructionProgress = 30,
+            Id = fixture.Engine.Current.NextId++,
+            SettlementId = fixture.Town.Id,
+            Kind = BuildingKind.Foundry,
+            X = 17,
+            Y = 16,
+            ConstructionProgress = 30,
         };
-        fixture.Engine.State.Society.Buildings.Add(foundry);
-        var ground = fixture.Engine.State.Tiles[16 * 32 + 17];
+        fixture.Engine.Current.Society.Buildings.Add(foundry);
+        var ground = fixture.Engine.Current.Tiles[16 * 32 + 17];
         ground.NationId = fixture.Town.NationId;
         ground.ClaimedSettlementId = fixture.Town.Id;
         var worker = fixture.Resident;
@@ -28,7 +33,10 @@ public sealed class ProductionTests
         worker.Inventory = new ResourceStock { Coal = 1, Ore = 2 };
         worker.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Work, TargetEntityId = foundry.Id, TargetX = 17, TargetY = 16,
+            Kind = AgentGoalKind.Work,
+            TargetEntityId = foundry.Id,
+            TargetX = 17,
+            TargetY = 16,
         };
         return (fixture, foundry);
     }
@@ -54,7 +62,7 @@ public sealed class ProductionTests
     public void Missing_input_does_not_partially_consume_materials()
     {
         var (fixture, foundry) = FoundryWorld();
-        fixture.Resident.Inventory.Ore = 1;
+        fixture.Resident.Inventory = fixture.Resident.Inventory with { Ore = 1 };
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
 
@@ -83,7 +91,7 @@ public sealed class ProductionTests
     public void Missing_operating_prerequisite_prevents_production()
     {
         var (fixture, foundry) = FoundryWorld();
-        fixture.Engine.State.Society.Research.Single().Completed.Remove(Advancement.Industry.Prerequisites[0]);
+        fixture.Engine.Current.Society.Research.Single().Completed.Remove(Advancement.Industry.Prerequisites[0]);
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
 
@@ -111,8 +119,11 @@ public sealed class ProductionTests
     public void Worker_can_produce_only_once_per_tick()
     {
         var (fixture, foundry) = FoundryWorld();
-        fixture.Resident.Inventory.Coal = 2;
-        fixture.Resident.Inventory.Ore = 4;
+        fixture.Resident.Inventory = fixture.Resident.Inventory with
+        {
+            Coal = 2,
+            Ore = 4,
+        };
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident));

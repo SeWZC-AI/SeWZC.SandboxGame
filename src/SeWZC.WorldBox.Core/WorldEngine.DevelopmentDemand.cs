@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -5,7 +6,7 @@ public sealed partial class WorldEngine
     /// <summary>汇总附近劳动力和资源条件，以及从居民记忆中推断的需求。</summary>
     /// <param name="town">需要评估发展需求的本地聚落。</param>
     /// <param name="buildings">本地已有设施，用于核对劳动与供给缺口。</param>
-    private LocalDemand InspectLocalDemand(Settlement town, IReadOnlyList<Building> buildings)
+    private LocalDemand InspectLocalDemand(SettlementCursor town, IReadOnlyList<BuildingCursor> buildings)
     {
         var residents = _localWorkQueriesActive
             ? _localWorkResidents.GetValueOrDefault(town.Id)
@@ -14,14 +15,14 @@ public sealed partial class WorldEngine
                                            && Distance(p.X, p.Y, town.X, town.Y) <= 6).ToArray() ?? [];
         var defense = GetLocalPolicy(town.Id) == PolicyKind.Defense || adults.Any(p => p.Agent.Memory.Any(f =>
             f.Kind is AgentFactKind.Danger or AgentFactKind.WarOrder
-            && f.Value > 0 && State.Tick - f.ObservedTick < 120 && f.ReliabilityAt(State.Tick) >= .5));
+            && f.Value > 0 && Current.Tick - f.ObservedTick < 120 && f.ReliabilityAt(Current.Tick) >= .5));
         var coast = false;
         var timber = false;
         var stone = false;
         var roads = false;
         foreach (var index in Circle(town.X, town.Y, 6))
         {
-            var tile = State.Tiles[index];
+            var tile = Current.Tiles[index];
             coast |= !coast && IsFreshWater(tile) &&
                      tile.AnimalPopulation(WildlifeKind.Fish) + tile.AnimalPopulation(WildlifeKind.GrassCarp) >= .2;
             timber |= !timber && IsForestTerrain(tile.Terrain) && tile.ResourceAmount >= 10;
@@ -34,11 +35,11 @@ public sealed partial class WorldEngine
         }
 
         return new LocalDemand(town, adults, buildings, defense, adults.Any(p => p.Health < 90 || p.SicknessTicks > 0),
-            State.Rules.Thirst && (town.Resources.Water < Math.Max(2, town.Population * .5) ||
+            Current.Rules.Thirst && (town.Resources.Water < Math.Max(2, town.Population * .5) ||
                                    adults.Any(p => p.Thirst > 20)),
             coast, timber, stone,
             adults.Any(p => p.Agent.Memory.Any(f =>
-                f.Kind == AgentFactKind.SettlementLocation && f.SubjectId != town.Id && f.ReliabilityAt(State.Tick) >= .5)),
+                f.Kind == AgentFactKind.SettlementLocation && f.SubjectId != town.Id && f.ReliabilityAt(Current.Tick) >= .5)),
             adults.Any(p => p.MagicTalent >= 35), roads);
     }
 
@@ -55,7 +56,7 @@ public sealed partial class WorldEngine
         return kind switch
         {
             BuildingKind.Farm => stock.Food < Math.Max(25, town.Population * 1.5),
-            BuildingKind.Academy => State.Rules.Research,
+            BuildingKind.Academy => Current.Rules.Research,
             BuildingKind.Waystation or BuildingKind.SignalTower or BuildingKind.Market
                 or BuildingKind.TradeGuild => demand.Contacts,
             BuildingKind.ArcaneSanctum or BuildingKind.SacredGrove => demand.MagicTalent,
@@ -82,15 +83,15 @@ public sealed partial class WorldEngine
                                      (stock.Medicine >= .25 || Has(BuildingKind.Apothecary) ||
                                       Has(BuildingKind.AlchemyLab)),
             BuildingKind.Apothecary or BuildingKind.AlchemyLab => stock.Medicine < 8 &&
-                                                                  (demand.Patients || (State.Rules.Disease &&
+                                                                  (demand.Patients || (Current.Rules.Disease &&
                                                                       town.Population >= 60)),
             BuildingKind.FireStation => demand.Buildings.Any(b => b.Health is > 0 and < 90)
-                                        || (State.NaturalDisasters && town.Population >= 60) || demand.Adults.Any(p =>
+                                        || (Current.NaturalDisasters && town.Population >= 60) || demand.Adults.Any(p =>
                                             p.Agent.Memory.Any(f =>
                                                 f.Kind == AgentFactKind.Danger && f.Value > 0 &&
-                                                State.Tick - f.ObservedTick < 24)),
-            BuildingKind.Library => State.Society.Research.First(r => r.SettlementId == town.Id).Completed.Count >= 3,
-            BuildingKind.SurveyOffice => State.Rules.Expansion || demand.Adults.Any(p =>
+                                                Current.Tick - f.ObservedTick < 24)),
+            BuildingKind.Library => Current.Society.Research.First(r => r.SettlementId == town.Id).Completed.Count >= 3,
+            BuildingKind.SurveyOffice => Current.Rules.Expansion || demand.Adults.Any(p =>
                 p.Profession is Profession.Miner or Profession.Trader or Profession.Messenger),
             BuildingKind.MachineWorkshop => stock.Tools < 8 &&
                                             demand.Adults.Any(p =>
@@ -98,13 +99,13 @@ public sealed partial class WorldEngine
             BuildingKind.Arsenal => demand.Defense && stock.Ammunition < 24,
             BuildingKind.GroveSanctuary => demand.MagicTalent && !demand.Timber &&
                                            demand.Adults.Any(p => p.Profession == Profession.Lumberjack),
-            BuildingKind.Waygate => demand.Contacts && demand.MagicTalent && State.Settlements.Any(t =>
+            BuildingKind.Waygate => demand.Contacts && demand.MagicTalent && Current.Settlements.Any(t =>
                 t.Id != town.Id && t.NationId == town.NationId && Distance(t.X, t.Y, town.X, town.Y) <= 24),
             BuildingKind.Pasture => stock.Food < town.Population * 2 && demand.Adults.Any(p =>
                                                                          p.Profession == Profession.Farmer)
                                                                      && Circle(town.X, town.Y, 6).Any(i =>
-                                                                         HusbandryStockAt(i % State.Width,
-                                                                             i / State.Width, false).Source >= 0),
+                                                                         HusbandryStockAt(i % Current.Width,
+                                                                             i / Current.Width, false).Source >= 0),
             BuildingKind.Aquaculture => demand.Coast && stock.Food < town.Population * 2,
             _ => true,
         };
@@ -120,17 +121,17 @@ public sealed partial class WorldEngine
             _ when research == Advancement.Ballistics || research == Advancement.ProtectiveEquipment
                                                       || research == Advancement.Warding ||
                                                       research == Advancement.BattleMagic => demand.Defense,
-            _ when research == Advancement.Elementalism => demand.Defense || State.NaturalDisasters,
+            _ when research == Advancement.Elementalism => demand.Defense || Current.NaturalDisasters,
             _ when research == Advancement.RailTransport => demand.Roads,
             _ when research == Advancement.SpatialMagic => FacilityNeeded(demand, BuildingKind.Waygate),
             _ when research == Advancement.FireEngineering => FacilityNeeded(demand, BuildingKind.FireStation),
             _ when research == Advancement.Medicine || research == Advancement.Sanitation
                                                     || research == Advancement.Restoration => demand.Patients ||
-                State.Rules.Disease,
+                Current.Rules.Disease,
             _ when research == Advancement.Pharmacology || research == Advancement.Alchemy => FacilityNeeded(demand,
                 BuildingKind.Apothecary),
             _ when research == Advancement.NatureBinding => FacilityNeeded(demand, BuildingKind.GroveSanctuary) ||
-                                                            State.NaturalDisasters,
+                                                            Current.NaturalDisasters,
             _ when research == Advancement.Observation || research == Advancement.SignalNetwork => demand.Contacts ||
                 demand.Adults.Any(p =>
                     p.Profession == Profession.Miner),
@@ -172,9 +173,9 @@ public sealed partial class WorldEngine
     /// <param name="MagicTalent">是否有适合魔法发展的本地人才。</param>
     /// <param name="Roads">是否具有道路和交通发展需求。</param>
     private sealed record LocalDemand(
-        Settlement Town,
-        Resident[] Adults,
-        IReadOnlyList<Building> Buildings,
+        SettlementCursor Town,
+        ResidentCursor[] Adults,
+        IReadOnlyList<BuildingCursor> Buildings,
         bool Defense,
         bool Patients,
         bool Water,

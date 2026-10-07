@@ -18,7 +18,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>异步将当前世界导出为 JSON 字符串。</summary>
-    /// <remarks>调用方须暂停模拟，并在修改或替换世界前取消仍在进行的捕获。</remarks>
+    /// <remarks>调用开始时捕获不可变状态；后续模拟或编辑不改变本次导出的内容。</remarks>
     /// <param name="yield">在缓冲写入之间让界面有机会处理事件的回调。</param>
     /// <param name="cancellationToken">取消捕获，不返回不完整的存档。</param>
     public async Task<string> ExportJsonAsync(Func<CancellationToken, ValueTask> yield,
@@ -28,7 +28,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>异步将当前世界导出为 JSON 文本块。</summary>
-    /// <remarks>调用方须暂停模拟，并在修改或替换世界前取消仍在进行的捕获。</remarks>
+    /// <remarks>调用开始时捕获不可变状态；后续模拟或编辑不改变本次导出的内容。</remarks>
     /// <param name="yield">在缓冲写入之间让界面处理事件的回调。</param>
     /// <param name="cancellationToken">取消操作的令牌；取消时不提交不完整结果。</param>
     public async Task<string[]> ExportJsonChunksAsync(Func<CancellationToken, ValueTask> yield,
@@ -51,17 +51,24 @@ public sealed partial class WorldEngine
         WorldState state;
         try
         {
-            state = JsonSerializer.Deserialize(json, WorldJsonContext.Default.WorldState) ??
-                    throw new JsonException("存档内容为空。");
+            state = JsonSerializer.Deserialize(json, WorldJsonContext.Default.WorldState);
         }
         catch (JsonException ex)
         {
             throw new ArgumentException("无法读取存档：JSON 格式无效。", nameof(json), ex);
         }
 
+        return FromSnapshot(state);
+    }
+
+    /// <summary>校验并恢复不可变世界快照，共享状态值并重建当前引擎的派生索引。</summary>
+    /// <param name="snapshot">要恢复的独立世界快照。</param>
+    /// <exception cref="ArgumentException">快照不满足世界数据约束。</exception>
+    public static WorldEngine FromSnapshot(WorldState snapshot)
+    {
         // 构造引擎时会重建索引，因此须在初始化前拒绝无效的实体引用。
-        ValidateState(state);
-        return new WorldEngine(state);
+        ValidateState(snapshot);
+        return new WorldEngine(snapshot);
     }
 
     private static void ValidateState(WorldState state)
@@ -82,10 +89,9 @@ public sealed partial class WorldEngine
             return double.IsFinite(value) && value >= 0 && value <= max;
         }
 
-        static bool StockValid(ResourceStock? stock)
+        static bool StockValid(ResourceStock stock)
         {
-            return stock is not null &&
-                   ResourceStock.Kinds.All(kind => FiniteRange(stock.Get(kind), 1_000_000_000));
+            return ResourceStock.Kinds.All(kind => FiniteRange(stock.Get(kind), 1_000_000_000));
         }
 
         bool PositionValid(int x, int y)
@@ -108,7 +114,7 @@ public sealed partial class WorldEngine
         Require(
             state.Tick is >= 0 and <= 120_000_000 && state.RandomState != 0 && state.NextId is > 0 and < 2_000_000_000,
             "时间或随机数状态无效。");
-        Require(state.Tiles is not null && state.Tiles.Length == state.Width * state.Height, "地图地格数量不匹配。");
+        Require(state.Tiles is not null && state.Tiles.Count == state.Width * state.Height, "地图地格数量不匹配。");
         Require(
             state.Residents is not null && state.Residents.Count <= MaxPopulation && state.Settlements is not null &&
             state.Settlements.Count <= 256 && state.Nations is not null && state.Nations.Count <= 64, "实体数量超出范围。");
@@ -163,7 +169,7 @@ public sealed partial class WorldEngine
         var nations = state.Nations!.ToDictionary(n => n.Id);
         var towns = state.Settlements!.ToDictionary(s => s.Id);
         var armies = state.Armies!.ToDictionary(a => a.Id);
-        for (var i = 0; i < state.Tiles!.Length; i++)
+        for (var i = 0; i < state.Tiles!.Count; i++)
         {
             var tile = state.Tiles[i];
             Require(

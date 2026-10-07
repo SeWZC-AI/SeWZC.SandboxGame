@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 using System.Text.Json;
 
 namespace SeWZC.WorldBox.Core;
@@ -8,8 +9,8 @@ public sealed partial class WorldEngine
     /// <param name="id">居民的稳定 ID。</param>
     public Resident? GetResident(int id)
     {
-        return State.Residents.FirstOrDefault(r => r.Id == id) ??
-               State.ArchivedResidents.FirstOrDefault(r => r.Id == id);
+        return (Current.Residents.FirstOrDefault(r => r.Id == id) ??
+               Current.ArchivedResidents.FirstOrDefault(r => r.Id == id))?.Value;
     }
 
     /// <summary>将指定居民的认知与行动状态序列化为 JSON。</summary>
@@ -23,7 +24,7 @@ public sealed partial class WorldEngine
     /// <param name="id">居民的稳定 ID。</param>
     public string ExportResidentHistory(int id)
     {
-        return JsonSerializer.Serialize(RequireResident(id).History, WorldJsonContext.Default.ListResidentHistoryEntry);
+        return JsonSerializer.Serialize(RequireResident(id).History.ToList(), WorldJsonContext.Default.ListResidentHistoryEntry);
     }
 
     /// <summary>解析并校验认知 JSON 后应用到居民，影响其未来行为。</summary>
@@ -70,9 +71,9 @@ public sealed partial class WorldEngine
         }
     }
 
-    private Resident RequireResident(int id)
+    internal ResidentCursor RequireResident(int id)
     {
-        return GetResident(id) ?? throw new ArgumentException("居民不存在。", nameof(id));
+        return Current.Residents.FirstOrDefault(r => r.Id == id) ?? Current.ArchivedResidents.FirstOrDefault(r => r.Id == id) ?? throw new ArgumentException("居民不存在。", nameof(id));
     }
 
     /// <summary>设置自然灾害和魔法开关，保留已有发展成果。</summary>
@@ -80,8 +81,8 @@ public sealed partial class WorldEngine
     /// <param name="magicEnabled">是否允许新的魔法发展和施法。</param>
     public void SetWorldRules(bool naturalDisasters, bool magicEnabled)
     {
-        State.NaturalDisasters = naturalDisasters;
-        State.Society.MagicEnabled = magicEnabled;
+        Current.NaturalDisasters = naturalDisasters;
+        Current.Society.MagicEnabled = magicEnabled;
         AddEvent(WorldEventKind.Editor, "世界规则已更新；居民通过当地观察了解变化。");
     }
 
@@ -92,11 +93,9 @@ public sealed partial class WorldEngine
     {
         ArgumentNullException.ThrowIfNull(patch);
         var original = RequireResident(id);
-        var liveIndex = State.Residents.IndexOf(original);
+        var liveIndex = Current.Residents.IndexOf(original);
         var isLive = liveIndex >= 0;
-        var candidate =
-            JsonSerializer.Deserialize(JsonSerializer.Serialize(original, WorldJsonContext.Default.Resident),
-                WorldJsonContext.Default.Resident)!;
+        var candidate = new ResidentCursor(original.Value);
         if (patch.Name is not null)
             candidate.Name = patch.Name.Trim();
         if (patch.Race is { } race)
@@ -107,13 +106,10 @@ public sealed partial class WorldEngine
         {
             if (!_settlements.TryGetValue(townId, out var town))
                 throw new ArgumentException("目标聚落不存在。");
-            candidate.SettlementId = townId;
-            candidate.NationId = town.NationId;
+            candidate.Replace(candidate.Value with { SettlementId = townId, NationId = town.NationId });
             if (townId != original.SettlementId)
             {
-                candidate.X = town.X;
-                candidate.Y = town.Y;
-                candidate.ArmyId = 0;
+                candidate.Replace(candidate.Value with { X = town.X, Y = town.Y, ArmyId = 0 });
             }
         }
 
@@ -126,7 +122,7 @@ public sealed partial class WorldEngine
         if (patch.SicknessTicks is { } sickness)
             candidate.SicknessTicks = sickness;
         if (patch.Inventory is { } stock)
-            candidate.Inventory = stock.Copy();
+            candidate.Inventory = stock;
         if (patch.Profession is { } profession)
             candidate.Profession = profession;
         if (patch.Age is { } age)
@@ -136,8 +132,7 @@ public sealed partial class WorldEngine
             candidate.Health = health;
             if (isLive && health <= 0)
             {
-                candidate.DeathCause = DeathCause.PlayerIntervention;
-                candidate.DeathTick = State.Tick;
+                candidate.Replace(candidate.Value with { DeathCause = DeathCause.PlayerIntervention, DeathTick = Current.Tick });
             }
         }
 
@@ -151,16 +146,16 @@ public sealed partial class WorldEngine
             switch (patch.Trait)
             {
                 case "勤劳":
-                    candidate.Agent.Personality.Diligence = .9;
+                    candidate.Agent.Personality = candidate.Agent.Personality with { Diligence = .9 };
                     break;
                 case "勇敢":
-                    candidate.Agent.Personality.Courage = .9;
+                    candidate.Agent.Personality = candidate.Agent.Personality with { Courage = .9 };
                     break;
                 case "好奇":
-                    candidate.Agent.Personality.Ambition = .9;
+                    candidate.Agent.Personality = candidate.Agent.Personality with { Ambition = .9 };
                     break;
                 case "温和":
-                    candidate.Agent.Personality.Sociability = .9;
+                    candidate.Agent.Personality = candidate.Agent.Personality with { Sociability = .9 };
                     break;
             }
         }
@@ -173,9 +168,7 @@ public sealed partial class WorldEngine
             candidate.MagicTraining = training;
         if (patch.Agent is not null)
         {
-            candidate.Agent =
-                JsonSerializer.Deserialize(JsonSerializer.Serialize(patch.Agent, WorldJsonContext.Default.AgentState),
-                    WorldJsonContext.Default.AgentState)!;
+            candidate.Agent = new AgentStateCursor(patch.Agent);
         }
 
         if (patch.History is not null)
@@ -183,17 +176,17 @@ public sealed partial class WorldEngine
             candidate.History = patch.History.ToList();
         }
 
-        ValidateResidentV2(candidate, State.Tick, State.Width, State.Height);
-        ValidateStoryReferences(candidate, State.NextId);
+        ValidateResidentV2(candidate, Current.Tick, Current.Width, Current.Height);
+        ValidateStoryReferences(candidate, Current.NextId);
         if (isLive)
         {
-            if (!InBounds(candidate.X, candidate.Y) || !CanTraverse(State.Tiles[Index(candidate.X, candidate.Y)],
+            if (!InBounds(candidate.X, candidate.Y) || !CanTraverse(Current.Tiles[Index(candidate.X, candidate.Y)],
                     candidate.TravelMode, candidate.Race))
                 throw new ArgumentException("居民必须位于可通行地格。");
             if (candidate.ArmyId != 0 &&
-                !State.Armies.Any(a => a.Id == candidate.ArmyId && a.NationId == candidate.NationId))
+                !Current.Armies.Any(a => a.Id == candidate.ArmyId && a.NationId == candidate.NationId))
                 throw new ArgumentException("军队不存在或与居民所属国家不一致。");
-            if (candidate.CultureId != 0 && !State.Society.Cultures.Any(c => c.Id == candidate.CultureId))
+            if (candidate.CultureId != 0 && !Current.Society.Cultures.Any(c => c.Id == candidate.CultureId))
                 throw new ArgumentException("文化不存在。");
         }
 
@@ -215,9 +208,12 @@ public sealed partial class WorldEngine
                            Impact(original.History, PersonalExperienceKind.Betrayal);
             var learning = Impact(candidate.History, PersonalExperienceKind.Learning) -
                            Impact(original.History, PersonalExperienceKind.Learning);
-            personality.Courage = Math.Clamp(personality.Courage + (achievement - hardship) * 0.1, 0, 1);
-            personality.Sociability = Math.Clamp(personality.Sociability + (kindness - betrayal) * 0.1, 0, 1);
-            personality.Diligence = Math.Clamp(personality.Diligence + learning * 0.1, 0, 1);
+            candidate.Agent.Personality = personality with
+            {
+                Courage = Math.Clamp(personality.Courage + (achievement - hardship) * 0.1, 0, 1),
+                Sociability = Math.Clamp(personality.Sociability + (kindness - betrayal) * 0.1, 0, 1),
+                Diligence = Math.Clamp(personality.Diligence + learning * 0.1, 0, 1),
+            };
             candidate.History = candidate.History.Select(entry => entry with { PlayerEdited = true }).ToList();
         }
 
@@ -225,19 +221,19 @@ public sealed partial class WorldEngine
             candidate.Agent.Goal.Kind == original.Agent.Goal.Kind &&
             thought.Reason != original.Agent.Decisions.LastOrDefault()?.Reason)
         {
-            candidate.Agent.Goal.Kind = thought.Goal;
-            candidate.Agent.Goal.Reason = thought.Reason;
-            candidate.Agent.Goal.PlayerDirected = true;
-            candidate.Agent.Goal.ReviewTick = State.Tick + 24;
+            candidate.Agent.Goal = candidate.Agent.Goal with
+            {
+                Kind = thought.Goal,
+                Reason = thought.Reason,
+                PlayerDirected = true,
+                ReviewTick = Current.Tick + 24,
+            };
         }
 
-        candidate.Agent.NextThinkTick = State.Tick;
+        candidate.Agent.NextThinkTick = Current.Tick;
         if (candidate.X != original.X || candidate.Y != original.Y)
         {
-            candidate.FromX = candidate.X;
-            candidate.FromY = candidate.Y;
-            candidate.MoveStartedTick = State.Tick;
-            candidate.MoveDurationTicks = 1;
+            candidate.Replace(candidate.Value with { FromX = candidate.X, FromY = candidate.Y, MoveStartedTick = Current.Tick, MoveDurationTicks = 1 });
         }
 
         var startMission = isLive && patch.Agent is not null &&
@@ -268,8 +264,8 @@ public sealed partial class WorldEngine
                     X = destination.X,
                     Y = destination.Y,
                     Value = destination.NationId,
-                    ObservedTick = State.Tick,
-                    LearnedTick = State.Tick,
+                    ObservedTick = Current.Tick,
+                    LearnedTick = Current.Tick,
                     OriginResidentId = candidate.Id,
                     SourceResidentId = candidate.Id,
                     OriginProfession = candidate.Profession,
@@ -277,10 +273,7 @@ public sealed partial class WorldEngine
                 });
             }
 
-            candidate.Agent.Goal.TargetX = destination.X;
-            candidate.Agent.Goal.TargetY = destination.Y;
-            candidate.Agent.Goal.StartedTick = State.Tick;
-            candidate.Agent.MissionRetryTick = State.Tick;
+            candidate.Replace(candidate.Value with { Agent = candidate.Agent.Value with { Goal = candidate.Agent.Goal with { TargetX = destination.X, TargetY = destination.Y, StartedTick = Current.Tick, }, MissionRetryTick = Current.Tick } });
         }
         else if (patch.Agent is not null && candidate.Agent.Goal.Kind is not AgentGoalKind.Trade
                      and not AgentGoalKind.DeliverMessage and not AgentGoalKind.Petition)
@@ -292,7 +285,7 @@ public sealed partial class WorldEngine
         // 编辑产生新身份的信息快照，已传播副本保留旧身份，避免修改过去收到的信息。
         if (patch.Agent is not null)
         {
-            ValidateResidentV2(candidate, State.Tick, State.Width, State.Height);
+            ValidateResidentV2(candidate, Current.Tick, Current.Width, Current.Height);
             var changedFacts = candidate.Agent.Memory.Concat(candidate.Agent.CarriedMessages)
                 .Where(fact => !original.Agent.Memory.Concat(original.Agent.CarriedMessages)
                     .Any(prior => fact.Id > 0 && prior.Id == fact.Id && SameFactSnapshot(prior, fact))).ToArray();
@@ -335,9 +328,9 @@ public sealed partial class WorldEngine
         }
 
         if (isLive)
-            State.Residents[liveIndex] = candidate;
+            Current.Residents[liveIndex] = candidate;
         else
-            State.ArchivedResidents[State.ArchivedResidents.IndexOf(original)] = candidate;
+            Current.ArchivedResidents[Current.ArchivedResidents.IndexOf(original)] = candidate;
         if (isLive)
         {
             if (startMission && _settlements.TryGetValue(candidate.SettlementId, out var missionHome))
@@ -349,8 +342,7 @@ public sealed partial class WorldEngine
 
         var editEvent = AddEvent(WorldEventKind.Editor, $"{candidate.Name}的角色记录已修订；过去的世界结果保持原样。", candidate.X,
             candidate.Y);
-        editEvent.ResidentId = candidate.Id;
-        editEvent.NationId = candidate.NationId;
+        editEvent.Replace(editEvent.Value with { ResidentId = candidate.Id, NationId = candidate.NationId });
     }
 
     private static bool SameFactSnapshot(AgentFact first, AgentFact second)

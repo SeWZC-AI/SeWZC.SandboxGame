@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.LogicalTree;
@@ -55,39 +54,30 @@ public sealed partial class MainView
         }
     }
 
-    private async Task<string> ReadEditCheckpointAsync(WorldEngine source, CancellationToken cancellationToken,
+    private Task<WorldState> ReadEditCheckpointAsync(WorldEngine source, CancellationToken cancellationToken,
         Func<bool>? current = null)
     {
-        await _saveGate.WaitAsync(cancellationToken);
-        try
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            if (!ReferenceEquals(source, _engine) || current?.Invoke() == false)
-                throw new OperationCanceledException(cancellationToken);
-            SetStatus("正在准备编辑恢复点，地图可继续平移；可以取消提交");
-            _lastSaveYield = Stopwatch.GetTimestamp();
-            return await source.ExportJsonAsync(YieldDuringSave, cancellationToken);
-        }
-        finally
-        {
-            _saveGate.Release();
-        }
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!ReferenceEquals(source, _engine) || current?.Invoke() == false)
+            throw new OperationCanceledException(cancellationToken);
+        return Task.FromResult(source.State);
     }
 
     /// <summary>捕获指定世界的可取消撤销快照，期间临时停止模拟。</summary>
     /// <param name="source">本次捕获绑定的原世界引擎。</param>
     /// <param name="cancellationToken">取消操作的令牌；取消时不提交不完整结果。</param>
     /// <param name="current">检查原世界和界面会话是否仍有效的回调。</param>
-    private async Task<string> PrepareCheckpointAsync(WorldEngine source, CancellationToken cancellationToken,
+    private async Task<WorldState> PrepareCheckpointAsync(WorldEngine source, CancellationToken cancellationToken,
         Func<bool>? current = null)
     {
         _editCaptureCount++;
         _map.IsSimulationPaused = true;
-        var capture = ReadEditCheckpointAsync(source, cancellationToken, current);
-        _prepareEditTask = capture;
-        UpdateUndoButtons();
+        Task<WorldState>? capture = null;
         try
         {
+            capture = ReadEditCheckpointAsync(source, cancellationToken, current);
+            _prepareEditTask = capture;
+            UpdateUndoButtons();
             return await capture;
         }
         finally
@@ -182,15 +172,7 @@ public sealed partial class MainView
             if (ReferenceEquals(request.Source, _engine) && request.Committing)
             {
                 // 复合命令或界面刷新可能在世界已变更后失败，仍须保留恢复点供撤销。
-                var unchanged = false;
-                try
-                {
-                    unchanged = request.Source.ExportJson() == _checkpoint;
-                }
-                catch (Exception)
-                {
-                    /* 导出失败时仍保留编辑前的撤销恢复点。 */
-                }
+                var unchanged = request.Source.State == _checkpoint;
 
                 if (unchanged)
                 {

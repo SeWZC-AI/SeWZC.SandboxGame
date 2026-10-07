@@ -1,10 +1,14 @@
+using System.Collections.Immutable;
 using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>可保存并恢复续演的可变世界状态；地图尺寸和种子在初始化后固定。</summary>
-public sealed class WorldState
+/// <summary>可保存并恢复续演的不可变世界状态；旧状态可作为独立快照保留。</summary>
+public readonly record struct WorldState
 {
+    /// <summary>建立采用当前存档格式和缺省规则的世界状态。</summary>
+    public WorldState() { }
+
     /// <summary>存档数据结构版本，用于拒绝不兼容的格式。</summary>
     [JsonRequired]
     public int FormatVersion { get; init; } = 17;
@@ -19,37 +23,44 @@ public sealed class WorldState
     public required int Height { get; init; }
 
     /// <summary>已经推进的模拟日数；每个模拟年包含 120 日。</summary>
-    public long Tick { get; set; }
+    public long Tick { get; init; }
 
     /// <summary>模拟随机数生成器的当前状态；载入后接续使用，不从种子重新开始。</summary>
-    public uint RandomState { get; set; }
+    public uint RandomState { get; init; }
 
     /// <summary>下一次分配给实体、事件或信息记录的稳定 ID。</summary>
-    public int NextId { get; set; } = 1;
+    public int NextId { get; init; } = 1;
 
-    /// <summary>按行排列的地格数组，索引为 <c>y * Width + x</c>。</summary>
-    public required Tile[] Tiles { get; init; }
+    /// <summary>按行排列的地格集合，索引为 <c>y * Width + x</c>。</summary>
+    [JsonConverter(typeof(ImmutableVectorJsonConverter<Tile>))]
+    public required ImmutableVector<Tile> Tiles { get; init; }
 
     /// <summary>当前存活居民的状态集合。</summary>
-    public List<Resident> Residents { get; init; } = [];
+    [JsonConverter(typeof(ImmutableVectorJsonConverter<Resident>))]
+    public ImmutableVector<Resident> Residents { get; init; } = [];
 
     /// <summary>世界中的聚落及其仓库状态。</summary>
-    public List<Settlement> Settlements { get; init; } = [];
+    [JsonConverter(typeof(ImmutableVectorJsonConverter<Settlement>))]
+    public ImmutableVector<Settlement> Settlements { get; init; } = [];
 
     /// <summary>世界中的国家状态集合。</summary>
-    public List<Nation> Nations { get; init; } = [];
+    [JsonConverter(typeof(ImmutableVectorJsonConverter<Nation>))]
+    public ImmutableVector<Nation> Nations { get; init; } = [];
 
     /// <summary>仍在行动的军队状态集合。</summary>
-    public List<Army> Armies { get; init; } = [];
+    [JsonConverter(typeof(ImmutableVectorJsonConverter<Army>))]
+    public ImmutableVector<Army> Armies { get; init; } = [];
 
     /// <summary>各国之间的外交关系记录。</summary>
-    public List<DiplomaticRelation> Diplomacies { get; init; } = [];
+    [JsonConverter(typeof(ImmutableVectorJsonConverter<DiplomaticRelation>))]
+    public ImmutableVector<DiplomaticRelation> Diplomacies { get; init; } = [];
 
     /// <summary>容量受限的世界编年史记录。</summary>
-    public List<WorldEvent> Events { get; init; } = [];
+    [JsonConverter(typeof(ImmutableVectorJsonConverter<WorldEvent>))]
+    public ImmutableVector<WorldEvent> Events { get; init; } = [];
 
     /// <summary>是否允许模拟自主产生自然灾害。</summary>
-    public bool NaturalDisasters { get; set; } = true;
+    public bool NaturalDisasters { get; init; } = true;
 
     /// <summary>当前模拟年，从 1 开始，每年 120 日。</summary>
     [JsonIgnore]
@@ -64,11 +75,12 @@ public sealed class WorldState
     public int Population => Residents.Count;
 
     /// <summary>当前世界采用的模拟规则。</summary>
-    public WorldRules Rules { get; set; } = new();
+    public WorldRules Rules { get; init; } = new();
 
     /// <summary>当前保留的局部资源冲突记录。</summary>
     [JsonRequired]
-    public List<LocalConflict> Conflicts { get; init; } = [];
+    [JsonConverter(typeof(ImmutableVectorJsonConverter<LocalConflict>))]
+    public ImmutableVector<LocalConflict> Conflicts { get; init; } = [];
 
     /// <summary>模拟规则版本，用于校验存档的续演兼容性。</summary>
     [JsonRequired]
@@ -78,8 +90,9 @@ public sealed class WorldState
     public SocietyState Society { get; init; } = new();
 
     /// <summary>等待送达的消息集合。</summary>
-    public List<PendingMessage> PendingMessages { get; init; } = [];
+    public ImmutableList<PendingMessage> PendingMessages { get; init; } = [];
 
     /// <summary>已死亡居民的有限归档，供查看经历。</summary>
-    public List<Resident> ArchivedResidents { get; init; } = [];
+    [JsonConverter(typeof(ImmutableVectorJsonConverter<Resident>))]
+    public ImmutableVector<Resident> ArchivedResidents { get; init; } = [];
 }

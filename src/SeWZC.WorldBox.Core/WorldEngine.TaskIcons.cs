@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -10,7 +11,7 @@ public sealed partial class WorldEngine
         var goal = person.Agent.Goal;
         // 取水和捕鱼的目标编号表示资源地格，不能作为建筑 ID 查找。
         if (goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic)
-            facility ??= FindBuilding(goal.TargetEntityId);
+            facility ??= FindBuilding(goal.TargetEntityId)?.Value;
         else
             facility = null;
         return goal.Kind switch

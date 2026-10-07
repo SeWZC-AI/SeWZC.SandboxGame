@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.Core.Runtime;
 
 namespace SeWZC.WorldBox.Core.Tests;
 
@@ -9,10 +10,14 @@ public sealed class ResearchCommandsTests
     {
         var fixture = new WorldFixture();
         fixture.Town.Resources = new ResourceStock { Food = 100, Wood = 100, Stone = 100, Ore = 100 };
-        fixture.Engine.State.Society.Buildings.Add(new Building
+        fixture.Engine.Current.Society.Buildings.Add(new BuildingCursor
         {
-            Id = fixture.Engine.State.NextId++, SettlementId = fixture.Town.Id,
-            Kind = BuildingKind.Academy, X = 17, Y = 16, ConstructionProgress = 30,
+            Id = fixture.Engine.Current.NextId++,
+            SettlementId = fixture.Town.Id,
+            Kind = BuildingKind.Academy,
+            X = 17,
+            Y = 16,
+            ConstructionProgress = 30,
         });
         return fixture;
     }
@@ -22,14 +27,14 @@ public sealed class ResearchCommandsTests
     public void Start_spends_the_local_cost_and_creates_an_unfinished_project()
     {
         var fixture = ReadyWorld();
-        var before = fixture.Town.Resources.Copy();
+        var before = fixture.Town.Resources;
         var project = Advancement.Agriculture;
 
         fixture.Engine.StartResearch(fixture.Town.Id, project);
 
         foreach (var kind in ResourceStock.Kinds)
             Assert.Equal(before.Get(kind) - project.Cost.Get(kind), fixture.Town.Resources.Get(kind));
-        var research = fixture.Engine.State.Society.Research.Single();
+        var research = fixture.Engine.Current.Society.Research.Single();
         Assert.Same(project, research.ActiveProject);
         Assert.Equal(0, research.Progress);
         Assert.Equal(project.Work, research.RequiredProgress);
@@ -41,7 +46,7 @@ public sealed class ResearchCommandsTests
     public void Start_requires_a_completed_academy()
     {
         var fixture = ReadyWorld();
-        fixture.Engine.State.Society.Buildings.RemoveAll(building => building.Kind == BuildingKind.Academy);
+        fixture.Engine.Current.Society.Buildings.RemoveAll(building => building.Kind == BuildingKind.Academy);
         var before = fixture.Engine.ExportJson();
 
         Assert.Throws<InvalidOperationException>(() => fixture.Engine.StartResearch(fixture.Town.Id,
@@ -68,7 +73,7 @@ public sealed class ResearchCommandsTests
     public void Start_rejects_insufficient_materials_atomically()
     {
         var fixture = ReadyWorld();
-        fixture.Town.Resources.Wood = 0;
+        fixture.Town.Resources = fixture.Town.Resources with { Wood = 0 };
         var before = fixture.Engine.ExportJson();
 
         Assert.Throws<InvalidOperationException>(() => fixture.Engine.StartResearch(fixture.Town.Id,
@@ -102,7 +107,7 @@ public sealed class ResearchCommandsTests
         fixture.Engine.GrantReceivedResearch(fixture.Town.Id, Advancement.Agriculture);
 
         Assert.Equal(before, fixture.Engine.ExportJson());
-        Assert.Single(fixture.Engine.State.Society.Research.Single().Completed);
+        Assert.Single(fixture.Engine.Current.Society.Research.Single().Completed);
     }
 
     /// <summary>查询不会授予知识、推进世界或消耗随机数。</summary>

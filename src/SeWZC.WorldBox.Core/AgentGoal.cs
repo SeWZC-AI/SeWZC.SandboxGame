@@ -1,56 +1,90 @@
+using System.Collections.Immutable;
+
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>居民当前正在执行的行动目标。</summary>
-public sealed class AgentGoal
+/// <summary>居民当前行动目标与导航进度的不可变值。</summary>
+public readonly record struct AgentGoal
 {
+    /// <summary>创建尚未开始导航的空闲目标。</summary>
+    public AgentGoal() { }
+
     /// <summary>当前导航目标地格的数组索引，-1 表示尚未设置。</summary>
-    public int NavigationTarget { get; set; } = -1;
+    public int NavigationTarget { get; init; } = -1;
 
     /// <summary>当前导航已走过的地格索引，用于避免反复绕路。</summary>
-    public List<int> NavigationVisited { get; set; } = [];
+    public ImmutableArray<int> NavigationVisited { get; init; } = [];
 
     /// <summary>当前导航曾达到的最短目标距离，以地格计。</summary>
-    public int NavigationBestDistance { get; set; }
+    public int NavigationBestDistance { get; init; }
 
     /// <summary>连续未缩短目标距离的导航尝试次数。</summary>
-    public int NavigationWithoutProgress { get; set; }
+    public int NavigationWithoutProgress { get; init; }
 
     /// <summary>受阻后允许重新尝试导航的模拟日序。</summary>
-    public long NavigationRetryTick { get; set; }
+    public long NavigationRetryTick { get; init; }
 
     /// <summary>选择该目标使用的信息依据 ID。</summary>
-    public int EvidenceFactId { get; set; }
+    public int EvidenceFactId { get; init; }
 
     /// <summary>该行动关联的前因事件 ID。</summary>
-    public int CauseEventId { get; set; }
+    public int CauseEventId { get; init; }
 
     /// <summary>当前行动目标类别。</summary>
-    public AgentGoalKind Kind { get; set; }
+    public AgentGoalKind Kind { get; init; }
 
     /// <summary>目标位置的横向地格坐标。</summary>
-    public int TargetX { get; set; }
+    public int TargetX { get; init; }
 
     /// <summary>目标位置的纵向地格坐标。</summary>
-    public int TargetY { get; set; }
+    public int TargetY { get; init; }
 
     /// <summary>目标关联的聚落 ID。</summary>
-    public int TargetSettlementId { get; set; }
+    public int TargetSettlementId { get; init; }
 
     /// <summary>任务对象编号；设施任务使用建筑 ID，取水和狩猎捕鱼使用资源地格索引加 1。</summary>
-    public int TargetEntityId { get; set; }
+    public int TargetEntityId { get; init; }
 
     /// <summary>该目标开始执行的模拟日序。</summary>
-    public long StartedTick { get; set; }
+    public long StartedTick { get; init; }
 
     /// <summary>该目标已累计的劳动或驻留日数。</summary>
-    public int WorkTicks { get; set; }
+    public int WorkTicks { get; init; }
 
     /// <summary>下次重新评估该目标的模拟日序。</summary>
-    public long ReviewTick { get; set; }
+    public long ReviewTick { get; init; }
 
     /// <summary>该目标是否由玩家直接安排。</summary>
-    public bool PlayerDirected { get; set; }
+    public bool PlayerDirected { get; init; }
 
     /// <summary>选择该目标的理由。</summary>
-    public string Reason { get; set; } = "";
+    public string Reason { get; init; } = "";
+
+    /// <summary>更换导航目的地时建立新的导航记录；目标未改变时继续使用原进度。</summary>
+    /// <param name="target">目标地格索引。</param>
+    /// <param name="distance">当前位置到目标的距离。</param>
+    public AgentGoal BeginNavigation(int target, int distance) => NavigationTarget == target
+        ? this
+        : this with
+        {
+            NavigationTarget = target,
+            NavigationVisited = [],
+            NavigationBestDistance = distance,
+            NavigationWithoutProgress = 0,
+            NavigationRetryTick = 0,
+        };
+
+    /// <summary>记下经过的地格，不修改旧目标持有的路线记录。</summary>
+    /// <param name="index">经过的地格索引。</param>
+    public AgentGoal Visit(int index) => NavigationVisited.Contains(index) || NavigationVisited.Length >= 256
+        ? this
+        : this with { NavigationVisited = NavigationVisited.Add(index) };
+
+    /// <summary>重试原任务时清除受阻导航记录，保留任务和先前最佳距离。</summary>
+    public AgentGoal ResetNavigation() => this with
+    {
+        NavigationTarget = -1,
+        NavigationVisited = [],
+        NavigationWithoutProgress = 0,
+        NavigationRetryTick = 0,
+    };
 }

@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 using System.Collections.Immutable;
 
 namespace SeWZC.WorldBox.Core;
@@ -9,7 +10,7 @@ public sealed partial class WorldEngine
     /// <param name="research">研究项目。</param>
     public string? ResearchPrerequisiteError(int settlementId, Advancement research)
     {
-        if (research.Magic && !State.Society.MagicEnabled)
+        if (research.Magic && !Current.Society.MagicEnabled)
             return "世界规则已关闭新的魔法发展";
         List<string>? missing = null;
         foreach (var prerequisite in research.Prerequisites.AsSpan())
@@ -55,7 +56,7 @@ public sealed partial class WorldEngine
         return ProductionRules.For(kind)?.Description ?? "";
     }
 
-    private string? ProductionRequirement(Building building, ProductionRecipe recipe)
+    private string? ProductionRequirement(BuildingCursor building, ProductionRecipe recipe)
     {
         if (!BuildingGroundOwned(building))
             return "所在地已脱离城镇占领区域，暂停运营";
@@ -67,7 +68,7 @@ public sealed partial class WorldEngine
             return "正在升级或改向，暂停生产";
         if (building.Health < 50)
             return "设施受损，需要修复后运营";
-        if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0)
+        if (Current.Tiles[Index(building.X, building.Y)].FireTicks > 0)
             return "设施所在地正在燃烧，暂停生产";
         if (!HasResearch(building.SettlementId, recipe.Research)
             || !HasResearchPrerequisites(building.SettlementId, recipe.Research.Prerequisites))
@@ -75,7 +76,7 @@ public sealed partial class WorldEngine
         return null;
     }
 
-    private double ProductionYield(Building building, ProductionRecipe recipe)
+    private double ProductionYield(BuildingCursor building, ProductionRecipe recipe)
     {
         var multiplier = (recipe.Output == ResourceKind.Food &&
                           HasResearch(building.SettlementId, Advancement.Irrigation)
@@ -95,7 +96,7 @@ public sealed partial class WorldEngine
                              : 1);
         if (recipe.Output != ResourceKind.Food)
             return recipe.Yield * building.Efficiency * multiplier;
-        var tile = State.Tiles[Index(building.X, building.Y)];
+        var tile = Current.Tiles[Index(building.X, building.Y)];
         return recipe.Yield * building.Efficiency * multiplier * tile.Fertility / 100d *
                (tile.DroughtTicks > 0 ? .18 : 1);
     }
@@ -104,7 +105,7 @@ public sealed partial class WorldEngine
     /// <param name="buildingId">待操作建筑的稳定 ID。</param>
     public string GetProductionStatus(int buildingId)
     {
-        var building = State.Society.Buildings.FirstOrDefault(b => b.Id == buildingId);
+        var building = Current.Society.Buildings.FirstOrDefault(b => b.Id == buildingId);
         var recipe = building is null ? null : ProductionRules.For(building.Kind);
         if (building is null)
             return "建筑已不存在";
@@ -114,9 +115,9 @@ public sealed partial class WorldEngine
             return "建筑已损毁，等待重建";
         if (building.Health < 50)
             return "建筑受损，需要修复后工作";
-        if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0)
+        if (Current.Tiles[Index(building.X, building.Y)].FireTicks > 0)
             return "正在燃烧，暂停工作";
-        var workers = State.Tick - building.LastWorkedTick <= 1 ? building.Workers.Count : 0;
+        var workers = Current.Tick - building.LastWorkedTick <= 1 ? building.Workers.Count : 0;
         if (!building.IsCompleted)
         {
             return
@@ -149,10 +150,10 @@ public sealed partial class WorldEngine
                     $"组织城镇扩充：{town.ExpansionProgress:0.#} / {town.ExpansionRequired:0}\n到场工人 {workers}/{building.WorkSlots}";
             }
 
-            var research = State.Society.Research.First(r => r.SettlementId == town.Id);
+            var research = Current.Society.Research.First(r => r.SettlementId == town.Id);
             var activity = building.Kind switch
             {
-                BuildingKind.Farm => $"产出：粮食   累计采收 {State.Tiles[Index(building.X, building.Y)].Harvested:0.#}",
+                BuildingKind.Farm => $"产出：粮食   累计采收 {Current.Tiles[Index(building.X, building.Y)].Harvested:0.#}",
                 BuildingKind.Workshop => "产出：附近实际可采的木材、石材与矿石",
                 BuildingKind.Academy => research.ActiveProject is { } kind
                     ? $"正在研究：{kind.Name}   {research.Progress / research.RequiredProgress:P0}"
@@ -182,10 +183,10 @@ public sealed partial class WorldEngine
         var reserve = _localWorkQueriesActive
             ? _productionReserves.GetValueOrDefault(townStock.Id)
             : LocalDevelopmentReserve(townStock);
-        var reserved = ResourceStock.Kinds.Where(k => recipe.Input.Get(k) > 0 && (reserve?.Get(k) ?? 0) > 0
+        var reserved = ResourceStock.Kinds.Where(k => recipe.Input.Get(k) > 0 && reserve.Get(k) > 0
                                                                               && townStock.Resources.Get(k) <
-                                                                              recipe.Input.Get(k) + reserve!.Get(k))
-            .Select(k => ResourceStock.Name(k) + " " + reserve!.Get(k).ToString("0.#")).ToArray();
+                                                                              recipe.Input.Get(k) + reserve.Get(k))
+            .Select(k => ResourceStock.Name(k) + " " + reserve.Get(k).ToString("0.#")).ToArray();
         var missing = MissingResources(townStock.Resources, recipe.Input);
         if (building.ProductionBatches > 0 &&
             townStock.Resources.Get(recipe.Output) >= ProductionStockTarget(townStock, recipe.Output))
@@ -198,7 +199,7 @@ public sealed partial class WorldEngine
                 : recipe.Research.Magic ? "需要天赋 ≥25、训练 ≥8 且魔力足够的到场施作者" : "原料可用，等待工人取料并到场加工");
     }
 
-    private bool CanProduce(Building building, Resident person, ProductionRecipe recipe)
+    private bool CanProduce(BuildingCursor building, ResidentCursor person, ProductionRecipe recipe)
     {
         if (BuildingRace(building.Kind) is { } race && person.Race != race)
             return false;
@@ -214,7 +215,7 @@ public sealed partial class WorldEngine
                    WarehouseCanSupply(town, person, recipe, building.ProductionBatches == 0));
     }
 
-    private static double ProductionStockTarget(Settlement town, ResourceKind kind)
+    private static double ProductionStockTarget(SettlementCursor town, ResourceKind kind)
     {
         return kind switch
         {
@@ -227,7 +228,7 @@ public sealed partial class WorldEngine
         };
     }
 
-    private bool WarehouseCanSupply(Settlement town, Resident person, ProductionRecipe recipe, bool firstBatch)
+    private bool WarehouseCanSupply(SettlementCursor town, ResidentCursor person, ProductionRecipe recipe, bool firstBatch)
     {
         if (!firstBatch && town.Resources.Get(recipe.Output) >= ProductionStockTarget(town, recipe.Output))
             return false;
@@ -239,14 +240,14 @@ public sealed partial class WorldEngine
             var k = recipe.InputResources[i];
             var available = town.Resources.Get(k) + .000001;
             if (available < recipe.Input.Get(k) ||
-                available < Math.Max(0, recipe.Input.Get(k) - person.Inventory.Get(k)) + (reserve?.Get(k) ?? 0))
+                available < Math.Max(0, recipe.Input.Get(k) - person.Inventory.Get(k)) + reserve.Get(k))
                 return false;
         }
 
         return true;
     }
 
-    private static bool HasProductionInputs(ResourceStock stock, ProductionRecipe recipe)
+    private static bool HasProductionInputs(in ResourceStock stock, ProductionRecipe recipe)
     {
         for (var i = 0; i < recipe.InputResources.Length; i++)
         {
@@ -258,7 +259,7 @@ public sealed partial class WorldEngine
         return true;
     }
 
-    private bool ActOnProduction(Resident person, Settlement home)
+    private bool ActOnProduction(ResidentCursor person, SettlementCursor home)
     {
         var goal = person.Agent.Goal;
         if (goal.Kind != AgentGoalKind.Work)
@@ -270,16 +271,22 @@ public sealed partial class WorldEngine
             return false;
         if (!CanProduce(building, person, recipe))
         {
-            goal.Reason = GetProductionStatus(building.Id);
-            person.Agent.NextThinkTick = State.Tick + 1;
+            person.Agent.Goal = goal = goal with
+            {
+                Reason = GetProductionStatus(building.Id),
+            };
+            person.Agent.NextThinkTick = Current.Tick + 1;
             return true;
         }
 
         if (!HasProductionInputs(person.Inventory, recipe))
         {
-            goal.TargetX = home.X;
-            goal.TargetY = home.Y;
-            goal.Reason = "前往家园取料，亲自运至" + BuildingName(building.Kind);
+            person.Agent.Goal = goal = goal with
+            {
+                TargetX = home.X,
+                TargetY = home.Y,
+                Reason = "前往家园取料，亲自运至" + BuildingName(building.Kind),
+            };
             if (Distance(person.X, person.Y, home.X, home.Y) > 1)
             {
                 MoveAgentTowards(person, home.X, home.Y);
@@ -292,7 +299,7 @@ public sealed partial class WorldEngine
             var batches = 4d;
             foreach (var kind in recipe.InputResources)
                 batches = Math.Min(batches,
-                    Math.Floor(Math.Max(0, home.Resources.Get(kind) - (reserve?.Get(kind) ?? 0)) /
+                    Math.Floor(Math.Max(0, home.Resources.Get(kind) - reserve.Get(kind)) /
                                recipe.Input.Get(kind)));
             batches = Math.Max(1, batches);
             foreach (var kind in recipe.InputResources)
@@ -301,14 +308,17 @@ public sealed partial class WorldEngine
                     kind == ResourceKind.Water ? WaterReserve(person) : 0;
                 var amount = Math.Min(home.Resources.Get(kind),
                     Math.Max(0, recipe.Input.Get(kind) * batches + personalReserve - person.Inventory.Get(kind)));
-                home.Resources.Set(kind, Math.Max(0, home.Resources.Get(kind) - amount));
-                person.Inventory.Set(kind, person.Inventory.Get(kind) + amount);
+                home.Resources = home.Resources.WithAmount(kind, Math.Max(0, home.Resources.Get(kind) - amount));
+                person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + amount);
             }
         }
 
-        goal.TargetX = building.X;
-        goal.TargetY = building.Y;
-        goal.Reason = "携带实际原料，前往" + BuildingName(building.Kind) + "加工";
+        person.Agent.Goal = goal = goal with
+        {
+            TargetX = building.X,
+            TargetY = building.Y,
+            Reason = "携带实际原料，前往" + BuildingName(building.Kind) + "加工",
+        };
         if (Distance(person.X, person.Y, building.X, building.Y) > 1)
         {
             MoveAgentTowards(person, building.X, building.Y);
@@ -323,7 +333,7 @@ public sealed partial class WorldEngine
                                                               ProductionYield(building, recipe) * 4
                                                               && (!recipe.Research.Magic || person.Mana >= recipe.Mana))
             {
-                person.Agent.NextThinkTick = State.Tick + 4;
+                person.Agent.NextThinkTick = Current.Tick + 4;
                 return true;
             }
 
@@ -334,25 +344,25 @@ public sealed partial class WorldEngine
                 TargetX = home.X,
                 TargetY = home.Y,
                 TargetSettlementId = home.Id,
-                StartedTick = State.Tick,
-                ReviewTick = State.Tick + 100,
+                StartedTick = Current.Tick,
+                ReviewTick = Current.Tick + 100,
                 Reason = "加工完成，亲自把产物运回家园入库",
             };
             ChangeWorkReservation(previous, person.Agent.Goal);
-            person.Agent.NextThinkTick = State.Tick + 100;
+            person.Agent.NextThinkTick = Current.Tick + 100;
         }
 
         return true;
     }
 
-    private bool Produce(Building building, Resident person, ProductionRecipe recipe)
+    private bool Produce(BuildingCursor building, ResidentCursor person, ProductionRecipe recipe)
     {
         if (!CanProduce(building, person, recipe) || !HasProductionInputs(person.Inventory, recipe))
             return false;
-        Spend(person.Inventory, recipe.Input);
+        person.Inventory = Spend(person.Inventory, recipe.Input);
         person.Mana -= recipe.Mana;
-        person.Inventory.Set(recipe.Output, person.Inventory.Get(recipe.Output) + ProductionYield(building, recipe));
-        RecordHarvest(State.Tiles[Index(building.X, building.Y)], ProductionYield(building, recipe));
+        person.Inventory = person.Inventory.WithAmount(recipe.Output, person.Inventory.Get(recipe.Output) + ProductionYield(building, recipe));
+        RecordHarvest(Current.Tiles[Index(building.X, building.Y)], ProductionYield(building, recipe));
         building.ProductionBatches = Math.Min(1_000_000_000, building.ProductionBatches + 1);
         if (building.ProductionBatches == 1)
         {

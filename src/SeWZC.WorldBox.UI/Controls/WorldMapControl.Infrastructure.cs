@@ -75,30 +75,30 @@ public sealed partial class WorldMapControl
         if (HighlightRoads)
         {
             for (var y = viewport.Top; y <= viewport.Bottom; y++)
-            for (var x = viewport.Left; x <= viewport.Right; x++)
-            {
-                var tile = state.Tiles[y * state.Width + x];
-                if (tile.RoadLevel == 0 ||
-                    (InfrastructureTownId != 0 && tile.ClaimedSettlementId != InfrastructureTownId))
-                    continue;
-                var rect = new Rect(x * TilePixels, y * TilePixels, TilePixels, TilePixels);
-                context.DrawRectangle(Brush(0x88EAD45F), null, rect);
-                var center = rect.Center;
-                context.DrawEllipse(roadBrush, null, center, 1.3, 1.3);
-                foreach (var direction in InfrastructureDirections)
+                for (var x = viewport.Left; x <= viewport.Right; x++)
                 {
-                    var xx = x + direction.X;
-                    var yy = y + direction.Y;
-                    if (xx >= state.Width || yy >= state.Height || state.Tiles[yy * state.Width + xx].RoadLevel == 0
-                        || (InfrastructureTownId != 0 && state.Tiles[yy * state.Width + xx].ClaimedSettlementId !=
-                            InfrastructureTownId))
+                    var tile = state.Tiles[y * state.Width + x];
+                    if (tile.RoadLevel == 0 ||
+                        (InfrastructureTownId != 0 && tile.ClaimedSettlementId != InfrastructureTownId))
                         continue;
-                    if (!Engine!.CanTraverseStep(x, y, xx, yy, TravelMode.Foot))
-                        continue;
-                    context.DrawLine(roadPen, center,
-                        new Point(center.X + direction.X * TilePixels, center.Y + direction.Y * TilePixels));
+                    var rect = new Rect(x * TilePixels, y * TilePixels, TilePixels, TilePixels);
+                    context.DrawRectangle(Brush(0x88EAD45F), null, rect);
+                    var center = rect.Center;
+                    context.DrawEllipse(roadBrush, null, center, 1.3, 1.3);
+                    foreach (var direction in InfrastructureDirections)
+                    {
+                        var xx = x + direction.X;
+                        var yy = y + direction.Y;
+                        if (xx >= state.Width || yy >= state.Height || state.Tiles[yy * state.Width + xx].RoadLevel == 0
+                            || (InfrastructureTownId != 0 && state.Tiles[yy * state.Width + xx].ClaimedSettlementId !=
+                                InfrastructureTownId))
+                            continue;
+                        if (!Engine!.CanTraverseStep(x, y, xx, yy, TravelMode.Foot))
+                            continue;
+                        context.DrawLine(roadPen, center,
+                            new Point(center.X + direction.X * TilePixels, center.Y + direction.Y * TilePixels));
+                    }
                 }
-            }
         }
 
         if (!HighlightBuildings)

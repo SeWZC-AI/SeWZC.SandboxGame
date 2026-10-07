@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -7,11 +8,11 @@ public sealed partial class WorldEngine
     public DevelopmentFocus GetDevelopmentFocus(int settlementId)
     {
         var town = RequireTown(settlementId);
-        var nation = State.Nations.FirstOrDefault(n => n.Id == town.NationId);
+        var nation = Current.Nations.FirstOrDefault(n => n.Id == town.NationId);
         if (nation is { DevelopmentFocus: not DevelopmentFocus.Automatic })
             return nation.DevelopmentFocus;
         var culture = GetCulture(town.CultureId);
-        return !State.Society.MagicEnabled || culture.Innovation >= culture.NatureAffinity
+        return !Current.Society.MagicEnabled || culture.Innovation >= culture.NatureAffinity
             ? DevelopmentFocus.Technology
             : DevelopmentFocus.MagicPractice;
     }
@@ -37,7 +38,7 @@ public sealed partial class WorldEngine
     {
         if (!Enum.IsDefined(focus))
             throw new ArgumentOutOfRangeException(nameof(focus));
-        var nation = State.Nations.FirstOrDefault(n => n.Id == nationId) ?? throw new ArgumentException("国家不存在");
+        var nation = Current.Nations.FirstOrDefault(n => n.Id == nationId) ?? throw new ArgumentException("国家不存在");
         if (nation.DevelopmentFocus == focus)
             return;
         nation.DevelopmentFocus = focus;

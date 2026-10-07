@@ -31,8 +31,13 @@ public sealed class ResidentEditingTests
 
         fixture.Engine.EditResident(fixture.ResidentId, new ResidentEdit
         {
-            Age = 0, Health = 0, Hunger = 0, Thirst = 0,
-            Mana = 0, MagicTalent = 0, MagicTraining = 0,
+            Age = 0,
+            Health = 0,
+            Hunger = 0,
+            Thirst = 0,
+            Mana = 0,
+            MagicTalent = 0,
+            MagicTraining = 0,
         });
 
         var resident = fixture.Resident;
@@ -83,7 +88,7 @@ public sealed class ResidentEditingTests
     public void Position_rejects_inaccessible_land()
     {
         var fixture = new WorldFixture();
-        fixture.Engine.State.Tiles[10 * 32 + 10].Terrain = TerrainType.DeepWater;
+        fixture.Engine.Current.Tiles[10 * 32 + 10].Terrain = TerrainType.DeepWater;
         var before = fixture.Engine.ExportJson();
 
         Assert.Throws<ArgumentException>(() => fixture.Engine.EditResident(fixture.ResidentId,
@@ -104,7 +109,7 @@ public sealed class ResidentEditingTests
         Assert.Equal(11, fixture.Resident.Y);
         Assert.Equal(10, fixture.Resident.FromX);
         Assert.Equal(11, fixture.Resident.FromY);
-        Assert.Equal(fixture.Engine.State.Tick, fixture.Resident.MoveStartedTick);
+        Assert.Equal(fixture.Engine.Current.Tick, fixture.Resident.MoveStartedTick);
     }
 
     /// <summary>提交后的随身资源不再受编辑草稿修改影响。</summary>
@@ -115,7 +120,7 @@ public sealed class ResidentEditingTests
         var inventory = new ResourceStock { Food = 3.5 };
 
         fixture.Engine.EditResident(fixture.ResidentId, new ResidentEdit { Inventory = inventory });
-        inventory.Food = 100;
+        inventory = inventory with { Food = 100 };
 
         Assert.Equal(3.5, fixture.Resident.Inventory.Food);
     }
@@ -156,7 +161,7 @@ public sealed class ResidentEditingTests
     {
         var fixture = new WorldFixture();
         var courage = fixture.Resident.Agent.Personality.Courage;
-        var events = fixture.Engine.State.Events.Select(entry => JsonSerializer.Serialize(entry)).ToArray();
+        var events = fixture.Engine.Current.Events.Select(entry => JsonSerializer.Serialize(entry.Value)).ToArray();
         var resources = JsonSerializer.Serialize(fixture.Town.Resources);
         var history = new List<ResidentHistoryEntry>
         {
@@ -166,8 +171,8 @@ public sealed class ResidentEditingTests
         fixture.Engine.EditResident(fixture.ResidentId, new ResidentEdit { History = history });
 
         Assert.True(fixture.Resident.Agent.Personality.Courage < courage);
-        Assert.Equal(events, fixture.Engine.State.Events.Take(events.Length)
-            .Select(entry => JsonSerializer.Serialize(entry)));
+        Assert.Equal(events, fixture.Engine.Current.Events.Take(events.Length)
+            .Select(entry => JsonSerializer.Serialize(entry.Value)));
         Assert.Equal(resources, JsonSerializer.Serialize(fixture.Town.Resources));
     }
 

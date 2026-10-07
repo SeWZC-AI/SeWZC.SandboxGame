@@ -19,9 +19,22 @@ public sealed class ResourceStockTests
 
     internal static ResourceStock Stock() => new()
     {
-        Food = 1, Wood = 2, Stone = 3, Ore = 4, Alloy = 5, EnergyCells = 6,
-        Crystals = 7, Coal = 8, Oil = 9, RareEarth = 10, Boats = 11, Aircraft = 12,
-        Water = 13, Tools = 14, Medicine = 15, Ammunition = 16,
+        Food = 1,
+        Wood = 2,
+        Stone = 3,
+        Ore = 4,
+        Alloy = 5,
+        EnergyCells = 6,
+        Crystals = 7,
+        Coal = 8,
+        Oil = 9,
+        RareEarth = 10,
+        Boats = 11,
+        Aircraft = 12,
+        Water = 13,
+        Tools = 14,
+        Medicine = 15,
+        Ammunition = 16,
     };
 
     /// <summary>读取指定资源对应的字段。</summary>
@@ -35,27 +48,27 @@ public sealed class ResourceStockTests
     /// <summary>替换资源不会修改其他库存。</summary>
     [Theory]
     [MemberData(nameof(Resources))]
-    public void Set_changes_only_the_selected_resource(ResourceKind kind, double original)
+    public void WithAmount_changes_only_the_selected_resource(ResourceKind kind, double original)
     {
         var stock = Stock();
 
-        stock.Set(kind, original + .25);
+        stock = stock.WithAmount(kind, original + .25);
 
         Assert.Equal(original + .25, stock.Get(kind));
         foreach (var other in ResourceStock.Kinds.Where(value => value != kind))
             Assert.Equal(Stock().Get(other), stock.Get(other));
     }
 
-    /// <summary>库存副本保留金额且可独立编辑。</summary>
+    /// <summary>新库存独立于旧值，更新不能修改先前的库存。</summary>
     [Theory]
     [MemberData(nameof(Resources))]
-    public void Copy_preserves_resources_without_sharing_mutations(ResourceKind kind, double expected)
+    public void Replacing_resources_preserves_the_original_stock(ResourceKind kind, double expected)
     {
         var stock = Stock();
-        var copy = stock.Copy();
+        var copy = stock;
         Assert.Equal(expected, copy.Get(kind));
 
-        copy.Set(kind, 0);
+        copy = copy.WithAmount(kind, 0);
 
         Assert.Equal(expected, stock.Get(kind));
     }
@@ -71,12 +84,12 @@ public sealed class ResourceStockTests
 
     /// <summary>未知资源写入不改变库存。</summary>
     [Fact]
-    public void Set_rejects_unknown_resources_without_changing_stock()
+    public void WithAmount_rejects_unknown_resources_without_changing_stock()
     {
         var stock = Stock();
         var before = JsonSerializer.Serialize(stock);
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => stock.Set((ResourceKind)(-1), 9));
+        Assert.Throws<ArgumentOutOfRangeException>(() => stock.WithAmount((ResourceKind)(-1), 9));
 
         Assert.Equal(before, JsonSerializer.Serialize(stock));
     }
@@ -97,5 +110,18 @@ public sealed class ResourceStockTests
     public void Empty_stock_serializes_as_an_empty_object()
     {
         Assert.Equal("{}", JsonSerializer.Serialize(new ResourceStock()));
+    }
+
+    /// <summary>同时缩放各类资源，原库存保留所有原值。</summary>
+    [Theory]
+    [MemberData(nameof(Resources))]
+    public void Scale_transforms_every_resource_without_changing_original(ResourceKind kind, double expected)
+    {
+        var original = Stock();
+
+        var changed = original.Scale(.5);
+
+        Assert.Equal(expected * .5, changed.Get(kind));
+        Assert.Equal(expected, original.Get(kind));
     }
 }

@@ -80,7 +80,10 @@ public sealed record WorldRules
         {
             WorldPreset.Flourishing => new WorldRules
             {
-                Wars = false, Secession = false, Conflict = 0, DisasterFrequency = 0,
+                Wars = false,
+                Secession = false,
+                Conflict = 0,
+                DisasterFrequency = 0,
             },
             WorldPreset.Turbulent => new WorldRules { Conflict = 3, DisasterFrequency = 2, DisasterStrength = 2 },
             _ => new WorldRules(),
