@@ -58,7 +58,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>尝试让到场居民登记当前目标地块；返回是否完成登记。</summary>
-    /// <param name="person">参与当前操作的居民状态。</param>
+    /// <param name="person">登记地块的居民。</param>
     public bool TryClaimLand(Resident person)
     {
         if (!_settlements.TryGetValue(person.SettlementId, out var town) || person.Age < 14 || person.ArmyId != 0

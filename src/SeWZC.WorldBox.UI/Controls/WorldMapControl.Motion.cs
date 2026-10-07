@@ -122,7 +122,7 @@ public sealed partial class WorldMapControl
     }
 
     /// <summary>读取最近一帧实际绘制的居民位置，未绘制时返回失败。</summary>
-    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="residentId">居民 ID。</param>
     /// <param name="position">最近一帧实际绘制的位置，单位为控件布局坐标；失败时为默认值。</param>
     public bool TryGetResidentScreenPosition(int residentId, out Point position)
     {
@@ -131,7 +131,7 @@ public sealed partial class WorldMapControl
     }
 
     /// <summary>选择具有运动轨迹的居民，并可启用镜头跟随。</summary>
-    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="residentId">居民 ID。</param>
     /// <param name="follow">是否启用镜头跟随所选居民。</param>
     public void SelectResident(int residentId, bool follow = false)
     {
@@ -150,7 +150,7 @@ public sealed partial class WorldMapControl
     }
 
     /// <summary>选择居民并将其插值显示位置移到镜头中心。</summary>
-    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="residentId">居民 ID。</param>
     public void FocusResident(int residentId)
     {
         if (!_residentMotion.TryGetValue(residentId, out var motion)) return;

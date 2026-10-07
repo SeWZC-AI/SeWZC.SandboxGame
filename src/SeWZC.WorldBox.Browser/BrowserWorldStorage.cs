@@ -25,7 +25,7 @@ internal sealed partial class BrowserWorldStorage : IWorldStorage
         try
         {
             var started = Stopwatch.GetTimestamp();
-            // 限制每轮字符串互操作和 Worker 复制量，避免阻塞界面；传输的是已捕获的不可变文本块，期间可继续模拟。
+            // 分批传输已捕获的文本块，批次之间让出界面线程。
             for (var offset = 0; offset < chunks.Length; offset++)
             {
                 AppendSave(id, chunks[offset]);

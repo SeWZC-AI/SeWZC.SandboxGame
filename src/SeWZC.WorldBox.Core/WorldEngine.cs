@@ -161,7 +161,7 @@ public sealed partial class WorldEngine
     /// <param name="y">事件地点的纵向地格坐标，-1 表示无具体地点。</param>
     /// <param name="action">事件记录的具体行动。</param>
     /// <param name="settlementId">聚落 ID。</param>
-    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="residentId">居民 ID。</param>
     /// <param name="causeEventId">关联的前因事件 ID，0 表示未指定前因。</param>
     /// <param name="evidenceFactId">关联的信息依据 ID，0 表示未指定依据。</param>
     private WorldEvent AddEvent(WorldEventKind kind, string message, int x = -1, int y = -1,

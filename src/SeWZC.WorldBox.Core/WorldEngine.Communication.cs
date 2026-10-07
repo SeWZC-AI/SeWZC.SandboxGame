@@ -103,7 +103,7 @@ public sealed partial class WorldEngine
             break;
         }
 
-        // 新观察或新递送副本可以转交持有权，共享的信息依据则须复制，避免后续修改污染其他持有者。
+        // 共享信息需复制，独立的观察和消息副本可直接交给接收者。
         memory.Add(copy ? CopyAgentFact(fact) : fact);
         if (memory.Count <= 16) return;
         var forgotten = 0;
@@ -126,7 +126,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>将附近的观察和可接触的公开报告记录到该居民自己的记忆中。</summary>
-    /// <param name="person">参与当前操作的居民状态。</param>
+    /// <param name="person">观察信息的居民。</param>
     private void ObserveAgentEnvironment(Resident person)
     {
         if (State.Rules.Expansion && person.Profession is Profession.Builder or Profession.Trader
@@ -322,14 +322,13 @@ public sealed partial class WorldEngine
         }
 
         RelayKnownAgentMessages();
-        // 复用集合容量，但清除居民引用，避免保留随后战争阶段可能死亡的居民。
         people.Clear();
         _conversationNeighbors.Clear();
     }
 
     private Resident SelectConversationRecipient(int rank)
     {
-        // 只选择与原按 ID 排序相同的接收者，避免排序全部邻居；异常分区过大时回退原排序以限制开销。
+        // 按 ID 选取第 rank 个接收者；分区过大时回退为排序。
         var left = 0;
         var right = _conversationNeighbors.Count - 1;
         var budget = 2 * BitOperations.Log2((uint)_conversationNeighbors.Count);

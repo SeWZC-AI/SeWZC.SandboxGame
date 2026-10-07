@@ -55,12 +55,10 @@ class UiDriver {
             assert(viewport.visible, `Scroll viewport is hidden: ${scroll}`);
             const canvas = await this.page.locator('#out canvas.avalonia-canvas').boundingBox();
             assert(canvas, 'Avalonia canvas has no visible bounds');
-            // Stay in the outer viewport's margin: a research graph in its center
-            // consumes wheels for zooming and cannot scroll an outer heading into view.
+            // 在外层视口边缘滚动，避开研究树的滚轮缩放。
             const center = { x: canvas.x + viewport.x + 3, y: canvas.y + viewport.y + viewport.height / 2 };
             await this.page.mouse.move(center.x, center.y);
-            // Small detail panels need a smaller step to avoid repeatedly jumping
-            // from below a target to above it without ever exposing its center.
+            // 小面板使用较小滚动步长，避免跳过目标控件。
             const distance = control.y + control.height / 2 - (viewport.y + viewport.height / 2);
             const step = Math.min(250, viewport.height * .7);
             await this.page.mouse.wheel(0, Math.max(-step, Math.min(step, distance)));
@@ -91,8 +89,7 @@ class UiDriver {
     async fill(id, value, options) {
         await this.click(id, options);
         await this.page.keyboard.press('Control+A');
-        // Avalonia's browser text input consumes real keypresses. insertText alone
-        // skips those events, so smoke fixtures use ordinary ASCII input.
+        // Avalonia 需要按键事件；使用 ASCII 按键输入，不单独调用 insertText。
         if (String(value).length === 0) await this.page.keyboard.press("Backspace");
         else await this.page.keyboard.type(String(value), { delay: 20 });
         await this.page.keyboard.press("Tab");
@@ -105,8 +102,7 @@ class UiDriver {
         for (let i = 0; i < index; i++) await this.page.keyboard.press('ArrowDown');
         await this.page.keyboard.press('Enter');
         await this.waitFor(snapshot => this.control(snapshot, id).value === String(index), `selection in ${id}`);
-        // Choice-dependent descriptions can move fields in a compact dialog. Let the
-        // popup close and Avalonia arrange its new content before the next real tap.
+        // 选项变化可能移动字段，须等弹窗关闭及布局完成后再点击。
         await this.page.waitForTimeout(180);
         if ((await this.snapshot()).editCaptureActive) await this.waitFor(s => !s.editCaptureActive, "completed edit checkpoint", 30000);
     }
@@ -150,7 +146,7 @@ class UiDriver {
         if (!(await this.snapshot()).toolsOpen) await this.click("tools-toggle");
         await this.click(`tool-category-${category}`);
         let snapshot = await this.snapshot();
-        // Selecting an already open category keeps its page. Search from page one.
+        // 已打开的分类保留页码，查找工具前先返回第一页。
         while (this.control(snapshot, 'tool-page-prev').enabled) {
             await this.click('tool-page-prev');
             snapshot = await this.snapshot();

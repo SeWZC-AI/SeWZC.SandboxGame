@@ -6,7 +6,7 @@ using SeWZC.WorldBox.Core;
 
 internal static class SavePerformance
 {
-    // Opt-in benchmark, separate from functional tests and their timing budget.
+    // 单独运行的保存性能测量，不计入功能测试耗时。
     public static int Run(string[] args, Func<WorldEngine> createWorld)
     {
         var engine = createWorld();

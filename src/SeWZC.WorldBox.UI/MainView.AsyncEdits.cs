@@ -178,7 +178,7 @@ public sealed partial class MainView
                 }
                 catch (Exception)
                 {
-                    /* A state that cannot be exported still needs the valid pre-edit undo point. */
+                    /* 导出失败时仍保留编辑前的撤销恢复点。 */
                 }
 
                 if (unchanged)

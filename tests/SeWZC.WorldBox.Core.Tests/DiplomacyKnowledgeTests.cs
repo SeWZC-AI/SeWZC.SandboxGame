@@ -133,8 +133,7 @@ internal static class DiplomacyKnowledgeTests
 
             var unchanged = WorldEngine.ImportJson(original.ExportJson());
             var moved = WorldEngine.ImportJson(original.ExportJson());
-            // Move a remote capital past the home capital in geographic ordering, but keep it
-            // outside local observation and leave all delivered reports exactly as they were.
+            // 改变远方首都的地理排序；仍置于观察范围外，并保留已递送报告。
             var movedTown = moved.State.Settlements.Single(t => t.Id == b.Id);
             moved.State.Tiles[movedTown.Y * moved.State.Width + movedTown.X].SettlementId = 0;
             movedTown.X = 2;

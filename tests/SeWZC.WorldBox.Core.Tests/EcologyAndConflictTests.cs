@@ -396,7 +396,7 @@ internal static class EcologyAndConflictTests
         foreach (var knowledge in new[] { Advancement.Agriculture, Advancement.Logistics, Advancement.Industry })
             engine.GrantReceivedResearch(town.Id, knowledge);
         foreach (var kind in ResourceStock.Kinds) town.Resources.Set(kind, 100);
-        town.Resources.Alloy = 0; // The assigned foundry has an actual unmet output demand.
+        town.Resources.Alloy = 0; // 指定冶炼厂仍有未满足的产出需求。
         var factory = engine.GrantFacility(town.Id, BuildingKind.Foundry, 20, 16);
         person.X = person.FromX = 18;
         person.Agent.Goal = new AgentGoal

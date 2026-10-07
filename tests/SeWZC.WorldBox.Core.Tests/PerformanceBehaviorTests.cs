@@ -276,7 +276,7 @@ internal static class PerformanceBehaviorTests
         tile.Terrain = TerrainType.Forest;
         tile.Wildlife = WildlifeKind.Deer;
         tile.WildlifePopulation = 2;
-        engine.Step(3); // This row was read as the preceding band's migration apron.
+        engine.Step(3); // 此行曾作为上一分区的迁移边界读取。
         tile.ResourceAmount = 0;
         engine.Step();
         Check(tile.WildlifePopulation > 0 && tile.WildlifePopulation <= 1.76,
@@ -385,8 +385,7 @@ internal static class PerformanceBehaviorTests
         var bytes = Encoding.UTF8.GetBytes(text);
         using var stream =
             (Stream)Activator.CreateInstance(type, (Func<CancellationToken, ValueTask>)(_ => ValueTask.CompletedTask))!;
-        // The first code point crosses serializer writes; later code points
-        // cross our internal buffer boundary within one large serializer write.
+        // 首个字符跨序列化写入边界；后续字符跨单次写入中的内部缓冲边界。
         foreach (var count in new[] { 1, 1, 2, 1, 2 })
         {
             stream.WriteAsync(bytes.AsMemory(0, count)).GetAwaiter().GetResult();

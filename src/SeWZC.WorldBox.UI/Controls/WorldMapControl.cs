@@ -76,7 +76,7 @@ public sealed partial class WorldMapControl : Control
     private long _visibleResidentTick = -1;
     private double _zoom = 0.4;
 
-    /// <summary>创建可聚焦、裁剪边界且使用清晰像素缩放的地图控件。</summary>
+    /// <summary>初始化世界地图控件。</summary>
     public WorldMapControl()
     {
         ClipToBounds = true;
@@ -492,7 +492,6 @@ public sealed partial class WorldMapControl : Control
                 chunk.Territory = null;
                 chunk.TerritoryHash = territoryHash;
                 chunk.TerritoryCached = true;
-                // 无归属分块不分配透明纹理，避免自然地形占多数时浪费显存。
                 if (!containsTerritory) continue;
                 var canvas = new PixelCanvas((int)chunk.Bounds.Width, (int)chunk.Bounds.Height);
                 for (var y = cy; y < Math.Min(state.Height, cy + ChunkTiles); y++)
@@ -776,7 +775,6 @@ public sealed partial class WorldMapControl : Control
                 if (!Visible(new Rect(x - 2, y - 3, 6, 7))) continue;
                 _renderedResidentPoints[resident.Id] =
                     ToScreen((position.X + .5) * TilePixels, (position.Y + .5) * TilePixels);
-                // 近景精灵已包含职业细节，总览小图标又不足一个像素，因此无需另建重复几何。
                 if (!silhouettes) continue;
                 var race = Math.Clamp((int)resident.Race, 0, 3);
                 if (ShowVehicle(resident)) continue;
@@ -878,7 +876,6 @@ public sealed partial class WorldMapControl : Control
     {
         RenderedBuildingLabelCount = 0;
         if (_zoom < .22) return;
-        // 拒绝重叠名称，使小尺寸地图上的标签仍可辨读。
         var occupied = new List<Rect>();
         foreach (var settlement in _labelSettlements)
         {
@@ -1015,7 +1012,6 @@ public sealed partial class WorldMapControl : Control
     }
 
     /// <summary>以指针位置为锚点处理滚轮缩放。</summary>
-    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnPointerWheelChanged(PointerWheelEventArgs e)
     {
         base.OnPointerWheelChanged(e);
@@ -1024,7 +1020,6 @@ public sealed partial class WorldMapControl : Control
     }
 
     /// <summary>开始地图选择、镜头拖动或工具操作，并捕获指针。</summary>
-    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
         base.OnPointerPressed(e);
@@ -1064,7 +1059,6 @@ public sealed partial class WorldMapControl : Control
     }
 
     /// <summary>根据当前指针状态更新镜头拖动、触屏缩放和工具预览。</summary>
-    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnPointerMoved(PointerEventArgs e)
     {
         base.OnPointerMoved(e);
@@ -1118,7 +1112,6 @@ public sealed partial class WorldMapControl : Control
     }
 
     /// <summary>结束当前手势，并按点击或放置状态处理地图交互。</summary>
-    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
         base.OnPointerReleased(e);
@@ -1146,7 +1139,6 @@ public sealed partial class WorldMapControl : Control
     }
 
     /// <summary>指针捕获丢失时清除未完成的拖动及触屏手势。</summary>
-    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnPointerCaptureLost(PointerCaptureLostEventArgs e)
     {
         base.OnPointerCaptureLost(e);
@@ -1156,7 +1148,6 @@ public sealed partial class WorldMapControl : Control
     }
 
     /// <summary>指针离开地图时清除悬停预览。</summary>
-    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnPointerExited(PointerEventArgs e)
     {
         base.OnPointerExited(e);
@@ -1256,7 +1247,6 @@ public sealed partial class WorldMapControl : Control
     }
 
     /// <summary>地图离开可视树时停止动画请求并清理手势状态。</summary>
-    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
@@ -1269,7 +1259,6 @@ public sealed partial class WorldMapControl : Control
     }
 
     /// <summary>地图进入可视树时允许动画调度。</summary>
-    /// <param name="e">本次指针或可视树事件的参数。</param>
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e);

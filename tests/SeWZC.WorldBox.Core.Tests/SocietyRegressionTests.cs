@@ -104,7 +104,7 @@ internal static class SocietyRegressionTests
         var progress = project.Progress;
         Hold(worker, town.X, town.Y);
         engine.PaintTerrain(18, 24, TerrainType.Water, 0);
-        // Housing could afford an expansion, but it must reserve the replacement school's materials.
+        // 扩充住房前须为重建学舍保留材料。
         town.Resources.Wood = 50;
         town.Resources.Stone = 20;
         var housing = town.Housing;

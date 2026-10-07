@@ -3,7 +3,7 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     /// <summary>根据居民目标、职业和设施状态选择当前具体任务图标。</summary>
-    /// <param name="person">参与当前操作的居民状态。</param>
+    /// <param name="person">居民。</param>
     /// <param name="facility">已查到的目标设施，空值时按任务查找；非设施任务忽略此值。</param>
     public ResidentTaskIcon GetResidentTaskIcon(Resident person, Building? facility = null)
     {

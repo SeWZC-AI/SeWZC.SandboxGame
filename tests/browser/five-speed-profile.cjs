@@ -1,5 +1,4 @@
-// Optional investigation: same saved worlds, real speed buttons and independent runs.
-// Reports throughput and browser timings; optional probes supply managed timings.
+// 用同一存档和速度按钮独立测量吞吐及浏览器耗时；可选探针记录托管耗时。
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');

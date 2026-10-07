@@ -59,7 +59,7 @@ internal static class PersistenceRegressionTests
         newFact["Id"] = 0;
         first["Text"] = "First revision";
         second["Text"] = "Conflicting revision";
-        // A preceding new fact must not consume an ID before the later conflict is detected.
+        // 后续信息发生冲突时，前面的新信息也不能消耗 ID。
         mind["Memory"] = new JsonArray(newFact, first, second);
         RejectUnchanged(engine, () => engine.EditResidentMindJson(id, mind.ToJsonString()));
 
@@ -197,7 +197,7 @@ internal static class PersistenceRegressionTests
                 "Saving changed the army's remembered order identity.");
         }
 
-        // Memory has bounded retention; an army must retain its ordering marker after the fact expires.
+        // 军令从记忆中淘汰后，军队仍须保留军令顺序标记。
         var rememberedId = engine.State.Armies[0].LastOrderFactId;
         foreach (var resident in engine.State.Residents.Concat(engine.State.ArchivedResidents))
         {

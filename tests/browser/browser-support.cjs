@@ -1,7 +1,6 @@
 const assert = require('node:assert/strict');
 
-// Avalonia probes WebGL2, then WebGL1, before its working software renderer.
-// These exact diagnostics are expected on CI machines without a usable GPU.
+// Avalonia 依次尝试 WebGL2、WebGL1 和软件渲染；无 GPU 的 CI 环境会产生这些诊断。
 const softwareFallbackMessages = new Set([
     'Failed to create render target for mode 3 : HTMLCanvasElement.getContext returned null.',
     'Failed to create render target for mode 2 : HTMLCanvasElement.getContext returned null.'
@@ -9,7 +8,6 @@ const softwareFallbackMessages = new Set([
 
 function chromiumLaunchOptions() {
     const args = ['--no-sandbox', '--disable-dev-shm-usage', '--enable-unsafe-swiftshader'];
-    // Explicitly exercise the same fallback in a local regression run; off by default.
     if (process.env.WORLDBOX_TEST_DISABLE_WEBGL === '1') args.push('--disable-webgl');
     return {
         ...(process.env.CHROMIUM_EXECUTABLE ? { executablePath: process.env.CHROMIUM_EXECUTABLE } : {}),
@@ -49,8 +47,6 @@ function observeBrowserErrors(page) {
         const document = currentDocument;
         let result = { stage, renderer: 'no fallback diagnostics' };
         if (document.fallbacks.length > 0) {
-            // Inspect the current app's real backing canvas, including after reload.
-            // A nonempty DOM or a successful simulation alone cannot prove drawing works.
             const pixels = await page.waitForFunction(() => {
                 const canvas = globalThis.document.querySelector('#out canvas.avalonia-canvas');
                 if (!canvas || !canvas.isConnected || canvas.width < 100 || canvas.height < 100) return false;

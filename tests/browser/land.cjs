@@ -84,7 +84,7 @@ fs.mkdirSync(output, { recursive: true });
                 assert.equal(world.Tiles[bridge.y * world.Width + bridge.x].Improvement, 3);
                 if ((await ui.snapshot()).inspectorOpen) await ui.click('inspector-close');
                 await ui.clickTile(bridge.x, bridge.y); await ui.click('selection-view');
-                // Repeated map taps intentionally cycle between a building and its ground.
+                // 重复点击会在建筑与地格之间轮换选择。
                 if ((await ui.snapshot()).inspector === 'tile') await ui.click(`building-row-${project.Id}`, inspector);
                 await ui.click('building-upgrade', inspector); await ui.click('upgrade-apply', modal);
                 world = await ui.save(); project = world.Society.Buildings.find(b => b.Id === project.Id);

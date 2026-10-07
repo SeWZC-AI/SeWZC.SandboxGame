@@ -48,7 +48,7 @@ internal static class AgentRegressionTests
         Check(!army.Retreating && army.KnownDiplomacy == DiplomaticStatus.War && army.LastOrderTick == 29,
             "A soldier still at the capital changed frontline orders without delivering them.");
 
-        // Bring the carrier to the front; the ordinary conversation queue must still deliver the order.
+        // 将传令者移到前线，检查交谈队列能否递送军令。
         Hold(carrier, commander.X - 1, commander.Y);
         PendingMessage? delivery = null;
         for (var tick = 0; tick < 12 && delivery is null; tick++)
@@ -71,7 +71,7 @@ internal static class AgentRegressionTests
                                                       && army.LastOrderFactId == peace.Id,
             "Actual delivery did not preserve provenance and change the commander's orders.");
 
-        // Equal-time contradictory orders retain the existing stable ID ordering.
+        // 同时观察到的冲突军令仍按 ID 顺序处理。
         var olderPeace = Order(engine, commander, enemy.NationId, AgentFactKind.PeaceOrder);
         var latestWar = Order(engine, commander, enemy.NationId, AgentFactKind.WarOrder);
         commander.Agent.Memory.AddRange([olderPeace, latestWar]);
@@ -107,7 +107,7 @@ internal static class AgentRegressionTests
         Check(successor.Agent.Memory.All(f => f.Id != newWar.Id),
             "The separated successor should still know only the older order.");
 
-        // Normal simulation death chooses the next surviving soldier without resetting the cursor.
+        // 指挥官死亡后选择下一名存活士兵，保留军令游标。
         commander.Age = 91;
         commander.Health = .1;
         engine.ConfigureWorld(engine.State.Rules with { Aging = true }, false, false);
@@ -169,7 +169,7 @@ internal static class AgentRegressionTests
                 }
             }
 
-            // This repeats the first command kind with a newer ID, exercising the memory merge too.
+            // 用新 ID 重复第一种军令，检查记忆合并。
             Check(commander.Agent.Memory.Any(f => f.Id == orders[2].Id)
                   && commander.Agent.Memory.All(f => f.Id != orders[0].Id),
                 "An older same-kind order prevented retaining the newer relayed command.");

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check a published WebAssembly site can resolve its own assets at a subpath."""
+"""检查已发布的 WebAssembly 站点能否在子路径下解析资源。"""
 
 import json
 import re
@@ -75,8 +75,7 @@ def check_site(site):
             for reference in imports.values():
                 check_reference(reference, site)
 
-    # App-owned modules should resolve relative to their own URL, including under
-    # /SeWZC.SandboxGame/. Runtime modules are checked by the SDK's publish pipeline.
+    # 自有模块按模块 URL 解析相对路径；运行时模块由 SDK 发布流程检查。
     imports = re.compile(r"(?:from\s*|import\s*\(\s*|import\s*|import\.meta\.resolve\s*\(\s*)['\"]([^'\"]+)['\"]")
     for module in site.glob("*.js"):
         for reference in imports.findall(module.read_text(encoding="utf-8")):

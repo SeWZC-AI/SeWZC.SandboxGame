@@ -147,7 +147,7 @@ internal static class ProvisioningAndClaimsTests
             water.Terrain = terrain;
             water.NaturalWaterYield = 0;
             water.Plants = default;
-            // Current-format saves may still contain the former four-unit quota.
+            // 现行格式存档仍可能保留原来的四单位取水额度。
             water.WaterDrawTick = e.State.Tick;
             water.WaterDrawn = terrain == TerrainType.River ? 4 : 0;
             water.DroughtTicks = 12;

@@ -5,7 +5,7 @@ namespace SeWZC.WorldBox.Core;
 /// <summary>动物物种目录及生态规则。</summary>
 public static class AnimalRules
 {
-    /// <summary>包含 <c>None</c> 在内的物种编号数量，用于按编号索引数组。</summary>
+    /// <summary>物种编号数量，包含 <c>None</c>。</summary>
     public const int SpeciesCount = 32;
 
     private const AnimalHabitat Green = AnimalHabitat.Green,

@@ -9,7 +9,7 @@ public sealed partial class WorldEngine
     ];
 
     /// <summary>在实际到达的聚落仓库借用载具，并预留旅程所需燃料。</summary>
-    /// <param name="person">参与当前操作的居民状态。</param>
+    /// <param name="person">借用载具的居民。</param>
     /// <param name="home">出借载具的本地聚落仓库。</param>
     private void PrepareJourneyTransport(Resident person, Settlement home)
     {

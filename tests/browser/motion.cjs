@@ -13,8 +13,6 @@ const inspector = { scroll: 'inspector-scroll' };
 const modal = { scroll: 'modal-scroll' };
 fs.mkdirSync(output, { recursive: true });
 
-// Find a real, locally walkable route from a real save. The chosen destination is
-// entered through the product's resident editor; no test hook changes the world.
 function chooseRoute(world) {
     const walkable = (x, y) => x >= 0 && y >= 0 && x < world.Width && y < world.Height &&
         ![0, 1, 5, 10].includes(world.Tiles[y * world.Width + x].Terrain ?? 0);
@@ -67,15 +65,14 @@ const distance = (first, second) => Math.hypot(first.x - second.x, first.y - sec
         await ui.click('header-overview');
         await ui.click('inspector-residents');
         await ui.fill('resident-search', actor.Id, inspector);
-        // Search refresh is debounced by 220 ms; an already listed row can move
-        // during the click unless its refreshed layout has settled first.
+        // 搜索刷新有 220 ms 延迟，须等布局稳定后点击列表。
         await page.waitForTimeout(300);
         await ui.openResidentRow(actor.Id, inspector);
         await ui.waitFor(s => s.inspector === 'resident' && s.selectedResidentId === actor.Id,
             'resident profile before locating');
         await ui.click('resident-locate', inspector);
         await ui.click('resident-goal-edit', inspector);
-        await ui.selectIndex('resident-goal', 3, modal); // Work at an entered location.
+        await ui.selectIndex('resident-goal', 3, modal); // 在指定地点劳动。
         await ui.fill('resident-goal-x', route.target.x, modal);
         await ui.fill('resident-goal-y', route.target.y, modal);
         await ui.selectIndex('resident-goal-entity', 0, modal);
@@ -93,8 +90,7 @@ const distance = (first, second) => Math.hypot(first.x - second.x, first.y - sec
                 ? [{ prior, next: sample }] : [];
         });
         assert(intermediate.length > 0, 'Actual rendered geometry must move between simulation ticks');
-        // An early visual arrival followed by waiting used to leave whole 200 ms windows still.
-        // Sample the actual canvas geometry throughout a long, uninterrupted walking goal.
+        // 持续采样行走位置，检查提前显示抵达后等待造成的 200 ms 静止区间。
         for (let i = 0; i < normal.length; i++) {
             const first = normal[i];
             if (first.at - normal[0].at < 300) continue;
@@ -128,8 +124,7 @@ const distance = (first, second) => Math.hypot(first.x - second.x, first.y - sec
             screenDistance: distance(fast[0].point, fast.at(-1).point) };
         await ui.paused();
         await ui.click('time-speed-1');
-        // The walking actor may have moved behind the fixed tool palette. Use the real
-        // locate action to bring its visible sprite back to the unobscured map centre.
+        // 角色被工具面板遮挡时重新定位。
         await ui.click('resident-locate', inspector);
         const selected = await ui.snapshot();
         const canvas = await page.locator('#out canvas.avalonia-canvas').boundingBox();
@@ -178,7 +173,7 @@ const distance = (first, second) => Math.hypot(first.x - second.x, first.y - sec
         try {
             await ui.paused();
             fs.writeFileSync(path.join(output, 'motion-failure-world.json'), JSON.stringify(await ui.save()));
-        } catch { /* Preserve the original failure if the UI can no longer save. */ }
+        } catch { /* 保存失败时保留原始错误。 */ }
         throw error;
     } finally {
         await browser.close();

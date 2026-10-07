@@ -212,7 +212,6 @@ internal static class AdvancementTests
                 }
 
                 Check(engine.HasResearch(town.Id, a.Research), "Actual research did not unlock " + a.Research);
-                // Walk home before picking up materials for the next facility.
                 worker.Agent.Goal = new AgentGoal
                 {
                     Kind = AgentGoalKind.ReturnHome,

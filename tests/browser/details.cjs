@@ -29,7 +29,7 @@ fs.mkdirSync(output, { recursive: true });
                 const virtualInput = async (inputType, data) => page.evaluate(({ inputType, data }) => {
                     const input = document.activeElement;
                     if (!input?.classList.contains('avalonia-input-element')) throw new Error('Native browser editor lost focus');
-                    // Android can report an unidentified key and supply the character only here.
+                    // Android 可能上报未知按键，仅通过 beforeinput 提供字符。
                     input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Unidentified', code: '' }));
                     input.dispatchEvent(new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType, data }));
                 }, { inputType, data });

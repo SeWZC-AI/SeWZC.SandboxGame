@@ -3,8 +3,8 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     /// <summary>校验本地研究和居民条件后指定研究解锁的职业。</summary>
-    /// <param name="residentId">待操作居民的稳定 ID。</param>
-    /// <param name="job">要查询或指定的职业。</param>
+    /// <param name="residentId">居民 ID。</param>
+    /// <param name="job">职业。</param>
     public void AssignResearchProfession(int residentId, Profession job)
     {
         var person = State.Residents.FirstOrDefault(r => r.Id == residentId) ?? throw new ArgumentException("居民不存在");
@@ -24,7 +24,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>让已到场的本地建造者、工程师或消防员消耗随身石材修复邻近建筑。</summary>
-    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="residentId">居民 ID。</param>
     /// <param name="buildingId">待操作建筑的稳定 ID。</param>
     public void RepairBuilding(int residentId, int buildingId)
     {
@@ -80,7 +80,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>返回职业的实际劳动职责说明。</summary>
-    /// <param name="job">要查询或指定的职业。</param>
+    /// <param name="job">职业。</param>
     public static string ProfessionDescription(Profession job)
     {
         return job switch
@@ -219,7 +219,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>检查居民经折跃门到达指定目标门的条件；可旅行时返回空值，否则返回原因。</summary>
-    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="residentId">居民 ID。</param>
     /// <param name="destinationId">目的地折跃门的建筑 ID。</param>
     public string? WaygateTravelError(int residentId, int destinationId)
     {
@@ -251,7 +251,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>消耗居民随身魔晶及魔力，使其从附近可用折跃门抵达指定目标门。</summary>
-    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="residentId">居民 ID。</param>
     /// <param name="destinationId">目的地折跃门的建筑 ID。</param>
     public void TravelByWaygate(int residentId, int destinationId)
     {

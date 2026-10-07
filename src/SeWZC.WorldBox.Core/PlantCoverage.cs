@@ -5,42 +5,40 @@ namespace SeWZC.WorldBox.Core;
 /// <summary>地格内各类自然植物的组成份额。</summary>
 public struct PlantCoverage : IEquatable<PlantCoverage>
 {
-    /// <summary>乔木在此格植物组成中的份额。</summary>
+    /// <summary>乔木份额。</summary>
     [JsonPropertyName("t")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Trees { get; set; }
 
-    /// <summary>灌木在此格植物组成中的份额。</summary>
+    /// <summary>灌木份额。</summary>
     [JsonPropertyName("s")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Shrubs { get; set; }
 
-    /// <summary>草本在此格植物组成中的份额。</summary>
+    /// <summary>草本份额。</summary>
     [JsonPropertyName("g")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Grass { get; set; }
 
-    /// <summary>芦苇在此格植物组成中的份额。</summary>
+    /// <summary>芦苇份额。</summary>
     [JsonPropertyName("r")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Reeds { get; set; }
 
-    /// <summary>比较四类自然植物的组成份额是否相等。</summary>
-    /// <param name="other">用于比较的同类型值。</param>
+    /// <inheritdoc />
     public readonly bool Equals(PlantCoverage other)
     {
         return Trees.Equals(other.Trees) && Shrubs.Equals(other.Shrubs)
                                          && Grass.Equals(other.Grass) && Reeds.Equals(other.Reeds);
     }
 
-    /// <summary>比较四类自然植物的组成份额是否相等。</summary>
-    /// <param name="obj">用于比较的对象，空值或其他类型均不相等。</param>
+    /// <inheritdoc />
     public readonly override bool Equals(object? obj)
     {
         return obj is PlantCoverage other && Equals(other);
     }
 
-    /// <summary>根据四类自然植物的份额计算哈希值。</summary>
+    /// <inheritdoc />
     public readonly override int GetHashCode()
     {
         return HashCode.Combine(Trees, Shrubs, Grass, Reeds);

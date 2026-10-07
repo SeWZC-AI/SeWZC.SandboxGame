@@ -35,7 +35,7 @@ internal static class DevelopmentPlanningTests
         {
         }
 
-        // Older current-format worlds deterministically use culture, without random initialization.
+        // 现行格式中未指定发展方向的世界按文化选择，不消耗随机数。
         var prior = JsonNode.Parse(saved)!;
         foreach (var n in prior["Nations"]!.AsArray()) n!.AsObject().Remove("DevelopmentFocus");
         Require(

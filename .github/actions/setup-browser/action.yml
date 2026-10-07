@@ -19,7 +19,7 @@ runs:
         path: ~/.cache/ms-playwright
         key: ${{ runner.os }}-${{ runner.arch }}-playwright-${{ hashFiles('tests/browser/package-lock.json') }}
 
-    # OS libraries are still checked on cache hits; only the browser download is cached.
+    # 仅缓存浏览器下载；缓存命中后仍检查系统依赖。
     - name: Install headless Chromium
       shell: bash
       working-directory: tests/browser

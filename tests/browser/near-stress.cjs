@@ -1,4 +1,4 @@
-// Optional mobile viewport comparison. Use the same saved fixture on both revisions.
+// 移动视口性能对比；两个版本使用同一存档夹具。
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright');

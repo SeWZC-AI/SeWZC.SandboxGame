@@ -12,8 +12,6 @@ const baseUrl = process.env.WORLDBOX_BASE_URL || 'http://127.0.0.1:8080/SeWZC.Sa
 const scroll = { scroll: 'inspector-scroll' };
 fs.mkdirSync(output, { recursive: true });
 
-// A current-format UI fixture imported through the ordinary file picker. Core tests
-// separately verify that these states are produced by real work and physical reports.
 function fixture(world) {
     const home = world.Settlements[0], nation = world.Nations[0], actor = world.Residents[0];
     const enemy = world.Settlements.find(t => t.NationId !== nation.Id);
@@ -28,7 +26,7 @@ function fixture(world) {
     const start = make(13, 1, '场景：开始建设');
     const deliveries = [1, 2, 3].map(i => make(2, 13, `场景：实物交付 ${i}`, 1, start.Id));
     const war = make(4, 4, '场景：有限占领军令', 2, deliveries[2].Id);
-    war.ResidentId = 0; // Shared military event: this resident's participation is recorded in their history.
+    war.ResidentId = 0; // 共用军事事件；居民的参与情况记录在个人经历中。
     nation.Military = { ...nation.Military, CampaignEventId: war.Id, EnemyNationId: enemy.NationId,
         Objective: 0, TargetSettlementId: enemy.Id, TargetX: enemy.X, TargetY: enemy.Y,
         StartedTick: world.Tick, Report: '尚未收到前线战报' };

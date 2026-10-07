@@ -3,12 +3,27 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>聚落可掌握的研究知识，包含前置依赖、成本和解锁效果。</summary>
+/// <summary>聚落可掌握的研究知识。</summary>
 [JsonConverter(typeof(AdvancementJsonConverter))]
 public sealed partial class Advancement
 {
     private readonly string? _effect;
 
+    /// <summary>定义研究项目。</summary>
+    /// <param name="id">研究编号，用于存档、知识消息和位索引。</param>
+    /// <param name="key">界面自动化和诊断标识。</param>
+    /// <param name="name">研究名称。</param>
+    /// <param name="branch">研究分支。</param>
+    /// <param name="stage">发展阶段。</param>
+    /// <param name="magic">是否属于魔法路线。</param>
+    /// <param name="prerequisites">前置研究。</param>
+    /// <param name="cost">开始研究时投入的资源成本。</param>
+    /// <param name="work">完成研究需要的总工作量。</param>
+    /// <param name="effect">效果说明；为空时从对应生产配方生成。</param>
+    /// <param name="buildings">解锁的建筑类型。</param>
+    /// <param name="professions">解锁的职业。</param>
+    /// <param name="spells">解锁的法术。</param>
+    /// <param name="action">解锁的操作入口。</param>
     private Advancement(
         int id,
         string key,
@@ -44,7 +59,7 @@ public sealed partial class Advancement
     /// <summary>研究在存档、知识消息和位索引中的编号。</summary>
     public int Id { get; }
 
-    /// <summary>界面自动化和诊断输出使用的标识。</summary>
+    /// <summary>界面自动化和诊断标识。</summary>
     public string Key { get; }
 
     /// <summary>研究显示名称。</summary>

@@ -11,7 +11,7 @@
     </Application.Resources>
     <Application.Styles>
         <FluentTheme />
-        <!-- String content in CheckBox uses AccessText, a TextBlock subclass. -->
+        <!-- CheckBox 的字符串内容使用 TextBlock 的子类 AccessText。 -->
         <Style Selector=":is(TextBlock)">
             <Setter Property="FontFamily"
                     Value="avares://SeWZC.WorldBox.UI/Assets/Fonts/NotoSansSC.otf#Noto Sans CJK SC" />

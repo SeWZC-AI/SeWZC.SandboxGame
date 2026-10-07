@@ -10,7 +10,6 @@ public sealed class ResearchTreeLayout
     /// <summary>未缩放的研究节点宽度和高度，以控件布局单位计。</summary>
     public const double NodeWidth = 140, NodeHeight = 70;
 
-    // 固定分支列使路线易于阅读，连接关系仍由研究规则决定。
     private static readonly IReadOnlyDictionary<Advancement, (int Column, int Row)> Positions =
         new Dictionary<Advancement, (int, int)>
         {

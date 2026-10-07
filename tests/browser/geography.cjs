@@ -1,4 +1,3 @@
-// Exercise generated geography and the added terrain tools through real UI input.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -24,8 +23,7 @@ fs.mkdirSync(output, { recursive: true });
                 assert(generated.Tiles.every(t => Number.isFinite(t.rain) && t.rain >= 0));
                 assert(generated.Tiles.some(t => t.RiverWidth === 1));
                 assert(generated.Tiles.some(t => t.RiverWidth >= 2));
-                // Generation above uses the real default map. Repeated editing/save
-                // assertions need only the smaller UI-supported map, reducing payloads.
+                // 地理生成检查使用默认地图；编辑和保存回归使用小地图。
                 const modal = { scroll: 'modal-scroll' };
                 await ui.click('header-new-world'); await ui.fill('world-seed', 42, modal);
                 await ui.selectIndex('world-size', 0, modal); await ui.click('world-create-apply');
