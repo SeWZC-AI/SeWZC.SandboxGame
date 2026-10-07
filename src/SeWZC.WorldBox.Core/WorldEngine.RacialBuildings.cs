@@ -55,7 +55,7 @@ public sealed partial class WorldEngine
         var goal = person.Agent.Goal;
         if (goal.Kind is not (AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic)) return false;
         var building = FindBuilding(goal.TargetEntityId);
-        if (building is null || BuildingRace(building.Kind) is null || AdvancementRules.For(building.Kind) is not null
+        if (building is null || BuildingRace(building.Kind) is null || ProductionRules.For(building.Kind) is not null
             || !building.IsCompleted || building.IsUpgrading || building.SettlementId != home.Id) return false;
         if (!building.Enabled || building.Health < 50 || !RacialBuildingHasWork(building, person))
         {
@@ -77,7 +77,7 @@ public sealed partial class WorldEngine
                 return true;
             }
 
-            foreach (var kind in AdvancementRules.Resources)
+            foreach (var kind in ResourceStock.Kinds)
             {
                 var amount = Math.Max(0, input.Get(kind) * 8 - person.Inventory.Get(kind));
                 amount = Math.Min(amount, home.Resources.Get(kind));
@@ -195,7 +195,7 @@ public sealed partial class WorldEngine
 
     private static bool PreserveBuildingForest(BuildingKind kind)
     {
-        return kind is BuildingKind.SacredGrove or BuildingKind.Pasture or BuildingKind.HuntingCamp
-            or BuildingKind.LumberCamp;
+        return kind is BuildingKind.LumberCamp or BuildingKind.SacredGrove or BuildingKind.HuntingCamp
+            or BuildingKind.Pasture;
     }
 }

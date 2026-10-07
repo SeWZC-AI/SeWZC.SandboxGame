@@ -13,7 +13,7 @@ public sealed partial class WorldEngine
         var adults = residents?.Where(p => p.SettlementId == town.Id && p.Age >= 14 && p.Health > 0 && p.ArmyId == 0
                                            && Distance(p.X, p.Y, town.X, town.Y) <= 6).ToArray() ?? [];
         var defense = GetLocalPolicy(town.Id) == PolicyKind.Defense || adults.Any(p => p.Agent.Memory.Any(f =>
-            f.Kind is AgentFactKind.WarOrder or AgentFactKind.Danger
+            f.Kind is AgentFactKind.Danger or AgentFactKind.WarOrder
             && f.Value > 0 && State.Tick - f.ObservedTick < 120 && AgentFactReliability(f) >= .5));
         var coast = false;
         var timber = false;
@@ -41,109 +41,110 @@ public sealed partial class WorldEngine
             adults.Any(p => p.MagicTalent >= 35), roads);
     }
 
-    private bool FacilityNeeded(LocalDemand d, BuildingKind kind)
+    private bool FacilityNeeded(LocalDemand demand, BuildingKind kind)
     {
-        var town = d.Town;
+        var town = demand.Town;
         var stock = town.Resources;
 
         bool Has(BuildingKind k)
         {
-            return d.Buildings.Any(b => b.Kind == k && b.Enabled && b.Health > 0);
+            return demand.Buildings.Any(b => b.Kind == k && b.Enabled && b.Health > 0);
         }
 
         return kind switch
         {
-            BuildingKind.Academy => State.Rules.Research,
-            BuildingKind.Bridge or BuildingKind.MountainPass => false,
             BuildingKind.Farm => stock.Food < Math.Max(25, town.Population * 1.5),
+            BuildingKind.Academy => State.Rules.Research,
+            BuildingKind.Waystation or BuildingKind.SignalTower or BuildingKind.Market
+                or BuildingKind.TradeGuild => demand.Contacts,
+            BuildingKind.ArcaneSanctum or BuildingKind.SacredGrove => demand.MagicTalent,
+            BuildingKind.Infirmary => demand.Patients && !Has(BuildingKind.Hospital),
+            BuildingKind.MountainPass or BuildingKind.Bridge => false,
+            BuildingKind.Dock or BuildingKind.Shipyard => demand.Coast && stock.Boats < 2 && demand.Adults.Any(p =>
+                p.Profession is Profession.Trader or Profession.Messenger or Profession.Fisher),
+            BuildingKind.LumberCamp => demand.Timber && demand.Adults.Any(p => p.Profession == Profession.Lumberjack) &&
+                                       stock.Wood < 40,
+            BuildingKind.Quarry or BuildingKind.MiningHall => demand.Stone &&
+                                                              demand.Adults.Any(p => p.Profession == Profession.Miner) &&
+                                                              stock.Stone + stock.Ore < 60,
+            BuildingKind.Well => demand.Water && !Has(BuildingKind.Reservoir),
+            BuildingKind.Granary => town.Population >= 60 && stock.Food >= town.Population,
             BuildingKind.Housing => town.Population >= GetHousingCapacity(town.Id),
-            BuildingKind.Well => d.Water && !Has(BuildingKind.Reservoir),
-            BuildingKind.Reservoir => d.Water,
-            BuildingKind.Pasture => stock.Food < town.Population * 2 && d.Adults.Any(p =>
-                                                                         p.Profession == Profession.Farmer)
-                                                                     && Circle(town.X, town.Y, 6).Any(i =>
-                                                                         HusbandryStockAt(i % State.Width,
-                                                                             i / State.Width, false).Source >= 0),
-            BuildingKind.Aquaculture => d.Coast && stock.Food < town.Population * 2,
-            BuildingKind.Infirmary => d.Patients && !Has(BuildingKind.Hospital),
-            BuildingKind.Hospital => d.Patients &&
+            BuildingKind.Watchtower or BuildingKind.WarDrum or BuildingKind.Armory or BuildingKind.WardTower
+                or BuildingKind.StormSpire => demand.Defense,
+            BuildingKind.AssemblyHall => town.Population >= 40,
+            BuildingKind.HerbGarden => demand.Patients,
+            BuildingKind.HuntingCamp => stock.Food < town.Population && demand.Adults.Any(p => p.Race == RaceKind.Orc),
+            BuildingKind.Reservoir => demand.Water,
+            BuildingKind.Hospital => demand.Patients &&
                                      (stock.Medicine >= .25 || Has(BuildingKind.Apothecary) ||
                                       Has(BuildingKind.AlchemyLab)),
             BuildingKind.Apothecary or BuildingKind.AlchemyLab => stock.Medicine < 8 &&
-                                                                  (d.Patients || (State.Rules.Disease &&
+                                                                  (demand.Patients || (State.Rules.Disease &&
                                                                       town.Population >= 60)),
-            BuildingKind.FireStation => d.Buildings.Any(b => b.Health is > 0 and < 90)
-                                        || (State.NaturalDisasters && town.Population >= 60) || d.Adults.Any(p =>
+            BuildingKind.FireStation => demand.Buildings.Any(b => b.Health is > 0 and < 90)
+                                        || (State.NaturalDisasters && town.Population >= 60) || demand.Adults.Any(p =>
                                             p.Agent.Memory.Any(f =>
                                                 f.Kind == AgentFactKind.Danger && f.Value > 0 &&
                                                 State.Tick - f.ObservedTick < 24)),
             BuildingKind.Library => State.Society.Research.First(r => r.SettlementId == town.Id).Completed.Count >= 3,
-            BuildingKind.SurveyOffice => State.Rules.Expansion || d.Adults.Any(p =>
+            BuildingKind.SurveyOffice => State.Rules.Expansion || demand.Adults.Any(p =>
                 p.Profession is Profession.Miner or Profession.Trader or Profession.Messenger),
-            BuildingKind.Arsenal => d.Defense && stock.Ammunition < 24,
-            BuildingKind.Armory or BuildingKind.WardTower or BuildingKind.StormSpire or BuildingKind.Watchtower
-                or BuildingKind.WarDrum => d.Defense,
             BuildingKind.MachineWorkshop => stock.Tools < 8 &&
-                                            d.Adults.Any(p =>
+                                            demand.Adults.Any(p =>
                                                 p.Profession is Profession.Builder or Profession.Engineer),
-            BuildingKind.Dock or BuildingKind.Shipyard => d.Coast && stock.Boats < 2 && d.Adults.Any(p =>
-                p.Profession is Profession.Fisher or Profession.Trader or Profession.Messenger),
-            BuildingKind.SignalTower or BuildingKind.Waystation or BuildingKind.Market
-                or BuildingKind.TradeGuild => d.Contacts,
-            BuildingKind.Waygate => d.Contacts && d.MagicTalent && State.Settlements.Any(t =>
+            BuildingKind.Arsenal => demand.Defense && stock.Ammunition < 24,
+            BuildingKind.GroveSanctuary => demand.MagicTalent && !demand.Timber &&
+                                           demand.Adults.Any(p => p.Profession == Profession.Lumberjack),
+            BuildingKind.Waygate => demand.Contacts && demand.MagicTalent && State.Settlements.Any(t =>
                 t.Id != town.Id && t.NationId == town.NationId && Distance(t.X, t.Y, town.X, town.Y) <= 24),
-            BuildingKind.GroveSanctuary => d.MagicTalent && !d.Timber &&
-                                           d.Adults.Any(p => p.Profession == Profession.Lumberjack),
-            BuildingKind.LumberCamp => d.Timber && d.Adults.Any(p => p.Profession == Profession.Lumberjack) &&
-                                       stock.Wood < 40,
-            BuildingKind.Quarry or BuildingKind.MiningHall => d.Stone &&
-                                                              d.Adults.Any(p => p.Profession == Profession.Miner) &&
-                                                              stock.Stone + stock.Ore < 60,
-            BuildingKind.Granary => town.Population >= 60 && stock.Food >= town.Population,
-            BuildingKind.HuntingCamp => stock.Food < town.Population && d.Adults.Any(p => p.Race == RaceKind.Orc),
-            BuildingKind.ArcaneSanctum or BuildingKind.SacredGrove => d.MagicTalent,
-            BuildingKind.HerbGarden => d.Patients,
-            BuildingKind.AssemblyHall => town.Population >= 40,
+            BuildingKind.Pasture => stock.Food < town.Population * 2 && demand.Adults.Any(p =>
+                                                                         p.Profession == Profession.Farmer)
+                                                                     && Circle(town.X, town.Y, 6).Any(i =>
+                                                                         HusbandryStockAt(i % State.Width,
+                                                                             i / State.Width, false).Source >= 0),
+            BuildingKind.Aquaculture => demand.Coast && stock.Food < town.Population * 2,
             _ => true,
         };
     }
 
-    private double ResearchUtility(LocalDemand d, ResearchDefinition research)
+    private double ResearchUtility(LocalDemand demand, Advancement research)
     {
-        var town = d.Town;
-        if (research.Magic && !d.MagicTalent) return 0;
-        var useful = research.Kind switch
+        var town = demand.Town;
+        if (research.Magic && !demand.MagicTalent) return 0;
+        var useful = research switch
         {
-            ResearchKind.Ballistics or ResearchKind.ProtectiveEquipment or ResearchKind.Warding
-                or ResearchKind.BattleMagic => d.Defense,
-            ResearchKind.Elementalism => d.Defense || State.NaturalDisasters,
-            ResearchKind.RailTransport => d.Roads,
-            ResearchKind.SpatialMagic => FacilityNeeded(d, BuildingKind.Waygate),
-            ResearchKind.FireEngineering => FacilityNeeded(d, BuildingKind.FireStation),
-            ResearchKind.Medicine or ResearchKind.Sanitation or ResearchKind.Restoration => d.Patients ||
-                State.Rules.Disease,
-            ResearchKind.Pharmacology or ResearchKind.Alchemy => FacilityNeeded(d, BuildingKind.Apothecary),
-            ResearchKind.NatureBinding => FacilityNeeded(d, BuildingKind.GroveSanctuary) || State.NaturalDisasters,
-            ResearchKind.Observation or ResearchKind.SignalNetwork => d.Contacts ||
-                                                                      d.Adults.Any(p =>
+            _ when research == Advancement.Ballistics || research == Advancement.ProtectiveEquipment
+                || research == Advancement.Warding || research == Advancement.BattleMagic => demand.Defense,
+            _ when research == Advancement.Elementalism => demand.Defense || State.NaturalDisasters,
+            _ when research == Advancement.RailTransport => demand.Roads,
+            _ when research == Advancement.SpatialMagic => FacilityNeeded(demand, BuildingKind.Waygate),
+            _ when research == Advancement.FireEngineering => FacilityNeeded(demand, BuildingKind.FireStation),
+            _ when research == Advancement.Medicine || research == Advancement.Sanitation
+                || research == Advancement.Restoration => demand.Patients || State.Rules.Disease,
+            _ when research == Advancement.Pharmacology || research == Advancement.Alchemy => FacilityNeeded(demand, BuildingKind.Apothecary),
+            _ when research == Advancement.NatureBinding => FacilityNeeded(demand, BuildingKind.GroveSanctuary) || State.NaturalDisasters,
+            _ when research == Advancement.Observation || research == Advancement.SignalNetwork => demand.Contacts ||
+                                                                      demand.Adults.Any(p =>
                                                                           p.Profession == Profession.Miner),
-            ResearchKind.EfficientSmelting => d.Buildings.Any(b =>
+            _ when research == Advancement.EfficientSmelting => demand.Buildings.Any(b =>
                 b.Kind is BuildingKind.Foundry or BuildingKind.DwarvenForge),
-            ResearchKind.EnergyRecycling => d.Buildings.Any(b => b.Kind == BuildingKind.PowerPlant),
-            ResearchKind.Leylines => d.Buildings.Any(b => b.Kind == BuildingKind.Crystallizer),
+            _ when research == Advancement.EnergyRecycling => demand.Buildings.Any(b => b.Kind == BuildingKind.PowerPlant),
+            _ when research == Advancement.Leylines => demand.Buildings.Any(b => b.Kind == BuildingKind.Crystallizer),
             _ => true,
         };
         if (!useful) return 0;
         // 基本生计和下一条可用生产链优先，避免资源先被次要改进占用。
-        return research.Kind switch
+        return research switch
         {
-            ResearchKind.Agriculture => 100,
-            ResearchKind.Logistics => 95,
-            ResearchKind.Irrigation => town.Resources.Food < town.Population ? 90 : 55,
-            ResearchKind.Forestry => town.Resources.Wood + town.Resources.Stone < 40 ? 85 : 50,
-            ResearchKind.Medicine or ResearchKind.Sanitation or ResearchKind.Pharmacology => d.Patients ? 88 : 45,
-            ResearchKind.FireEngineering => d.Buildings.Any(b => b.Health < 90) ? 88 : 40,
-            _ => AdvancementRules.For(research.Kind) is not null ? 70 : 50,
+            _ when research == Advancement.Agriculture => 100,
+            _ when research == Advancement.Logistics => 95,
+            _ when research == Advancement.Irrigation => town.Resources.Food < town.Population ? 90 : 55,
+            _ when research == Advancement.Forestry => town.Resources.Wood + town.Resources.Stone < 40 ? 85 : 50,
+            _ when research == Advancement.Medicine || research == Advancement.Sanitation
+                || research == Advancement.Pharmacology => demand.Patients ? 88 : 45,
+            _ when research == Advancement.FireEngineering => demand.Buildings.Any(b => b.Health < 90) ? 88 : 40,
+            _ => ProductionRules.For(research) is not null ? 70 : 50,
         };
     }
 

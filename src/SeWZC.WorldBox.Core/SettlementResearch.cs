@@ -13,7 +13,7 @@ public sealed class SettlementResearch
     public int SettlementId { get; set; }
 
     /// <summary>当前研究项目，空值表示没有进行中的项目。</summary>
-    public ResearchKind? ActiveProject { get; set; }
+    public Advancement? ActiveProject { get; set; }
 
     /// <summary>当前研究已经累计的工作量。</summary>
     public double Progress { get; set; }
@@ -22,5 +22,5 @@ public sealed class SettlementResearch
     public double RequiredProgress { get; set; }
 
     /// <summary>本聚落已经研究完成或通过递送掌握的知识。</summary>
-    public List<ResearchKind> Completed { get; set; } = [];
+    public List<Advancement> Completed { get; set; } = [];
 }

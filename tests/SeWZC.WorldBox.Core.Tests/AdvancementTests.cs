@@ -99,12 +99,12 @@ internal static class AdvancementTests
         return engine.State.Society.Buildings.Single(b => b.Id == id);
     }
 
-    private static void Know(WorldEngine engine, Settlement town, ResearchKind kind)
+    private static void Know(WorldEngine engine, Settlement town, Advancement kind)
     {
-        if (kind == ResearchKind.SignalNetwork) Know(engine, town, ResearchKind.Electrification);
-        if (AdvancementRules.For(kind) is { } a)
+        if (kind == Advancement.SignalNetwork) Know(engine, town, Advancement.Electrification);
+        if (ProductionRules.For(kind) is { } a)
         {
-            foreach (var required in a.Prerequisites)
+            foreach (var required in a.Research.Prerequisites)
                 Know(engine, town, required);
         }
 
@@ -139,8 +139,8 @@ internal static class AdvancementTests
             }
 
             foreach (var kind in magic
-                         ? new[] { ResearchKind.ArcaneArts, ResearchKind.Logistics }
-                         : new[] { ResearchKind.Agriculture, ResearchKind.Logistics }) Know(engine, town, kind);
+                         ? new[] { Advancement.ArcaneArts, Advancement.Logistics }
+                         : new[] { Advancement.Agriculture, Advancement.Logistics }) Know(engine, town, kind);
             var academy = Facility(engine, town, BuildingKind.Academy);
 
             void Supply(ResourceStock cost)
@@ -161,11 +161,11 @@ internal static class AdvancementTests
                          tick++) engine.Step();
                 }
 
-                foreach (var resource in AdvancementRules.Resources.Where(r =>
+                foreach (var resource in ResourceStock.Kinds.Where(r =>
                              town.Resources.Get(r) + .000001 < cost.Get(r)))
                 {
                     var producer = engine.State.Society.Buildings.First(b =>
-                        b.SettlementId == town.Id && AdvancementRules.For(b.Kind)?.Output == resource);
+                        b.SettlementId == town.Id && ProductionRules.For(b.Kind)?.Output == resource);
                     var deadline = engine.State.Tick + 15000;
                     while (town.Resources.Get(resource) + .000001 < cost.Get(resource) && engine.State.Tick < deadline)
                     {
@@ -182,26 +182,26 @@ internal static class AdvancementTests
                 }
             }
 
-            foreach (var definition in ResearchRules.All.Where(r => ResearchRules.Route(magic).Contains(r.Kind)))
+            foreach (var definition in ResearchRules.All.Where(r => ResearchRules.Route(magic).Contains(r)))
             {
-                if (engine.HasResearch(town.Id, definition.Kind)) continue;
-                if (AdvancementRules.For(definition.Kind) is not { } a)
+                if (engine.HasResearch(town.Id, definition)) continue;
+                if (ProductionRules.For(definition) is not { } a)
                 {
                     Supply(definition.Cost.Copy());
                     Hold(engine, worker, academy.X, academy.Y);
                     worker.Agent.Goal.TargetEntityId = academy.Id;
-                    engine.StartResearch(town.Id, definition.Kind);
-                    for (var tick = 0; tick < 1000 && !engine.HasResearch(town.Id, definition.Kind); tick++)
+                    engine.StartResearch(town.Id, definition);
+                    for (var tick = 0; tick < 1000 && !engine.HasResearch(town.Id, definition); tick++)
                     {
                         engine.Step();
                         engine.TryWorkAtBuilding(worker);
                     }
 
-                    Check(engine.HasResearch(town.Id, definition.Kind), "Research never completed: " + definition.Kind);
+                    Check(engine.HasResearch(town.Id, definition), "Research never completed: " + definition);
                     continue;
                 }
 
-                Supply(a.ResearchCost.Copy());
+                Supply(a.Research.Cost.Copy());
                 Hold(engine, worker, academy.X, academy.Y);
                 worker.Agent.Goal.TargetEntityId = academy.Id;
                 engine.StartResearch(town.Id, a.Research);
@@ -242,7 +242,7 @@ internal static class AdvancementTests
             Check(ResearchRules.Route(magic).All(k => engine.HasResearch(town.Id, k)),
                 "The full empire research route was not completed.");
             Check(
-                AdvancementRules.All.Where(a => a.Magic != magic && !ResearchRules.For(a.Research).Shared)
+                ProductionRules.All.Where(a => a.Research.Magic != magic && !a.Research.Shared)
                     .All(a => !engine.HasResearch(town.Id, a.Research)), "One route silently granted the other route.");
             var saved = WorldEngine.ImportJson(engine.ExportJson());
             engine.Step(20);
@@ -254,7 +254,7 @@ internal static class AdvancementTests
     private static void Transport()
     {
         var (engine, town, worker) = World();
-        Know(engine, town, ResearchKind.Industry);
+        Know(engine, town, Advancement.Industry);
         var building = Facility(engine, town, BuildingKind.Foundry);
         var coal = town.Resources.Coal;
         var ore = town.Resources.Ore;
@@ -297,7 +297,7 @@ internal static class AdvancementTests
 
     private static void ProductionGates()
     {
-        foreach (var a in AdvancementRules.All)
+        foreach (var a in ProductionRules.All)
         {
             var (engine, town, worker) = World();
             var building = Facility(engine, town, a.Facility);
@@ -315,7 +315,7 @@ internal static class AdvancementTests
             worker.Inventory.Set(a.Output, 1_000_000);
             Check(!engine.TryWorkAtBuilding(worker), "Full inventory still accepted production.");
             worker.Inventory = a.Input.Copy();
-            if (a.Magic)
+            if (a.Research.Magic)
             {
                 worker.Mana = 0;
                 Check(!engine.TryWorkAtBuilding(worker), "Magic production ignored personal mana.");
@@ -325,7 +325,7 @@ internal static class AdvancementTests
             var before = worker.Inventory.Copy();
             var mana = worker.Mana;
             Check(engine.TryWorkAtBuilding(worker), "Qualified worker could not process " + a.Facility);
-            foreach (var resource in AdvancementRules.Resources)
+            foreach (var resource in ResourceStock.Kinds)
                 Check(
                     Math.Abs(worker.Inventory.Get(resource) - (before.Get(resource) - a.Input.Get(resource) +
                                                                (resource == a.Output ? a.Yield : 0))) < 1e-8,
@@ -338,14 +338,14 @@ internal static class AdvancementTests
     private static void MagicSwitch()
     {
         var (engine, town, worker) = World();
-        Know(engine, town, ResearchKind.Crystalcraft);
+        Know(engine, town, Advancement.Crystalcraft);
         var building = Facility(engine, town, BuildingKind.Crystallizer);
         Facility(engine, town, BuildingKind.Academy);
         engine.ConfigureWorld(engine.State.Rules, false, false);
         var before = engine.ExportJson();
         try
         {
-            engine.StartResearch(town.Id, ResearchKind.RunicEngineering);
+            engine.StartResearch(town.Id, Advancement.RunicEngineering);
             throw new Exception("New magic research started.");
         }
         catch (InvalidOperationException)
@@ -353,7 +353,7 @@ internal static class AdvancementTests
         }
 
         Check(engine.ExportJson() == before, "Rejected research spent resources or changed state.");
-        Check(engine.ResearchPrerequisiteError(town.Id, ResearchKind.Industry) != "世界规则已关闭新的魔法发展",
+        Check(engine.ResearchPrerequisiteError(town.Id, Advancement.Industry) != "世界规则已关闭新的魔法发展",
             "Magic switch blocked the technology route.");
         worker.MagicTalent = 100;
         worker.MagicTraining = 20;
@@ -377,17 +377,17 @@ internal static class AdvancementTests
 
         foreach (var kind in new[]
                  {
-                     ResearchKind.Agriculture, ResearchKind.Logistics, ResearchKind.Irrigation,
-                     ResearchKind.Forestry, ResearchKind.Medicine, ResearchKind.ScientificMethod,
+                     Advancement.Agriculture, Advancement.Logistics, Advancement.Irrigation,
+                     Advancement.Forestry, Advancement.Medicine, Advancement.ScientificMethod,
                  }) engine.GrantReceivedResearch(town.Id, kind);
         Facility(engine, town, BuildingKind.Academy);
         Facility(engine, town, BuildingKind.Waystation);
         engine.ConfigureWorld(engine.State.Rules with { Research = true, Construction = true }, false, false);
         engine.Step(60);
         Check(
-            engine.State.Society.Research.Single(r => r.SettlementId == town.Id).ActiveProject == ResearchKind.Industry,
+            engine.State.Society.Research.Single(r => r.SettlementId == town.Id).ActiveProject == Advancement.Industry,
             "Autonomous development stopped after the four original research entries.");
-        engine.GrantReceivedResearch(town.Id, ResearchKind.Industry);
+        engine.GrantReceivedResearch(town.Id, Advancement.Industry);
         engine.Step(60);
         Check(engine.State.Society.Buildings.Any(b => b.Kind == BuildingKind.Foundry),
             "The planner did not build its unlocked production facility.");
@@ -403,7 +403,7 @@ internal static class AdvancementTests
             SubjectId = town.Id,
             X = town.X,
             Y = town.Y,
-            Value = (int)ResearchKind.AdvancedComputing,
+            Value = Advancement.AdvancedComputing.Id,
             ObservedTick = 0,
             LearnedTick = 0,
             OriginResidentId = worker.Id,
@@ -415,12 +415,12 @@ internal static class AdvancementTests
             SenderId = worker.Id, RecipientId = recipient.Id, DeliverTick = 3, Facts = [fact],
         });
         engine.Step(2);
-        Check(!engine.HasResearch(town.Id, ResearchKind.AdvancedComputing),
+        Check(!engine.HasResearch(town.Id, Advancement.AdvancedComputing),
             "Remote research arrived before its message.");
         engine.Step();
-        Check(engine.HasResearch(town.Id, ResearchKind.AdvancedComputing),
+        Check(engine.HasResearch(town.Id, Advancement.AdvancedComputing),
             "New research was truncated to the original four values.");
-        Check(!engine.HasResearch(town.Id, ResearchKind.Automation),
+        Check(!engine.HasResearch(town.Id, Advancement.Automation),
             "Receiving advanced knowledge invented its prerequisites.");
         var building = Facility(engine, town, BuildingKind.Fabricator);
         Check(engine.GetProductionStatus(building.Id).Contains("前置"),

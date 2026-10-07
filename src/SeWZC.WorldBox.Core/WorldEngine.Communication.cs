@@ -71,8 +71,8 @@ public sealed partial class WorldEngine
     {
         var lifetime = fact.Kind switch
         {
-            AgentFactKind.Danger => 24d,
             AgentFactKind.FoodSupply or AgentFactKind.ReliefRequest => 180d,
+            AgentFactKind.Danger => 24d,
             AgentFactKind.SettlementLocation => 1200d,
             _ => 600d,
         };
@@ -122,15 +122,15 @@ public sealed partial class WorldEngine
     private static long MemoryRetentionPriority(AgentFact fact, int homeId)
     {
         return (fact.Kind == AgentFactKind.SettlementLocation && fact.SubjectId == homeId ? 100000 : 0)
-               + (fact.Kind is AgentFactKind.Research or AgentFactKind.Policy ? 60 : 0) + fact.LearnedTick;
+               + (fact.Kind is AgentFactKind.Policy or AgentFactKind.Research ? 60 : 0) + fact.LearnedTick;
     }
 
     /// <summary>将附近的观察和可接触的公开报告记录到该居民自己的记忆中。</summary>
     /// <param name="person">参与当前操作的居民状态。</param>
     private void ObserveAgentEnvironment(Resident person)
     {
-        if (State.Rules.Expansion && person.Profession is Profession.Builder or Profession.Messenger
-                                      or Profession.Trader
+        if (State.Rules.Expansion && person.Profession is Profession.Builder or Profession.Trader
+                                      or Profession.Messenger
                                   && _settlements.TryGetValue(person.SettlementId, out var camp) &&
                                   !camp.FoundationPending
                                   && Distance(person.X, person.Y, camp.X, camp.Y) >= MinimumSettlementDistance - 6)
@@ -189,7 +189,7 @@ public sealed partial class WorldEngine
                 learned.Hops = Math.Min(32, learned.Hops + 1);
                 learned.Confidence *= 0.98;
                 RememberAgentFact(person, learned, false);
-                if (learned.Kind is AgentFactKind.Research or AgentFactKind.Policy or AgentFactKind.Culture
+                if (learned.Kind is AgentFactKind.Policy or AgentFactKind.Culture or AgentFactKind.Research
                     or AgentFactKind.DiplomaticNotice)
                     ReceiveSocietyReport(town, person, learned);
             }
@@ -259,9 +259,9 @@ public sealed partial class WorldEngine
                 if (_settlements.TryGetValue(recipient.SettlementId, out var home)
                     && Distance(recipient.X, recipient.Y, home.X, home.Y) <= 1
                     && (recipient.Profession == Profession.Representative || home.RepresentativeId == recipient.Id
-                                                                          || received.Kind is AgentFactKind.Research
-                                                                              or AgentFactKind.Policy
-                                                                              or AgentFactKind.Culture))
+                                                                          || received.Kind is AgentFactKind.Policy
+                                                                              or AgentFactKind.Culture
+                                                                              or AgentFactKind.Research))
                     ReceiveSocietyReport(home, recipient, received);
             }
         }
@@ -290,7 +290,7 @@ public sealed partial class WorldEngine
                                                    || sender.Health <= 0) continue;
             _conversationNeighbors.Clear();
             var conversationRadius = State.Society.Buildings.Any(b =>
-                b.Kind is BuildingKind.Market or BuildingKind.TradeGuild or BuildingKind.AssemblyHall &&
+                b.Kind is BuildingKind.Market or BuildingKind.AssemblyHall or BuildingKind.TradeGuild &&
                 IsFacilityOperating(b)
                 && Distance(sender.X, sender.Y, b.X, b.Y) <= 3)
                 ? 3
@@ -436,11 +436,11 @@ public sealed partial class WorldEngine
         static bool Priority(AgentFact fact, bool relay)
         {
             return relay
-                ? fact.Kind is AgentFactKind.WarReport or AgentFactKind.DiplomaticNotice or AgentFactKind.WarOrder
-                    or AgentFactKind.PeaceOrder or AgentFactKind.ReliefRequest or AgentFactKind.Research
-                : fact.Kind is AgentFactKind.WarReport or AgentFactKind.DiplomaticNotice or AgentFactKind.WarOrder
-                    or AgentFactKind.PeaceOrder or AgentFactKind.ReliefRequest or AgentFactKind.Research
-                    or AgentFactKind.Danger;
+                ? fact.Kind is AgentFactKind.ReliefRequest or AgentFactKind.WarOrder or AgentFactKind.PeaceOrder
+                    or AgentFactKind.Research or AgentFactKind.DiplomaticNotice or AgentFactKind.WarReport
+                : fact.Kind is AgentFactKind.Danger or AgentFactKind.ReliefRequest or AgentFactKind.WarOrder
+                    or AgentFactKind.PeaceOrder or AgentFactKind.Research or AgentFactKind.DiplomaticNotice
+                    or AgentFactKind.WarReport;
         }
 
         var candidatePriority = Priority(candidate, relay);
@@ -563,8 +563,8 @@ public sealed partial class WorldEngine
         if (agent.Goal.Kind != AgentGoalKind.Trade)
         {
             agent.CarriedMessages = agent.Memory.OrderByDescending(f =>
-                    f.Kind is AgentFactKind.WarReport or AgentFactKind.DiplomaticNotice or AgentFactKind.WarOrder
-                        or AgentFactKind.PeaceOrder or AgentFactKind.ReliefRequest
+                    f.Kind is AgentFactKind.ReliefRequest or AgentFactKind.WarOrder or AgentFactKind.PeaceOrder
+                        or AgentFactKind.DiplomaticNotice or AgentFactKind.WarReport
                         ? 1
                         : 0)
                 .ThenByDescending(f => f.ObservedTick).Take(8).Select(CopyAgentFact).ToList();

@@ -8,11 +8,11 @@ public sealed partial class WorldEngine
     {
         var fuel = tile.Terrain switch
         {
+            TerrainType.Grass or TerrainType.DryFertile or TerrainType.Meadow or TerrainType.Savanna
+                or TerrainType.Scrub or TerrainType.Floodplain
+                or TerrainType.AlpineMeadow => .3 * Math.Clamp(tile.ResourceAmount / 25, 0, 1),
             TerrainType.Forest or TerrainType.Woodland or TerrainType.Rainforest => .8 *
                 Math.Clamp(tile.ResourceAmount / 25, 0, 1),
-            TerrainType.Grass or TerrainType.DryFertile or TerrainType.Meadow or TerrainType.Savanna
-                or TerrainType.Scrub or TerrainType.AlpineMeadow
-                or TerrainType.Floodplain => .3 * Math.Clamp(tile.ResourceAmount / 25, 0, 1),
             TerrainType.Hills or TerrainType.Tundra => .15 * Math.Clamp(tile.ResourceAmount / 25, 0, 1),
             TerrainType.Wetland when tile.DroughtTicks > 0 => .12,
             _ => 0,
@@ -27,13 +27,13 @@ public sealed partial class WorldEngine
     {
         return building.Kind switch
         {
-            BuildingKind.MountainPass => 0,
-            BuildingKind.Farm or BuildingKind.Waystation or BuildingKind.Dock or BuildingKind.Shipyard
-                or BuildingKind.LumberCamp or BuildingKind.Granary or BuildingKind.Housing or BuildingKind.Market
-                or BuildingKind.Watchtower or BuildingKind.Bridge => .8,
-            BuildingKind.Well or BuildingKind.Quarry => .15,
+            BuildingKind.Farm or BuildingKind.Waystation or BuildingKind.Bridge or BuildingKind.Dock
+                or BuildingKind.Shipyard or BuildingKind.LumberCamp or BuildingKind.Granary or BuildingKind.Housing
+                or BuildingKind.Market or BuildingKind.Watchtower => .8,
             BuildingKind.Workshop or BuildingKind.TownCenter => .6,
             BuildingKind.Academy or BuildingKind.Infirmary or BuildingKind.RunicGarden => .35,
+            BuildingKind.MountainPass => 0,
+            BuildingKind.Quarry or BuildingKind.Well => .15,
             _ => .15,
         } * Math.Pow(.75, building.Level - 1);
     }

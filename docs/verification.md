@@ -4,13 +4,17 @@
 
 ## 最近验证
 
-2026-10-07 注释精简检查对应本节所在提交，源码基线为 **`69b4139`**。类型注释改为简洁定义，精简成员和参数说明，未修改执行代码。环境为 Linux 云环境，使用初始化已安装的 .NET SDK 10.0.401 与 `wasm-tools`。
+2026-10-07 代码质量重构，验证源码为 **`cdb31b7` 基线加本轮工作区修改**。环境为 Linux 云环境，.NET SDK 10.0.401、`wasm-tools` 与 Chromium。研究对象统一为 `Advancement`，配方独立为 `ProductionRecipe`，并整理枚举分支顺序、命名与资源规则归属。
 
-- 全项目 Release 构建通过，0 警告／错误，包含 Core、UI、Desktop、Browser 与测试项目。
-- `dotnet build -c Release --no-restore -m:4` 后运行 `python3 scripts/run-fast-tests.py`，**94/94 核心单元、57/57 Headless UI** 通过；本次快速检查合计 **11.05 秒**，包含两个进程启动。
-- 本轮修改的 107 个源码文件与基线去除注释后的文本完全相同；977 个 XML 文档注释块解析通过，标签和参数结构保持一致。三个修改的 JavaScript 模块语法检查与 `git diff --check` 通过。
+- 全解决方案 Release 构建通过；最终源码再经 `scripts/ci-build.slnf -t:Rebuild` 重建，均为 **0 警告／错误**。
+- `python3 scripts/run-fast-tests.py`：**95/95 核心单元、57/57 Headless UI** 通过，分别为 **4.35 秒、7.31 秒**；含进程启动合计 **11.87 秒**，本机本轮仍高于期望的 10 秒，不将结果称为性能优化。
+- `--suite integration`：**122/122** 通过，耗时 **45.55 秒**，覆盖知识传播、生产、规划与保存续演。
+- 新增研究保存回归检查数字载荷、恢复后的共享对象身份，以及已知知识／进行中项目的非法编号和类型拒绝；继续验证研究图依赖和不可变规则目录。
+- `bash scripts/publish-browser.sh --no-restore` 通过，包含裁剪后的 WebAssembly 发布和子路径静态资源检查。
+- `tests/browser/research-gameplay.cjs` 的 Chromium 桌面／触屏场景均通过：当前存档导入、研究树和分支、岗位与建筑解锁、铁路、折跃、法术及真实资源扣除，且无浏览器错误。
+- `git diff --check` 通过。
 
-验证结果及快速检查日志保存于本地忽略目录 `artifacts/comment-docs-20261007/`。未重跑集成、长程或浏览器交互验收；此前结果通过 Git 历史查阅。
+日志、源文件 SHA-256 清单及浏览器产物位于本地忽略目录 `artifacts/code-quality-20261007/`。本轮未运行长程／随机套件；触屏检查使用 Chromium 手机视口模拟，不代表真实手机性能。浏览器检查使用本地发布产物，没有部署线上站点。
 
 ## 复现命令
 

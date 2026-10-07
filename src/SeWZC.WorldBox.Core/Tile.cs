@@ -20,7 +20,7 @@ public sealed partial class Tile
             if (WorldEngine.IsWaterTerrain(_terrain) != WorldEngine.IsWaterTerrain(value))
                 TerritoryCounts?.InvalidateClaims();
             _terrain = value;
-            if (value is not (TerrainType.Stream or TerrainType.River or TerrainType.LargeRiver)) RiverWidth = 0;
+            if (value is not (TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver)) RiverWidth = 0;
         }
     }
 
@@ -70,7 +70,7 @@ public sealed partial class Tile
     [JsonIgnore]
     public bool IsWalkable => Terrain == TerrainType.Mountain
         ? Improvement == LandImprovement.MountainPass
-        : Terrain is TerrainType.Water or TerrainType.River or TerrainType.LargeRiver or TerrainType.Lake
+        : Terrain is TerrainType.Water or TerrainType.River or TerrainType.Lake or TerrainType.LargeRiver
             ? Improvement == LandImprovement.Bridge
             : Terrain != TerrainType.DeepWater;
 

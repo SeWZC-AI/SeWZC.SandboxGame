@@ -160,7 +160,7 @@ public sealed partial class MainView
 
     private string FactLabel(AgentFact fact)
     {
-        var location = fact.Kind is AgentFactKind.WaterSource or AgentFactKind.FoundingSite or AgentFactKind.Danger
+        var location = fact.Kind is AgentFactKind.Danger or AgentFactKind.WaterSource or AgentFactKind.FoundingSite
             ? $"\n位置 {fact.X}, {fact.Y}"
             : "";
         var learned = fact.LearnedTick != fact.ObservedTick ? "\n获知 " + DateLabel(fact.LearnedTick) : "";
@@ -172,8 +172,6 @@ public sealed partial class MainView
     {
         return kind switch
         {
-            AgentFactKind.WaterSource => "取水地点",
-            AgentFactKind.FoundingSite => "建村勘察",
             AgentFactKind.FoodSupply => "粮食供给",
             AgentFactKind.Danger => "危险",
             AgentFactKind.SettlementLocation => "聚落位置",
@@ -186,6 +184,8 @@ public sealed partial class MainView
             AgentFactKind.TradeExchange => "贸易往来",
             AgentFactKind.DiplomaticNotice => "外交声明",
             AgentFactKind.WarReport => "前线战报",
+            AgentFactKind.WaterSource => "取水地点",
+            AgentFactKind.FoundingSite => "建村勘察",
             _ => "个人记忆",
         };
     }
@@ -384,8 +384,8 @@ public sealed partial class MainView
                     y.Value = building.Y;
                 }
             }
-            else if ((AgentGoalKind)goal.SelectedItem! is AgentGoalKind.FetchWater or AgentGoalKind.Fish
-                     or AgentGoalKind.Hunt)
+            else if ((AgentGoalKind)goal.SelectedItem! is AgentGoalKind.FetchWater or AgentGoalKind.Hunt
+                     or AgentGoalKind.Fish)
             {
                 if (choice.Id <= 0 || choice.Id > _engine.State.Tiles.Length) return;
                 var sourceX = (choice.Id - 1) % _engine.State.Width;
@@ -549,18 +549,18 @@ public sealed partial class MainView
             var options = selectedKind switch
             {
                 AgentFactKind.SettlementLocation => _engine.State.Nations.Select(n => new EntityChoice(n.Id, n.Name)),
-                AgentFactKind.Culture => _engine.State.Society.Cultures.Select(c => new EntityChoice(c.Id, c.Name)),
                 AgentFactKind.Policy => Enum.GetValues<PolicyKind>()
                     .Select(p => new EntityChoice((int)p, WorldEngine.PolicyName(p))),
-                AgentFactKind.Research => Enum.GetValues<ResearchKind>()
-                    .Select(r => new EntityChoice((int)r, WorldEngine.ResearchName(r))),
+                AgentFactKind.WarOrder or AgentFactKind.PeaceOrder => new[] { new EntityChoice(0, "仅使用地点") }.Concat(
+                    _engine.State.Settlements.Select(t => new EntityChoice(t.Id, t.Name))),
+                AgentFactKind.Culture => _engine.State.Society.Cultures.Select(c => new EntityChoice(c.Id, c.Name)),
+                AgentFactKind.Research => Advancement.All.OrderBy(research => research.Id)
+                    .Select(r => new EntityChoice(r.Id, r.Name)),
+                AgentFactKind.TradeExchange => new[] { new EntityChoice(1, "实际完成交易") },
                 AgentFactKind.DiplomaticNotice => new[]
                 {
                     new EntityChoice(0, "停战声明"), new EntityChoice(1, "结盟提议"), new EntityChoice(2, "宣战声明"),
                 },
-                AgentFactKind.WarOrder or AgentFactKind.PeaceOrder => new[] { new EntityChoice(0, "仅使用地点") }.Concat(
-                    _engine.State.Settlements.Select(t => new EntityChoice(t.Id, t.Name))),
-                AgentFactKind.TradeExchange => new[] { new EntityChoice(1, "实际完成交易") },
                 _ => Array.Empty<EntityChoice>(),
             };
             var values = options.ToArray();
@@ -569,18 +569,18 @@ public sealed partial class MainView
             choice.IsVisible = values.Length > 0;
             value.IsVisible = !choice.IsVisible;
             addressed.IsVisible =
-                selectedKind is AgentFactKind.DiplomaticNotice or AgentFactKind.WarOrder or AgentFactKind.PeaceOrder;
+                selectedKind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder or AgentFactKind.DiplomaticNotice;
             meaning.Text = selectedKind switch
             {
                 AgentFactKind.FoodSupply => "相信该聚落有多少份粮食；影响采集、贸易和迁徙选择。",
-                AgentFactKind.ReliefRequest => "困苦程度 0–100；送达机构后影响救济政策与地方不满。",
-                AgentFactKind.SettlementLocation => "相信该聚落属于哪个国家；地点和消息时效影响探索与外交。",
-                AgentFactKind.Research => "相信当地掌握的研究；实际递送后可能传播该成果。",
-                AgentFactKind.Policy => "送达的政策方向；仍受当地自治与玩家覆盖约束。",
-                AgentFactKind.Culture => "接触到的文化；需要持续交流才会改变认同。",
-                AgentFactKind.DiplomaticNotice => "选择声明类型与接收国；结盟还须存在对应提议。",
-                AgentFactKind.WarOrder or AgentFactKind.PeaceOrder => "选择目标聚落与接收国；士兵依据实际收到的命令行动。",
                 AgentFactKind.Danger => "大于零表示危险；位置、来源、时效与可信度共同影响避险。",
+                AgentFactKind.SettlementLocation => "相信该聚落属于哪个国家；地点和消息时效影响探索与外交。",
+                AgentFactKind.ReliefRequest => "困苦程度 0–100；送达机构后影响救济政策与地方不满。",
+                AgentFactKind.Policy => "送达的政策方向；仍受当地自治与玩家覆盖约束。",
+                AgentFactKind.WarOrder or AgentFactKind.PeaceOrder => "选择目标聚落与接收国；士兵依据实际收到的命令行动。",
+                AgentFactKind.Culture => "接触到的文化；需要持续交流才会改变认同。",
+                AgentFactKind.Research => "相信当地掌握的研究；实际递送后可能传播该成果。",
+                AgentFactKind.DiplomaticNotice => "选择声明类型与接收国；结盟还须存在对应提议。",
                 _ => "记录的数值。说明文字仅作备注，不会自动执行。",
             };
         }
@@ -865,14 +865,14 @@ public sealed partial class MainView
 
     private NumericUpDown[] StockFields(StackPanel panel, ResourceStock stock, string prefix)
     {
-        return AdvancementRules.Resources.Select(kind => Field(panel, ResourceStock.Name(kind), stock.Get(kind),
+        return ResourceStock.Kinds.Select(kind => Field(panel, ResourceStock.Name(kind), stock.Get(kind),
             prefix + "-" + kind.ToString().ToLowerInvariant())).ToArray();
     }
 
     private static ResourceStock ReadStock(NumericUpDown[] fields)
     {
         var stock = new ResourceStock();
-        for (var i = 0; i < fields.Length; i++) stock.Set(AdvancementRules.Resources[i], Number(fields[i]));
+        for (var i = 0; i < fields.Length; i++) stock.Set(ResourceStock.Kinds[i], Number(fields[i]));
         return stock;
     }
 }

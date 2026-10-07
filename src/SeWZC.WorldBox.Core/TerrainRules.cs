@@ -10,10 +10,8 @@ public static class TerrainRules
         return terrain switch
         {
             TerrainType.DeepWater => new TerrainParameters(double.PositiveInfinity, 0, 0, 0, 0, 0, 0.5),
-            TerrainType.Lake => new TerrainParameters(double.PositiveInfinity, 80, 0, 0, 0, 0, 1.7),
             TerrainType.Water => new TerrainParameters(double.PositiveInfinity, 5, 0, 0, 0, 0, 0.8),
             TerrainType.Sand => new TerrainParameters(1.4, 20, 0.12, 0, 0.25, 0.01, 0.4),
-            TerrainType.DryFertile => new TerrainParameters(1.1, 85, 0.5, 0.04, 0.05, 0, .8),
             TerrainType.Grass => new TerrainParameters(1, 85, 0.5, 0.08, 0.05, 0, 1),
             TerrainType.Forest => new TerrainParameters(1.5, 75, 0.35, 0.7, 0.04, 0, 1.8),
             TerrainType.Mountain => new TerrainParameters(double.PositiveInfinity, 5, 0, 0, 0.8, 0.5, 1.4),
@@ -23,6 +21,8 @@ public static class TerrainRules
             TerrainType.Desert => new TerrainParameters(1.7, 8, 0.05, 0, 0.3, 0.12, 0.35),
             TerrainType.River => new TerrainParameters(double.PositiveInfinity, 80, 0.7, 0, 0.2, 0.03, 1.7),
             TerrainType.Tundra => new TerrainParameters(1.8, 20, 0.13, 0.08, 0.3, 0.15, 0.7),
+            TerrainType.Lake => new TerrainParameters(double.PositiveInfinity, 80, 0, 0, 0, 0, 1.7),
+            TerrainType.DryFertile => new TerrainParameters(1.1, 85, 0.5, 0.04, 0.05, 0, .8),
             TerrainType.Stream => new TerrainParameters(2.5, 75, .3, 0, .1, 0, 1.5),
             TerrainType.LargeRiver => new TerrainParameters(double.PositiveInfinity, 80, .7, 0, .2, .03, 1.7),
             TerrainType.Meadow => new TerrainParameters(1, 90, .65, .05, .04, 0, 1.1),

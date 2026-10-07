@@ -114,12 +114,12 @@ public sealed partial class WorldMapControl
 
             var brush = e.Kind switch
             {
+                WorldVisualKind.Drought or WorldVisualKind.Logging or WorldVisualKind.Construction => CargoBrush,
+                WorldVisualKind.Plague or WorldVisualKind.Shield => ArcaneBrush,
                 WorldVisualKind.Heal or WorldVisualKind.Harvest => HealingBrush,
                 WorldVisualKind.Frost or WorldVisualKind.Rain => Brush(0xFF95DEEA),
                 WorldVisualKind.Lightning => Brush(0xFFE9EEA9),
                 WorldVisualKind.Waygate => ArcaneBrush,
-                WorldVisualKind.Shield or WorldVisualKind.Plague => ArcaneBrush,
-                WorldVisualKind.Drought or WorldVisualKind.Logging or WorldVisualKind.Construction => CargoBrush,
                 _ => FlameInner,
             };
             if (e.FromX >= 0)
@@ -189,7 +189,7 @@ public sealed partial class WorldMapControl
         var phase = ((int)(_renderFrameTime * (moving ? 6 : 4)) + resident.Id) % 2;
         var pose = moving
             ? 1 + phase
-            : resident.Activity is ResidentActivity.Resting or ResidentActivity.Sick
+            : resident.Activity is ResidentActivity.Sick or ResidentActivity.Resting
                 ? 5
                 : resident.Activity is ResidentActivity.Working or ResidentActivity.Studying or ResidentActivity.Casting
                     ? 3 + phase

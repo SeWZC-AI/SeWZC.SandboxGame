@@ -120,7 +120,7 @@ internal static class LandTransportTests
     private static void AutomaticCrossing()
     {
         var (engine, town, worker) = World();
-        engine.GrantReceivedResearch(town.Id, ResearchKind.Logistics);
+        engine.GrantReceivedResearch(town.Id, Advancement.Logistics);
         engine.ConfigureWorld(engine.State.Rules with { Construction = true }, false, false);
         var tile = engine.State.Tiles[16 * 32 + 15];
         tile.Terrain = TerrainType.River;
@@ -139,7 +139,7 @@ internal static class LandTransportTests
     private static void BoatProduction()
     {
         var (engine, town, worker) = World();
-        engine.GrantReceivedResearch(town.Id, ResearchKind.Logistics);
+        engine.GrantReceivedResearch(town.Id, Advancement.Logistics);
         Check(engine.FacilityPlacementError(town.Id, BuildingKind.Shipyard, 12, 16) is not null,
             "Inland dock was accepted.");
         engine.State.Tiles[16 * 32 + 12].Terrain = TerrainType.Water;
@@ -156,19 +156,19 @@ internal static class LandTransportTests
     private static void ResearchStages()
     {
         var (engine, town, _) = World();
-        engine.GrantReceivedResearch(town.Id, ResearchKind.Logistics);
-        Check(engine.ResearchPrerequisiteError(town.Id, ResearchKind.SignalNetwork)?.Contains("电气化") == true,
+        engine.GrantReceivedResearch(town.Id, Advancement.Logistics);
+        Check(engine.ResearchPrerequisiteError(town.Id, Advancement.SignalNetwork)?.Contains("电气化") == true,
             "Ancient transport unlocked radio.");
-        engine.GrantReceivedResearch(town.Id, ResearchKind.SignalNetwork);
+        engine.GrantReceivedResearch(town.Id, Advancement.SignalNetwork);
         Check(engine.FacilityPlacementError(town.Id, BuildingKind.SignalTower, 11, 16, true) is not null,
             "Gift bypassed the radio era.");
-        engine.GrantReceivedResearch(town.Id, ResearchKind.Industry);
-        Check(engine.ResearchPrerequisiteError(town.Id, ResearchKind.Electrification) is null,
+        engine.GrantReceivedResearch(town.Id, Advancement.Industry);
+        Check(engine.ResearchPrerequisiteError(town.Id, Advancement.Electrification) is null,
             "Power still depends on radio.");
-        engine.GrantReceivedResearch(town.Id, ResearchKind.Electrification);
+        engine.GrantReceivedResearch(town.Id, Advancement.Electrification);
         Check(engine.FacilityPlacementError(town.Id, BuildingKind.SignalTower, 11, 16) is null,
             "Modern radio remains blocked.");
-        Check(engine.ResearchPrerequisiteError(town.Id, ResearchKind.Aviation) is null,
+        Check(engine.ResearchPrerequisiteError(town.Id, Advancement.Aviation) is null,
             "Aviation has unreachable prerequisites.");
     }
 
@@ -230,7 +230,7 @@ internal static class LandTransportTests
         foreach (var kind in new[] { BuildingKind.Bridge, BuildingKind.MountainPass })
         {
             var (engine, town, worker) = World();
-            engine.GrantReceivedResearch(town.Id, ResearchKind.Logistics);
+            engine.GrantReceivedResearch(town.Id, Advancement.Logistics);
             for (var y = 0; y < 32; y++)
                 engine.State.Tiles[y * 32 + 15].Terrain =
                     kind == BuildingKind.Bridge ? TerrainType.River : TerrainType.Mountain;
@@ -281,7 +281,7 @@ internal static class LandTransportTests
         worker.Agent.Goal.Kind = AgentGoalKind.Work;
         engine.Step(4);
         Check(!tile.DepositDiscovered && worker.Inventory.Coal == 0, "Ancient worker could see or extract coal.");
-        engine.GrantReceivedResearch(town.Id, ResearchKind.Industry);
+        engine.GrantReceivedResearch(town.Id, Advancement.Industry);
         engine.Step(4);
         Check(tile.DepositDiscovered && worker.Inventory.Coal > 0 && town.Resources.Coal == 0
               && Math.Abs(6 - tile.DepositAmount - worker.Inventory.Coal) < 1e-7,
@@ -333,11 +333,11 @@ internal static class LandTransportTests
         Hold(engine, engine.State.Residents.Last(), 25, 16);
         for (var y = 0; y < 32; y++)
             engine.State.Tiles[y * 32 + 16].Terrain = flying ? TerrainType.Mountain : TerrainType.River;
-        engine.GrantReceivedResearch(home.Id, ResearchKind.Logistics);
+        engine.GrantReceivedResearch(home.Id, Advancement.Logistics);
         if (flying)
         {
-            engine.GrantReceivedResearch(home.Id, ResearchKind.Electrification);
-            engine.GrantReceivedResearch(home.Id, ResearchKind.Aviation);
+            engine.GrantReceivedResearch(home.Id, Advancement.Electrification);
+            engine.GrantReceivedResearch(home.Id, Advancement.Aviation);
             home.Resources.Aircraft = 1;
         }
         else home.Resources.Boats = 1;

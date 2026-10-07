@@ -21,7 +21,7 @@ public sealed partial class WorldEngine
         return AnimalRules.For(kind).Diet == AnimalDiet.Herbivore
                && (aquatic
                    ? kind is WildlifeKind.Fish or WildlifeKind.GrassCarp
-                   : kind is WildlifeKind.Goat or WildlifeKind.Deer or WildlifeKind.Boar or WildlifeKind.Bison
+                   : kind is WildlifeKind.Deer or WildlifeKind.Boar or WildlifeKind.Goat or WildlifeKind.Bison
                        or WildlifeKind.Yak or WildlifeKind.Gazelle);
     }
 
@@ -58,8 +58,8 @@ public sealed partial class WorldEngine
     private bool HusbandryHasWork(Building b, Resident person)
     {
         if (!HasResearch(b.SettlementId,
-                b.Kind == BuildingKind.Pasture ? ResearchKind.Agriculture : ResearchKind.Industry)
-            || (b.Kind == BuildingKind.Aquaculture && !HasResearch(b.SettlementId, ResearchKind.Logistics)))
+                b.Kind == BuildingKind.Pasture ? Advancement.Agriculture : Advancement.Industry)
+            || (b.Kind == BuildingKind.Aquaculture && !HasResearch(b.SettlementId, Advancement.Logistics)))
             return false;
         if (person.Profession != (b.Kind == BuildingKind.Pasture ? Profession.Farmer : Profession.Fisher)) return false;
         var tile = State.Tiles[Index(b.X, b.Y)];

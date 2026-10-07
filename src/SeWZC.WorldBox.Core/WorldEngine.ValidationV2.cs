@@ -77,7 +77,7 @@ public sealed partial class WorldEngine
             person.MoveDurationTicks is >= 1 and <= 100, "移动位置或时间无效。");
         CheckV2(
             person.Inventory is not null &&
-            AdvancementRules.Resources.All(kind => Number(person.Inventory.Get(kind), 0, 1_000_000)), "背包数值无效。");
+            ResourceStock.Kinds.All(kind => Number(person.Inventory.Get(kind), 0, 1_000_000)), "背包数值无效。");
         CheckV2(Enum.IsDefined(person.TravelMode) && (person.TravelMode != TravelMode.Aircraft ||
                                                       person.Inventory.Aircraft >= 1)
                                                   && (person.TravelMode != TravelMode.Boat ||

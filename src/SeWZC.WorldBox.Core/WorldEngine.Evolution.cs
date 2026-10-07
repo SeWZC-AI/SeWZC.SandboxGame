@@ -36,7 +36,7 @@ public sealed partial class WorldEngine
         var stage = research.Completed.Count >= 3 ? "区域网络" :
             research.Completed.Count > 0 ? "专业分工" :
             town.Resources.Food >= town.Population * 2 ? "积累余粮" : "建立家园";
-        if (research.Completed.Any(k => AdvancementRules.For(k) is not null)) stage = GetAdvancementStage(town.Id);
+        if (research.Completed.Any(k => ProductionRules.For(k) is not null)) stage = GetAdvancementStage(town.Id);
         if (town.IsExpanding)
         {
             return new DevelopmentSummary(stage, "扩充为" + SettlementTierName(town.Tier + 1), "居民到城镇中心施工；城镇中心等级独立",
@@ -54,7 +54,7 @@ public sealed partial class WorldEngine
         {
             var academy = State.Society.Buildings.FirstOrDefault(b =>
                 b.SettlementId == town.Id && b.Kind == BuildingKind.Academy && b.IsCompleted);
-            return new DevelopmentSummary(stage, "研究" + ResearchName(project),
+            return new DevelopmentSummary(stage, "研究" + project.Name,
                 academy is null ? "需要已建成学舍" : State.Tick - academy.LastWorkedTick > 12 ? "等待学者到学舍工作" : "学者正在推进研究",
                 research.Progress / Math.Max(1, research.RequiredProgress));
         }
@@ -93,9 +93,9 @@ public sealed partial class WorldEngine
         if (kind == BuildingKind.Bridge &&
             BridgePlacementError(x, y, direction ?? InferBridgeDirection(x, y), bridgeLevel) is
                 { } bridgeError) return bridgeError;
-        var range = kind is BuildingKind.Bridge or BuildingKind.MountainPass ? 24 : Math.Max(8, town.MaxClaimRadius);
+        var range = kind is BuildingKind.MountainPass or BuildingKind.Bridge ? 24 : Math.Max(8, town.MaxClaimRadius);
         if (Distance(x, y, town.X, town.Y) > range) return $"距归属聚落超过 {range} 格";
-        if (kind is BuildingKind.Bridge or BuildingKind.MountainPass &&
+        if (kind is BuildingKind.MountainPass or BuildingKind.Bridge &&
             !Directions.Any(d => Walkable(x + d.X, y + d.Y))) return "需要相邻的可通行施工位置，逐段向前建设";
         if (IsWaterfrontBuilding(kind) && !Directions.Any(d => Walkable(x + d.X, y + d.Y)
                                                                && !IsWaterTerrain(State.Tiles[Index(x + d.X, y + d.Y)]
@@ -125,7 +125,7 @@ public sealed partial class WorldEngine
             return "牧场需要肥力至少 25 的陆地";
         if (kind == BuildingKind.Aquaculture && !Circle(x, y, 1).Any(i => IsFreshWater(State.Tiles[i])))
             return "水产养殖厂需要紧邻河湖的陆地";
-        if (kind == BuildingKind.Aquaculture && !gift && !HasResearch(settlementId, ResearchKind.Logistics))
+        if (kind == BuildingKind.Aquaculture && !gift && !HasResearch(settlementId, Advancement.Logistics))
             return "需要先掌握驿路运输";
         if (kind == BuildingKind.Well && DailyWaterYield(tile) < .025) return "水井需要湿地或每日供水至少 0.025 的地块";
         if (kind is BuildingKind.LumberCamp or BuildingKind.Quarry && !Circle(x, y, 1).Any(i => i != Index(x, y)
@@ -135,30 +135,30 @@ public sealed partial class WorldEngine
                     TerrainRules.For(State.Tiles[i].Terrain).OreYield >= .5))) return "需要紧邻实际森林或石矿资源";
         if (State.Society.Buildings.Count >= MaxBuildings - 256) return "世界建筑数量已达上限";
         if (State.Society.Buildings.Any(b => b.X == x && b.Y == y)) return "此处已有建筑";
-        if ((kind == BuildingKind.ArcaneSanctum || AdvancementRules.For(kind)?.Magic == true ||
+        if ((kind == BuildingKind.ArcaneSanctum || ProductionRules.For(kind)?.Research.Magic == true ||
              ResearchRules.Unlocking(kind)?.Magic == true) && !State.Society.MagicEnabled) return "规则已关闭新的魔法发展";
-        if (kind == BuildingKind.SignalTower && (!HasResearch(settlementId, ResearchKind.Electrification) ||
-                                                 !HasResearch(settlementId, ResearchKind.SignalNetwork)))
+        if (kind == BuildingKind.SignalTower && (!HasResearch(settlementId, Advancement.Electrification) ||
+                                                 !HasResearch(settlementId, Advancement.SignalNetwork)))
             return "无线信号塔需要电气化与信号网络";
-        if (!gift && kind == BuildingKind.SacredGrove && !HasResearch(settlementId, ResearchKind.ArcaneArts))
+        if (!gift && kind == BuildingKind.SacredGrove && !HasResearch(settlementId, Advancement.ArcaneArts))
             return "需要当地掌握奥术基础";
         if (gift) return null;
-        if (ResearchRules.Unlocking(kind) is { } unlock && (!HasResearch(settlementId, unlock.Kind)
+        if (ResearchRules.Unlocking(kind) is { } unlock && (!HasResearch(settlementId, unlock)
                                                             || !HasResearchPrerequisites(settlementId,
                                                                 unlock.Prerequisites)))
             return "当地尚未掌握" + unlock.Name + "及其前置";
-        if (kind is BuildingKind.Bridge or BuildingKind.MountainPass &&
-            !HasResearch(settlementId, ResearchKind.Logistics)) return "需要先掌握驿路运输";
-        if (kind is BuildingKind.Waystation or BuildingKind.Dock && !HasResearch(settlementId, ResearchKind.Logistics))
+        if (kind is BuildingKind.MountainPass or BuildingKind.Bridge &&
+            !HasResearch(settlementId, Advancement.Logistics)) return "需要先掌握驿路运输";
+        if (kind is BuildingKind.Waystation or BuildingKind.Dock && !HasResearch(settlementId, Advancement.Logistics))
             return "当地尚未掌握驿路运输";
-        if (kind == BuildingKind.SignalTower && !HasResearch(settlementId, ResearchKind.SignalNetwork))
+        if (kind == BuildingKind.SignalTower && !HasResearch(settlementId, Advancement.SignalNetwork))
             return "当地尚未掌握信号网络";
-        if (kind == BuildingKind.ArcaneSanctum && !HasResearch(settlementId, ResearchKind.ArcaneArts))
+        if (kind == BuildingKind.ArcaneSanctum && !HasResearch(settlementId, Advancement.ArcaneArts))
             return "当地尚未掌握奥术基础";
-        if (AdvancementRules.For(kind) is { } advancement && (!HasResearch(settlementId, advancement.Research)
+        if (ProductionRules.For(kind) is { } advancement && (!HasResearch(settlementId, advancement.Research)
                                                               || !HasResearchPrerequisites(settlementId,
-                                                                  advancement.Prerequisites)))
-            return "当地尚未掌握" + ResearchName(advancement.Research) + "及其前置";
+                                                                  advancement.Research.Prerequisites)))
+            return "当地尚未掌握" + advancement.Research.Name + "及其前置";
         return MissingResources(town.Resources, FacilityCost(kind, bridgeLevel));
     }
 
@@ -168,7 +168,7 @@ public sealed partial class WorldEngine
     public static string? MissingResources(ResourceStock stock, ResourceStock cost)
     {
         var missing = new List<string>();
-        foreach (var kind in AdvancementRules.Resources)
+        foreach (var kind in ResourceStock.Kinds)
             if (stock.Get(kind) + .000001 < cost.Get(kind))
                 missing.Add($"{ResourceStock.Name(kind)}缺 {cost.Get(kind) - stock.Get(kind):0.#}");
         return missing.Count == 0 ? null : string.Join("\n", missing);
@@ -180,7 +180,7 @@ public sealed partial class WorldEngine
     public static string? MissingResources(ResourceStock stock, ResourceAmounts cost)
     {
         var missing = new List<string>();
-        foreach (var kind in AdvancementRules.Resources)
+        foreach (var kind in ResourceStock.Kinds)
             if (stock.Get(kind) + .000001 < cost.Get(kind))
                 missing.Add($"{ResourceStock.Name(kind)}缺 {cost.Get(kind) - stock.Get(kind):0.#}");
         return missing.Count == 0 ? null : string.Join("\n", missing);
@@ -206,11 +206,11 @@ public sealed partial class WorldEngine
         return IsFacilityOperating(building)
                && (building.Kind != BuildingKind.Well || WellWaterYield(State.Tiles[Index(building.X, building.Y)]) > 0)
                && (ResearchRules.Unlocking(building.Kind) is not { } unlock ||
-                   (HasResearch(building.SettlementId, unlock.Kind)
+                   (HasResearch(building.SettlementId, unlock)
                     && HasResearchPrerequisites(building.SettlementId, unlock.Prerequisites)))
                && (building.Kind != BuildingKind.SignalTower ||
-                   (HasResearch(building.SettlementId, ResearchKind.SignalNetwork) &&
-                    HasResearch(building.SettlementId, ResearchKind.Electrification)));
+                   (HasResearch(building.SettlementId, Advancement.SignalNetwork) &&
+                    HasResearch(building.SettlementId, Advancement.Electrification)));
     }
 
     /// <summary>检查笔刷范围内修建道路的条件；可修建时返回空值，否则返回原因。</summary>
@@ -245,7 +245,7 @@ public sealed partial class WorldEngine
         foreach (var report in person.Agent.Memory
                      .Where(f => f.Kind == AgentFactKind.WarReport && f.LearnedTick < State.Tick).ToArray())
             ReceiveWarReport(home, report);
-        if (person.Profession is not (Profession.Messenger or Profession.Trader or Profession.Representative)) return;
+        if (person.Profession is not (Profession.Trader or Profession.Messenger or Profession.Representative)) return;
         foreach (var fact in person.Agent.Memory.Where(f =>
                      f.LearnedTick < State.Tick && f.Kind is AgentFactKind.SettlementLocation
                          or AgentFactKind.TradeExchange or AgentFactKind.DiplomaticNotice).ToArray())

@@ -284,8 +284,8 @@ internal static class ProvisioningAndClaimsTests
         TestLand.ClaimAllTowns(e);
         e.State.Society.MagicEnabled = true;
         var research = e.State.Society.Research.Single();
-        research.Completed = Enum.GetValues<ResearchKind>().ToList();
-        foreach (var kind in AdvancementRules.Resources) town.Resources.Set(kind, 10_000);
+        research.Completed = Advancement.All.OrderBy(research => research.Id).ToList();
+        foreach (var kind in ResourceStock.Kinds) town.Resources.Set(kind, 10_000);
         e.PaintTerrain(18, 16, TerrainType.River, 0);
         e.PaintTerrain(20, 16, TerrainType.River, 0);
         e.PaintTerrain(14, 20, TerrainType.Forest, 0);

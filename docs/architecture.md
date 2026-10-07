@@ -31,7 +31,7 @@ flowchart TD
 
 `WorldState.cs` 定义世界容器；实体、枚举和跨文件使用的查询结果放在各自的同名文件中。`Tile` 的生态、地块改造与供水占地，`Army` 的战役，`Building` 的升级，`Settlement` 的发展，以及 `ResourceStock` 的扩展资源与操作保留按机制命名的分部文件；各类型的文档注释统一在无后缀主文件中。引擎机制文件定义 `WorldEngine` 分部，数据实体定义放在实体自己的文件中。共享界面仅在单处使用的自动化快照辅助类型仍随 `MainView.Automation.cs` 保留，详细约定见 [开发约定](development.md#代码定位与责任)。
 
-共享规则与可变世界状态分开：`Advancement`、`ResearchDefinition` 持有不可变费用和已复制的只读前置／解锁集合，`ResourceAmounts` 通过定长字段读取配方，`ResourceStock` 负责原地记账。规则索引在目录完整初始化后建立。研究的分支、路线与额外操作用 `ResearchBranch`、`ResearchRoute`、`ResearchAction` 表达；操作通过 `IResearchActionHandler` 交给界面，核心不引用 Avalonia。
+共享规则与可变世界状态分开：`Advancement` 持有研究元数据、不可变费用和指向其他研究对象的只读前置／解锁集合，`ProductionRecipe` 引用对应研究并保存生产参数，`ResourceAmounts` 通过定长字段读取配方，`ResourceStock` 负责原地记账。规则索引在目录完整初始化后建立。研究的分支、路线与额外操作用 `ResearchBranch`、`ResearchRoute`、`ResearchAction` 表达；操作通过 `IResearchActionHandler` 交给界面，核心不引用 Avalonia。
 
 首批种族为人类、精灵、矮人和兽人。种族差异可以影响寿命、需求或生产，但不等于永久敌对阵营。国家通过人口、聚落与领土组织模拟。文化由独立 ID 与合作、创新、自然亲和等价值构成，居民、聚落和国家分别保存认同；当面接触可积累文化影响。改变国家文化不会瞬间改写每个居民的认同。
 
@@ -152,7 +152,7 @@ GitHub Actions 固定 SDK，安装 `wasm-tools`，构建桌面与浏览器项目
 
 ## 独立时代路线与实物加工（格式 6）
 
-`AdvancementRules.cs` 集中定义七项新研究、设施配方、前置与成本；配方类型定义在 `Advancement.cs`，`ResourceStock.Advancement.cs` 定义合金、动力单元和魔晶等扩展资源及资源操作。原有四项研究仍是 1–5 级基础参数的来源；新增研究按聚落保存，不隐式提高旧战斗倍率。两条路线共享调度实现，不共享专属动力或跨路线研究前置，见 [ADR-0013](decisions/0013-independent-advancement.md)。
+`Advancement.Catalog.cs` 定义研究、前置与成本；`ProductionRules.cs` 定义设施配方，配方类型定义在 `ProductionRecipe.cs`，`ResourceStock.Advancement.cs` 定义合金、动力单元和魔晶等扩展资源及资源操作。原有四项研究仍是 1–5 级基础参数的来源；新增研究按聚落保存，不隐式提高旧战斗倍率。两条路线共享调度实现，不共享专属动力或跨路线研究前置，见 [ADR-0013](decisions/0013-independent-advancement.md)。
 
 `WorldEngine.Advancement.cs` 校验运营条件，处理 Work 目标的取料、到场加工和 ReturnHome 交付。原料与产物均使用居民持久化库存；沿用实际位置、移动规则及每 tick 劳动去重。配方查询、路线阶段与状态说明为只读查询，路径预览指向当前真实步骤的仓库或工厂。自主规划接入既有建设／研究流程，不从观察界面推动生产。
 
@@ -234,7 +234,7 @@ UI 编辑和绘制在修改之前等待分段异步的完整撤销快照；连�
 
 五倍近景的动画调度采用 20 Hz，已有动画帧待执行时，模拟刷新合并到该帧；没有动画、暂停或显式编辑仍立即刷新。实际模拟日独立推进，插值沿用呈现时钟，常速与二倍档保留原来的近景 30 Hz。这里的调度频率不是实际绘制 FPS 保证。
 
-`WorldEngine.RacialBuildings.cs` 处理当地种族解锁、实际工作与局部作用，熔炉接入 `AdvancementRules` 的材料生产流程。共享建筑编号保持，新增八种枚举追加；混居不会改写建筑归属，也不绕过现场工作与物资运输。存档新增字段、枚举及物种数量参与版本 12 校验和完整确定续演。具体行为与用户批准的稀疏生态更新取舍见 [ADR-0022](decisions/0022-geography-races-and-food-web.md)。
+`WorldEngine.RacialBuildings.cs` 处理当地种族解锁、实际工作与局部作用，熔炉接入 `ProductionRules` 的材料生产流程。共享建筑编号保持，新增八种枚举追加；混居不会改写建筑归属，也不绕过现场工作与物资运输。存档新增字段、枚举及物种数量参与版本 12 校验和完整确定续演。具体行为与用户批准的稀疏生态更新取舍见 [ADR-0022](decisions/0022-geography-races-and-food-web.md)。
 
 动物缓冲只覆盖当日区域及一格邻接边界，256×256 世界由三个 65,536×32 的 double 数组缩为最多 768×32 的区域缓冲；格式 15 加入补充通量与捕食容量后共有五个此类数组（主数值缓冲从旧全图方案的 48 MiB 降至 0.9375 MiB）。`WildlifePopulations.CopyTo` 一次复制字段，掩码遍历只访问存在的种群；猎物关系预计算。环境缓存按地形、饱和资源、肥力、供水、耕作、占地、干旱和火灾校验，动态猎物容量依然当日计算。繁殖／损耗按复评间隔调整并有上限；先扣捕食和死亡，再从幸存者预算中迁出，避免负数钳位凭空生成动物。分区完全由存档时间和地图尺寸推导，不增加需要保存的游标。性能与偶发运行时峰值见 [实测记录](performance.md)。
 
@@ -258,7 +258,7 @@ UI 编辑和绘制在修改之前等待分段异步的完整撤销快照；连�
 
 ## 格式 14：研究解锁与文明结果
 
-真实研究图与解锁元数据集中在 `ResearchRules`；生产原料和产出继续由 `AdvancementRules` 定义。文明结果是只读派生条件，不保存为知识或给予额外产量。公共服务的累计次数／时间、个人护甲、防护、冻结、射击冷却以及工具、药品、弹药进入必需保存状态和范围校验。
+真实研究图与解锁元数据集中在 `Advancement`，`ResearchRules` 建立路线与解锁索引；生产原料和产出继续由 `ProductionRules` 定义。文明结果是只读派生条件，不保存为知识或给予额外产量。公共服务的累计次数／时间、个人护甲、防护、冻结、射击冷却以及工具、药品、弹药进入必需保存状态和范围校验。
 
 研究服务通过既有目标、实际行走、个人领料与现场劳动执行；图书馆更新个人认知，勘测形成有时间的观察，不绕过机构递送。折跃明确移动本人及现有背包并扣个人费用；全局寻路仍不假定门可作为自动路线。
 
@@ -299,3 +299,10 @@ UI 编辑和绘制在修改之前等待分段异步的完整撤销快照；连�
 ## 格式 17：清理无现行用途的状态
 
 `ResearchKind` 取消为错误帝国项目保留的两个空编号；数字只表示本版的研究，不承担旧概念的历史占位。`WorldState.TradeRoutes`、`Settlement.Petitions` 及其专用类型和校验删除，贸易继续由居民库存和目标驱动，制度继续使用 `Society.Reports`。旧 `Settlement.Level` 不再保存，列表显示 `Tier`，围城删除旧等级倍率。格式 17 与模拟版本 16 共同拒绝旧语义；不迁移旧格式，当前格式仍保持完整校验及确定续演。见 [ADR-0033](decisions/0033-remove-unfounded-constraints.md)。
+
+
+## 研究对象与生产配方（2026-10-07）
+
+按用户要求提高内聚，删除 `ResearchKind` 和独立的 `ResearchDefinition`，统一使用目录中的 `Advancement` 对象。`Prerequisites` 是 `ImmutableArray<Advancement>`；聚落已知知识、当前项目、路线和界面节点均引用同一目录对象。目录按前置依赖顺序初始化，研究元数据不再从生产规则复制，配方通过 `ProductionRecipe.Research` 读取研究条件。名称与说明由定义提供，资源目录及摘要格式化归属 `ResourceStock`。
+
+研究 `Id` 只用于保存、知识消息和热点位索引，`Key` 用于界面自动化与诊断。`AdvancementJsonConverter` 将研究保存为原有数字编号，读取时恢复目录对象，并拒绝未知编号及非整数载荷；已完成列表仍校验空项与重复项。当前 JSON 含义和编号没有改变，沿用格式 17／模拟版本 16。规划的编号排序、研究图拓扑顺序和基础工具等级贡献保留，后者通过显式属性表达，不再依赖枚举范围。

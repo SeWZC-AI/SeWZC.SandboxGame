@@ -119,8 +119,8 @@ public sealed partial class MainView
 
         var terrain = _engine.State.Tiles[y * _engine.State.Width + x].Terrain;
         var kind = terrain == TerrainType.Mountain ? BuildingKind.MountainPass
-            : terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Water
-                or TerrainType.Lake ? BuildingKind.Bridge : BuildingKind.Farm;
+            : terrain is TerrainType.Water or TerrainType.River or TerrainType.Lake or TerrainType.Stream
+                or TerrainType.LargeRiver ? BuildingKind.Bridge : BuildingKind.Farm;
         var panel = ModalPanel("安排居民改造地块", $"{WorldEngine.BuildingName(kind)}\n投入材料后，由居民到场施工；桥梁和山路完工后才可通行。");
         var town = ObjectField(panel, "负责聚落", towns.Select(t => (t.Id, t.Name)), towns[0].Id, "land-town");
         var bridgeOptions = new StackPanel { IsVisible = kind == BuildingKind.Bridge };

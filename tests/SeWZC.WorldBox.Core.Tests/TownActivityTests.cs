@@ -257,7 +257,7 @@ internal static class TownActivityTests
         var fish = e.State.Tiles[16 * 32 + 16];
         fish.Wildlife = WildlifeKind.Fish;
         fish.WildlifePopulation = 12;
-        e.GrantReceivedResearch(town.Id, ResearchKind.Logistics);
+        e.GrantReceivedResearch(town.Id, Advancement.Logistics);
         town.Resources.Boats = 1;
         person.X = person.FromX = town.X;
         person.Y = person.FromY = town.Y;

@@ -746,8 +746,8 @@ public sealed partial class MainView : UserControl
             _spotlightState = state;
             _spotlightRevision = revision;
             var candidates = state.Events.Where(e =>
-                e.Importance >= EventImportance.Notable && e.Kind is not (WorldEventKind.Editor or WorldEventKind.Policy
-                    or WorldEventKind.Magic or WorldEventKind.Culture));
+                e.Importance >= EventImportance.Notable && e.Kind is not (WorldEventKind.Editor or WorldEventKind.Culture
+                    or WorldEventKind.Policy or WorldEventKind.Magic));
             _spotlightGroup = WorldStories.Group(candidates)
                 .OrderByDescending(g => _watched.Count > 0 && g.Entries.Any(IsWatched))
                 .ThenByDescending(g => g.Latest.Tick).ThenByDescending(g => g.Latest.Id).FirstOrDefault();
@@ -1119,7 +1119,7 @@ public sealed partial class MainView : UserControl
         panel.Children.Add(focus);
         panel.Children.Add(Paragraph("科技优先工业与能源；法术传承依靠施法者与训练，不要求魔晶设施。魔法工艺与兼修路线才会自主建设魔晶生产链。"));
         var fields = new List<NumericUpDown>();
-        foreach (var kind in AdvancementRules.Resources)
+        foreach (var kind in ResourceStock.Kinds)
         {
             var value = nation.Resources.Get(kind);
             var input = Field(panel, ResourceStock.Name(kind), value, "nation-" + kind.ToString().ToLowerInvariant(),
@@ -1153,7 +1153,7 @@ public sealed partial class MainView : UserControl
         panel.Children.Add(Button("应用变更", async () =>
         {
             if (!CanSubmitEdit()) return;
-            var values = new double?[AdvancementRules.Resources.Count];
+            var values = new double?[ResourceStock.Kinds.Count];
             if (string.IsNullOrWhiteSpace(name.Text) || name.Text.Any(char.IsControl))
             {
                 SetStatus("请输入不含控制字符的国家名称");

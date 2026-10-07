@@ -217,7 +217,7 @@ public sealed partial class WorldEngine
         }
 
         var startMission = isLive && patch.Agent is not null &&
-                           candidate.Agent.Goal.Kind is AgentGoalKind.Trade or AgentGoalKind.DeliverMessage
+                           candidate.Agent.Goal.Kind is AgentGoalKind.DeliverMessage or AgentGoalKind.Trade
                                or AgentGoalKind.Petition
                            && (original.Agent.Goal.Kind != candidate.Agent.Goal.Kind ||
                                original.Agent.DestinationSettlementId != candidate.Agent.Goal.TargetSettlementId);

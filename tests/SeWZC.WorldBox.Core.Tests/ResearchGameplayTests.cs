@@ -50,8 +50,8 @@ internal static class ResearchGameplayTests
             Secession = false,
         }, false, true);
         var town = e.State.Settlements.Single();
-        foreach (var k in AdvancementRules.Resources) town.Resources.Set(k, 200);
-        foreach (var r in ResearchRules.All) e.GrantReceivedResearch(town.Id, r.Kind);
+        foreach (var k in ResourceStock.Kinds) town.Resources.Set(k, 200);
+        foreach (var r in ResearchRules.All) e.GrantReceivedResearch(town.Id, r);
         e.State.Tick = 100;
         var person = e.State.Residents.First();
         person.Age = 30;
@@ -218,7 +218,7 @@ internal static class ResearchGameplayTests
             !e.GetCivilizationProgress(town.Id, false).Achieved, "Unworked factories qualified");
         foreach (var b in facilities)
         {
-            var recipe = AdvancementRules.For(b.Kind);
+            var recipe = ProductionRules.For(b.Kind);
             if (recipe is null) continue;
             person.Inventory = recipe.Input.Copy();
             person.Mana = 100;
@@ -232,7 +232,7 @@ internal static class ResearchGameplayTests
         facilities[0].Enabled = false;
         Check(!e.GetCivilizationProgress(town.Id, false).Achieved, "Disabled infrastructure still qualified");
         facilities[0].Enabled = true;
-        e.State.Society.Research.Single().Completed.Remove(ResearchKind.Medicine);
+        e.State.Society.Research.Single().Completed.Remove(Advancement.Medicine);
         Check(!e.GetCivilizationProgress(town.Id, false).Achieved, "Incomplete route still qualified");
     }
 
@@ -254,7 +254,7 @@ internal static class ResearchGameplayTests
               && patient.SicknessTicks == 16 && patient.DiseaseImmuneUntilTick == 220 && b.ServiceActions == 1,
             "Treatment bypassed physical medicine or actual patient");
         e.State.Tick++;
-        e.State.Society.Research.Single().Completed.Remove(ResearchKind.Sanitation);
+        e.State.Society.Research.Single().Completed.Remove(Advancement.Sanitation);
         Check(!e.TryWorkAtBuilding(person), "Gifted hospital operated without local knowledge");
     }
 
@@ -337,9 +337,9 @@ internal static class ResearchGameplayTests
         var enemy = Enemy(e, p);
         Order(e, p, enemy);
         var research = e.State.Society.Research.First(r => r.SettlementId == town.Id);
-        research.Completed.Remove(ResearchKind.Elementalism);
+        research.Completed.Remove(Advancement.Elementalism);
         Check(!e.TryCastSpell(p.Id, SpellKind.FrostBolt, enemy.X, enemy.Y) && p.Mana == 100, "Locked spell spent mana");
-        e.GrantReceivedResearch(town.Id, ResearchKind.Elementalism);
+        e.GrantReceivedResearch(town.Id, Advancement.Elementalism);
         e.CastSpell(p.Id, SpellKind.FrostBolt, enemy.X, enemy.Y);
         Check(enemy.FrozenUntilTick == e.State.Tick + 6 && p.Mana == 76, "Frost did not freeze or charge");
         enemy.Agent.Goal = new AgentGoal
@@ -417,11 +417,11 @@ internal static class ResearchGameplayTests
         Check(tile.RoadLevel == 2 && town.Resources.Alloy == alloy - .5 && town.Resources.Stone == stone - 1
               && e.GetTerrainMoveCost(8, 8) < oldCost, "Rail was cosmetic or material-free");
         tile.RoadLevel = 1;
-        e.State.Society.Research.Single().Completed.Remove(ResearchKind.MechanicalEngineering);
+        e.State.Society.Research.Single().Completed.Remove(Advancement.MechanicalEngineering);
         var blocked = e.ExportJson();
         Reject(() => e.BuildRail(town.Id, 8, 8, 0));
         Check(e.ExportJson() == blocked, "Received rail knowledge bypassed its missing prerequisites");
-        e.GrantReceivedResearch(town.Id, ResearchKind.MechanicalEngineering);
+        e.GrantReceivedResearch(town.Id, Advancement.MechanicalEngineering);
         var b = Facility(e, town, BuildingKind.Hospital);
         b.Health = 40;
         p.Profession = Profession.Engineer;
@@ -452,7 +452,7 @@ internal static class ResearchGameplayTests
             "Current saves still contain unused trade, petition or settlement-level state");
         Check(resumed.State.Society.Research.Single().Completed.SequenceEqual(
                   e.State.Society.Research.Single().Completed)
-              && ResearchRules.All.All(r => resumed.HasResearch(town.Id, r.Kind)),
+              && ResearchRules.All.All(r => resumed.HasResearch(town.Id, r)),
             "Saved research changed meaning during restoration");
         bad["Residents"]![0]!["FrozenUntilTick"] = 10000;
         try

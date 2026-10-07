@@ -855,7 +855,7 @@ static void DeferredModalSubmissions()
         AwaitUi(() => pending.IsCompleted && Field<Task?>(view, "_prepareEditTask") is null,
             "Deferred research did not finish its capture boundary");
         var project = engine.State.Society.Research.Single(r => r.SettlementId == town.Id).ActiveProject;
-        ResearchKind? expected = leaveResearch ? null : ResearchKind.Agriculture;
+        Advancement? expected = leaveResearch ? null : Advancement.Agriculture;
         Assert(project == expected,
             leaveResearch
                 ? "Leaving the research page committed its abandoned project"
@@ -1270,7 +1270,7 @@ static void ResearchNavigationState()
         LayoutResearch();
         var restored = Control<ResearchGraphControl>(view, "research-graph");
         Assert(Field<int>(view, "_inspectorSettlementId") == engine.State.Settlements[0].Id
-               && Field<ResearchKind>(view, "_selectedResearch") == ResearchKind.EnergyRecycling
+               && Field<Advancement>(view, "_selectedResearch") == Advancement.EnergyRecycling
                && Field<ResearchRoute>(view, "_researchRoute") == ResearchRoute.Technology &&
                Field<ResearchBranch>(view, "_researchBranch") == ResearchBranch.Industry
                && Field<bool>(view, "_civilizationDetails"),
@@ -1318,9 +1318,9 @@ static void SpellContext()
     extra[2].Name = "未成年施法者";
     extra[2].Age = 8;
     extra[2].MagicTraining = 100;
-    engine.GrantReceivedResearch(town.Id, ResearchKind.ArcaneArts);
-    engine.GrantReceivedResearch(town.Id, ResearchKind.ManaAttunement);
-    engine.GrantReceivedResearch(town.Id, ResearchKind.Elementalism);
+    engine.GrantReceivedResearch(town.Id, Advancement.ArcaneArts);
+    engine.GrantReceivedResearch(town.Id, Advancement.ManaAttunement);
+    engine.GrantReceivedResearch(town.Id, Advancement.Elementalism);
     var view = View(engine);
     var before = engine.ExportJson();
     Call(view, "OpenResident", remote.Id);
@@ -1393,17 +1393,17 @@ static void AdvancedResearchUi()
     Assert(
         ResearchRules.All.All(r =>
             view.GetLogicalDescendants().OfType<Button>()
-                .Any(b => AutomationProperties.GetAutomationId(b) == "research-node-" + r.Kind)),
+                .Any(b => AutomationProperties.GetAutomationId(b) == "research-node-" + r.Key)),
         "Tree omits research branches");
     var graph = Control<ResearchGraphControl>(view, "research-graph");
 
-    void CheckGraph(IEnumerable<ResearchDefinition> definitions)
+    void CheckGraph(IEnumerable<Advancement> definitions)
     {
         var expected = definitions.ToArray();
         Assert(graph.Layout.Nodes.Count == expected.Length, "Displayed graph has the wrong nodes");
         Assert(
             graph.Layout.Edges.Select(e => (e.From, e.To)).ToHashSet()
-                .SetEquals(expected.SelectMany(d => d.Prerequisites.Select(p => (p, d.Kind)))),
+                .SetEquals(expected.SelectMany(d => d.Prerequisites.Select(p => (p, d)))),
             "Drawn connectors do not match the actual prerequisites");
         foreach (var (kind, rect) in graph.Layout.Nodes)
         {
@@ -1425,11 +1425,11 @@ static void AdvancedResearchUi()
     }
 
     var combinedEdges = graph.Layout.Edges.Select(e => (e.From, e.To)).ToHashSet();
-    CheckGraph(ResearchRules.All.Where(d => ResearchRules.Route(false).Contains(d.Kind)));
+    CheckGraph(ResearchRules.Route(false));
     Click(view, "research-route-magic");
-    CheckGraph(ResearchRules.All.Where(d => ResearchRules.Route(true).Contains(d.Kind)));
+    CheckGraph(ResearchRules.Route(true));
     combinedEdges.UnionWith(graph.Layout.Edges.Select(e => (e.From, e.To)));
-    Assert(combinedEdges.SetEquals(ResearchRules.All.SelectMany(d => d.Prerequisites.Select(p => (p, d.Kind)))),
+    Assert(combinedEdges.SetEquals(ResearchRules.All.SelectMany(d => d.Prerequisites.Select(p => (p, d)))),
         "Separate empire trees omit an actual dependency");
     Click(view, "research-route-common");
     CheckGraph(ResearchRules.All.Where(d => d.Shared));
@@ -1448,15 +1448,15 @@ static void AdvancedResearchUi()
     Click(view, "research-expand");
     Assert((Control<Button>(view, "inspector-expand").Content as TextBlock)?.Text == "收起",
         "Compact tree expansion left its header action stale");
-    engine.GrantReceivedResearch(town.Id, ResearchKind.Industry);
-    engine.GrantReceivedResearch(town.Id, ResearchKind.SignalNetwork);
+    engine.GrantReceivedResearch(town.Id, Advancement.Industry);
+    engine.GrantReceivedResearch(town.Id, Advancement.SignalNetwork);
     Call(view, "RefreshInspector", false);
     Assert(Control<TextBlock>(view, "research-requirements").Text?.Contains("前置知识与魔法规则已满足") == true,
         "Research requirements stayed stale after receiving prerequisite knowledge");
     Click(view, "research-start");
     Assert(
         engine.State.Society.Research.Single(r => r.SettlementId == town.Id).ActiveProject ==
-        ResearchKind.Electrification,
+        Advancement.Electrification,
         "Valid advanced research did not start through the ordinary UI");
 }
 
@@ -2354,7 +2354,7 @@ static (WorldEngine Engine, int ResidentId, Building Target) WorkingWorld(Profes
     if (profession == Profession.Scholar)
     {
         engine.GrantFacility(home.Id, BuildingKind.Academy, home.X + 2, home.Y);
-        engine.StartResearch(home.Id, ResearchKind.Agriculture);
+        engine.StartResearch(home.Id, Advancement.Agriculture);
     }
 
     if (profession == Profession.Mage) engine.GrantFacility(home.Id, BuildingKind.ArcaneSanctum, home.X + 2, home.Y);

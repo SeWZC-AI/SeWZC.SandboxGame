@@ -9,12 +9,12 @@ public sealed partial class WorldEngine
     {
         var person = State.Residents.FirstOrDefault(r => r.Id == residentId) ?? throw new ArgumentException("居民不存在");
         var unlock = ResearchRules.Unlocking(job) ?? throw new ArgumentException("此岗位不属于研究解锁职业");
-        if (!HasResearch(person.SettlementId, unlock.Kind) ||
+        if (!HasResearch(person.SettlementId, unlock) ||
             !HasResearchPrerequisites(person.SettlementId, unlock.Prerequisites))
             throw new InvalidOperationException("当地须掌握" + unlock.Name + "及其前置");
         if (person.Age < 14 || person.Health <= 0 || person.ArmyId != 0 || person.Agent.DestinationSettlementId != 0)
             throw new InvalidOperationException("只能分配当地未出征、未在异地递送的成年居民");
-        if (job is Profession.Gardener or Profession.Battlemage && person.MagicTalent < 25)
+        if (job is Profession.Battlemage or Profession.Gardener && person.MagicTalent < 25)
             throw new InvalidOperationException("此岗位需要魔法天赋至少 25");
         person.Profession = job;
         person.Agent.JobChangedTick = State.Tick;
@@ -31,7 +31,7 @@ public sealed partial class WorldEngine
         var person = State.Residents.FirstOrDefault(r => r.Id == residentId);
         var b = FindBuilding(buildingId);
         if (person is null || b is null || person.Health <= 0 || person.Age < 14 ||
-            person.Profession is not (Profession.Engineer or Profession.Firefighter or Profession.Builder)
+            person.Profession is not (Profession.Builder or Profession.Engineer or Profession.Firefighter)
             || !BuildingGroundOwned(b) || b.SettlementId != person.SettlementId ||
             Distance(person.X, person.Y, b.X, b.Y) > 1
             || State.Tick - person.MoveStartedTick < person.MoveDurationTicks || b.Health is <= 0 or >= 100 ||
@@ -52,9 +52,9 @@ public sealed partial class WorldEngine
     {
         _ = RequireTown(settlementId);
         var route = ResearchRules.Route(magic);
-        var missingResearch = route.Where(k => !HasResearch(settlementId, k)).Select(ResearchName).ToArray();
+        var missingResearch = route.Where(k => !HasResearch(settlementId, k)).Select(research => research.Name).ToArray();
         // 文明目标以实际生产链为依据，避免和平聚落被迫建造闲置军备或不适用本地地形的运输设施。
-        var required = AdvancementRules.All.Where(a => route.Contains(a.Research)
+        var required = ProductionRules.All.Where(a => route.Contains(a.Research)
                                                        && a.Output is not (ResourceKind.Medicine
                                                            or ResourceKind.Ammunition))
             .Select(a => a.Facility)
@@ -71,7 +71,7 @@ public sealed partial class WorldEngine
 
         var missingFacilities = required.Where(k => !buildings.Any(b => b.Kind == k && Ready(b))).Select(BuildingName)
             .ToArray();
-        var unproven = required.Where(k => AdvancementRules.For(k) is not null
+        var unproven = required.Where(k => ProductionRules.For(k) is not null
                                            && !buildings.Any(b => b.Kind == k && Ready(b) && b.ProductionBatches > 0))
             .Select(BuildingName).ToArray();
         return new CivilizationProgress(magic, route.Count - missingResearch.Length, route.Count,
@@ -140,7 +140,7 @@ public sealed partial class WorldEngine
         var caster = State.Residents.FirstOrDefault(r => r.Id == casterId);
         if (caster is null) return "施法居民不存在";
         var research = ResearchRules.Unlocking(spell);
-        return research is not null && (!HasResearch(caster.SettlementId, research.Kind)
+        return research is not null && (!HasResearch(caster.SettlementId, research)
                                         || !HasResearchPrerequisites(caster.SettlementId, research.Prerequisites))
             ? "当地需要掌握" + research.Name + "及其前置"
             : null;
@@ -154,8 +154,8 @@ public sealed partial class WorldEngine
     public void BuildRail(int settlementId, int x, int y, int radius = 1)
     {
         var town = RequireTown(settlementId);
-        if (!HasResearch(settlementId, ResearchKind.RailTransport)) throw new InvalidOperationException("需要先掌握轨道交通");
-        if (ResearchPrerequisiteError(settlementId, ResearchKind.RailTransport) is { } prerequisite)
+        if (!HasResearch(settlementId, Advancement.RailTransport)) throw new InvalidOperationException("需要先掌握轨道交通");
+        if (ResearchPrerequisiteError(settlementId, Advancement.RailTransport) is { } prerequisite)
             throw new InvalidOperationException(prerequisite);
         if (!InBounds(x, y) || radius is < 0 or > 4 || Distance(x, y, town.X, town.Y) > 24)
             throw new ArgumentException("铁路须位于聚落 24 格内，笔刷半径为 0–4");
@@ -179,8 +179,8 @@ public sealed partial class WorldEngine
     public string? RailPlacementError(int settlementId, int x, int y, int radius = 0)
     {
         if (!_settlements.TryGetValue(settlementId, out var town)) return "先选择负责铺轨的聚落";
-        if (!HasResearch(settlementId, ResearchKind.RailTransport)) return "需要先掌握轨道交通";
-        if (ResearchPrerequisiteError(settlementId, ResearchKind.RailTransport) is { } prerequisite)
+        if (!HasResearch(settlementId, Advancement.RailTransport)) return "需要先掌握轨道交通";
+        if (ResearchPrerequisiteError(settlementId, Advancement.RailTransport) is { } prerequisite)
             return prerequisite;
         if (!InBounds(x, y) || radius is < 0 or > 4 || Distance(x, y, town.X, town.Y) > 24) return "目标须在聚落 24 格内";
         var count = Circle(x, y, radius).Count(i => State.Tiles[i].NationId == town.NationId &&
@@ -195,8 +195,8 @@ public sealed partial class WorldEngine
     private string ExpansionFacilityStatus(Building b)
     {
         var unlock = ResearchRules.Unlocking(b.Kind)!;
-        if (!HasResearch(b.SettlementId, unlock.Kind) ||
-            ResearchPrerequisiteError(b.SettlementId, unlock.Kind) is not null) return "缺少本地研究：" + unlock.Name + "及其前置";
+        if (!HasResearch(b.SettlementId, unlock) ||
+            ResearchPrerequisiteError(b.SettlementId, unlock) is not null) return "缺少本地研究：" + unlock.Name + "及其前置";
         if (b.Kind == BuildingKind.Waygate)
         {
             var destinations = State.Society.Buildings.Count(other =>
@@ -246,8 +246,8 @@ public sealed partial class WorldEngine
     private bool GateReady(Building b)
     {
         return b.Enabled && b.IsCompleted && b.Health >= 50 && !b.IsUpgrading && BuildingGroundOwned(b)
-               && State.Tiles[Index(b.X, b.Y)].FireTicks == 0 && HasResearch(b.SettlementId, ResearchKind.SpatialMagic)
-               && ResearchPrerequisiteError(b.SettlementId, ResearchKind.SpatialMagic) is null;
+               && State.Tiles[Index(b.X, b.Y)].FireTicks == 0 && HasResearch(b.SettlementId, Advancement.SpatialMagic)
+               && ResearchPrerequisiteError(b.SettlementId, Advancement.SpatialMagic) is null;
     }
 
     /// <summary>消耗居民随身魔晶及魔力，使其从附近可用折跃门抵达指定目标门。</summary>
@@ -290,8 +290,8 @@ public sealed partial class WorldEngine
         var target = State.Residents.FirstOrDefault(r => r.Id == targetId);
         if (person is null || target is null || person.Health <= 0 || target.Health <= 0 || person.Age < 14 ||
             person.NationId == target.NationId) return "攻击者或目标无效";
-        if (person.Profession != Profession.Ranger || !HasResearch(person.SettlementId, ResearchKind.Ballistics) ||
-            ResearchPrerequisiteError(person.SettlementId, ResearchKind.Ballistics) is not null) return "需要掌握弹道学的游击射手";
+        if (person.Profession != Profession.Ranger || !HasResearch(person.SettlementId, Advancement.Ballistics) ||
+            ResearchPrerequisiteError(person.SettlementId, Advancement.Ballistics) is not null) return "需要掌握弹道学的游击射手";
         if (person.FrozenUntilTick > State.Tick || State.Tick - person.LastRangedAttackTick < 3) return "冻结中或射击尚未冷却";
         if (!IsKnownHostile(person, target.NationId)) return "本人未收到对目标国家的交战军令";
         if (Distance(person.X, person.Y, target.X, target.Y) > 4 ||
@@ -317,7 +317,7 @@ public sealed partial class WorldEngine
     private bool ExpansionFacilityHasWork(Building b, Resident person)
     {
         var research = ResearchRules.Unlocking(b.Kind);
-        if (research is null || !HasResearch(b.SettlementId, research.Kind) ||
+        if (research is null || !HasResearch(b.SettlementId, research) ||
             !HasResearchPrerequisites(b.SettlementId, research.Prerequisites)) return false;
         return b.Kind switch
         {
@@ -431,8 +431,8 @@ public sealed partial class WorldEngine
                 var project = State.Society.Research.First(r => r.SettlementId == town.Id);
                 if (project.Completed.Count == 0) break;
                 var knowledge = project.Completed[(int)(State.Tick / 12 % project.Completed.Count)];
-                var fact = MakeAgentFact(person, AgentFactKind.Research, town.Id, b.X, b.Y, (int)knowledge,
-                    "在图书馆研读当地已有的" + ResearchName(knowledge));
+                var fact = MakeAgentFact(person, AgentFactKind.Research, town.Id, b.X, b.Y, knowledge.Id,
+                    "在图书馆研读当地已有的" + knowledge.Name);
                 foreach (var pupil in State.Residents.Where(p =>
                              p.SettlementId == town.Id && p.Health > 0 && Distance(p.X, p.Y, b.X, b.Y) <= 2))
                     RememberAgentFact(pupil, fact);
@@ -515,7 +515,7 @@ public sealed partial class WorldEngine
 
     private void SurveyFromOffice(Building b, Resident person)
     {
-        var range = HasResearch(b.SettlementId, ResearchKind.Observation) ? 6 : 4;
+        var range = HasResearch(b.SettlementId, Advancement.Observation) ? 6 : 4;
         foreach (var town in State.Settlements)
             if (Distance(b.X, b.Y, town.X, town.Y) <= range && ClearSignalLine(b.X, b.Y, town.X, town.Y))
             {
@@ -556,13 +556,13 @@ public sealed partial class WorldEngine
     {
         return kind switch
         {
-            BuildingKind.MachineWorkshop => Profession.Engineer,
             BuildingKind.Hospital => Profession.Physician,
             BuildingKind.FireStation => Profession.Firefighter,
-            BuildingKind.Arsenal => Profession.Ranger,
             BuildingKind.Library => Profession.Archivist,
-            BuildingKind.StormSpire => Profession.Battlemage,
             BuildingKind.SurveyOffice => Profession.Surveyor,
+            BuildingKind.MachineWorkshop => Profession.Engineer,
+            BuildingKind.Arsenal => Profession.Ranger,
+            BuildingKind.StormSpire => Profession.Battlemage,
             BuildingKind.GroveSanctuary => Profession.Gardener,
             _ => null,
         };
@@ -632,7 +632,7 @@ public sealed partial class WorldEngine
         if (goal.Kind != AgentGoalKind.Work) return false;
         var b = FindBuilding(goal.TargetEntityId);
         if (b is null || b.Kind < BuildingKind.Reservoir || !b.IsCompleted || b.IsUpgrading ||
-            AdvancementRules.For(b.Kind) is not null) return false;
+            ProductionRules.For(b.Kind) is not null) return false;
         if (!ExpansionFacilityHasWork(b, person))
         {
             person.Agent.NextThinkTick = State.Tick;
@@ -682,11 +682,11 @@ public sealed partial class WorldEngine
         var minimum = b.Kind switch
         {
             BuildingKind.Hospital => .25,
+            BuildingKind.FireStation => 5.5,
             BuildingKind.Armory => 2d,
             BuildingKind.WardTower => .25,
             BuildingKind.StormSpire => .5,
             BuildingKind.GroveSanctuary => .75,
-            BuildingKind.FireStation => 5.5,
             _ => 0,
         };
         if (ExpansionSupply(b.Kind) is { } supply && person.Inventory.Get(supply.Kind) + .000001 < minimum)

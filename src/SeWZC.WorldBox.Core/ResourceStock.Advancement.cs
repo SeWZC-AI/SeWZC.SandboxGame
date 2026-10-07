@@ -58,7 +58,6 @@ public sealed partial class ResourceStock
     {
         return kind switch
         {
-            ResourceKind.Water => Water,
             ResourceKind.Food => Food,
             ResourceKind.Wood => Wood,
             ResourceKind.Stone => Stone,
@@ -71,6 +70,7 @@ public sealed partial class ResourceStock
             ResourceKind.RareEarth => RareEarth,
             ResourceKind.Boats => Boats,
             ResourceKind.Aircraft => Aircraft,
+            ResourceKind.Water => Water,
             ResourceKind.Tools => Tools,
             ResourceKind.Medicine => Medicine,
             ResourceKind.Ammunition => Ammunition,
@@ -85,7 +85,6 @@ public sealed partial class ResourceStock
     {
         switch (kind)
         {
-            case ResourceKind.Water: Water = value; break;
             case ResourceKind.Food: Food = value; break;
             case ResourceKind.Wood: Wood = value; break;
             case ResourceKind.Stone: Stone = value; break;
@@ -98,6 +97,7 @@ public sealed partial class ResourceStock
             case ResourceKind.RareEarth: RareEarth = value; break;
             case ResourceKind.Boats: Boats = value; break;
             case ResourceKind.Aircraft: Aircraft = value; break;
+            case ResourceKind.Water: Water = value; break;
             case ResourceKind.Tools: Tools = value; break;
             case ResourceKind.Medicine: Medicine = value; break;
             case ResourceKind.Ammunition: Ammunition = value; break;
@@ -135,7 +135,6 @@ public sealed partial class ResourceStock
     {
         return kind switch
         {
-            ResourceKind.Water => "饮水",
             ResourceKind.Food => "粮食",
             ResourceKind.Wood => "木材",
             ResourceKind.Stone => "石材",
@@ -148,10 +147,29 @@ public sealed partial class ResourceStock
             ResourceKind.RareEarth => "稀土",
             ResourceKind.Boats => "舟船",
             ResourceKind.Aircraft => "运输机",
+            ResourceKind.Water => "饮水",
             ResourceKind.Tools => "工具",
             ResourceKind.Medicine => "药品",
             ResourceKind.Ammunition => "弹药",
             _ => kind.ToString(),
         };
+    }
+    /// <summary>配方和库存查询使用的全部资源种类。</summary>
+    public static IReadOnlyList<ResourceKind> Kinds { get; } = Array.AsReadOnly(Enum.GetValues<ResourceKind>());
+
+    /// <summary>将资源数量格式化为摘要。</summary>
+    /// <param name="stock">配方或成本所需的资源数量。</param>
+    public static string Format(ResourceAmounts stock)
+    {
+        return string.Join("   ", Kinds.Where(k => stock.Get(k) > 0)
+            .Select(k => $"{ResourceStock.Name(k)} {stock.Get(k):0.#}"));
+    }
+
+    /// <summary>将库存中数量大于零的资源格式化为摘要。</summary>
+    /// <param name="stock">当前资源库存。</param>
+    public static string Format(ResourceStock stock)
+    {
+        return string.Join("   ", Kinds.Where(k => stock.Get(k) > 0)
+            .Select(k => $"{ResourceStock.Name(k)} {stock.Get(k):0.#}"));
     }
 }

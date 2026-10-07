@@ -35,16 +35,16 @@ public sealed partial class WorldMapControl
     {
         return kind switch
         {
-            BuildingKind.TownCenter => 0xFFF5EFCD,
             BuildingKind.Farm or BuildingKind.AutomatedFarm or BuildingKind.RunicGarden => 0xFF83D67B,
-            BuildingKind.Dock or BuildingKind.Shipyard or BuildingKind.Bridge or BuildingKind.MountainPass
-                or BuildingKind.Waystation or BuildingKind.Airfield => 0xFF65C8FA,
             BuildingKind.Academy or BuildingKind.SignalTower or BuildingKind.ArcaneSanctum or BuildingKind.Library
-                or BuildingKind.SurveyOffice or BuildingKind.WardTower or BuildingKind.StormSpire
-                or BuildingKind.Waygate or BuildingKind.AlchemyLab => 0xFFB99AFE,
-            BuildingKind.Housing or BuildingKind.Granary or BuildingKind.Well or BuildingKind.Market
-                or BuildingKind.Infirmary or BuildingKind.Watchtower or BuildingKind.Reservoir or BuildingKind.Hospital
+                or BuildingKind.SurveyOffice or BuildingKind.AlchemyLab or BuildingKind.WardTower
+                or BuildingKind.StormSpire or BuildingKind.Waygate => 0xFFB99AFE,
+            BuildingKind.Waystation or BuildingKind.MountainPass or BuildingKind.Bridge or BuildingKind.Dock
+                or BuildingKind.Airfield or BuildingKind.Shipyard => 0xFF65C8FA,
+            BuildingKind.Infirmary or BuildingKind.Well or BuildingKind.Granary or BuildingKind.Housing
+                or BuildingKind.Market or BuildingKind.Watchtower or BuildingKind.Reservoir or BuildingKind.Hospital
                 or BuildingKind.FireStation or BuildingKind.GroveSanctuary => 0xFF64DFCB,
+            BuildingKind.TownCenter => 0xFFF5EFCD,
             _ => 0xFFF6A86A,
         };
     }

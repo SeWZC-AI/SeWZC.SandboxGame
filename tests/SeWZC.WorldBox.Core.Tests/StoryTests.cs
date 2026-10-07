@@ -302,10 +302,10 @@ internal static class StoryTests
         Check(worker.History.Any(h => h.EventId == completed.Id), "Actual builder was absent from the story");
         Check(!engine.State.Residents[1].History.Any(h => h.EventId == completed.Id),
             "Uninvolved resident was credited");
-        engine.StartResearch(town.Id, ResearchKind.Agriculture);
+        engine.StartResearch(town.Id, Advancement.Agriculture);
         var research = engine.State.Society.Research.Single(r => r.SettlementId == town.Id);
         var start = research.Observation.StartEventId;
-        while (research.ActiveProject.HasValue)
+        while (research.ActiveProject is not null)
         {
             engine.Step();
             engine.TryWorkAtBuilding(worker);

@@ -60,14 +60,14 @@ internal static class DevelopmentDiagnostics
                 foreach (var town in engine.State.Settlements)
                 {
                     var project = engine.State.Society.Research.First(r => r.SettlementId == town.Id);
-                    if (project.ActiveProject.HasValue || !engine.State.Society.Buildings.Any(b =>
+                    if (project.ActiveProject is not null || !engine.State.Society.Buildings.Any(b =>
                             b.SettlementId == town.Id && b.Kind == BuildingKind.Academy && b.IsCompleted)) continue;
                     var candidate = targetRoute.Where(k => !engine.HasResearch(town.Id, k) &&
                                                            engine.ResearchPrerequisiteError(town.Id, k) is null
                                                            && WorldEngine.MissingResources(town.Resources,
                                                                WorldEngine.GetResearchCost(k)) is null)
-                        .Select(k => (ResearchKind?)k).FirstOrDefault();
-                    if (candidate.HasValue) engine.StartResearch(town.Id, candidate.Value);
+                        .FirstOrDefault();
+                    if (candidate is not null) engine.StartResearch(town.Id, candidate);
                 }
             }
 

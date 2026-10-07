@@ -84,7 +84,7 @@ public sealed partial class WorldEngine
         static bool StockValid(ResourceStock? stock)
         {
             return stock is not null &&
-                   AdvancementRules.Resources.All(kind => FiniteRange(stock.Get(kind), 1_000_000_000));
+                   ResourceStock.Kinds.All(kind => FiniteRange(stock.Get(kind), 1_000_000_000));
         }
 
         bool PositionValid(int x, int y)
@@ -190,11 +190,11 @@ public sealed partial class WorldEngine
             Require(Enum.IsDefined(tile!.Improvement) && FiniteRange(tile.Harvested, 1_000_000_000) &&
                     tile.LastHarvestTick >= 0 && tile.LastHarvestTick <= state.Tick
                     && FiniteRange(tile.DepositAmount, 1_000_000) && (tile.Deposit.HasValue
-                        ? DepositResearch(tile.Deposit.Value).HasValue
+                        ? DepositResearch(tile.Deposit.Value) is not null
                         : tile.DepositAmount == 0 && !tile.DepositDiscovered)
                     && (tile.Improvement != LandImprovement.MountainPass || tile.Terrain == TerrainType.Mountain)
-                    && (tile.Improvement != LandImprovement.Bridge || tile.Terrain is TerrainType.River
-                        or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Water or TerrainType.Lake),
+                    && (tile.Improvement != LandImprovement.Bridge || tile.Terrain is TerrainType.Water
+                        or TerrainType.River or TerrainType.Lake or TerrainType.Stream or TerrainType.LargeRiver),
                 "地块改造或矿藏状态无效。");
             Require(Enum.IsDefined(tile.Wildlife) && FiniteRange(tile.WildlifePopulation, 1000)
                                                   && (tile.Wildlife != WildlifeKind.None ||

@@ -23,8 +23,8 @@ public sealed partial class WorldEngine
     {
         return tier switch
         {
-            SettlementTier.City => "城",
             SettlementTier.Town => "镇",
+            SettlementTier.City => "城",
             _ => "村",
         };
     }
@@ -198,7 +198,7 @@ public sealed partial class WorldEngine
         if (town.Tier == SettlementTier.City) return text;
         return
             text + $"\n升{SettlementTierName(town.Tier + 1)}要求：人口 {town.Population}/{ExpansionPopulation(town.Tier)}\n"
-                 + "扩充材料：" + AdvancementRules.Stock(SettlementExpansionCost(town.Tier)) + "\n" +
+                 + "扩充材料：" + ResourceStock.Format(SettlementExpansionCost(town.Tier)) + "\n" +
                  (SettlementExpansionError(id) ?? "条件已满足，可投入扩充");
     }
 }

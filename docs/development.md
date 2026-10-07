@@ -54,7 +54,7 @@
 | 世界规则、发展与自主外交 | Core 中 `WorldEngine.Evolution.cs` | `EvolutionTests.cs`、`--evolution` 长程探查 |
 | 动物、局部冲突与死亡 | Core 中 `WorldEngine.Ecology.cs`、`WorldEngine.Conflicts.cs`、`WorldEngine.Mortality.cs`；UI 中 `MainView.Buildings.cs`、`WorldMapControl.Ecology.cs` | `EcologyAndConflictTests.cs`、Headless、桌面／触屏浏览器与五种子演化 |
 | 目标、知识与通信 | Core 中 `WorldEngine.Agents.cs`、`WorldEngine.Communication.cs` | [AgentBehaviorTests.cs](../tests/SeWZC.WorldBox.Core.Tests/AgentBehaviorTests.cs) |
-| 时代路线、配方与加工运输 | Core 中 `AdvancementRules.cs`、`WorldEngine.Advancement.cs`；UI 中 `MainView.Society.cs` | `AdvancementTests.cs`、`tests/browser/advancement.cjs` |
+| 时代路线、配方与加工运输 | Core 中 `Advancement.Catalog.cs`、`ProductionRules.cs`、`WorldEngine.Advancement.cs`；UI 中 `MainView.Society.cs` | `AdvancementTests.cs`、`tests/browser/advancement.cjs` |
 | 地块改造、矿藏与载具 | Core 中 `WorldEngine.Land.cs`、`WorldEngine.Transport.cs`、`Tile.Land.cs`、`Resident.cs`；UI 中 `MainView.Selection.cs`、`WorldMapControl.Transport.cs` | `LandTransportTests.cs`、`tests/browser/land.cjs` |
 | 制度、文化、研究、建设与魔法 | Core 中 `WorldEngine.Society.cs`、`SocietyState.cs`、`CultureDefinition.cs`、`SettlementResearch.cs`、`TerrainRules.cs` | [SocietyBehaviorTests.cs](../tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs) |
 | 科技树的节点、连线与视野 | UI 中 `MainView.Research.cs`、`Controls/ResearchTreeLayout.cs`、`Controls/ResearchGraphControl.cs` | `AdvancedResearchUi`、`tests/browser/research-trees.cjs` |
@@ -69,11 +69,13 @@
 
 代码注释使用中文。类型注释先说明它是什么，只有理解职责确有需要时才补充用途，不罗列字段或所有行为。成员注释说明语义和必要的设计原因，避免复述显而易见的实现或夹带无关说明。公开及受保护的类型、构造函数、方法、属性、字段、事件和枚举成员必须提供 XML 文档注释；位置式 record 用 `<param>` 说明自动生成的属性。实现接口或重写框架成员可用 `<inheritdoc />` 继承契约。构建生成 XML 文档，并将缺失公开 API 注释的 `CS1591` 视为错误。
 
+按用户的代码质量要求，延续人工提交的展开参数、明确类型归属和简洁注释风格；变量用常见、能说明用途的名称，复杂流程避免用单字母代替业务含义。枚举 `switch` 分支及同组成员按声明顺序排列；条件重叠、范围匹配和跳转仍以原有匹配语义为先。
+
 ### 强类型与不可变边界
 
 按本轮用户决定，行为分派优先使用带明确参数的对象及多态方法，减少散落的枚举分支；显示名称、按钮文案和自动化标识不参与业务判别。地图工具与工具分类采用缓存的对象，研究分支、路线和解锁操作使用各自的类型。新增工具应在工具类型中实现校验、预览及执行，不能重新引入 `build:` 字符串解析。
 
-规则目录封装为只读目录，研究前置和解锁集合在构造时保存为 `ImmutableArray`，避免调用者持有的数组或集合修改共享规则；前置校验直接遍历只读 span，输入遍历使用结构体枚举器，避免逐次枚举及捕获委托分配。配方原料与费用使用 `ResourceAmounts`：定长字段、`init` 属性和直接查询；需要编辑或缩放费用时显式创建独立的 `ResourceStock`。模拟库存仍原地更新，避免每次采集或消费创建新对象。集合封装只在目录或布局初始化时发生；热点改动须检查分配和代表性负载，再决定是否需要自定义不可变集合。
+规则目录封装为只读目录，研究前置直接引用 `Advancement` 对象，前置和解锁集合在构造时保存为 `ImmutableArray`，避免调用者持有的数组或集合修改共享规则；前置校验直接遍历只读 span，输入遍历使用结构体枚举器，避免逐次枚举及捕获委托分配。配方原料与费用使用 `ResourceAmounts`：定长字段、`init` 属性和直接查询；需要编辑或缩放费用时显式创建独立的 `ResourceStock`。模拟库存仍原地更新，避免每次采集或消费创建新对象。集合封装只在目录或布局初始化时发生；热点改动须检查分配和代表性负载，再决定是否需要自定义不可变集合。
 
 构造后不再赋值的命令参数优先使用 `init`，不可缺少的参数使用 `required` 或强制构造参数。不能把有合法默认值的存档字段一律标为 `required`；仍须遵守安全零值及源生成序列化约束。`ResidentEdit` 的属性在初始化后不可替换，包含的心智与历史编辑草稿仍由提交时的复制和校验隔离。紧凑的持久化编号及已验证的模拟热点枚举保留，避免为每格、每条知识或每次资源查询新增对象。
 
@@ -195,7 +197,7 @@ dotnet run --project tests/SeWZC.WorldBox.Core.Tests -c Release --no-build -- --
 
 ### 帝国研究与存档模拟
 
-研究图、说明、成本和前置统一维护在 `ResearchRules.cs`，每批生产配方仍由 `AdvancementRules.cs` 负责。新增知识的效果需进入实际采收、生产、训练等规则及对应效果展示，不能只新增界面节点。矿工材料目标是保存状态；生产预算缓存只在居民阶段存在，退出阶段必须清空。
+研究图、说明、成本和对象前置统一维护在 `Advancement` 及其 `Catalog` 分部，`ResearchRules` 负责路线和解锁索引，每批生产配方由 `ProductionRecipe` 与 `ProductionRules` 负责。新增知识的效果需进入实际采收、生产、训练等规则及对应效果展示，不能只新增界面节点。矿工材料目标是保存状态；生产预算缓存只在居民阶段存在，退出阶段必须清空。
 
 科技树布局只属于 UI。节点位置与每条实际依赖的线路由 `ResearchTreeLayout` 生成；`ResearchGraphControl` 保留拖动、缩放与定位，周期刷新不替换节点或复位视野。Headless 检查两条研究树与共同基础的连接覆盖、节点重叠、线路穿越和终点不绕外围；浏览器 `research-trees.cjs` 使用交付 ZIP 中的真实存档，检查节点上的鼠标／真实触摸横向与纵向拖动、缩放、完整概览与存档不变性。触屏回归须固定同一手势的触点编号，可用 `WORLDBOX_RESEARCH_CASES=technology-mobile,magic-mobile` 聚焦失败场景；默认执行桌面／触屏共四个场景。核心规则未变的图形修正无需重跑帝国模拟。
 

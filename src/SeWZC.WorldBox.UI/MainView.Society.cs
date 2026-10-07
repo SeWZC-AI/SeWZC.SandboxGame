@@ -314,7 +314,7 @@ public sealed partial class MainView
             panel.Children.Add(Text("进阶生产\n配方与阻碍", 12, Mint));
             LiveRows(panel,
                 () => _engine.State.Society.Buildings
-                    .Where(b => b.SettlementId == town.Id && AdvancementRules.For(b.Kind) is not null)
+                    .Where(b => b.SettlementId == town.Id && ProductionRules.For(b.Kind) is not null)
                     .OrderBy(b => b.Id),
                 b => b.Id.ToString(),
                 b => WorldEngine.BuildingName(b.Kind) + "\n" + WorldEngine.ProductionRecipe(b.Kind) + "\n" +
@@ -393,10 +393,10 @@ public sealed partial class MainView
                     "施工材料：" + StockLabel(WorldEngine.FacilityCost(kind,
                                 kind == BuildingKind.Bridge ? Integer(level) : 1))
                             + (WorldEngine.IsWaterfrontBuilding(kind) ? "须建在紧邻自然陆岸的水域。" : "")
-                            + "\n" + (AdvancementRules.For(kind) is { } a
-                                ? "运营需要：" + WorldEngine.ResearchName(a.Research) + "及其前置\n"
+                            + "\n" + (ProductionRules.For(kind) is { } a
+                                ? "运营需要：" + a.Research.Name + "及其前置\n"
                                 : "")
-                            + (kind is BuildingKind.Waystation or BuildingKind.Bridge or BuildingKind.MountainPass
+                            + (kind is BuildingKind.Waystation or BuildingKind.MountainPass or BuildingKind.Bridge
                                     or BuildingKind.Dock ? "建设知识：驿路运输。\n"
                                 : kind == BuildingKind.ArcaneSanctum ? "建设知识：奥术基础，且须开启魔法发展。\n" : "")
                             + (WorldEngine.BuildingRace(kind) is { } race

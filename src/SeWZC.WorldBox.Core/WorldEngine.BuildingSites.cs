@@ -52,15 +52,15 @@ public sealed partial class WorldEngine
         {
             BuildingKind.Farm or BuildingKind.AutomatedFarm or BuildingKind.RunicGarden =>
                 $"当地粮食库存 {town.Resources.Food:0.#}，为 {town.Population} 名居民增加粮食供给",
-            BuildingKind.Housing => $"人口 {town.Population}，住房容量 {GetHousingCapacity(town.Id)}，补充居住空间",
-            BuildingKind.Academy => "提供推进当地发展路线所需的研究岗位",
             BuildingKind.Workshop or BuildingKind.LumberCamp or BuildingKind.Quarry or BuildingKind.MiningHall =>
                 "利用已观察到的木石矿来源，为当地建设与研究采集材料",
-            BuildingKind.Well => $"当地存水 {town.Resources.Water:0.#}，集中收集地块实际供水",
+            BuildingKind.Academy => "提供推进当地发展路线所需的研究岗位",
             BuildingKind.Dock or BuildingKind.Shipyard => "利用已观察到的近岸水域，支持舟船运输与捕鱼",
+            BuildingKind.Well => $"当地存水 {town.Resources.Water:0.#}，集中收集地块实际供水",
+            BuildingKind.Housing => $"人口 {town.Population}，住房容量 {GetHousingCapacity(town.Id)}，补充居住空间",
             BuildingKind.HuntingCamp => "利用眼前可食动物补充食物",
-            _ => AdvancementRules.For(kind) is { } recipe
-                ? $"已掌握{ResearchName(recipe.Research)}，建立{ResourceStock.Name(recipe.Output)}生产岗位"
+            _ => ProductionRules.For(kind) is { } recipe
+                ? $"已掌握{recipe.Research.Name}，建立{ResourceStock.Name(recipe.Output)}生产岗位"
                 : BuildingDescription(kind),
         };
     }
@@ -99,7 +99,7 @@ public sealed partial class WorldEngine
     /// <param name="kind">设施类别。</param>
     public static bool IsPublicInfrastructure(BuildingKind kind)
     {
-        return kind is BuildingKind.Bridge or BuildingKind.MountainPass;
+        return kind is BuildingKind.MountainPass or BuildingKind.Bridge;
     }
 
     private static bool IsMaterialFacility(BuildingKind kind)
@@ -141,13 +141,13 @@ public sealed partial class WorldEngine
         }
 
         if (kind is BuildingKind.SignalTower or BuildingKind.Watchtower)
-            score += tile.Terrain is TerrainType.Hills or TerrainType.Mountain ? 5 : 0;
+            score += tile.Terrain is TerrainType.Mountain or TerrainType.Hills ? 5 : 0;
         if (kind == BuildingKind.ArcaneSanctum) score += TerrainRules.For(tile.Terrain).ManaRate * 4;
         foreach (var building in State.Society.Buildings)
         {
             var distance = Distance(x, y, building.X, building.Y);
             if (distance <= 2) score -= distance == 1 ? 4 : 1;
-            if (kind is BuildingKind.Market or BuildingKind.Granary or BuildingKind.Infirmary && distance <= 4)
+            if (kind is BuildingKind.Infirmary or BuildingKind.Granary or BuildingKind.Market && distance <= 4)
                 score += 1.5;
         }
 
@@ -178,7 +178,7 @@ public sealed partial class WorldEngine
 
     private bool PassiveFacility(Building building)
     {
-        return building.Kind is BuildingKind.Housing or BuildingKind.Granary or BuildingKind.Watchtower;
+        return building.Kind is BuildingKind.Granary or BuildingKind.Housing or BuildingKind.Watchtower;
     }
 
     /// <summary>计算本地基础住房与正在运营的住宅提供的总容量。</summary>

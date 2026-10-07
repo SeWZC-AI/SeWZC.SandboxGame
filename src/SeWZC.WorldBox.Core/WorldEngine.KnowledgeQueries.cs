@@ -14,8 +14,8 @@ public sealed partial class WorldEngine
         {
             var mask = 0UL;
             foreach (var kind in research.Completed)
-                if ((uint)kind < 64)
-                    mask |= 1UL << (int)kind;
+                if ((uint)kind.Id < 64)
+                    mask |= 1UL << kind.Id;
             _knowledgeByTown[research.SettlementId] = mask;
         }
 

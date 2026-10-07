@@ -132,7 +132,7 @@ public sealed partial class MainView
 
         if (_engine.State.Society.Buildings.Any(b => b.Kind == BuildingKind.Waygate))
             panel.Children.Add(Named(Button("使用折跃门", ShowWaygateEditor), "resident-waygate"));
-        if (person.Profession is Profession.Engineer or Profession.Firefighter or Profession.Builder)
+        if (person.Profession is Profession.Builder or Profession.Engineer or Profession.Firefighter)
         {
             panel.Children.Add(Named(Button("修复近处设施", () =>
             {

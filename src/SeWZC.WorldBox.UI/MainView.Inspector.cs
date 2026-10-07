@@ -271,7 +271,7 @@ public sealed partial class MainView
 
     private static string StockLabel(ResourceStock stock)
     {
-        return AdvancementRules.Stock(stock) is { Length: > 0 } text ? text : "暂无库存";
+        return ResourceStock.Format(stock) is { Length: > 0 } text ? text : "暂无库存";
     }
 
     private void BuildOverview(StackPanel panel)
@@ -699,12 +699,6 @@ public sealed partial class MainView
     {
         return value switch
         {
-            AgentGoalKind.ExtinguishFire => "用水扑救火灾",
-            AgentGoalKind.ClaimLand => "占领地块",
-            AgentGoalKind.FetchWater => "打水或寻找水源",
-            AgentGoalKind.Hunt => "狩猎",
-            AgentGoalKind.Fish => "捕鱼",
-            AgentGoalKind.Explore => "实地探索",
             AgentGoalKind.Idle => "重新选择任务",
             AgentGoalKind.Eat => "寻找食物",
             AgentGoalKind.Gather => "采集资源",
@@ -719,6 +713,12 @@ public sealed partial class MainView
             AgentGoalKind.TrainMagic => "魔法训练",
             AgentGoalKind.March => "执行军令",
             AgentGoalKind.Migrate => "迁往新家园",
+            AgentGoalKind.Explore => "实地探索",
+            AgentGoalKind.ClaimLand => "占领地块",
+            AgentGoalKind.FetchWater => "打水或寻找水源",
+            AgentGoalKind.Hunt => "狩猎",
+            AgentGoalKind.Fish => "捕鱼",
+            AgentGoalKind.ExtinguishFire => "用水扑救火灾",
             _ => "返回家园",
         };
     }

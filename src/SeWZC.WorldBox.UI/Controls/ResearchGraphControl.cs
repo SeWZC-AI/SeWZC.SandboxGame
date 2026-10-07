@@ -15,7 +15,7 @@ public sealed class ResearchGraphControl : UserControl
 {
     private readonly Connections _connections;
     private readonly List<TextBlock> _laneLabels = [];
-    private readonly Dictionary<ResearchKind, Button> _nodes;
+    private readonly Dictionary<Advancement, Button> _nodes;
     private readonly ScrollViewer _scroll;
     private readonly Canvas _surface = new();
     private bool _dragging;
@@ -24,10 +24,10 @@ public sealed class ResearchGraphControl : UserControl
 
     /// <summary>创建研究树视图，并将提供的节点按钮加入画布。</summary>
     /// <param name="nodes">以研究类别索引的节点按钮，供视图布局和显示。</param>
-    public ResearchGraphControl(Dictionary<ResearchKind, Button> nodes)
+    public ResearchGraphControl(Dictionary<Advancement, Button> nodes)
     {
         _nodes = nodes;
-        Layout = new ResearchTreeLayout(ResearchRules.All.Where(d => ResearchRules.Route(false).Contains(d.Kind)));
+        Layout = new ResearchTreeLayout(ResearchRules.Route(false));
         _connections = new Connections(this) { IsHitTestVisible = false };
         _surface.Children.Add(_connections);
         foreach (var node in nodes.Values) _surface.Children.Add(node);
@@ -63,13 +63,13 @@ public sealed class ResearchGraphControl : UserControl
     public Vector Offset => _scroll.Offset;
 
     /// <summary>当前选中并高亮前置路径的研究。</summary>
-    public ResearchKind Selected { get; set; }
+    public Advancement Selected { get; set; } = Advancement.Agriculture;
 
     /// <summary>是否高亮所有递归前置，关闭时只高亮直接前置。</summary>
     public bool ShowFullPath { get; set; }
 
     /// <summary>查询各研究是否已完成的回调，用于连接线着色。</summary>
-    public Func<ResearchKind, bool> IsCompleted { get; set; } = _ => false;
+    public Func<Advancement, bool> IsCompleted { get; set; } = _ => false;
 
     /// <summary>捕获当前缩放、滚动位置和前置路径显示设置。</summary>
     public ViewportState CaptureViewport()
@@ -96,7 +96,7 @@ public sealed class ResearchGraphControl : UserControl
 
     /// <summary>重新布局指定研究路线，并将滚动位置移回起点。</summary>
     /// <param name="definitions">本次显示路线的非空研究定义集合。</param>
-    public void ShowRoute(IEnumerable<ResearchDefinition> definitions)
+    public void ShowRoute(IEnumerable<Advancement> definitions)
     {
         Layout = new ResearchTreeLayout(definitions);
         ApplyGeometry();
@@ -123,7 +123,7 @@ public sealed class ResearchGraphControl : UserControl
 
     /// <summary>将当前路线中的指定研究节点移到视口中心。</summary>
     /// <param name="kind">希望居中显示的研究节点。</param>
-    public void Focus(ResearchKind kind)
+    public void Focus(Advancement kind)
     {
         if (!Layout.Nodes.TryGetValue(kind, out var bounds)) return;
         _scroll.Offset = new Vector(bounds.Center.X * Zoom - _scroll.Viewport.Width / 2,
@@ -222,19 +222,19 @@ public sealed class ResearchGraphControl : UserControl
 
         public override void Render(DrawingContext context)
         {
-            var ancestors = new HashSet<ResearchKind>();
+            var ancestors = new HashSet<Advancement>();
 
-            void Visit(ResearchKind kind)
+            void Visit(Advancement kind)
             {
                 if (!ancestors.Add(kind)) return;
-                foreach (var p in ResearchRules.For(kind).Prerequisites) Visit(p);
+                foreach (var p in kind.Prerequisites) Visit(p);
             }
 
             if (owner.ShowFullPath) Visit(owner.Selected);
             else
             {
                 ancestors.Add(owner.Selected);
-                foreach (var p in ResearchRules.For(owner.Selected).Prerequisites) ancestors.Add(p);
+                foreach (var p in owner.Selected.Prerequisites) ancestors.Add(p);
             }
 
             using var scale = context.PushTransform(Matrix.CreateScale(owner.Zoom, owner.Zoom));
@@ -251,7 +251,7 @@ public sealed class ResearchGraphControl : UserControl
                     : edge.To == owner.Selected;
                 var brush = selected ? Path
                     : owner.IsCompleted(edge.From) && owner.IsCompleted(edge.To) ? Done
-                    : ResearchRules.For(edge.To).Magic ? Magic : Locked;
+                    : edge.To.Magic ? Magic : Locked;
                 var pen = new Pen(brush, selected ? 2.4 : 1.6);
                 var geometry = new StreamGeometry();
                 using (var path = geometry.Open())
