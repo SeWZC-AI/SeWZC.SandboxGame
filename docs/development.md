@@ -2,6 +2,29 @@
 
 本指南说明如何接续实现，适用于人工和 AI。产品目标见 [产品约定](product.md)，模块关系见 [架构说明](architecture.md)，重要取舍见 [设计决策](decisions/README.md)。这些约定用于减少重复排查与行为倒退，可在有新需求或证据时更新。
 
+## 本地运行
+
+使用 [global.json](../global.json) 指定的 **.NET SDK**。命令均在仓库根目录执行，Avalonia 依赖由项目自动还原。
+
+### 桌面版
+
+```bash
+dotnet run --project src/SeWZC.WorldBox.Desktop
+```
+
+Linux 桌面版需要图形会话与 Avalonia 所需的系统图形库。
+
+### 浏览器版
+
+先安装 WebAssembly 工作负载，再启动开发服务：
+
+```bash
+dotnet workload install wasm-tools
+dotnet run --project src/SeWZC.WorldBox.Browser
+```
+
+打开终端显示的本地 HTTP 地址。生成静态站点和部署到 GitHub Pages 的步骤见 [部署指南](deployment.md)。
+
 ## 从一个可验证的改动开始
 
 1. 查看分支、未提交修改和相关文档，使用 `rg` 定位实现及测试；保留他人工作。
@@ -124,7 +147,7 @@
 
 ### 检查范围
 
-安装与启动命令统一维护在 [项目 README](../README.md#开发环境)，完整发布和浏览器复现步骤见 [验证记录](verification.md#复现命令)。以下是范围选择，不要求每次无关改动都重复全部压力测试。
+安装与启动命令见 [本地运行](#本地运行)，静态发布步骤见 [部署指南](deployment.md)，完整检查与浏览器复现步骤见 [验证记录](verification.md#复现命令)。以下是范围选择，不要求每次无关改动都重复全部压力测试。
 
 | 改动范围 | 应执行的检查 |
 | --- | --- |
