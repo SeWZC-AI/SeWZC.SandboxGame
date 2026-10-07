@@ -145,9 +145,17 @@ public sealed partial class WorldMapControl
         }
         else if (Overlay == 2)
         {
-            foreach (var resident in state.Residents.Where(r => r.Agent.DestinationSettlementId != 0))
-                context.DrawEllipse(null, CargoOverlayPen, ResidentMapPosition(resident.Id, resident.X, resident.Y), 6,
-                    6);
+            _residentMarkers.Clear();
+            foreach (var resident in VisibleResidents(state))
+            {
+                if (resident.Agent.DestinationSettlementId == 0)
+                    continue;
+                var point = ResidentMapPosition(resident.Id, resident.X, resident.Y);
+                var screen = ToScreen(point.X, point.Y);
+                if (_residentMarkers.Add(((int)Math.Floor(screen.X / 6), (int)Math.Floor(screen.Y / 6))) ||
+                    resident.Id == SelectedResidentId)
+                    context.DrawEllipse(null, CargoOverlayPen, point, 6, 6);
+            }
         }
         else if (Overlay == 3)
         {

@@ -15,12 +15,17 @@ public sealed partial class WorldMapControl
 
     private void DrawVehicles(DrawingContext context, WorldState state)
     {
+        _residentMarkers.Clear();
         foreach (var person in VisibleResidents(state))
         {
-            if (!ShowVehicle(person) || (_zoom >= 3 && person.TravelMode != TravelMode.Aircraft))
+            if (!ShowVehicle(person) || (Detail.ResidentSprites && person.TravelMode != TravelMode.Aircraft))
                 continue;
             var point = ResidentMapPosition(person.Id, person.X, person.Y);
             if (!Visible(new Rect(point.X - 6, point.Y - 6, 12, 12)))
+                continue;
+            var screen = ToScreen(point.X, point.Y);
+            if (!_residentMarkers.Add(((int)Math.Floor(screen.X / 4), (int)Math.Floor(screen.Y / 4))) &&
+                person.Id != SelectedResidentId)
                 continue;
             DrawVehicle(context, person, point);
         }

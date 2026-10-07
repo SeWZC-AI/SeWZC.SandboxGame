@@ -78,7 +78,7 @@ public sealed partial class WorldMapControl
                 context.DrawImage(BuildingIcon(race, building.Kind), bounds);
         }
 
-        if (_zoom >= 3 && (!building.IsCompleted || building.IsUpgrading || building.Health < 100))
+        if (Detail.ResidentSprites && (!building.IsCompleted || building.IsUpgrading || building.Health < 100))
         {
             var fraction = building.IsUpgrading ? building.UpgradeProgress / Math.Max(1, building.UpgradeRequired) :
                 building.IsCompleted ? building.Health / 100 :

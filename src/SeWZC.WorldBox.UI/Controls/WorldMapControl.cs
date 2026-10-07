@@ -49,11 +49,19 @@ public sealed partial class WorldMapControl : Control
     private readonly Dictionary<IPointer, Point> _touches = [];
 
     private readonly List<Resident> _visibleResidents = [];
+    private readonly MapResidentIndex _residentIndex = new();
+    private readonly HashSet<(int X, int Y)> _residentMarkers = [];
+    private ImmutableVector<Resident>? _visibleResidentSnapshot;
+    private ImmutableVector<Tile>? _chunkTileSnapshot;
+    private ImmutableVector<Nation>? _chunkNationSnapshot;
+    private long _tileRevision;
+    private long _nationRevision;
     private MapTool _activeTool = MapTool.Inspect;
     private WorldEngine? _cachedEngine;
+    private ImmutableVector<Building>? _activityBuildingSnapshot;
+    private ImmutableVector<Settlement>? _labelSettlementSnapshot;
     private bool _cameraReady;
 
-    private long _chunkRefreshTick = -1;
     private (int Left, int Right, int Top, int Bottom) _chunkViewport;
     private bool _dragging;
     private WorldEngine? _engine;
@@ -73,8 +81,9 @@ public sealed partial class WorldMapControl : Control
     private int _scaleLabelTiles;
     private (int X, int Y)? _selection;
     private bool _showBorders = true;
-    private long _visibleResidentTick = -1;
     private double _zoom = 0.4;
+
+    private MapDetailLevel Detail => new(TilePixels * _zoom);
 
     /// <summary>初始化世界地图控件。</summary>
     public WorldMapControl()
@@ -244,22 +253,26 @@ public sealed partial class WorldMapControl : Control
 
         if (resetCamera || !_cameraReady)
             FitWorld();
-        _chunkRefreshTick = -1;
-        _ecologyDirty = true;
-        _visibleResidentTick = -1;
-        _sceneBuildingsDirty = true;
-        RebuildChangedChunks();
-        _labelSettlements = Engine.State.Settlements.OrderByDescending(settlement => settlement.Population).ToArray();
+        var state = Engine.State;
+        if (!ReferenceEquals(_labelSettlementSnapshot, state.Settlements))
+        {
+            _labelSettlementSnapshot = state.Settlements;
+            _labelSettlements = state.Settlements.OrderByDescending(settlement => settlement.Population).ToArray();
+        }
         _relayOverlayDirty = true;
-        _activityBuildings.Clear();
-        foreach (var building in Engine.State.Society.Buildings)
-            _activityBuildings[building.Id] = building;
+        if (!ReferenceEquals(_activityBuildingSnapshot, state.Society.Buildings))
+        {
+            _activityBuildingSnapshot = state.Society.Buildings;
+            _activityBuildings.Clear();
+            foreach (var building in state.Society.Buildings)
+                _activityBuildings[building.Id] = building;
+        }
         CaptureArchitecture(Engine.State);
         CaptureEffects();
         CaptureSelectedRoute();
         CaptureMotionSnapshots();
         // 五倍近景已有动画帧待执行时合并模拟刷新；编辑、停表及静止场景仍立即绘制。
-        if (!deferAnimation || resetCamera || _zoom < 3 || IsSimulationPaused || !_framePending)
+        if (!deferAnimation || resetCamera || !Detail.ResidentSprites || IsSimulationPaused || !_framePending)
             InvalidateVisual();
     }
 
@@ -332,7 +345,8 @@ public sealed partial class WorldMapControl : Control
         RenderedRouteSegmentCount = 0;
         FollowResident(_renderMotionTime);
         RebuildChangedChunks();
-        if (_residentGeometryDirty || _geometryZoom != _zoom || _geometryOrigin != _origin)
+        if (_residentGeometryDirty || _geometryZoom != _zoom || _geometryOrigin != _origin ||
+            (_geometryMotionTime != _renderMotionTime && HasMovingResidents(_geometryMotionTime)))
             RebuildResidents();
         using (context.PushClip(new Rect(Bounds.Size)))
         {
@@ -353,15 +367,15 @@ public sealed partial class WorldMapControl : Control
                 foreach (var settlement in state.Settlements)
                     if (Visible(new Rect(settlement.X * TilePixels - 28, settlement.Y * TilePixels - 28, 56, 56)))
                         DrawSettlement(context, settlement);
-                if (_zoom < 3)
+                if (!Detail.ResidentSprites)
                     DrawBuildings(context, state);
                 DrawMapOverlay(context, state);
-                for (var race = 0; _zoom < 3 && race < _residents.Length; race++)
+                for (var race = 0; !Detail.ResidentSprites && race < _residents.Length; race++)
                     if (_residents[race] is { } body)
                         context.DrawGeometry(ResidentBrushes[race], null, body);
-                if (_zoom >= .7 && _zoom < 3 && _heads is not null)
+                if (Detail.ResidentHeads && !Detail.ResidentSprites && _heads is not null)
                     context.DrawGeometry(HeadBrush, null, _heads);
-                if (_zoom >= .7 && _zoom < 3)
+                if (Detail.ResidentCargo && !Detail.ResidentSprites)
                 {
                     if (_cargoGeometry is not null)
                         context.DrawGeometry(CargoBrush, null, _cargoGeometry);
@@ -371,7 +385,7 @@ public sealed partial class WorldMapControl : Control
                         context.DrawGeometry(ArcaneBrush, null, _magicGeometry);
                 }
 
-                if (_zoom >= 3)
+                if (Detail.ResidentSprites)
                     DrawNearScene(context, state);
                 DrawTownEffects(context, state);
                 DrawVehicles(context, state);
@@ -384,6 +398,8 @@ public sealed partial class WorldMapControl : Control
                         : new Point(army.X, army.Y);
                     var x = position.X * TilePixels + 4;
                     var y = position.Y * TilePixels;
+                    if (!Visible(new Rect(x, y - 10, 9, 11)))
+                        continue;
                     context.DrawRectangle(WoodBrush, null, new Rect(x, y - 10, 1.3, 11));
                     context.DrawRectangle(NationBrush(army.NationId), null, new Rect(x + 1.3, y - 10, 7, 5));
                 }
@@ -410,21 +426,12 @@ public sealed partial class WorldMapControl : Control
     private IReadOnlyList<Resident> VisibleResidents(WorldState state)
     {
         var viewport = VisibleTiles(state, 3);
-        if (_visibleResidentTick == state.Tick && _residentViewport == viewport)
+        if (ReferenceEquals(_visibleResidentSnapshot, state.Residents) && _residentViewport == viewport)
             return _visibleResidents;
-        _visibleResidentTick = state.Tick;
+        _visibleResidentSnapshot = state.Residents;
         _residentViewport = viewport;
-        _visibleResidents.Clear();
-
-        bool Inside(int x, int y)
-        {
-            return x >= viewport.Left && x <= viewport.Right && y >= viewport.Top && y <= viewport.Bottom;
-        }
-
-        foreach (var person in state.Residents)
-            if (Inside(person.X, person.Y) || (person.MoveStartedTick + person.MoveDurationTicks > state.Tick &&
-                                               Inside(person.FromX, person.FromY)))
-                _visibleResidents.Add(person);
+        _residentIndex.Query(state.Residents, viewport.Left, viewport.Top, viewport.Right, viewport.Bottom,
+            _visibleResidents);
         return _visibleResidents;
     }
 
@@ -439,16 +446,26 @@ public sealed partial class WorldMapControl : Control
 
     private void RebuildChangedChunks()
     {
+        TerrainTilesScanned = 0;
+        TerrainTilesDrawn = 0;
         var state = Engine!.State;
         var tiles = VisibleTiles(state);
         var view = (tiles.Left / ChunkTiles, tiles.Right / ChunkTiles, tiles.Top / ChunkTiles,
             tiles.Bottom / ChunkTiles);
-        if (_chunkRefreshTick == state.Tick && _chunkViewport == view)
+        if (ReferenceEquals(_chunkTileSnapshot, state.Tiles) &&
+            ReferenceEquals(_chunkNationSnapshot, state.Nations) && _chunkViewport == view)
             return;
-        _chunkRefreshTick = state.Tick;
+        if (!ReferenceEquals(_chunkTileSnapshot, state.Tiles))
+        {
+            _chunkTileSnapshot = state.Tiles;
+            _tileRevision++;
+        }
+        if (!ReferenceEquals(_chunkNationSnapshot, state.Nations))
+        {
+            _chunkNationSnapshot = state.Nations;
+            _nationRevision++;
+        }
         _chunkViewport = view;
-        TerrainTilesScanned = 0;
-        TerrainTilesDrawn = 0;
         var colors = new Dictionary<int, uint>();
         uint colorHash = 0;
         _nationBrushes.Clear();
@@ -463,6 +480,20 @@ public sealed partial class WorldMapControl : Control
         for (var cy = view.Item3 * ChunkTiles; cy <= view.Item4 * ChunkTiles; cy += ChunkTiles)
             for (var cx = view.Item1 * ChunkTiles; cx <= view.Item2 * ChunkTiles; cx += ChunkTiles)
             {
+                var key = (cx, cy);
+                if (!_chunks.TryGetValue(key, out var chunk))
+                {
+                    chunk = new MapChunk(new Rect(cx * TilePixels, cy * TilePixels,
+                        Math.Min(ChunkTiles, state.Width - cx) * TilePixels,
+                        Math.Min(ChunkTiles, state.Height - cy) * TilePixels));
+                    _chunks[key] = chunk;
+                }
+                if (chunk.TileRevision == _tileRevision && chunk.NationRevision == _nationRevision)
+                {
+                    _fires.AddRange(chunk.Fires);
+                    continue;
+                }
+                chunk.Fires.Clear();
                 var terrainHash = 2166136261;
                 var territoryHash = colorHash;
                 var containsTerritory = false;
@@ -478,17 +509,12 @@ public sealed partial class WorldMapControl : Control
                         containsTerritory |= tile.NationId != 0 && x >= cx && x < cx + ChunkTiles && y >= cy &&
                                              y < cy + ChunkTiles;
                         if (x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles && tile.FireTicks > 0)
-                            _fires.Add((x, y));
+                            chunk.Fires.Add((x, y));
                     }
 
-                var key = (cx, cy);
-                if (!_chunks.TryGetValue(key, out var chunk))
-                {
-                    chunk = new MapChunk(new Rect(cx * TilePixels, cy * TilePixels,
-                        Math.Min(ChunkTiles, state.Width - cx) * TilePixels,
-                        Math.Min(ChunkTiles, state.Height - cy) * TilePixels));
-                    _chunks[key] = chunk;
-                }
+                _fires.AddRange(chunk.Fires);
+                chunk.TileRevision = _tileRevision;
+                chunk.NationRevision = _nationRevision;
 
                 if (chunk.Terrain is null || chunk.TerrainHash != terrainHash)
                 {
@@ -785,9 +811,10 @@ public sealed partial class WorldMapControl : Control
             return;
         var now = _renderMotionTime;
         _renderedResidentPoints.Clear();
-        var silhouettes = _zoom < 3;
-        var details = silhouettes && _zoom >= .7;
-        var heads = silhouettes && _zoom >= .7 ? new StreamGeometry() : null;
+        _residentMarkers.Clear();
+        var silhouettes = !Detail.ResidentSprites;
+        var details = silhouettes && Detail.ResidentCargo;
+        var heads = silhouettes && Detail.ResidentHeads ? new StreamGeometry() : null;
         using var headContext = heads?.Open();
         var cargo = details ? new StreamGeometry() : null;
         var messages = details ? new StreamGeometry() : null;
@@ -811,17 +838,26 @@ public sealed partial class WorldMapControl : Control
                     : new Point(resident.X, resident.Y);
                 var x = (position.X + .5) * TilePixels - .9;
                 var y = (position.Y + .5) * TilePixels;
-                if (!Visible(new Rect(x - 2, y - 3, 6, 7)))
+                if (!Visible(new Rect(x + .9 - 6, y - 7, 12, 11)))
                     continue;
                 _renderedResidentPoints[resident.Id] =
                     ToScreen((position.X + .5) * TilePixels, (position.Y + .5) * TilePixels);
                 if (!silhouettes)
                     continue;
+                var point = _renderedResidentPoints[resident.Id];
+                var cell = ((int)Math.Floor(point.X / Detail.MarkerSpacing),
+                    (int)Math.Floor(point.Y / Detail.MarkerSpacing));
+                if (!_residentMarkers.Add(cell) && resident.Id != SelectedResidentId)
+                    continue;
                 var race = Math.Clamp((int)resident.Race, 0, 3);
                 if (ShowVehicle(resident))
                     continue;
                 if (contexts[race] is { } silhouette)
-                    GeometryRect(silhouette, x, y, resident.Profession == Profession.Soldier ? 2.6 : 1.8, 2.4);
+                {
+                    var size = Math.Max(1.8, 1.5 / _zoom);
+                    GeometryRect(silhouette, x, y, resident.Profession == Profession.Soldier ? size * 1.4 : size,
+                        Math.Max(2.4, 1.5 / _zoom));
+                }
                 if (headContext is not null)
                     GeometryRect(headContext, x, y - 1.4, 1.8, 1.4);
                 if (!details)
@@ -846,6 +882,8 @@ public sealed partial class WorldMapControl : Control
         _messageGeometry = messages;
         _magicGeometry = magic;
         _residentGeometryDirty = false;
+        _sceneDirty = true;
+        _geometryMotionTime = _renderMotionTime;
         _geometryZoom = _zoom;
         _geometryOrigin = _origin;
     }
@@ -948,7 +986,7 @@ public sealed partial class WorldMapControl : Control
             context.DrawText(text, new Point(rect.X + 5, rect.Y + 2));
         }
 
-        if (!ShowBuildingNames || _zoom < 5)
+        if (!ShowBuildingNames || !Detail.BuildingNames)
             return;
         foreach (var building in state.Society.Buildings)
         {
@@ -1344,9 +1382,12 @@ public sealed partial class WorldMapControl : Control
         {
             chunk.Terrain?.Dispose();
             chunk.Territory?.Dispose();
+            chunk.Highlight?.Dispose();
         }
 
         _chunks.Clear();
+        _chunkTileSnapshot = null;
+        _chunkNationSnapshot = null;
     }
 
     /// <summary>地图当前选择和跟随设置，用于界面导航返回时恢复。</summary>
@@ -1375,5 +1416,12 @@ public sealed partial class WorldMapControl : Control
         public uint TerrainHash { get; set; }
         public uint TerritoryHash { get; set; }
         public bool TerritoryCached { get; set; }
+        public long TileRevision { get; set; } = -1;
+        public long NationRevision { get; set; } = -1;
+        public List<(int X, int Y)> Fires { get; } = [];
+        public WriteableBitmap? Highlight { get; set; }
+        public PixelCanvas? HighlightCanvas { get; set; }
+        public long HighlightTileRevision { get; set; } = -1;
+        public int HighlightOverlay { get; set; }
     }
 }

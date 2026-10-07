@@ -53,11 +53,11 @@ public sealed partial class WorldMapControl
 
     private bool HasAnimatedEffects(double now)
     {
-        return (_zoom >= 3 && _waterStreams.Count > 0) || _fires.Count > 0 || _effects.Any(e =>
+        return (Detail.Ecology && _waterStreams.Count > 0) || _fires.Count > 0 || _effects.Any(e =>
                    now - e.Started < e.Duration && Visible(new Rect((e.Event.X - e.Event.Radius) * TilePixels - 32,
                        (e.Event.Y - e.Event.Radius) * TilePixels - 32, 64 + 2 * e.Event.Radius * TilePixels,
                        64 + 2 * e.Event.Radius * TilePixels))) ||
-               (_zoom >= 3 && Engine is not null &&
+               (Detail.ResidentSprites && Engine is not null &&
                 (VisibleResidents(Engine.State).Any(r => r.Activity == ResidentActivity.Working) ||
                  Engine.State.Settlements.Any(t =>
                      (t.ShieldTicks > 0 || t.FertilityBoostTicks > 0) &&
@@ -210,12 +210,13 @@ public sealed partial class WorldMapControl
                 new Rect(x - 3.5 * scale, y - 6 * scale, 7 * scale, 8 * scale), 1, 1);
         }
 
-        DrawActivityBadge(context, resident, x + 2.7, y - 5.5, moving);
+        if (Detail.ActivityBadges || resident.Id == SelectedResidentId)
+            DrawActivityBadge(context, resident, x + 2.7, y - 5.5, moving);
     }
 
     private void DrawTownEffects(DrawingContext context, WorldState state)
     {
-        if (_zoom < 3)
+        if (!Detail.ResidentSprites)
             return;
         foreach (var town in state.Settlements.Where(t => t.ShieldTicks > 0 || t.FertilityBoostTicks > 0))
         {

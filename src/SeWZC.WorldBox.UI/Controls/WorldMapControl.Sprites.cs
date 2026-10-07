@@ -15,20 +15,26 @@ public sealed partial class WorldMapControl
     private readonly Dictionary<(RaceKind, Profession, int), WriteableBitmap> _personIcons = [];
     private readonly List<Building> _sceneBuildings = [];
     private readonly List<SceneSprite> _sceneSprites = [];
+    private readonly HashSet<int> _sceneResidentDraws = [];
     private readonly Dictionary<int, RaceKind> _settlementStyles = [];
     private int _architectureTownCount;
     private WorldEngine? _architectureEngine;
     private ImmutableVector<Resident>? _architectureResidents;
     private long _architectureYear = -1;
     private (int Left, int Top, int Right, int Bottom) _sceneBuildingViewport;
-    private bool _sceneBuildingsDirty = true;
+    private ImmutableVector<Building>? _sceneBuildingSnapshot;
+    private bool _sceneDirty = true;
 
     private void BuildScene(WorldState state)
     {
         var viewport = VisibleTiles(state);
-        if (_sceneBuildingsDirty || viewport != _sceneBuildingViewport)
+        if (!_sceneDirty && ReferenceEquals(_sceneBuildingSnapshot, state.Society.Buildings) &&
+            viewport == _sceneBuildingViewport)
+            return;
+        _sceneDirty = false;
+        if (!ReferenceEquals(_sceneBuildingSnapshot, state.Society.Buildings) || viewport != _sceneBuildingViewport)
         {
-            _sceneBuildingsDirty = false;
+            _sceneBuildingSnapshot = state.Society.Buildings;
             _sceneBuildingViewport = viewport;
             _sceneBuildings.Clear();
             foreach (var building in state.Society.Buildings)
@@ -65,10 +71,23 @@ public sealed partial class WorldMapControl
     private void DrawNearScene(DrawingContext context, WorldState state)
     {
         BuildScene(state);
+        // 从前向后挑选同一屏幕小格中的可见人物，绘制仍保持建筑遮挡顺序；命中保留全部居民。
+        _residentMarkers.Clear();
+        _sceneResidentDraws.Clear();
+        for (var index = _sceneSprites.Count - 1; index >= 0; index--)
+        {
+            var sprite = _sceneSprites[index];
+            if (sprite.Resident is not { } resident)
+                continue;
+            var point = ToScreen((sprite.Position.X + .5) * TilePixels, (sprite.Position.Y + .5) * TilePixels);
+            if (_residentMarkers.Add(((int)Math.Floor(point.X / 4), (int)Math.Floor(point.Y / 4))) ||
+                resident.Id == SelectedResidentId)
+                _sceneResidentDraws.Add(resident.Id);
+        }
         foreach (var sprite in _sceneSprites)
             if (sprite.Building is { } building)
                 DrawBuilding(context, building);
-            else if (sprite.Resident is { } person)
+            else if (sprite.Resident is { } person && _sceneResidentDraws.Contains(person.Id))
             {
                 if (ShowVehicle(person))
                 {
