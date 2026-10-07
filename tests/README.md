@@ -2,12 +2,7 @@
 
 按 2026-10-07 用户决定，旧核心可执行测试、Headless UI、浏览器脚本及混在测试程序中的诊断工具已全部删除。当前两个项目使用 xUnit 2 和 .NET Test SDK，由 IDE 或 `dotnet test` 发现并执行；测试依赖统一维护在本目录的 `Directory.Build.props`。
 
-```bash
-dotnet build scripts/ci-build.slnf -c Release
-dotnet test scripts/ci-build.slnf -c Release --no-build --no-restore
-dotnet test tests/SeWZC.WorldBox.Core.Tests -c Release --no-build --list-tests
-dotnet test tests/SeWZC.WorldBox.Core.Tests -c Release --no-build --filter FullyQualifiedName~ResidentEditingTests
-```
+还原、Release 构建、运行、发现及筛选命令统一见 [构建与验证](../docs/verification.md#复现命令)。
 
 核心项目覆盖资源字段映射与副本隔离、动物稀疏载荷、研究目录与操作分派、通行与植物规则、原子编辑、研究扣费、现场加工、伤害防护和保存取消。界面项目测试文字格式化、运动插值及研究布局，无需启动窗口或图形会话。
 
