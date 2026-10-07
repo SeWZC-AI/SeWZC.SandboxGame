@@ -13,11 +13,11 @@ internal sealed partial class AgentStateCursor : StateCursor<global::SeWZC.World
     public double Fatigue { get => Value.Fatigue; set { if (!EqualityComparer<double>.Default.Equals(Value.Fatigue, value)) ReplaceChanged(Value with { Fatigue = value }); } }
     public double SocialNeed { get => Value.SocialNeed; set { if (!EqualityComparer<double>.Default.Equals(Value.SocialNeed, value)) ReplaceChanged(Value with { SocialNeed = value }); } }
     public PersonalityProfile Personality { get => Value.Personality; set { if (!EqualityComparer<PersonalityProfile>.Default.Equals(Value.Personality, value)) ReplaceChanged(Value with { Personality = value }); } }
-    public AgentGoal Goal { get => Value.Goal; set { if (!EqualityComparer<AgentGoal>.Default.Equals(Value.Goal, value)) ReplaceChanged(Value with { Goal = value }); } }
-    private SnapshotListCursor<AgentFact>? _Memory;
-    public SnapshotListCursor<AgentFact> Memory
+    public AgentGoal Goal { get => Value.Goal; set { if (!ReferenceEquals(Value.Goal, value) && !Value.Goal.Equals(value)) ReplaceChanged(Value with { Goal = value }); } }
+    private SnapshotArrayCursor<AgentFact>? _Memory;
+    public SnapshotArrayCursor<AgentFact> Memory
     {
-        get => _Memory ??= new(Value.Memory, value => { if (!ReferenceEquals(Value.Memory, value)) ReplaceChanged(Value with { Memory = value }); });
+        get => _Memory ??= new(Value.Memory, value => { if (!Value.Memory.Equals(value)) ReplaceChanged(Value with { Memory = value }); });
         set { _Memory = null; Replace(Value with { Memory = value.Snapshot }); }
     }
     private SnapshotListCursor<AgentDecision>? _Decisions;
@@ -42,10 +42,10 @@ internal sealed partial class AgentStateCursor : StateCursor<global::SeWZC.World
     public ResourceKind? MaterialPriority { get => Value.MaterialPriority; set { if (!EqualityComparer<ResourceKind?>.Default.Equals(Value.MaterialPriority, value)) ReplaceChanged(Value with { MaterialPriority = value }); } }
     public long JobChangedTick { get => Value.JobChangedTick; set { if (!EqualityComparer<long>.Default.Equals(Value.JobChangedTick, value)) ReplaceChanged(Value with { JobChangedTick = value }); } }
 
-    protected override void OnReplace(global::SeWZC.WorldBox.Core.AgentState before, global::SeWZC.WorldBox.Core.AgentState after)
+    protected override void OnReplace(in global::SeWZC.WorldBox.Core.AgentState before, in global::SeWZC.WorldBox.Core.AgentState after)
     {
         // 自身集合操作先更新 Snapshot 再发布；整体认知转换时才重新绑定定位引用。
-        if (_Memory is not null && !ReferenceEquals(_Memory.Snapshot, after.Memory)) _Memory = null;
+        if (_Memory is not null && !_Memory.Snapshot.Equals(after.Memory)) _Memory = null;
         if (_Decisions is not null && !ReferenceEquals(_Decisions.Snapshot, after.Decisions)) _Decisions = null;
         if (_CarriedMessages is not null && !ReferenceEquals(_CarriedMessages.Snapshot, after.CarriedMessages)) _CarriedMessages = null;
     }

@@ -155,12 +155,10 @@ public sealed partial class WorldEngine
         if (_connectedClaims.Length != Current.Tiles.Count)
             _connectedClaims = new int[Current.Tiles.Count];
         FillConnectedClaims(Current, _connectedClaims, _claimQueue);
-        for (var i = 0; i < Current.Tiles.Count; i++)
-            if (_connectedClaims[i] == 0 && (Current.Tiles[i].ClaimedSettlementId != 0 || Current.Tiles[i].NationId != 0))
-            {
-                Current.Tiles[i].ClaimedSettlementId = 0;
-                Current.Tiles[i].NationId = 0;
-            }
+        foreach (var index in _territoryCounts.OwnedTiles)
+            if (_connectedClaims[index] == 0) _claimQueue.Enqueue(index);
+        while (_claimQueue.TryDequeue(out var orphan))
+            Current.Tiles[orphan].Replace(Current.Tiles[orphan].Value with { ClaimedSettlementId = 0, NationId = 0 });
 
         _connectedClaimsRevision = _territoryCounts.Revision;
     }

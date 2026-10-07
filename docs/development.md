@@ -84,7 +84,7 @@ dotnet run --project src/SeWZC.WorldBox.Browser
 
 CI 范围见 [部署指南](deployment.md#发布到-github-pages)。验证与测量结果在任务回复中说明实际源码、环境和未覆盖范围；测量另注明种子、规模、配置、预热与复测，原生结果不能换算为浏览器帧率。日志、TRX、截图和测量数据放入已忽略的 `artifacts/` 或 Actions 产物。
 
-核心模拟基准使用 `DOTNET_TieredCompilation=0 dotnet run --project tools/SeWZC.WorldBox.Benchmarks -c Release -- artifacts/immutable-benchmark.json`。工具在计时外构建初态、预热和保存，记录逐日耗时、分配量、GC、实际程序集哈希及规则，并检查重复模拟和中途恢复后的结果。追加 `--default-rules` 测量默认规则；追加 `--verify` 独立验证两个种子、两种地图在默认规则下运行 240 日及中途恢复的结果。
+核心模拟基准使用 `DOTNET_TieredCompilation=0 dotnet run --project tools/SeWZC.WorldBox.Benchmarks -c Release -- artifacts/immutable-benchmark.json`。工具在计时外构建初态、预热和保存，记录逐日耗时、分配量、GC、实际程序集哈希及规则，并检查重复模拟和中途恢复后的结果。追加 `--default-rules` 测量默认规则；`--large` 只测 256²／4096 人，`--steady` 在计时外推进 12 日后测量后续 64 日；追加 `--verify` 独立验证两个种子、两种地图在默认规则下运行 240 日及中途恢复的结果。
 
 ## 协作与文档维护
 

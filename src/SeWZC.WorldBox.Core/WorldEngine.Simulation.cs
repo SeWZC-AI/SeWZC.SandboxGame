@@ -25,10 +25,13 @@ public sealed partial class WorldEngine
                 UpdateDisasters();
                 TickWildlife();
                 TickPlants();
-                UpdateResidents();
                 UpdateAgentNeedsAndActions();
                 UpdateLocalCommunication();
                 TickSociety();
+                var peopleRevision = Current.Residents.MembershipRevision;
+                var townsRevision = Current.Settlements.MembershipRevision;
+                var nationsRevision = Current.Nations.MembershipRevision;
+                var buildingsAfterSociety = Current.Society.Buildings.Snapshot;
                 TickDiplomacy();
                 TickLocalConflicts();
                 TickMigrationAndSecession();
@@ -43,7 +46,11 @@ public sealed partial class WorldEngine
                 foreach (var settlement in Current.Settlements.Where(s => _citizens[s.Id].Count == 0).ToArray())
                     RemoveSettlement(settlement, "居民离散，聚落成为遗址");
                 RemoveEmptyNations();
-                ReconcileSocietyTopology();
+                if (Current.Residents.MembershipRevision != peopleRevision
+                    || Current.Settlements.MembershipRevision != townsRevision
+                    || Current.Nations.MembershipRevision != nationsRevision
+                    || !ReferenceEquals(Current.Society.Buildings.Snapshot, buildingsAfterSociety))
+                    ReconcileSocietyTopology();
                 RefreshTotals();
                 ObserveProjects();
             }
@@ -58,20 +65,36 @@ public sealed partial class WorldEngine
     {
         // 先保存现有病例的位置，避免新感染在同一天沿居民遍历顺序连锁传播。
         var infected = new HashSet<int>(Current.Residents.Where(r => r.SicknessTicks > 0).Select(r => Index(r.X, r.Y)));
-        foreach (var person in Current.Residents)
+        Current.Residents.Transform(person =>
         {
             var age = Current.Rules.Aging ? Math.Min(1000, person.Age + 1d / 120) : person.Age;
             var profession = person.Profession == Profession.Child && age >= 14 ? AssignProfession() : person.Profession;
             var infectionDuration = 0;
-            if (person.SicknessTicks == 0 && Current.Rules.Disease && person.DiseaseImmuneUntilTick <= Current.Tick &&
-                (Current.Tick + person.Id) % 6 == 0
-                && (infected.Contains(Index(person.X, person.Y)) || Directions.Any(d =>
-                    InBounds(person.X + d.X, person.Y + d.Y)
-                    && infected.Contains(Index(person.X + d.X, person.Y + d.Y)))) && RandomInt(100) < 6)
-                infectionDuration = 72 + RandomInt(25);
-            person.Replace(person.Value.AdvanceVitals(Current.Rules, Current.Tiles[Index(person.X, person.Y)],
-                Current.Tick, profession, infectionDuration));
-        }
+            if (person.SicknessTicks == 0 && Current.Rules.Disease && person.DiseaseImmuneUntilTick <= Current.Tick
+                && infected.Count > 0 && (Current.Tick + person.Id) % 6 == 0)
+            {
+                var exposed = infected.Contains(Index(person.X, person.Y));
+                foreach (var (dx, dy) in Directions)
+                    if (InBounds(person.X + dx, person.Y + dy)
+                        && infected.Contains(Index(person.X + dx, person.Y + dy)))
+                    {
+                        exposed = true;
+                        break;
+                    }
+                if (exposed && RandomInt(100) < 6) infectionDuration = 72 + RandomInt(25);
+            }
+            var tile = Current.Tiles[Index(person.X, person.Y)];
+            var manaRecovery = .025 * Current.Rules.MagicRate * TerrainRules.For(tile.Terrain).ManaRate
+                * (.5 + person.MagicTalent / 100)
+                * (HasResearch(person.SettlementId, Advancement.ManaAttunement) ? 1.5 : 1);
+            var hasHome = _settlements.ContainsKey(person.SettlementId);
+            var waterUse = WaterUse(person);
+            var water = hasHome && person.ArmyId == 0 && person.Health > 0 && Current.Rules.Thirst
+                && person.Inventory.Water < waterUse
+                ? WithdrawWater(person, Index(person.X, person.Y), waterUse - person.Inventory.Water) : 0;
+            return person.AdvanceDay(Current.Rules, tile, Current.Tick, profession, infectionDuration, manaRecovery,
+                person.ArmyId == 0 && hasHome, hasHome && (Current.Tick + person.Id) % 4 == 0 ? .28 : 0, water);
+        });
 
         ArchiveDeadResidents();
     }

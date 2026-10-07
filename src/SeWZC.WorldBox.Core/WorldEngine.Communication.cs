@@ -1,23 +1,19 @@
 using SeWZC.WorldBox.Core.Runtime;
 using System.Collections.Immutable;
-using System.Numerics;
-using System.Runtime.InteropServices;
 
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private static readonly Comparison<ResidentCursor> ResidentIdOrder = (first, second) => first.Id.CompareTo(second.Id);
-
     // 通信索引只在本阶段有效，不能替代世界中的权威居民状态。
     private readonly Dictionary<int, ResidentCursor> _communicationPeople = [];
-    private readonly List<ResidentCursor> _conversationNeighbors = [];
     private readonly List<int> _conversationTiles = [];
     private readonly List<PendingMessage> _messagesToDeliver = [];
     private readonly List<AgentFact> _missionAddresses = [];
     private readonly List<AgentFact> _observedReports = [];
-    private int[] _conversationHeads = [];
-    private int[] _conversationNext = [];
+    private readonly List<AgentFact> _receivedFacts = [];
+    private int[] _conversationCounts = [], _conversationStarts = [], _conversationPositions = [];
+    private ResidentCursor[] _conversationResidents = [];
 
     private AgentFact MakeAgentFact(ResidentCursor observer, AgentFactKind kind, int subject, int x, int y, double value,
         string text)
@@ -179,6 +175,8 @@ public sealed partial class WorldEngine
                     || !people.TryGetValue(message.SenderId, out var stationSender)
                     || !CanRelayInformation(stationSender.SettlementId, endpoint.Id, out _)))
                 continue;
+            _receivedFacts.Clear();
+            var agent = recipient.Agent.Value;
             foreach (var fact in message.Facts)
             {
                 var received = fact with
@@ -188,7 +186,12 @@ public sealed partial class WorldEngine
                     Hops = Math.Min(32, fact.Hops + 1),
                     Confidence = fact.Confidence * 0.96,
                 };
-                RememberAgentFact(recipient, received);
+                agent = agent.Remember(received, recipient.SettlementId);
+                _receivedFacts.Add(received);
+            }
+            recipient.Agent.Replace(agent);
+            foreach (var received in _receivedFacts)
+            {
                 if (_settlements.TryGetValue(recipient.SettlementId, out var home)
                     && Distance(recipient.X, recipient.Y, home.X, home.Y) <= 1
                     && (recipient.Profession == Profession.Representative || home.RepresentativeId == recipient.Id
@@ -199,51 +202,91 @@ public sealed partial class WorldEngine
             }
         }
 
+        _receivedFacts.Clear();
         _messagesToDeliver.Clear();
-        if (_conversationHeads.Length != Current.Tiles.Count)
-            _conversationHeads = new int[Current.Tiles.Count];
+        if (_conversationCounts.Length != Current.Tiles.Count)
+        {
+            _conversationCounts = new int[Current.Tiles.Count];
+            _conversationStarts = new int[Current.Tiles.Count];
+        }
         else
         {
             foreach (var tile in _conversationTiles)
-                _conversationHeads[tile] = 0;
+                _conversationCounts[tile] = 0;
         }
 
         _conversationTiles.Clear();
-        if (_conversationNext.Length < Current.Residents.Count)
-            _conversationNext = new int[MaxPopulation];
+        if (_conversationPositions.Length < Current.Residents.Count)
+        {
+            _conversationPositions = new int[MaxPopulation];
+            _conversationResidents = new ResidentCursor[MaxPopulation];
+        }
         for (var i = 0; i < Current.Residents.Count; i++)
         {
-            var tile = Index(Current.Residents[i].X, Current.Residents[i].Y);
-            if (_conversationHeads[tile] == 0)
+            var resident = Current.Residents[i];
+            if (resident.Health <= 0) continue;
+            var tile = Index(resident.X, resident.Y);
+            if (_conversationCounts[tile]++ == 0)
                 _conversationTiles.Add(tile);
-            _conversationNext[i] = _conversationHeads[tile];
-            _conversationHeads[tile] = i + 1;
         }
 
-        foreach (var sender in Current.Residents)
+        var total = 0;
+        foreach (var tile in _conversationTiles)
         {
-            if ((Current.Tick + sender.Id) % 12 != 0 || Current.Tick - sender.Agent.LastConversationTick < 6
+            _conversationStarts[tile] = total;
+            total += _conversationCounts[tile];
+            _conversationCounts[tile] = 0;
+        }
+        for (var i = 0; i < Current.Residents.Count; i++)
+        {
+            var resident = Current.Residents[i];
+            if (resident.Health <= 0) continue;
+            var tile = Index(resident.X, resident.Y);
+            var position = _conversationStarts[tile] + _conversationCounts[tile]++;
+            _conversationPositions[i] = position;
+            _conversationResidents[position] = resident;
+        }
+
+        Span<int> nearby = stackalloc int[29];
+        // 小世界保留十二日交谈周期；大群体错峰，每日最多启动约一百二十八次普通交谈。
+        var conversationInterval = Math.Max(12, (Current.Residents.Count + 127) / 128);
+        for (var senderIndex = 0; senderIndex < Current.Residents.Count; senderIndex++)
+        {
+            var sender = Current.Residents[senderIndex];
+            if ((Current.Tick + senderIndex) % conversationInterval != 0 || Current.Tick - sender.Agent.LastConversationTick < 6
                                                    || sender.Health <= 0)
                 continue;
-            _conversationNeighbors.Clear();
             var conversationRadius = Current.Society.Buildings.Any(b =>
                 b.Kind is BuildingKind.Market or BuildingKind.AssemblyHall or BuildingKind.TradeGuild &&
                 IsFacilityOperating(b)
                 && Distance(sender.X, sender.Y, b.X, b.Y) <= 3)
                 ? 3
                 : 2;
+            var count = 0;
+            var cells = 0;
+            var ownTile = Index(sender.X, sender.Y);
             foreach (var tile in Circle(sender.X, sender.Y, conversationRadius))
-                for (var at = _conversationHeads[tile]; at != 0; at = _conversationNext[at - 1])
-                {
-                    var neighbor = Current.Residents[at - 1];
-                    if (neighbor.Id != sender.Id && neighbor.Health > 0)
-                        _conversationNeighbors.Add(neighbor);
-                }
-
-            if (_conversationNeighbors.Count == 0)
+            {
+                var local = _conversationCounts[tile] - (tile == ownTile ? 1 : 0);
+                if (local == 0) continue;
+                nearby[cells++] = tile;
+                count += local;
+            }
+            if (count == 0)
                 continue;
-            var recipient =
-                SelectConversationRecipient((int)((Current.Tick / 12 + sender.Id) % _conversationNeighbors.Count));
+            // 先按各格人数定位接收者，再直接读取格内位置；人群再密集也无需枚举整群。
+            var rank = (int)((Current.Tick / conversationInterval + sender.Id) % count);
+            ResidentCursor? recipient = null;
+            foreach (var tile in nearby[..cells])
+            {
+                var local = _conversationCounts[tile] - (tile == ownTile ? 1 : 0);
+                if (rank >= local) { rank -= local; continue; }
+                var position = _conversationStarts[tile] + rank;
+                if (tile == ownTile && position >= _conversationPositions[senderIndex]) position++;
+                recipient = _conversationResidents[position];
+                break;
+            }
+            if (recipient is null) continue;
             var facts = SelectMessageFacts(sender, false);
             if (facts.Count > 0 && Current.PendingMessages.Count < MaxPopulation * 2)
             {
@@ -265,61 +308,7 @@ public sealed partial class WorldEngine
 
         RelayKnownAgentMessages();
         people.Clear();
-        _conversationNeighbors.Clear();
-    }
-
-    private ResidentCursor SelectConversationRecipient(int rank)
-    {
-        // 按 ID 选取第 rank 个接收者；分区过大时回退为排序。
-        var left = 0;
-        var right = _conversationNeighbors.Count - 1;
-        var budget = 2 * BitOperations.Log2((uint)_conversationNeighbors.Count);
-        while (left < right)
-        {
-            if (right - left < 16 || budget-- == 0)
-            {
-                CollectionsMarshal.AsSpan(_conversationNeighbors)
-                    .Slice(left, right - left + 1).Sort(ResidentIdOrder);
-                return _conversationNeighbors[rank];
-            }
-
-            var first = _conversationNeighbors[left].Id;
-            var middle = _conversationNeighbors[(left + right) / 2].Id;
-            var last = _conversationNeighbors[right].Id;
-            var pivot = first < middle ? middle < last ? middle : Math.Max(first, last)
-                : first < last ? first : Math.Max(middle, last);
-            var lower = left;
-            var at = left;
-            var upper = right;
-            while (at <= upper)
-            {
-                var id = _conversationNeighbors[at].Id;
-                if (id < pivot)
-                {
-                    (_conversationNeighbors[lower], _conversationNeighbors[at]) =
-                        (_conversationNeighbors[at], _conversationNeighbors[lower]);
-                    lower++;
-                    at++;
-                }
-                else if (id > pivot)
-                {
-                    (_conversationNeighbors[at], _conversationNeighbors[upper]) =
-                        (_conversationNeighbors[upper], _conversationNeighbors[at]);
-                    upper--;
-                }
-                else
-                    at++;
-            }
-
-            if (rank < lower)
-                right = lower - 1;
-            else if (rank > upper)
-                left = upper + 1;
-            else
-                return _conversationNeighbors[rank];
-        }
-
-        return _conversationNeighbors[rank];
+        Array.Clear(_conversationResidents, 0, total);
     }
 
     private void RelayKnownAgentMessages()

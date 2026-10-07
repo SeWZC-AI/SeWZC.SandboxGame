@@ -17,6 +17,10 @@ public sealed partial class WorldEngine
     private readonly Dictionary<int, int> _workReservations = [];
     private bool _localWorkQueriesActive;
 
+    // 自主劳动四日错峰结算；日常需求、交通及公开的即时劳动命令仍逐日处理。
+    private int WorkInterval(ResidentCursor person) => _localWorkQueriesActive && !person.Agent.Goal.PlayerDirected ? 4 : 1;
+    private bool IsWorkDay(ResidentCursor person) => (Current.Tick + person.Id) % WorkInterval(person) == 0;
+
     private BuildingCursor? FindBuilding(int id)
     {
         return id == 0

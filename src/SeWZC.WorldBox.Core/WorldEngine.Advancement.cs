@@ -294,7 +294,7 @@ public sealed partial class WorldEngine
                 return true;
             }
 
-            // 每趟只携带有限批次原料，并为下一项本地计划保留库存；每批仍须实际到场劳动一日。
+            // 每趟只携带有限批次原料，并为下一项本地计划保留库存；每次结算仍须实际到场并持有原料。
             var reserve = _productionReserves.GetValueOrDefault(home.Id);
             var batches = 4d;
             foreach (var kind in recipe.InputResources)
@@ -359,12 +359,25 @@ public sealed partial class WorldEngine
     {
         if (!CanProduce(building, person, recipe) || !HasProductionInputs(person.Inventory, recipe))
             return false;
-        person.Inventory = Spend(person.Inventory, recipe.Input);
-        person.Mana -= recipe.Mana;
-        person.Inventory = person.Inventory.WithAmount(recipe.Output, person.Inventory.Get(recipe.Output) + ProductionYield(building, recipe));
-        RecordHarvest(Current.Tiles[Index(building.X, building.Y)], ProductionYield(building, recipe));
-        building.ProductionBatches = Math.Min(1_000_000_000, building.ProductionBatches + 1);
-        if (building.ProductionBatches == 1)
+        var batches = WorkInterval(person);
+        foreach (var kind in recipe.InputResources)
+            batches = Math.Min(batches, (int)Math.Min(batches,
+                Math.Floor((person.Inventory.Get(kind) + .000001) / recipe.Input.Get(kind))));
+        if (recipe.Mana > 0)
+            batches = Math.Min(batches, (int)Math.Min(batches, Math.Floor(person.Mana / recipe.Mana)));
+        var yield = ProductionYield(building, recipe);
+        var netYield = yield - recipe.Input.Get(recipe.Output);
+        if (netYield > 0)
+            batches = Math.Min(batches, (int)Math.Min(batches,
+                Math.Floor((1_000_000 - person.Inventory.Get(recipe.Output)) / netYield)));
+        if (batches <= 0) return false;
+        var inventory = Spend(person.Inventory, recipe.Input.ToStock().Scale(batches));
+        inventory = inventory.WithAmount(recipe.Output, inventory.Get(recipe.Output) + yield * batches);
+        person.Replace(person.Value with { Inventory = inventory, Mana = person.Mana - recipe.Mana * batches });
+        RecordHarvest(Current.Tiles[Index(building.X, building.Y)], yield * batches);
+        var firstBatch = building.ProductionBatches == 0;
+        building.ProductionBatches = Math.Min(1_000_000_000, building.ProductionBatches + batches);
+        if (firstBatch)
         {
             var entry = AddEvent(WorldEventKind.Construction,
                 $"{RequireTown(building.SettlementId).Name}的{BuildingName(building.Kind)}完成首批加工；产物正由{person.Name}运回仓库。",

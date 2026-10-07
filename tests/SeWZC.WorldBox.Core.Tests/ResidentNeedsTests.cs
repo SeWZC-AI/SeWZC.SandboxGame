@@ -5,6 +5,21 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>每日需求的不可变转换与粮水消费次序。</summary>
 public sealed class ResidentNeedsTests
 {
+    /// <summary>首次跨过严重饥饿阈值时立即请求复评，不能被原有远期安排延后。</summary>
+    [Fact]
+    public void Crossing_critical_hunger_requests_an_immediate_review()
+    {
+        var before = new Resident { Age = 20, Hunger = 59.9, Inventory = new ResourceStock { Water = 1 },
+            Agent = new AgentState { NextThinkTick = 100, Goal = new AgentGoal { ReviewTick = 100 } } };
+
+        var after = before.AdvanceNeeds(new WorldRules(), 3);
+
+        Assert.True(after.Hunger > 60);
+        Assert.Equal(3, after.Agent.NextThinkTick);
+        Assert.Equal(3, after.Agent.Goal.ReviewTick);
+        Assert.Equal(100, before.Agent.NextThinkTick);
+        Assert.Equal(100, before.Agent.Goal.ReviewTick);
+    }
     /// <summary>脱水致死后不再消耗粮食，旧居民和库存保持原值。</summary>
     [Fact]
     public void Lethal_dehydration_prevents_eating()

@@ -344,14 +344,14 @@ public sealed partial class WorldEngine
                 continue;
             tile.DepositDiscovered = true;
             var amount = Math.Min(tile.DepositAmount,
-                .4 * Current.Rules.GatheringRate * GatheringCondition(person) *
+                WorkInterval(person) * .4 * Current.Rules.GatheringRate * GatheringCondition(person) *
                 GatheringTerritoryMultiplier(person, tile) *
                 (HasResearch(person.SettlementId, Advancement.Forestry) ? 1.25 : 1));
             amount = Math.Min(amount, 1_000_000 - person.Inventory.Get(kind));
             tile.DepositAmount -= amount;
             person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + amount);
             RecordHarvest(tile, amount);
-            person.Replace(person.Value with { Activity = ResidentActivity.Working, Agent = person.Agent.Value with { Fatigue = Math.Min(100, person.Agent.Fatigue + .45) } });
+            person.Replace(person.Value with { Activity = ResidentActivity.Working, Agent = person.Agent.Value with { Fatigue = Math.Min(100, person.Agent.Fatigue + .45 * WorkInterval(person)) } });
             return amount > 0;
         }
 

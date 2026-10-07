@@ -14,7 +14,7 @@ public sealed partial class WorldEngine
     {
         if (kind == WildlifeKind.None)
             return 0;
-        var capacity = AnimalRules.EnvironmentalCapacity(tile, kind);
+        var capacity = tile.EnvironmentalCapacity(kind);
         var density = Math.Min(1, tile.AnimalPopulation(kind) / Math.Max(.05, capacity));
         // 稀少的动物更难找到，降低采集效率能促使居民在种群耗尽前转向其他来源。
         return density * density;
@@ -51,22 +51,22 @@ public sealed partial class WorldEngine
         if (amount <= 0)
             return 0;
         var before = tile.ResourceAmount;
-        tile.ResourceAmount -= amount;
+        var remaining = before - amount;
+        var plants = tile.Plants;
         if (tile.Improvement != LandImprovement.Farmland)
         {
             // 覆盖比例以共享资源存量为基数；仅减少总存量会连带减少未采集物种。
-            var plants = tile.Plants;
             for (var species = 0; species < 4; species++)
             {
                 var kind = (PlantKind)species;
                 var quantity = plants.Get(kind) * before;
                 if (wood == (kind == PlantKind.Trees))
                     quantity -= amount * quantity / stock;
-                plants = plants.WithCoverage(kind, Math.Max(0, quantity) / tile.ResourceAmount);
+                plants = plants.WithCoverage(kind, remaining > 0 ? Math.Max(0, quantity) / remaining : 0);
             }
 
-            tile.Plants = plants;
         }
+        tile.Replace(tile.Value with { ResourceAmount = remaining, Plants = plants });
 
         return amount;
     }
