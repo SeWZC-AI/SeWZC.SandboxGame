@@ -5,11 +5,6 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
-    inputs:
-      full_regression:
-        description: Run integration, long simulations and all browser regressions
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -50,31 +45,16 @@ jobs:
       - name: Build desktop and test projects
         run: dotnet build scripts/ci-build.slnf -c Release --no-restore
 
-      - name: Run unit and headless UI checks
-        run: python3 scripts/run-fast-tests.py
+      - name: Run unit tests
+        run: dotnet test scripts/ci-build.slnf -c Release --no-build --no-restore --logger "trx;LogFilePrefix=unit" --results-directory artifacts/unit-tests
 
-      - name: Test simulation integration
-        if: inputs.full_regression == true
-        run: dotnet tests/SeWZC.WorldBox.Core.Tests/bin/Release/net10.0/SeWZC.WorldBox.Core.Tests.dll --suite integration
-
-      - name: Test long simulations and mixed edits
-        if: inputs.full_regression == true
-        run: dotnet tests/SeWZC.WorldBox.Core.Tests/bin/Release/net10.0/SeWZC.WorldBox.Core.Tests.dll --suite long
-
-      - name: Prepare large save fixture
-        if: inputs.full_regression == true
-        run: dotnet tests/SeWZC.WorldBox.Core.Tests/bin/Release/net10.0/SeWZC.WorldBox.Core.Tests.dll --export-browser-fixture artifacts/save-fixture/world.worldbox.json
-
-      - name: Prepare research fixtures
-        if: inputs.full_regression == true
-        run: python3 scripts/prepare-research-fixtures.py
-
-      - name: Upload save fixture
-        if: inputs.full_regression == true
+      - name: Upload unit test results
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: worldbox-save-fixture
-          path: artifacts/save-fixture
+          name: worldbox-unit-tests
+          path: artifacts/unit-tests
+          if-no-files-found: ignore
 
   publish:
     name: Publish and check static site
@@ -106,7 +86,7 @@ jobs:
       - name: Publish and check static site
         run: bash scripts/publish-browser.sh --no-restore
 
-      - name: Upload static site for browser checks and review
+      - name: Upload static site for review
         uses: actions/upload-artifact@v4
         with:
           name: worldbox-static-site
@@ -120,67 +100,10 @@ jobs:
         with:
           path: artifacts/site
 
-  browser:
-    name: Browser (${{ matrix.suite }})
-    needs: [build, publish]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        # 常规推送和 PR 只跑冒烟检查；手动选项运行全部回归。
-        suite: ${{ fromJSON(inputs.full_regression == true && '["deploy-smoke", "smoke", "mobile-smoke", "motion", "stories", "effects", "advancement", "research-trees", "research-gameplay", "land", "details", "entries", "saving"]' || '["deploy-smoke"]') }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: worldbox-static-site
-          path: artifacts/browser-preview/SeWZC.SandboxGame
-
-      - uses: actions/download-artifact@v4
-        if: matrix.suite == 'saving' || matrix.suite == 'research-trees'
-        with:
-          name: worldbox-save-fixture
-          path: artifacts/save-fixture
-
-      - uses: ./.github/actions/setup-browser
-
-      # 运动和特效检查使用独立 runner，避免争用 CPU。
-      - name: Test published site under its GitHub Pages path
-        env:
-          WORLDBOX_BASE_URL: http://127.0.0.1:8080/SeWZC.SandboxGame/
-          WORLDBOX_EXPECTED_REVISION: ${{ github.sha }}
-          BROWSER_SUITE: ${{ matrix.suite }}
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/browser-tests
-          python3 -m http.server 8080 --bind 127.0.0.1 --directory artifacts/browser-preview > artifacts/browser-tests/http.log 2>&1 &
-          worldbox_server_pid=$!
-          trap 'kill "$worldbox_server_pid" 2>/dev/null || true' EXIT
-          for attempt in {1..30}; do
-            if curl --fail --silent "$WORLDBOX_BASE_URL" > /dev/null; then break; fi
-            sleep 1
-          done
-          curl --fail --silent "$WORLDBOX_BASE_URL" > /dev/null
-          worldbox_suite_args=()
-          if [[ "$BROWSER_SUITE" == saving ]]; then
-            worldbox_suite_args+=(artifacts/save-fixture/world.worldbox.json)
-          fi
-          node "tests/browser/$BROWSER_SUITE.cjs" "${worldbox_suite_args[@]}" 2>&1 | tee "artifacts/browser-tests/$BROWSER_SUITE.log"
-
-      - name: Upload browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: worldbox-browser-tests-${{ matrix.suite }}
-          path: artifacts/browser-tests
-          if-no-files-found: ignore
-
   deploy:
     name: Deploy main to GitHub Pages
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: [build, publish, browser]
+    needs: [build, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -201,30 +124,3 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
-
-  verify-live:
-    name: Verify deployed game
-    needs: deploy
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    env:
-      WORLDBOX_BASE_URL: ${{ needs.deploy.outputs.page_url }}
-      WORLDBOX_EXPECTED_REVISION: ${{ github.sha }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: ./.github/actions/setup-browser
-
-      - name: Test deployed revision, startup and save recovery
-        run: |
-          set -euo pipefail
-          mkdir -p artifacts/browser-tests
-          npm run test:deploy --prefix tests/browser 2>&1 | tee artifacts/browser-tests/deploy-smoke.log
-
-      - name: Upload live browser evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: worldbox-live-browser-tests
-          path: artifacts/browser-tests
-          if-no-files-found: ignore

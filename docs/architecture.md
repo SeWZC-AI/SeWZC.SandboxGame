@@ -15,7 +15,7 @@ flowchart TD
     Browser[Browser: 启动、浏览器存储、文件交互] --> UI[Avalonia UI: 工具、面板、自定义地图]
     Desktop[Desktop: 启动、文件存储] --> UI
     UI --> Core[Core: 数据、模拟、编辑、序列化]
-    Tests[Core.Tests: 无界面可执行验证] --> Core
+    Tests[Core.Tests: xUnit 单元测试] --> Core
     UI --> Storage[IWorldStorage]
     Browser -. 实现 .-> Storage
     Desktop -. 实现 .-> Storage
@@ -104,15 +104,15 @@ JSON 存档包含格式版本、世界种子、模拟时间、随机数状态以
 
 浏览器项目使用 `Microsoft.NET.Sdk.WebAssembly`，发布后的 `wwwroot` 是完整静态站点。脚本把它复制到 `artifacts/site`，增加 `.nojekyll` 并检查引用与 WebAssembly 载荷。入口、脚本与样式采用相对 URL，使根目录和 `/SeWZC.SandboxGame/` 等项目子路径均可使用。
 
-GitHub Actions 固定 SDK，安装 `wasm-tools`，构建桌面与浏览器项目，运行核心验证程序，再发布静态文件。随后使用 Node.js 22 和固定版本 Playwright，在本地 HTTP 服务的 `/SeWZC.SandboxGame/` 子路径运行 Chromium 桌面、触屏与运动检查。桌面及触屏检查使用只读语义控件快照定位实际控件，再派发真实鼠标、键盘或触摸事件，并从真实 IndexedDB／导出文件核对结果。快照仅在 `?e2e=1` 时启用，不提供编辑或推进世界的测试命令。截图、存档样本与日志作为构建产物保留；所有分支和 PR 都执行验证，只有 `main` 分支的推送或手动运行通过后才由独立部署任务使用最小 Pages 权限发布。该条件不依赖仓库默认分支。
+GitHub Actions 固定 SDK。原生任务构建桌面与 xUnit 项目并运行 `dotnet test`，发布任务安装 `wasm-tools` 后生成并检查裁剪静态产物。单元结果以 TRX 上传；当前不运行旧浏览器脚本，也不提供 `?e2e=1` 快照桥。只有 `main` 的推送或手动运行通过上述任务后，才由独立部署任务以最小 Pages 权限发布。
 
-首次部署前，仓库所有者需要把 Pages 的 Source 配置为 GitHub Actions，并确保 `github-pages` 环境的分支策略允许 `main`。部署任务先通过 `actions/configure-pages` 检查站点配置，再用 `actions/deploy-pages` 发布已验证的静态产物，不写入 `gh-pages` 分支。部署后用实际站点 URL 重跑同样四套浏览器检查并保留证据。
+首次部署前，仓库所有者需要把 Pages 的 Source 配置为 GitHub Actions，并确保 `github-pages` 环境允许 `main`。部署任务通过 `actions/configure-pages` 检查配置，再用 `actions/deploy-pages` 发布，不写入 `gh-pages` 分支。当前没有部署后交互验收任务。
 
 静态检查可以发现缺失资源、错误根路径和未替换的指纹占位符，不能替代实际浏览器启动与交互检查。发布流程不添加不必要的服务器、认证或网络依赖。
 
 ## 验证策略与路线图
 
-核心验证关注模拟规则与持久化结果：相同种子的生成、存档后的连续演化、无效输入拒绝、编辑后的实体一致性，以及经济、灾害和战争的实际影响。桌面和浏览器共用核心，但仍分别需要平台启动验证。
+现有单元覆盖资源、通行、研究、现场加工、防护、居民与国家编辑、序列化，以及文字、运动轨迹和研究布局。测试直接构造小型前置状态，不混入长程模拟、UI 控件遍历或性能诊断。完整演化、通信、战争、灾害和平台操作仍需专项验收，见 [测试说明](../tests/README.md)。
 
 浏览器重点验证实际发布目录与仓库子路径、资源加载、中文显示、笔刷与缩放、保存恢复、导入导出、页面隐藏行为和手机尺寸布局。真实手机、多个浏览器、长时间运行、人口压力和帧预算应形成持续的验收记录。
 

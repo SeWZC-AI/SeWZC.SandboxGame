@@ -24,7 +24,7 @@
 
 ## 实现与验证
 
-核心入口是 `WorldEngine.Towns.cs`、`BuildingSites.cs`、`Claims.cs`、`Society.cs`、`Agents.cs`、`Land.cs`；地图入口是 `WorldMapControl.Infrastructure.cs` 和 `MainView.Buildings.cs`。回归位于 [TownInfrastructureTests](../../tests/SeWZC.WorldBox.Core.Tests/TownInfrastructureTests.cs) 和 [浏览器建设图层检查](../../tests/browser/infrastructure.cjs)，包括材料到场、不同岸边岗位、独占地、错误轴向受阻、施工／寻路保存续演及只读地图筛选。实际结果见 [验证记录](../verification.md)。
+核心入口是 `WorldEngine.Towns.cs`、`BuildingSites.cs`、`Claims.cs`、`Society.cs`、`Agents.cs`、`Land.cs`；地图入口是 `WorldMapControl.Infrastructure.cs` 和 `MainView.Buildings.cs`。回归位于 [TownInfrastructureTests](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/SeWZC.WorldBox.Core.Tests/TownInfrastructureTests.cs) 和 [浏览器建设图层检查](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/browser/infrastructure.cjs)，包括材料到场、不同岸边岗位、独占地、错误轴向受阻、施工／寻路保存续演及只读地图筛选。实际结果见 [验证记录](../verification.md)。
 
 ## 重新评估条件
 

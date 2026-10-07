@@ -20,7 +20,7 @@
 | 上述动物阶段 | 0.683 | 0.368 | 隔离探针阶段；降低约 46.2%，该阶段分配为零 |
 | 2,000 人完整模拟 | 6.144 | 5.421 | 16 国、8 战、平坦草地、无灾害；预热 60 日、测 120 日 |
 
-完整模拟最终三轮为 6.266／5.014／4.983 ms/日，分配仍约 1,734 KiB/日。两类负载各六轮的完整保存摘要分别一致且可导入；这只证明这些场景的结果一致。密集生态数值来自历史隔离探针，下面的现行测量入口只测完整模拟。
+完整模拟最终三轮为 6.266／5.014／4.983 ms/日，分配仍约 1,734 KiB/日。两类负载各六轮的完整保存摘要分别一致且可导入；这只证明这些场景的结果一致。密集生态数值来自历史隔离探针，本轮已删除旧测试程序中的测量入口。
 
 ### 浏览器正式产物
 
@@ -34,32 +34,8 @@ Chromium 151.0.7922.173／Playwright 1.57.0／Node 22.23.3，独立串行 Headle
 
 默认全图接近五倍的 25 日/秒目标；近景和压力世界仍未达到目标。动画帧机会不等于实际绘制 FPS，云环境和短时观测也不能保证真机或任意人口的性能。压力世界仍主要受居民行动与通信成本限制。
 
-## 复现测量
+## 后续测量
 
-先按改动范围通过功能检查，完成 Release 构建与浏览器发布，再串行测量；不要与构建、其他测试或模拟负载并发。详细功能与发布命令见 [验证记录](verification.md#复现命令)。
+以上数据属于注明的历史源码，不能作为当前版本的性能证据。2026-10-07 用户要求全部删除旧测试并重新建立单元测试；原测试程序中的模拟诊断、保存探针、夹具导出和浏览器计时脚本一并删除，不再提供旧命令。
 
-完整原生模拟与分块保存有现成入口，无需改写源码：
-
-```bash
-dotnet tests/SeWZC.WorldBox.Core.Tests/bin/Release/net10.0/SeWZC.WorldBox.Core.Tests.dll \
-  --profile-simulation --population 2000 --warmup 60 --ticks 120 --repetitions 3 \
-  --output artifacts/performance/simulation.json
-dotnet tests/SeWZC.WorldBox.Core.Tests/bin/Release/net10.0/SeWZC.WorldBox.Core.Tests.dll \
-  --profile-save --output artifacts/performance/save.json
-```
-
-`--profile-simulation` 记录每步墙钟时间、分配、GC、进程 CPU 和终态保存摘要；CPU 包含该进程的工作线程，不能当作某个方法的 CPU 占比。`--profile-save` 使用 256×256、2,000 人受控世界，预热一次并测三次分块捕获，记录大小、同步切片、让出次数和分配。原生结果不能换算为浏览器帧率。
-
-站点按 [浏览器检查](verification.md#浏览器检查) 运行后，生成同一大世界夹具并测正式产物：
-
-```bash
-dotnet tests/SeWZC.WorldBox.Core.Tests/bin/Release/net10.0/SeWZC.WorldBox.Core.Tests.dll \
-  --export-browser-fixture artifacts/performance/large.worldbox.json
-WORLDBOX_PROFILE_CASES=default-far-5,default-near-5,large-far-5 \
-  node tests/browser/five-speed-profile.cjs \
-  artifacts/performance/large.worldbox.json artifacts/performance/browser
-```
-
-`WORLDBOX_PROFILE_SECONDS` 设置观察时长（默认 15 秒），`WORLDBOX_PROFILE_DEFAULT_FIXTURE` 指定固定默认世界；站点与浏览器路径使用 `WORLDBOX_BASE_URL`、`CHROMIUM_EXECUTABLE`。对比版本时复用相同默认及大世界存档、视角、时长和环境，分别输出到独立目录。正式产物记录推进、长任务与动画帧机会；没有插桩时不提供托管阶段耗时。
-
-保存的真实压缩、取消、Worker／压缩 API 回退及自动保存通过 [saving.cjs](../tests/browser/saving.cjs) 验证。性能报告记录提交或源码摘要、环境、种子、规模、配置及全部复测，避免用单次最好结果或旧版本结论替代当前测量。
+后续需要测量时建立独立工具，与单元测试分开；先通过相关功能检查，再串行测量实际负载。记录源码提交或摘要、环境、种子、规模、配置、预热及所有复测；原生结果不能换算为浏览器帧率。当前单元测试耗时见 [验证记录](verification.md)。

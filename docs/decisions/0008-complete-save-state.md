@@ -27,8 +27,8 @@
 ## 实现与验证
 
 - [序列化上下文](../../src/SeWZC.WorldBox.Core/WorldJsonContext.cs)、[持久化](../../src/SeWZC.WorldBox.Core/WorldEngine.Persistence.cs)、[当前模型校验](../../src/SeWZC.WorldBox.Core/WorldEngine.ValidationV2.cs)。
-- [基础保存续演](../../tests/SeWZC.WorldBox.Core.Tests/Program.cs)、[编辑零值回归](../../tests/SeWZC.WorldBox.Core.Tests/EditorAndMigrationTests.cs)、[发展途中续演](../../tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs)。
-- [浏览器完整导入导出](../../tests/browser/smoke.cjs) 核对真实文件和存储，而非只比较测试对象。
+- [基础保存续演](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/SeWZC.WorldBox.Core.Tests/Program.cs)、[编辑零值回归](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/SeWZC.WorldBox.Core.Tests/EditorAndMigrationTests.cs)、[发展途中续演](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs)。
+- [浏览器完整导入导出](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/browser/smoke.cjs) 核对真实文件和存储，而非只比较测试对象。
 
 相关：[产品约定](../product.md) · [alpha 与容量边界](0009-alpha-and-budgets.md) · [决策索引](README.md)
 

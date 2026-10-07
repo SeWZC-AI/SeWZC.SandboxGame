@@ -32,7 +32,7 @@
 ## 实现与验证
 
 - [角色决策](../../src/SeWZC.WorldBox.Core/WorldEngine.Agents.cs)、[消息与运输](../../src/SeWZC.WorldBox.Core/WorldEngine.Communication.cs)、[设施网络](../../src/SeWZC.WorldBox.Core/WorldEngine.Society.cs)。
-- [角色行为测试](../../tests/SeWZC.WorldBox.Core.Tests/AgentBehaviorTests.cs)验证远方不可知、单步不能连续转述、实物采集贸易及消息质量改变行动。
-- [社会行为测试](../../tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs)验证施工研究到场要求和运作中的通信网络。
+- [角色行为测试](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/SeWZC.WorldBox.Core.Tests/AgentBehaviorTests.cs)验证远方不可知、单步不能连续转述、实物采集贸易及消息质量改变行动。
+- [社会行为测试](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/SeWZC.WorldBox.Core.Tests/SocietyBehaviorTests.cs)验证施工研究到场要求和运作中的通信网络。
 
 相关文档：[产品约定](../product.md) · [决策索引](README.md)。

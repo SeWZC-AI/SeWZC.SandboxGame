@@ -7,6 +7,7 @@
 | 要做的事 | 先读 | 然后定位 |
 | --- | --- | --- |
 | 打开浏览器版 | [项目 README](../README.md) | [操作与存档](gameplay.md) |
+| 运行或编写单元测试 | [测试说明](../tests/README.md) | [开发约定的检查范围](development.md#检查范围) |
 | 本地运行游戏 | [开发约定的本地运行](development.md#本地运行) | [验证记录](verification.md) |
 | 发布浏览器版 | [部署指南](deployment.md) | [验证记录](verification.md) 中的浏览器检查与部署验收 |
 | 新增或调整产品行为 | [产品约定](product.md) | [设计决策索引](decisions/README.md)、相关代码与测试 |

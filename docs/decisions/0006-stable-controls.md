@@ -25,7 +25,7 @@
 ## 实现与验证
 
 - [工具与布局](../../src/SeWZC.WorldBox.UI/MainView.Tools.cs)、[主界面](../../src/SeWZC.WorldBox.UI/MainView.cs)、[居民编辑](../../src/SeWZC.WorldBox.UI/MainView.Residents.cs)。
-- [桌面检查](../../tests/browser/smoke.cjs) 对比各分类核心矩形；等待主题按压动画结束后精确比较，不用误差阈值掩盖重排。
-- [触屏检查](../../tests/browser/mobile-smoke.cjs) 覆盖编辑页签、提交位置与旋转。
+- [桌面检查](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/browser/smoke.cjs) 对比各分类核心矩形；等待主题按压动画结束后精确比较，不用误差阈值掩盖重排。
+- [触屏检查](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/browser/mobile-smoke.cjs) 覆盖编辑页签、提交位置与旋转。
 
 相关：[产品约定](../product.md) · [决策索引](README.md)

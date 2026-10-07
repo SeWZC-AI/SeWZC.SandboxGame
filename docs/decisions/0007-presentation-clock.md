@@ -25,7 +25,7 @@ Core 保存逻辑位置及移动过程；呈现层以独立时间在真实位置
 ## 实现与验证
 
 - [运动轨迹](../../src/SeWZC.WorldBox.UI/Controls/EntityMotionTrack.cs)、[地图运动呈现](../../src/SeWZC.WorldBox.UI/Controls/WorldMapControl.Motion.cs)。
-- [运动检查](../../tests/browser/motion.cjs) 读取最后实际绘制位置，验证同一模拟 tick 内的连续位移、暂停、变速、点选和跟随；比较完整存档及随机状态，不能只断言插值公式的预期值。
+- [运动检查](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/browser/motion.cjs) 读取最后实际绘制位置，验证同一模拟 tick 内的连续位移、暂停、变速、点选和跟随；比较完整存档及随机状态，不能只断言插值公式的预期值。
 
 相关：[产品约定](../product.md) · [决策索引](README.md)
 

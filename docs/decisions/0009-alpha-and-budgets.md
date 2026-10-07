@@ -25,7 +25,7 @@ alpha 不以旧内部接口或布局兼容为约束，不提供旧存档迁移�
 ## 实现与验证
 
 - [世界模型](../../src/SeWZC.WorldBox.Core/WorldState.cs)、[认知模型](../../src/SeWZC.WorldBox.Core/AgentState.cs)、[社会模型](../../src/SeWZC.WorldBox.Core/SocietyState.cs)、[存档校验](../../src/SeWZC.WorldBox.Core/WorldEngine.Persistence.cs)。
-- [异常存档检查](../../tests/SeWZC.WorldBox.Core.Tests/Program.cs)、[浏览器旧版与未知版拒绝](../../tests/browser/smoke.cjs)、[压力检查](../../tests/browser/stress.cjs)。
+- [异常存档检查](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/SeWZC.WorldBox.Core.Tests/Program.cs)、[浏览器旧版与未知版拒绝](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/browser/smoke.cjs)、[压力检查](https://github.com/SeWZC-AI/SeWZC.SandboxGame/blob/133b01f06f48a5da368976a2642aef75e20d12eb/tests/browser/stress.cjs)。
 - 容量与性能的已测结果、适用环境和限制见 [验证记录](../verification.md)，不能由短时通过推断无限运行。
 
 相关：[产品约定](../product.md) · [完整存档状态](0008-complete-save-state.md) · [决策索引](README.md)
