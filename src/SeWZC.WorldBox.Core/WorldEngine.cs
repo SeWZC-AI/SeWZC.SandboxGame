@@ -238,6 +238,7 @@ public sealed partial class WorldEngine
                 importance: EventImportance.Major);
             if (resident.History.Count > 24)
                 resident.History.RemoveAt(0);
+            RemoveLocalWorkResident(resident);
             Current.Residents.Remove(resident);
             Current.ArchivedResidents.Add(resident);
             if (_citizens.TryGetValue(resident.SettlementId, out var citizens))

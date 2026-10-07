@@ -14,7 +14,7 @@ public sealed record AgentGoal
     /// <summary>当前导航目标地格的数组索引，-1 表示尚未设置。</summary>
     public int NavigationTarget { get; init; } = -1;
 
-    /// <summary>当前导航已走过的地格索引，用于避免反复绕路。</summary>
+    /// <summary>当前绕路阶段访问过的地格索引，用于避免循环；取得新的最短目标距离后清空。</summary>
     public ImmutableArray<int> NavigationVisited { get; init; } = [];
 
     /// <summary>当前导航曾达到的最短目标距离，以地格计。</summary>

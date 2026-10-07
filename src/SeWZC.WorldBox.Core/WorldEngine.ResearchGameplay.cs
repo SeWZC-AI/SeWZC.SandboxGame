@@ -753,7 +753,16 @@ public sealed partial class WorldEngine
         person.Activity = ResidentActivity.Working;
         if (b.Kind == BuildingKind.Reservoir && person.Inventory.Water >= 3)
         {
-            person.Replace(person.Value with { Agent = person.Agent.Value with { Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, TargetSettlementId = home.Id, Reason = "蓄水站取水后亲自运回粮仓", }, NextThinkTick = Current.Tick + 30 } });
+            var returning = new AgentGoal
+            {
+                Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y,
+                TargetSettlementId = home.Id, StartedTick = Current.Tick, Reason = "蓄水站取水后亲自运回粮仓",
+            };
+            ChangeWorkReservation(person.Agent.Goal, returning);
+            person.Replace(person.Value with
+            {
+                Agent = person.Agent.Value with { Goal = returning, NextThinkTick = Current.Tick + 30 },
+            });
         }
 
         return true;

@@ -8,7 +8,7 @@ public sealed partial class WorldEngine
 
     private readonly List<List<BuildingCursor>> _localWorkBuildingBuffers = [];
 
-    // 劳动索引在居民死亡后重建、行动阶段后清除；公开命令在阶段外读取权威集合，避免使用失效分组。
+    // 劳动索引在补给前建立，死亡、迁居及目标变化同步维护，行动阶段后清除；阶段外命令读取权威集合。
     private readonly Dictionary<int, List<BuildingCursor>> _localWorkBuildings = [];
     private readonly List<List<ResidentCursor>> _localWorkResidentBuffers = [];
     private readonly Dictionary<int, List<ResidentCursor>> _localWorkResidents = [];
@@ -17,7 +17,7 @@ public sealed partial class WorldEngine
     private readonly Dictionary<int, int> _workReservations = [];
     private bool _localWorkQueriesActive;
 
-    // 自主劳动四日错峰结算；日常需求、交通及公开的即时劳动命令仍逐日处理。
+    // 自主常规采集及常规设施劳动四日错峰；扑火、消防站现场维修、驻留、日常需求及交通仍逐日处理。
     private int WorkInterval(ResidentCursor person) => _localWorkQueriesActive && !person.Agent.Goal.PlayerDirected ? 4 : 1;
     private bool IsWorkDay(ResidentCursor person) => (Current.Tick + person.Id) % WorkInterval(person) == 0;
 
@@ -77,9 +77,11 @@ public sealed partial class WorldEngine
 
         foreach (var resident in Current.Residents)
         {
+            if (resident.Health <= 0)
+                continue;
             LocalWorkGroup(_localWorkResidents, _localWorkResidentBuffers, resident.SettlementId).Add(resident);
             var id = ReservedWork(resident.Agent.Goal);
-            if (id != 0 && resident.Health > 0 && resident.ArmyId == 0)
+            if (id != 0 && resident.ArmyId == 0)
                 _workReservations[id] = _workReservations.GetValueOrDefault(id) + 1;
         }
 
@@ -111,6 +113,16 @@ public sealed partial class WorldEngine
         if (_localWorkResidents.TryGetValue(previousSettlementId, out var previous))
             previous.Remove(resident);
         LocalWorkGroup(_localWorkResidents, _localWorkResidentBuffers, resident.SettlementId).Add(resident);
+    }
+
+    private void RemoveLocalWorkResident(ResidentCursor resident)
+    {
+        if (!_localWorkQueriesActive || !_localWorkResidents.TryGetValue(resident.SettlementId, out var group)
+                                    || !group.Remove(resident))
+            return;
+        var workId = ReservedWork(resident.Agent.Goal);
+        if (workId != 0 && resident.ArmyId == 0)
+            _workReservations[workId] = Math.Max(0, _workReservations.GetValueOrDefault(workId) - 1);
     }
 
     private IReadOnlyList<ResidentCursor>? ResidentsForLocalWork(int settlementId)
@@ -185,7 +197,7 @@ public sealed partial class WorldEngine
         ResidentCursor? selected = null;
         foreach (var patient in residents)
         {
-            if (patient.SettlementId != building.SettlementId || Distance(patient.X, patient.Y, building.X,
+            if (patient.Health <= 0 || patient.SettlementId != building.SettlementId || Distance(patient.X, patient.Y, building.X,
                                                                   building.Y) > 3
                                                               || !(patient.Health < 99 || patient.SicknessTicks > 0))
                 continue;
