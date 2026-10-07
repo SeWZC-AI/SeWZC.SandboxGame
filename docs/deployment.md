@@ -14,9 +14,9 @@ python3 -m http.server 8080 --directory artifacts/site
 
 访问 `http://localhost:8080/`，不要直接用 `file://` 打开 `index.html`。
 
-[发布脚本](../scripts/publish-browser.sh) 会清空并重建 `artifacts/browser` 和 `artifacts/site`，自动还原浏览器项目、发布 Release 产物并检查静态资源；最终站点位于 `artifacts/site`。可通过 `WORLDBOX_DOTNET=/path/to/dotnet` 指定 SDK 可执行文件。
+[发布脚本](../scripts/publish-browser.sh) 会清空并重建 `artifacts/browser` 和 `artifacts/site`，发布 Release 产物并检查静态资源；最终站点位于 `artifacts/site`。可通过 `WORLDBOX_DOTNET=/path/to/dotnet` 指定 SDK 可执行文件。
 
-入口和自有资源使用相对路径，支持项目子路径。发布输出包含 `.nojekyll`，避免 `_framework` 被静态处理忽略。浏览器项目关闭 WebAssembly 多线程与 AOT；保存使用普通 JavaScript Worker，不支持时使用分块回退。
+入口和自有资源使用相对路径，支持项目子路径。发布输出包含 `.nojekyll`，避免 `_framework` 被静态处理忽略。保存使用普通 JavaScript Worker，不支持时使用分块回退。
 
 ## 发布到 GitHub Pages
 
