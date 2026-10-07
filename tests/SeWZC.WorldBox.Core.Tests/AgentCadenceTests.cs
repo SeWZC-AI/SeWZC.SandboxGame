@@ -5,6 +5,33 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>自主评估错峰与供水等待的即时边界。</summary>
 public sealed class AgentCadenceTests
 {
+    /// <summary>返乡休息和等粮不能在非评估日延后已到期的复评，下一错峰日仍会重新决策。</summary>
+    [Theory]
+    [InlineData(AgentGoalKind.ReturnHome, ResidentActivity.Resting)]
+    [InlineData(AgentGoalKind.Eat, ResidentActivity.Eating)]
+    public void Arrived_waiting_goal_keeps_its_due_review_until_the_scheduled_day(
+        AgentGoalKind kind, ResidentActivity activity)
+    {
+        var fixture = Prepare();
+        var due = fixture.Engine.Current.Tick + 1;
+        fixture.Resident.Activity = activity;
+        fixture.Resident.Inventory = new ResourceStock { Food = 1, Water = 1 };
+        fixture.Resident.Agent.NextThinkTick = due;
+        fixture.Resident.Agent.Goal = new AgentGoal
+        {
+            Kind = kind, TargetX = 16, TargetY = 16, WorkTicks = 2, ReviewTick = due,
+        };
+
+        fixture.Engine.Step();
+
+        Assert.Empty(fixture.Resident.Agent.Decisions);
+        Assert.Equal(due, fixture.Resident.Agent.NextThinkTick);
+
+        fixture.Engine.Step(3);
+
+        Assert.NotEmpty(fixture.Resident.Agent.Decisions);
+    }
+
     /// <summary>精力已恢复的到场休息仍结算身体需求，但复用未改变的心智快照。</summary>
     [Theory]
     [InlineData(AgentGoalKind.Rest, ResidentActivity.Resting)]

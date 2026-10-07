@@ -90,7 +90,7 @@ public sealed partial class WorldEngine
 
             // 补给先按实际位置交付，再用一次纯转换结算身体状态和日常需求。
             UpdateResidents();
-            // 普通观察按居民序号错峰；火灾仍立即观察，实际取水和劳动自行核实目标。
+            // 普通观察按居民序号错峰；非军队居民所在格起火时立即观察，实际取水和劳动自行核实目标。
             var observationInterval = Math.Max(16, (Current.Residents.Count + 127) / 128);
             var observerIndex = 0;
             foreach (var person in Current.Residents)
@@ -881,7 +881,7 @@ public sealed partial class WorldEngine
                 person.Activity = ResidentActivity.Eating;
                 if (inspectFood)
                 {
-                    var next = Current.Tick + 4;
+                    var next = Math.Min(person.Agent.NextThinkTick, Current.Tick + 4);
                     var observed = person.Agent.Value.Remember(MakeAgentFact(person, AgentFactKind.FoodSupply, home.Id,
                         home.X, home.Y, home.Resources.Food, $"实地查看粮仓：{home.Resources.Food:0.0} 份粮食"), home.Id);
                     person.Agent.Replace(observed with { Goal = goal with { ReviewTick = next }, NextThinkTick = next });
@@ -943,7 +943,7 @@ public sealed partial class WorldEngine
                 TransferPersonalProduction(person, home);
                 FinishFoundation(person, home);
                 var fatigue = Math.Max(0, person.Agent.Fatigue - .8 * HomeRestMultiplier(person));
-                var nextReview = goal.WorkTicks == 1 || Current.Tick >= person.Agent.NextThinkTick
+                var nextReview = goal.WorkTicks == 1
                     ? Current.Tick + (home.FoundationPending ? 4 : GoalReviewInterval(person))
                     : person.Agent.NextThinkTick;
                 if (person.Activity != ResidentActivity.Resting || fatigue != person.Agent.Fatigue

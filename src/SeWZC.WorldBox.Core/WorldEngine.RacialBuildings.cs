@@ -116,7 +116,16 @@ public sealed partial class WorldEngine
         if (building.Kind is BuildingKind.MiningHall or BuildingKind.HuntingCamp &&
             person.Inventory.Food + person.Inventory.Stone + person.Inventory.Ore > 2)
         {
-            person.Replace(person.Value with { Agent = person.Agent.Value with { Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, TargetSettlementId = home.Id, StartedTick = Current.Tick, Reason = "亲自运回特殊设施的劳动产出", }, NextThinkTick = Current.Tick + 24 } });
+            var returning = new AgentGoal
+            {
+                Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y,
+                TargetSettlementId = home.Id, StartedTick = Current.Tick, Reason = "亲自运回特殊设施的劳动产出",
+            };
+            ChangeWorkReservation(person.Agent.Goal, returning);
+            person.Replace(person.Value with
+            {
+                Agent = person.Agent.Value with { Goal = returning, NextThinkTick = Current.Tick + 24 },
+            });
         }
 
         return true;
