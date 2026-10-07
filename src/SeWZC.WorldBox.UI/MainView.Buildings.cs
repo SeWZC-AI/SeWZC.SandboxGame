@@ -171,8 +171,8 @@ public sealed partial class MainView
                 : BridgeDirection.Horizontal)
             : null;
         var panel = ModalPanel(reorient ? "改造桥梁方向" : "升级建筑", reorient
-            ? $"{WorldEngine.BridgeDirectionName(building.Direction)} → {WorldEngine.BridgeDirectionName(direction!.Value)}。施工期间仍沿原方向通行，完工后改向。"
-            : $"{BuildingLabel(building)}：{building.Level} 级 → {building.Level + 1} 级。"
+            ? $"{WorldEngine.BridgeDirectionName(building.Direction)} 至 {WorldEngine.BridgeDirectionName(direction!.Value)}。施工期间仍沿原方向通行，完工后改向。"
+            : $"{BuildingLabel(building)}：{building.Level} 级 至 {building.Level + 1} 级。"
               + (building.Kind == BuildingKind.Bridge ? "施工期间保留原通道，完工后提高离岸上限。" : "升级期间暂停运营，居民到场施工后生效。"));
         panel.Children.Add(Paragraph("施工材料：" + StockLabel(WorldEngine.GetUpgradeCost(building, reorient))));
         panel.Children.Add(Named(

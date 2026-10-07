@@ -55,7 +55,7 @@ Core 不引用 Avalonia、平台 API 或文件系统。UI 协调模拟、编辑�
 | 战争与灾害 | Core `WorldEngine.Warfare.cs`、`WorldEngine.Campaigns.cs`、`WorldEngine.Conflicts.cs`、`WorldEngine.Fire.cs`、`WorldEngine.Mortality.cs` | `DamageProtectionTests`；战争与灾害需另验 |
 | 观察与故事 | Core `WorldEngine.Inspection.cs`、`WorldEngine.EffectsInfo.cs`、`WorldEngine.TaskIcons.cs`、`WorldEngine.Presentation.cs`、`WorldEngine.Stories.cs`；UI `MainView.Stories.cs` | 尚无故事与实际呈现验收 |
 | 编辑与存档 | Core `WorldEngine.Commands.cs`、`WorldEngine.ResidentEditing.cs`、`WorldEngine.NationEditing.cs`、`WorldEngine.Persistence.cs`、`WorldEngine.ValidationV2.cs`、`WorldJsonContext.cs` | `ResidentEditingTests`、`NationEditingTests`、`WorldPersistenceTests`、`WildlifeSerializationTests` |
-| 详情与异步提交 | UI `MainView.Navigation.cs`、`MainView.AsyncEdits.cs`、`MainView.Inputs.cs`、`MainView.Residents.cs`、`MainView.Buildings.cs`、`DisplayFormat.cs` | `DisplayFormatTests`；真实控件与异步会话需另验 |
+| 详情与异步提交 | UI `MainView.Navigation.cs`、`MainView.AsyncEdits.cs`、`MainView.Inputs.cs`、`MainView.Residents.cs`、`MainView.Buildings.cs` | 真实控件与异步会话需另验 |
 | 科技树 | UI `MainView.Research.cs`、`MainView.ResearchActions.cs`；Controls `ResearchTreeLayout.cs`、`ResearchGraphControl.cs` | `ResearchTreeLayoutTests`；拖动、缩放与触屏需另验 |
 | 地图与输入 | Controls `WorldMapControl.*.cs`、`EntityMotionTrack.cs`；Browser `wwwroot/text-input.js`、`touch-gestures.js` | `EntityMotionTrackTests`；渲染与实际输入需另验 |
 | 平台保存 | [BrowserWorldStorage](../src/SeWZC.WorldBox.Browser/BrowserWorldStorage.cs)、`storage.js`、`storage-worker.js`；[DesktopWorldStorage](../src/SeWZC.WorldBox.Desktop/DesktopWorldStorage.cs) | 实际导入导出及刷新恢复，尚无平台自动验收 |
@@ -97,7 +97,7 @@ UI 每 30 秒检查自动保存，世界实例、日序及编辑修订都未变�
 
 ### 平台保存
 
-浏览器逐块传输并用 `scheduler.yield`／MessageChannel 让出事件循环。`storage-worker.js` 累积 Blob 并导入 `storage.js`，在 Worker 内压缩及事务写入 IndexedDB；Worker 不继承文档 import map，入口传已解析模块 URL。无 Worker 时同样分块构造 Blob，无压缩 API 时用未压缩 Blob。失败不提交不完整捕获，读取流式解压并严格验证 UTF-8。
+浏览器逐块传输，用 `scheduler.yield`／MessageChannel 让出事件循环。`storage-worker.js` 压缩 Blob 并事务写入 IndexedDB，入口提供已解析的模块 URL。无 Worker 时在主线程写入，无压缩 API 时保存未压缩 Blob。读取校验 Blob 记录、流式解压并严格验证 UTF-8，失败不提交不完整捕获。
 
 桌面后台检查大小、gzip 压缩、写同目录临时文件并原子替换。实际路径和玩家备份操作见 [操作与存档](gameplay.md#存档与兼容性)，核心取消测试与平台验收缺口见 [构建与验证](verification.md#验证边界)。
 

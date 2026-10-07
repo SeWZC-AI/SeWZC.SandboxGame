@@ -6,16 +6,9 @@ public interface IWorldStorage
     /// <summary>平台是否隐藏或失去活动状态，此时应临时停止模拟。</summary>
     bool IsBackground { get; }
 
-    /// <summary>用传入的世界 JSON 替换平台本地自动存档。</summary>
-    /// <param name="json">要写入本地自动存档的世界 JSON。</param>
-    Task SaveAsync(string json);
-
-    /// <summary>用按顺序排列的 JSON 文本块替换本地自动存档；默认实现先拼接各块。</summary>
+    /// <summary>用按顺序排列的 JSON 文本块替换本地自动存档。</summary>
     /// <param name="chunks">按原始顺序排列的世界 JSON 文本块。</param>
-    Task SaveChunksAsync(string[] chunks)
-    {
-        return SaveAsync(string.Concat(chunks));
-    }
+    Task SaveChunksAsync(string[] chunks);
 
     /// <summary>读取本地自动存档；不存在时返回 <c>null</c>。</summary>
     Task<string?> LoadAsync();

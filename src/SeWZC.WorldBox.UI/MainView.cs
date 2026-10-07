@@ -780,7 +780,6 @@ public sealed partial class MainView : UserControl
             ? "选择国家、聚落或居民，关注它的故事"
             : $"{DateLabel(spotlight.Latest.Tick)}\n{spotlight.Latest.Message}" +
               (spotlight.Count > 1 ? $"（同类 {spotlight.Count} 次）" : "");
-        spotlightText = DisplayFormat.Text(spotlightText);
         if (_eventText.Text != spotlightText)
             _eventText.Text = spotlightText;
         if (_mobilePanel || force)
@@ -1475,7 +1474,7 @@ public sealed partial class MainView : UserControl
     {
         return new TextBlock
         {
-            Text = DisplayFormat.Text(text),
+            Text = text,
             FontSize = size,
             Foreground = color ?? Brush.Parse("#E9EFEB"),
             FontWeight = bold ? FontWeight.SemiBold : FontWeight.Normal,
@@ -1487,7 +1486,7 @@ public sealed partial class MainView : UserControl
     {
         return new TextBlock
         {
-            Text = DisplayFormat.Text(text),
+            Text = text,
             FontSize = 12,
             Foreground = Muted,
             TextWrapping = TextWrapping.Wrap,

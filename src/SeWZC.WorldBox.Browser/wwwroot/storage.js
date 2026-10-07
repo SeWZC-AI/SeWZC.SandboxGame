@@ -147,21 +147,9 @@ export function discardSave(id) {
     saveRequests.delete(id);
 }
 
-export async function save(json) {
-    if (typeof json !== "string") throw new Error("存档内容不是文本。");
-    const id = beginSave();
-    try {
-        appendSave(id, json);
-        await commitSave(id);
-    } finally {
-        discardSave(id);
-    }
-}
-
 // Worker 与主线程回退路径共用的写入入口。
-export async function writeSave(json) {
+export async function writeSave(blob) {
     // 用文本块构造 Blob，不拼接整个存档。
-    const blob = json instanceof Blob ? json : new Blob([checkSize(json)], {type: "application/json"});
     if (!blob.size || blob.size > MAX_FILE_BYTES) throw new Error("存档为空或超过 64 MiB。");
     const compressed = typeof CompressionStream === "function" && typeof DecompressionStream === "function";
     const candidate = compressed
@@ -193,7 +181,6 @@ export async function load() {
         transaction.onabort = () => reject(transaction.error ?? new Error("读取世界已中断。"));
     });
     if (value === null) return null;
-    if (typeof value === "string") return checkSize(value);
     if (!(value.data instanceof Blob) || !Number.isInteger(value.bytes) || value.bytes < 0
         || value.bytes > MAX_FILE_BYTES || value.data.size > MAX_FILE_BYTES
         || !["gzip", "utf-8"].includes(value.encoding)) throw new Error("存档存储格式无效。");

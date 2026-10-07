@@ -71,7 +71,7 @@ public sealed partial class MainView
         void Refresh()
         {
             var error = _engine.WaygateTravelError(Integer(person), Integer(target));
-            requirements.Text = DisplayFormat.Text(error ?? "人员、门与随身补给满足传送条件");
+            requirements.Text = error ?? "人员、门与随身补给满足传送条件";
             apply.IsEnabled = error is null;
         }
 
@@ -120,7 +120,7 @@ public sealed partial class MainView
                 void Refresh()
                 {
                     var error = _engine.RangedAttackError(person.Id, Integer(target));
-                    requirements.Text = DisplayFormat.Text(error ?? "可以射击");
+                    requirements.Text = error ?? "可以射击";
                     apply.IsEnabled = error is null;
                 }
 

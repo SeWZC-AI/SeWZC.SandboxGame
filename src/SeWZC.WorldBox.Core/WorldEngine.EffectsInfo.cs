@@ -129,7 +129,7 @@ public sealed partial class WorldEngine
             BuildingKind.Granary => $"本聚落居民在中心 1 格内返乡休息恢复 ×{1 + .1 * building.Level:0.00}；多个粮仓取最高倍率",
             BuildingKind.Housing => $"提供 {20 * building.Level} 人住房",
             BuildingKind.Market => "值守时，集市 3 格内居民可与相距 3 格的人交换已有消息；每次值守消耗仓库粮食 0.01",
-            BuildingKind.Watchtower => $"塔 2 格内的同聚落居民，观察火灾范围 3 → {3 + building.Level} 格；无需工作人员",
+            BuildingKind.Watchtower => $"塔 2 格内的同聚落居民，观察火灾范围 3 至 {3 + building.Level} 格；无需工作人员",
             BuildingKind.AssemblyHall => $"人类值守，每单位劳动缓解 2 格内同聚落居民社交需求 {factor:0.00}；3 格内居民交谈距离增至 3 格",
             BuildingKind.TradeGuild => $"人类值守，3 格内本聚落商人移动速度 ×{1.15 * factor:0.00}；3 格内居民交谈距离增至 3 格",
             BuildingKind.SacredGrove =>
@@ -180,21 +180,21 @@ public sealed partial class WorldEngine
                     => $"采收量倍率 ×{1 + building.Level * .25:0.00}，岗位增加 1",
                 BuildingKind.Academy => $"研究效率 ×{1 + building.Level * .25:0.00}，岗位增加 1",
                 BuildingKind.Waystation =>
-                    $"信使速度 ×{1.25 + (building.Level - 1) * .15:0.00} → ×{1.25 + building.Level * .15:0.00}，岗位增加 1",
+                    $"信使速度 ×{1.25 + (building.Level - 1) * .15:0.00} 至 ×{1.25 + building.Level * .15:0.00}，岗位增加 1",
                 BuildingKind.SignalTower => $"信号接入 {12 + building.Level * 4} 格，塔间 {24 + building.Level * 8} 格，岗位增加 1",
                 BuildingKind.ArcaneSanctum or BuildingKind.SacredGrove =>
                     $"训练与魔力恢复倍率 ×{1 + building.Level * .25:0.00}，岗位增加 1",
                 BuildingKind.Infirmary or BuildingKind.HerbGarden => $"治疗量倍率 ×{1 + building.Level * .25:0.00}，岗位增加 1",
                 BuildingKind.MountainPass => $"步行耗时系数 {3.5 / (1 + building.Level * .25):0.00}",
                 BuildingKind.Bridge =>
-                    $"离岸上限 {BridgeShoreLimit(building.Level)} → {BridgeShoreLimit(next)} 格，步行耗时系数 {1.2 / (1 + building.Level * .25):0.00}",
+                    $"离岸上限 {BridgeShoreLimit(building.Level)} 至 {BridgeShoreLimit(next)} 格，步行耗时系数 {1.2 / (1 + building.Level * .25):0.00}",
                 BuildingKind.Dock => $"附近水上舟船速度 ×{1 + .15 * next:0.00}，岗位增加 1",
                 BuildingKind.TownCenter => $"返乡休息恢复 ×{1 + building.Level * .25:0.00}",
                 BuildingKind.Well => "岗位增加 1；仍共享当地每日供水额度",
                 BuildingKind.Granary => $"家园休息恢复 ×{1 + .1 * next:0.00}",
                 BuildingKind.Housing => $"住房容量 {20 * next} 人",
                 BuildingKind.Market => "岗位增加 1；交谈范围仍为 3 格",
-                BuildingKind.Watchtower => $"观察火灾范围 {3 + building.Level} → {3 + next} 格",
+                BuildingKind.Watchtower => $"观察火灾范围 {3 + building.Level} 至 {3 + next} 格",
                 BuildingKind.AssemblyHall => $"每单位劳动缓解社交需求 {1 + building.Level * .25:0.00}，岗位增加 1",
                 BuildingKind.TradeGuild => $"本聚落商人速度 ×{1.15 * (1 + building.Level * .25):0.00}，岗位增加 1",
                 BuildingKind.WarDrum =>

@@ -931,7 +931,7 @@ public sealed partial class WorldMapControl : Control
             if (!_settlementLabels.TryGetValue(settlement.Id, out var cached) || cached.Name != settlement.Name ||
                 cached.Size != size)
             {
-                cached = (settlement.Name, size, new FormattedText(DisplayFormat.Text(settlement.Name),
+                cached = (settlement.Name, size, new FormattedText(settlement.Name,
                     CultureInfo.CurrentCulture,
                     FlowDirection.LeftToRight, MapTypeface, size, LabelBrush));
                 _settlementLabels[settlement.Id] = cached;

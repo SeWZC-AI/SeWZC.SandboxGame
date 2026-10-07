@@ -350,8 +350,8 @@ public sealed partial class MainView
             () => _engine.State.Settlements.Where(t => t.NationId == town.NationId && t.Id != town.Id)
                 .OrderBy(t => t.Id),
             t => t.Id.ToString(), t => _engine.CanRelayInformation(town.Id, t.Id, out var ticks)
-                ? $"{town.Name} ↔ {t.Name}\n信号连通\n预计 {ticks} 日"
-                : $"{town.Name} ↔ {t.Name}\n信号未连通\n依赖居民实际携带消息",
+                ? $"{town.Name} 与 {t.Name}\n信号连通\n预计 {ticks} 日"
+                : $"{town.Name} 与 {t.Name}\n信号未连通\n依赖居民实际携带消息",
             t => OpenSettlement(t.Id, "communication"));
         panel.Children.Add(LiveText(() =>
             $"全世界待投递消息 {_engine.State.PendingMessages.Count} 条\n本聚落公开知识 {town.PublicKnowledge.Count} 条\n本聚落已收到报告 {_engine.State.Society.Reports.Count(r => r.RecipientSettlementId == town.Id)} 条"));
@@ -402,8 +402,7 @@ public sealed partial class MainView
             bridgeOptions.IsVisible = type.SelectedItem is BuildingKind.Bridge;
             if (type.SelectedItem is BuildingKind kind)
             {
-                cost.Text = DisplayFormat.Text(
-                    "施工材料：" + StockLabel(WorldEngine.FacilityCost(kind,
+                cost.Text = "施工材料：" + StockLabel(WorldEngine.FacilityCost(kind,
                                 kind == BuildingKind.Bridge ? Integer(level) : 1))
                             + (WorldEngine.IsWaterfrontBuilding(kind) ? "须建在紧邻自然陆岸的水域。" : "")
                             + "\n" + (ProductionRules.For(kind) is { } a
@@ -415,7 +414,7 @@ public sealed partial class MainView
                             + (WorldEngine.BuildingRace(kind) is { } race
                                 ? $"种族条件：本聚落须有成年{RaceName(race)}，由同族成年人运营。\n"
                                 : "")
-                            + WorldEngine.BuildingDescription(kind));
+                            + WorldEngine.BuildingDescription(kind);
             }
         }
 
@@ -440,8 +439,8 @@ public sealed partial class MainView
                 var error = _engine.FacilityPlacementError(townId, kind, Integer(x), Integer(y), gift.IsChecked == true,
                     kind == BuildingKind.Bridge ? (BridgeDirection?)direction.SelectedItem : null,
                     kind == BuildingKind.Bridge ? Integer(level) : 1);
-                placement.Text = DisplayFormat.Text(error is not null ? "暂不能建造：" + error
-                    : gift.IsChecked == true ? "可直接赐予完工；运营仍需满足设施条件" : "可安排施工；提交后扣除材料，等待居民到场");
+                placement.Text = error is not null ? "暂不能建造：" + error
+                    : gift.IsChecked == true ? "可直接赐予完工；运营仍需满足设施条件" : "可安排施工；提交后扣除材料，等待居民到场";
             }
             catch (ArgumentException)
             {
@@ -565,9 +564,8 @@ public sealed partial class MainView
         void RefreshRequirements()
         {
             var blocker = Blocker();
-            requirements.Text = DisplayFormat.Text(
-                $"基础魔力：{WorldEngine.SpellManaCost((SpellKind)spell.SelectedItem!):0}\n"
-                + (blocker is null ? "训练、当地知识与目标距离满足；施放时检查魔力和实际目标" : "暂不能施放：" + blocker));
+            requirements.Text = $"基础魔力：{WorldEngine.SpellManaCost((SpellKind)spell.SelectedItem!):0}\n"
+                + (blocker is null ? "训练、当地知识与目标距离满足；施放时检查魔力和实际目标" : "暂不能施放：" + blocker);
             apply.IsEnabled = blocker is null;
         }
 

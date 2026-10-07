@@ -70,7 +70,6 @@ public sealed partial class MainView
                 : _selectedTile is { } p
                     ? TileSelectionLabel(_engine.State.Tiles[p.Y * _engine.State.Width + p.X])
                     : "";
-        _selectionText.Text = DisplayFormat.Text(_selectionText.Text);
     }
 
     private static string TileSelectionLabel(Tile tile)
