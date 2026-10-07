@@ -13,7 +13,8 @@ internal static class SocietyRegressionTests
 
     private static void Check(bool value, string message)
     {
-        if (!value) throw new InvalidOperationException(message);
+        if (!value)
+            throw new InvalidOperationException(message);
     }
 
     private static WorldEngine Flat(int population = 24, bool pair = false, bool reverseFounding = false,
@@ -45,9 +46,11 @@ internal static class SocietyRegressionTests
             Secession = false,
             Conflict = 3,
         }, false, false);
-        if (pair && reverseFounding) engine.SpawnResidents(otherX, 24, RaceKind.Human, population);
+        if (pair && reverseFounding)
+            engine.SpawnResidents(otherX, 24, RaceKind.Human, population);
         engine.SpawnResidents(14, 24, RaceKind.Human, population);
-        if (pair && !reverseFounding) engine.SpawnResidents(otherX, 24, RaceKind.Human, population);
+        if (pair && !reverseFounding)
+            engine.SpawnResidents(otherX, 24, RaceKind.Human, population);
         foreach (var town in engine.State.Settlements)
         {
             town.Resources = new ResourceStock { Food = 1000, Wood = 1000, Stone = 1000, Ore = 1000 };

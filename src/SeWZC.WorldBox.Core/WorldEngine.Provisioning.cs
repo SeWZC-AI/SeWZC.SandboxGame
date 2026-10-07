@@ -47,9 +47,12 @@ public sealed partial class WorldEngine
             person.Inventory.Set(kind, person.Inventory.Get(kind) + take);
         }
 
-        if (person.Profession == Profession.Engineer) TakeJobSupply(ResourceKind.Tools, .5);
-        if (person.Profession == Profession.Physician) TakeJobSupply(ResourceKind.Medicine, 2);
-        if (person.Profession == Profession.Ranger) TakeJobSupply(ResourceKind.Ammunition, 8);
+        if (person.Profession == Profession.Engineer)
+            TakeJobSupply(ResourceKind.Tools, .5);
+        if (person.Profession == Profession.Physician)
+            TakeJobSupply(ResourceKind.Medicine, 2);
+        if (person.Profession == Profession.Ranger)
+            TakeJobSupply(ResourceKind.Ammunition, 8);
     }
 
     private void DrinkCarriedWater(Resident person)
@@ -66,7 +69,8 @@ public sealed partial class WorldEngine
         var drink = Math.Min(use, person.Inventory.Water);
         person.Inventory.Water -= drink;
         person.Thirst = Math.Clamp(person.Thirst + (drink >= use - .000001 ? -3 : .6 * (1 - drink / use)), 0, 100);
-        if (person.Thirst > 95) DamageResident(person, .25, DeathCause.Dehydration);
+        if (person.Thirst > 95)
+            DamageResident(person, .25, DeathCause.Dehydration);
     }
 
     /// <summary>计算此格当日扣除已取水量后的可用供水；淡水水域可为正无穷。</summary>
@@ -74,9 +78,11 @@ public sealed partial class WorldEngine
     /// <param name="y">纵向地格坐标。</param>
     public double AvailableWater(int x, int y)
     {
-        if (!InBounds(x, y)) return 0;
+        if (!InBounds(x, y))
+            return 0;
         var tile = State.Tiles[Index(x, y)];
-        if (tile.FireTicks > 0) return 0;
+        if (tile.FireTicks > 0)
+            return 0;
         var supply = GetWaterSupply(x, y);
         return Math.Max(0, supply - (tile.WaterDrawTick == State.Tick ? tile.WaterDrawn : 0));
     }
@@ -105,11 +111,14 @@ public sealed partial class WorldEngine
     /// <param name="y">纵向地格坐标。</param>
     public double GetWaterSupply(int x, int y)
     {
-        if (!InBounds(x, y)) return 0;
+        if (!InBounds(x, y))
+            return 0;
         var tile = State.Tiles[Index(x, y)];
-        if (tile.FireTicks > 0) return 0;
+        if (tile.FireTicks > 0)
+            return 0;
         var natural = DailyWaterYield(tile);
-        if (IsWaterTerrain(tile.Terrain)) return natural;
+        if (IsWaterTerrain(tile.Terrain))
+            return natural;
         var well = _localWorkQueriesActive
             ? _localWaterWells.GetValueOrDefault(Index(x, y))
             : State.Society.Buildings.FirstOrDefault(b => b.Kind == BuildingKind.Well && b.X == x && b.Y == y);
@@ -120,7 +129,8 @@ public sealed partial class WorldEngine
     {
         if (source < 0 || source >= State.Tiles.Length || State.Tick - person.MoveStartedTick < person.MoveDurationTicks
             || Distance(person.X, person.Y, source % State.Width, source / State.Width) >
-            (IsFreshWater(State.Tiles[source]) ? 1 : 0)) return 0;
+            (IsFreshWater(State.Tiles[source]) ? 1 : 0))
+            return 0;
         var tile = State.Tiles[source];
         var amount = Math.Min(Math.Max(0, wanted), AvailableWater(source % State.Width, source / State.Width));
         amount = Math.Min(amount, 1_000_000 - person.Inventory.Water);
@@ -136,7 +146,8 @@ public sealed partial class WorldEngine
         }
 
         person.Inventory.Water += amount;
-        if (amount > .05) RecordHarvest(tile, amount);
+        if (amount > .05)
+            RecordHarvest(tile, amount);
         return amount;
     }
 
@@ -151,11 +162,13 @@ public sealed partial class WorldEngine
         void Consider(int source)
         {
             if (source < 0 || source >= State.Tiles.Length || !IsWaterSource(State.Tiles[source]) ||
-                State.Tiles[source].FireTicks > 0) return;
+                State.Tiles[source].FireTicks > 0)
+                return;
             var x = source % State.Width;
             var y = source / State.Width;
             var available = Math.Min(1, AvailableWater(x, y));
-            if (available <= 0) return;
+            if (available <= 0)
+                return;
             if (RaceTerrainRules.CanWalk(State.Tiles[source], person.Race))
             {
                 var distance = Distance(person.X, person.Y, x, y);
@@ -174,11 +187,14 @@ public sealed partial class WorldEngine
             {
                 var xx = x + dx;
                 var yy = y + dy;
-                if (!Walkable(xx, yy, person.Race) || State.Tiles[Index(xx, yy)].FireTicks > 0) continue;
+                if (!Walkable(xx, yy, person.Race) || State.Tiles[Index(xx, yy)].FireTicks > 0)
+                    continue;
                 var distance = Distance(person.X, person.Y, xx, yy);
                 var score = available / (1 + distance * .25);
-                if (score <= bestScore) continue;
-                if (!VisibleSiteReachable(person, Index(xx, yy), ref reachable)) continue;
+                if (score <= bestScore)
+                    continue;
+                if (!VisibleSiteReachable(person, Index(xx, yy), ref reachable))
+                    continue;
                 bestScore = score;
                 bestBank = Index(xx, yy);
                 bestSource = source;
@@ -189,8 +205,10 @@ public sealed partial class WorldEngine
         {
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
-            if (InBounds(x, y)) Consider(Index(x, y));
-            if (bestScore == 1) break;
+            if (InBounds(x, y))
+                Consider(Index(x, y));
+            if (bestScore == 1)
+                break;
         }
 
         // 远方已知水源可引导探索，但当日补水须使用当前可见且可达的岸边。
@@ -252,7 +270,8 @@ public sealed partial class WorldEngine
                     {
                         var x = person.X + offset.X;
                         var y = person.Y + offset.Y;
-                        if (!Walkable(x, y, person.Race) || State.Tiles[Index(x, y)].FireTicks > 0) continue;
+                        if (!Walkable(x, y, person.Race) || State.Tiles[Index(x, y)].FireTicks > 0)
+                            continue;
                         var distance = Distance(x, y, person.X + heading.X * 6, person.Y + heading.Y * 6);
                         if (distance < bestDistance && VisibleSiteReachable(person, Index(x, y), ref reachable))
                         {
@@ -285,9 +304,11 @@ public sealed partial class WorldEngine
                 SettlementId: home.Id));
         }
 
-        if (person.Age < 14) return;
+        if (person.Age < 14)
+            return;
         var foodNeeded = FoodSupplyNeeded(person, home);
-        if (foodNeeded) AddBoatFishingChoice(person, home, choices);
+        if (foodNeeded)
+            AddBoatFishingChoice(person, home, choices);
         var wildlife =
             foodNeeded && (person.Profession is Profession.Farmer or Profession.Fisher ||
                            (person.Hunger > 20 && person.Inventory.Food < .3))
@@ -322,7 +343,8 @@ public sealed partial class WorldEngine
     /// <param name="person">居民。</param>
     public bool TryFetchWater(Resident person)
     {
-        if (person.Agent.Goal.Kind != AgentGoalKind.FetchWater || person.Health <= 0) return false;
+        if (person.Agent.Goal.Kind != AgentGoalKind.FetchWater || person.Health <= 0)
+            return false;
         var source = person.Agent.Goal.TargetEntityId - 1;
         var amount = DrawWater(person, source,
             Math.Min(
@@ -349,20 +371,25 @@ public sealed partial class WorldEngine
         foreach (var offset in VisibleResourceOffsets)
         {
             // 岸边可达距离为六步时，相邻鱼源可在第七格；陆地猎物仍须在六格可见范围内。
-            if (offset.Distance > 7) break;
+            if (offset.Distance > 7)
+                break;
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
-            if (!InBounds(x, y)) continue;
+            if (!InBounds(x, y))
+                continue;
             var index = Index(x, y);
             var tile = State.Tiles[index];
-            if (tile.FireTicks > 0) continue;
+            if (tile.FireTicks > 0)
+                continue;
             var aquatic = IsWaterTerrain(tile.Terrain);
             var kind = EdibleAnimal(tile, aquatic);
             var efficiency = WildlifeHarvestEfficiency(tile, kind);
-            if (kind == WildlifeKind.None || efficiency < .25) continue;
+            if (kind == WildlifeKind.None || efficiency < .25)
+                continue;
             var score = Math.Min(tile.AnimalPopulation(kind) * .1, .15 * efficiency) * AnimalRules.For(kind).BodyMass
                 * GatheringTerritoryMultiplier(person, tile) / (1 + offset.Distance * .2);
-            if (score <= bestScore) continue;
+            if (score <= bestScore)
+                continue;
             if (!aquatic && offset.Distance <= 6 && RaceTerrainRules.CanWalk(tile, person.Race)
                 && VisibleSiteReachable(person, index, ref reachable))
             {
@@ -371,7 +398,8 @@ public sealed partial class WorldEngine
                 continue;
             }
 
-            if (!aquatic) continue;
+            if (!aquatic)
+                continue;
             foreach (var (dx, dy) in Directions)
                 if (Walkable(x + dx, y + dy, person.Race) && State.Tiles[Index(x + dx, y + dy)].FireTicks == 0
                                                           && VisibleSiteReachable(person, Index(x + dx, y + dy),
@@ -392,21 +420,25 @@ public sealed partial class WorldEngine
                                                    || (person.TravelMode != TravelMode.Boat &&
                                                        !(Distance(person.X, person.Y, home.X, home.Y) <= 1
                                                          && HasResearch(home.Id, Advancement.Logistics) &&
-                                                         home.Resources.Boats >= 1))) return;
+                                                         home.Resources.Boats >= 1)))
+            return;
         var reachable = 0;
         var best = -1;
         var score = double.NegativeInfinity;
         foreach (var offset in VisibleResourceOffsets)
         {
-            if (offset.Distance > 6) break;
+            if (offset.Distance > 6)
+                break;
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
-            if (!InBounds(x, y)) continue;
+            if (!InBounds(x, y))
+                continue;
             var index = Index(x, y);
             var tile = State.Tiles[index];
             var animal = EdibleAnimal(tile, true);
             var efficiency = WildlifeHarvestEfficiency(tile, animal);
-            if (animal == WildlifeKind.None || efficiency < .25 || tile.FireTicks > 0) continue;
+            if (animal == WildlifeKind.None || efficiency < .25 || tile.FireTicks > 0)
+                continue;
             var value = Math.Min(tile.AnimalPopulation(animal) * .1, .15 * efficiency) *
                 AnimalRules.For(animal).BodyMass / (1 + offset.Distance * .2);
             if (value > score && VisibleSiteReachable(person, index, ref reachable, TravelMode.Boat))
@@ -430,7 +462,8 @@ public sealed partial class WorldEngine
 
     private static WildlifeKind EdibleAnimal(Tile tile, bool aquatic = false)
     {
-        if (aquatic != IsWaterTerrain(tile.Terrain)) return WildlifeKind.None;
+        if (aquatic != IsWaterTerrain(tile.Terrain))
+            return WildlifeKind.None;
         return tile.EdibleAnimal(aquatic);
     }
 
@@ -444,7 +477,8 @@ public sealed partial class WorldEngine
             || goal.Kind is not (AgentGoalKind.Hunt or AgentGoalKind.Fish)
             || State.Tick - person.MoveStartedTick < person.MoveDurationTicks
             || Distance(person.X, person.Y, source % State.Width, source / State.Width) >
-            (goal.Kind == AgentGoalKind.Fish ? 1 : 0)) return false;
+            (goal.Kind == AgentGoalKind.Fish ? 1 : 0))
+            return false;
         var tile = State.Tiles[source];
         var kind = EdibleAnimal(tile, goal.Kind == AgentGoalKind.Fish);
         if (kind == WildlifeKind.None || tile.FireTicks > 0)

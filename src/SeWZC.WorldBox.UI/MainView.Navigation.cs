@@ -18,7 +18,8 @@ public sealed partial class MainView
 
     private void RememberLocation()
     {
-        if (_mapPick is not null || !_mobilePanel) return;
+        if (_mapPick is not null || !_mobilePanel)
+            return;
         var location = new InspectorLocation(_inspectorMode, _selectedNationId, _selectedResidentId,
             _inspectorSettlementId, _selectedTile, _selectedBuildingId, _eventDetailId,
             _inspectorScroll.Offset, _mapSelectionKind, _expandedInspector, _researchExpanded,
@@ -32,7 +33,8 @@ public sealed partial class MainView
         {
             var recent = _navigation.Take(31).Reverse().ToArray();
             _navigation.Clear();
-            foreach (var item in recent) _navigation.Push(item);
+            foreach (var item in recent)
+                _navigation.Push(item);
         }
 
         _navigation.Push(location);
@@ -40,15 +42,18 @@ public sealed partial class MainView
 
     private void OpenInspector(string mode, bool remember = true)
     {
-        if (_mapPick is not null) return;
+        if (_mapPick is not null)
+            return;
         if (mode == "rules")
         {
             ShowRules();
             return;
         }
 
-        if (_mobilePanel && mode == _inspectorMode && _inspectorKey == InspectorKey()) return;
-        if (remember) RememberLocation();
+        if (_mobilePanel && mode == _inspectorMode && _inspectorKey == InspectorKey())
+            return;
+        if (remember)
+            RememberLocation();
         _inspectorNavigationGeneration++;
         _inspectorMode = mode;
         _mobilePanel = true;
@@ -61,7 +66,8 @@ public sealed partial class MainView
 
     private void GoBack()
     {
-        if (_mapPick is not null) return;
+        if (_mapPick is not null)
+            return;
         if (!_navigation.TryPop(out var view))
         {
             CloseInspector();
@@ -82,14 +88,16 @@ public sealed partial class MainView
         _researchBranch = view.Research.Branch;
         _civilizationDetails = view.Research.CivilizationDetails;
         _expandedDetails.Clear();
-        foreach (var detail in view.Details) _expandedDetails[detail.Key] = detail.Value;
+        foreach (var detail in view.Details)
+            _expandedDetails[detail.Key] = detail.Value;
         _map.RestoreMapSelection(view.MapSelection);
         InvalidateInspector();
         OpenInspector(view.Mode, false);
         var generation = _inspectorNavigationGeneration;
         Dispatcher.UIThread.Post(() =>
         {
-            if (!_mobilePanel || generation != _inspectorNavigationGeneration) return;
+            if (!_mobilePanel || generation != _inspectorNavigationGeneration)
+                return;
             _inspectorScroll.Offset = view.Scroll;
             if (view.Research.Viewport is { } viewport &&
                 _inspectorScroll.GetVisualDescendants().OfType<ResearchGraphControl>().FirstOrDefault() is { } graph)
@@ -102,8 +110,10 @@ public sealed partial class MainView
 
     private void OpenResident(int id)
     {
-        if (_mapPick is not null) return;
-        if (_mobilePanel && _inspectorMode == "resident" && _selectedResidentId == id) return;
+        if (_mapPick is not null)
+            return;
+        if (_mobilePanel && _inspectorMode == "resident" && _selectedResidentId == id)
+            return;
         RememberLocation();
         _selectedResidentId = id;
         _mapSelectionKind = "resident";
@@ -115,8 +125,10 @@ public sealed partial class MainView
 
     private void OpenNation(int id)
     {
-        if (_mapPick is not null) return;
-        if (_mobilePanel && _inspectorMode == "nation" && _selectedNationId == id) return;
+        if (_mapPick is not null)
+            return;
+        if (_mobilePanel && _inspectorMode == "nation" && _selectedNationId == id)
+            return;
         RememberLocation();
         _selectedNationId = id;
         OpenInspector("nation", false);
@@ -124,8 +136,10 @@ public sealed partial class MainView
 
     private void OpenSettlement(int id, string mode = "settlement")
     {
-        if (_mapPick is not null) return;
-        if (_mobilePanel && _inspectorMode == mode && _inspectorSettlementId == id) return;
+        if (_mapPick is not null)
+            return;
+        if (_mobilePanel && _inspectorMode == mode && _inspectorSettlementId == id)
+            return;
         RememberLocation();
         _inspectorSettlementId = id;
         OpenInspector(mode, false);
@@ -133,21 +147,25 @@ public sealed partial class MainView
 
     private void OpenTile(int x, int y, bool locate = false)
     {
-        if (_mapPick is not null) return;
-        if (_mobilePanel && _inspectorMode == "tile" && _selectedTile == (x, y)) return;
+        if (_mapPick is not null)
+            return;
+        if (_mobilePanel && _inspectorMode == "tile" && _selectedTile == (x, y))
+            return;
         RememberLocation();
         _selectedTile = (x, y);
         _selectedResidentId = 0;
         _selectedBuildingId = 0;
         _mapSelectionKind = "tile";
         _map.SelectMapTile(x, y);
-        if (locate) _map.FocusTile(x, y);
+        if (locate)
+            _map.FocusTile(x, y);
         OpenInspector("tile", false);
     }
 
     private void SynchronizeInspectorSelection()
     {
-        if (_mapPick is not null) return;
+        if (_mapPick is not null)
+            return;
         if (_inspectorMode == "resident")
         {
             _mapSelectionKind = "resident";

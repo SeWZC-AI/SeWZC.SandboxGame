@@ -50,7 +50,8 @@ public sealed partial class WorldMapControl
         var x = (building.X + .5) * TilePixels;
         var y = (building.Y + .5) * TilePixels;
         var bounds = BuildingBounds(building);
-        if (!Visible(bounds)) return;
+        if (!Visible(bounds))
+            return;
         var race = _settlementStyles.GetValueOrDefault(building.SettlementId);
         if (!building.IsCompleted)
         {
@@ -73,7 +74,8 @@ public sealed partial class WorldMapControl
                         horizontal ? new Point(x + i, y - 1.7) : new Point(x - 1.7, y + i),
                         horizontal ? new Point(x + i, y + 1.7) : new Point(x + 1.7, y + i));
             }
-            else context.DrawImage(BuildingIcon(race, building.Kind), bounds);
+            else
+                context.DrawImage(BuildingIcon(race, building.Kind), bounds);
         }
 
         if (_zoom >= 3 && (!building.IsCompleted || building.IsUpgrading || building.Health < 100))
@@ -91,12 +93,15 @@ public sealed partial class WorldMapControl
 
     private void DrawResidentGoal(DrawingContext context)
     {
-        if (SelectedResidentId is not { } id || Engine is null) return;
+        if (SelectedResidentId is not { } id || Engine is null)
+            return;
         var resident = Engine.State.Residents.FirstOrDefault(r => r.Id == id);
-        if (resident is null || resident.Agent.Goal.Kind == AgentGoalKind.Idle) return;
+        if (resident is null || resident.Agent.Goal.Kind == AgentGoalKind.Idle)
+            return;
         var goal = resident.Agent.Goal;
         if (goal.TargetX < 0 || goal.TargetY < 0 || goal.TargetX >= Engine.State.Width ||
-            goal.TargetY >= Engine.State.Height) return;
+            goal.TargetY >= Engine.State.Height)
+            return;
         var point = GetTileScreenPosition(goal.TargetX, goal.TargetY);
         if (ShowResidentRoute && _selectedRoute.Count > 1)
         {
@@ -123,16 +128,21 @@ public sealed partial class WorldMapControl
     {
         if (Engine is null || !Engine.State.Settlements.Any(town => town.Id == SelectedSettlementId))
         {
-            if (_lastPaint is null) ToolError?.Invoke("请先选择负责建设的聚落。");
+            if (_lastPaint is null)
+                ToolError?.Invoke("请先选择负责建设的聚落。");
             return false;
         }
 
-        if (!paintsStroke && _lastPaint is not null) return false;
+        if (!paintsStroke && _lastPaint is not null)
+            return false;
         try
         {
-            if (_lastPaint is null) WorldEditing?.Invoke(this, EventArgs.Empty);
-            if (paintsStroke) Stroke(tile, construct);
-            else construct(tile.X, tile.Y);
+            if (_lastPaint is null)
+                WorldEditing?.Invoke(this, EventArgs.Empty);
+            if (paintsStroke)
+                Stroke(tile, construct);
+            else
+                construct(tile.X, tile.Y);
             return true;
         }
         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)

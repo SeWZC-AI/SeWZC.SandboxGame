@@ -39,7 +39,8 @@ internal static class SocietyBehaviorTests
 
     private static void Check(bool valid, string message)
     {
-        if (!valid) throw new InvalidOperationException(message);
+        if (!valid)
+            throw new InvalidOperationException(message);
     }
 
     private static void Place(Resident resident, int x, int y)
@@ -251,7 +252,8 @@ internal static class SocietyBehaviorTests
         caster.Mana = 100;
         Check(engine.TryCastSpell(caster.Id, SpellKind.Heal, patient.X, patient.Y),
             "Closing new magic development destroyed an already trained ability.");
-        foreach (var resident in engine.State.Residents) resident.Health = 100;
+        foreach (var resident in engine.State.Residents)
+            resident.Health = 100;
         town.FertilityBoostTicks = 0;
         town.ShieldTicks = 0;
         caster.Mana = 100;
@@ -376,7 +378,8 @@ internal static class SocietyBehaviorTests
         Check(engine.TryWorkAtBuilding(worker) && worker.Inventory.Wood > before,
             "Working at the selected workshop produced food at a different facility instead of wood.");
         worker.Profession = Profession.Lumberjack;
-        foreach (var tile in engine.State.Tiles) tile.Terrain = TerrainType.Desert;
+        foreach (var tile in engine.State.Tiles)
+            tile.Terrain = TerrainType.Desert;
         var resources = engine.State.Tiles.Sum(t => t.ResourceAmount);
         engine.State.Tick++;
         Check(!engine.TryWorkAtBuilding(worker) && engine.State.Tiles.Sum(t => t.ResourceAmount) == resources,
@@ -412,7 +415,8 @@ internal static class SocietyBehaviorTests
         var academy = engine.State.Society.Buildings.Single(b => b.Kind == BuildingKind.Academy);
         Work(engine, engine.State.Residents.First(r => r.Age >= 16 && r.Id != town.RepresentativeId), academy);
         engine.GrantReceivedResearch(town.Id, Advancement.Agriculture);
-        foreach (var resident in engine.State.Residents) resident.MagicTalent = 60;
+        foreach (var resident in engine.State.Residents)
+            resident.MagicTalent = 60;
         engine.SetNationResources(town.NationId, 500, 100, 20, 0);
         engine.State.Tick += (60 - (engine.State.Tick + town.Id) % 60) % 60;
         engine.TickSociety();

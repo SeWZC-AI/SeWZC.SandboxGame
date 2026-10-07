@@ -13,9 +13,11 @@ public sealed partial class WorldEngine
     /// <param name="home">出借载具的本地聚落仓库。</param>
     private void PrepareJourneyTransport(Resident person, Settlement home)
     {
-        if (person.TravelMode != TravelMode.Foot || Distance(person.X, person.Y, home.X, home.Y) > 1) return;
+        if (person.TravelMode != TravelMode.Foot || Distance(person.X, person.Y, home.X, home.Y) > 1)
+            return;
         var distance = Distance(home.X, home.Y, person.Agent.Goal.TargetX, person.Agent.Goal.TargetY);
-        if (distance < 6 && person.Agent.Goal.Kind != AgentGoalKind.Fish) return;
+        if (distance < 6 && person.Agent.Goal.Kind != AgentGoalKind.Fish)
+            return;
         // 起飞时预留往返燃料，避免途中凭空从远方仓库补给。
         var fuel = Math.Max(1, distance * .04);
         if (person.Agent.Goal.Kind != AgentGoalKind.Fish && HasResearch(home.Id, Advancement.Aviation) &&

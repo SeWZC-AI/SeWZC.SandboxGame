@@ -46,7 +46,8 @@ public sealed partial class WorldMapControl
 
         foreach (var person in VisibleResidents(state))
         {
-            if (person.TravelMode == TravelMode.Aircraft) continue;
+            if (person.TravelMode == TravelMode.Aircraft)
+                continue;
             var position = _residentMotion.TryGetValue(person.Id, out var motion)
                 ? motion.Position(_renderMotionTime)
                 : new Point(person.X, person.Y);
@@ -64,7 +65,8 @@ public sealed partial class WorldMapControl
     {
         BuildScene(state);
         foreach (var sprite in _sceneSprites)
-            if (sprite.Building is { } building) DrawBuilding(context, building);
+            if (sprite.Building is { } building)
+                DrawBuilding(context, building);
             else if (sprite.Resident is { } person)
             {
                 if (ShowVehicle(person))
@@ -72,7 +74,8 @@ public sealed partial class WorldMapControl
                     DrawVehicle(context, person,
                         new Point((sprite.Position.X + .5) * TilePixels, (sprite.Position.Y + .5) * TilePixels));
                 }
-                else DrawResidentSprite(context, person, sprite.Position);
+                else
+                    DrawResidentSprite(context, person, sprite.Position);
             }
     }
 
@@ -96,7 +99,8 @@ public sealed partial class WorldMapControl
     {
         if (ReferenceEquals(state, _architectureState) && _architectureYear == state.Tick / 120
                                                        && _architecturePopulation == state.Residents.Count &&
-                                                       _architectureTownCount == state.Settlements.Count) return;
+                                                       _architectureTownCount == state.Settlements.Count)
+            return;
         _architectureState = state;
         _architectureYear = state.Tick / 120;
         _architecturePopulation = state.Residents.Count;
@@ -110,7 +114,8 @@ public sealed partial class WorldMapControl
     private WriteableBitmap ResidentIcon(RaceKind race, Profession job, int pose)
     {
         var key = (race, job, pose);
-        if (_personIcons.TryGetValue(key, out var cached)) return cached;
+        if (_personIcons.TryGetValue(key, out var cached))
+            return cached;
         var c = new PixelCanvas(32, 40);
         var skin = race switch
         {
@@ -153,7 +158,8 @@ public sealed partial class WorldMapControl
         var headY = race == RaceKind.Dwarf ? 13 : race == RaceKind.Elf ? 6 : 9;
         var width = race is RaceKind.Dwarf or RaceKind.Orc ? 12 : 9;
         var left = 16 - width / 2;
-        if (race == RaceKind.Elf) c.Rect(left - 1, 18, width + 2, 16, 0x437B66FF);
+        if (race == RaceKind.Elf)
+            c.Rect(left - 1, 18, width + 2, 16, 0x437B66FF);
         c.Rect(left, 19, width, 12, shirt);
         var step = pose is 1 or 3 ? 2 : pose is 2 or 4 ? -2 : 0;
         c.Rect(left + 1, 30, 3, pose == 5 ? 3 : 7 + step, wood);
@@ -248,7 +254,8 @@ public sealed partial class WorldMapControl
                 c.Line(26, 24, 26, 30, wood);
                 break;
             case Profession.Mage:
-                for (var row = 0; row < 9; row++) c.Rect(15 - row / 2, headY - 9 + row, 2 + row, 1, 0x8162A1FF);
+                for (var row = 0; row < 9; row++)
+                    c.Rect(15 - row / 2, headY - 9 + row, 2 + row, 1, 0x8162A1FF);
                 c.Line(28, 34, 28, 13, wood, 2);
                 c.Rect(26, 10, 5, 5, 0xC7ABE6FF);
                 c.Rect(28, 10, 1, 2, paper);
@@ -313,7 +320,8 @@ public sealed partial class WorldMapControl
     /// <param name="kind">居民任务图标类别。</param>
     public WriteableBitmap ActivityPreview(ResidentTaskIcon kind)
     {
-        if (_activityIcons.TryGetValue(kind, out var icon)) return icon;
+        if (_activityIcons.TryGetValue(kind, out var icon))
+            return icon;
         var c = new PixelCanvas(24, 24);
         const uint light = 0xFFF3D8FF,
             blue = 0x70D9E8FF,
@@ -345,7 +353,8 @@ public sealed partial class WorldMapControl
                     c.Line(17, 5 + i * 4, 12, 10 + i * 4, gold, 2);
                 }
 
-                if (kind == ResidentTaskIcon.Farm) c.Line(4, 21, 20, 21, brown, 2);
+                if (kind == ResidentTaskIcon.Farm)
+                    c.Line(4, 21, 20, 21, brown, 2);
                 break;
             case ResidentTaskIcon.Build:
             case ResidentTaskIcon.Upgrade:
@@ -390,7 +399,8 @@ public sealed partial class WorldMapControl
                 c.Rect(4, 6, 16, 11, light);
                 c.Line(4, 6, 12, 12, blue, 2);
                 c.Line(12, 12, 19, 6, blue, 2);
-                if (kind == ResidentTaskIcon.Talk) c.Rect(6, 17, 3, 4, light);
+                if (kind == ResidentTaskIcon.Talk)
+                    c.Rect(6, 17, 3, 4, light);
                 break;
             case ResidentTaskIcon.Claim:
                 c.Line(6, 4, 6, 21, brown, 2);
@@ -399,7 +409,8 @@ public sealed partial class WorldMapControl
                 c.Line(12, 10, 17, 6, light, 2);
                 break;
             case ResidentTaskIcon.Water:
-                for (var i = 0; i < 6; i++) c.Rect(12 - i, 4 + i * 2, i * 2 + 1, 3, blue);
+                for (var i = 0; i < 6; i++)
+                    c.Rect(12 - i, 4 + i * 2, i * 2 + 1, 3, blue);
                 c.Rect(6, 16, 13, 3, blue);
                 c.Rect(8, 19, 9, 2, blue);
                 c.Rect(9, 13, 2, 4, light);
@@ -462,7 +473,8 @@ public sealed partial class WorldMapControl
                 c.Line(7, 19, 17, 19, brown, 3);
                 c.Line(17, 19, 21, 15, brown, 3);
                 c.Line(11, 4, 11, 15, light, 2);
-                for (var i = 0; i < 8; i++) c.Rect(13, 5 + i, Math.Max(1, i), 1, light);
+                for (var i = 0; i < 8; i++)
+                    c.Rect(13, 5 + i, Math.Max(1, i), 1, light);
                 c.Line(3, 22, 21, 22, blue, 2);
                 break;
             case ResidentTaskIcon.Plane:
@@ -512,16 +524,19 @@ public sealed partial class WorldMapControl
 
     private void DrawActivityBadge(DrawingContext context, Resident resident, double x, double y, bool moving)
     {
-        if (_zoom < 5 || Engine is null) return;
+        if (_zoom < 5 || Engine is null)
+            return;
         var kind = Engine.GetResidentTaskIcon(resident,
             _activityBuildings.GetValueOrDefault(resident.Agent.Goal.TargetEntityId));
         context.DrawImage(ActivityPreview(kind), new Rect(x, y, 2.8, 2.8));
-        if (moving) context.DrawLine(new Pen(MessageBrush, .22), new Point(x, y + 3.15), new Point(x + 2.8, y + 3.15));
+        if (moving)
+            context.DrawLine(new Pen(MessageBrush, .22), new Point(x, y + 3.15), new Point(x + 2.8, y + 3.15));
     }
 
     private WriteableBitmap BuildingIcon(RaceKind race, BuildingKind kind)
     {
-        if (_buildingIcons.TryGetValue((race, kind), out var cached)) return cached;
+        if (_buildingIcons.TryGetValue((race, kind), out var cached))
+            return cached;
         var c = new PixelCanvas(40, 48);
         const uint timber = 0x6C4C31FF, metal = 0xB6C6C5FF, paper = 0xFFF0C8FF, green = 0x709957FF;
         var wall = race switch
@@ -675,7 +690,8 @@ public sealed partial class WorldMapControl
                 break;
             case BuildingKind.Bridge:
                 c.Rect(4, 27, 32, 15, timber);
-                for (var y = 27; y < 42; y += 3) c.Line(4, y, 35, y, wall);
+                for (var y = 27; y < 42; y += 3)
+                    c.Line(4, y, 35, y, wall);
                 c.Rect(4, 25, 32, 2, metal);
                 c.Rect(4, 42, 32, 2, metal);
                 break;
@@ -704,7 +720,8 @@ public sealed partial class WorldMapControl
             case BuildingKind.LumberCamp:
                 c.Rect(5, 21, 20, 20, wall);
                 c.Rect(3, 18, 24, 4, roof);
-                for (var row = 0; row < 3; row++) c.Rect(24, 32 + row * 4, 13, 3, timber);
+                for (var row = 0; row < 3; row++)
+                    c.Rect(24, 32 + row * 4, 13, 3, timber);
                 c.Line(10, 27, 20, 39, timber, 2);
                 c.Rect(6, 25, 10, 4, metal);
                 break;
@@ -730,7 +747,8 @@ public sealed partial class WorldMapControl
                 c.Rect(5, 24, 3, 19, timber);
                 c.Rect(32, 24, 3, 19, timber);
                 c.Rect(4, 37, 32, 5, timber);
-                for (var col = 0; col < 6; col++) c.Rect(2 + col * 6, 16, 6, 9, col % 2 == 0 ? roof : paper);
+                for (var col = 0; col < 6; col++)
+                    c.Rect(2 + col * 6, 16, 6, 9, col % 2 == 0 ? roof : paper);
                 c.Rect(9, 32, 7, 5, green);
                 c.Rect(21, 32, 7, 5, 0xE9A04CFF);
                 break;
@@ -773,7 +791,8 @@ public sealed partial class WorldMapControl
                 for (var row = 27; row < 39; row += 4)
                 {
                     c.Rect(9, row, 22, 3, timber);
-                    for (var x = 10; x < 30; x += 3) c.Rect(x, row, 2, 2, paper);
+                    for (var x = 10; x < 30; x += 3)
+                        c.Rect(x, row, 2, 2, paper);
                 }
 
                 break;
@@ -829,7 +848,8 @@ public sealed partial class WorldMapControl
                 c.Rect(3, 19, 34, 24, green);
                 c.Rect(3, 19, 34, 2, timber);
                 c.Rect(3, 41, 34, 2, timber);
-                for (var x = 3; x <= 35; x += 8) c.Rect(x, 17, 2, 28, timber);
+                for (var x = 3; x <= 35; x += 8)
+                    c.Rect(x, 17, 2, 28, timber);
                 c.Rect(10, 28, 12, 7, paper);
                 c.Rect(21, 26, 6, 6, wall);
                 c.Rect(11, 34, 2, 5, paper);

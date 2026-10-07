@@ -18,7 +18,8 @@ internal static class SimulationOptimizationTests
 
     private static void Check(bool condition, string message)
     {
-        if (!condition) throw new Exception(message);
+        if (!condition)
+            throw new Exception(message);
     }
 
     private static object? Invoke(WorldEngine e, string method, params object[] args)
@@ -177,7 +178,8 @@ internal static class SimulationOptimizationTests
         Claim(e, 181);
         e.State.Rules.Construction = true;
         town.Resources = new ResourceStock { Food = 0, Wood = 1000, Stone = 1000 };
-        foreach (var t in e.State.Tiles) t.Fertility = 0;
+        foreach (var t in e.State.Tiles)
+            t.Fertility = 0;
         for (var y = 0; y < 32; y++)
             e.State.Tiles[y * 32 + 13].Terrain = y == 25 ? TerrainType.Grass : TerrainType.River;
         e.State.Tiles[16 * 32 + 15].Fertility = 100;
@@ -280,7 +282,8 @@ internal static class SimulationOptimizationTests
     {
         var e = Flat(1);
         var person = e.State.Residents.Single();
-        for (var y = 0; y < 32; y++) e.State.Tiles[y * 32 + 13].Terrain = TerrainType.River;
+        for (var y = 0; y < 32; y++)
+            e.State.Tiles[y * 32 + 13].Terrain = TerrainType.River;
         person.Agent.Goal = new AgentGoal
         {
             Kind = AgentGoalKind.Explore,

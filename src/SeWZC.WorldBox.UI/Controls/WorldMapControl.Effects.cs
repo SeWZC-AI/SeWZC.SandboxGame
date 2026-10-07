@@ -40,13 +40,15 @@ public sealed partial class WorldMapControl
 
     private void CaptureEffects()
     {
-        if (Engine is null) return;
+        if (Engine is null)
+            return;
         var now = PresentationTime;
         _effects.RemoveAll(e => now - e.Started > e.Duration);
         foreach (var item in Engine.GetVisualsAfter(_seenVisualSequence))
             _effects.Add(new VisualEffect(item, now, item.Kind == WorldVisualKind.Meteor ? 2.8 : 1.5));
         _seenVisualSequence = Engine.VisualSequence;
-        if (_effects.Count > 128) _effects.RemoveRange(0, _effects.Count - 128);
+        if (_effects.Count > 128)
+            _effects.RemoveRange(0, _effects.Count - 128);
     }
 
     private bool HasAnimatedEffects(double now)
@@ -81,12 +83,14 @@ public sealed partial class WorldMapControl
         foreach (var effect in _effects)
         {
             var age = _renderFrameTime - effect.Started;
-            if (age >= effect.Duration) continue;
+            if (age >= effect.Duration)
+                continue;
             var e = effect.Event;
             var center = new Point((e.X + .5) * TilePixels, (e.Y + .5) * TilePixels);
             var p = Math.Clamp(age / effect.Duration, 0, 1);
             var extent = Math.Max(140, e.Radius * 8 + 10);
-            if (!Visible(new Rect(center.X - extent, center.Y - extent, extent * 2, extent * 2))) continue;
+            if (!Visible(new Rect(center.X - extent, center.Y - extent, extent * 2, extent * 2)))
+                continue;
             RenderedEffectCount++;
             RenderedEffectTime = _renderFrameTime;
             using var opacity = context.PushOpacity(1 - p * .8);
@@ -211,11 +215,13 @@ public sealed partial class WorldMapControl
 
     private void DrawTownEffects(DrawingContext context, WorldState state)
     {
-        if (_zoom < 3) return;
+        if (_zoom < 3)
+            return;
         foreach (var town in state.Settlements.Where(t => t.ShieldTicks > 0 || t.FertilityBoostTicks > 0))
         {
             var center = new Point((town.X + .5) * TilePixels, (town.Y + .5) * TilePixels);
-            if (!Visible(new Rect(center.X - 24, center.Y - 24, 48, 48))) continue;
+            if (!Visible(new Rect(center.X - 24, center.Y - 24, 48, 48)))
+                continue;
             var phase = _renderFrameTime * 2;
             var brush = town.ShieldTicks > 0 ? ArcaneBrush : HealingBrush;
             for (var i = 0; i < 6; i++)

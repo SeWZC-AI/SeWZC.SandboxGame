@@ -191,7 +191,8 @@ internal static class EcologyAndConflictTests
         }
 
         var legacy = JsonNode.Parse(engine.ExportJson())!;
-        foreach (var t in legacy["Tiles"]!.AsArray()) t!.AsObject().Remove("OtherWildlife");
+        foreach (var t in legacy["Tiles"]!.AsArray())
+            t!.AsObject().Remove("OtherWildlife");
         _ = WorldEngine.ImportJson(legacy.ToJsonString());
         var depleted = new Tile { Terrain = TerrainType.Forest, ResourceAmount = 0, Fertility = 100 };
         Require(!PlantResources.At(depleted).Any(), "Depleted land invents available plants");
@@ -395,7 +396,8 @@ internal static class EcologyAndConflictTests
         person.Age = 25;
         foreach (var knowledge in new[] { Advancement.Agriculture, Advancement.Logistics, Advancement.Industry })
             engine.GrantReceivedResearch(town.Id, knowledge);
-        foreach (var kind in ResourceStock.Kinds) town.Resources.Set(kind, 100);
+        foreach (var kind in ResourceStock.Kinds)
+            town.Resources.Set(kind, 100);
         town.Resources.Alloy = 0; // 指定冶炼厂仍有未满足的产出需求。
         var factory = engine.GrantFacility(town.Id, BuildingKind.Foundry, 20, 16);
         person.X = person.FromX = 18;
@@ -408,7 +410,8 @@ internal static class EcologyAndConflictTests
             "Factory work described the wrong current destination");
         Require(engine.ExportJson() == before, "Action inspection changed the world");
         var recipe = ProductionRules.For(BuildingKind.Foundry)!;
-        foreach (var kind in ResourceStock.Kinds) person.Inventory.Set(kind, recipe.Input.Get(kind));
+        foreach (var kind in ResourceStock.Kinds)
+            person.Inventory.Set(kind, recipe.Input.Get(kind));
         Require(engine.GetResidentActionSummary(person.Id).Contains("携带原料前往"),
             "Loaded worker was still described as fetching inputs");
         engine.SetBuildingEnabled(factory, false);
@@ -435,7 +438,9 @@ internal static class EcologyAndConflictTests
             person.Health = .1;
             switch (cause)
             {
-                case DeathCause.Fire: engine.State.Tiles[16 * 32 + 16].FireTicks = 10; break;
+                case DeathCause.Fire:
+                    engine.State.Tiles[16 * 32 + 16].FireTicks = 10;
+                    break;
                 case DeathCause.Disease:
                     engine.State.Rules.Disease = true;
                     person.SicknessTicks = 5;
@@ -448,9 +453,12 @@ internal static class EcologyAndConflictTests
                     engine.State.Rules.Aging = true;
                     person.Age = 95;
                     break;
-                case DeathCause.Meteor: engine.TriggerDisaster(16, 16, DisasterKind.Meteor, 2); break;
+                case DeathCause.Meteor:
+                    engine.TriggerDisaster(16, 16, DisasterKind.Meteor, 2);
+                    break;
                 case DeathCause.PlayerIntervention:
-                    engine.EditResident(person.Id, new ResidentEdit { Health = 0 }); break;
+                    engine.EditResident(person.Id, new ResidentEdit { Health = 0 });
+                    break;
             }
 
             engine.Step();
@@ -467,6 +475,7 @@ internal static class EcologyAndConflictTests
 
     private static void Require(bool condition, string message)
     {
-        if (!condition) throw new Exception(message);
+        if (!condition)
+            throw new Exception(message);
     }
 }

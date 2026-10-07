@@ -28,7 +28,8 @@ public sealed partial class WorldEngine
 
     private void EndCampaign(Army army, WarOutcome outcome, Resident[] soldiers, int cause = 0)
     {
-        if (army.Outcome != WarOutcome.None) return;
+        if (army.Outcome != WarOutcome.None)
+            return;
         army.Outcome = outcome;
         army.Retreating = true;
         army.Gathering = false;
@@ -40,7 +41,8 @@ public sealed partial class WorldEngine
         army.LastEventId = entry.Id;
         // 编年史记录世界事实，但战报只能由实际目击者获得。
         var witnesses = soldiers.Where(r => r.Health > 0 && Distance(r.X, r.Y, army.X, army.Y) <= 3).ToArray();
-        if (witnesses.Length == 0) return;
+        if (witnesses.Length == 0)
+            return;
         var witness = witnesses.FirstOrDefault(r => r.Id == army.CommanderId) ?? witnesses[0];
         var report = MakeAgentFact(witness, AgentFactKind.WarReport, army.TargetNationId, army.X, army.Y, (int)outcome,
             $"{ObjectiveName(army.Objective)}：{OutcomeName(outcome)}；在场部队剩余 {soldiers.Length}/{army.InitialSoldiers} 人");
@@ -60,7 +62,8 @@ public sealed partial class WorldEngine
 
     private void RecordBattle(Army army, IEnumerable<Resident> soldiers, IEnumerable<Resident>? defenders = null)
     {
-        if (army.BattleRecorded) return;
+        if (army.BattleRecorded)
+            return;
         army.BattleRecorded = true;
         var entry = AddEvent(WorldEventKind.War, $"{_nations[army.NationId].Name}的军队在目标附近实际交战。", army.X, army.Y,
             EventAction.Battle, army.TargetSettlementId, causeEventId: army.LastEventId);
@@ -77,11 +80,13 @@ public sealed partial class WorldEngine
         if (fact.Kind != AgentFactKind.WarReport || fact.TargetNationId != town.NationId || fact.Confidence < .4
             || !_nations.TryGetValue(town.NationId, out var nation) || nation.CapitalId != town.Id
             || fact.Value != Math.Truncate(fact.Value) || fact.Value < 1 ||
-            fact.Value > (int)WarOutcome.Exhausted) return;
+            fact.Value > (int)WarOutcome.Exhausted)
+            return;
         var record = nation.Military;
         if (fact.CampaignEventId != record.CampaignEventId || fact.SubjectId != record.EnemyNationId
                                                            || fact.EventId == record.LastReportEventId ||
-                                                           fact.ObservedTick < record.LastReportObservedTick) return;
+                                                           fact.ObservedTick < record.LastReportObservedTick)
+            return;
         record.LastReportEventId = fact.EventId;
         record.LastReportObservedTick = fact.ObservedTick;
         record.LastReportReceivedTick = State.Tick;
@@ -92,9 +97,11 @@ public sealed partial class WorldEngine
             EventAction.Report, town.Id, causeEventId: fact.EventId, evidenceFactId: fact.Id);
         received.NationId = nation.Id;
         received.SecondNationId = fact.SubjectId;
-        if (!State.Rules.Peace || !_nations.TryGetValue(fact.SubjectId, out var other)) return;
+        if (!State.Rules.Peace || !_nations.TryGetValue(fact.SubjectId, out var other))
+            return;
         var relation = Relation(nation.Id, other.Id);
-        if (relation.Status != DiplomaticStatus.War) return;
+        if (relation.Status != DiplomaticStatus.War)
+            return;
         // 已收到的战报本身足以作为依据，不应再要求额外的新聚落接触。
         ChangeAutonomousDiplomacy(nation, other, relation, fact, DiplomaticStatus.Neutral, "收到撤军战报，停止作战并进入恢复期");
     }

@@ -19,7 +19,8 @@ internal static class GeographyEcologyTests
 
     private static void Check(bool condition, string message)
     {
-        if (!condition) throw new Exception(message);
+        if (!condition)
+            throw new Exception(message);
     }
 
     private static IEnumerable<int> Area(WorldState s, int x, int y, int radius)
@@ -50,7 +51,8 @@ internal static class GeographyEcologyTests
                 {
                     var x = i % size + dx;
                     var y = i / size + dy;
-                    if (x < 0 || y < 0 || x >= size || y >= size) continue;
+                    if (x < 0 || y < 0 || x >= size || y >= size)
+                        continue;
                     var n = y * size + x;
                     if (!reached[n] && WorldEngine.IsWaterTerrain(s.Tiles[n].Terrain))
                     {
@@ -72,7 +74,8 @@ internal static class GeographyEcologyTests
             Array.Clear(reached);
             for (var i = 0; i < s.Tiles.Length; i++)
             {
-                if (reached[i] || s.Tiles[i].Terrain != TerrainType.Mountain) continue;
+                if (reached[i] || s.Tiles[i].Terrain != TerrainType.Mountain)
+                    continue;
                 var count = 0;
                 queue.Enqueue(i);
                 reached[i] = true;
@@ -182,7 +185,8 @@ internal static class GeographyEcologyTests
         var a = Flat();
         a.SpawnResidents(16, 16, RaceKind.Human, 4);
         var b = WorldEngine.ImportJson(a.ExportJson());
-        foreach (var tile in b.State.Tiles) tile.Elevation = (byte)(255 - tile.Elevation);
+        foreach (var tile in b.State.Tiles)
+            tile.Elevation = (byte)(255 - tile.Elevation);
         Check(a.GetTerrainMoveCost(16, 16) == b.GetTerrainMoveCost(16, 16), "Altitude influences movement");
         var town = a.State.Settlements.Single();
         Check(
@@ -195,7 +199,8 @@ internal static class GeographyEcologyTests
         string Normalize(WorldEngine e)
         {
             var node = JsonNode.Parse(e.ExportJson())!;
-            foreach (var t in node["Tiles"]!.AsArray()) t!["Elevation"] = 0;
+            foreach (var t in node["Tiles"]!.AsArray())
+                t!["Elevation"] = 0;
             return node.ToJsonString();
         }
 

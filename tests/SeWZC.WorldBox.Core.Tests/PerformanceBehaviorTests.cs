@@ -41,7 +41,8 @@ internal static class PerformanceBehaviorTests
 
     private static void Check(bool valid, string message)
     {
-        if (!valid) throw new InvalidOperationException(message);
+        if (!valid)
+            throw new InvalidOperationException(message);
     }
 
     [UnitTest]
@@ -76,19 +77,29 @@ internal static class PerformanceBehaviorTests
             {
                 switch (edit)
                 {
-                    case 1: tile.OtherWildlife = new WildlifePopulations { Fish = .04, Hippo = 2 }; break;
+                    case 1:
+                        tile.OtherWildlife = new WildlifePopulations { Fish = .04, Hippo = 2 };
+                        break;
                     case 2:
                         tile.WildlifePopulation = 0;
                         tile.NaturalWaterYield = .001;
                         break;
-                    case 3: tile.Fertility = 20; break;
+                    case 3:
+                        tile.Fertility = 20;
+                        break;
                     case 4:
                         tile.Improvement = LandImprovement.Farmland;
                         tile.SettlementId = 1;
                         break;
-                    case 5: tile.ResourceAmount = 0; break;
-                    case 6: tile.DroughtTicks = 1; break;
-                    case 7: tile.FireTicks = 1; break;
+                    case 5:
+                        tile.ResourceAmount = 0;
+                        break;
+                    case 6:
+                        tile.DroughtTicks = 1;
+                        break;
+                    case 7:
+                        tile.FireTicks = 1;
+                        break;
                 }
 
                 WorldEngine.FillWildlifeCapacities(tile, capacities);
@@ -151,7 +162,8 @@ internal static class PerformanceBehaviorTests
 
         WildlifeKind Reference(Tile current, bool water)
         {
-            if (water != WorldEngine.IsWaterTerrain(current.Terrain)) return WildlifeKind.None;
+            if (water != WorldEngine.IsWaterTerrain(current.Terrain))
+                return WildlifeKind.None;
             return AnimalRules.Species.Where(kind => AnimalRules.For(kind).Diet == AnimalDiet.Herbivore
                                                      && (!water || AnimalRules.For(kind).Aquatic) &&
                                                      current.AnimalPopulation(kind) >= .05)
@@ -251,7 +263,8 @@ internal static class PerformanceBehaviorTests
     private static void DailyEcology()
     {
         var engine = Flat();
-        foreach (var tile in engine.State.Tiles) tile.WildlifePopulation = .01;
+        foreach (var tile in engine.State.Tiles)
+            tile.WildlifePopulation = .01;
         engine.Step();
         Check(engine.State.Tiles[2 * 32 + 16].WildlifePopulation > .01, "First band did not grow on the first day");
         Check(engine.State.Tiles[28 * 32 + 16].WildlifePopulation == .01, "Distant band grew before its turn");

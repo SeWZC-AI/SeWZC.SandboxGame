@@ -81,13 +81,15 @@ internal static class DiplomacyKnowledgeTests
             engine.State.Rules.Alliances = !war;
             var a = engine.State.Settlements[0];
             var b = engine.State.Settlements[1];
-            if (war) engine.SetPolicy(a.NationId, PolicyKind.Defense);
+            if (war)
+                engine.SetPolicy(a.NationId, PolicyKind.Defense);
             engine.State.Tick = 359;
             Contact(engine, a, b);
             Contact(engine, b, a);
             var relation = engine.State.Diplomacies.Single();
             Opinions(relation, war ? -54 : 54, war ? 100 : -100);
-            if (war) relation.FirstEscalationTick = relation.SecondEscalationTick = 120;
+            if (war)
+                relation.FirstEscalationTick = relation.SecondEscalationTick = 120;
             engine.Step();
             if (war)
             {
@@ -186,7 +188,8 @@ internal static class DiplomacyKnowledgeTests
         engine.Step();
         Check(Opinion(relation, b.NationId) == -76 && carrier.X < b.X - 1,
             "A ceasefire changed the remote attitude before its courier arrived.");
-        for (var i = 0; i < 90 && !HasOrder(b, a.NationId, notice.ObservedTick); i++) engine.Step();
+        for (var i = 0; i < 90 && !HasOrder(b, a.NationId, notice.ObservedTick); i++)
+            engine.Step();
         Check(
             HasOrder(b, a.NationId, notice.ObservedTick) &&
             Opinion(relation, b.NationId) == (engine.State.Tick % 60 == 0 ? 4 : 0),
@@ -300,8 +303,10 @@ internal static class DiplomacyKnowledgeTests
             Secession = false,
             Conflict = 3,
         }, false, false);
-        foreach (var (x, population) in locations) engine.SpawnResidents(x, 24, RaceKind.Human, population);
-        foreach (var culture in engine.State.Society.Cultures) culture.Cooperation = .8;
+        foreach (var (x, population) in locations)
+            engine.SpawnResidents(x, 24, RaceKind.Human, population);
+        foreach (var culture in engine.State.Society.Cultures)
+            culture.Cooperation = .8;
         foreach (var town in engine.State.Settlements)
         {
             town.Resources = new ResourceStock { Food = 1000, Wood = 1000, Stone = 1000, Ore = 1000 };
@@ -367,6 +372,7 @@ internal static class DiplomacyKnowledgeTests
 
     private static void Check(bool condition, string message)
     {
-        if (!condition) throw new InvalidOperationException(message);
+        if (!condition)
+            throw new InvalidOperationException(message);
     }
 }

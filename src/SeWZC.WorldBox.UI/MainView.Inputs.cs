@@ -24,7 +24,8 @@ public sealed partial class MainView
     {
         panel.Children.Add(Named(Button("从地图选点", () =>
         {
-            if (!_modal.IsVisible || _modal.Child is null) return;
+            if (!_modal.IsVisible || _modal.Child is null)
+                return;
             _mapPickGeneration = _modalGeneration;
             _mapPickEngine = _engine;
             _mapPickModal = _modal.Child;
@@ -52,13 +53,16 @@ public sealed partial class MainView
 
     private void FinishMapPick(int? x = null, int? y = null)
     {
-        if (_mapPick is null) return;
+        if (_mapPick is null)
+            return;
         var assignLocation = _mapPick;
         var current = _mapPickGeneration == _modalGeneration && ReferenceEquals(_mapPickEngine, _engine) &&
                       ReferenceEquals(_mapPickModal, _modal.Child);
         CancelMapPick(current);
-        if (!current) return;
-        if (x.HasValue && y.HasValue) assignLocation(x.Value, y.Value);
+        if (!current)
+            return;
+        if (x.HasValue && y.HasValue)
+            assignLocation(x.Value, y.Value);
         _modal.IsVisible = true;
         _map.IsSimulationPaused = true;
         RefreshUi();
@@ -67,7 +71,8 @@ public sealed partial class MainView
 
     private void CancelMapPick(bool restorePresentation = false)
     {
-        if (_mapPick is null) return;
+        if (_mapPick is null)
+            return;
         _mapPick = null;
         _mapPickEngine = null;
         _mapPickModal = null;
@@ -123,7 +128,8 @@ public sealed partial class MainView
     {
         panel.Children.Add(Text(label, 12, Muted));
         var entries = values.Select(v => new EntityChoice(v.Id, v.Name)).ToList();
-        if (optional) entries.Insert(0, new EntityChoice(0, "无"));
+        if (optional)
+            entries.Insert(0, new EntityChoice(0, "无"));
         if (historical && entries.All(entry => entry.Id != selected))
             entries.Add(new EntityChoice(selected, $"历史记录 #{selected}（已不存在）"));
         var picker = Named(new ComboBox

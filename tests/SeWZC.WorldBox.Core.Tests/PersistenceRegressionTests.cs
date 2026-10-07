@@ -150,7 +150,8 @@ internal static class PersistenceRegressionTests
         engine.Step(30);
         var army = engine.State.Armies.First(a => a.NationId == nations[0].Id);
         var soldiers = engine.State.Residents.Where(r => r.ArmyId == army.Id).ToArray();
-        foreach (var soldier in soldiers) engine.EditResident(soldier.Id, new ResidentEdit { Health = 0, Age = 999 });
+        foreach (var soldier in soldiers)
+            engine.EditResident(soldier.Id, new ResidentEdit { Health = 0, Age = 999 });
         engine.Tick();
         var archived = engine.State.ArchivedResidents.First(r => r.Id == soldiers[0].Id);
         Require(archived.ArmyId == army.Id && engine.State.Armies.All(a => a.Id != army.Id),
@@ -205,15 +206,18 @@ internal static class PersistenceRegressionTests
             resident.Agent.CarriedMessages.RemoveAll(f => f.Id == rememberedId);
         }
 
-        foreach (var town in engine.State.Settlements) town.PublicKnowledge.RemoveAll(f => f.Id == rememberedId);
-        foreach (var message in engine.State.PendingMessages) message.Facts.RemoveAll(f => f.Id == rememberedId);
+        foreach (var town in engine.State.Settlements)
+            town.PublicKnowledge.RemoveAll(f => f.Id == rememberedId);
+        foreach (var message in engine.State.PendingMessages)
+            message.Facts.RemoveAll(f => f.Id == rememberedId);
         Require(AssertRoundTrip(engine).State.Armies[0].LastOrderFactId == rememberedId,
             "An expired fact invalidated the army's persistent order marker.");
 
         relation.FirstOpinion = 0;
         relation.SecondOpinion = 0;
         relation.Opinion = 0;
-        foreach (var army in engine.State.Armies) army.LastOrderFactId = 0;
+        foreach (var army in engine.State.Armies)
+            army.LastOrderFactId = 0;
         var saved = JsonNode.Parse(engine.ExportJson())!;
         Require(saved["FormatVersion"]!.GetValue<int>() == 17 && saved["SimulationVersion"]!.GetValue<int>() == 16,
             "New worlds did not explicitly save both current version fields.");
@@ -401,6 +405,7 @@ internal static class PersistenceRegressionTests
 
     private static void Require(bool condition, string message)
     {
-        if (!condition) throw new InvalidOperationException(message);
+        if (!condition)
+            throw new InvalidOperationException(message);
     }
 }

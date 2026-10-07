@@ -11,6 +11,7 @@ public sealed class ResearchTreeEdge(Advancement from, Advancement to, Point[] p
 {
     /// <summary>依赖连线起点的研究项目。</summary>
     public Advancement From { get; } = from;
+
     /// <summary>依赖连线终点的研究项目。</summary>
     public Advancement To { get; } = to;
 

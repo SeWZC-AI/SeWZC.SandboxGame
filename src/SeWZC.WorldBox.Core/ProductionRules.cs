@@ -8,20 +8,20 @@ public static class ProductionRules
     private static readonly IReadOnlyDictionary<BuildingKind, ProductionRecipe> ByBuilding;
 
     private static readonly ProductionRecipe ShipyardRecipe = new(Advancement.Logistics,
-            BuildingKind.Shipyard,
-            "船坞",
-            new ResourceAmounts { Wood = 35, Stone = 20 },
-            new ResourceAmounts { Wood = 4 },
-            ResourceKind.Boats,
-            1);
+        BuildingKind.Shipyard,
+        "船坞",
+        new ResourceAmounts { Wood = 35, Stone = 20 },
+        new ResourceAmounts { Wood = 4 },
+        ResourceKind.Boats,
+        1);
 
     private static readonly ProductionRecipe DwarvenForgeRecipe = new(Advancement.Industry,
-            BuildingKind.DwarvenForge,
-            "矮人锻炉",
-            new ResourceAmounts { Wood = 30, Stone = 40, Ore = 15 },
-            new ResourceAmounts { Wood = 2, Ore = 2 },
-            ResourceKind.Alloy,
-            1.5);
+        BuildingKind.DwarvenForge,
+        "矮人锻炉",
+        new ResourceAmounts { Wood = 30, Stone = 40, Ore = 15 },
+        new ResourceAmounts { Wood = 2, Ore = 2 },
+        ResourceKind.Alloy,
+        1.5);
 
     static ProductionRules()
     {

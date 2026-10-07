@@ -19,6 +19,7 @@ internal static class StrongTypeTests
             RejectMutation(research.UnlockedProfessions, Profession.Surveyor);
             RejectMutation(research.UnlockedSpells, SpellKind.RuneWard);
         }
+
         foreach (var recipe in ProductionRules.All)
             RejectMutation(recipe.InputResources, ResourceKind.Food);
         RejectMutation(Advancement.All, Advancement.SpatialMagic);
@@ -43,7 +44,8 @@ internal static class StrongTypeTests
 
     private static void RejectMutation<T>(IReadOnlyList<T> values, T replacement)
     {
-        if (values.Count == 0 || values is not IList<T> list) return;
+        if (values.Count == 0 || values is not IList<T> list)
+            return;
         try
         {
             list[0] = replacement;
@@ -78,16 +80,19 @@ internal static class StrongTypeTests
         stock.Ammunition = 0;
         Require(amounts.Ammunition == 8, "Editing a copy changed immutable amounts");
         var sum = 0d;
-        for (var i = 0; i < 1000; i++) sum += amounts.Get(ResourceKind.Food);
+        for (var i = 0; i < 1000; i++)
+            sum += amounts.Get(ResourceKind.Food);
         var before = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 1000; i++) sum += amounts.Get(ResourceKind.Food);
+        for (var i = 0; i < 1000; i++)
+            sum += amounts.Get(ResourceKind.Food);
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         Require(allocated == 0 && sum == 40_000, "Immutable queries allocate per-read storage");
     }
 
     private static void Require(bool condition, string message)
     {
-        if (!condition) throw new InvalidOperationException(message);
+        if (!condition)
+            throw new InvalidOperationException(message);
     }
 
     private sealed class ActionHandler : IResearchActionHandler

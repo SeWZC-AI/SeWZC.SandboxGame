@@ -6,7 +6,8 @@ using SeWZC.WorldBox.Core;
 
 var evolutionOption = Array.IndexOf(args, "--evolution");
 var ecologyOption = Array.IndexOf(args, "--simulate-ecology");
-if (ecologyOption >= 0) return EcologyDiagnostics.Run(args[(ecologyOption + 1)..]);
+if (ecologyOption >= 0)
+    return EcologyDiagnostics.Run(args[(ecologyOption + 1)..]);
 if (evolutionOption >= 0)
 {
     EvolutionProbe.Run(evolutionOption + 1 < args.Length
@@ -20,12 +21,14 @@ if (args.Contains("--profile-simulation"))
 if (args.Contains("--profile-save"))
     return SavePerformance.Run(args, () => CreateBenchmarkWorld());
 var developmentOption = Array.IndexOf(args, "--simulate-development");
-if (developmentOption >= 0) return DevelopmentDiagnostics.Run(args[(developmentOption + 1)..]);
+if (developmentOption >= 0)
+    return DevelopmentDiagnostics.Run(args[(developmentOption + 1)..]);
 
 var visualOption = Array.IndexOf(args, "--export-visual-fixture");
 if (visualOption >= 0)
 {
-    if (visualOption + 1 >= args.Length) return 2;
+    if (visualOption + 1 >= args.Length)
+        return 2;
     VisualFixture.Export(args[visualOption + 1]);
     return 0;
 }
@@ -100,7 +103,8 @@ if (tests.Length == 0)
 
 if (args.Contains("--list"))
 {
-    foreach (var test in tests) Console.WriteLine($"{Scope(test.Run)}: {test.Name}");
+    foreach (var test in tests)
+        Console.WriteLine($"{Scope(test.Run)}: {test.Name}");
     return 0;
 }
 
@@ -124,7 +128,8 @@ foreach (var (name, run) in tests)
 
 Console.WriteLine(
     $"{tests.Length - failures}/{tests.Length} {suite} checks passed in {totalTime.Elapsed.TotalSeconds:F2} s");
-if (failures == 0 && args.Contains("--benchmark")) Benchmark();
+if (failures == 0 && args.Contains("--benchmark"))
+    Benchmark();
 return failures == 0 ? 0 : 1;
 
 static string Scope(Action test)
@@ -206,23 +211,27 @@ static void AssertResume(WorldEngine uninterrupted, int steps)
 
 static string? JsonDifference(JsonNode? first, JsonNode? second, string path = "$")
 {
-    if (JsonNode.DeepEquals(first, second)) return null;
+    if (JsonNode.DeepEquals(first, second))
+        return null;
     if (first is JsonObject a && second is JsonObject b)
     {
         foreach (var item in a)
         {
             var difference = JsonDifference(item.Value, b[item.Key], path + "." + item.Key);
-            if (difference is not null) return difference;
+            if (difference is not null)
+                return difference;
         }
     }
 
     if (first is JsonArray aa && second is JsonArray bb)
     {
-        if (aa.Count != bb.Count) return $"{path}: count {aa.Count} -> {bb.Count}";
+        if (aa.Count != bb.Count)
+            return $"{path}: count {aa.Count} -> {bb.Count}";
         for (var i = 0; i < aa.Count; i++)
         {
             var difference = JsonDifference(aa[i], bb[i], $"{path}[{i}]");
-            if (difference is not null) return difference;
+            if (difference is not null)
+                return difference;
         }
     }
 
@@ -395,7 +404,8 @@ static void Disasters()
 {
     var engine = FlatWorld();
     engine.SpawnResidents(24, 24, RaceKind.Human, 16);
-    foreach (var tile in engine.State.Tiles) tile.Terrain = TerrainType.Forest;
+    foreach (var tile in engine.State.Tiles)
+        tile.Terrain = TerrainType.Forest;
     var target = engine.State.Residents[0];
     engine.TriggerDisaster(target.X, target.Y, DisasterKind.Fire, 8);
     Check(engine.State.Tiles.Any(t => t.FireTicks > 0), "Fire leaves no burning terrain.");
@@ -468,7 +478,8 @@ static void NationTerritoryEditing()
     var secondTown = engine.State.Settlements[1];
     var thirdTown = engine.State.Settlements[2];
     RejectAction(() => engine.SplitSettlement(firstTown.Id, "过早独立"), "splitting a country's only settlement");
-    foreach (var nation in originalNations) engine.SetNationResources(nation.Id, 10000, 500, 500, 500);
+    foreach (var nation in originalNations)
+        engine.SetNationResources(nation.Id, 10000, 500, 500, 500);
     var residentIds = engine.State.Residents.Select(r => r.Id).ToHashSet();
     engine.TransferTerritory(secondTown.X, secondTown.Y, originalNations[0].Id);
     Check(engine.State.Nations.All(n => n.Id != originalNations[1].Id),
@@ -622,7 +633,8 @@ static WorldEngine CreateBenchmarkWorld(int population = 2000, bool wars = true)
     }
 
     var nationIds = engine.State.Nations.Select(n => n.Id).ToArray();
-    foreach (var id in nationIds) engine.SetNationResources(id, 100000, 10000, 10000, 10000);
+    foreach (var id in nationIds)
+        engine.SetNationResources(id, 100000, 10000, 10000, 10000);
     for (var i = 0; wars && i < nationIds.Length; i += 2)
         engine.SetDiplomacy(nationIds[i], nationIds[i + 1], DiplomaticStatus.War);
     return engine;
@@ -719,5 +731,6 @@ static void RejectAction(Action action, string reason)
 
 static void Check(bool condition, string message)
 {
-    if (!condition) throw new InvalidOperationException(message);
+    if (!condition)
+        throw new InvalidOperationException(message);
 }

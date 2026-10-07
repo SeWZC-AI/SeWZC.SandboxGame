@@ -107,7 +107,8 @@ public sealed partial class Advancement
     {
         get
         {
-            if (_effect is not null) return _effect;
+            if (_effect is not null)
+                return _effect;
             var recipe = ProductionRules.For(this)!;
             return "解锁" + recipe.FacilityName + "。\n" + recipe.Description;
         }

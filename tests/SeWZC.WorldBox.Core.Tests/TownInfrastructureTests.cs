@@ -22,7 +22,8 @@ internal static class TownInfrastructureTests
 
     private static void Check(bool condition, string message)
     {
-        if (!condition) throw new Exception(message);
+        if (!condition)
+            throw new Exception(message);
     }
 
     private static WorldEngine Flat(int population = 1, bool claimed = true)
@@ -60,8 +61,10 @@ internal static class TownInfrastructureTests
             Conflict = 0,
         }, false, false);
         e.SpawnResidents(12, 16, RaceKind.Human, population);
-        foreach (var resident in e.State.Residents) Hold(e, resident, AgentGoalKind.Rest, 12, 16);
-        if (claimed) TestLand.ClaimAllTowns(e);
+        foreach (var resident in e.State.Residents)
+            Hold(e, resident, AgentGoalKind.Rest, 12, 16);
+        if (claimed)
+            TestLand.ClaimAllTowns(e);
         return e;
     }
 
@@ -305,9 +308,11 @@ internal static class TownInfrastructureTests
             "Drought did not shut down a well below threshold.");
         tile.DroughtTicks = 0;
         tile.NaturalWaterYield = .2;
-        foreach (var person in e.State.Residents) Hold(e, person, AgentGoalKind.FetchWater, 16, 18, 18 * 32 + 16 + 1);
+        foreach (var person in e.State.Residents)
+            Hold(e, person, AgentGoalKind.FetchWater, 16, 18, 18 * 32 + 16 + 1);
         e.State.Tick++;
-        foreach (var person in e.State.Residents) e.TryFetchWater(person);
+        foreach (var person in e.State.Residents)
+            e.TryFetchWater(person);
         Check(e.AvailableWater(16, 18) < 1e-9 && Math.Abs(tile.WaterDrawn - 5.6) < 1e-9,
             "Repeated well work exceeded or failed to consume its daily limit.");
         var resumed = WorldEngine.ImportJson(e.ExportJson());
@@ -379,7 +384,8 @@ internal static class TownInfrastructureTests
             var worker = e.State.Residents.Single();
             e.GrantReceivedResearch(town.Id, Advancement.Logistics);
             e.State.Rules.Construction = true;
-            for (var y = 0; y < 32; y++) e.State.Tiles[y * 32 + 13].Terrain = TerrainType.River;
+            for (var y = 0; y < 32; y++)
+                e.State.Tiles[y * 32 + 13].Terrain = TerrainType.River;
             town.Resources.Wood = town.Resources.Stone = affordable ? 1000 : 0;
             worker.Age = 30;
             worker.Profession = Profession.Builder;

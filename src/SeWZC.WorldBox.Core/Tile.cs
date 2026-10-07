@@ -15,12 +15,14 @@ public sealed partial class Tile
         get => _terrain;
         set
         {
-            if (_terrain == value) return;
+            if (_terrain == value)
+                return;
             TerritoryCounts?.InvalidateTraversal();
             if (WorldEngine.IsWaterTerrain(_terrain) != WorldEngine.IsWaterTerrain(value))
                 TerritoryCounts?.InvalidateClaims();
             _terrain = value;
-            if (value is not (TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver)) RiverWidth = 0;
+            if (value is not (TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver))
+                RiverWidth = 0;
         }
     }
 
@@ -40,7 +42,8 @@ public sealed partial class Tile
         get => _nationId;
         set
         {
-            if (_nationId == value) return;
+            if (_nationId == value)
+                return;
             TerritoryCounts?.Change(_nationId, value);
             _nationId = value;
         }
@@ -57,7 +60,8 @@ public sealed partial class Tile
         get => _fireTicks;
         set
         {
-            if (_fireTicks > 0 != value > 0) TerritoryCounts?.InvalidateTraversal();
+            if (_fireTicks > 0 != value > 0)
+                TerritoryCounts?.InvalidateTraversal();
             _fireTicks = value;
         }
     }

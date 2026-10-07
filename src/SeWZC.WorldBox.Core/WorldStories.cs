@@ -38,8 +38,10 @@ public static class WorldStories
                     && g[0].SettlementId == entry.SettlementId && g[0].SecondSettlementId == entry.SecondSettlementId
                     && g[0].ResidentId == entry.ResidentId && entry.Tick - g[0].Tick <= 60)
                 : null;
-            if (group is null) groups.Add([entry]);
-            else group.Add(entry);
+            if (group is null)
+                groups.Add([entry]);
+            else
+                group.Add(entry);
         }
 
         return groups.Select(g => new EventGroup(g)).OrderByDescending(g => g.Latest.Tick)

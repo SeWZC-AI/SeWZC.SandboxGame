@@ -24,12 +24,14 @@ internal static class EvolutionProbe
                 e.Step(60);
                 if (generationEnded is null && !e.State.Residents.Any(r => foundingIds.Contains(r.Id)))
                     generationEnded = e.State.Tick;
-                foreach (var dead in e.State.ArchivedResidents) observedDeaths.Add(dead.Id);
+                foreach (var dead in e.State.ArchivedResidents)
+                    observedDeaths.Add(dead.Id);
                 foreach (var ev in e.State.Events.Where(x => seen.Add(x.Id)).OrderBy(x => x.Tick))
                 {
                     if (ev.Kind is not (WorldEventKind.Founding or WorldEventKind.Growth or WorldEventKind.Construction
                         or WorldEventKind.Research or WorldEventKind.Diplomacy or WorldEventKind.War
-                        or WorldEventKind.Disaster)) continue;
+                        or WorldEventKind.Disaster))
+                        continue;
                     if (ev.Kind == WorldEventKind.Construction && ev.Action == EventAction.Completed)
                         firstConstruction ??= ev.Tick;
                     if (ev.Kind == WorldEventKind.Research && ev.Action == EventAction.Completed)
@@ -81,7 +83,8 @@ internal static class EvolutionProbe
 
             e.Step(60);
             resume.Step(60);
-            if (e.ExportJson() != resume.ExportJson()) throw new Exception("Continuation mismatch");
+            if (e.ExportJson() != resume.ExportJson())
+                throw new Exception("Continuation mismatch");
             if (firstConstruction is null || firstResearch is null || firstResearch > 1200 ||
                 (generationEnded is not null && firstResearch >= generationEnded))
                 throw new Exception($"Seed {seed} failed generational progress");

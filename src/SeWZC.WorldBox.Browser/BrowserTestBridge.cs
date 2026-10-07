@@ -16,7 +16,8 @@ public static partial class BrowserTestBridge
     [JSExport]
     public static string ReadSnapshot()
     {
-        if (!Enabled) throw new InvalidOperationException("UI test inspection is disabled.");
+        if (!Enabled)
+            throw new InvalidOperationException("UI test inspection is disabled.");
         var lifetime = Application.Current?.ApplicationLifetime as ISingleViewApplicationLifetime;
         if (lifetime?.MainView is not MainView view)
             throw new InvalidOperationException("The application view is not ready.");

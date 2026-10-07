@@ -12,7 +12,8 @@ public sealed partial class WorldEngine
 
     private void TickLocalConflicts()
     {
-        if (State.Tick % 12 != 0) return;
+        if (State.Tick % 12 != 0)
+            return;
         var residents = State.Residents.ToDictionary(r => r.Id);
         State.Conflicts.RemoveAll(c => (c.Stage == ConflictStage.Resolved && State.Tick - c.LastChangedTick > 360)
                                        || !_settlements.ContainsKey(c.SettlementId));
@@ -55,7 +56,8 @@ public sealed partial class WorldEngine
                 var witness = _citizens[conflict.SettlementId].Where(r => r.Age >= 14 && r.ArmyId == 0
                     && !conflict.Participants.Contains(r.Id) && HasResourcePressure(r)
                     && Distance(r.X, r.Y, conflict.X, conflict.Y) <= 2).OrderBy(r => r.Id).FirstOrDefault();
-                if (witness is not null) conflict.Participants.Add(witness.Id);
+                if (witness is not null)
+                    conflict.Participants.Add(witness.Id);
                 var scope = conflict.Participants.Count >= 8 && State.Tick - conflict.StartedTick >= 180
                     ? ConflictScope.Settlement
                     : conflict.Participants.Count >= 4
@@ -69,7 +71,8 @@ public sealed partial class WorldEngine
             }
         }
 
-        if (!State.Rules.Wars || State.Rules.Conflict <= 0) return;
+        if (!State.Rules.Wars || State.Rules.Conflict <= 0)
+            return;
         foreach (var town in State.Settlements)
         {
             if (State.Conflicts.Count >= 128 || State.Conflicts.Any(c => c.SettlementId == town.Id
@@ -82,7 +85,8 @@ public sealed partial class WorldEngine
             {
                 var first = candidates[i];
                 var second = candidates.Skip(i + 1).FirstOrDefault(r => Distance(r.X, r.Y, first.X, first.Y) <= 1);
-                if (second is null) continue;
+                if (second is null)
+                    continue;
                 var conflict = new LocalConflict
                 {
                     Id = NewId(),
@@ -130,7 +134,8 @@ public sealed partial class WorldEngine
 
     private static void ValidateConflicts(WorldState state)
     {
-        if (state.Conflicts is null || state.Conflicts.Count > 128) throw new ArgumentException("无效存档：局部冲突数量无效。");
+        if (state.Conflicts is null || state.Conflicts.Count > 128)
+            throw new ArgumentException("无效存档：局部冲突数量无效。");
         var ids = state.Residents.Concat(state.ArchivedResidents).Select(r => r.Id)
             .Concat(state.Settlements.Select(t => t.Id)).Concat(state.Nations.Select(n => n.Id))
             .Concat(state.Armies.Select(a => a.Id)).Concat(state.Society.Buildings.Select(b => b.Id)).ToHashSet();

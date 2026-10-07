@@ -340,7 +340,8 @@ internal static class LandTransportTests
             engine.GrantReceivedResearch(home.Id, Advancement.Aviation);
             home.Resources.Aircraft = 1;
         }
-        else home.Resources.Boats = 1;
+        else
+            home.Resources.Boats = 1;
 
         worker.Profession = Profession.Messenger;
         worker.Inventory.Food = 20;
@@ -384,7 +385,8 @@ internal static class LandTransportTests
             }
 
             if (crossed && worker.TravelMode == TravelMode.Foot && worker.Agent.DestinationSettlementId == 0 &&
-                worker.X < 16) break;
+                worker.X < 16)
+                break;
         }
 
         Check(crossed && worker.Agent.DestinationSettlementId == 0 && worker.X < 16,
@@ -430,6 +432,7 @@ internal static class LandTransportTests
 
     private static void Check(bool condition, string message)
     {
-        if (!condition) throw new InvalidOperationException(message);
+        if (!condition)
+            throw new InvalidOperationException(message);
     }
 }

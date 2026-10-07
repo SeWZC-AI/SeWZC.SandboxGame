@@ -43,7 +43,8 @@ public sealed partial class WorldEngine
     /// <param name="y">纵向地格坐标。</param>
     public double GetTileFlammability(int x, int y)
     {
-        if (!InBounds(x, y)) return 0;
+        if (!InBounds(x, y))
+            return 0;
         var fuel = TerrainFlammability(State.Tiles[Index(x, y)]);
         foreach (var building in State.Society.Buildings)
             if (building.X == x && building.Y == y && building.Health > 0)
@@ -54,7 +55,8 @@ public sealed partial class WorldEngine
     private bool Ignite(int index)
     {
         var tile = State.Tiles[index];
-        if (tile.FireTicks > 0 || GetTileFlammability(index % State.Width, index / State.Width) <= 0) return false;
+        if (tile.FireTicks > 0 || GetTileFlammability(index % State.Width, index / State.Width) <= 0)
+            return false;
         tile.FireTicks = 60 + RandomInt(31);
         _burningTiles.Add(index);
         EmitVisual(WorldVisualKind.Fire, index % State.Width, index / State.Width);
@@ -66,8 +68,10 @@ public sealed partial class WorldEngine
         var tile = State.Tiles[index];
         tile.FireTicks = 0;
         _burningTiles.Remove(index);
-        if (!exhausted || TerrainFlammability(tile) <= 0) return;
-        if (IsForestTerrain(tile.Terrain)) tile.Terrain = TerrainType.Grass;
+        if (!exhausted || TerrainFlammability(tile) <= 0)
+            return;
+        if (IsForestTerrain(tile.Terrain))
+            tile.Terrain = TerrainType.Grass;
         tile.Plants = default;
         tile.ResourceAmount *= .25;
         tile.Fertility = (byte)Math.Max(5, tile.Fertility - 10);
@@ -81,7 +85,8 @@ public sealed partial class WorldEngine
         if (person.Health <= 0 || person.Age < 14 || goal.Kind != AgentGoalKind.ExtinguishFire
             || !InBounds(goal.TargetX, goal.TargetY) || Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > 1
             || State.Tick - person.MoveStartedTick < person.MoveDurationTicks || !Walkable(person.X, person.Y)
-            || State.Tiles[Index(person.X, person.Y)].FireTicks > 0 || person.Inventory.Water < .1) return false;
+            || State.Tiles[Index(person.X, person.Y)].FireTicks > 0 || person.Inventory.Water < .1)
+            return false;
         var index = Index(goal.TargetX, goal.TargetY);
         var tile = State.Tiles[index];
         if (tile.FireTicks <= 0)
@@ -98,13 +103,15 @@ public sealed partial class WorldEngine
 
         // 每格共用每日扑救上限，避免聚集大量居民后火灾在一日内直接消失。
         var reduction = Math.Min(2 - tile.FireSuppressed, tile.FireTicks);
-        if (reduction <= 0) return false;
+        if (reduction <= 0)
+            return false;
         person.Inventory.Water -= .1;
         tile.FireSuppressed += reduction;
         tile.FireTicks -= reduction;
         person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + .3);
         person.Activity = ResidentActivity.Working;
-        if (tile.FireTicks == 0) EndFire(index, false);
+        if (tile.FireTicks == 0)
+            EndFire(index, false);
         return true;
     }
 
@@ -112,14 +119,17 @@ public sealed partial class WorldEngine
     {
         if (_burningTiles.Count == 0 || person.Age < 14 || person.Inventory.Water < .1
             || person.Hunger >= 60 || person.Thirst >= 60 ||
-            State.Tiles[Index(person.X, person.Y)].FireTicks > 0) return;
+            State.Tiles[Index(person.X, person.Y)].FireTicks > 0)
+            return;
         foreach (var offset in VisibleResourceOffsets)
         {
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
-            if (!InBounds(x, y) || State.Tiles[Index(x, y)].FireTicks <= 0) continue;
+            if (!InBounds(x, y) || State.Tiles[Index(x, y)].FireTicks <= 0)
+                continue;
             if (!Directions.Any(d =>
-                    Walkable(x + d.X, y + d.Y) && State.Tiles[Index(x + d.X, y + d.Y)].FireTicks == 0)) continue;
+                    Walkable(x + d.X, y + d.Y) && State.Tiles[Index(x + d.X, y + d.Y)].FireTicks == 0))
+                continue;
             choices.Add(new GoalChoice(AgentGoalKind.ExtinguishFire, x, y, 190 - offset.Distance,
                 "携带饮水赶到火场边缘，持续用水扑救；同一火场每日扑救量有限"));
             return;

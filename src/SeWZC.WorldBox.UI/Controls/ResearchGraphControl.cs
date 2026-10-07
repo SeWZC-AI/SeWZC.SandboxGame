@@ -30,7 +30,8 @@ public sealed class ResearchGraphControl : UserControl
         Layout = new ResearchTreeLayout(ResearchRules.Route(false));
         _connections = new Connections(this) { IsHitTestVisible = false };
         _surface.Children.Add(_connections);
-        foreach (var node in nodes.Values) _surface.Children.Add(node);
+        foreach (var node in nodes.Values)
+            _surface.Children.Add(node);
         _scroll = new ScrollViewer
         {
             Content = _surface,
@@ -46,7 +47,8 @@ public sealed class ResearchGraphControl : UserControl
         AddHandler(PointerCaptureLostEvent, (_, e) =>
         {
             // 节点开始拖动会先释放按钮捕获；忽略冒泡的旧通知，避免取消研究树刚取得的捕获。
-            if (e.Source != this) return;
+            if (e.Source != this)
+                return;
             _press = null;
             _dragging = false;
         });
@@ -116,7 +118,8 @@ public sealed class ResearchGraphControl : UserControl
     /// <summary>按视口尺寸缩放以容纳当前研究树，并移回画布起点。</summary>
     public void Fit()
     {
-        if (_scroll.Viewport.Width <= 0 || _scroll.Viewport.Height <= 0) return;
+        if (_scroll.Viewport.Width <= 0 || _scroll.Viewport.Height <= 0)
+            return;
         SetZoom(Math.Min(_scroll.Viewport.Width / Layout.Size.Width, _scroll.Viewport.Height / Layout.Size.Height));
         _scroll.Offset = default;
     }
@@ -125,7 +128,8 @@ public sealed class ResearchGraphControl : UserControl
     /// <param name="kind">希望居中显示的研究节点。</param>
     public void Focus(Advancement kind)
     {
-        if (!Layout.Nodes.TryGetValue(kind, out var bounds)) return;
+        if (!Layout.Nodes.TryGetValue(kind, out var bounds))
+            return;
         _scroll.Offset = new Vector(bounds.Center.X * Zoom - _scroll.Viewport.Width / 2,
             bounds.Center.Y * Zoom - _scroll.Viewport.Height / 2);
     }
@@ -140,7 +144,8 @@ public sealed class ResearchGraphControl : UserControl
     {
         _surface.Width = _connections.Width = Layout.Size.Width * Zoom;
         _surface.Height = _connections.Height = Layout.Size.Height * Zoom;
-        foreach (var label in _laneLabels) _surface.Children.Remove(label);
+        foreach (var label in _laneLabels)
+            _surface.Children.Remove(label);
         _laneLabels.Clear();
         foreach (var lane in Layout.Lanes)
         {
@@ -154,7 +159,8 @@ public sealed class ResearchGraphControl : UserControl
         foreach (var (kind, node) in _nodes)
         {
             node.IsVisible = Layout.Nodes.TryGetValue(kind, out var rect);
-            if (!node.IsVisible) continue;
+            if (!node.IsVisible)
+                continue;
             Canvas.SetLeft(node, rect.X * Zoom);
             Canvas.SetTop(node, rect.Y * Zoom);
             node.Width = rect.Width * Zoom;
@@ -174,8 +180,10 @@ public sealed class ResearchGraphControl : UserControl
 
     private void BeginDrag(object? sender, PointerPressedEventArgs e)
     {
-        if (e.Pointer.Type != PointerType.Touch && !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
-        if (e.Source is Control c && (c is ScrollBar || c.GetVisualAncestors().Any(a => a is ScrollBar))) return;
+        if (e.Pointer.Type != PointerType.Touch && !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+            return;
+        if (e.Source is Control c && (c is ScrollBar || c.GetVisualAncestors().Any(a => a is ScrollBar)))
+            return;
         _press = e.GetPosition(this);
         _pressOffset = _scroll.Offset;
         _dragging = false;
@@ -183,10 +191,12 @@ public sealed class ResearchGraphControl : UserControl
 
     private void MoveDrag(object? sender, PointerEventArgs e)
     {
-        if (_press is not { } start) return;
+        if (_press is not { } start)
+            return;
         var current = e.GetPosition(this);
         var delta = new Vector(current.X - start.X, current.Y - start.Y);
-        if (!_dragging && delta.Length < 7) return;
+        if (!_dragging && delta.Length < 7)
+            return;
         // 已处理事件仍会进入手势识别；研究树取得拖动后须阻止嵌套滚动视图再次捕获。
         e.PreventGestureRecognition();
         _dragging = true;
@@ -226,15 +236,19 @@ public sealed class ResearchGraphControl : UserControl
 
             void Visit(Advancement kind)
             {
-                if (!ancestors.Add(kind)) return;
-                foreach (var p in kind.Prerequisites) Visit(p);
+                if (!ancestors.Add(kind))
+                    return;
+                foreach (var p in kind.Prerequisites)
+                    Visit(p);
             }
 
-            if (owner.ShowFullPath) Visit(owner.Selected);
+            if (owner.ShowFullPath)
+                Visit(owner.Selected);
             else
             {
                 ancestors.Add(owner.Selected);
-                foreach (var p in owner.Selected.Prerequisites) ancestors.Add(p);
+                foreach (var p in owner.Selected.Prerequisites)
+                    ancestors.Add(p);
             }
 
             using var scale = context.PushTransform(Matrix.CreateScale(owner.Zoom, owner.Zoom));

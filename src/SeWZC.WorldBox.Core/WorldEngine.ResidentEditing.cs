@@ -31,7 +31,8 @@ public sealed partial class WorldEngine
     /// <param name="json">修改后的居民认知与行动状态 JSON。</param>
     public void EditResidentMindJson(int id, string json)
     {
-        if (json.Length > 100_000) throw new ArgumentException("角色心智记录过大。");
+        if (json.Length > 100_000)
+            throw new ArgumentException("角色心智记录过大。");
         try
         {
             EditResident(id,
@@ -52,7 +53,8 @@ public sealed partial class WorldEngine
     /// <param name="json">修改后的居民经历记录 JSON。</param>
     public void EditResidentHistoryJson(int id, string json)
     {
-        if (json.Length > 100_000) throw new ArgumentException("角色历史记录过大。");
+        if (json.Length > 100_000)
+            throw new ArgumentException("角色历史记录过大。");
         try
         {
             EditResident(id,
@@ -95,12 +97,16 @@ public sealed partial class WorldEngine
         var candidate =
             JsonSerializer.Deserialize(JsonSerializer.Serialize(original, WorldJsonContext.Default.Resident),
                 WorldJsonContext.Default.Resident)!;
-        if (patch.Name is not null) candidate.Name = patch.Name.Trim();
-        if (patch.Race is { } race) candidate.Race = race;
-        if (patch.CultureId is { } culture) candidate.CultureId = culture;
+        if (patch.Name is not null)
+            candidate.Name = patch.Name.Trim();
+        if (patch.Race is { } race)
+            candidate.Race = race;
+        if (patch.CultureId is { } culture)
+            candidate.CultureId = culture;
         if (patch.SettlementId is { } townId && (isLive || townId != original.SettlementId))
         {
-            if (!_settlements.TryGetValue(townId, out var town)) throw new ArgumentException("目标聚落不存在。");
+            if (!_settlements.TryGetValue(townId, out var town))
+                throw new ArgumentException("目标聚落不存在。");
             candidate.SettlementId = townId;
             candidate.NationId = town.NationId;
             if (townId != original.SettlementId)
@@ -111,13 +117,20 @@ public sealed partial class WorldEngine
             }
         }
 
-        if (patch.X is { } x) candidate.X = x;
-        if (patch.Y is { } y) candidate.Y = y;
-        if (patch.ArmyId is { } army) candidate.ArmyId = army;
-        if (patch.SicknessTicks is { } sickness) candidate.SicknessTicks = sickness;
-        if (patch.Inventory is { } stock) candidate.Inventory = stock.Copy();
-        if (patch.Profession is { } profession) candidate.Profession = profession;
-        if (patch.Age is { } age) candidate.Age = age;
+        if (patch.X is { } x)
+            candidate.X = x;
+        if (patch.Y is { } y)
+            candidate.Y = y;
+        if (patch.ArmyId is { } army)
+            candidate.ArmyId = army;
+        if (patch.SicknessTicks is { } sickness)
+            candidate.SicknessTicks = sickness;
+        if (patch.Inventory is { } stock)
+            candidate.Inventory = stock.Copy();
+        if (patch.Profession is { } profession)
+            candidate.Profession = profession;
+        if (patch.Age is { } age)
+            candidate.Age = age;
         if (patch.Health is { } health)
         {
             candidate.Health = health;
@@ -128,23 +141,36 @@ public sealed partial class WorldEngine
             }
         }
 
-        if (patch.Hunger is { } hunger) candidate.Hunger = hunger;
-        if (patch.Thirst is { } thirst) candidate.Thirst = thirst;
+        if (patch.Hunger is { } hunger)
+            candidate.Hunger = hunger;
+        if (patch.Thirst is { } thirst)
+            candidate.Thirst = thirst;
         if (patch.Trait is not null)
         {
             candidate.Trait = patch.Trait;
             switch (patch.Trait)
             {
-                case "勤劳": candidate.Agent.Personality.Diligence = .9; break;
-                case "勇敢": candidate.Agent.Personality.Courage = .9; break;
-                case "好奇": candidate.Agent.Personality.Ambition = .9; break;
-                case "温和": candidate.Agent.Personality.Sociability = .9; break;
+                case "勤劳":
+                    candidate.Agent.Personality.Diligence = .9;
+                    break;
+                case "勇敢":
+                    candidate.Agent.Personality.Courage = .9;
+                    break;
+                case "好奇":
+                    candidate.Agent.Personality.Ambition = .9;
+                    break;
+                case "温和":
+                    candidate.Agent.Personality.Sociability = .9;
+                    break;
             }
         }
 
-        if (patch.Mana is { } mana) candidate.Mana = mana;
-        if (patch.MagicTalent is { } talent) candidate.MagicTalent = talent;
-        if (patch.MagicTraining is { } training) candidate.MagicTraining = training;
+        if (patch.Mana is { } mana)
+            candidate.Mana = mana;
+        if (patch.MagicTalent is { } talent)
+            candidate.MagicTalent = talent;
+        if (patch.MagicTraining is { } training)
+            candidate.MagicTraining = training;
         if (patch.Agent is not null)
         {
             candidate.Agent =
@@ -165,7 +191,8 @@ public sealed partial class WorldEngine
         if (isLive)
         {
             if (!InBounds(candidate.X, candidate.Y) || !CanTraverse(State.Tiles[Index(candidate.X, candidate.Y)],
-                    candidate.TravelMode, candidate.Race)) throw new ArgumentException("居民必须位于可通行地格。");
+                    candidate.TravelMode, candidate.Race))
+                throw new ArgumentException("居民必须位于可通行地格。");
             if (candidate.ArmyId != 0 &&
                 !State.Armies.Any(a => a.Id == candidate.ArmyId && a.NationId == candidate.NationId))
                 throw new ArgumentException("军队不存在或与居民所属国家不一致。");
@@ -194,7 +221,8 @@ public sealed partial class WorldEngine
             personality.Courage = Math.Clamp(personality.Courage + (achievement - hardship) * 0.1, 0, 1);
             personality.Sociability = Math.Clamp(personality.Sociability + (kindness - betrayal) * 0.1, 0, 1);
             personality.Diligence = Math.Clamp(personality.Diligence + learning * 0.1, 0, 1);
-            foreach (var entry in candidate.History) entry.PlayerEdited = true;
+            foreach (var entry in candidate.History)
+                entry.PlayerEdited = true;
         }
 
         if (patch.Agent is not null && candidate.Agent.Decisions.LastOrDefault() is { } thought &&
@@ -223,7 +251,8 @@ public sealed partial class WorldEngine
                                original.Agent.DestinationSettlementId != candidate.Agent.Goal.TargetSettlementId);
         if (startMission)
         {
-            if (candidate.ArmyId != 0) throw new ArgumentException("正在军队服役的居民需要先退役，才能执行民用运输任务。");
+            if (candidate.ArmyId != 0)
+                throw new ArgumentException("正在军队服役的居民需要先退役，才能执行民用运输任务。");
             if (!_settlements.TryGetValue(candidate.Agent.Goal.TargetSettlementId, out var destination))
                 throw new ArgumentException("运输或递送目标需要选择有效聚落编号。");
             if (destination.Id == candidate.SettlementId && candidate.Agent.Goal.Kind == AgentGoalKind.Trade)
@@ -232,8 +261,10 @@ public sealed partial class WorldEngine
                 f.Kind == AgentFactKind.SettlementLocation && f.SubjectId == destination.Id);
             if (address is null || address.X != destination.X || address.Y != destination.Y)
             {
-                if (address is not null) candidate.Agent.Memory.Remove(address);
-                if (candidate.Agent.Memory.Count == 16) candidate.Agent.Memory.RemoveAt(0);
+                if (address is not null)
+                    candidate.Agent.Memory.Remove(address);
+                if (candidate.Agent.Memory.Count == 16)
+                    candidate.Agent.Memory.RemoveAt(0);
                 candidate.Agent.Memory.Add(new AgentFact
                 {
                     Kind = AgentFactKind.SettlementLocation,
@@ -281,11 +312,13 @@ public sealed partial class WorldEngine
             foreach (var fact in changedFacts)
             {
                 var oldId = fact.Id;
-                if (oldId > 0 && revisions.TryGetValue(oldId, out var assigned)) fact.Id = assigned;
+                if (oldId > 0 && revisions.TryGetValue(oldId, out var assigned))
+                    fact.Id = assigned;
                 else
                 {
                     fact.Id = NewId();
-                    if (oldId > 0) revisions[oldId] = fact.Id;
+                    if (oldId > 0)
+                        revisions[oldId] = fact.Id;
                 }
 
                 if (fact.OriginResidentId == 0)
@@ -294,7 +327,8 @@ public sealed partial class WorldEngine
                     fact.OriginProfession = candidate.Profession;
                 }
 
-                if (fact.SourceResidentId == 0) fact.SourceResidentId = candidate.Id;
+                if (fact.SourceResidentId == 0)
+                    fact.SourceResidentId = candidate.Id;
             }
 
             foreach (var decision in candidate.Agent.Decisions)
@@ -302,8 +336,10 @@ public sealed partial class WorldEngine
                     decision.EvidenceFactId = revised;
         }
 
-        if (isLive) State.Residents[liveIndex] = candidate;
-        else State.ArchivedResidents[State.ArchivedResidents.IndexOf(original)] = candidate;
+        if (isLive)
+            State.Residents[liveIndex] = candidate;
+        else
+            State.ArchivedResidents[State.ArchivedResidents.IndexOf(original)] = candidate;
         if (isLive)
         {
             if (startMission && _settlements.TryGetValue(candidate.SettlementId, out var missionHome))

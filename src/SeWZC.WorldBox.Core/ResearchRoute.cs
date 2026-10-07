@@ -4,20 +4,28 @@ namespace SeWZC.WorldBox.Core;
 public abstract class ResearchRoute
 {
     private protected ResearchRoute() { }
+
     /// <summary>研究路线的稳定标识。</summary>
     public abstract string Id { get; }
+
     /// <summary>研究路线的中文显示标题。</summary>
     public abstract string Title { get; }
+
     /// <summary>是否使用魔法路线的呈现与默认选项。</summary>
     public virtual bool IsMagic => false;
+
     /// <summary>路线默认选中的研究项目。</summary>
     public virtual Advancement DefaultResearch => Advancement.Agriculture;
+
     /// <summary>科技研究路线。</summary>
     public static ResearchRoute Technology { get; } = new TechnologyRoute();
+
     /// <summary>魔法研究路线。</summary>
     public static ResearchRoute Magic { get; } = new MagicRoute();
+
     /// <summary>共同基础研究路线。</summary>
     public static ResearchRoute Common { get; } = new CommonRoute();
+
     /// <summary>判断研究节点是否应包含在此路线中。</summary>
     public abstract bool Includes(Advancement definition);
 

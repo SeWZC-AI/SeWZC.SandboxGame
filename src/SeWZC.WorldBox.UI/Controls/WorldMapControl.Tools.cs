@@ -55,7 +55,8 @@ public sealed partial class WorldMapControl
     /// <summary>校验待确认地点，提交当前工具操作并清除放置预览。</summary>
     public void ConfirmPlacement()
     {
-        if (_pendingPlacement is not { } tile) return;
+        if (_pendingPlacement is not { } tile)
+            return;
         if (PlacementError(tile.X, tile.Y) is { } error)
         {
             SetPlacementMessage("无法放置：" + error);
@@ -69,23 +70,28 @@ public sealed partial class WorldMapControl
 
     private void SetPlacementMessage(string text)
     {
-        if (_placementMessage == text) return;
+        if (_placementMessage == text)
+            return;
         _placementMessage = text;
         PlacementChanged?.Invoke(text);
     }
 
     private string? PlacementError(int x, int y)
     {
-        if (Engine is null) return "世界尚未就绪";
-        if (x < 0 || y < 0 || x >= Engine.State.Width || y >= Engine.State.Height) return "请选择世界范围内的地点";
+        if (Engine is null)
+            return "世界尚未就绪";
+        if (x < 0 || y < 0 || x >= Engine.State.Width || y >= Engine.State.Height)
+            return "请选择世界范围内的地点";
         return ActiveTool.PlacementError(this, x, y);
     }
 
     private void PreviewPlacement(Point point, bool pending = false)
     {
-        if (IsNavigationTool || !TryTile(point, out var tile)) return;
+        if (IsNavigationTool || !TryTile(point, out var tile))
+            return;
         _hover = point;
-        if (pending) _pendingPlacement = tile;
+        if (pending)
+            _pendingPlacement = tile;
         var error = PlacementError(tile.X, tile.Y);
         var detail = ActiveTool.Describe(this);
         SetPlacementMessage(error is null ? detail : "无法放置：" + error);
@@ -94,7 +100,8 @@ public sealed partial class WorldMapControl
 
     private void DrawPlacementHint(DrawingContext context)
     {
-        if (HasPendingPlacement || IsNavigationTool || _hover is not { } hover || _placementMessage.Length == 0) return;
+        if (HasPendingPlacement || IsNavigationTool || _hover is not { } hover || _placementMessage.Length == 0)
+            return;
         if (_drawnPlacementText is null || _drawnPlacementMessage != _placementMessage)
         {
             _drawnPlacementMessage = _placementMessage;
@@ -111,7 +118,8 @@ public sealed partial class WorldMapControl
 
     private void DrawMapOverlay(DrawingContext context, WorldState state)
     {
-        if (Overlay == 0) return;
+        if (Overlay == 0)
+            return;
         if (Overlay == 4)
         {
             DrawInfrastructureColors(context, state);
@@ -160,7 +168,8 @@ public sealed partial class WorldMapControl
                 _relayOverlayDirty = false;
             }
 
-            foreach (var link in _relayOverlay) context.DrawLine(RelayOverlayPen, link.From, link.To);
+            foreach (var link in _relayOverlay)
+                context.DrawLine(RelayOverlayPen, link.From, link.To);
             foreach (var building in state.Society.Buildings.Where(b =>
                          b.Kind == BuildingKind.SignalTower && b.IsCompleted))
             {

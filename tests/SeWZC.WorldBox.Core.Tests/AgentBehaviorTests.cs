@@ -342,7 +342,8 @@ internal static class AgentBehaviorTests
             engine.Tick();
             var report = engine.State.Society.Reports.FirstOrDefault(r =>
                 r.RecipientSettlementId == capital.Id && r.FactId == request.Id);
-            if (report is null) continue;
+            if (report is null)
+                continue;
             Require(report.ObservedTick == request.ObservedTick && report.ReceivedTick > report.ObservedTick,
                 "Delivered opinion lost its original observation time.");
             arrived = true;
@@ -407,7 +408,8 @@ internal static class AgentBehaviorTests
             traveler.Agent.Goal.TargetY = 20;
         }
 
-        for (var y = 19; y <= 21; y++) engine.State.Tiles[y * engine.State.Width + 17].Terrain = TerrainType.DeepWater;
+        for (var y = 19; y <= 21; y++)
+            engine.State.Tiles[y * engine.State.Width + 17].Terrain = TerrainType.DeepWater;
         engine.Step();
         Require(travelers.All(r => r.X == 16 && r.Y == 21),
             "Equal-length local detours changed the original direction tie.");
@@ -505,6 +507,7 @@ internal static class AgentBehaviorTests
 
     private static void Require(bool condition, string message)
     {
-        if (!condition) throw new InvalidOperationException(message);
+        if (!condition)
+            throw new InvalidOperationException(message);
     }
 }

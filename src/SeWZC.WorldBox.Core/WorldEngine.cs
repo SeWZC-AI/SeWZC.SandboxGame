@@ -29,8 +29,10 @@ public sealed partial class WorldEngine
         Reindex();
         for (var i = 0; i < State.Tiles.Length; i++)
         {
-            if (State.Tiles[i]?.FireTicks > 0) _burningTiles.Add(i);
-            if (State.Tiles[i]?.DroughtTicks > 0) _dryTiles.Add(i);
+            if (State.Tiles[i]?.FireTicks > 0)
+                _burningTiles.Add(i);
+            if (State.Tiles[i]?.DroughtTicks > 0)
+                _dryTiles.Add(i);
         }
     }
 
@@ -54,12 +56,14 @@ public sealed partial class WorldEngine
             RandomState = (uint)seed ^ 0xA341316Cu,
             Tiles = new Tile[width * height],
         };
-        if (state.RandomState == 0) state.RandomState = 1;
+        if (state.RandomState == 0)
+            state.RandomState = 1;
         var engine = new WorldEngine(state);
         engine.GenerateTerrain();
         engine.GenerateLakesAndWater();
         var demoSites = demo ? engine.PrepareDemoSites() : [];
-        foreach (var tile in state.Tiles) engine.SeedPlants(tile);
+        foreach (var tile in state.Tiles)
+            engine.SeedPlants(tile);
         engine.SeedWildlife();
         if (demo)
         {
@@ -81,7 +85,8 @@ public sealed partial class WorldEngine
         }
 
         engine.InitializeSociety();
-        foreach (var resident in state.Residents) engine.InitializeAgent(resident);
+        foreach (var resident in state.Residents)
+            engine.InitializeAgent(resident);
         return engine;
     }
 
@@ -89,11 +94,13 @@ public sealed partial class WorldEngine
     {
         _settlements.Clear();
         _nations.Clear();
-        foreach (var group in _citizens.Values) group.Clear();
+        foreach (var group in _citizens.Values)
+            group.Clear();
         foreach (var settlement in State.Settlements)
         {
             _settlements[settlement.Id] = settlement;
-            if (!_citizens.ContainsKey(settlement.Id)) _citizens[settlement.Id] = [];
+            if (!_citizens.ContainsKey(settlement.Id))
+                _citizens[settlement.Id] = [];
         }
 
         if (_citizens.Count != _settlements.Count)
@@ -102,7 +109,8 @@ public sealed partial class WorldEngine
                 _citizens.Remove(id);
         }
 
-        foreach (var nation in State.Nations) _nations[nation.Id] = nation;
+        foreach (var nation in State.Nations)
+            _nations[nation.Id] = nation;
         foreach (var person in State.Residents)
             if (_citizens.TryGetValue(person.SettlementId, out var list))
                 list.Add(person);
@@ -191,12 +199,14 @@ public sealed partial class WorldEngine
             CauseEventId = causeEventId,
             EvidenceFactId = evidenceFactId,
         };
-        if (InBounds(x, y)) entry.NationId = State.Tiles[Index(x, y)]?.NationId ?? 0;
+        if (InBounds(x, y))
+            entry.NationId = State.Tiles[Index(x, y)]?.NationId ?? 0;
         State.Events.Add(entry);
         while (State.Events.Count > 400)
         {
             var expendable = State.Events.FindIndex(e => e.Importance == EventImportance.Routine);
-            if (expendable < 0) expendable = State.Events.FindIndex(e => e.Importance == EventImportance.Notable);
+            if (expendable < 0)
+                expendable = State.Events.FindIndex(e => e.Importance == EventImportance.Notable);
             State.Events.RemoveAt(Math.Max(0, expendable));
         }
 
@@ -221,30 +231,38 @@ public sealed partial class WorldEngine
             death.SettlementId = resident.SettlementId;
             RecordLife(resident, $"逝世原因：{DeathCauseName(resident.DeathCause)}，终年 {resident.Age:0.0} 岁。", death,
                 importance: EventImportance.Major);
-            if (resident.History.Count > 24) resident.History.RemoveAt(0);
+            if (resident.History.Count > 24)
+                resident.History.RemoveAt(0);
             State.ArchivedResidents.Add(resident);
             State.Residents.Remove(resident);
-            if (_citizens.TryGetValue(resident.SettlementId, out var citizens)) citizens.Remove(resident);
+            if (_citizens.TryGetValue(resident.SettlementId, out var citizens))
+                citizens.Remove(resident);
         }
 
-        while (State.ArchivedResidents.Count > 256) State.ArchivedResidents.RemoveAt(0);
+        while (State.ArchivedResidents.Count > 256)
+            State.ArchivedResidents.RemoveAt(0);
     }
 
     private int FindWalkable(int x, int y, int radius, RaceKind race = RaceKind.Human)
     {
-        if (Walkable(x, y, race)) return Index(x, y);
+        if (Walkable(x, y, race))
+            return Index(x, y);
         for (var r = 1; r <= radius; r++)
         {
             for (var dx = -r; dx <= r; dx++)
             {
-                if (Walkable(x + dx, y - r, race)) return Index(x + dx, y - r);
-                if (Walkable(x + dx, y + r, race)) return Index(x + dx, y + r);
+                if (Walkable(x + dx, y - r, race))
+                    return Index(x + dx, y - r);
+                if (Walkable(x + dx, y + r, race))
+                    return Index(x + dx, y + r);
             }
 
             for (var dy = -r + 1; dy < r; dy++)
             {
-                if (Walkable(x - r, y + dy, race)) return Index(x - r, y + dy);
-                if (Walkable(x + r, y + dy, race)) return Index(x + r, y + dy);
+                if (Walkable(x - r, y + dy, race))
+                    return Index(x - r, y + dy);
+                if (Walkable(x + r, y + dy, race))
+                    return Index(x + r, y + dy);
             }
         }
 
@@ -307,7 +325,8 @@ public sealed partial class WorldEngine
         {
             settlement.Population = _citizens.GetValueOrDefault(settlement.Id)?.Count ?? 0;
             RefreshSettlementName(settlement);
-            if (!_nations.TryGetValue(settlement.NationId, out var nation)) continue;
+            if (!_nations.TryGetValue(settlement.NationId, out var nation))
+                continue;
             nation.Population += settlement.Population;
             nation.Resources.Food += settlement.Resources.Food;
             nation.Resources.Wood += settlement.Resources.Wood;

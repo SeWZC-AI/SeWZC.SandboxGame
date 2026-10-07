@@ -26,8 +26,10 @@ public sealed partial class MainView
         var check = Named(new CheckBox { Content = Text("关注相关事件", 12), IsChecked = _watched.Contains(target) }, name);
         check.IsCheckedChanged += (_, _) =>
         {
-            if (check.IsChecked == true) _watched.Add(target);
-            else _watched.Remove(target);
+            if (check.IsChecked == true)
+                _watched.Add(target);
+            else
+                _watched.Remove(target);
             RefreshUi();
         };
         return check;
@@ -55,11 +57,14 @@ public sealed partial class MainView
 
     private void OpenWatched(ObservedObject target)
     {
-        if (target.Kind == ObservedObjectKind.Nation) OpenNation(target.Id);
-        else if (target.Kind == ObservedObjectKind.Resident) OpenResident(target.Id);
+        if (target.Kind == ObservedObjectKind.Nation)
+            OpenNation(target.Id);
+        else if (target.Kind == ObservedObjectKind.Resident)
+            OpenResident(target.Id);
         else if (_engine.State.Settlements.Any(t => t.Id == target.Id))
             OpenSettlement(target.Id);
-        else SetStatus("这处聚落已不在当前世界中；其保留事件仍可在编年史查看。");
+        else
+            SetStatus("这处聚落已不在当前世界中；其保留事件仍可在编年史查看。");
     }
 
     private void BuildWatchedInspector(StackPanel panel)
@@ -117,8 +122,10 @@ public sealed partial class MainView
                     + (entry.EventId > 0 ? retained ? "\n查看关联世界事件" : "\n关联事件已超出保留范围" : "");
             }, x =>
             {
-                if (_engine.State.Events.FirstOrDefault(e => e.Id == x.entry.EventId) is { } entry) FocusEvent(entry);
-                else SetStatus("此经历没有仍在保留范围内的世界事件。");
+                if (_engine.State.Events.FirstOrDefault(e => e.Id == x.entry.EventId) is { } entry)
+                    FocusEvent(entry);
+                else
+                    SetStatus("此经历没有仍在保留范围内的世界事件。");
             });
         panel.Children.Add(Text("实际决策与当时依据", 13, Mint));
         LiveRows(panel, () => person.Agent.Decisions.AsEnumerable().Reverse(),
@@ -138,7 +145,8 @@ public sealed partial class MainView
         panel.Children.Add(Named(LiveText(() =>
         {
             var record = nation.Military;
-            if (record.CampaignEventId == 0) return "尚无作战目标";
+            if (record.CampaignEventId == 0)
+                return "尚无作战目标";
             return
                 $"作战目标：{WorldEngine.ObjectiveName(record.Objective)}\n目标聚落：{TownName(record.TargetSettlementId)}\n目标位置：{record.TargetX}, {record.TargetY}\n{record.Report}"
                 + (record.LastReportEventId > 0

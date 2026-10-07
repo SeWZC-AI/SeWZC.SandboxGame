@@ -27,7 +27,8 @@ public sealed partial class MainView
         timer.Tick += (_, _) =>
         {
             timer.Stop();
-            if (_inspectorKey == viewKey) RefreshInspector();
+            if (_inspectorKey == viewKey)
+                RefreshInspector();
         };
         input.TextChanged += (_, _) =>
         {

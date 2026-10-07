@@ -14,7 +14,8 @@ internal static class DevelopmentPlanningTests
     private static void DirectionPersistence()
     {
         var engine = WorldEngine.Create(42, 32, 32, false);
-        foreach (var tile in engine.State.Tiles) tile.Terrain = TerrainType.Grass;
+        foreach (var tile in engine.State.Tiles)
+            tile.Terrain = TerrainType.Grass;
         TestLand.ClearWildlife(engine);
         engine.SpawnResidents(8, 16, RaceKind.Human, 1);
         engine.SpawnResidents(24, 16, RaceKind.Orc, 1);
@@ -37,7 +38,8 @@ internal static class DevelopmentPlanningTests
 
         // 现行格式中未指定发展方向的世界按文化选择，不消耗随机数。
         var prior = JsonNode.Parse(saved)!;
-        foreach (var n in prior["Nations"]!.AsArray()) n!.AsObject().Remove("DevelopmentFocus");
+        foreach (var n in prior["Nations"]!.AsArray())
+            n!.AsObject().Remove("DevelopmentFocus");
         Require(
             WorldEngine.ImportJson(prior.ToJsonString()).State.Nations
                 .All(n => n.DevelopmentFocus == DevelopmentFocus.Automatic), "Safe automatic default missing");
@@ -93,6 +95,7 @@ internal static class DevelopmentPlanningTests
 
     private static void Require(bool condition, string message)
     {
-        if (!condition) throw new Exception(message);
+        if (!condition)
+            throw new Exception(message);
     }
 }

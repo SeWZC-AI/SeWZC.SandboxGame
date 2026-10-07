@@ -53,7 +53,8 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
                 foreach (var chunk in chunks)
                 {
                     bytes += Utf8.GetByteCount(chunk);
-                    if (bytes > MaxFileBytes) throw new IOException("存档不能超过 64 MiB。");
+                    if (bytes > MaxFileBytes)
+                        throw new IOException("存档不能超过 64 MiB。");
                 }
 
                 Directory.CreateDirectory(Path.GetDirectoryName(_savePath)!);
@@ -61,7 +62,8 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
                 using (var compressed = new GZipStream(file, CompressionLevel.Fastest))
                 using (var writer = new StreamWriter(compressed, Utf8))
                 {
-                    foreach (var chunk in chunks) writer.Write(chunk);
+                    foreach (var chunk in chunks)
+                        writer.Write(chunk);
                 }
 
                 // 同目录重命名只替换完整写入的快照，避免失败后留下半个自动存档。
@@ -72,7 +74,8 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
         {
             try
             {
-                if (temporaryPath is not null && File.Exists(temporaryPath)) File.Delete(temporaryPath);
+                if (temporaryPath is not null && File.Exists(temporaryPath))
+                    File.Delete(temporaryPath);
             }
             finally
             {
@@ -87,7 +90,8 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
         await _saveLock.WaitAsync();
         try
         {
-            if (!File.Exists(_savePath)) return null;
+            if (!File.Exists(_savePath))
+                return null;
             await using var stream = File.OpenRead(_savePath);
             await using var compressed = new GZipStream(stream, CompressionMode.Decompress);
             return await ReadUtf8Async(compressed);
@@ -103,7 +107,8 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
     {
         CheckSize(json);
         var provider = GetStorageProvider();
-        if (!provider.CanSave) throw new IOException("此平台暂不支持文件导出。");
+        if (!provider.CanSave)
+            throw new IOException("此平台暂不支持文件导出。");
         var file = await provider.SaveFilePickerAsync(new FilePickerSaveOptions
         {
             Title = "导出 WorldBox 世界",
@@ -112,11 +117,13 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
             FileTypeChoices = [WorldFileType],
             ShowOverwritePrompt = true,
         });
-        if (file is null) throw new OperationCanceledException("已取消导出。");
+        if (file is null)
+            throw new OperationCanceledException("已取消导出。");
         using (file)
         await using (var stream = await file.OpenWriteAsync())
         {
-            if (stream.CanSeek) stream.SetLength(0);
+            if (stream.CanSeek)
+                stream.SetLength(0);
             await using var writer = new StreamWriter(stream, Utf8);
             await writer.WriteAsync(json);
         }
@@ -126,12 +133,14 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
     public async Task<string?> ImportAsync()
     {
         var provider = GetStorageProvider();
-        if (!provider.CanOpen) throw new IOException("此平台暂不支持文件导入。");
+        if (!provider.CanOpen)
+            throw new IOException("此平台暂不支持文件导入。");
         var files = await provider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "导入 WorldBox 世界", AllowMultiple = false, FileTypeFilter = [WorldFileType],
         });
-        if (files.Count == 0) return null;
+        if (files.Count == 0)
+            return null;
         using var file = files[0];
         await using var stream = await file.OpenReadAsync();
         return await ReadUtf8Async(stream);
@@ -145,18 +154,21 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
 
     private static void CheckSize(string json)
     {
-        if (Utf8.GetByteCount(json) > MaxFileBytes) throw new IOException("存档不能超过 64 MiB。");
+        if (Utf8.GetByteCount(json) > MaxFileBytes)
+            throw new IOException("存档不能超过 64 MiB。");
     }
 
     private static async Task<string> ReadUtf8Async(Stream stream)
     {
-        if (stream.CanSeek && stream.Length > MaxFileBytes) throw new IOException("存档不能超过 64 MiB。");
+        if (stream.CanSeek && stream.Length > MaxFileBytes)
+            throw new IOException("存档不能超过 64 MiB。");
         using var buffer = new MemoryStream();
         var chunk = new byte[81920];
         int count;
         while ((count = await stream.ReadAsync(chunk)) != 0)
         {
-            if (buffer.Length + count > MaxFileBytes) throw new IOException("存档不能超过 64 MiB。");
+            if (buffer.Length + count > MaxFileBytes)
+                throw new IOException("存档不能超过 64 MiB。");
             buffer.Write(chunk, 0, count);
         }
 

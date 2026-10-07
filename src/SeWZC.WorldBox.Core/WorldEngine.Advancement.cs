@@ -9,7 +9,8 @@ public sealed partial class WorldEngine
     /// <param name="research">研究项目。</param>
     public string? ResearchPrerequisiteError(int settlementId, Advancement research)
     {
-        if (research.Magic && !State.Society.MagicEnabled) return "世界规则已关闭新的魔法发展";
+        if (research.Magic && !State.Society.MagicEnabled)
+            return "世界规则已关闭新的魔法发展";
         List<string>? missing = null;
         foreach (var prerequisite in research.Prerequisites.AsSpan())
             if (!HasResearch(settlementId, prerequisite))
@@ -56,12 +57,18 @@ public sealed partial class WorldEngine
 
     private string? ProductionRequirement(Building building, ProductionRecipe recipe)
     {
-        if (!BuildingGroundOwned(building)) return "所在地已脱离城镇占领区域，暂停运营";
-        if (!building.Enabled) return "玩家已停用，恢复运营后才会安排工作";
-        if (!building.IsCompleted) return "等待施工完成";
-        if (building.IsUpgrading) return "正在升级或改向，暂停生产";
-        if (building.Health < 50) return "设施受损，需要修复后运营";
-        if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return "设施所在地正在燃烧，暂停生产";
+        if (!BuildingGroundOwned(building))
+            return "所在地已脱离城镇占领区域，暂停运营";
+        if (!building.Enabled)
+            return "玩家已停用，恢复运营后才会安排工作";
+        if (!building.IsCompleted)
+            return "等待施工完成";
+        if (building.IsUpgrading)
+            return "正在升级或改向，暂停生产";
+        if (building.Health < 50)
+            return "设施受损，需要修复后运营";
+        if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0)
+            return "设施所在地正在燃烧，暂停生产";
         if (!HasResearch(building.SettlementId, recipe.Research)
             || !HasResearchPrerequisites(building.SettlementId, recipe.Research.Prerequisites))
             return "缺少当地运营知识：" + recipe.Research.Name + "及其前置";
@@ -70,7 +77,8 @@ public sealed partial class WorldEngine
 
     private double ProductionYield(Building building, ProductionRecipe recipe)
     {
-        var multiplier = (recipe.Output == ResourceKind.Food && HasResearch(building.SettlementId, Advancement.Irrigation)
+        var multiplier = (recipe.Output == ResourceKind.Food &&
+                          HasResearch(building.SettlementId, Advancement.Irrigation)
                              ? 1.25
                              : 1)
                          * (building.Kind is BuildingKind.Foundry or BuildingKind.DwarvenForge &&
@@ -85,9 +93,11 @@ public sealed partial class WorldEngine
                             HasResearch(building.SettlementId, Advancement.Leylines)
                              ? 1.25
                              : 1);
-        if (recipe.Output != ResourceKind.Food) return recipe.Yield * building.Efficiency * multiplier;
+        if (recipe.Output != ResourceKind.Food)
+            return recipe.Yield * building.Efficiency * multiplier;
         var tile = State.Tiles[Index(building.X, building.Y)];
-        return recipe.Yield * building.Efficiency * multiplier * tile.Fertility / 100d * (tile.DroughtTicks > 0 ? .18 : 1);
+        return recipe.Yield * building.Efficiency * multiplier * tile.Fertility / 100d *
+               (tile.DroughtTicks > 0 ? .18 : 1);
     }
 
     /// <summary>返回设施当前的生产状态说明。</summary>
@@ -96,11 +106,16 @@ public sealed partial class WorldEngine
     {
         var building = State.Society.Buildings.FirstOrDefault(b => b.Id == buildingId);
         var recipe = building is null ? null : ProductionRules.For(building.Kind);
-        if (building is null) return "建筑已不存在";
-        if (!BuildingGroundOwned(building)) return "所在地已脱离城镇占领区域，暂停运营";
-        if (building.Health <= 0) return "建筑已损毁，等待重建";
-        if (building.Health < 50) return "建筑受损，需要修复后工作";
-        if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0) return "正在燃烧，暂停工作";
+        if (building is null)
+            return "建筑已不存在";
+        if (!BuildingGroundOwned(building))
+            return "所在地已脱离城镇占领区域，暂停运营";
+        if (building.Health <= 0)
+            return "建筑已损毁，等待重建";
+        if (building.Health < 50)
+            return "建筑受损，需要修复后工作";
+        if (State.Tiles[Index(building.X, building.Y)].FireTicks > 0)
+            return "正在燃烧，暂停工作";
         var workers = State.Tick - building.LastWorkedTick <= 1 ? building.Workers.Count : 0;
         if (!building.IsCompleted)
         {
@@ -114,8 +129,10 @@ public sealed partial class WorldEngine
                 $"{(building.PendingDirection.HasValue ? "改向" : "升级")}：{building.UpgradeProgress:0.#} / {building.UpgradeRequired:0}\n等待居民到场施工";
         }
 
-        if (!building.Enabled) return "已停用";
-        if (!CanBuildRacialFacility(building.SettlementId, building.Kind)) return "缺少该族成年居民，暂停运营";
+        if (!building.Enabled)
+            return "已停用";
+        if (!CanBuildRacialFacility(building.SettlementId, building.Kind))
+            return "缺少该族成年居民，暂停运营";
         if (IsHusbandry(building.Kind))
         {
             return
@@ -154,22 +171,27 @@ public sealed partial class WorldEngine
                        : $"\n到场工作 {workers}/{building.WorkSlots} 人");
         }
 
-        if (!CanBuildRacialFacility(building.SettlementId, building.Kind)) return "缺少该族成年居民，暂停运营";
+        if (!CanBuildRacialFacility(building.SettlementId, building.Kind))
+            return "缺少该族成年居民，暂停运营";
         var requirement = ProductionRequirement(building, recipe);
-        if (requirement is not null) return requirement;
-        if (ProductionYield(building, recipe) <= 0) return "土地无法产粮，需要恢复肥力";
+        if (requirement is not null)
+            return requirement;
+        if (ProductionYield(building, recipe) <= 0)
+            return "土地无法产粮，需要恢复肥力";
         var townStock = RequireTown(building.SettlementId);
         var reserve = _localWorkQueriesActive
             ? _productionReserves.GetValueOrDefault(townStock.Id)
             : LocalDevelopmentReserve(townStock);
         var reserved = ResourceStock.Kinds.Where(k => recipe.Input.Get(k) > 0 && (reserve?.Get(k) ?? 0) > 0
-                && townStock.Resources.Get(k) < recipe.Input.Get(k) + reserve!.Get(k))
+                                                                              && townStock.Resources.Get(k) <
+                                                                              recipe.Input.Get(k) + reserve!.Get(k))
             .Select(k => ResourceStock.Name(k) + " " + reserve!.Get(k).ToString("0.#")).ToArray();
         var missing = MissingResources(townStock.Resources, recipe.Input);
         if (building.ProductionBatches > 0 &&
             townStock.Resources.Get(recipe.Output) >= ProductionStockTarget(townStock, recipe.Output))
             missing = $"{ResourceStock.Name(recipe.Output)}库存已充足，暂停新的领料";
-        else if (reserved.Length > 0) missing = "为下一发展项目预留：" + string.Join("、", reserved);
+        else if (reserved.Length > 0)
+            missing = "为下一发展项目预留：" + string.Join("、", reserved);
         return
             $"产出：{ResourceStock.Name(recipe.Output)} {ProductionYield(building, recipe):0.#} / 批   累计 {building.ProductionBatches} 批\n" +
             (missing is not null ? missing
@@ -178,12 +200,15 @@ public sealed partial class WorldEngine
 
     private bool CanProduce(Building building, Resident person, ProductionRecipe recipe)
     {
-        if (BuildingRace(building.Kind) is { } race && person.Race != race) return false;
+        if (BuildingRace(building.Kind) is { } race && person.Race != race)
+            return false;
         if (ProductionRequirement(building, recipe) is not null || ProductionYield(building, recipe) <= 0
-                                                           || (recipe.Research.Magic && (person.MagicTalent < 25 ||
-                                                                           person.MagicTraining < 8 ||
-                                                                           person.Mana < recipe.Mana))) return false;
-        if (person.Inventory.Get(recipe.Output) + ProductionYield(building, recipe) > 1_000_000) return false;
+                                                                || (recipe.Research.Magic && (person.MagicTalent < 25 ||
+                                                                    person.MagicTraining < 8 ||
+                                                                    person.Mana < recipe.Mana)))
+            return false;
+        if (person.Inventory.Get(recipe.Output) + ProductionYield(building, recipe) > 1_000_000)
+            return false;
         return HasProductionInputs(person.Inventory, recipe)
                || (_settlements.TryGetValue(building.SettlementId, out var town) &&
                    WarehouseCanSupply(town, person, recipe, building.ProductionBatches == 0));
@@ -204,7 +229,8 @@ public sealed partial class WorldEngine
 
     private bool WarehouseCanSupply(Settlement town, Resident person, ProductionRecipe recipe, bool firstBatch)
     {
-        if (!firstBatch && town.Resources.Get(recipe.Output) >= ProductionStockTarget(town, recipe.Output)) return false;
+        if (!firstBatch && town.Resources.Get(recipe.Output) >= ProductionStockTarget(town, recipe.Output))
+            return false;
         var reserve = _localWorkQueriesActive
             ? _productionReserves.GetValueOrDefault(town.Id)
             : LocalDevelopmentReserve(town);
@@ -225,7 +251,8 @@ public sealed partial class WorldEngine
         for (var i = 0; i < recipe.InputResources.Length; i++)
         {
             var kind = recipe.InputResources[i];
-            if (stock.Get(kind) + .000001 < recipe.Input.Get(kind)) return false;
+            if (stock.Get(kind) + .000001 < recipe.Input.Get(kind))
+                return false;
         }
 
         return true;
@@ -234,11 +261,13 @@ public sealed partial class WorldEngine
     private bool ActOnProduction(Resident person, Settlement home)
     {
         var goal = person.Agent.Goal;
-        if (goal.Kind != AgentGoalKind.Work) return false;
+        if (goal.Kind != AgentGoalKind.Work)
+            return false;
         var building = FindBuilding(goal.TargetEntityId);
         var recipe = building is null ? null : ProductionRules.For(building.Kind);
         if (building is null || building.SettlementId != home.Id || recipe is null || !building.IsCompleted ||
-            building.IsUpgrading) return false;
+            building.IsUpgrading)
+            return false;
         if (!CanProduce(building, person, recipe))
         {
             goal.Reason = GetProductionStatus(building.Id);
@@ -263,7 +292,8 @@ public sealed partial class WorldEngine
             var batches = 4d;
             foreach (var kind in recipe.InputResources)
                 batches = Math.Min(batches,
-                    Math.Floor(Math.Max(0, home.Resources.Get(kind) - (reserve?.Get(kind) ?? 0)) / recipe.Input.Get(kind)));
+                    Math.Floor(Math.Max(0, home.Resources.Get(kind) - (reserve?.Get(kind) ?? 0)) /
+                               recipe.Input.Get(kind)));
             batches = Math.Max(1, batches);
             foreach (var kind in recipe.InputResources)
             {
@@ -290,8 +320,8 @@ public sealed partial class WorldEngine
         {
             person.Activity = ResidentActivity.Working;
             if (HasProductionInputs(person.Inventory, recipe) && person.Inventory.Get(recipe.Output) <
-                                                         ProductionYield(building, recipe) * 4
-                                                         && (!recipe.Research.Magic || person.Mana >= recipe.Mana))
+                                                              ProductionYield(building, recipe) * 4
+                                                              && (!recipe.Research.Magic || person.Mana >= recipe.Mana))
             {
                 person.Agent.NextThinkTick = State.Tick + 4;
                 return true;
@@ -317,7 +347,8 @@ public sealed partial class WorldEngine
 
     private bool Produce(Building building, Resident person, ProductionRecipe recipe)
     {
-        if (!CanProduce(building, person, recipe) || !HasProductionInputs(person.Inventory, recipe)) return false;
+        if (!CanProduce(building, person, recipe) || !HasProductionInputs(person.Inventory, recipe))
+            return false;
         Spend(person.Inventory, recipe.Input);
         person.Mana -= recipe.Mana;
         person.Inventory.Set(recipe.Output, person.Inventory.Get(recipe.Output) + ProductionYield(building, recipe));

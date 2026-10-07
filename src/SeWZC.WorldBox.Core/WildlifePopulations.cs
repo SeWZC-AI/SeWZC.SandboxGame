@@ -309,37 +309,99 @@ public struct WildlifePopulations : IEquatable<WildlifePopulations>
     {
         switch (kind)
         {
-            case WildlifeKind.Rabbit: Rabbit = population; break;
-            case WildlifeKind.Deer: Deer = population; break;
-            case WildlifeKind.Boar: Boar = population; break;
-            case WildlifeKind.Goat: Goat = population; break;
-            case WildlifeKind.Wolf: Wolf = population; break;
-            case WildlifeKind.Waterfowl: Waterfowl = population; break;
-            case WildlifeKind.Fish: Fish = population; break;
-            case WildlifeKind.Fox: Fox = population; break;
-            case WildlifeKind.Bear: Bear = population; break;
-            case WildlifeKind.Bison: Bison = population; break;
-            case WildlifeKind.Yak: Yak = population; break;
-            case WildlifeKind.Jerboa: Jerboa = population; break;
-            case WildlifeKind.Gazelle: Gazelle = population; break;
-            case WildlifeKind.Camel: Camel = population; break;
-            case WildlifeKind.Fennec: Fennec = population; break;
-            case WildlifeKind.Jackal: Jackal = population; break;
-            case WildlifeKind.Lion: Lion = population; break;
-            case WildlifeKind.Capybara: Capybara = population; break;
-            case WildlifeKind.Hippo: Hippo = population; break;
-            case WildlifeKind.Otter: Otter = population; break;
-            case WildlifeKind.Crocodile: Crocodile = population; break;
-            case WildlifeKind.GrassCarp: GrassCarp = population; break;
-            case WildlifeKind.Manatee: Manatee = population; break;
-            case WildlifeKind.PredatoryFish: PredatoryFish = population; break;
-            case WildlifeKind.Pike: Pike = population; break;
-            case WildlifeKind.Shark: Shark = population; break;
-            case WildlifeKind.SeaTurtle: SeaTurtle = population; break;
-            case WildlifeKind.SeaCow: SeaCow = population; break;
-            case WildlifeKind.MuskOx: MuskOx = population; break;
-            case WildlifeKind.PolarBear: PolarBear = population; break;
-            case WildlifeKind.SnowLeopard: SnowLeopard = population; break;
+            case WildlifeKind.Rabbit:
+                Rabbit = population;
+                break;
+            case WildlifeKind.Deer:
+                Deer = population;
+                break;
+            case WildlifeKind.Boar:
+                Boar = population;
+                break;
+            case WildlifeKind.Goat:
+                Goat = population;
+                break;
+            case WildlifeKind.Wolf:
+                Wolf = population;
+                break;
+            case WildlifeKind.Waterfowl:
+                Waterfowl = population;
+                break;
+            case WildlifeKind.Fish:
+                Fish = population;
+                break;
+            case WildlifeKind.Fox:
+                Fox = population;
+                break;
+            case WildlifeKind.Bear:
+                Bear = population;
+                break;
+            case WildlifeKind.Bison:
+                Bison = population;
+                break;
+            case WildlifeKind.Yak:
+                Yak = population;
+                break;
+            case WildlifeKind.Jerboa:
+                Jerboa = population;
+                break;
+            case WildlifeKind.Gazelle:
+                Gazelle = population;
+                break;
+            case WildlifeKind.Camel:
+                Camel = population;
+                break;
+            case WildlifeKind.Fennec:
+                Fennec = population;
+                break;
+            case WildlifeKind.Jackal:
+                Jackal = population;
+                break;
+            case WildlifeKind.Lion:
+                Lion = population;
+                break;
+            case WildlifeKind.Capybara:
+                Capybara = population;
+                break;
+            case WildlifeKind.Hippo:
+                Hippo = population;
+                break;
+            case WildlifeKind.Otter:
+                Otter = population;
+                break;
+            case WildlifeKind.Crocodile:
+                Crocodile = population;
+                break;
+            case WildlifeKind.GrassCarp:
+                GrassCarp = population;
+                break;
+            case WildlifeKind.Manatee:
+                Manatee = population;
+                break;
+            case WildlifeKind.PredatoryFish:
+                PredatoryFish = population;
+                break;
+            case WildlifeKind.Pike:
+                Pike = population;
+                break;
+            case WildlifeKind.Shark:
+                Shark = population;
+                break;
+            case WildlifeKind.SeaTurtle:
+                SeaTurtle = population;
+                break;
+            case WildlifeKind.SeaCow:
+                SeaCow = population;
+                break;
+            case WildlifeKind.MuskOx:
+                MuskOx = population;
+                break;
+            case WildlifeKind.PolarBear:
+                PolarBear = population;
+                break;
+            case WildlifeKind.SnowLeopard:
+                SnowLeopard = population;
+                break;
         }
     }
 }

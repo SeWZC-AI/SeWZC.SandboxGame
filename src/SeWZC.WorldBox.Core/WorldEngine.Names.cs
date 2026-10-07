@@ -54,7 +54,8 @@ public sealed partial class WorldEngine
         {
             var n = (code + (uint)attempt) % 32768;
             var name = names[n % 32] + " " + FamilyRoots[n / 32 % 32] + FamilyEnds[n / 1024 % 32];
-            if (!used.Contains(name)) return name;
+            if (!used.Contains(name))
+                return name;
         }
 
         return names[code % 32] + " " + id;
@@ -69,7 +70,8 @@ public sealed partial class WorldEngine
         {
             var n = (code + (uint)i) % 512;
             var name = PlaceRoots[n % 32] + PlaceEnds[n / 32] + suffix;
-            if (!used.Contains(name)) return name;
+            if (!used.Contains(name))
+                return name;
         }
 
         return PlaceRoots[code % 32] + State.NextId + suffix;

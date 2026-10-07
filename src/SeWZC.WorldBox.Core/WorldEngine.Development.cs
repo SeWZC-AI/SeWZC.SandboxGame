@@ -8,7 +8,8 @@ public sealed partial class WorldEngine
     {
         var town = RequireTown(settlementId);
         var nation = State.Nations.FirstOrDefault(n => n.Id == town.NationId);
-        if (nation is { DevelopmentFocus: not DevelopmentFocus.Automatic }) return nation.DevelopmentFocus;
+        if (nation is { DevelopmentFocus: not DevelopmentFocus.Automatic })
+            return nation.DevelopmentFocus;
         var culture = GetCulture(town.CultureId);
         return !State.Society.MagicEnabled || culture.Innovation >= culture.NatureAffinity
             ? DevelopmentFocus.Technology
@@ -34,9 +35,11 @@ public sealed partial class WorldEngine
     /// <param name="focus">未来规划采用的发展方向。</param>
     public void SetDevelopmentFocus(int nationId, DevelopmentFocus focus)
     {
-        if (!Enum.IsDefined(focus)) throw new ArgumentOutOfRangeException(nameof(focus));
+        if (!Enum.IsDefined(focus))
+            throw new ArgumentOutOfRangeException(nameof(focus));
         var nation = State.Nations.FirstOrDefault(n => n.Id == nationId) ?? throw new ArgumentException("国家不存在");
-        if (nation.DevelopmentFocus == focus) return;
+        if (nation.DevelopmentFocus == focus)
+            return;
         nation.DevelopmentFocus = focus;
         AddEvent(WorldEventKind.Editor, $"{nation.Name}的发展方向调整为{DevelopmentFocusName(focus)}。");
     }

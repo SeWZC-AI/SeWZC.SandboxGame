@@ -86,7 +86,8 @@ public sealed partial class MainView
         var locate = Named(Button("定位", () =>
         {
             _map.FocusResident(id);
-            if (_isCompact) CloseInspector();
+            if (_isCompact)
+                CloseInspector();
         }), "resident-locate");
         actions.Children.Add(locate);
         var follow = Named(new CheckBox { Content = Text("跟随", 12), IsChecked = _map.FollowSelectedResident },
@@ -94,14 +95,17 @@ public sealed partial class MainView
         var syncingFollow = false;
         follow.IsCheckedChanged += (_, _) =>
         {
-            if (syncingFollow) return;
+            if (syncingFollow)
+                return;
             _map.SelectResident(id, follow.IsChecked == true);
-            if (follow.IsChecked == true) _map.FocusResident(id);
+            if (follow.IsChecked == true)
+                _map.FocusResident(id);
         };
         _inspectorUpdates.Add(() =>
         {
             var actual = _map.FollowSelectedResident;
-            if (follow.IsChecked == actual) return;
+            if (follow.IsChecked == actual)
+                return;
             syncingFollow = true;
             follow.IsChecked = actual;
             syncingFollow = false;
@@ -193,7 +197,8 @@ public sealed partial class MainView
     private void ShowResidentEditor(int id)
     {
         var resident = _engine.GetResident(id);
-        if (resident is null) return;
+        if (resident is null)
+            return;
         var archived = _engine.State.ArchivedResidents.Any(person => person.Id == id);
         var panel = ModalPanel("编辑居民档案", "打开期间时间暂时停止，取消会恢复原状态；应用修改后保持暂停。迁居会改变国家归属，当前任务请在目标编辑中调整。");
         var identity = new StackPanel { Spacing = 10 };
@@ -246,7 +251,8 @@ public sealed partial class MainView
         var inventory = StockFields(possessions, resident.Inventory, "resident-inventory");
         panel.Children.Add(Named(Button("应用档案变更", async () =>
         {
-            if (!CanSubmitEdit()) return;
+            if (!CanSubmitEdit())
+                return;
             try
             {
                 var patch = new ResidentEdit
@@ -296,7 +302,8 @@ public sealed partial class MainView
     private void ShowGoalEditor(int id)
     {
         var resident = _engine.GetResident(id);
-        if (resident is null) return;
+        if (resident is null)
+            return;
         var panel = ModalPanel("目标、性格与需求", "目标在未来的行动中执行。只修改人格或需求会保留原目标；历史记录中的对象可以保留，自主思考仍会考虑危险与基本需求。");
         var mind = CloneMind(id);
         var originalGoal = mind.Goal;
@@ -355,7 +362,8 @@ public sealed partial class MainView
                         choices.Add(new EntityChoice(index + 1, $"{TerrainName(tile.Terrain)} {xx}, {yy}"));
                 }
             }
-            else choices.AddRange(_engine.State.Residents.Select(person => new EntityChoice(person.Id, person.Name)));
+            else
+                choices.AddRange(_engine.State.Residents.Select(person => new EntityChoice(person.Id, person.Name)));
 
             if (kind == originalGoal.Kind && choices.All(choice => choice.Id != originalGoal.TargetEntityId))
             {
@@ -374,7 +382,8 @@ public sealed partial class MainView
         goal.SelectionChanged += (_, _) => UpdateEntities();
         entity.SelectionChanged += (_, _) =>
         {
-            if (updatingEntities || entity.SelectedItem is not EntityChoice choice) return;
+            if (updatingEntities || entity.SelectedItem is not EntityChoice choice)
+                return;
             if ((AgentGoalKind)goal.SelectedItem! is AgentGoalKind.Work or AgentGoalKind.Study
                 or AgentGoalKind.TrainMagic)
             {
@@ -387,7 +396,8 @@ public sealed partial class MainView
             else if ((AgentGoalKind)goal.SelectedItem! is AgentGoalKind.FetchWater or AgentGoalKind.Hunt
                      or AgentGoalKind.Fish)
             {
-                if (choice.Id <= 0 || choice.Id > _engine.State.Tiles.Length) return;
+                if (choice.Id <= 0 || choice.Id > _engine.State.Tiles.Length)
+                    return;
                 var sourceX = (choice.Id - 1) % _engine.State.Width;
                 var sourceY = (choice.Id - 1) / _engine.State.Width;
                 if ((AgentGoalKind)goal.SelectedItem! == AgentGoalKind.Hunt ||
@@ -441,7 +451,8 @@ public sealed partial class MainView
         var ambition = Field(panel, "抱负 0–1", mind.Personality.Ambition, "resident-ambition");
         panel.Children.Add(Named(Button("应用目标与人格", async () =>
         {
-            if (!CanSubmitEdit()) return;
+            if (!CanSubmitEdit())
+                return;
             try
             {
                 var kind = (AgentGoalKind)goal.SelectedItem!;
@@ -606,7 +617,8 @@ public sealed partial class MainView
         AddMapPicker(panel, x, y);
         panel.Children.Add(Named(Button("保存记忆", async () =>
         {
-            if (!CanSubmitEdit()) return;
+            if (!CanSubmitEdit())
+                return;
             try
             {
                 fact.Kind = (AgentFactKind)kind.SelectedItem!;
@@ -622,7 +634,8 @@ public sealed partial class MainView
                 fact.OriginResidentId = Integer(origin);
                 fact.SourceResidentId = Integer(source);
                 fact.Hops = Integer(hops);
-                if (adding) mind.Memory.Add(fact);
+                if (adding)
+                    mind.Memory.Add(fact);
                 if (!await SubmitEditAsync(() =>
                     {
                         _engine.EditResident(id, new ResidentEdit { Agent = mind });
@@ -635,7 +648,8 @@ public sealed partial class MainView
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
             {
-                if (adding) mind.Memory.Remove(fact);
+                if (adding)
+                    mind.Memory.Remove(fact);
                 SetStatus("未应用变更：" + FriendlyError(ex));
             }
         }), "memory-apply"));
@@ -643,7 +657,8 @@ public sealed partial class MainView
         {
             panel.Children.Add(Named(Button("删除这条记忆", async () =>
             {
-                if (!CanSubmitEdit()) return;
+                if (!CanSubmitEdit())
+                    return;
                 var previousIndex = mind.Memory.IndexOf(fact);
                 mind.Memory.Remove(fact);
                 if (!await SubmitEditAsync(() =>
@@ -690,7 +705,8 @@ public sealed partial class MainView
             : history[index!.Value];
         var panel = ModalPanel(adding ? "添加个人经历" : "编辑个人经历",
             "这份个人履历独立于世界编年史。经历类型与影响数值改变今后的性格倾向；文字用于记录，不会被自动理解成新的世界事实。过去的资源、死亡、战争不回算。");
-        if (!adding) panel.Children.Add(Paragraph(entry.Text));
+        if (!adding)
+            panel.Children.Add(Paragraph(entry.Text));
         panel.Children.Add(Paragraph("选择经历类型和强度，会直接调整今后的性格倾向。"));
         var tick = Field(panel, "发生日序（0 起）", entry.Tick, "history-entry-tick");
         AddDatePreview(panel, tick, "发生时间");
@@ -702,7 +718,8 @@ public sealed partial class MainView
         strength.SelectionChanged += (_, _) =>
         {
             var value = Integer(strength);
-            if (value > 0) impact.Value = new[] { 0m, .25m, .5m, 1m }[value];
+            if (value > 0)
+                impact.Value = new[] { 0m, .25m, .5m, 1m }[value];
         };
         var effects = Paragraph("");
         panel.Children.Add(effects);
@@ -720,7 +737,8 @@ public sealed partial class MainView
             "强度为 1 时：艰难使勇气减少 10 个百分点，成就使勇气增加 10 个百分点；善意使社交增加 10 个百分点，背叛使社交减少 10 个百分点；学习使勤勉增加 10 个百分点。负强度反向作用，中性经历不改变性格。"));
         panel.Children.Add(Named(Button("保存个人经历", async () =>
         {
-            if (!CanSubmitEdit()) return;
+            if (!CanSubmitEdit())
+                return;
             try
             {
                 entry.Text = adding
@@ -731,7 +749,8 @@ public sealed partial class MainView
                 entry.Experience = (PersonalExperienceKind)experience.SelectedItem!;
                 entry.Impact = Number(impact);
                 entry.PlayerEdited = true;
-                if (adding) history.Add(entry);
+                if (adding)
+                    history.Add(entry);
                 if (!await SubmitEditAsync(() =>
                     {
                         _engine.EditResident(id, new ResidentEdit { History = history });
@@ -743,7 +762,8 @@ public sealed partial class MainView
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
             {
-                if (adding) history.Remove(entry);
+                if (adding)
+                    history.Remove(entry);
                 SetStatus("未应用变更：" + FriendlyError(ex));
             }
         }), "history-entry-apply"));
@@ -751,7 +771,8 @@ public sealed partial class MainView
         {
             panel.Children.Add(Named(Button("删除这条个人经历", async () =>
             {
-                if (!CanSubmitEdit()) return;
+                if (!CanSubmitEdit())
+                    return;
                 var previousIndex = history.IndexOf(entry);
                 history.Remove(entry);
                 if (!await SubmitEditAsync(() =>
@@ -786,14 +807,17 @@ public sealed partial class MainView
         panel.Children.Add(input);
         panel.Children.Add(Named(Button("校验并应用", async () =>
         {
-            if (!CanSubmitEdit()) return;
+            if (!CanSubmitEdit())
+                return;
             try
             {
                 var json = input.Text ?? "";
                 await SubmitEditAsync(() =>
                 {
-                    if (history) _engine.EditResidentHistoryJson(id, json);
-                    else _engine.EditResidentMindJson(id, json);
+                    if (history)
+                        _engine.EditResidentHistoryJson(id, json);
+                    else
+                        _engine.EditResidentMindJson(id, json);
                     CloseModal();
                     RefreshUi(true);
                     SetStatus("角色记录已更新，将影响未来行为");
@@ -852,7 +876,8 @@ public sealed partial class MainView
     private static double Number(TextBox field)
     {
         if (!double.TryParse(field.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ||
-            !double.IsFinite(value)) throw new ArgumentException("请输入有效数值。");
+            !double.IsFinite(value))
+            throw new ArgumentException("请输入有效数值。");
         return value;
     }
 
@@ -872,7 +897,8 @@ public sealed partial class MainView
     private static ResourceStock ReadStock(NumericUpDown[] fields)
     {
         var stock = new ResourceStock();
-        for (var i = 0; i < fields.Length; i++) stock.Set(ResourceStock.Kinds[i], Number(fields[i]));
+        for (var i = 0; i < fields.Length; i++)
+            stock.Set(ResourceStock.Kinds[i], Number(fields[i]));
         return stock;
     }
 }

@@ -52,6 +52,9 @@ public sealed partial class ResourceStock
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Ammunition { get; set; }
 
+    /// <summary>配方和库存查询使用的全部资源种类。</summary>
+    public static IReadOnlyList<ResourceKind> Kinds { get; } = Array.AsReadOnly(Enum.GetValues<ResourceKind>());
+
     /// <summary>读取指定种类数量。</summary>
     /// <param name="kind">资源种类。</param>
     public double Get(ResourceKind kind)
@@ -85,23 +88,56 @@ public sealed partial class ResourceStock
     {
         switch (kind)
         {
-            case ResourceKind.Food: Food = value; break;
-            case ResourceKind.Wood: Wood = value; break;
-            case ResourceKind.Stone: Stone = value; break;
-            case ResourceKind.Ore: Ore = value; break;
-            case ResourceKind.Alloy: Alloy = value; break;
-            case ResourceKind.EnergyCells: EnergyCells = value; break;
-            case ResourceKind.Crystals: Crystals = value; break;
-            case ResourceKind.Coal: Coal = value; break;
-            case ResourceKind.Oil: Oil = value; break;
-            case ResourceKind.RareEarth: RareEarth = value; break;
-            case ResourceKind.Boats: Boats = value; break;
-            case ResourceKind.Aircraft: Aircraft = value; break;
-            case ResourceKind.Water: Water = value; break;
-            case ResourceKind.Tools: Tools = value; break;
-            case ResourceKind.Medicine: Medicine = value; break;
-            case ResourceKind.Ammunition: Ammunition = value; break;
-            default: throw new ArgumentOutOfRangeException(nameof(kind));
+            case ResourceKind.Food:
+                Food = value;
+                break;
+            case ResourceKind.Wood:
+                Wood = value;
+                break;
+            case ResourceKind.Stone:
+                Stone = value;
+                break;
+            case ResourceKind.Ore:
+                Ore = value;
+                break;
+            case ResourceKind.Alloy:
+                Alloy = value;
+                break;
+            case ResourceKind.EnergyCells:
+                EnergyCells = value;
+                break;
+            case ResourceKind.Crystals:
+                Crystals = value;
+                break;
+            case ResourceKind.Coal:
+                Coal = value;
+                break;
+            case ResourceKind.Oil:
+                Oil = value;
+                break;
+            case ResourceKind.RareEarth:
+                RareEarth = value;
+                break;
+            case ResourceKind.Boats:
+                Boats = value;
+                break;
+            case ResourceKind.Aircraft:
+                Aircraft = value;
+                break;
+            case ResourceKind.Water:
+                Water = value;
+                break;
+            case ResourceKind.Tools:
+                Tools = value;
+                break;
+            case ResourceKind.Medicine:
+                Medicine = value;
+                break;
+            case ResourceKind.Ammunition:
+                Ammunition = value;
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(kind));
         }
     }
 
@@ -154,15 +190,13 @@ public sealed partial class ResourceStock
             _ => kind.ToString(),
         };
     }
-    /// <summary>配方和库存查询使用的全部资源种类。</summary>
-    public static IReadOnlyList<ResourceKind> Kinds { get; } = Array.AsReadOnly(Enum.GetValues<ResourceKind>());
 
     /// <summary>将资源数量格式化为摘要。</summary>
     /// <param name="stock">配方或成本所需的资源数量。</param>
     public static string Format(ResourceAmounts stock)
     {
         return string.Join("   ", Kinds.Where(k => stock.Get(k) > 0)
-            .Select(k => $"{ResourceStock.Name(k)} {stock.Get(k):0.#}"));
+            .Select(k => $"{Name(k)} {stock.Get(k):0.#}"));
     }
 
     /// <summary>将库存中数量大于零的资源格式化为摘要。</summary>
@@ -170,6 +204,6 @@ public sealed partial class ResourceStock
     public static string Format(ResourceStock stock)
     {
         return string.Join("   ", Kinds.Where(k => stock.Get(k) > 0)
-            .Select(k => $"{ResourceStock.Name(k)} {stock.Get(k):0.#}"));
+            .Select(k => $"{Name(k)} {stock.Get(k):0.#}"));
     }
 }

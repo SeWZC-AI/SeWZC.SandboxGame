@@ -5,8 +5,10 @@ public sealed partial class WorldEngine
     private bool VisibleWorkSiteReachable(Resident person, int x, int y, bool adjacent)
     {
         var search = 0;
-        if (VisibleSiteReachable(person, Index(x, y), ref search, TravelMode.Foot)) return true;
-        if (!adjacent) return false;
+        if (VisibleSiteReachable(person, Index(x, y), ref search, TravelMode.Foot))
+            return true;
+        if (!adjacent)
+            return false;
         foreach (var (dx, dy) in Directions)
             if (Walkable(x + dx, y + dy, person.Race) && !IsWaterTerrain(State.Tiles[Index(x + dx, y + dy)].Terrain)
                                                       && State.Tiles[Index(x + dx, y + dy)].FireTicks == 0
@@ -20,7 +22,8 @@ public sealed partial class WorldEngine
     {
         var tile = State.Tiles[index];
         if (kind is BuildingKind.Farm or BuildingKind.AutomatedFarm or BuildingKind.RunicGarden &&
-            (tile.Fertility < 25 || tile.DroughtTicks > 0)) return false;
+            (tile.Fertility < 25 || tile.DroughtTicks > 0))
+            return false;
         if (IsMaterialFacility(kind) || kind == BuildingKind.MiningHall)
         {
             return Circle(index % State.Width, index / State.Width, 1).Any(i => i != index &&
@@ -41,8 +44,10 @@ public sealed partial class WorldEngine
                 .Source >= 0;
         }
 
-        if (kind == BuildingKind.Well && WellWaterYield(tile) < .1) return false;
-        if (kind == BuildingKind.HuntingCamp) return EdibleAnimal(tile) != WildlifeKind.None;
+        if (kind == BuildingKind.Well && WellWaterYield(tile) < .1)
+            return false;
+        if (kind == BuildingKind.HuntingCamp)
+            return EdibleAnimal(tile) != WildlifeKind.None;
         return true;
     }
 
@@ -114,7 +119,8 @@ public sealed partial class WorldEngine
     /// <param name="y">纵向地格坐标。</param>
     public double BuildingSiteScore(int settlementId, BuildingKind kind, int x, int y)
     {
-        if (!_settlements.TryGetValue(settlementId, out var town) || !InBounds(x, y)) return double.NegativeInfinity;
+        if (!_settlements.TryGetValue(settlementId, out var town) || !InBounds(x, y))
+            return double.NegativeInfinity;
         var tile = State.Tiles[Index(x, y)];
         var score = -Distance(x, y, town.X, town.Y) * .25 + (tile.RoadLevel > 0 ? 1 : 0);
         if (kind is BuildingKind.Farm or BuildingKind.AutomatedFarm or BuildingKind.RunicGarden)
@@ -123,7 +129,8 @@ public sealed partial class WorldEngine
         {
             foreach (var i in Circle(x, y, 1))
             {
-                if (i == Index(x, y)) continue;
+                if (i == Index(x, y))
+                    continue;
                 var source = State.Tiles[i];
                 var yields = TerrainRules.For(source.Terrain);
                 var yield = kind == BuildingKind.LumberCamp ? yields.WoodYield :
@@ -133,7 +140,8 @@ public sealed partial class WorldEngine
             }
         }
 
-        if (kind == BuildingKind.Well) score += Math.Min(3, WellWaterYield(tile)) * 15;
+        if (kind == BuildingKind.Well)
+            score += Math.Min(3, WellWaterYield(tile)) * 15;
         if (kind == BuildingKind.Reservoir)
         {
             score += Circle(x, y, 1).Where(i => i == Index(x, y) || IsFreshWater(State.Tiles[i]))
@@ -142,11 +150,13 @@ public sealed partial class WorldEngine
 
         if (kind is BuildingKind.SignalTower or BuildingKind.Watchtower)
             score += tile.Terrain is TerrainType.Mountain or TerrainType.Hills ? 5 : 0;
-        if (kind == BuildingKind.ArcaneSanctum) score += TerrainRules.For(tile.Terrain).ManaRate * 4;
+        if (kind == BuildingKind.ArcaneSanctum)
+            score += TerrainRules.For(tile.Terrain).ManaRate * 4;
         foreach (var building in State.Society.Buildings)
         {
             var distance = Distance(x, y, building.X, building.Y);
-            if (distance <= 2) score -= distance == 1 ? 4 : 1;
+            if (distance <= 2)
+                score -= distance == 1 ? 4 : 1;
             if (kind is BuildingKind.Infirmary or BuildingKind.Granary or BuildingKind.Market && distance <= 4)
                 score += 1.5;
         }
@@ -197,7 +207,8 @@ public sealed partial class WorldEngine
             ? _localWorkBuildings.GetValueOrDefault(settlementId)
             : State.Society.Buildings;
         var bonus = 1d;
-        if (buildings is null) return bonus;
+        if (buildings is null)
+            return bonus;
         foreach (var building in buildings)
             if (building.SettlementId == settlementId && building.Kind == BuildingKind.Granary &&
                 IsFacilityOperating(building))

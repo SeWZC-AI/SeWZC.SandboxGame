@@ -17,7 +17,8 @@ public sealed partial class Tile
         get => _wildlife;
         set
         {
-            if (_wildlife != value) InvalidateEdibleAnimals();
+            if (_wildlife != value)
+                InvalidateEdibleAnimals();
             _wildlife = value;
         }
     }
@@ -29,7 +30,8 @@ public sealed partial class Tile
         get => _wildlifePopulation;
         set
         {
-            if (_wildlifePopulation != value) InvalidateEdibleAnimals();
+            if (_wildlifePopulation != value)
+                InvalidateEdibleAnimals();
             _wildlifePopulation = value;
         }
     }
@@ -58,7 +60,8 @@ public sealed partial class Tile
     internal WildlifeKind EdibleAnimal(bool aquatic)
     {
         ref var cached = ref aquatic ? ref _edibleWaterAnimal : ref _edibleLandAnimal;
-        if (cached != byte.MaxValue) return (WildlifeKind)cached;
+        if (cached != byte.MaxValue)
+            return (WildlifeKind)cached;
         cached = (byte)WildlifeKind.None;
         var largest = 0d;
         foreach (var kind in AnimalRules.EdibleAnimals(aquatic))
@@ -91,7 +94,8 @@ public sealed partial class Tile
 
     internal void SetAnimalPopulation(WildlifeKind kind, double population)
     {
-        if (kind == Wildlife) WildlifePopulation = population;
+        if (kind == Wildlife)
+            WildlifePopulation = population;
         else if (Wildlife == WildlifeKind.None && population > 0)
         {
             var others = OtherWildlife;

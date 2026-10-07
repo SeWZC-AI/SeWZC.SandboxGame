@@ -41,7 +41,8 @@ internal static class WorkQueryTests
 
     private static void Check(bool valid, string message)
     {
-        if (!valid) throw new InvalidOperationException(message);
+        if (!valid)
+            throw new InvalidOperationException(message);
     }
 
     private static void Hold(Resident resident, int x, int y, AgentGoalKind goal = AgentGoalKind.Rest)
@@ -83,7 +84,8 @@ internal static class WorkQueryTests
     {
         var engine = Flat();
         var town = engine.State.Settlements.Single();
-        foreach (var resident in engine.State.Residents) Hold(resident, town.X, town.Y);
+        foreach (var resident in engine.State.Residents)
+            Hold(resident, town.X, town.Y);
         var worker = engine.State.Residents[0];
         worker.Profession = Profession.Farmer;
         engine.State.Society.Buildings.Clear();

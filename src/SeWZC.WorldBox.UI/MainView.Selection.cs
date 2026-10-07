@@ -36,7 +36,8 @@ public sealed partial class MainView
 
     private void SelectMapObject(string kind, int id = 0, int x = 0, int y = 0)
     {
-        if (_mapPick is not null) return;
+        if (_mapPick is not null)
+            return;
         _mapSelectionKind = kind;
         _selectedResidentId = kind == "resident" ? id : 0;
         _selectedBuildingId = kind == "building" ? id : 0;
@@ -80,16 +81,21 @@ public sealed partial class MainView
 
     private void ViewMapSelection()
     {
-        if (_mapPick is not null) return;
-        if (_mapSelectionKind == "resident") OpenResident(_selectedResidentId);
-        else if (_mapSelectionKind == "building") OpenInspector("building");
-        else if (_selectedTile is not null) OpenInspector("tile");
+        if (_mapPick is not null)
+            return;
+        if (_mapSelectionKind == "resident")
+            OpenResident(_selectedResidentId);
+        else if (_mapSelectionKind == "building")
+            OpenInspector("building");
+        else if (_selectedTile is not null)
+            OpenInspector("tile");
         RefreshSelectionSummary();
     }
 
     private void ClearMapSelection()
     {
-        if (_mapPick is not null) return;
+        if (_mapPick is not null)
+            return;
         if (!_mobilePanel)
         {
             _navigation.Clear();

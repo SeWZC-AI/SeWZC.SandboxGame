@@ -68,7 +68,8 @@ public sealed partial class WorldEngine
     {
         static void Require(bool condition, string description)
         {
-            if (!condition) throw new ArgumentException("无效存档：" + description);
+            if (!condition)
+                throw new ArgumentException("无效存档：" + description);
         }
 
         static bool TextValid(string? value, int maximum = 120)
@@ -265,7 +266,8 @@ public sealed partial class WorldEngine
                 town.PublicKnowledge is not null && town.PublicKnowledge.Count <= 24 &&
                 town.FertilityBoostTicks is >= 0 and <= 100_000 &&
                 town.ShieldTicks is >= 0 and <= 100_000, "聚落认知记录无效。");
-            foreach (var fact in town.PublicKnowledge!) ValidateFactV2(fact, state.Tick, state.Width, state.Height);
+            foreach (var fact in town.PublicKnowledge!)
+                ValidateFactV2(fact, state.Tick, state.Width, state.Height);
         }
 
         foreach (var pending in state.PendingMessages!)
@@ -274,7 +276,8 @@ public sealed partial class WorldEngine
                 pending is not null && pending.SenderId > 0 && pending.RecipientId > 0 && pending.DeliverTick >= 0 &&
                 pending.DeliverTick <= state.Tick + 1000 && pending.Facts is not null && pending.Facts.Count <= 8,
                 "待递送口信无效。");
-            foreach (var fact in pending!.Facts!) ValidateFactV2(fact, state.Tick, state.Width, state.Height);
+            foreach (var fact in pending!.Facts!)
+                ValidateFactV2(fact, state.Tick, state.Width, state.Height);
         }
 
         ValidateSocietyState(state);
@@ -291,8 +294,10 @@ public sealed partial class WorldEngine
                      .Concat(state.PendingMessages.SelectMany(p => p.Facts)))
         {
             Require(fact.Id > 0 && fact.Id < state.NextId, "信息快照编号无效。");
-            if (snapshots.TryGetValue(fact.Id, out var prior)) Require(SameFactSnapshot(prior, fact), "相同信息编号包含冲突内容。");
-            else snapshots[fact.Id] = fact;
+            if (snapshots.TryGetValue(fact.Id, out var prior))
+                Require(SameFactSnapshot(prior, fact), "相同信息编号包含冲突内容。");
+            else
+                snapshots[fact.Id] = fact;
         }
 
         ValidateWorldRules(state.Rules);
@@ -366,7 +371,8 @@ public sealed partial class WorldEngine
             CancellationToken cancellationToken = default)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (_bytes + buffer.Length > MaxSaveBytes) throw new ArgumentException("存档超过 64 MiB。");
+            if (_bytes + buffer.Length > MaxSaveBytes)
+                throw new ArgumentException("存档超过 64 MiB。");
             _bytes += buffer.Length;
             if (_pendingCount > 0)
             {
@@ -386,10 +392,12 @@ public sealed partial class WorldEngine
             {
                 var count = Math.Min(buffer.Length, 16 * 1024);
                 var last = count - 1;
-                while (last > 0 && (buffer.Span[last] & 0xc0) == 0x80) last--;
+                while (last > 0 && (buffer.Span[last] & 0xc0) == 0x80)
+                    last--;
                 var trailing = SequenceLength(buffer.Span[last]) > count - last ? count - last : 0;
                 var complete = count - trailing;
-                if (complete > 0) _chunks.Add(Utf8.GetString(buffer.Span[..complete]));
+                if (complete > 0)
+                    _chunks.Add(Utf8.GetString(buffer.Span[..complete]));
                 if (trailing > 0)
                 {
                     buffer.Span.Slice(complete, trailing).CopyTo(_pending);
@@ -424,7 +432,8 @@ public sealed partial class WorldEngine
 
         public string[] Complete()
         {
-            if (_pendingCount != 0) throw new InvalidOperationException("存档包含不完整的 UTF-8 文本。");
+            if (_pendingCount != 0)
+                throw new InvalidOperationException("存档包含不完整的 UTF-8 文本。");
             return _chunks.ToArray();
         }
     }

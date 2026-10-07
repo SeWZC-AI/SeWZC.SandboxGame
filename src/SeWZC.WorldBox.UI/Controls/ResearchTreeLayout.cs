@@ -61,7 +61,8 @@ public sealed class ResearchTreeLayout
     {
         var items = definitions.ToArray();
         var included = items.ToHashSet();
-        if (items.Length == 0) throw new ArgumentException("Choose at least one research branch.", nameof(definitions));
+        if (items.Length == 0)
+            throw new ArgumentException("Choose at least one research branch.", nameof(definitions));
         var columns = items.Select(research => Positions[research].Column).Distinct().Order().ToArray();
         var rows = items.Select(research => Positions[research].Row).Distinct().Order().ToArray();
         var nodes = items.ToDictionary(research => research, research =>
@@ -80,11 +81,13 @@ public sealed class ResearchTreeLayout
             for (var index = 0; index < research.Prerequisites.Length; index++)
             {
                 var prerequisite = research.Prerequisites[index];
-                if (!included.Contains(prerequisite)) continue;
+                if (!included.Contains(prerequisite))
+                    continue;
                 var source = nodes[prerequisite];
                 var target = nodes[research];
                 var from = new Point(source.Center.X, source.Bottom);
-                var to = new Point(target.Center.X + (index - (research.Prerequisites.Length - 1) / 2d) * 12, target.Top);
+                var to = new Point(target.Center.X + (index - (research.Prerequisites.Length - 1) / 2d) * 12,
+                    target.Top);
                 Point[] points;
                 if (target.Top - source.Top > 120)
                 {

@@ -20,7 +20,8 @@ internal static class TownActivityTests
 
     private static void Check(bool condition, string message)
     {
-        if (!condition) throw new Exception(message);
+        if (!condition)
+            throw new Exception(message);
     }
 
     private static void ExhaustedPrey()
@@ -149,7 +150,8 @@ internal static class TownActivityTests
 
         e.TransferTerritory(12, 16, town.NationId, 6);
         Check(e.State.Tiles[16 * 32 + 17].ClaimedSettlementId == town.Id, "Connected brush did not extend town");
-        for (var y = 10; y <= 22; y++) e.PaintTerrain(15, y, TerrainType.DeepWater, 0);
+        for (var y = 10; y <= 22; y++)
+            e.PaintTerrain(15, y, TerrainType.DeepWater, 0);
         Check(e.State.Tiles[16 * 32 + 17].ClaimedSettlementId == 0 && e.State.Tiles[16 * 32 + 17].NationId == 0,
             "Disconnected land kept ownership");
         var resumed = WorldEngine.ImportJson(e.ExportJson());
@@ -323,7 +325,8 @@ internal static class TownActivityTests
             {
                 e.State.Tick = tick - 1;
                 e.State.PendingMessages.Clear();
-                foreach (var person in e.State.Residents) person.Agent.LastConversationTick = -100;
+                foreach (var person in e.State.Residents)
+                    person.Agent.LastConversationTick = -100;
                 var expected = e.State.Residents.Where(r => (tick + r.Id) % 12 == 0).Select(sender =>
                 {
                     var neighbors = e.State.Residents.Where(r => r.Id != sender.Id).OrderBy(r => r.Id).ToArray();
@@ -348,7 +351,8 @@ internal static class TownActivityTests
             tile.ResourceAmount = 0;
         }
 
-        for (var x = 10; x <= 14; x++) e.State.Tiles[10 * 32 + x].Terrain = TerrainType.Grass;
+        for (var x = 10; x <= 14; x++)
+            e.State.Tiles[10 * 32 + x].Terrain = TerrainType.Grass;
         var target = 10 * 32 + 14;
         e.State.Tiles[target].ResourceAmount = 100;
         e.State.Tiles[target].Plants = new PlantCoverage { Grass = 1 };

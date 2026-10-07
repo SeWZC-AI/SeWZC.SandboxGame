@@ -36,14 +36,16 @@ public sealed partial class MainView
         var button = Named(Button(label, () =>
         {
             var current = target();
-            if (exists(current)) open(current);
+            if (exists(current))
+                open(current);
         }), id);
 
         void Update()
         {
             var current = target();
             var text = label + " " + name(current);
-            if (!Equals(button.Content, text)) button.Content = text;
+            if (!Equals(button.Content, text))
+                button.Content = text;
             button.IsEnabled = exists(current);
             ToolTip.SetTip(button, button.IsEnabled ? label : "对象尚未指定或已不存在");
         }
@@ -103,7 +105,8 @@ public sealed partial class MainView
         panel.Children.Add(Button("前往首都", () =>
         {
             var town = _engine.State.Settlements.FirstOrDefault(t => t.Id == nation.CapitalId);
-            if (town is not null) _map.FocusTile(town.X, town.Y);
+            if (town is not null)
+                _map.FocusTile(town.X, town.Y);
             CloseInspector();
         }));
     }
@@ -111,7 +114,8 @@ public sealed partial class MainView
     private void ShowGovernanceEditor(int nationId)
     {
         var nation = _engine.State.Nations.FirstOrDefault(n => n.Id == nationId);
-        if (nation is null) return;
+        if (nation is null)
+            return;
         var institution = _engine.State.Society.Institutions.First(i => i.NationId == nationId);
         var panel = ModalPanel("文化、制度与政策", "制度改变居民与代表意见的权重。玩家指定政策会持续覆盖自治；恢复自治后由实际收到的报告继续决策。国家文化不会瞬间改写每位居民的文化。");
         var cultures = _engine.State.Society.Cultures.ToArray();
@@ -146,8 +150,10 @@ public sealed partial class MainView
             {
                 _engine.SetNationCulture(nationId, cultures[culture.SelectedIndex].Id);
                 _engine.SetInstitution(nationId, (InstitutionKind)government.SelectedItem!);
-                if (autonomous.IsChecked == true) _engine.SetPolicyAutonomy(nationId);
-                else _engine.SetPolicy(nationId, (PolicyKind)policy.SelectedItem!);
+                if (autonomous.IsChecked == true)
+                    _engine.SetPolicyAutonomy(nationId);
+                else
+                    _engine.SetPolicy(nationId, (PolicyKind)policy.SelectedItem!);
                 CloseModal();
             }, "文化、制度与政策已更新");
         }), "nation-governance-apply"));
@@ -157,7 +163,8 @@ public sealed partial class MainView
     private void ShowCultureEditor(int cultureId)
     {
         var culture = _engine.State.Society.Cultures.FirstOrDefault(c => c.Id == cultureId);
-        if (culture is null) return;
+        if (culture is null)
+            return;
         var panel = ModalPanel("编辑文化价值", "文化独立于种族和国家。数值影响合作、创新与自然偏好，居民通过接触积累文化影响；修改会影响拥有该文化的居民未来行为。");
         var name = Field(panel, "名称", culture.Name, "culture-name");
         var cooperation = Field(panel, "合作倾向 0–1", culture.Cooperation, "culture-cooperation");
@@ -172,7 +179,8 @@ public sealed partial class MainView
                 var c = Number(nature);
                 if (a is < 0 or > 1 || b is < 0 or > 1 || c is < 0 or > 1 || string.IsNullOrWhiteSpace(name.Text) ||
                     name.Text.Length > 60 ||
-                    name.Text.Any(char.IsControl)) throw new ArgumentException("请输入名称及 0–1 的文化数值。");
+                    name.Text.Any(char.IsControl))
+                    throw new ArgumentException("请输入名称及 0–1 的文化数值。");
                 RunEdit(() =>
                 {
                     _engine.RenameCulture(cultureId, name.Text);
@@ -234,7 +242,8 @@ public sealed partial class MainView
                 }, "infrastructure-town");
         picker.SelectionChanged += (_, _) =>
         {
-            if (picker.SelectedIndex >= 0) OpenSettlement(towns[picker.SelectedIndex].Id, _inspectorMode);
+            if (picker.SelectedIndex >= 0)
+                OpenSettlement(towns[picker.SelectedIndex].Id, _inspectorMode);
         };
         panel.Children.Add(picker);
         return town;
@@ -252,7 +261,8 @@ public sealed partial class MainView
 
     private void BuildSettlementOverview(StackPanel panel)
     {
-        if (BuildSettlementPicker(panel) is not { } town) return;
+        if (BuildSettlementPicker(panel) is not { } town)
+            return;
         panel.Children.Add(WatchControl(ObservedObjectKind.Settlement, town.Id, "settlement-watch"));
         panel.Children.Add(Named(LiveText(() => _engine.GetSettlementSummary(town.Id)), "town-expansion-summary"));
         panel.Children.Add(Named(Button("投入城镇扩充", () => RunEdit(() => _engine.ExpandTown(town.Id), "已投入扩充材料，居民将到中心施工")),
@@ -287,13 +297,15 @@ public sealed partial class MainView
 
     private void BuildSettlementResearch(StackPanel panel)
     {
-        if (BuildSettlementPicker(panel) is not { } town) return;
+        if (BuildSettlementPicker(panel) is not { } town)
+            return;
         BuildResearchTree(panel, town);
     }
 
     private void BuildInfrastructureInspector(StackPanel panel, bool communications)
     {
-        if (BuildSettlementPicker(panel) is not { } town) return;
+        if (BuildSettlementPicker(panel) is not { } town)
+            return;
         if (!communications)
         {
             var actions = new WrapPanel { Orientation = Orientation.Horizontal };
@@ -372,7 +384,8 @@ public sealed partial class MainView
     private void ShowBuildingSelectionEditor(int townId, BuildingKind initialKind)
     {
         var town = _engine.State.Settlements.FirstOrDefault(t => t.Id == townId);
-        if (town is null) return;
+        if (town is null)
+            return;
         var panel = ModalPanel("建造设施", "选择设施和目标地块。安排施工会扣除当地材料，等待居民到场完成。");
         var type = EnumField(panel, "设施类型", initialKind, WorldEngine.BuildingName, "building-kind");
         var bridgeOptions = Named(new StackPanel { Spacing = 10 }, "building-bridge-options");
@@ -519,12 +532,15 @@ public sealed partial class MainView
         string? Blocker()
         {
             var person = casters[caster.SelectedIndex];
-            if (person.MagicTalent < 25 || person.MagicTraining < 8) return "需要魔法天赋至少 25、训练至少 8";
-            if (_engine.SpellUnlockError(person.Id, (SpellKind)spell.SelectedItem!) is { } knowledge) return knowledge;
+            if (person.MagicTalent < 25 || person.MagicTraining < 8)
+                return "需要魔法天赋至少 25、训练至少 8";
+            if (_engine.SpellUnlockError(person.Id, (SpellKind)spell.SelectedItem!) is { } knowledge)
+                return knowledge;
             if (x.Value is not { } xx || y.Value is not { } yy || xx != decimal.Truncate(xx) ||
                 yy != decimal.Truncate(yy))
                 return "请选择有效的整数目标坐标";
-            if (Math.Abs(person.X - Integer(x)) + Math.Abs(person.Y - Integer(y)) > 4) return "目标须位于施法者 4 格以内";
+            if (Math.Abs(person.X - Integer(x)) + Math.Abs(person.Y - Integer(y)) > 4)
+                return "目标须位于施法者 4 格以内";
             return null;
         }
 
@@ -557,7 +573,8 @@ public sealed partial class MainView
 
         void TargetChanged()
         {
-            if (!movingTarget) targetChosen = true;
+            if (!movingTarget)
+                targetChosen = true;
             RefreshRequirements();
         }
 

@@ -20,7 +20,8 @@ internal static class StoryTests
 
     private static void Check(bool valid, string reason)
     {
-        if (!valid) throw new Exception(reason);
+        if (!valid)
+            throw new Exception(reason);
     }
 
     private static WorldEngine Flat(bool twoNations = true, int seed = 42)
@@ -33,7 +34,8 @@ internal static class StoryTests
         }
 
         engine.SpawnResidents(12, 24, RaceKind.Human, 24);
-        if (twoNations) engine.SpawnResidents(42, 24, RaceKind.Elf, 24);
+        if (twoNations)
+            engine.SpawnResidents(42, 24, RaceKind.Elf, 24);
         engine.ConfigureWorld(new WorldRules
         {
             Births = false,

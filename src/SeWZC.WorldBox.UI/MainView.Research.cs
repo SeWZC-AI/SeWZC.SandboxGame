@@ -48,8 +48,10 @@ public sealed partial class MainView : IResearchActionHandler
         string? Blocker(Advancement kind)
         {
             var r = _engine.State.Society.Research.First(x => x.SettlementId == town.Id);
-            if (r.Completed.Contains(kind)) return "当地已经掌握";
-            if (r.ActiveProject is { } active) return active == kind ? "当地正在研究" : "等待当前研究完成";
+            if (r.Completed.Contains(kind))
+                return "当地已经掌握";
+            if (r.ActiveProject is { } active)
+                return active == kind ? "当地正在研究" : "等待当前研究完成";
             return _engine.ResearchPrerequisiteError(town.Id, kind)
                    ?? (!_engine.State.Society.Buildings.Any(b =>
                        b.SettlementId == town.Id && b.Kind == BuildingKind.Academy && b.IsCompleted)
@@ -114,13 +116,16 @@ public sealed partial class MainView : IResearchActionHandler
         IEnumerable<Advancement> Route()
         {
             var route = ResearchRules.All.Where(_researchRoute.Includes);
-            if (_researchBranch is null) return route;
+            if (_researchBranch is null)
+                return route;
             var requiredResearch = new HashSet<Advancement>();
 
             void IncludePrerequisites(Advancement research)
             {
-                if (!requiredResearch.Add(research)) return;
-                foreach (var prerequisite in research.Prerequisites) IncludePrerequisites(prerequisite);
+                if (!requiredResearch.Add(research))
+                    return;
+                foreach (var prerequisite in research.Prerequisites)
+                    IncludePrerequisites(prerequisite);
             }
 
             foreach (var research in route.Where(research => research.Branch == _researchBranch))
@@ -277,7 +282,8 @@ public sealed partial class MainView : IResearchActionHandler
         _inspectorUpdates.Add(() =>
         {
             var known = _engine.HasResearch(town.Id, _selectedResearch);
-            if (shown == _selectedResearch && shownKnown == known) return;
+            if (shown == _selectedResearch && shownKnown == known)
+                return;
             shown = _selectedResearch;
             shownKnown = known;
             unlocks.Children.Clear();

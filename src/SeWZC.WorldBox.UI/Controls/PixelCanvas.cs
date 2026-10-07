@@ -44,7 +44,8 @@ internal sealed class PixelCanvas(int width, int height)
         var top = Math.Max(0, y);
         var right = Math.Min(Width, x + width);
         var bottom = Math.Min(Height, y + height);
-        if (left >= right || top >= bottom) return;
+        if (left >= right || top >= bottom)
+            return;
         var color = BitConverter.IsLittleEndian ? BinaryPrimitives.ReverseEndianness(rgba) : rgba;
         var pixels = MemoryMarshal.Cast<byte, uint>(Pixels.AsSpan());
         for (var py = top; py < bottom; py++)
@@ -84,7 +85,8 @@ internal sealed class PixelCanvas(int width, int height)
         while (true)
         {
             Rect(x, y, thickness, thickness, color);
-            if (x == endX && y == endY) return;
+            if (x == endX && y == endY)
+                return;
             var twice = error * 2;
             if (twice >= dy)
             {

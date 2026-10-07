@@ -181,7 +181,8 @@ internal static class EditorAndMigrationTests
         for (var step = 0; step < 120; step++)
         {
             engine.Tick();
-            if (town.Resources.Wood <= 0) continue;
+            if (town.Resources.Wood <= 0)
+                continue;
             Require(migrants.Any(r => Distance(r, town) <= 1), "Settler supplies arrived before a settler.");
             arrived = true;
             break;
@@ -198,6 +199,7 @@ internal static class EditorAndMigrationTests
 
     private static void Require(bool condition, string message)
     {
-        if (!condition) throw new InvalidOperationException(message);
+        if (!condition)
+            throw new InvalidOperationException(message);
     }
 }

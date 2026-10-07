@@ -4,14 +4,19 @@ namespace SeWZC.WorldBox.Core;
 public abstract class ResearchAction
 {
     private protected ResearchAction() { }
+
     /// <summary>操作入口的中文显示名称。</summary>
     public abstract string Name { get; }
+
     /// <summary>操作入口的稳定标识。</summary>
     public abstract string Id { get; }
+
     /// <summary>打开聚落铁路建设编辑器的操作。</summary>
     public static ResearchAction Rail { get; } = new RailAction();
+
     /// <summary>打开折跃门旅行编辑器的操作。</summary>
     public static ResearchAction Waygate { get; } = new WaygateAction();
+
     /// <summary>通过界面处理器执行研究解锁操作。</summary>
     public abstract void Invoke(IResearchActionHandler handler, int settlementId);
 

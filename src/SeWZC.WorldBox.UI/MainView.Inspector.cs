@@ -27,7 +27,8 @@ public sealed partial class MainView
 
     private void RefreshInspector(bool force = false)
     {
-        if (_refreshingInspector) return;
+        if (_refreshingInspector)
+            return;
         _refreshingInspector = true;
         try
         {
@@ -35,7 +36,8 @@ public sealed partial class MainView
             if (_inspectorMode is "settlement" or "infrastructure" or "research" or "communication" &&
                 !_engine.State.Settlements.Any(town => town.Id == _inspectorSettlementId))
                 _inspectorSettlementId = _engine.State.Settlements.OrderBy(town => town.Id).FirstOrDefault()?.Id ?? 0;
-            if (!_mobilePanel) return;
+            if (!_mobilePanel)
+                return;
             var key = InspectorKey();
             if (_inspectorKey != key)
             {
@@ -111,25 +113,63 @@ public sealed partial class MainView
                     BuildSettlementNavigation(_inspectorNavigation);
                 switch (_inspectorMode)
                 {
-                    case "guide": BuildGameGuide(content); break;
-                    case "building": BuildBuildingInspector(content); break;
-                    case "structures": BuildStructuresInspector(content); break;
-                    case "watched": BuildWatchedInspector(content); break;
-                    case "story": BuildStoryInspector(content); break;
-                    case "event": BuildEventInspector(content); break;
-                    case "resident": BuildResidentInspector(content); break;
-                    case "residents": BuildResidentList(content); break;
-                    case "nation": BuildNationInspector(content); break;
-                    case "nations": BuildNationList(content); break;
-                    case "history": BuildHistoryInspector(content); break;
-                    case "tile": BuildTileInspector(content); break;
-                    case "rules": BuildWorldRules(content); break;
-                    case "settlements": BuildSettlementList(content); break;
-                    case "settlement": BuildSettlementOverview(content); break;
-                    case "infrastructure": BuildInfrastructureInspector(content, false); break;
-                    case "research": BuildSettlementResearch(content); break;
-                    case "communication": BuildInfrastructureInspector(content, true); break;
-                    default: BuildOverview(content); break;
+                    case "guide":
+                        BuildGameGuide(content);
+                        break;
+                    case "building":
+                        BuildBuildingInspector(content);
+                        break;
+                    case "structures":
+                        BuildStructuresInspector(content);
+                        break;
+                    case "watched":
+                        BuildWatchedInspector(content);
+                        break;
+                    case "story":
+                        BuildStoryInspector(content);
+                        break;
+                    case "event":
+                        BuildEventInspector(content);
+                        break;
+                    case "resident":
+                        BuildResidentInspector(content);
+                        break;
+                    case "residents":
+                        BuildResidentList(content);
+                        break;
+                    case "nation":
+                        BuildNationInspector(content);
+                        break;
+                    case "nations":
+                        BuildNationList(content);
+                        break;
+                    case "history":
+                        BuildHistoryInspector(content);
+                        break;
+                    case "tile":
+                        BuildTileInspector(content);
+                        break;
+                    case "rules":
+                        BuildWorldRules(content);
+                        break;
+                    case "settlements":
+                        BuildSettlementList(content);
+                        break;
+                    case "settlement":
+                        BuildSettlementOverview(content);
+                        break;
+                    case "infrastructure":
+                        BuildInfrastructureInspector(content, false);
+                        break;
+                    case "research":
+                        BuildSettlementResearch(content);
+                        break;
+                    case "communication":
+                        BuildInfrastructureInspector(content, true);
+                        break;
+                    default:
+                        BuildOverview(content);
+                        break;
                 }
 
                 _inspectorScroll.Content = content;
@@ -137,7 +177,8 @@ public sealed partial class MainView
             }
 
             // 定时刷新须保留现有输入控件，避免抢走焦点或覆盖编辑内容。
-            foreach (var update in _inspectorUpdates.ToArray()) update();
+            foreach (var update in _inspectorUpdates.ToArray())
+                update();
         }
         finally
         {
@@ -155,7 +196,8 @@ public sealed partial class MainView
             if (DetailsVisible(text))
             {
                 var next = DisplayFormat.Text(value());
-                if (text.Text != next) text.Text = next;
+                if (text.Text != next)
+                    text.Text = next;
                 text.IsVisible = !string.IsNullOrWhiteSpace(next);
             }
         });
@@ -171,18 +213,21 @@ public sealed partial class MainView
 
         void Update()
         {
-            if (!DetailsVisible(list)) return;
+            if (!DetailsVisible(list))
+                return;
             var wanted = items().DistinctBy(key).ToList();
             var keys = new HashSet<string>();
             foreach (var item in wanted)
             {
                 var id = key(item);
-                if (!keys.Add(id)) continue;
+                if (!keys.Add(id))
+                    continue;
                 if (!rows.TryGetValue(id, out var row))
                 {
                     var text = Paragraph(label(item));
                     Control control;
-                    if (action is null) control = Card(text);
+                    if (action is null)
+                        control = Card(text);
                     else
                     {
                         var button = new Button
@@ -194,18 +239,25 @@ public sealed partial class MainView
                             Background = Ink,
                             CornerRadius = new CornerRadius(7),
                         };
-                        if (item is Resident resident) Named(button, $"resident-row-{resident.Id}");
-                        if (item is Building building) Named(button, $"building-row-{building.Id}");
+                        if (item is Resident resident)
+                            Named(button, $"resident-row-{resident.Id}");
+                        if (item is Building building)
+                            Named(button, $"building-row-{building.Id}");
                         if (item is int tileIndex && _inspectorMode == "structures" && _listRoads)
                             Named(button, $"road-row-{tileIndex}");
-                        if (item is Nation nation) Named(button, $"nation-row-{nation.Id}");
-                        if (item is Settlement settlement) Named(button, $"settlement-row-{settlement.Id}");
-                        if (item is WorldEvent worldEvent) Named(button, $"history-row-{worldEvent.Id}");
-                        if (item is EventGroup group) Named(button, $"history-row-{group.Latest.Id}");
+                        if (item is Nation nation)
+                            Named(button, $"nation-row-{nation.Id}");
+                        if (item is Settlement settlement)
+                            Named(button, $"settlement-row-{settlement.Id}");
+                        if (item is WorldEvent worldEvent)
+                            Named(button, $"history-row-{worldEvent.Id}");
+                        if (item is EventGroup group)
+                            Named(button, $"history-row-{group.Latest.Id}");
                         button.Tag = item;
                         button.Click += (_, _) =>
                         {
-                            if (button.Tag is T selected) action(selected);
+                            if (button.Tag is T selected)
+                                action(selected);
                         };
                         control = button;
                     }
@@ -216,7 +268,8 @@ public sealed partial class MainView
                 }
 
                 var nextLabel = DisplayFormat.Text(label(item));
-                if (row.Text.Text != nextLabel) row.Text.Text = nextLabel;
+                if (row.Text.Text != nextLabel)
+                    row.Text.Text = nextLabel;
                 if (row.Row is Button b)
                 {
                     b.Tag = item;
@@ -234,7 +287,8 @@ public sealed partial class MainView
             var index = 0;
             foreach (var item in wanted)
             {
-                if (!rows.TryGetValue(key(item), out var row)) continue;
+                if (!rows.TryGetValue(key(item), out var row))
+                    continue;
                 if (index >= list.Children.Count || !ReferenceEquals(list.Children[index], row.Row))
                 {
                     list.Children.Remove(row.Row);
@@ -320,8 +374,10 @@ public sealed partial class MainView
                 "map-resource-" + kind.ToString().ToLowerInvariant());
             show.IsCheckedChanged += (_, _) =>
             {
-                if (show.IsChecked == true) _map.VisibleResources.Add(kind);
-                else _map.VisibleResources.Remove(kind);
+                if (show.IsChecked == true)
+                    _map.VisibleResources.Add(kind);
+                else
+                    _map.VisibleResources.Remove(kind);
                 _map.RefreshWorld();
             };
             panel.Children.Add(show);
@@ -548,8 +604,10 @@ public sealed partial class MainView
 
     private void FocusEvent(WorldEvent item)
     {
-        if (_mapPick is not null) return;
-        if (_mobilePanel && _inspectorMode == "event" && _eventDetailId == item.Id) return;
+        if (_mapPick is not null)
+            return;
+        if (_mobilePanel && _inspectorMode == "event" && _eventDetailId == item.Id)
+            return;
         RememberLocation();
         _eventDetailId = item.Id;
         OpenInspector("event", false);
@@ -573,7 +631,8 @@ public sealed partial class MainView
                 panel.Children.Add(Named(Button("前因：" + cause.Message, () => FocusEvent(cause)),
                     $"event-cause-{cause.Id}"));
             }
-            else panel.Children.Add(Paragraph($"前因 #{causeId} 已超出历史保留范围。"));
+            else
+                panel.Children.Add(Paragraph($"前因 #{causeId} 已超出历史保留范围。"));
         }
 
         if (item.EvidenceFactId > 0)
@@ -602,8 +661,10 @@ public sealed partial class MainView
             panel.Children.Add(Button("查看 " + ResidentName(item.ResidentId), () => OpenResident(item.ResidentId)));
         panel.Children.Add(Named(Button("定位事件", () =>
         {
-            if (item.X >= 0) _map.FocusTile(item.X, item.Y);
-            else if (item.ResidentId > 0) _map.FocusResident(item.ResidentId);
+            if (item.X >= 0)
+                _map.FocusTile(item.X, item.Y);
+            else if (item.ResidentId > 0)
+                _map.FocusResident(item.ResidentId);
             CloseInspector();
         }), "event-locate"));
     }
@@ -646,7 +707,8 @@ public sealed partial class MainView
                 }, "history-nation");
         country.SelectionChanged += (_, _) =>
         {
-            if (country.SelectedIndex >= 0) _historyNationId = countries[country.SelectedIndex].Id;
+            if (country.SelectedIndex >= 0)
+                _historyNationId = countries[country.SelectedIndex].Id;
             RefreshInspector();
         };
         panel.Children.Add(country);
