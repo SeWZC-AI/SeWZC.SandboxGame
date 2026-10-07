@@ -6,7 +6,7 @@
 
 1. 先查看工作区状态，保留已有未提交修改。
 2. 阅读 [文档索引](docs/README.md)，修改行为前阅读 [产品约定](docs/product.md) 对应部分。
-3. 按 [开发约定](docs/development.md) 找到模块、相关决策与验证方式；运行命令见 [项目 README](README.md)。
+3. 按 [开发约定](docs/development.md) 找到模块、相关决策与验证方式；运行命令见 [本地运行](docs/development.md#本地运行)。
 
 ## 必须保持的边界
 

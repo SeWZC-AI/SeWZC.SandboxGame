@@ -32,7 +32,7 @@ bash scripts/publish-browser.sh
 
 ## 浏览器检查
 
-先发布站点，再安装锁定依赖并准备仓库子路径：
+浏览器自动检查使用 Node.js 22 和 [package.json](../tests/browser/package.json) 锁定的 Playwright 版本，普通运行游戏不需要 Node.js。先按 [部署指南](deployment.md#本地发布与预览) 发布站点，再安装锁定依赖并准备仓库子路径：
 
 ```bash
 npm ci --prefix tests/browser
