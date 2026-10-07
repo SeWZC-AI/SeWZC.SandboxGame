@@ -455,11 +455,12 @@ public sealed partial class WorldEngine
             }
         }
 
+        var workTarget = person.Age >= 14 ? FindLocalWorkTarget(person) : null;
         if (person.Age >= 14 && (person.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner
                                      or Profession.Builder or Profession.Scholar or Profession.Mage
                                      or Profession.Fisher ||
                                  person.Profession >= Profession.Engineer)
-                             && FindLocalWorkTarget(person) is { } work)
+                             && workTarget is { } work)
         {
             var kind = work.Kind == BuildingKind.Academy && person.Profession == Profession.Scholar
                 ? AgentGoalKind.Study
@@ -518,7 +519,7 @@ public sealed partial class WorldEngine
                 agent.SocialNeed * (0.6 + personality.Sociability * 0.5), "社交需求较高，去聚落与人交流", null, home.Id));
         }
 
-        if (person.Age >= 14 && person.ArmyId == 0 && FindLocalWorkTarget(person) is { } useful
+        if (person.Age >= 14 && person.ArmyId == 0 && workTarget is { } useful
             && !choices.Any(c => c.EntityId == useful.Id))
         {
             choices.Add(new GoalChoice(AgentGoalKind.Work, useful.X, useful.Y, 25 + personality.Diligence * 8,
@@ -818,21 +819,15 @@ public sealed partial class WorldEngine
         if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > interactionRange ||
             !CanTraverse(Current.Tiles[Index(person.X, person.Y)], person.TravelMode, person.Race))
         {
-            var moved = MoveAgentTowards(person, goal.TargetX, goal.TargetY);
-            person.Replace(person.Value with
-            {
-                Agent = moved ? person.Agent.Value with { Fatigue = Math.Min(100, person.Agent.Fatigue + .15) } : person.Agent.Value,
-                Activity = goal.Kind == AgentGoalKind.Flee ? ResidentActivity.Fleeing : ResidentActivity.Wandering,
-            });
+            var activity = goal.Kind == AgentGoalKind.Flee ? ResidentActivity.Fleeing : ResidentActivity.Wandering;
+            if (!MoveAgentTowards(person, goal.TargetX, goal.TargetY, activity))
+                person.Activity = activity;
             return;
         }
 
         if (Current.Tick - person.MoveStartedTick < person.MoveDurationTicks)
             return;
-        goal = goal with
-        {
-            WorkTicks = goal.WorkTicks + 1,
-        };
+        goal = goal.Attend();
         switch (goal.Kind)
         {
             case AgentGoalKind.Eat:
@@ -1044,7 +1039,8 @@ public sealed partial class WorldEngine
     /// <param name="person">移动的居民。</param>
     /// <param name="targetX">当前导航目标的横向地格坐标。</param>
     /// <param name="targetY">当前导航目标的纵向地格坐标。</param>
-    private bool MoveAgentTowards(ResidentCursor person, int targetX, int targetY)
+    /// <param name="walkingActivity">普通自主行走的活动状态，同时计入原有疲劳；其他调用保留自身活动和补给规则。</param>
+    private bool MoveAgentTowards(ResidentCursor person, int targetX, int targetY, ResidentActivity? walkingActivity = null)
     {
         if (person.FrozenUntilTick > Current.Tick || !InBounds(targetX, targetY) ||
             (person.X == targetX && person.Y == targetY))
@@ -1068,15 +1064,17 @@ public sealed partial class WorldEngine
         if (bestStep < 0)
         {
             PlanVisibleCrossing(person, targetX, targetY);
-            person.Agent.Goal = person.Agent.Goal with
+            var blocked = person.Agent.Goal with
             {
                 NavigationRetryTick = Current.Tick + 24,
                 Reason = "可见范围内没有可用路线，等待通道或重新选择任务",
             };
-            if (!person.Agent.Goal.PlayerDirected)
+            if (!blocked.PlayerDirected) blocked = blocked with { ReviewTick = Current.Tick };
+            person.Agent.Replace(person.Agent.Value with
             {
-                person.Replace(person.Value with { Agent = person.Agent.Value with { Goal = person.Agent.Goal with { ReviewTick = Current.Tick, }, NextThinkTick = Current.Tick } });
-            }
+                Goal = blocked,
+                NextThinkTick = blocked.PlayerDirected ? person.Agent.NextThinkTick : Current.Tick,
+            });
 
             return false;
         }
@@ -1093,44 +1091,48 @@ public sealed partial class WorldEngine
                     : MessageTravelMultiplier(xNext, yNext, person.NationId, person.Race);
         speed *= RacialTravelBonus(person, xNext, yNext);
         var duration = Math.Clamp((int)Math.Round(2 / Math.Max(0.1, speed)), 1, 8);
-        person.Replace(person.Value with { FromX = person.X, FromY = person.Y, X = bestStep % Current.Width, Y = bestStep / Current.Width, MoveStartedTick = Current.Tick, MoveDurationTicks = duration });
-        var remaining = Distance(person.X, person.Y, targetX, targetY);
-        if (remaining < person.Agent.Goal.NavigationBestDistance)
+        var remaining = Distance(xNext, yNext, targetX, targetY);
+        var goal = remaining < person.Agent.Goal.NavigationBestDistance
+            ? person.Agent.Goal with { NavigationBestDistance = remaining, NavigationWithoutProgress = 0 }
+            : person.Agent.Goal with { NavigationWithoutProgress = Math.Min(64, person.Agent.Goal.NavigationWithoutProgress + 1) };
+        person.Replace(person.Value with
         {
-            person.Agent.Goal = person.Agent.Goal with
+            FromX = person.X, FromY = person.Y, X = xNext, Y = yNext,
+            MoveStartedTick = Current.Tick, MoveDurationTicks = duration,
+            Activity = walkingActivity ?? person.Activity,
+            Agent = person.Agent.Value with
             {
-                NavigationBestDistance = remaining,
-                NavigationWithoutProgress = 0,
-            };
-        }
-        else
-            person.Agent.Goal = person.Agent.Goal with
-            {
-                NavigationWithoutProgress = Math.Min(64, person.Agent.Goal.NavigationWithoutProgress + 1),
-            };
+                Goal = goal,
+                Fatigue = walkingActivity.HasValue ? Math.Min(100, person.Agent.Fatigue + .15) : person.Agent.Fatigue,
+            },
+        });
 
         return true;
     }
 
     private int SelectAgentStep(ResidentCursor person, int targetX, int targetY)
     {
-        var goal = person.Agent.Goal;
         var target = Index(targetX, targetY);
         var start = Index(person.X, person.Y);
+        var goal = person.Agent.Goal;
         if (goal.NavigationTarget != target)
-        {
-            person.Agent.Goal = goal = goal.BeginNavigation(target,
-                Distance(person.X, person.Y, targetX, targetY));
-        }
+            goal = goal.BeginNavigation(target, Distance(person.X, person.Y, targetX, targetY));
 
         if (Current.Tick < goal.NavigationRetryTick)
+        {
+            person.Agent.Goal = goal;
             return -1;
+        }
         if (!goal.NavigationVisited.Contains(start))
         {
             if (goal.NavigationVisited.Length >= 256)
+            {
+                person.Agent.Goal = goal;
                 return -1;
-            person.Agent.Goal = goal = goal.Visit(start);
+            }
+            goal = goal.Visit(start);
         }
+        person.Agent.Goal = goal;
 
         foreach (var (dx, dy) in Directions)
         {

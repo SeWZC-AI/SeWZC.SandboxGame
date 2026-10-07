@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>居民的认知与自主行动状态。</summary>
-public sealed record AgentState
+public sealed partial record AgentState
 {
 
     /// <summary>认知与行动状态是否已初始化。</summary>

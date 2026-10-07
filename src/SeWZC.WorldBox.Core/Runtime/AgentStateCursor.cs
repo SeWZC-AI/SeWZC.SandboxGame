@@ -41,4 +41,12 @@ internal sealed partial class AgentStateCursor : StateCursor<global::SeWZC.World
     public int ExplorationHeading { get => Value.ExplorationHeading; set { if (!EqualityComparer<int>.Default.Equals(Value.ExplorationHeading, value)) ReplaceChanged(Value with { ExplorationHeading = value }); } }
     public ResourceKind? MaterialPriority { get => Value.MaterialPriority; set { if (!EqualityComparer<ResourceKind?>.Default.Equals(Value.MaterialPriority, value)) ReplaceChanged(Value with { MaterialPriority = value }); } }
     public long JobChangedTick { get => Value.JobChangedTick; set { if (!EqualityComparer<long>.Default.Equals(Value.JobChangedTick, value)) ReplaceChanged(Value with { JobChangedTick = value }); } }
+
+    protected override void OnReplace(global::SeWZC.WorldBox.Core.AgentState before, global::SeWZC.WorldBox.Core.AgentState after)
+    {
+        // 自身集合操作先更新 Snapshot 再发布；整体认知转换时才重新绑定定位引用。
+        if (_Memory is not null && !ReferenceEquals(_Memory.Snapshot, after.Memory)) _Memory = null;
+        if (_Decisions is not null && !ReferenceEquals(_Decisions.Snapshot, after.Decisions)) _Decisions = null;
+        if (_CarriedMessages is not null && !ReferenceEquals(_CarriedMessages.Snapshot, after.CarriedMessages)) _CarriedMessages = null;
+    }
 }

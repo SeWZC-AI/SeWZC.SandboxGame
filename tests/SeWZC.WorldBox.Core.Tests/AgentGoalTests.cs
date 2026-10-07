@@ -2,9 +2,123 @@ using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.Core.Tests;
 
-/// <summary>行动目标的纯导航状态转换检查。</summary>
+/// <summary>行动目标的纯导航与驻留进度转换检查。</summary>
 public sealed class AgentGoalTests
 {
+    /// <summary>需要等待的任务逐日到场登记，在三日后保留已完成的进度。</summary>
+    [Theory]
+    [InlineData(AgentGoalKind.ReturnHome)]
+    [InlineData(AgentGoalKind.ClaimLand)]
+    [InlineData(AgentGoalKind.FetchWater)]
+    [InlineData(AgentGoalKind.DeliverMessage)]
+    [InlineData(AgentGoalKind.Trade)]
+    [InlineData(AgentGoalKind.Petition)]
+    public void Residence_wait_completes_without_accumulating_unused_days(AgentGoalKind kind)
+    {
+        var goal = new AgentGoal { Kind = kind };
+
+        var first = goal.Attend();
+        var second = first.Attend();
+        var completed = second.Attend();
+
+        Assert.Equal(0, goal.WorkTicks);
+        Assert.Equal(1, first.WorkTicks);
+        Assert.Equal(2, second.WorkTicks);
+        Assert.Equal(3, completed.WorkTicks);
+        Assert.Equal(completed, completed.Attend());
+    }
+
+    /// <summary>普通劳动与休息不产生无用途的驻留计数。</summary>
+    [Theory]
+    [InlineData(AgentGoalKind.Gather)]
+    [InlineData(AgentGoalKind.Work)]
+    [InlineData(AgentGoalKind.Rest)]
+    [InlineData(AgentGoalKind.Socialize)]
+    [InlineData(AgentGoalKind.Explore)]
+    public void Ordinary_actions_do_not_accumulate_residence(AgentGoalKind kind)
+    {
+        var goal = new AgentGoal { Kind = kind };
+
+        Assert.Equal(goal, goal.Attend());
+    }
+
+    /// <summary>尚在路上或被冻结时不登记驻留，到达且解冻后才记第一日。</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Residence_starts_after_arrival_and_thaw(bool frozen)
+    {
+        var fixture = new WorldFixture();
+        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with
+        {
+            Births = false, Construction = false, Research = false, Expansion = false,
+            Migration = false, Secession = false,
+        }, false, false);
+        fixture.Resident.X = fixture.Town.X;
+        fixture.Resident.Y = fixture.Town.Y;
+        fixture.Resident.FromX = fixture.Town.X;
+        fixture.Resident.FromY = fixture.Town.Y;
+        fixture.Resident.MoveDurationTicks = frozen ? 1 : 3;
+        fixture.Resident.MoveStartedTick = 0;
+        fixture.Resident.FrozenUntilTick = frozen ? 3 : 0;
+        fixture.Resident.Agent.Goal = new AgentGoal
+        {
+            Kind = AgentGoalKind.ReturnHome, TargetX = fixture.Town.X, TargetY = fixture.Town.Y,
+            TargetSettlementId = fixture.Town.Id, PlayerDirected = true, ReviewTick = 100,
+        };
+
+        fixture.Engine.Step();
+        Assert.Equal(0, fixture.Resident.Agent.Goal.WorkTicks);
+
+        fixture.Engine.Step(2);
+        Assert.Equal(1, fixture.Resident.Agent.Goal.WorkTicks);
+    }
+
+    /// <summary>普通自主移动同时保留出发点、路线、疲劳和途中状态，旧快照保持未出发。</summary>
+    [Fact]
+    public void Movement_preserves_navigation_and_waits_for_arrival()
+    {
+        var fixture = new WorldFixture();
+        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with
+        {
+            Births = false, Construction = false, Research = false, Expansion = false,
+            Migration = false, Secession = false,
+        }, false, false);
+        fixture.Resident.X = 16;
+        fixture.Resident.Y = 16;
+        fixture.Resident.FromX = 16;
+        fixture.Resident.FromY = 16;
+        fixture.Resident.Agent.Goal = new AgentGoal
+        {
+            Kind = AgentGoalKind.Explore, TargetX = 19, TargetY = 16,
+            PlayerDirected = true, ReviewTick = 100,
+        };
+        var before = fixture.Engine.State.Residents[0];
+
+        fixture.Engine.Step();
+        var moved = fixture.Engine.State.Residents[0];
+
+        Assert.Equal(16, before.X);
+        Assert.Empty(before.Agent.Goal.NavigationVisited);
+        Assert.Equal(0, before.Agent.Fatigue);
+        Assert.Equal(17, moved.X);
+        Assert.Equal(16, moved.Y);
+        Assert.Equal(16, moved.FromX);
+        Assert.Equal(16, moved.FromY);
+        Assert.Equal(1, moved.MoveStartedTick);
+        Assert.Equal(2, moved.MoveDurationTicks);
+        Assert.Equal(2, moved.Agent.Goal.NavigationBestDistance);
+        Assert.Equal<int>([16 * 32 + 16], moved.Agent.Goal.NavigationVisited);
+        Assert.Equal(.15, moved.Agent.Fatigue);
+        Assert.Equal(ResidentActivity.Wandering, moved.Activity);
+
+        fixture.Engine.Step();
+        var waiting = fixture.Engine.State.Residents[0];
+        Assert.Equal(moved.X, waiting.X);
+        Assert.Equal(moved.Agent.Goal, waiting.Agent.Goal);
+        Assert.Equal(moved.Agent.Fatigue, waiting.Agent.Fatigue);
+    }
+
     /// <summary>新目的地清除旧路线和受阻进度，但保留任务依据。</summary>
     [Fact]
     public void New_destination_starts_navigation_without_changing_the_old_goal()
