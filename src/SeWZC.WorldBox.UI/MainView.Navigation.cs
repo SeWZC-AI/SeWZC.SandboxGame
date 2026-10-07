@@ -28,7 +28,6 @@ public sealed partial class MainView
                     ? _inspectorScroll.GetVisualDescendants().OfType<ResearchGraphControl>().FirstOrDefault()
                         ?.CaptureViewport()
                     : null));
-        // 导航历史达到上限时保留最近地点，避免返回操作先跳到久远位置。
         if (_navigation.Count >= 32)
         {
             var recent = _navigation.Take(31).Reverse().ToArray();

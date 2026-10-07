@@ -6,7 +6,7 @@ worldbox_dotnet="${WORLDBOX_DOTNET:-dotnet}"
 worldbox_publish="$PWD/artifacts/browser"
 worldbox_site="$PWD/artifacts/site"
 
-# CI has already restored the solution. Standalone local publishing still restores.
+# --no-restore 复用 CI 的还原结果；本地发布默认执行还原。
 worldbox_restore_args=()
 if [[ "${1:-}" == "--no-restore" ]]; then
   worldbox_restore_args+=(--no-restore)
@@ -17,14 +17,13 @@ if (( $# > 0 )); then
   exit 2
 fi
 
-# Clear only this script's output folders so stale assets cannot conceal a bad publish.
 rm -rf "$worldbox_publish" "$worldbox_site"
 "$worldbox_dotnet" publish src/SeWZC.WorldBox.Browser/SeWZC.WorldBox.Browser.csproj \
   -c Release -o "$worldbox_publish" \
   "${worldbox_restore_args[@]}" \
   -p:WasmEnableThreads=false -p:RunAOTCompilation=false
 
-# Microsoft.NET.Sdk.WebAssembly emits the deployable static tree here.
+# Microsoft.NET.Sdk.WebAssembly 在此目录生成静态站点。
 if [[ ! -f "$worldbox_publish/wwwroot/index.html" ]]; then
   echo "Expected publish/wwwroot/index.html was not generated; inspect the SDK publish output." >&2
   exit 1
@@ -35,7 +34,7 @@ cp -a "$worldbox_publish/wwwroot/." "$worldbox_site/"
 mkdir -p "$worldbox_site/licenses"
 cp src/SeWZC.WorldBox.UI/Assets/Fonts/LICENSE.txt "$worldbox_site/licenses/NotoSansSC.txt"
 touch "$worldbox_site/.nojekyll"
-# Tie the served HTML to this artifact so live checks cannot pass on an older site.
+# 在 HTML 中记录提交编号，供公网检查核对版本。
 python3 - "$worldbox_site/index.html" "${GITHUB_SHA:-$(git rev-parse HEAD)}" <<'PY'
 from pathlib import Path
 import re

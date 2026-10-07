@@ -4,55 +4,55 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class ResourceStock
 {
-    /// <summary>饮水的资源数量。</summary>
+    /// <summary>饮水数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Water { get; set; }
 
-    /// <summary>合金的资源数量。</summary>
+    /// <summary>合金数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Alloy { get; set; }
 
-    /// <summary>动力单元的资源数量。</summary>
+    /// <summary>动力单元数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double EnergyCells { get; set; }
 
-    /// <summary>魔晶的资源数量。</summary>
+    /// <summary>魔晶数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Crystals { get; set; }
 
-    /// <summary>煤的资源数量。</summary>
+    /// <summary>煤数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Coal { get; set; }
 
-    /// <summary>石油的资源数量。</summary>
+    /// <summary>石油数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Oil { get; set; }
 
-    /// <summary>稀土的资源数量。</summary>
+    /// <summary>稀土数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double RareEarth { get; set; }
 
-    /// <summary>舟船的资源数量。</summary>
+    /// <summary>舟船数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Boats { get; set; }
 
-    /// <summary>运输机的资源数量。</summary>
+    /// <summary>运输机数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Aircraft { get; set; }
 
-    /// <summary>工具的资源数量。</summary>
+    /// <summary>工具数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Tools { get; set; }
 
-    /// <summary>药品的资源数量。</summary>
+    /// <summary>药品数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Medicine { get; set; }
 
-    /// <summary>弹药的资源数量。</summary>
+    /// <summary>弹药数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Ammunition { get; set; }
 
-    /// <summary>读取指定种类的资源数量。</summary>
+    /// <summary>读取指定种类数量。</summary>
     /// <param name="kind">资源种类。</param>
     public double Get(ResourceKind kind)
     {
@@ -78,7 +78,7 @@ public sealed partial class ResourceStock
         };
     }
 
-    /// <summary>替换指定种类的资源数量。</summary>
+    /// <summary>替换指定种类数量。</summary>
     /// <param name="kind">资源种类。</param>
     /// <param name="value">要替换的资源数量。</param>
     public void Set(ResourceKind kind, double value)

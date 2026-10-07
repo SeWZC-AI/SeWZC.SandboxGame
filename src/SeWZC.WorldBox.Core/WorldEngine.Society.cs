@@ -368,7 +368,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>查找符合居民职业及本地条件的劳动地点，返回是否找到目标。</summary>
-    /// <param name="resident">参与当前操作的居民状态。</param>
+    /// <param name="resident">劳动的居民。</param>
     /// <param name="x">找到的劳动地点横向地格坐标；失败时为居民当前位置。</param>
     /// <param name="y">找到的劳动地点纵向地格坐标；失败时为居民当前位置。</param>
     public bool TryGetLocalWorkTarget(Resident resident, out int x, out int y)
@@ -477,7 +477,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>尝试让到场居民在目标设施施工、升级或劳动，返回是否执行了工作。</summary>
-    /// <param name="resident">参与当前操作的居民状态。</param>
+    /// <param name="resident">劳动的居民。</param>
     public bool TryWorkAtBuilding(Resident resident)
     {
         var building = FindLocalWorkBuilding(resident, 1, false, true);
@@ -769,7 +769,6 @@ public sealed partial class WorldEngine
         travelTicks = 0;
         if (!_settlements.TryGetValue(fromSettlementId, out var from) ||
             !_settlements.TryGetValue(toSettlementId, out var to) || from.NationId != to.NationId) return false;
-        // 没有信号塔时直接退出，避免古代世界无谓分配中继网络遍历缓冲区。
         if (!State.Society.Buildings.Any(b => b.Kind == BuildingKind.SignalTower && b.IsCompleted)) return false;
         var towers = State.Society.Buildings.Where(b => b.Kind == BuildingKind.SignalTower && IsFacilityOperating(b)
                 && HasResearch(b.SettlementId, Advancement.SignalNetwork) &&
@@ -1087,7 +1086,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>指定居民的文化归属。</summary>
-    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="residentId">居民 ID。</param>
     /// <param name="cultureId">文化定义的稳定 ID。</param>
     public void SetResidentCulture(int residentId, int cultureId)
     {
@@ -1412,7 +1411,7 @@ public sealed partial class WorldEngine
                 TryAutomaticMagic(person);
         }
 
-        // 按已保存的模拟日序分摊资源恢复，避免墙钟影响续演或产生整图更新峰值。
+        // 按模拟日序分摊资源恢复。
         const int batch = 128;
         for (var offset = 0; offset < Math.Min(batch, State.Tiles.Length); offset++)
         {

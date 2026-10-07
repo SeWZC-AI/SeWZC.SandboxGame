@@ -39,6 +39,5 @@ public sealed partial class WorldEngine
         if (nation.DevelopmentFocus == focus) return;
         nation.DevelopmentFocus = focus;
         AddEvent(WorldEventKind.Editor, $"{nation.Name}的发展方向调整为{DevelopmentFocusName(focus)}。");
-        // 发展方向只影响未来计划，不能抹去已有研究和设施的历史。
     }
 }

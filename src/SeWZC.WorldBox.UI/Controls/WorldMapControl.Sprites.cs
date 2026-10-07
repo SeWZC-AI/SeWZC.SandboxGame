@@ -78,7 +78,7 @@ public sealed partial class WorldMapControl
 
     /// <summary>取得种族与职业对应的居民预览图。</summary>
     /// <param name="race">决定居民外观的种族。</param>
-    /// <param name="job">要查询或指定的职业。</param>
+    /// <param name="job">职业。</param>
     public IImage ResidentPreview(RaceKind race, Profession job)
     {
         return ResidentIcon(race, job, 0);

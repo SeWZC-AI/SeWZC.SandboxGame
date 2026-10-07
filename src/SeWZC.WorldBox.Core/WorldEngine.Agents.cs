@@ -975,7 +975,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>仅依据六格可见范围内的地形推进一步，并保留居民自身的导航进度。</summary>
-    /// <param name="person">参与当前操作的居民状态。</param>
+    /// <param name="person">移动的居民。</param>
     /// <param name="targetX">当前导航目标的横向地格坐标。</param>
     /// <param name="targetY">当前导航目标的纵向地格坐标。</param>
     private bool MoveAgentTowards(Resident person, int targetX, int targetY)

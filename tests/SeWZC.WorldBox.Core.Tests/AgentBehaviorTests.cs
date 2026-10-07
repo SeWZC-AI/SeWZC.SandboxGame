@@ -123,7 +123,7 @@ internal static class AgentBehaviorTests
                 SenderId = sender.Id, RecipientId = recipient.Id, DeliverTick = sendingTick, Facts = [secondDelivery],
             },
         ]);
-        // Collection order must not change the resident-ID ordering used to choose a listener.
+        // 选择听众仍按居民 ID 排序，不受集合顺序影响。
         engine.State.Residents.Reverse();
         engine.Tick();
         Require(ReferenceEquals(engine.State.PendingMessages[0], futureFirst)
@@ -149,7 +149,7 @@ internal static class AgentBehaviorTests
         }
 
         var resumed = WorldEngine.ImportJson(engine.ExportJson());
-        // Move an existing listener after buckets have been used, then rebuild from live positions.
+        // 分桶使用后移动已有听众，再按新位置重建索引。
         PlaceAndHold(neighbors[0], 50, 50);
         PlaceAndHold(resumed.State.Residents.Single(p => p.Id == neighbors[0].Id), 50, 50);
         engine.Step(12);
@@ -196,10 +196,10 @@ internal static class AgentBehaviorTests
                 $"Resource choice changed: {person.Agent.Goal.Kind} at {person.Agent.Goal.TargetX},{person.Agent.Goal.TargetY}; expected {kind} at {targetX},{targetY}.");
         }
 
-        // Both sources are outside town land: half yield preserves a tie over two steps.
+        // 两处资源均在城镇领地外；半产量使相隔两步的候选仍同分。
         Choose(20, 20, [(20, 20, 50), (20, 18, 100)], AgentGoalKind.Gather, 20, 18);
         Choose(0, 0, [(1, 0, 100), (0, 1, 100)], AgentGoalKind.Gather, 1, 0);
-        // (6,1) is outside the radius-six circle even though its Manhattan distance is seven.
+        // 偏移 (6,1) 在半径六的可见圆之外。
         Choose(20, 20, [(26, 21, 100)], AgentGoalKind.ReturnHome, 10, 10);
     }
 

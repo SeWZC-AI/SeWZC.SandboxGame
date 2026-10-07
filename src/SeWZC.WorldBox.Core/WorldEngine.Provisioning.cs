@@ -3,14 +3,14 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     /// <summary>计算居民每日所需粮食资源量。</summary>
-    /// <param name="person">参与当前操作的居民状态。</param>
+    /// <param name="person">居民。</param>
     public static double FoodUse(Resident person)
     {
         return person.Age < 14 ? .02 : person.Race == RaceKind.Orc ? .052 : .04;
     }
 
     /// <summary>计算居民每日所需饮水资源量。</summary>
-    /// <param name="person">参与当前操作的居民状态。</param>
+    /// <param name="person">居民。</param>
     public static double WaterUse(Resident person)
     {
         return person.Age < 14 ? .015 : .025;
@@ -61,7 +61,6 @@ public sealed partial class WorldEngine
         }
 
         var use = WaterUse(person);
-        // 先就地取水再饮用，使脚下的水源能在当日缓解缺水。
         if (person.Inventory.Water < use && State.Tick - person.MoveStartedTick >= person.MoveDurationTicks)
             DrawWater(person, Index(person.X, person.Y), use - person.Inventory.Water);
         var drink = Math.Min(use, person.Inventory.Water);
@@ -320,7 +319,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>尝试从当前任务的实际水源取水放入随身库存；返回是否取到水。</summary>
-    /// <param name="person">参与当前操作的居民状态。</param>
+    /// <param name="person">居民。</param>
     public bool TryFetchWater(Resident person)
     {
         if (person.Agent.Goal.Kind != AgentGoalKind.FetchWater || person.Health <= 0) return false;
@@ -436,7 +435,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>尝试在当前位置狩猎或捕鱼，将实际减少的动物转为随身粮食；返回是否取得产物。</summary>
-    /// <param name="person">参与当前操作的居民状态。</param>
+    /// <param name="person">居民。</param>
     public bool TryHarvestWildlife(Resident person)
     {
         var goal = person.Agent.Goal;

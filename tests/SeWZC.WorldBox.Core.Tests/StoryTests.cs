@@ -219,7 +219,7 @@ internal static class StoryTests
         var engine = Flat();
         var army = Muster(engine);
         army.TargetX = 36;
-        army.TargetY = 24; // remembered destination, near another visible town
+        army.TargetY = 24; // 记忆中的目的地，邻近另一处可见城镇。
         army.X = army.FromX = 36;
         army.Y = army.FromY = 24;
         army.Gathering = false;

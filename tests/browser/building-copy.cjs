@@ -40,15 +40,15 @@ fs.mkdirSync(output, { recursive: true });
                     'Gifting must not hide an invalid site');
                 await ui.point('building-placement-status', modal);
                 await page.screenshot({ path: path.join(output, `${name}-placement.png`) });
-                await ui.selectIndex('building-kind', 15, modal); // Bridge.
+                await ui.selectIndex('building-kind', 15, modal); // 桥梁。
                 await ui.point('building-bridge-direction', modal);
                 assert.equal(ui.control(await ui.snapshot(), 'building-bridge-direction').visible, true);
-                await ui.selectIndex('building-kind', 16, modal); // Dock.
+                await ui.selectIndex('building-kind', 16, modal); // 码头。
                 assert.equal(ui.control(await ui.snapshot(), 'building-bridge-direction').visible, false);
                 assert.match(ui.control(await ui.snapshot(), 'building-requirements').value, /紧邻自然陆岸/);
                 await ui.click('modal-close');
                 await ui.openOverview(); await ui.click('overview-structures', scroll);
-                await ui.selectIndex('structures-building-kind', 19, scroll); // TownCenter + All option.
+                await ui.selectIndex('structures-building-kind', 19, scroll); // 城镇中心，索引包含“全部”选项。
                 const centre = (await ui.snapshot()).controls.find(c => c.id.startsWith('building-row-'));
                 assert(centre, 'Demo world must expose a town centre');
                 await ui.click(centre.id, scroll);

@@ -1,4 +1,4 @@
-// Optional deterministic artwork/health regression. Export with --export-visual-fixture first.
+// 图形和生命值回归；先用 --export-visual-fixture 导出夹具。
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

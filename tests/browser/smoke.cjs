@@ -24,7 +24,7 @@ const stock = (world, id) => town(world, id).Resources;
     const results = [];
     const passed = text => { results.push(text); console.log('PASS', text); };
     try {
-        // The ordinary product URL must not expose the test inspector.
+        // 普通站点地址不开放测试诊断入口。
         await page.goto(baseUrl, { waitUntil: 'domcontentloaded' });
         await page.waitForFunction(() => document.querySelector('canvas')?.width > 0 && !document.querySelector('.loading'), {}, { timeout: 60000 });
         assert.equal(await page.evaluate(() => typeof globalThis.worldboxTest), 'undefined');
@@ -119,7 +119,7 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.fill('resident-name', 'Smoke resident', modal);
         await ui.click('resident-apply');
         await ui.click('resident-goal-edit', scroll);
-        await ui.selectIndex('resident-goal', 4, modal); // Rest.
+        await ui.selectIndex('resident-goal', 4, modal); // 休息。
         await ui.fill('resident-diligence', '0.73', modal);
         await ui.click('resident-goal-apply');
         await ui.click('resident-cognition', scroll);
@@ -128,7 +128,7 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.click('memory-apply');
         await ui.click('resident-history', scroll);
         await ui.click('resident-history-add', scroll);
-        await ui.selectIndex('history-entry-experience', 5, modal); // Learning.
+        await ui.selectIndex('history-entry-experience', 5, modal); // 学习。
         await ui.fill('history-entry-impact', '0.2', modal);
         await ui.click('history-entry-apply');
         const edited = await ui.save();
@@ -185,7 +185,6 @@ const stock = (world, id) => town(world, id).Resources;
             'A name-only nation edit must preserve every exact local resource amount');
         passed('nation identity edit preserves untouched local resource stocks');
 
-        // Fund a real construction command through the ordinary nation editor.
         await ui.click('nation-edit', scroll);
         for (const resource of ['food', 'wood', 'stone', 'ore']) await ui.fill(`nation-${resource}`, '500', modal);
         await ui.click('nation-apply');
@@ -200,7 +199,7 @@ const stock = (world, id) => town(world, id).Resources;
         assert.deepEqual(stock(blockedResearch, home.Id), stock(funded, home.Id));
         await ui.click('settlement-tab-infrastructure');
         await ui.click('building-open', scroll);
-        await ui.selectIndex('building-kind', 2, modal); // Academy.
+        await ui.selectIndex('building-kind', 2, modal); // 学舍。
         const buildIndex = funded.Tiles.findIndex((tile, index) => {
             const x = index % funded.Width; const y = Math.floor(index / funded.Width);
             return ![0, 1, 5, 10].includes(value(tile, 'Terrain')) && Math.abs(x - home.X) + Math.abs(y - home.Y) <= 4 &&
@@ -269,8 +268,7 @@ const stock = (world, id) => town(world, id).Resources;
         await ui.waitFor(snapshot => !snapshot.modalOpen && snapshot.status.startsWith('导入成功'), 'valid file import', 30000);
         const imported = await ui.save();
         assert.deepEqual(imported, exported, 'Current-format JSON must round-trip all fields, including explicit zero values');
-        // Cover the first alpha, the immediately previous format and an unknown
-        // future format; each rejection must preserve every current-world field.
+        // 检查最初、上一版和未知后续格式；拒绝导入时须保留当前世界。
         for (const invalidVersion of [1, exported.FormatVersion - 1, 999]) {
             const invalidPath = path.join(output, `invalid-${invalidVersion}.json`);
             fs.writeFileSync(invalidPath, JSON.stringify({ ...exported, FormatVersion: invalidVersion }));

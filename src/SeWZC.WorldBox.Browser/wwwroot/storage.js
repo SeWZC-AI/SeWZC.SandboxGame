@@ -1,4 +1,3 @@
-// 浏览器本机存档与文件导入导出。
 const DATABASE_NAME = "sewzc-worldbox";
 const STORE_NAME = "worlds";
 const AUTOSAVE_KEY = "autosave";
@@ -70,7 +69,6 @@ function openDatabase() {
     return databasePromise;
 }
 
-// 将大存档的编码和复制移到 Worker，避免阻塞界面。
 export function beginSave() {
     if (typeof Worker === "function" && !saveWorker) {
         try {
@@ -162,7 +160,7 @@ export async function save(json) {
 
 // Worker 与主线程回退路径共用的写入入口。
 export async function writeSave(json) {
-    // 保留分块，避免在界面线程拼接和编码整个大存档。
+    // 用文本块构造 Blob，不拼接整个存档。
     const blob = json instanceof Blob ? json : new Blob([checkSize(json)], {type: "application/json"});
     if (!blob.size || blob.size > MAX_FILE_BYTES) throw new Error("存档为空或超过 64 MiB。");
     const compressed = typeof CompressionStream === "function" && typeof DecompressionStream === "function";

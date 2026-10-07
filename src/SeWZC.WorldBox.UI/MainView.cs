@@ -109,12 +109,12 @@ public sealed partial class MainView : UserControl
     private bool _updatingToolContext;
     private long _worldEditRevision, _savedEditRevision = -1, _savedTick = -1;
 
-    /// <summary>创建共享游戏界面，绑定世界引擎及地图、模拟和存档操作。</summary>
+    /// <summary>初始化游戏主界面。</summary>
     public MainView() : this(null)
     {
     }
 
-    /// <summary>创建共享游戏界面，绑定世界引擎及地图、模拟和存档操作。</summary>
+    /// <summary>初始化游戏主界面。</summary>
     /// <param name="engine">初始世界引擎，空值时创建默认示例世界。</param>
     public MainView(WorldEngine? engine)
     {
@@ -538,9 +538,7 @@ public sealed partial class MainView : UserControl
         RefreshUi(true);
     }
 
-    /// <summary>在回调预算内推进到期的模拟日，再刷新界面并调度保存。</summary>
-    /// <param name="sender">触发回调的模拟计时器。</param>
-    /// <param name="e">计时器事件参数。</param>
+    /// <summary>推进到期的模拟日，刷新界面并调度保存。</summary>
     private void OnTick(object? sender, EventArgs e)
     {
         var now = _clock.Elapsed.TotalSeconds;

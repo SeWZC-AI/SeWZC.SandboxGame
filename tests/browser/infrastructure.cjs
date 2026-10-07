@@ -1,4 +1,4 @@
-// Run against the published app with the current --export-visual-fixture output.
+// 对发布产物运行，输入由 --export-visual-fixture 生成的夹具。
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -62,7 +62,7 @@ fs.mkdirSync(output, { recursive: true });
                 await ui.click('structures-map', { scroll: 'inspector-scroll' }); await ui.click('map-fit');
                 const colored = await screenshot('infrastructure');
                 await structures(); await ui.selectIndex('structures-town', 1, { scroll: 'inspector-scroll' });
-                // Waystation remains enum 3, hence selection 4 after the All option.
+                // 驿站编号为 3，加上“全部”选项后的索引为 4。
                 await ui.selectIndex('structures-building-kind', 4, { scroll: 'inspector-scroll' });
                 const station = before.Society.Buildings.find(b => b.Kind === 3 && b.SettlementId === before.Settlements[0].Id);
                 await ui.waitFor(s => s.controls.some(c => c.id === `building-row-${station.Id}`), 'town/type-filtered station');

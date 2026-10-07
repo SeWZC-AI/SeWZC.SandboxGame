@@ -31,7 +31,6 @@ fs.mkdirSync(output, { recursive: true });
                     await ui.selectIndex('structures-building-kind', kind + 1, scroll);
                     await ui.click(`building-row-${b.Id}`, scroll);
                     if (mobile && !(await ui.snapshot()).inspectorExpanded) {
-                        // The compact view initially shows half the screen; expand for review.
                         const expand = ui.control(await ui.snapshot(), 'inspector-expand');
                         if (expand.value === '展开') await ui.click('inspector-expand');
                     }

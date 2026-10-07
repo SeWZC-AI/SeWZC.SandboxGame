@@ -2,8 +2,7 @@ using SeWZC.WorldBox.Core;
 
 internal static class TestLand
 {
-    // Command/form fixtures do not need the generated food web in every save.
-    // Ecology and simulation fixtures retain their own actual populations.
+    // 命令和表单夹具省略动物种群。
     public static void ClearWildlife(WorldEngine engine)
     {
         foreach (var tile in engine.State.Tiles)
@@ -14,8 +13,7 @@ internal static class TestLand
         }
     }
 
-    // Controlled component fixtures start with an explicitly edited, connected town footprint.
-    // Tests of claiming itself do not call this helper.
+    // 预先登记连通领地；领地登记测试不使用此辅助方法。
     public static void ClaimAllTowns(WorldEngine engine, int radius = 7)
     {
         foreach (var town in engine.State.Settlements.ToArray())

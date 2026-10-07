@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run built unit + headless UI checks and report their combined wall time."""
+"""运行已构建的单元和 Headless UI 检查，并报告总耗时。"""
 import os
 from pathlib import Path
 import subprocess

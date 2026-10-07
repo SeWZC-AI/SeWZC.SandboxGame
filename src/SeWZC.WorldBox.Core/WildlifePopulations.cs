@@ -2,138 +2,135 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-// 使用值类型避免每格分配集合；稀疏存档按物种编号保存精确的非零数量。
 /// <summary>按物种记录的一组动物种群数量。</summary>
 [JsonConverter(typeof(WildlifePopulationsJsonConverter))]
 public struct WildlifePopulations : IEquatable<WildlifePopulations>
 {
-    /// <summary>野兔的种群数量，允许小数。</summary>
+    /// <summary>野兔数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Rabbit { get; set; }
 
-    /// <summary>鹿的种群数量，允许小数。</summary>
+    /// <summary>鹿数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Deer { get; set; }
 
-    /// <summary>野猪的种群数量，允许小数。</summary>
+    /// <summary>野猪数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Boar { get; set; }
 
-    /// <summary>山羊的种群数量，允许小数。</summary>
+    /// <summary>山羊数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Goat { get; set; }
 
-    /// <summary>狼的种群数量，允许小数。</summary>
+    /// <summary>狼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Wolf { get; set; }
 
-    /// <summary>水鸟的种群数量，允许小数。</summary>
+    /// <summary>水鸟数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Waterfowl { get; set; }
 
-    /// <summary>植食小鱼的种群数量，允许小数。</summary>
+    /// <summary>植食小鱼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Fish { get; set; }
 
-    /// <summary>狐狸的种群数量，允许小数。</summary>
+    /// <summary>狐狸数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Fox { get; set; }
 
-    /// <summary>棕熊的种群数量，允许小数。</summary>
+    /// <summary>棕熊数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Bear { get; set; }
 
-    /// <summary>野牛的种群数量，允许小数。</summary>
+    /// <summary>野牛数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Bison { get; set; }
 
-    /// <summary>牦牛的种群数量，允许小数。</summary>
+    /// <summary>牦牛数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Yak { get; set; }
 
-    /// <summary>跳鼠的种群数量，允许小数。</summary>
+    /// <summary>跳鼠数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Jerboa { get; set; }
 
-    /// <summary>羚羊的种群数量，允许小数。</summary>
+    /// <summary>羚羊数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Gazelle { get; set; }
 
-    /// <summary>野骆驼的种群数量，允许小数。</summary>
+    /// <summary>野骆驼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Camel { get; set; }
 
-    /// <summary>耳廓狐的种群数量，允许小数。</summary>
+    /// <summary>耳廓狐数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Fennec { get; set; }
 
-    /// <summary>胡狼的种群数量，允许小数。</summary>
+    /// <summary>胡狼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Jackal { get; set; }
 
-    /// <summary>狮子的种群数量，允许小数。</summary>
+    /// <summary>狮子数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Lion { get; set; }
 
-    /// <summary>水豚的种群数量，允许小数。</summary>
+    /// <summary>水豚数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Capybara { get; set; }
 
-    /// <summary>河马的种群数量，允许小数。</summary>
+    /// <summary>河马数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Hippo { get; set; }
 
-    /// <summary>水獭的种群数量，允许小数。</summary>
+    /// <summary>水獭数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Otter { get; set; }
 
-    /// <summary>鳄鱼的种群数量，允许小数。</summary>
+    /// <summary>鳄鱼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Crocodile { get; set; }
 
-    /// <summary>草鱼的种群数量，允许小数。</summary>
+    /// <summary>草鱼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double GrassCarp { get; set; }
 
-    /// <summary>海牛的种群数量，允许小数。</summary>
+    /// <summary>海牛数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Manatee { get; set; }
 
-    /// <summary>掠食小鱼的种群数量，允许小数。</summary>
+    /// <summary>掠食小鱼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double PredatoryFish { get; set; }
 
-    /// <summary>鲈鱼的种群数量，允许小数。</summary>
+    /// <summary>鲈鱼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Pike { get; set; }
 
-    /// <summary>鲨鱼的种群数量，允许小数。</summary>
+    /// <summary>鲨鱼数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Shark { get; set; }
 
-    /// <summary>海龟的种群数量，允许小数。</summary>
+    /// <summary>海龟数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double SeaTurtle { get; set; }
 
-    /// <summary>海洋海牛的种群数量，允许小数。</summary>
+    /// <summary>海洋海牛数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double SeaCow { get; set; }
 
-    /// <summary>麝牛的种群数量，允许小数。</summary>
+    /// <summary>麝牛数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double MuskOx { get; set; }
 
-    /// <summary>北极熊的种群数量，允许小数。</summary>
+    /// <summary>北极熊数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double PolarBear { get; set; }
 
-    /// <summary>雪豹的种群数量，允许小数。</summary>
+    /// <summary>雪豹数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double SnowLeopard { get; set; }
 
-    // 显式逐物种比较，避免省略默认值时为每格装箱并反射查询种群。
-    /// <summary>逐物种比较动物数量是否相等。</summary>
-    /// <param name="other">用于比较的同类型值。</param>
+    /// <inheritdoc />
     public readonly bool Equals(WildlifePopulations other)
     {
         return Rabbit.Equals(other.Rabbit) && Deer.Equals(other.Deer) && Boar.Equals(other.Boar) &&
@@ -150,14 +147,13 @@ public struct WildlifePopulations : IEquatable<WildlifePopulations>
                SnowLeopard.Equals(other.SnowLeopard);
     }
 
-    /// <summary>逐物种比较动物数量是否相等。</summary>
-    /// <param name="obj">用于比较的对象，空值或其他类型均不相等。</param>
+    /// <inheritdoc />
     public readonly override bool Equals(object? obj)
     {
         return obj is WildlifePopulations other && Equals(other);
     }
 
-    /// <summary>根据各物种数量计算哈希值。</summary>
+    /// <inheritdoc />
     public readonly override int GetHashCode()
     {
         var hash = new HashCode();

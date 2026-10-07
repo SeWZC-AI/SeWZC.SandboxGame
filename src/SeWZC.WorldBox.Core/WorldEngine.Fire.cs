@@ -74,7 +74,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>尝试让邻近火源的成年居民消耗随身饮水扑救；返回是否产生扑救效果。</summary>
-    /// <param name="person">参与当前操作的居民状态。</param>
+    /// <param name="person">扑火的居民。</param>
     public bool TryExtinguishFire(Resident person)
     {
         var goal = person.Agent.Goal;

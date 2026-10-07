@@ -5,7 +5,6 @@ using SeWZC.WorldBox.Core;
 
 internal static class DevelopmentDiagnostics
 {
-    // Runs the actual core without UI timing or edits. Snapshots deliberately copy mutable values.
     public static int Run(string[] args)
     {
         var positional = args.Where(a =>
@@ -54,7 +53,7 @@ internal static class DevelopmentDiagnostics
         Sample();
         for (var completed = 0; completed < ticks; completed += 120)
         {
-            // Explicit all-research experiment supplies a paid agenda, never free knowledge/resources.
+            // 实验模式安排付费研究项目。
             if (args.Contains("--complete-agenda"))
             {
                 foreach (var town in engine.State.Settlements)

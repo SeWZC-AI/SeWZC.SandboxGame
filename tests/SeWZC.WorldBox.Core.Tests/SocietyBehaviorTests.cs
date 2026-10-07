@@ -362,7 +362,7 @@ internal static class SocietyBehaviorTests
         var worker = engine.State.Residents.Last();
         Place(worker, workshop.X, workshop.Y);
         worker.Profession = Profession.Builder;
-        // Equal priority used to send this worker to the adjacent farm instead of the selected workshop.
+        // 同优先级曾使工人前往相邻农场，忽略指定工坊。
         worker.Agent.Goal = new AgentGoal
         {
             Kind = AgentGoalKind.Work,

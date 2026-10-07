@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate actual paid-research worlds for browser regression checks."""
+"""生成通过付费研究发展的世界，供浏览器回归检查使用。"""
 import hashlib
 import json
 import os

@@ -31,7 +31,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>使用实际局部导航预览当前目标的路线，不改变世界或消耗随机数。</summary>
-    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="residentId">居民 ID。</param>
     /// <param name="steps">最多预览的步数，计算时限制在 0 至 64。</param>
     public IReadOnlyList<RoutePoint> PreviewResidentRoute(int residentId, int steps = 24)
     {

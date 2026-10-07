@@ -22,7 +22,7 @@ public sealed partial class Tile
         }
     }
 
-    /// <summary>主种群数量，允许小数表示连续种群变化。</summary>
+    /// <summary>主种群数量。</summary>
     [JsonRequired]
     public double WildlifePopulation
     {
@@ -82,7 +82,7 @@ public sealed partial class Tile
         return kind == _wildlife ? _wildlifePopulation : _otherWildlife.Get(kind);
     }
 
-    /// <summary>直接复制字段中的种群快照，避免值类型属性额外复制整组动物数据。</summary>
+    /// <summary>复制此格所有物种的数量。</summary>
     internal void CopyAnimalPopulations(Span<double> destination)
     {
         _otherWildlife.CopyTo(destination);

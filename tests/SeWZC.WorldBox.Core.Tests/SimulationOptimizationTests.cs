@@ -189,7 +189,7 @@ internal static class SimulationOptimizationTests
         var farm = e.State.Society.Buildings.Single(b => b.Kind == BuildingKind.Farm);
         Check(farm.X == 12 && farm.Y == 18 && farm.PlanningReason.Contains("粮食") && farm.SiteReason.Contains("肥力 80"),
             "Useful site or concrete planning evidence was missing.");
-        // Reconcile the edited river split before exporting current world topology.
+        // 导出世界前核对编辑河流后的领地连通性。
         e.ReconcileSocietyTopology();
         var resumed = WorldEngine.ImportJson(e.ExportJson());
         Check(resumed.State.Society.Buildings.Single(b => b.Id == farm.Id).PlanningReason == farm.PlanningReason,

@@ -6,7 +6,7 @@ using System.Text;
 using System.Text.Json;
 using SeWZC.WorldBox.Core;
 
-// Explicit opt-in measurement; run the executable functional suite separately first.
+// 性能测量须单独运行，运行前先完成可执行功能测试。
 internal static class SimulationPerformance
 {
     public static int Run(string[] args, Func<int, bool, WorldEngine> createWorld)
@@ -30,7 +30,7 @@ internal static class SimulationPerformance
         if (outputIndex >= 0 && outputIndex + 1 >= args.Length)
             throw new ArgumentException("--output requires a JSON file path.");
 
-        // Prime JIT paths before starting the independently recreated measurement worlds.
+        // 先预热 JIT，再创建各轮测量的世界。
         var priming = createWorld(population, wars);
         priming.Step(warmup);
         priming.Step(ticks);
@@ -68,7 +68,7 @@ internal static class SimulationPerformance
                 return ordered[Math.Clamp((int)Math.Ceiling(p * ticks) - 1, 0, ticks - 1)];
             }
 
-            // Serialization and validation are outside the timed simulation region.
+            // 序列化和校验不计入模拟耗时。
             var save = engine.ExportJson();
             var bytes = Encoding.UTF8.GetBytes(save);
             var digest = Convert.ToHexString(SHA256.HashData(bytes));

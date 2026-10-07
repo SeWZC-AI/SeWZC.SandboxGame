@@ -1,4 +1,4 @@
-// Optional scale check: generate a current-format fixture with Core.Tests first.
+// 规模检查须先用 Core.Tests 生成现行格式夹具。
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');

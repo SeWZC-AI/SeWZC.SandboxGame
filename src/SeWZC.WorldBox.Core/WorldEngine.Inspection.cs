@@ -3,7 +3,7 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     /// <summary>返回职业的中文名称。</summary>
-    /// <param name="job">要查询或指定的职业。</param>
+    /// <param name="job">职业。</param>
     public static string ProfessionName(Profession job)
     {
         return job switch

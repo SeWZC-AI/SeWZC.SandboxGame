@@ -578,8 +578,7 @@ static void ModalCommitState()
     foreach (var editor in editors)
     {
         SetField(view, "_paused", false);
-        // The checkpoint already exists in a continuing editing visit. This keeps
-        // the test focused on committing and closing rather than save scheduling.
+        // 继续编辑时复用已有恢复点，检查提交和关闭流程。
         SetField(view, "_checkpoint", engine.ExportJson());
         Call(view, editor.Method, editor.Args);
         Click(view, editor.Apply);
@@ -1858,7 +1857,7 @@ static void IncrementalTerrain()
         Verify();
         tile.ResourceAmount = 24;
         Verify();
-        // Dry forest and normal scrub collided in the former additive image hash.
+        // 干旱森林与普通灌丛曾在旧图像哈希中冲突。
         tile.Terrain = TerrainType.Scrub;
         tile.DroughtTicks = 0;
         Verify();
@@ -2164,14 +2163,13 @@ static void ArchivedIdentity()
     engine.State.Rules.Aging = true;
     engine.Step();
     var archived = engine.State.ArchivedResidents.Single(person => person.Id == resident.Id);
-    // Historical snapshots may legitimately retain an army that has since disbanded.
+    // 历史快照可能保留已解散的军队。
     archived.ArmyId = 123456;
     Assert(engine.State.Settlements.All(town => town.Id != homeId), "Fixture needs a vanished home");
     engine.PaintTerrain(archived.X, archived.Y, TerrainType.Water, 0);
     var view = View(engine);
     Call(view, "ShowResidentEditor", archived.Id);
-    // These headless controls have no theme/template, so tab content is not realized
-    // in the logical tree. Use the actual identity form supplied to the tab instead.
+    // 无主题的 Headless 控件不在逻辑树中生成选项卡内容，直接检查传入的身份表单。
     var tabs = Control<TabControl>(view, "resident-editor-tabs");
     var identity = (StackPanel)tabs.ItemsSource!.Cast<TabItem>()
         .Single(tab => AutomationProperties.GetAutomationId(tab) == "resident-tab-identity").Content!;
@@ -2411,7 +2409,7 @@ static void PlacementBounds()
     var before = engine.ExportJson();
     foreach (var tile in new[] { (engine.State.Width, 0), (0, engine.State.Height), (-1, 0), (0, -1) })
     {
-        // Model a late confirmation carrying stale coordinates; no input path may index them.
+        // 模拟携带过期坐标的迟到确认，检查输入路径是否拒绝访问。
         typeof(WorldMapControl).GetField("_pendingPlacement", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(map, tile);
         map.ConfirmPlacement();
@@ -2463,8 +2461,7 @@ static WorldEngine TwoTownWorld(bool largeTotal = false)
 static WorldEngine EmptyWorld(int seed, int size)
 {
     var engine = WorldEngine.Create(seed, size, size, false);
-    // Form, camera and replacement checks need terrain, not a complete food
-    // web in every snapshot. Resource images have their own ecological fixture.
+    // 表单、镜头和世界替换夹具省略动物种群。
     foreach (var tile in engine.State.Tiles)
     {
         tile.Wildlife = WildlifeKind.None;
@@ -2552,10 +2549,10 @@ static void Assert(bool condition, string message)
     if (!condition) throw new Exception(message);
 }
 
-/// <summary>承载 Headless 界面回归检查的最小 Avalonia 应用。</summary>
+/// <summary>Headless 测试应用。</summary>
 public sealed class TestApp : Application;
 
-/// <summary>记录分块保存调用并模拟写入失败，用于检查自动存档路径。</summary>
+/// <summary>记录分块保存调用的测试存储，可模拟写入失败。</summary>
 public sealed class CountingSaveStorage : IWorldStorage
 {
     /// <summary>已经尝试的分块保存次数，包含失败调用。</summary>
@@ -2571,7 +2568,7 @@ public sealed class CountingSaveStorage : IWorldStorage
     public bool IsBackground => false;
 
     /// <summary>拒绝单字符串保存，确保被测界面使用分块路径。</summary>
-    /// <param name="json">被测界面传入的世界 JSON。</param>
+    /// <param name="json">世界 JSON。</param>
     public Task SaveAsync(string json)
     {
         throw new Exception("Autosave used the monolithic path");
@@ -2592,33 +2589,33 @@ public sealed class CountingSaveStorage : IWorldStorage
         return Task.CompletedTask;
     }
 
-    /// <summary>返回空值，模拟没有本地自动存档。</summary>
+    /// <summary>没有本地自动存档。</summary>
     public Task<string?> LoadAsync()
     {
         return Task.FromResult<string?>(null);
     }
 
-    /// <summary>立即完成导出，以供测试继续运行。</summary>
-    /// <param name="json">被测界面传入的世界 JSON。</param>
-    /// <param name="fileName">被测界面建议的文件名。</param>
+    /// <summary>导出立即完成。</summary>
+    /// <param name="json">世界 JSON。</param>
+    /// <param name="fileName">导出文件名。</param>
     public Task ExportAsync(string json, string fileName)
     {
         return Task.CompletedTask;
     }
 
-    /// <summary>返回空值，模拟取消文件导入。</summary>
+    /// <summary>模拟取消文件导入。</summary>
     public Task<string?> ImportAsync()
     {
         return Task.FromResult<string?>(null);
     }
 }
 
-/// <summary>保持导出任务未完成，供测试检查存储等待期间的界面响应。</summary>
+/// <summary>由测试控制导出完成时机的存储。</summary>
 public sealed class DeferredExportStorage : IWorldStorage
 {
     private readonly TaskCompletionSource _export = new();
 
-    /// <summary>已经请求的导出次数。</summary>
+    /// <summary>导出请求次数。</summary>
     public int ExportCalls { get; private set; }
 
     /// <summary>最近一次导出请求收到的世界 JSON。</summary>
@@ -2627,28 +2624,28 @@ public sealed class DeferredExportStorage : IWorldStorage
     /// <summary>测试中始终将应用视为前台。</summary>
     public bool IsBackground => false;
 
-    /// <summary>立即完成自动保存，以便测试聚焦导出等待。</summary>
-    /// <param name="json">被测界面传入的世界 JSON。</param>
+    /// <summary>保存立即完成。</summary>
+    /// <param name="json">世界 JSON。</param>
     public Task SaveAsync(string json)
     {
         return Task.CompletedTask;
     }
 
-    /// <summary>返回空值，模拟没有本地自动存档。</summary>
+    /// <summary>没有本地自动存档。</summary>
     public Task<string?> LoadAsync()
     {
         return Task.FromResult<string?>(null);
     }
 
-    /// <summary>返回空值，模拟取消文件导入。</summary>
+    /// <summary>模拟取消文件导入。</summary>
     public Task<string?> ImportAsync()
     {
         return Task.FromResult<string?>(null);
     }
 
     /// <summary>记录导出内容，返回等待测试显式完成的任务。</summary>
-    /// <param name="json">被测界面传入的世界 JSON。</param>
-    /// <param name="fileName">被测界面建议的文件名。</param>
+    /// <param name="json">世界 JSON。</param>
+    /// <param name="fileName">导出文件名。</param>
     public Task ExportAsync(string json, string fileName)
     {
         ExportCalls++;

@@ -6,19 +6,19 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class ResourceStock
 {
     // 省略零数量后，缺失字段必须还原为零，因此不能使用非零属性初值。
-    /// <summary>粮食的资源数量。</summary>
+    /// <summary>粮食数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Food { get; set; }
 
-    /// <summary>木材的资源数量。</summary>
+    /// <summary>木材数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Wood { get; set; }
 
-    /// <summary>石材的资源数量。</summary>
+    /// <summary>石材数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Stone { get; set; }
 
-    /// <summary>矿石的资源数量。</summary>
+    /// <summary>矿石数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Ore { get; set; }
 }

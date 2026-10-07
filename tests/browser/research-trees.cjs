@@ -60,7 +60,7 @@ const fixtures = path.resolve(process.env.WORLDBOX_EMPIRE_FIXTURE_DIR || 'artifa
                 assert(!snapshot.controls.some(c => c.id === 'research-kind'), 'Research still uses a dropdown');
                 assert.equal(snapshot.controls.filter(c => c.id.startsWith('research-node-')).length, 40);
                 assert.equal(snapshot.researchGraph.nodes, route === 'technology' ? 26 : 25);
-                // Enlarge even a fully fitting route so panning has real overflow to move.
+                // 放大研究树，确保存在可拖动的溢出区域。
                 while ((await ui.snapshot()).researchGraph.zoom < 1.3) await ui.click('research-zoom-in', inspector);
                 await ui.click('research-focus', inspector);
                 async function showGraph() {
@@ -79,7 +79,7 @@ const fixtures = path.resolve(process.env.WORLDBOX_EMPIRE_FIXTURE_DIR || 'artifa
                 const beforePan = snapshot.researchGraph;
                 const panX = beforePan.offsetX < 50 ? -44 : 44;
                 const panY = beforePan.offsetY < 50 ? -88 : 88;
-                // Start on a real button: its lost capture must not truncate the graph drag.
+                // 从节点按钮开始拖动，检查按钮丢失捕获是否中断研究树拖动。
                 const start = await ui.point(`research-node-${endpoint}`, inspector);
                 if (mobile) {
                     const cdp = await context.newCDPSession(page);

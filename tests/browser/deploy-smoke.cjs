@@ -1,4 +1,3 @@
-// Fast artifact and live-site check; full interaction regressions are available on demand.
 const { chromium } = require('playwright');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -53,7 +52,7 @@ async function waitForRevision(request) {
         if (expectedRevision) assert.equal(revision, expectedRevision, 'Loaded an older deployed artifact');
         await diagnostics.assertHealthy('deployed startup');
 
-        // A distinct small world proves reload used IndexedDB, not the default world.
+        // 使用不同的小世界核对刷新后是否读取 IndexedDB 存档。
         await ui.click('header-new-world');
         await ui.fill('world-seed', 13579, modal);
         await ui.selectIndex('world-size', 0, modal);

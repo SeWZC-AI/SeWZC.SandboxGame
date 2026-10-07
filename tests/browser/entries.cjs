@@ -13,8 +13,7 @@ const modes = ['settlement', 'infrastructure', 'research', 'communication'];
 const digest = world => createHash('sha256').update(JSON.stringify(world)).digest('hex');
 fs.mkdirSync(output, { recursive: true });
 
-// Use the app's current-format world, changing only the local conditions needed
-// to expose a railway action and to select empty ground next to known residents.
+// 准备铁路操作及已知居民旁的空地。
 function fixture(world) {
     const towns = [...world.Settlements].sort((a, b) => a.Id - b.Id);
     assert(towns.length >= 2, 'Entry checks need two settlements');
@@ -144,8 +143,7 @@ function fixture(world) {
                             assert(control.visible, `Picker boundary check needs the visible entry ${id}`);
                             const canvas = await page.locator('#out canvas.avalonia-canvas').boundingBox();
                             assert(canvas, 'Avalonia canvas has no visible bounds');
-                            // A disabled entry still receives a real attempted tap. UiDriver.click
-                            // intentionally rejects disabled controls, so use its read-only geometry.
+                            // UiDriver.click 拒绝禁用控件，改用控件坐标模拟点击。
                             const point = { x: canvas.x + control.x + control.width / 2,
                                 y: canvas.y + control.y + control.height / 2 };
                             if (mobile) await page.touchscreen.tap(point.x, point.y);
@@ -194,8 +192,7 @@ function fixture(world) {
                 assert.equal(digest(after), beforeDigest, 'Navigation, map selection or cancelled forms changed the complete paused world');
                 passed('building/spell/rail map selection, guarded tool/overview/event entries, return and cancellation preserve the complete saved world');
 
-                // Actual running time may advance between windows. Each window must freeze
-                // the tick while open and release that temporary pause when cancelled.
+                // 窗口打开时暂停模拟，取消后恢复；窗口之间允许推进。
                 await ui.paused(false);
                 for (const [label, open] of [
                     ['rules', async () => ui.click('header-rules')],

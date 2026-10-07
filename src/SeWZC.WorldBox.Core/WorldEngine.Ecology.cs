@@ -183,7 +183,7 @@ public sealed partial class WorldEngine
         var snapshotCount = snapshotLast - snapshotFirst;
         Array.Clear(_wildlifeChanges, 0, snapshotCount * AnimalRules.SpeciesCount);
         Array.Clear(_wildlifeIncoming, 0, snapshotCount);
-        // 生态速率按已过去的模拟时间折算并限制损失，避免渲染频率影响种群或消耗随机数。
+        // 按复评间隔折算生态速率，并限制单次损失。
         var elapsed = cycle / 6d;
         var growthRate = Math.Min(.25, .018 * elapsed);
         var deathRate = Math.Min(.65, 1 - Math.Pow(.88, elapsed));
@@ -200,7 +200,7 @@ public sealed partial class WorldEngine
             var mask = tile.WildlifeMask;
             var pressure = 0d;
             var offset = local * AnimalRules.SpeciesCount;
-            // 环境缓存按固定地格索引存储，使相邻日期的边界地格复用已计算的容量。
+            // 按地格索引复用边界地格的环境容量缓存。
             var habitatSlot = i % bufferTiles;
             var capacityOffset = habitatSlot * AnimalRules.SpeciesCount;
             tile.CopyAnimalPopulations(_wildlifePopulations.AsSpan(offset, AnimalRules.SpeciesCount));

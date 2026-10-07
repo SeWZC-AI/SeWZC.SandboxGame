@@ -15,7 +15,6 @@ if (evolutionOption >= 0)
     return 0;
 }
 
-// A dependency-free executable suite, runnable with dotnet run --project tests/SeWZC.WorldBox.Core.Tests.
 if (args.Contains("--profile-simulation"))
     return SimulationPerformance.Run(args, CreateBenchmarkWorld);
 if (args.Contains("--profile-save"))
@@ -290,8 +289,7 @@ static void TerrainEditing()
         WorldEngine.NaturalResourceCapacity(engine.State.Tiles[y * 64 + x]),
         "Terrain painting ignored the new habitat resource capacity.");
 
-    // An intact resident on the opposite shore must follow their displaced home.
-    // Northern land belongs to a competitor, so it is unavailable for relocation.
+    // 对岸居民须跟随迁移后的家园；北岸属于另一国，不能作为迁移地点。
     var relocation = FlatWorld();
     relocation.SpawnResidents(24, 24, RaceKind.Human, 16);
     relocation.SpawnResidents(48, 48, RaceKind.Orc);

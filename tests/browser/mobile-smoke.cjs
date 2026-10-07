@@ -133,8 +133,7 @@ const viewport = page => page.evaluate(() => ({
         assert.equal(digest(pinched), digest(dragged), 'Pinch gesture must not edit the world');
         console.log('PASS mobile drag and pinch preserve every persisted world field');
 
-        // Exercise the event fallback with CSS and viewport restrictions disabled,
-        // as on browsers that do not enforce those restrictions for native zoom.
+        // 禁用 CSS 和视口缩放限制，检查事件回退路径。
         const css = await page.addStyleTag({ content: 'html, body, #out, #out * { touch-action: auto !important; }' });
         const originalViewport = await page.locator('meta[name="viewport"]').getAttribute('content');
         await page.locator('meta[name="viewport"]').evaluate(meta => {
@@ -199,7 +198,7 @@ const viewport = page => page.evaluate(() => ({
         await ui.click('map-fit');
         await page.screenshot({ path: path.join(output, 'mobile.png') });
 
-        // Keep an unconfirmed touch preview while replacing the world through its real dialog.
+        // 保留未确认的触屏预览，再通过对话框替换世界。
         await ui.tool('life', 'Human');
         await ui.clickTile(home.X, home.Y);
         assert((await ui.snapshot()).pendingPlacement, 'Touch preview must be pending before world replacement');

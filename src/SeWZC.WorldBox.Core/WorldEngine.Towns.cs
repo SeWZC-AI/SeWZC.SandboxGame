@@ -111,7 +111,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>查询居民在此地采集所用的本城镇领地内外倍率。</summary>
-    /// <param name="residentId">待操作居民的稳定 ID。</param>
+    /// <param name="residentId">居民 ID。</param>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
     public double GetGatheringTerritoryMultiplier(int residentId, int x, int y)

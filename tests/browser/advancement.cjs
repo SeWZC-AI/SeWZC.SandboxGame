@@ -62,7 +62,7 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
                 assert.equal(digest(await ui.save()), digest(before), 'Reading either route changed the world');
                 await ui.click('settlement-tab-infrastructure');
                 await ui.click('building-open', inspector);
-                await ui.selectIndex('building-kind', 10, modal); // Fabricator, ordinary enum picker.
+                await ui.selectIndex('building-kind', 10, modal); // 精密制造中心。
                 await ui.fill('building-x', at[0].x, modal); await ui.fill('building-y', at[0].y, modal);
                 await ui.click('building-gift', modal); await ui.click('building-apply', modal);
                 let saved = await ui.save();
@@ -71,7 +71,7 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
                 assert.equal(stock.Alloy, 100); assert.equal(stock.EnergyCells, 100); assert.equal(stock.Crystals, 100);
                 assert.deepEqual([stock.Coal, stock.Oil, stock.RareEarth, stock.Boats, stock.Aircraft], [30, 20, 10, 2, 1]);
                 await ui.click('building-open', inspector);
-                await ui.selectIndex('building-kind', 13, modal); // AetherForge, no industrial fuel required.
+                await ui.selectIndex('building-kind', 13, modal); // 以太转化炉，无需工业燃料。
                 await ui.fill('building-x', at[1].x, modal); await ui.fill('building-y', at[1].y, modal);
                 await ui.click('building-apply', modal);
                 saved = await ui.save();
@@ -81,7 +81,7 @@ const digest = value => createHash('sha256').update(JSON.stringify(value)).diges
                 await page.screenshot({ path: path.join(output, `advancement-${label}.png`) });
                 await page.reload(); await ui.ready(); await ui.paused();
                 assert.equal(digest(await readSavedWorld(page)), digest(saved), 'IndexedDB changed the complete saved world');
-                // Startup resumes time. Explicit load pauses at the saved tick for an exact comparison.
+                // 显式加载会暂停在存档日序，便于精确比较。
                 await ui.click('header-storage'); await ui.click('storage-load', modal);
                 await ui.waitFor(s => !s.modalOpen && s.paused, 'loaded paused world', 30000);
                 assert.equal(digest(await ui.save()), digest(saved), 'Advanced stocks, research and facilities changed after restore');

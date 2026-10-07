@@ -366,7 +366,7 @@ internal static class TownActivityTests
         void Expect(int site, string reason)
         {
             Check(Site(first) == site, reason);
-            _ = Site(other); // Evict the last-search stamp, then exercise the shared cache.
+            _ = Site(other); // 清除上次搜索标记，再检查共享缓存。
             Check(
                 Site(new Resident
                 {
@@ -415,7 +415,7 @@ internal static class TownActivityTests
         var person = e.State.Residents.Single();
         person.X = 10;
         person.Y = 10;
-        var fish = e.State.Tiles[14 * 32 + 13]; // Euclidean visible, Manhattan distance seven.
+        var fish = e.State.Tiles[14 * 32 + 13]; // 在可见圆内，曼哈顿距离为七。
         fish.Terrain = TerrainType.Water;
         fish.Wildlife = WildlifeKind.Fish;
         fish.WildlifePopulation = 5;

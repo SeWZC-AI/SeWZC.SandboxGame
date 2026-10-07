@@ -40,7 +40,7 @@ fs.mkdirSync(output, { recursive: true });
                 });
                 if (!compression) await context.addInitScript(() => {
                     globalThis.CompressionStream = undefined;
-                    // Exercise the continuation fallback as well as raw Blob storage.
+                    // 同时检查让出执行的回退路径和未压缩 Blob 存储。
                     Object.defineProperty(globalThis, 'scheduler', { value: undefined, configurable: true });
                 });
                 const page = await context.newPage(), ui = new UiDriver(page), errors = observeBrowserErrors(page);
@@ -68,7 +68,7 @@ fs.mkdirSync(output, { recursive: true });
                 await page.mouse.move(350, 440, { steps: 12 }); await page.mouse.up();
                 const cameraAfter = await ui.snapshot();
                 assert.notEqual(cameraAfter.map.tile0CenterX, cameraBefore.map.tile0CenterX, 'Camera could not pan during save');
-                let heldSamples = 1; // The capture snapshot itself observed a yielded UI turn.
+                let heldSamples = 1; // 捕获快照时已观察到一次界面让出。
                 await ui.waitFor(s => {
                     samples.push({ ms: performance.now() - saveStarted, capture: s.saveCaptureActive, tick: s.worldTick });
                     if (samples.length % 100 === 0) console.log('SAVING', samples.at(-1));
@@ -104,7 +104,7 @@ fs.mkdirSync(output, { recursive: true });
                 assert.equal(saved.Tick, capture.worldTick, 'Stored save combines different simulation days');
                 assert.equal(workers.length, fallback ? 0 : 1, 'Worker path or its fallback did not execute');
 
-                // A new edit interrupts the capture and preserves the previous committed save.
+                // 新编辑中断捕获，保留上次已提交存档。
                 await ui.tool('terrain', 'Grass');
                 const paintPoint = await ui.tilePoint(Math.floor(saved.Width / 2), Math.floor(saved.Height / 2));
                 await ui.click('header-storage'); await ui.click('storage-save', { scroll: 'modal-scroll' });
@@ -117,9 +117,8 @@ fs.mkdirSync(output, { recursive: true });
                     throw error;
                 });
                 assert.deepEqual(await readSavedWorld(page), saved, 'Canceled capture overwrote the last valid save');
-                await ui.click('header-storage'); // Defer automatic retries while checking corrupt storage metadata.
-                // Exercise the actual decoder and abort protocol against malformed
-                // metadata, while retaining the last complete committed record.
+                await ui.click('header-storage'); // 检查损坏元数据时推迟自动重试。
+                // 元数据损坏时仍保留上次完整存档。
                 await page.evaluate(async () => {
                     const storage = await import('./storage.js');
                     const open = indexedDB.open('sewzc-worldbox', 1);

@@ -66,7 +66,7 @@ internal static class TradeRegressionTests
                 }
             }
 
-            // Commit to a mission on the old surplus report, then find a depleted warehouse.
+            // 依据旧余粮报告出发，到达时仓库已耗尽。
             source.Resources.Food = food;
             trader.Agent.DestinationSettlementId = destination.Id;
             trader.Agent.MissionOriginSettlementId = source.Id;
@@ -199,7 +199,7 @@ internal static class TradeRegressionTests
         sender.Y = sender.FromY = trader.Y;
         sender.Agent.Goal.TargetX = sender.X;
         sender.Agent.Goal.TargetY = sender.Y;
-        // Use the actual conversation queue: no direct memory injection into the recipient.
+        // 通过交谈队列递送信息。
         var learned = false;
         for (var tick = 0; tick < 12 && !learned; tick++)
         {

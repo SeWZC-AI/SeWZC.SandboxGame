@@ -46,7 +46,7 @@ jobs:
       - name: Restore
         run: dotnet restore scripts/ci-build.slnf
 
-      # Compile native checks here; the Browser project is built once by publish.
+      # 此处构建原生检查；浏览器项目由发布步骤构建。
       - name: Build desktop and test projects
         run: dotnet build scripts/ci-build.slnf -c Release --no-restore
 
@@ -128,7 +128,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Keep normal pushes and PRs short; the manual option retains every regression.
+        # 常规推送和 PR 只跑冒烟检查；手动选项运行全部回归。
         suite: ${{ fromJSON(inputs.full_regression == true && '["deploy-smoke", "smoke", "mobile-smoke", "motion", "stories", "effects", "advancement", "research-trees", "research-gameplay", "land", "details", "entries", "saving"]' || '["deploy-smoke"]') }}
     steps:
       - uses: actions/checkout@v4
@@ -146,7 +146,7 @@ jobs:
 
       - uses: ./.github/actions/setup-browser
 
-      # Separate runners prevent motion/effects measurements competing for CPU.
+      # 运动和特效检查使用独立 runner，避免争用 CPU。
       - name: Test published site under its GitHub Pages path
         env:
           WORLDBOX_BASE_URL: http://127.0.0.1:8080/SeWZC.SandboxGame/
