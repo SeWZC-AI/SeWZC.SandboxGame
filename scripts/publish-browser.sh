@@ -20,8 +20,7 @@ fi
 rm -rf "$worldbox_publish" "$worldbox_site"
 "$worldbox_dotnet" publish src/SeWZC.WorldBox.Browser/SeWZC.WorldBox.Browser.csproj \
   -c Release -o "$worldbox_publish" \
-  "${worldbox_restore_args[@]}" \
-  -p:WasmEnableThreads=false -p:RunAOTCompilation=false
+  "${worldbox_restore_args[@]}"
 
 # Microsoft.NET.Sdk.WebAssembly 在此目录生成静态站点。
 if [[ ! -f "$worldbox_publish/wwwroot/index.html" ]]; then

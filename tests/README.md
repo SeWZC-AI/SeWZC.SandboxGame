@@ -1,6 +1,6 @@
 # 单元测试
 
-当前两个项目使用 xUnit 2 和 .NET Test SDK，由 IDE 或 `dotnet test` 发现并执行；测试依赖统一维护在本目录的 `Directory.Build.props`。
+当前两个项目使用 xUnit 2 和 .NET Test SDK；测试包引用统一维护在本目录的 [Directory.Build.props](Directory.Build.props)，版本由根目录的 [Directory.Packages.props](../Directory.Packages.props) 集中管理。
 
 在仓库根目录执行：
 

@@ -3,6 +3,7 @@
     <File Path=".gitignore" />
     <File Path="AGENTS.md" />
     <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
     <File Path="global.json" />
     <File Path="README.md" />
   </Folder>
@@ -13,6 +14,8 @@
     <Project Path="src/SeWZC.WorldBox.UI/SeWZC.WorldBox.UI.csproj" />
   </Folder>
   <Folder Name="/2.Tests/">
+    <File Path="tests/Directory.Build.props" />
+    <File Path="tests/README.md" />
     <Project Path="tests/SeWZC.WorldBox.Core.Tests/SeWZC.WorldBox.Core.Tests.csproj" />
     <Project Path="tests/SeWZC.WorldBox.UI.Tests/SeWZC.WorldBox.UI.Tests.csproj" />
   </Folder>

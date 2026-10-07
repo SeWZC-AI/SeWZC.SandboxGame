@@ -16,7 +16,7 @@ flowchart TD
     UITests[UI.Tests xUnit 逻辑测试] --> UI
 ```
 
-Core 不引用 Avalonia、平台 API 或文件系统。UI 协调模拟、编辑、呈现和保存，平台入口实现 `IWorldStorage`。模拟及界面使用单线程 WebAssembly，普通 JavaScript Worker 仅用于保存；当前关闭 WASM 多线程与 AOT，不依赖 `SharedArrayBuffer` 或跨源隔离，设置见 [Browser 项目](../src/SeWZC.WorldBox.Browser/SeWZC.WorldBox.Browser.csproj)。
+Core 不引用 Avalonia、平台 API 或文件系统。UI 协调模拟、编辑、呈现和保存，平台入口实现 `IWorldStorage`。模拟及界面使用单线程 WebAssembly，普通 JavaScript Worker 仅用于保存。
 
 模拟按完整离散日推进，呈现时钟在真实移动起终点间插值。慢设备限制实际推进速度，不跳过劳动、运输、通信或生存步骤。暂停冻结显示，变速重锚时间，载入和编辑传送重置轨迹；命中、标记、选中圈和跟随共用显示位置。短暂动作通知只说明已执行结果，不保存为世界事实或分配实体 ID。
 

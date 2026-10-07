@@ -4,7 +4,7 @@
 
 ## 本地运行
 
-命令均在仓库根目录执行。SDK 版本与回退策略以 [global.json](../global.json) 为准，Avalonia 依赖由项目自动还原；Linux 桌面版需要图形会话与系统图形库。
+命令均在仓库根目录执行。SDK 版本与回退策略以 [global.json](../global.json) 为准，NuGet 包版本统一维护在 [Directory.Packages.props](../Directory.Packages.props)；Linux 桌面版需要图形会话与系统图形库。
 
 ```bash
 dotnet run --project src/SeWZC.WorldBox.Desktop
