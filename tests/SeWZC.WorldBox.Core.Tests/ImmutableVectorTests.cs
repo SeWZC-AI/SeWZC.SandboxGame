@@ -43,6 +43,30 @@ public sealed class ImmutableVectorTests
         Assert.Same(before, before.SetItem(0, before[0]));
     }
 
+    /// <summary>连续替换及切换目标索引不会改变任何中间版本，追加也保留最后的替换。</summary>
+    [Theory]
+    [InlineData(8)]
+    [InlineData(64)]
+    [InlineData(512)]
+    public void Repeated_updates_preserve_each_intermediate_version(int count)
+    {
+        var before = ImmutableVector<Item>.CreateRange(Enumerable.Range(0, count).Select(id => new Item(id)));
+        var first = before.SetItem(0, new Item(-1));
+        var second = first.SetItem(0, new Item(-2));
+        var third = second.SetItem(count - 1, new Item(-3));
+        var appended = third.Add(new Item(count));
+
+        Assert.Equal(Enumerable.Range(0, count), before.Select(item => item.Id));
+        Assert.Equal(-1, first[0].Id);
+        Assert.Equal(count - 1, first[count - 1].Id);
+        Assert.Equal(-2, second[0].Id);
+        Assert.Equal(count - 1, second[count - 1].Id);
+        Assert.Equal(-2, third[0].Id);
+        Assert.Equal(-3, third[count - 1].Id);
+        Assert.Equal(third.Select(item => item.Id).Append(count), appended.Select(item => item.Id));
+        Assert.Same(third, third.SetItem(count - 1, third[count - 1]));
+    }
+
     /// <summary>输入数组的后续替换不能改变持久化序列。</summary>
     [Fact]
     public void Construction_copies_the_input_buffer()

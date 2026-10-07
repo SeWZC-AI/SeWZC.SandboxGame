@@ -19,6 +19,12 @@ internal abstract class StateCursor<T>(T value)
     public void Replace(T value)
     {
         if (EqualityComparer<T>.Default.Equals(_value, value)) return;
+        ReplaceChanged(value);
+    }
+
+    // 字段设置器已比较目标字段；子状态发布已确认新引用，无需再遍历整个实体判断相等。
+    protected void ReplaceChanged(T value)
+    {
         Synchronize(value);
         _publish?.Invoke(value);
     }

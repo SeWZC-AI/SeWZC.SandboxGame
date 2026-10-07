@@ -69,10 +69,10 @@ public sealed partial class WorldEngine
                 InitializeAgent(person);
                 if (person.Health <= 0 || !_settlements.TryGetValue(person.SettlementId, out var home))
                     continue;
-                person.Agent.SocialNeed = Math.Min(100, person.Agent.SocialNeed + 0.07);
                 // 士兵补给由军队统一扣除，避免与居民系统重复消费。
                 if (person.ArmyId != 0)
                 {
+                    person.Agent.SocialNeed = Math.Min(100, person.Agent.SocialNeed + 0.07);
                     if ((Current.Tick + person.Id) % 16 == 0)
                         ObserveAgentEnvironment(person);
                     continue;
@@ -88,14 +88,7 @@ public sealed partial class WorldEngine
                     ProvisionAtHome(person, home);
                 }
 
-                DrinkCarriedWater(person);
-                if (person.Health <= 0)
-                    continue;
-                var consumption = !Current.Rules.Hunger ? 0 : FoodUse(person);
-                var meal = Math.Min(consumption, person.Inventory.Food);
-                person.Replace(person.Value with { Inventory = person.Inventory with { Food = person.Inventory.Food - meal }, Hunger = Math.Clamp(person.Hunger + (meal >= consumption - 0.000001 ? -3 : .8 * (1 - meal / consumption)), 0, 100) });
-                if (Current.Rules.Hunger && person.Hunger > 80)
-                    DamageResident(person, .30, DeathCause.Starvation);
+                AdvanceDailyNeeds(person);
                 if (person.Health <= 0)
                     continue;
                 if (arrivedHome)
@@ -156,11 +149,16 @@ public sealed partial class WorldEngine
                                  && (recipe is not null || IsHusbandry(assigned.Kind) ||
                                      ExpansionSupply(assigned.Kind) is not null || assigned.Health < 50))
             return;
-        (person.Inventory, home.Resources) = InventoryTransfer.Unload(person.Inventory, home.Resources,
+        var unloaded = InventoryTransfer.Unload(person.Inventory, home.Resources,
             WaterReserve(person), TravelReserve(person), person.Profession);
-        person.TravelMode = TravelMode.Foot;
-        if (person.Agent.Goal.Kind == AgentGoalKind.ReturnHome && person.Agent.DestinationSettlementId == 0)
-            person.Agent.MissionOriginSettlementId = 0;
+        var agent = person.Agent.Value;
+        if (agent.Goal.Kind == AgentGoalKind.ReturnHome && agent.DestinationSettlementId == 0 &&
+            agent.MissionOriginSettlementId != 0)
+            agent = agent with { MissionOriginSettlementId = 0 };
+        if (unloaded.Inventory != person.Inventory || person.TravelMode != TravelMode.Foot ||
+            !ReferenceEquals(agent, person.Agent.Value))
+            person.Replace(person.Value with { Inventory = unloaded.Inventory, TravelMode = TravelMode.Foot, Agent = agent });
+        home.Resources = unloaded.Warehouse;
     }
 
     private bool ProductiveGoalContinues(ResidentCursor person, SettlementCursor home)
@@ -820,22 +818,29 @@ public sealed partial class WorldEngine
         if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > interactionRange ||
             !CanTraverse(Current.Tiles[Index(person.X, person.Y)], person.TravelMode, person.Race))
         {
-            if (MoveAgentTowards(person, goal.TargetX, goal.TargetY))
-                person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + 0.15);
-            person.Activity = goal.Kind == AgentGoalKind.Flee ? ResidentActivity.Fleeing : ResidentActivity.Wandering;
+            var moved = MoveAgentTowards(person, goal.TargetX, goal.TargetY);
+            person.Replace(person.Value with
+            {
+                Agent = moved ? person.Agent.Value with { Fatigue = Math.Min(100, person.Agent.Fatigue + .15) } : person.Agent.Value,
+                Activity = goal.Kind == AgentGoalKind.Flee ? ResidentActivity.Fleeing : ResidentActivity.Wandering,
+            });
             return;
         }
 
         if (Current.Tick - person.MoveStartedTick < person.MoveDurationTicks)
             return;
-        person.Agent.Goal = goal = goal with
+        goal = goal with
         {
             WorkTicks = goal.WorkTicks + 1,
         };
         switch (goal.Kind)
         {
             case AgentGoalKind.Eat:
-                person.Activity = ResidentActivity.Eating;
+                person.Replace(person.Value with
+                {
+                    Activity = ResidentActivity.Eating,
+                    Agent = person.Agent.Value with { Goal = goal },
+                });
                 if (Distance(person.X, person.Y, home.X, home.Y) <= 1)
                     ProvisionAtHome(person, home);
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.FoodSupply, home.Id,
@@ -843,9 +848,11 @@ public sealed partial class WorldEngine
                 person.Agent.NextThinkTick = Current.Tick + 1;
                 break;
             case AgentGoalKind.Gather:
+                person.Agent.Goal = goal;
                 GatherActualResources(person, Profession.Farmer);
                 break;
             case AgentGoalKind.Work:
+                person.Agent.Goal = goal;
                 if (goal.TargetEntityId == 0 &&
                     person.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner)
                     GatherActualResources(person, person.Profession);
@@ -857,52 +864,90 @@ public sealed partial class WorldEngine
                     person.Agent.NextThinkTick = Current.Tick + 1;
                 break;
             case AgentGoalKind.Rest:
-                person.Activity = ResidentActivity.Resting;
-                person.Agent.Fatigue = Math.Max(0, person.Agent.Fatigue - 2.2 * HomeRestMultiplier(person));
+                person.Replace(person.Value with
+                {
+                    Activity = ResidentActivity.Resting,
+                    Agent = person.Agent.Value with
+                    {
+                        Goal = goal,
+                        Fatigue = Math.Max(0, person.Agent.Fatigue - 2.2 * HomeRestMultiplier(person)),
+                    },
+                });
                 break;
             case AgentGoalKind.Flee:
-                person.Activity = ResidentActivity.Fleeing;
-                person.Agent.NextThinkTick = Current.Tick + 1;
+                person.Replace(person.Value with
+                {
+                    Activity = ResidentActivity.Fleeing,
+                    Agent = person.Agent.Value with { Goal = goal, NextThinkTick = Current.Tick + 1 },
+                });
                 break;
             case AgentGoalKind.Socialize:
-                person.Activity = ResidentActivity.Talking;
-                person.Agent.Fatigue = Math.Max(0, person.Agent.Fatigue - .4);
+                person.Replace(person.Value with
+                {
+                    Activity = ResidentActivity.Talking,
+                    Agent = person.Agent.Value with { Goal = goal, Fatigue = Math.Max(0, person.Agent.Fatigue - .4) },
+                });
                 break;
             case AgentGoalKind.Study:
             case AgentGoalKind.TrainMagic:
+                person.Agent.Goal = goal;
                 if (TryWorkAtBuilding(person))
                     person.Activity = ResidentActivity.Studying;
                 else
                     person.Agent.NextThinkTick = Current.Tick + 1;
                 break;
             case AgentGoalKind.ReturnHome:
+                person.Agent.Goal = goal;
                 TransferPersonalProduction(person, home);
                 FinishFoundation(person, home);
-                person.Activity = ResidentActivity.Resting;
-                person.Agent.Fatigue = Math.Max(0, person.Agent.Fatigue - 0.8 * HomeRestMultiplier(person));
-                person.Agent.NextThinkTick = home.FoundationPending ? Current.Tick + 4 : Current.Tick + 1;
+                person.Replace(person.Value with
+                {
+                    Activity = ResidentActivity.Resting,
+                    Agent = person.Agent.Value with
+                    {
+                        Fatigue = Math.Max(0, person.Agent.Fatigue - .8 * HomeRestMultiplier(person)),
+                        NextThinkTick = home.FoundationPending ? Current.Tick + 4 : Current.Tick + 1,
+                    },
+                });
                 break;
             case AgentGoalKind.Explore:
                 // 完成一段探索后保持向外前进，补给或受阻时才转向，避免反复绕同一小圈。
-                if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) == 0 && goal.TargetX == person.FromX &&
-                    goal.TargetY == person.FromY)
-                    person.Agent.ExplorationHeading = (person.Agent.ExplorationHeading + 1) % 8;
-                person.Agent.NextThinkTick = Current.Tick + 1;
-                person.Activity = ResidentActivity.Working;
+                var turn = Distance(person.X, person.Y, goal.TargetX, goal.TargetY) == 0 &&
+                           goal.TargetX == person.FromX && goal.TargetY == person.FromY;
+                person.Replace(person.Value with
+                {
+                    Activity = ResidentActivity.Working,
+                    Agent = person.Agent.Value with
+                    {
+                        Goal = goal,
+                        ExplorationHeading = turn ? (person.Agent.ExplorationHeading + 1) % 8 : person.Agent.ExplorationHeading,
+                        NextThinkTick = Current.Tick + 1,
+                    },
+                });
                 break;
             case AgentGoalKind.ClaimLand:
-                person.Activity = ResidentActivity.Working;
+                person.Replace(person.Value with
+                {
+                    Activity = ResidentActivity.Working,
+                    Agent = person.Agent.Value with { Goal = goal },
+                });
                 TryClaimLand(person);
                 break;
             case AgentGoalKind.FetchWater:
+                person.Agent.Goal = goal;
                 TryFetchWater(person);
                 break;
             case AgentGoalKind.Hunt:
             case AgentGoalKind.Fish:
+                person.Agent.Goal = goal;
                 TryHarvestWildlife(person);
                 break;
             case AgentGoalKind.ExtinguishFire:
+                person.Agent.Goal = goal;
                 TryExtinguishFire(person);
+                break;
+            default:
+                person.Agent.Goal = goal;
                 break;
         }
     }
