@@ -1,11 +1,18 @@
 <Solution>
-  <Folder Name="/src/">
+  <Folder Name="/0.Solution/">
+    <File Path=".gitignore" />
+    <File Path="AGENTS.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="global.json" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/1.Sources/">
     <Project Path="src/SeWZC.WorldBox.Browser/SeWZC.WorldBox.Browser.csproj" />
     <Project Path="src/SeWZC.WorldBox.Core/SeWZC.WorldBox.Core.csproj" />
     <Project Path="src/SeWZC.WorldBox.Desktop/SeWZC.WorldBox.Desktop.csproj" />
     <Project Path="src/SeWZC.WorldBox.UI/SeWZC.WorldBox.UI.csproj" />
   </Folder>
-  <Folder Name="/tests/">
+  <Folder Name="/2.Tests/">
     <Project Path="tests/SeWZC.WorldBox.Core.Tests/SeWZC.WorldBox.Core.Tests.csproj" />
     <Project Path="tests/SeWZC.WorldBox.UI.Tests/SeWZC.WorldBox.UI.Tests.csproj" />
   </Folder>
