@@ -2,23 +2,23 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    /// <summary>判断地形是否属于海洋、河流或湖泊水域。</summary>
-    /// <param name="terrain">待查询或设置的地形类别。</param>
+    /// <summary>判断是否为水域地形。</summary>
+    /// <param name="terrain">地形类别。</param>
     public static bool IsWaterTerrain(TerrainType terrain)
     {
         return terrain is TerrainType.Water or TerrainType.DeepWater or TerrainType.River or TerrainType.Stream
             or TerrainType.LargeRiver or TerrainType.Lake;
     }
 
-    /// <summary>判断地格是否为小溪、河流、大江或湖泊淡水源。</summary>
-    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <summary>判断地格是否为淡水水域。</summary>
+    /// <param name="tile">要判断水域类型的地格。</param>
     public static bool IsFreshWater(Tile tile)
     {
         return tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver or TerrainType.Lake;
     }
 
     /// <summary>判断地格是否可提供自然淡水。</summary>
-    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="tile">要判断自然供水能力的地格。</param>
     public static bool IsWaterSource(Tile tile)
     {
         return IsFreshWater(tile) || tile.NaturalWaterYield > 0;

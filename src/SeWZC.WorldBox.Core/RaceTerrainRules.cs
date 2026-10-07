@@ -1,11 +1,11 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>查询种族对各类地形的适应程度及步行通行能力。</summary>
+/// <summary>种族的地形适应规则。</summary>
 public static class RaceTerrainRules
 {
-    /// <summary>查询种族在指定地形上的宜居性、移动成本和劳动效率修正。</summary>
-    /// <param name="race">居民种族，用于应用对应的通行或劳动规则。</param>
-    /// <param name="terrain">待查询或设置的地形类别。</param>
+    /// <summary>查询种族对指定地形的适应参数。</summary>
+    /// <param name="race">居民种族。</param>
+    /// <param name="terrain">地形类别。</param>
     public static TerrainAdaptation For(RaceKind race, TerrainType terrain)
     {
         var common = terrain is TerrainType.Grass or TerrainType.Meadow or TerrainType.Woodland
@@ -32,8 +32,8 @@ public static class RaceTerrainRules
     }
 
     /// <summary>按基础通行和种族特例判断居民能否步行进入地格。</summary>
-    /// <param name="tile">待查询或操作的地格状态。</param>
-    /// <param name="race">居民种族，用于应用对应的通行或劳动规则。</param>
+    /// <param name="tile">准备步行进入的地格。</param>
+    /// <param name="race">居民种族。</param>
     public static bool CanWalk(Tile tile, RaceKind race)
     {
         return tile.IsWalkable || (race == RaceKind.Dwarf && tile.Terrain == TerrainType.Mountain);

@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>以物种编号和精确数量组成的稀疏数组读写动物种群。</summary>
+/// <summary>动物种群的稀疏 JSON 转换器，只保存非零数量。</summary>
 internal sealed class WildlifePopulationsJsonConverter : JsonConverter<WildlifePopulations>
 {
     /// <inheritdoc />
@@ -28,7 +28,7 @@ internal sealed class WildlifePopulationsJsonConverter : JsonConverter<WildlifeP
         return populations;
     }
 
-    // 写入时保留非零小量和异常值，避免过滤后掩盖无效状态；读取时再由校验器拒绝。
+    // 保留非零小量和异常值；过滤它们会掩盖无效状态。
     /// <inheritdoc />
     public override void Write(Utf8JsonWriter writer, WildlifePopulations value, JsonSerializerOptions options)
     {

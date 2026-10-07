@@ -3,7 +3,7 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     /// <summary>取得国家指定或根据本地文化和魔法开关推导的发展方向。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     public DevelopmentFocus GetDevelopmentFocus(int settlementId)
     {
         var town = RequireTown(settlementId);
@@ -30,7 +30,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>设置国家未来规划的发展方向，并记录变化。</summary>
-    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="nationId">国家 ID。</param>
     /// <param name="focus">未来规划采用的发展方向。</param>
     public void SetDevelopmentFocus(int nationId, DevelopmentFocus focus)
     {

@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>仓库库存、个人背包、成本及生产配方中的各类资源数量。</summary>
+/// <summary>可原地修改的一组资源数量。</summary>
 public sealed partial class ResourceStock
 {
     // 省略零数量后，缺失字段必须还原为零，因此不能使用非零属性初值。

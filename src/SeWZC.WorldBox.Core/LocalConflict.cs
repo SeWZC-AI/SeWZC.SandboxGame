@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>居民之间资源冲突的参与者、紧张度、位置和阶段记录。</summary>
+/// <summary>居民之间的一场局部资源冲突。</summary>
 public sealed class LocalConflict
 {
     /// <summary>局部冲突的稳定 ID。</summary>
@@ -12,13 +12,13 @@ public sealed class LocalConflict
     /// <summary>最初参与冲突的第二位居民 ID。</summary>
     public int SecondResidentId { get; set; }
 
-    /// <summary>关联或归属聚落的稳定 ID。</summary>
+    /// <summary>冲突发生的聚落 ID。</summary>
     public int SettlementId { get; set; }
 
-    /// <summary>所在地点的横向地格坐标。</summary>
+    /// <summary>冲突地点的横向地格坐标。</summary>
     public int X { get; set; }
 
-    /// <summary>所在地点的纵向地格坐标。</summary>
+    /// <summary>冲突地点的纵向地格坐标。</summary>
     public int Y { get; set; }
 
     /// <summary>冲突目前影响的参与者范围。</summary>

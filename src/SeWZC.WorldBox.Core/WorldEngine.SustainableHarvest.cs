@@ -3,7 +3,7 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     /// <summary>按陆地肥力计算自然资源恢复上限，水域地格返回零。</summary>
-    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="tile">要评估资源容量的地格。</param>
     public static double NaturalResourceCapacity(Tile tile)
     {
         return IsWaterTerrain(tile.Terrain) ? 0 : 50 + tile.Fertility;
@@ -37,7 +37,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>扣除可采集的植物生物量，保留未采集的物种，并返回实际采集量。</summary>
-    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="tile">采集植物的地格。</param>
     /// <param name="desired">希望采集的资源数量，实际量受可持续存量限制。</param>
     /// <param name="wood">是否采集木材；关闭时采集食物。</param>
     private static double HarvestPlants(Tile tile, double desired, bool wood = false)

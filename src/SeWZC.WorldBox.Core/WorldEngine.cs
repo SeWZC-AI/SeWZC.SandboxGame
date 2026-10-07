@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>不依赖界面和平台的单线程世界引擎，负责生成、模拟、编辑与保存续演。</summary>
+/// <summary>驱动世界模拟的引擎，也是世界查询与编辑的入口。</summary>
 public sealed partial class WorldEngine
 {
     /// <summary>世界存活居民数量的上限。</summary>
@@ -160,7 +160,7 @@ public sealed partial class WorldEngine
     /// <param name="x">事件地点的横向地格坐标，-1 表示无具体地点。</param>
     /// <param name="y">事件地点的纵向地格坐标，-1 表示无具体地点。</param>
     /// <param name="action">事件记录的具体行动。</param>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="residentId">待操作居民的稳定 ID。</param>
     /// <param name="causeEventId">关联的前因事件 ID，0 表示未指定前因。</param>
     /// <param name="evidenceFactId">关联的信息依据 ID，0 表示未指定依据。</param>

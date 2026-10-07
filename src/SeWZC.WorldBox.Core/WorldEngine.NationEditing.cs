@@ -3,7 +3,7 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     /// <summary>修改国家的旗帜和领土显示颜色，并记录玩家编辑。</summary>
-    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="nationId">国家 ID。</param>
     /// <param name="colorArgb">新的 ARGB 编码颜色。</param>
     public void SetNationColor(int nationId, uint colorArgb)
     {
@@ -12,7 +12,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>将国家的古代工具等级设为 1 至 5，独立于聚落研究的完成情况。</summary>
-    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="nationId">国家 ID。</param>
     /// <param name="level">古代工具等级，范围为 1 至 5。</param>
     public void SetNationTechnology(int nationId, int level)
     {
@@ -81,7 +81,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>将至少拥有两处聚落的国家中的一处聚落独立为新国家，并返回国家 ID。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="name">新的名称。</param>
     public int SplitSettlement(int settlementId, string name)
     {

@@ -26,8 +26,8 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Editor, "玩家调整世界规则，新的选择按新规则执行；已有项目与成果保留。");
     }
 
-    /// <summary>查询聚落当前发展阶段、项目目标、阻碍和完成比例。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <summary>查询聚落当前的发展概况。</summary>
+    /// <param name="settlementId">聚落 ID。</param>
     public DevelopmentSummary GetDevelopment(int settlementId)
     {
         var town = RequireTown(settlementId);
@@ -63,7 +63,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>检查设施放置、研究和材料条件；可放置时返回空值，否则返回原因。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="kind">设施类别。</param>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
@@ -187,7 +187,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>按赐予规则直接放置完工设施，并返回新建筑 ID。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="kind">设施类别。</param>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
@@ -200,7 +200,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>判断建筑是否满足本地运营条件。</summary>
-    /// <param name="building">待查询或操作的建筑状态。</param>
+    /// <param name="building">要检查运营条件的建筑。</param>
     public bool IsBuildingOperational(Building building)
     {
         return IsFacilityOperating(building)
@@ -214,7 +214,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>检查笔刷范围内修建道路的条件；可修建时返回空值，否则返回原因。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
     /// <param name="radius">道路笔刷的作用半径，以地格为单位。</param>

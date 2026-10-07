@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>提供不改变事件、模拟时间或随机状态的编年史关联和聚合查询。</summary>
+/// <summary>编年史的只读查询工具。</summary>
 public static class WorldStories
 {
     /// <summary>判断事件是否关联指定的国家、聚落或居民。</summary>

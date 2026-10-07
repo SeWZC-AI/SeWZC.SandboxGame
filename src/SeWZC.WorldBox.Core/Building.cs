@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>实际设施的归属、施工、生命值、劳动及生产或服务记录。</summary>
+/// <summary>世界中可建造并运营的设施。</summary>
 public sealed partial class Building
 {
     /// <summary>牧场或养殖厂实际饲养的动物物种。</summary>
@@ -29,13 +29,13 @@ public sealed partial class Building
     [JsonRequired]
     public bool Enabled { get; set; } = true;
 
-    /// <summary>本轮施工的事件、贡献者和进度采样记录。</summary>
+    /// <summary>本轮施工的进展观测记录。</summary>
     public ProjectObservation Observation { get; set; } = new();
 
     /// <summary>建筑的稳定 ID。</summary>
     public int Id { get; set; }
 
-    /// <summary>关联或归属聚落的稳定 ID。</summary>
+    /// <summary>建筑所属聚落的 ID。</summary>
     public int SettlementId { get; set; }
 
     /// <summary>设施类别。</summary>

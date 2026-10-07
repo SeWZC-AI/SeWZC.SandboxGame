@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>亲眼观察或转述得到的信息，保留原始依据和本副本的获知记录，内容可能已经过时。</summary>
+/// <summary>居民观察或获知的一条信息，可能已经过时。</summary>
 public sealed class AgentFact
 {
     /// <summary>关联的世界事件 ID，0 表示未关联事件。</summary>
@@ -24,10 +24,10 @@ public sealed class AgentFact
     /// <summary>信息关联主体的 ID，具体含义由议题类别决定。</summary>
     public int SubjectId { get; set; }
 
-    /// <summary>所在地点的横向地格坐标。</summary>
+    /// <summary>信息所指地点的横向地格坐标。</summary>
     public int X { get; set; }
 
-    /// <summary>所在地点的纵向地格坐标。</summary>
+    /// <summary>信息所指地点的纵向地格坐标。</summary>
     public int Y { get; set; }
 
     /// <summary>观察得到的数值，具体含义由议题类别决定。</summary>

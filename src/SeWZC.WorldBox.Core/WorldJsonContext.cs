@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>为存档及编辑副本生成序列化元数据，在裁剪后的 WebAssembly 构建中仍可使用。</summary>
+/// <summary>存档与编辑副本的源生成 JSON 序列化上下文，支持裁剪后的 WebAssembly。</summary>
 [JsonSourceGenerationOptions(WriteIndented = false)]
 [JsonSerializable(typeof(WorldState))]
 [JsonSerializable(typeof(Resident))]

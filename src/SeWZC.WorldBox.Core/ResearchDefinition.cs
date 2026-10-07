@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>研究节点的前置条件、成本、所需工作量、分支及解锁的玩法入口。</summary>
+/// <summary>研究树中一个知识项目的定义。</summary>
 /// <param name="kind">研究项目类别。</param>
 /// <param name="name">研究显示名称。</param>
 /// <param name="branch">研究所属分支。</param>

@@ -196,8 +196,8 @@ public sealed partial class WorldEngine
         return ResearchRules.For(kind).Cost.Copy();
     }
 
-    /// <summary>校验并扣除聚落材料后建立待施工设施，返回建筑 ID。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <summary>创建待施工设施并扣除聚落材料，返回建筑 ID。</summary>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="kind">设施类别。</param>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
@@ -265,7 +265,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>校验并扣除本地材料，在笔刷范围内没有道路的可通行地格修建道路。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
     /// <param name="radius">道路笔刷的作用半径，以地格为单位。</param>
@@ -282,8 +282,8 @@ public sealed partial class WorldEngine
         RefreshTotals();
     }
 
-    /// <summary>校验前置与材料后启动聚落研究项目。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <summary>启动聚落研究项目。</summary>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="kind">研究项目。</param>
     public void StartResearch(int settlementId, ResearchKind kind)
     {
@@ -312,7 +312,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>判断指定聚落是否已经掌握某项研究。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="kind">研究项目。</param>
     public bool HasResearch(int settlementId, ResearchKind kind)
     {
@@ -325,7 +325,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>查询聚落所属国家的古代工具等级。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     public int GetLocalTechnologyLevel(int settlementId)
     {
         return 1 + (State.Society.Research.FirstOrDefault(r => r.SettlementId == settlementId)?.Completed
@@ -333,7 +333,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>将实际收到的研究知识记入聚落，关联其递送依据和前因。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="kind">研究项目。</param>
     /// <param name="causeEventId">关联的前因事件 ID，0 表示未指定前因。</param>
     /// <param name="evidenceFactId">关联的信息依据 ID，0 表示未指定依据。</param>
@@ -714,7 +714,7 @@ public sealed partial class WorldEngine
     /// <summary>计算包含种族、道路和地块改良修正的步行成本，越界或不可通行时为正无穷。</summary>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
-    /// <param name="race">居民种族，用于应用对应的通行或劳动规则。</param>
+    /// <param name="race">居民种族。</param>
     public double GetTerrainMoveCost(int x, int y, RaceKind race = RaceKind.Human)
     {
         if (!InBounds(x, y)) return double.PositiveInfinity;
@@ -740,8 +740,8 @@ public sealed partial class WorldEngine
     /// <summary>计算实际信使在此地的移动速率倍率，包含地形及附近本国驿站加成。</summary>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
-    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
-    /// <param name="race">居民种族，用于应用对应的通行或劳动规则。</param>
+    /// <param name="nationId">国家 ID。</param>
+    /// <param name="race">居民种族。</param>
     public double MessageTravelMultiplier(int x, int y, int nationId, RaceKind race = RaceKind.Human)
     {
         if (!InBounds(x, y)) return 0;
@@ -842,7 +842,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>设置国家制度形式，并记录玩家干预。</summary>
-    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="nationId">国家 ID。</param>
     /// <param name="kind">国家制度形式。</param>
     public void SetInstitution(int nationId, InstitutionKind kind)
     {
@@ -852,7 +852,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>为国家指定政策，并安排其在相关聚落生效。</summary>
-    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="nationId">国家 ID。</param>
     /// <param name="policy">待应用的政策。</param>
     public void SetPolicy(int nationId, PolicyKind policy)
     {
@@ -872,7 +872,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>清除国家和本地的玩家政策覆盖，恢复机构自主选择。</summary>
-    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="nationId">国家 ID。</param>
     public void SetPolicyAutonomy(int nationId)
     {
         _ = RequireNation(nationId);
@@ -882,21 +882,21 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>查询聚落当前采用的政策，没有记录时返回均衡政策。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     public PolicyKind GetLocalPolicy(int settlementId)
     {
         return State.Society.Policies.FirstOrDefault(p => p.SettlementId == settlementId)?.Kind ?? PolicyKind.Balanced;
     }
 
     /// <summary>返回本地政策对生产的倍率。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     public double GetPolicyProductionMultiplier(int settlementId)
     {
         return GetLocalPolicy(settlementId) == PolicyKind.FoodSecurity ? 1.25 : 1;
     }
 
     /// <summary>将已经递送到本地的政策应用到聚落。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="policy">待应用的政策。</param>
     public void ApplyReceivedPolicy(int settlementId, PolicyKind policy)
     {
@@ -1062,7 +1062,7 @@ public sealed partial class WorldEngine
         culture.Name = name;
     }
 
-    /// <summary>校验并设置文化的合作、创新和亲自然权重。</summary>
+    /// <summary>设置文化的行为倾向权重。</summary>
     /// <param name="cultureId">文化定义的稳定 ID。</param>
     /// <param name="cooperation">合作倾向权重，范围为 0 至 1。</param>
     /// <param name="innovation">创新倾向权重，范围为 0 至 1。</param>
@@ -1078,7 +1078,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>指定国家的文化归属。</summary>
-    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="nationId">国家 ID。</param>
     /// <param name="cultureId">文化定义的稳定 ID。</param>
     public void SetNationCulture(int nationId, int cultureId)
     {
@@ -1141,7 +1141,7 @@ public sealed partial class WorldEngine
 
     /// <summary>尝试按正式施法命令执行法术；条件不满足时返回失败。</summary>
     /// <param name="casterId">施法居民的稳定 ID。</param>
-    /// <param name="spell">待查询或施放的法术。</param>
+    /// <param name="spell">法术类别。</param>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
     public bool TryCastSpell(int casterId, SpellKind spell, int x, int y)
@@ -1157,9 +1157,9 @@ public sealed partial class WorldEngine
         }
     }
 
-    /// <summary>校验施法资格、距离和目标后消耗魔力，产生法术实际效果。</summary>
+    /// <summary>消耗居民魔力，在指定地点施放法术。</summary>
     /// <param name="casterId">施法居民的稳定 ID。</param>
-    /// <param name="spell">待查询或施放的法术。</param>
+    /// <param name="spell">法术类别。</param>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
     public void CastSpell(int casterId, SpellKind spell, int x, int y)
@@ -1333,7 +1333,7 @@ public sealed partial class WorldEngine
         foreach (var building in State.Society.Buildings) building.Workers.RemoveAll(id => !people.Contains(id));
     }
 
-    /// <summary>在当前模拟日更新社会分工、设施、研究、政策和通信相关状态。</summary>
+    /// <summary>推进当前模拟日的社会发展。</summary>
     public void TickSociety()
     {
         if (State.Tick % 30 == 0)

@@ -108,7 +108,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>按资源、地形、道路和邻近设施计算选址评分；聚落或地点不存在时返回负无穷。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="kind">设施类别。</param>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
@@ -182,7 +182,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>计算本地基础住房与正在运营的住宅提供的总容量。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     public int GetHousingCapacity(int settlementId)
     {
         var town = RequireTown(settlementId);
@@ -208,7 +208,7 @@ public sealed partial class WorldEngine
     /// <summary>计算附近本国运营码头对舟船速度提供的倍率。</summary>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
-    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="nationId">国家 ID。</param>
     public double BoatTravelMultiplier(int x, int y, int nationId)
     {
         var bonus = 1d;

@@ -5,7 +5,7 @@ public sealed partial class WorldEngine
     /// <summary>替换圆形笔刷范围内的地形，重置当地资源和地块改良，并处理位置失效的实体。</summary>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
-    /// <param name="terrain">待查询或设置的地形类别。</param>
+    /// <param name="terrain">地形类别。</param>
     /// <param name="radius">笔刷作用半径，以地格为单位。</param>
     public void PaintTerrain(int x, int y, TerrainType terrain, int radius = 2)
     {
@@ -277,7 +277,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>校验并修改国家名称，同时记录玩家编辑事件。</summary>
-    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="nationId">国家 ID。</param>
     /// <param name="name">新的名称。</param>
     public void RenameNation(int nationId, string name)
     {
@@ -291,7 +291,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>将指定的国家资源总量均分到各聚落仓库；未指定的资源保留原库存。</summary>
-    /// <param name="nationId">归属或待编辑国家的稳定 ID。</param>
+    /// <param name="nationId">国家 ID。</param>
     /// <param name="food">要设置的国家粮食总量，空值表示保留现有库存。</param>
     /// <param name="wood">要设置的国家木材总量，空值表示保留现有库存。</param>
     /// <param name="stone">要设置的国家石材总量，空值表示保留现有库存。</param>

@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>项目开工事件、贡献者和近期进度样本，用于估算完工时间。</summary>
+/// <summary>项目的进展观测记录，用于估算完工时间。</summary>
 public sealed class ProjectObservation
 {
     /// <summary>当前项目开始时关联的事件 ID。</summary>

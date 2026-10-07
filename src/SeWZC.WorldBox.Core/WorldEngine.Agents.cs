@@ -1138,7 +1138,7 @@ public sealed partial class WorldEngine
         return latest;
     }
 
-    /// <summary>参与评分的候选任务，记录位置、目标实体及作为依据的记忆。</summary>
+    /// <summary>参与居民行动决策评分的候选目标。</summary>
     /// <param name="Kind">候选行动目标类别。</param>
     /// <param name="X">候选目标的横向地格坐标。</param>
     /// <param name="Y">候选目标的纵向地格坐标。</param>
@@ -1157,7 +1157,7 @@ public sealed partial class WorldEngine
         int SettlementId = 0,
         int EntityId = 0);
 
-    /// <summary>在同一模拟日和通行修订号下，按起点、种族和交通方式复用的有界可达性缓存。</summary>
+    /// <summary>居民可见范围内的可达地格缓存。</summary>
     private sealed class VisibleAccessCache
     {
         private const int Slots = 1024, Cells = 85;

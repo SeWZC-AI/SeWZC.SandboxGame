@@ -1,6 +1,4 @@
-// Avalonia 12.1.3 accepts characters from keydown or compositionend, but ignores
-// insertText in beforeinput. Android virtual keyboards can emit Unidentified
-// keydown followed by insertText, so those characters never reach the editor.
+// 补齐 Avalonia 12.1.3 未接收的软键盘输入：Android 可能只通过 beforeinput 提供字符。
 export function installTextInputBridge(root) {
     const states = new WeakMap();
     const stateFor = target => {
@@ -39,7 +37,7 @@ export function installTextInputBridge(root) {
         if (!state || event.isComposing || state.composing) return;
         const recentKey = performance.now() - state.keyAt < 150 ? state.key : null;
         if (event.inputType === 'insertText' && event.data) {
-            // Physical keys and normal IME commits already use Avalonia's own path.
+            // 实体按键和输入法提交已由 Avalonia 处理，不能重复输入。
             if (recentKey === event.data && recentKey.length === 1 || state.commit === event.data && performance.now() - state.commitAt < 150) {
                 event.preventDefault();
                 state.commit = null;

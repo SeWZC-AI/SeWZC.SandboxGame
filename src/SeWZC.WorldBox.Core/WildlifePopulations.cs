@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace SeWZC.WorldBox.Core;
 
 // 使用值类型避免每格分配集合；稀疏存档按物种编号保存精确的非零数量。
-/// <summary>按物种保存的动物数量，可与地格主种群合并查询。</summary>
+/// <summary>按物种记录的一组动物种群数量。</summary>
 [JsonConverter(typeof(WildlifePopulationsJsonConverter))]
 public struct WildlifePopulations : IEquatable<WildlifePopulations>
 {

@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>乔木、灌木、草本和芦苇占地格植物组成的份额。</summary>
+/// <summary>地格内各类自然植物的组成份额。</summary>
 public struct PlantCoverage : IEquatable<PlantCoverage>
 {
     /// <summary>乔木在此格植物组成中的份额。</summary>

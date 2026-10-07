@@ -8,7 +8,7 @@ using SeWZC.WorldBox.UI.Platform;
 
 namespace SeWZC.WorldBox.Desktop;
 
-/// <summary>保存压缩的本地自动存档，并通过系统文件选择器导入或导出 UTF-8 世界文件。</summary>
+/// <summary>基于本地文件的桌面世界存档存储。</summary>
 /// <param name="savePath">自动存档文件路径，空值时使用系统本地应用数据目录中的默认路径。</param>
 internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStorage
 {

@@ -1,10 +1,10 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>从地格共享资源存量推导的只读植物数量、覆盖率和产物名称。</summary>
+/// <summary>地格植物及其可采集产物的查询工具。</summary>
 public static class PlantResources
 {
     /// <summary>枚举各类植物的份额或农田作物，跳过正在燃烧或资源耗尽的地格。</summary>
-    /// <param name="tile">待查询或操作的地格状态。</param>
+    /// <param name="tile">要查询植物的地格。</param>
     public static IEnumerable<(PlantKind Kind, double Cover, double Quantity)> At(Tile tile)
     {
         if (tile.FireTicks > 0 || tile.ResourceAmount <= 0) yield break;

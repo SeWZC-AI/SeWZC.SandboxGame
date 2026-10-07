@@ -37,7 +37,7 @@ public sealed partial class WorldEngine
     /// <param name="toX">终点的横向地格坐标。</param>
     /// <param name="toY">终点的纵向地格坐标。</param>
     /// <param name="mode">待判断的交通方式。</param>
-    /// <param name="race">居民种族，用于应用对应的通行或劳动规则。</param>
+    /// <param name="race">居民种族。</param>
     public bool CanTraverseStep(int fromX, int fromY, int toX, int toY, TravelMode mode, RaceKind race = RaceKind.Human)
     {
         if (!InBounds(fromX, fromY) || !InBounds(toX, toY) || Distance(fromX, fromY, toX, toY) != 1
@@ -111,7 +111,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>计算设施升级或桥梁改向所需的资源成本。</summary>
-    /// <param name="building">待查询或操作的建筑状态。</param>
+    /// <param name="building">准备升级或改向的建筑。</param>
     /// <param name="reorient">是否计算桥梁改向成本，关闭时计算升级成本。</param>
     public static ResourceStock GetUpgradeCost(Building building, bool reorient = false)
     {

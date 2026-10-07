@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>派生的国家地格计数，以及分别跟踪占地和通行变化的修订号。</summary>
+/// <summary>随地格归属变化更新的国家领土计数缓存。</summary>
 internal sealed class TerritoryCounts
 {
     private readonly Dictionary<int, int> _counts = [];

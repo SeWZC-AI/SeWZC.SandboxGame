@@ -10,7 +10,7 @@ using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
-/// <summary>绘制世界地图、实体和行动动画，并处理镜头、选择及地图工具交互。</summary>
+/// <summary>世界地图的显示与交互控件。</summary>
 public sealed partial class WorldMapControl : Control
 {
     private const int TilePixels = 8;

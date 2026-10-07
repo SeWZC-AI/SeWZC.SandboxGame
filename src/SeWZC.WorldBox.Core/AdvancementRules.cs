@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>查询科技与魔法路线的研究及实体生产配方，两条路线可以独立发展。</summary>
+/// <summary>科技与魔法路线的生产技术目录。</summary>
 public static class AdvancementRules
 {
     private static readonly IReadOnlyDictionary<ResearchKind, Advancement> ByResearch;
@@ -27,7 +27,7 @@ public static class AdvancementRules
     /// <summary>配方和库存查询使用的全部资源种类。</summary>
     public static IReadOnlyList<ResourceKind> Resources { get; } = Array.AsReadOnly(Enum.GetValues<ResourceKind>());
 
-    /// <summary>科技与魔法路线中的研究及设施生产配方。</summary>
+    /// <summary>科技与魔法路线的生产技术定义。</summary>
     public static IReadOnlyList<Advancement> All { get; } = Array.AsReadOnly(new Advancement[]
     {
         new(ResearchKind.Industry, "工业冶炼", "工业", false, [ResearchKind.Agriculture, ResearchKind.Logistics],

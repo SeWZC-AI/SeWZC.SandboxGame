@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>独立于种族和国家的文化名称及合作、创新和亲自然权重。</summary>
+/// <summary>影响居民行为倾向的文化定义。</summary>
 public sealed class CultureDefinition
 {
     /// <summary>文化的稳定 ID。</summary>

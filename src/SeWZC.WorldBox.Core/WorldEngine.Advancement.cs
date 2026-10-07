@@ -5,7 +5,7 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     /// <summary>检查魔法开关和本地研究前置条件，满足时返回空值，否则返回限制原因。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="kind">研究项目。</param>
     public string? ResearchPrerequisiteError(int settlementId, ResearchKind kind)
     {
@@ -26,7 +26,7 @@ public sealed partial class WorldEngine
         return true;
     }
 
-    /// <summary>返回研究所属分支、阶段、前置知识及实际效果的说明。</summary>
+    /// <summary>返回研究项目的说明文字。</summary>
     /// <param name="kind">研究项目。</param>
     public static string ResearchDescription(ResearchKind kind)
     {
@@ -36,7 +36,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>根据本地研究和文明达成情况返回发展阶段名称。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     public string GetAdvancementStage(int settlementId)
     {
         string Stage(bool magic)
@@ -57,7 +57,7 @@ public sealed partial class WorldEngine
         return $"科技：{Stage(false)}\n魔法：{Stage(true)}";
     }
 
-    /// <summary>返回设施每批生产的原料、产物和魔力消耗说明。</summary>
+    /// <summary>返回设施的生产配方说明。</summary>
     /// <param name="kind">设施类别。</param>
     public static string ProductionRecipe(BuildingKind kind)
     {
@@ -104,7 +104,7 @@ public sealed partial class WorldEngine
         return a.Yield * building.Efficiency * multiplier * tile.Fertility / 100d * (tile.DroughtTicks > 0 ? .18 : 1);
     }
 
-    /// <summary>返回设施实际劳动、原料供给和生产状态的说明。</summary>
+    /// <summary>返回设施当前的生产状态说明。</summary>
     /// <param name="buildingId">待操作建筑的稳定 ID。</param>
     public string GetProductionStatus(int buildingId)
     {

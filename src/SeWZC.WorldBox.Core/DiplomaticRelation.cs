@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>两国共同的外交状态、各自对对方的态度及协商记录。</summary>
+/// <summary>两个国家之间的外交关系。</summary>
 public sealed class DiplomaticRelation
 {
     /// <summary>最近一次外交状态变化的模拟日序。</summary>

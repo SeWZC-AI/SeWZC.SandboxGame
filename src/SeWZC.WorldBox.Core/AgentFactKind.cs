@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>居民观察、记忆或转述的信息议题类别。</summary>
+/// <summary>居民信息记录的议题类别。</summary>
 public enum AgentFactKind
 {
     /// <summary>食物供给。</summary>

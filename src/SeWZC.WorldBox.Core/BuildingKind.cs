@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>生产、服务、交通及种族专属设施的类别。</summary>
+/// <summary>建筑与设施的类别。</summary>
 public enum BuildingKind
 {
     /// <summary>农场。</summary>

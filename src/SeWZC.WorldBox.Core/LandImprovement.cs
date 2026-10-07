@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>地格上的农田、山路或桥梁改良。</summary>
+/// <summary>地格上的人工改良类别。</summary>
 public enum LandImprovement
 {
     /// <summary>无地块改良。</summary>

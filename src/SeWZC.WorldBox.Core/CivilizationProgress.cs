@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>科技或魔法文明目标的研究、设施与实际生产达成情况。</summary>
+/// <summary>聚落达成科技或魔法帝国目标的进度。</summary>
 /// <param name="Magic">是否为魔法文明路线，关闭时为科技路线。</param>
 /// <param name="KnownResearch">本地已经掌握的路线研究数。</param>
 /// <param name="TotalResearch">该路线要求掌握的研究总数。</param>

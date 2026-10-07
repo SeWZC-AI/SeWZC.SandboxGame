@@ -46,7 +46,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>核对路线研究、设施就绪和实际生产记录，返回文明目标达成情况。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="magic">是否查询魔法路线；关闭时查询科技路线。</param>
     public CivilizationProgress GetCivilizationProgress(int settlementId, bool magic)
     {
@@ -98,7 +98,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>返回法术的中文名称。</summary>
-    /// <param name="spell">待查询或施放的法术。</param>
+    /// <param name="spell">法术类别。</param>
     public static string SpellName(SpellKind spell)
     {
         return spell switch
@@ -116,7 +116,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>返回施放一次法术所需的魔力量。</summary>
-    /// <param name="spell">待查询或施放的法术。</param>
+    /// <param name="spell">法术类别。</param>
     public static double SpellManaCost(SpellKind spell)
     {
         return spell switch
@@ -134,7 +134,7 @@ public sealed partial class WorldEngine
 
     /// <summary>检查施法者是否掌握法术及前置研究；已解锁时返回空值，否则返回原因。</summary>
     /// <param name="casterId">施法居民的稳定 ID。</param>
-    /// <param name="spell">待查询或施放的法术。</param>
+    /// <param name="spell">法术类别。</param>
     public string? SpellUnlockError(int casterId, SpellKind spell)
     {
         var caster = State.Residents.FirstOrDefault(r => r.Id == casterId);
@@ -147,7 +147,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>检查本地研究、地点和材料后铺设笔刷范围内的铁路。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
     /// <param name="radius">铁路笔刷的作用半径，以地格为单位。</param>
@@ -172,7 +172,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>检查铺设铁路的条件；可铺设时返回空值，否则返回原因。</summary>
-    /// <param name="settlementId">归属或待查询聚落的稳定 ID。</param>
+    /// <param name="settlementId">聚落 ID。</param>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
     /// <param name="radius">铁路笔刷的作用半径，以地格为单位。</param>

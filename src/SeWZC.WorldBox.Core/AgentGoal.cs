@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>当前任务、目标及依据，以及为避免反复受阻而保存的导航进度。</summary>
+/// <summary>居民当前正在执行的行动目标。</summary>
 public sealed class AgentGoal
 {
     /// <summary>当前导航目标地格的数组索引，-1 表示尚未设置。</summary>

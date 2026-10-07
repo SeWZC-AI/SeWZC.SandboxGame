@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>两国当前共同的中立、结盟或战争状态。</summary>
+/// <summary>两个国家之间的外交关系类别。</summary>
 public enum DiplomaticStatus
 {
     /// <summary>中立。</summary>

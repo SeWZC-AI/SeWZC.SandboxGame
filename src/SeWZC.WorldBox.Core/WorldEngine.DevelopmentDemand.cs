@@ -147,7 +147,7 @@ public sealed partial class WorldEngine
         };
     }
 
-    /// <summary>建设与研究规划使用的当地劳动力、设施和需求信号。</summary>
+    /// <summary>聚落建设与研究规划的需求评估结果。</summary>
     /// <param name="Town">本次评估的本地聚落。</param>
     /// <param name="Adults">参与需求评估的本地成年居民。</param>
     /// <param name="Buildings">本地已有设施。</param>

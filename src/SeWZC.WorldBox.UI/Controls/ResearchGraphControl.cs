@@ -10,7 +10,7 @@ using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
-/// <summary>支持拖动、缩放和前置路径高亮的研究树视图。</summary>
+/// <summary>可交互的研究树视图。</summary>
 public sealed class ResearchGraphControl : UserControl
 {
     private readonly Connections _connections;
@@ -207,7 +207,7 @@ public sealed class ResearchGraphControl : UserControl
         _dragging = false;
     }
 
-    /// <summary>研究树的缩放、滚动位置和前置路径显示设置。</summary>
+    /// <summary>研究树视口的显示状态。</summary>
     /// <param name="Zoom">当前缩放倍率。</param>
     /// <param name="Offset">视口滚动偏移，以控件布局单位计。</param>
     /// <param name="ShowFullPath">是否显示选中研究的全部递归前置路径。</param>

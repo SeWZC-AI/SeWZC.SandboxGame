@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>控制自主模拟机制的开关、强度和速率参数。</summary>
+/// <summary>世界自主模拟的规则配置。</summary>
 public sealed record WorldRules
 {
     /// <summary>是否允许自然资源恢复。</summary>

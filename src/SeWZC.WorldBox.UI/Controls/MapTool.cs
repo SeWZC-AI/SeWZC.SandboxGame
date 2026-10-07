@@ -3,7 +3,7 @@ using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
-/// <summary>地图工具的参数、校验、预览和执行。</summary>
+/// <summary>一种地图交互工具的定义。</summary>
 public abstract record MapTool
 {
     private static readonly IReadOnlyDictionary<TerrainType, MapTool> TerrainTools =

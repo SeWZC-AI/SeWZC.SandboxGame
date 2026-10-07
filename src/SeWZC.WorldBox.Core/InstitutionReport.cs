@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>聚落机构已收到的议题，保留最初观察者、其当时职业和观察时间。</summary>
+/// <summary>聚落机构实际收到的一份议题报告。</summary>
 public sealed class InstitutionReport
 {
     /// <summary>关联的世界事件 ID，0 表示未关联事件。</summary>

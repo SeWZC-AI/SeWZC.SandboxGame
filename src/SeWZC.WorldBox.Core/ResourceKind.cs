@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>仓库、随身货物和生产配方使用的资源种类。</summary>
+/// <summary>世界中可储存和消耗的资源类别。</summary>
 public enum ResourceKind
 {
     /// <summary>粮食。</summary>

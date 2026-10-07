@@ -28,7 +28,7 @@ public sealed partial class WorldEngine
 
     /// <summary>解析并校验认知 JSON 后应用到居民，影响其未来行为。</summary>
     /// <param name="id">居民的稳定 ID。</param>
-    /// <param name="json">待处理的 JSON 文本。</param>
+    /// <param name="json">修改后的居民认知与行动状态 JSON。</param>
     public void EditResidentMindJson(int id, string json)
     {
         if (json.Length > 100_000) throw new ArgumentException("角色心智记录过大。");
@@ -49,7 +49,7 @@ public sealed partial class WorldEngine
 
     /// <summary>解析并校验经历 JSON 后应用到居民，影响其未来性格。</summary>
     /// <param name="id">居民的稳定 ID。</param>
-    /// <param name="json">待处理的 JSON 文本。</param>
+    /// <param name="json">修改后的居民经历记录 JSON。</param>
     public void EditResidentHistoryJson(int id, string json)
     {
         if (json.Length > 100_000) throw new ArgumentException("角色历史记录过大。");

@@ -12,7 +12,7 @@ using SeWZC.WorldBox.UI.Controls;
 
 namespace SeWZC.WorldBox.UI;
 
-/// <summary>组织世界模拟、编辑、详情查看和存档操作的共享游戏界面。</summary>
+/// <summary>桌面与浏览器共用的游戏主界面。</summary>
 public sealed partial class MainView : UserControl
 {
     private static readonly IBrush Ink = Brush.Parse("#111E29");
