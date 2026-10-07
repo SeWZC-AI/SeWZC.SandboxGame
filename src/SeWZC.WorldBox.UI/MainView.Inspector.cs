@@ -195,7 +195,7 @@ public sealed partial class MainView
         {
             if (DetailsVisible(text))
             {
-                var next = DisplayFormat.Text(value());
+                var next = value();
                 if (text.Text != next)
                     text.Text = next;
                 text.IsVisible = !string.IsNullOrWhiteSpace(next);
@@ -267,7 +267,7 @@ public sealed partial class MainView
                     list.Children.Add(control);
                 }
 
-                var nextLabel = DisplayFormat.Text(label(item));
+                var nextLabel = label(item);
                 if (row.Text.Text != nextLabel)
                     row.Text.Text = nextLabel;
                 if (row.Row is Button b)
@@ -504,13 +504,10 @@ public sealed partial class MainView
             return (_includeDeceased
                     ? _engine.State.Residents.Concat(_engine.State.ArchivedResidents)
                     : _engine.State.Residents)
-                .Where(r => string.IsNullOrWhiteSpace(_residentSearch) || DisplayFormat.Text(r.Name)
-                                                                           .Contains(
-                                                                               DisplayFormat.Text(_residentSearch),
-                                                                               StringComparison.OrdinalIgnoreCase)
-                                                                       || r.Id.ToString() == _residentSearch ||
-                                                                       NationName(r.NationId).Contains(_residentSearch,
-                                                                           StringComparison.OrdinalIgnoreCase))
+                .Where(r => string.IsNullOrWhiteSpace(_residentSearch) ||
+                            r.Name.Contains(_residentSearch, StringComparison.OrdinalIgnoreCase) ||
+                            r.Id.ToString() == _residentSearch ||
+                            NationName(r.NationId).Contains(_residentSearch, StringComparison.OrdinalIgnoreCase))
                 .OrderBy(r => r.Id);
         }
 

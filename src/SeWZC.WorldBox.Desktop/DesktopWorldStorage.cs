@@ -33,12 +33,6 @@ internal sealed class DesktopWorldStorage(string? savePath = null) : IWorldStora
     public bool IsBackground => MainWindow is { IsActive: false };
 
     /// <inheritdoc />
-    public Task SaveAsync(string json)
-    {
-        return SaveChunksAsync([json]);
-    }
-
-    /// <inheritdoc />
     public async Task SaveChunksAsync(string[] chunks)
     {
         await _saveLock.WaitAsync();

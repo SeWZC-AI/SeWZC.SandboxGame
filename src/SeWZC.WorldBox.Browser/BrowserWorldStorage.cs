@@ -13,12 +13,6 @@ internal sealed partial class BrowserWorldStorage : IWorldStorage
     public bool IsBackground => GetIsBackground();
 
     /// <inheritdoc />
-    public Task SaveAsync(string json)
-    {
-        return Save(json);
-    }
-
-    /// <inheritdoc />
     public async Task SaveChunksAsync(string[] chunks)
     {
         var id = BeginSave();
@@ -64,10 +58,6 @@ internal sealed partial class BrowserWorldStorage : IWorldStorage
 
     [JSImport("isBackground", "worldbox")]
     private static partial bool GetIsBackground();
-
-    [JSImport("save", "worldbox")]
-    [return: JSMarshalAs<JSType.Promise<JSType.Void>>]
-    private static partial Task Save(string json);
 
     [JSImport("beginSave", "worldbox")]
     private static partial int BeginSave();
