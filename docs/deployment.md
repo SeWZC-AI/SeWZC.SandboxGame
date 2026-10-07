@@ -1,6 +1,6 @@
 # 浏览器发布与部署
 
-浏览器版可作为纯静态文件部署到 GitHub Pages 或其他支持 WebAssembly MIME 类型的静态服务器，无需游戏服务器、API 密钥或自定义 COOP / COEP 响应头。浏览器入口见 [项目 README](../README.md)，本地启动见 [开发约定](development.md#本地运行)，检查结果与 CI 验收范围见 [构建与验证](verification.md)。
+浏览器版可作为纯静态文件部署到 GitHub Pages 或其他支持 WebAssembly MIME 类型的静态服务器，无需游戏服务器、API 密钥或自定义 COOP / COEP 响应头。浏览器入口见 [项目 README](../README.md)，本地启动见 [开发约定](development.md#本地运行)。
 
 ## 本地发布与预览
 
@@ -29,7 +29,7 @@ python3 -m http.server 8080 --directory artifacts/site
 
 首次部署需先完成仓库 Pages 设置。工作流使用 `configure-pages` 检查配置，部署任务仅申请 `pages: write` 与 `id-token: write` 权限；不需要另建 `gh-pages` 分支或在仓库中保存个人访问令牌。
 
-PR 和 `main` 推送执行原生 Release 构建、xUnit 单元测试、浏览器裁剪发布及静态资源检查。只有 `main` 的非 PR 运行在上述任务全部通过后部署。旧浏览器矩阵、完整回归选项与部署后交互检查已删除；当前验证范围和 TRX 报告位置见 [CI 与部署验收](verification.md#ci-与部署验收)。
+PR、`main` 推送或手动触发工作流时，执行原生 Release 构建、xUnit 单元测试、浏览器裁剪发布及静态资源检查。只有 `main` 的非 PR 运行在上述任务全部通过后部署。测试报告上传为 `worldbox-unit-tests`，静态文件上传为 `worldbox-static-site`；当前没有自动浏览器交互或部署后游戏验收。
 
 ## 检查仓库子路径
 
@@ -41,4 +41,4 @@ cp -a artifacts/site/. artifacts/browser-preview/SeWZC.SandboxGame/
 python3 -m http.server 8080 --bind 127.0.0.1 --directory artifacts/browser-preview
 ```
 
-打开 `http://127.0.0.1:8080/SeWZC.SandboxGame/`。静态资源检查能够发现根路径引用与缺失文件，实际交互、存储、触控和浏览器兼容性仍需浏览器验证；本地预览和当前验证限制见 [浏览器检查](verification.md#浏览器检查)。
+打开 `http://127.0.0.1:8080/SeWZC.SandboxGame/`。静态资源检查能够发现根路径引用与缺失文件，实际交互、存储、触控和浏览器兼容性仍需浏览器验证。

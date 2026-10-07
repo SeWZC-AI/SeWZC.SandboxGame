@@ -39,7 +39,7 @@ Core 不引用 Avalonia、平台 API 或文件系统。UI 协调模拟、编辑�
 
 ## 模块定位
 
-下表文件名相对于 [Core](../src/SeWZC.WorldBox.Core/)、[UI](../src/SeWZC.WorldBox.UI/) 或 UI 的 [Controls](../src/SeWZC.WorldBox.UI/Controls/)；单元测试位于 [Core.Tests](../tests/SeWZC.WorldBox.Core.Tests/) 和 [UI.Tests](../tests/SeWZC.WorldBox.UI.Tests/)。表中列出相关的局部检查，不代表完整机制已覆盖；实际边界见 [构建与验证](verification.md#验证边界)。
+下表文件名相对于 [Core](../src/SeWZC.WorldBox.Core/)、[UI](../src/SeWZC.WorldBox.UI/) 或 UI 的 [Controls](../src/SeWZC.WorldBox.UI/Controls/)；单元测试位于 [Core.Tests](../tests/SeWZC.WorldBox.Core.Tests/) 和 [UI.Tests](../tests/SeWZC.WorldBox.UI.Tests/)。表中列出相关的局部检查，不代表完整机制已覆盖；测试边界见 [单元测试说明](../tests/README.md)。
 
 | 机制 | 主要文件 | 相关检查与缺口 |
 | --- | --- | --- |
@@ -71,7 +71,7 @@ Core 不引用 Avalonia、平台 API 或文件系统。UI 协调模拟、编辑�
 - **生态**：每日最多复评 256 格，完整周期为 `max(6, ceil(地块数 / 256))` 日，植物每格每 120 日错峰复评。区域从保存日序推导，无待提交游标。当前区和相邻边界使用共同初态计算，捕食与迁移消耗真实存量。
 - **容量与物种**：静态栖息容量按地形、植被、饱和资源、肥力、水、耕作、占地和灾害输入失效；实际猎物限制用当天快照，不能当作静态容量缓存。可食动物取实际数量至少 0.05 的候选中生物量最大者，种群变化立即失效，规则见 [Tile.Ecology.cs](../src/SeWZC.WorldBox.Core/Tile.Ecology.cs)。
 - **绘图**：只处理可见区域和边缘，地形块保留像素及图像输入，变化时重画脏格与邻格。动物容量和六类代表物种一次批算，生态指令按精确输入复用；日序本身不触发全部重算。高建筑、居民和舟船用复用列表按插值后底部 Y 排序，`BuildingBounds` 共用图形和命中边界。
-- **调度**：1／2／5 倍分别使用 12／48／64 ms 软预算，每回调最多四个完整日，五倍最多八日欠账；动画总览 15 Hz、普通近景 30 Hz、五倍近景 20 Hz。完整模拟步不可中断，频率和预算不保证实际绘制 FPS 或硬实时，测量见 [性能说明](performance.md)。
+- **调度**：1／2／5 倍分别使用 12／48／64 ms 软预算，每回调最多四个完整日，五倍最多八日欠账；动画总览 15 Hz、普通近景 30 Hz、五倍近景 20 Hz。完整模拟步不可中断，频率和预算不保证实际绘制 FPS 或硬实时。
 
 记录容量由模型与校验器共同约束。当前世界事件最多 400 条，居民记忆 16 条、决策 6 条、经历 24 条，亡者档案 256 位；按意义淘汰并保留历史引用，不宣称无限人生史。调整需同时核对保存大小和浏览器负载。
 
@@ -99,10 +99,10 @@ UI 每 30 秒检查自动保存，世界实例、日序及编辑修订都未变�
 
 浏览器逐块传输，用 `scheduler.yield`／MessageChannel 让出事件循环。`storage-worker.js` 压缩 Blob 并事务写入 IndexedDB，入口提供已解析的模块 URL。无 Worker 时在主线程写入，无压缩 API 时保存未压缩 Blob。读取校验 Blob 记录、流式解压并严格验证 UTF-8，失败不提交不完整捕获。
 
-桌面后台检查大小、gzip 压缩、写同目录临时文件并原子替换。实际路径和玩家备份操作见 [操作与存档](gameplay.md#存档与兼容性)，核心取消测试与平台验收缺口见 [构建与验证](verification.md#验证边界)。
+桌面后台检查大小、gzip 压缩、写同目录临时文件并原子替换。实际路径和玩家备份操作见 [操作与存档](gameplay.md#存档与兼容性)，核心取消测试与平台验收边界见 [单元测试说明](../tests/README.md)。
 
 ## 静态交付
 
 [Browser 项目](../src/SeWZC.WorldBox.Browser/SeWZC.WorldBox.Browser.csproj) 的发布 `wwwroot` 是完整静态站点；脚本复制到 `artifacts/site`，生成提交标记、添加 `.nojekyll` 并检查资源和 WASM。自有资源用相对 URL，支持根目录和仓库子路径。
 
-旧浏览器脚本与测试桥已删除。静态文件检查不能证明裁剪发布可启动，真实输入、IndexedDB 和导出文件仍须实际验证。CI 触发及当前验收范围见 [构建与验证](verification.md#ci-与部署验收)，Pages 设置见 [部署指南](deployment.md#发布到-github-pages)。
+静态文件检查不能证明裁剪发布可启动，真实输入、IndexedDB 和导出文件仍须实际验证。CI 范围和 Pages 设置见 [部署指南](deployment.md#发布到-github-pages)。

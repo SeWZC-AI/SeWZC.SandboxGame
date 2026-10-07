@@ -1,8 +1,16 @@
 # 单元测试
 
-按 2026-10-07 用户决定，旧核心可执行测试、Headless UI、浏览器脚本及混在测试程序中的诊断工具已全部删除。当前两个项目使用 xUnit 2 和 .NET Test SDK，由 IDE 或 `dotnet test` 发现并执行；测试依赖统一维护在本目录的 `Directory.Build.props`。
+当前两个项目使用 xUnit 2 和 .NET Test SDK，由 IDE 或 `dotnet test` 发现并执行；测试依赖统一维护在本目录的 `Directory.Build.props`。
 
-还原、Release 构建、运行、发现及筛选命令统一见 [构建与验证](../docs/verification.md#复现命令)。
+在仓库根目录执行：
+
+```bash
+dotnet restore scripts/ci-build.slnf
+dotnet build scripts/ci-build.slnf -c Release --no-restore
+dotnet test scripts/ci-build.slnf -c Release --no-build --no-restore
+```
+
+测试命令加 `--list-tests` 查看用例，加 `--filter FullyQualifiedName~ResidentEditingTests` 筛选类型；需要 TRX 时加 `--logger trx --results-directory artifacts/unit-tests`。
 
 核心项目覆盖资源字段映射与副本隔离、动物稀疏载荷、研究目录与操作分派、通行与植物规则、原子编辑、研究扣费、现场加工、伤害防护和保存取消。界面项目测试运动插值及研究布局，无需启动窗口或图形会话。
 
@@ -10,4 +18,4 @@
 
 `WorldFixture` 每次建立独立的 32×32 地图和一名居民，只供世界命令使用。其他规则直接构造被测对象。禁止用长时间模拟、遍历全部控件、墙钟等待或性能探针准备单元用例；不设置按耗时判失败的断言。新发现的缺陷应先写能复现的用例，再修改实现。
 
-当前范围不包括长程演化、战争、灾害、完整通信链、实际浏览器交互和平台存储。单元通过不能证明这些场景。检查入口见 [构建与验证](../docs/verification.md)。
+当前范围不包括长程演化、战争、灾害、完整通信链、实际浏览器交互和平台存储。单元通过不能证明这些场景；浏览器发布与预览见 [部署指南](../docs/deployment.md)。
