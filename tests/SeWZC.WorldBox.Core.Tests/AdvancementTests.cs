@@ -71,7 +71,7 @@ public sealed class AdvancementTests
     {
         var cost = WorldEngine.GetResearchCost(Advancement.Agriculture);
 
-        cost.Food = 0;
+        cost = cost with { Food = 0 };
 
         Assert.Equal(Advancement.Agriculture.Cost.Food,
             WorldEngine.GetResearchCost(Advancement.Agriculture).Food);

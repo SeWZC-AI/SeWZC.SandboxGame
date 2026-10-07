@@ -50,7 +50,7 @@ public sealed partial class WorldMapControl : Control
 
     private readonly List<Resident> _visibleResidents = [];
     private MapTool _activeTool = MapTool.Inspect;
-    private WorldState? _cachedState;
+    private WorldEngine? _cachedEngine;
     private bool _cameraReady;
 
     private long _chunkRefreshTick = -1;
@@ -231,14 +231,14 @@ public sealed partial class WorldMapControl : Control
             return;
         }
 
-        if (!ReferenceEquals(_cachedState, Engine.State))
+        if (!ReferenceEquals(_cachedEngine, Engine))
         {
             DisposeChunks();
             ResetMotion();
             _settlementLabels.Clear();
             _effects.Clear();
             _seenVisualSequence = Engine.VisualSequence;
-            _cachedState = Engine.State;
+            _cachedEngine = Engine;
             _cameraReady = false;
         }
 
@@ -461,83 +461,83 @@ public sealed partial class WorldMapControl : Control
 
         _fires.Clear();
         for (var cy = view.Item3 * ChunkTiles; cy <= view.Item4 * ChunkTiles; cy += ChunkTiles)
-        for (var cx = view.Item1 * ChunkTiles; cx <= view.Item2 * ChunkTiles; cx += ChunkTiles)
-        {
-            var terrainHash = 2166136261;
-            var territoryHash = colorHash;
-            var containsTerritory = false;
-            // 缓存摘要包含一格邻域，使岸线和边界编辑也能令相邻分块失效。
-            for (var y = Math.Max(0, cy - 1); y < Math.Min(state.Height, cy + ChunkTiles + 1); y++)
-            for (var x = Math.Max(0, cx - 1); x < Math.Min(state.Width, cx + ChunkTiles + 1); x++)
+            for (var cx = view.Item1 * ChunkTiles; cx <= view.Item2 * ChunkTiles; cx += ChunkTiles)
             {
-                TerrainTilesScanned++;
-                var tile = state.Tiles[y * state.Width + x];
-                // 地形图像只需关注森林变树桩的资源阈值；动物和植物数量由独立图层刷新，避免频繁重建地形。
-                terrainHash = unchecked((terrainHash ^ TerrainImageInput(tile)) * 16777619);
-                territoryHash = unchecked((territoryHash ^ (uint)tile.NationId) * 16777619);
-                containsTerritory |= tile.NationId != 0 && x >= cx && x < cx + ChunkTiles && y >= cy &&
-                                     y < cy + ChunkTiles;
-                if (x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles && tile.FireTicks > 0)
-                    _fires.Add((x, y));
-            }
+                var terrainHash = 2166136261;
+                var territoryHash = colorHash;
+                var containsTerritory = false;
+                // 缓存摘要包含一格邻域，使岸线和边界编辑也能令相邻分块失效。
+                for (var y = Math.Max(0, cy - 1); y < Math.Min(state.Height, cy + ChunkTiles + 1); y++)
+                    for (var x = Math.Max(0, cx - 1); x < Math.Min(state.Width, cx + ChunkTiles + 1); x++)
+                    {
+                        TerrainTilesScanned++;
+                        var tile = state.Tiles[y * state.Width + x];
+                        // 地形图像只需关注森林变树桩的资源阈值；动物和植物数量由独立图层刷新，避免频繁重建地形。
+                        terrainHash = unchecked((terrainHash ^ TerrainImageInput(tile)) * 16777619);
+                        territoryHash = unchecked((territoryHash ^ (uint)tile.NationId) * 16777619);
+                        containsTerritory |= tile.NationId != 0 && x >= cx && x < cx + ChunkTiles && y >= cy &&
+                                             y < cy + ChunkTiles;
+                        if (x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles && tile.FireTicks > 0)
+                            _fires.Add((x, y));
+                    }
 
-            var key = (cx, cy);
-            if (!_chunks.TryGetValue(key, out var chunk))
-            {
-                chunk = new MapChunk(new Rect(cx * TilePixels, cy * TilePixels,
-                    Math.Min(ChunkTiles, state.Width - cx) * TilePixels,
-                    Math.Min(ChunkTiles, state.Height - cy) * TilePixels));
-                _chunks[key] = chunk;
-            }
-
-            if (chunk.Terrain is null || chunk.TerrainHash != terrainHash)
-            {
-                // 分块边缘落在小数屏幕坐标时会露出细缝，须用一像素邻格图案补边；透明领地图层不能重叠以免加深颜色。
-                var left = cx > 0 ? 1 : 0;
-                var top = cy > 0 ? 1 : 0;
-                var right = cx + ChunkTiles < state.Width ? 1 : 0;
-                var bottom = cy + ChunkTiles < state.Height ? 1 : 0;
-                chunk.TerrainBounds = new Rect(chunk.Bounds.X - left, chunk.Bounds.Y - top,
-                    chunk.Bounds.Width + left + right, chunk.Bounds.Height + top + bottom);
-                var canvas = UpdateTerrainCanvas(chunk, state, cx, cy, left, top);
-                chunk.Terrain?.Dispose();
-                chunk.Terrain = MakeBitmap(canvas, true);
-                chunk.TerrainHash = terrainHash;
-            }
-
-            if (!chunk.TerritoryCached || chunk.TerritoryHash != territoryHash)
-            {
-                chunk.Territory?.Dispose();
-                chunk.Territory = null;
-                chunk.TerritoryHash = territoryHash;
-                chunk.TerritoryCached = true;
-                if (!containsTerritory)
-                    continue;
-                var canvas = new PixelCanvas((int)chunk.Bounds.Width, (int)chunk.Bounds.Height);
-                for (var y = cy; y < Math.Min(state.Height, cy + ChunkTiles); y++)
-                for (var x = cx; x < Math.Min(state.Width, cx + ChunkTiles); x++)
+                var key = (cx, cy);
+                if (!_chunks.TryGetValue(key, out var chunk))
                 {
-                    var nationId = state.Tiles[y * state.Width + x].NationId;
-                    if (nationId == 0 || !colors.TryGetValue(nationId, out var argb))
-                        continue;
-                    var rgb = (argb & 0x00FFFFFF) << 8;
-                    var px = (x - cx) * TilePixels;
-                    var py = (y - cy) * TilePixels;
-                    canvas.Rect(px, py, TilePixels, TilePixels, rgb | 27);
-                    var edge = rgb | 190;
-                    if (x == 0 || state.Tiles[y * state.Width + x - 1].NationId != nationId)
-                        canvas.Rect(px, py, 1, 8, edge);
-                    if (y == 0 || state.Tiles[(y - 1) * state.Width + x].NationId != nationId)
-                        canvas.Rect(px, py, 8, 1, edge);
-                    if (x == state.Width - 1 || state.Tiles[y * state.Width + x + 1].NationId != nationId)
-                        canvas.Rect(px + 7, py, 1, 8, edge);
-                    if (y == state.Height - 1 || state.Tiles[(y + 1) * state.Width + x].NationId != nationId)
-                        canvas.Rect(px, py + 7, 8, 1, edge);
+                    chunk = new MapChunk(new Rect(cx * TilePixels, cy * TilePixels,
+                        Math.Min(ChunkTiles, state.Width - cx) * TilePixels,
+                        Math.Min(ChunkTiles, state.Height - cy) * TilePixels));
+                    _chunks[key] = chunk;
                 }
 
-                chunk.Territory = MakeBitmap(canvas, false);
+                if (chunk.Terrain is null || chunk.TerrainHash != terrainHash)
+                {
+                    // 分块边缘落在小数屏幕坐标时会露出细缝，须用一像素邻格图案补边；透明领地图层不能重叠以免加深颜色。
+                    var left = cx > 0 ? 1 : 0;
+                    var top = cy > 0 ? 1 : 0;
+                    var right = cx + ChunkTiles < state.Width ? 1 : 0;
+                    var bottom = cy + ChunkTiles < state.Height ? 1 : 0;
+                    chunk.TerrainBounds = new Rect(chunk.Bounds.X - left, chunk.Bounds.Y - top,
+                        chunk.Bounds.Width + left + right, chunk.Bounds.Height + top + bottom);
+                    var canvas = UpdateTerrainCanvas(chunk, state, cx, cy, left, top);
+                    chunk.Terrain?.Dispose();
+                    chunk.Terrain = MakeBitmap(canvas, true);
+                    chunk.TerrainHash = terrainHash;
+                }
+
+                if (!chunk.TerritoryCached || chunk.TerritoryHash != territoryHash)
+                {
+                    chunk.Territory?.Dispose();
+                    chunk.Territory = null;
+                    chunk.TerritoryHash = territoryHash;
+                    chunk.TerritoryCached = true;
+                    if (!containsTerritory)
+                        continue;
+                    var canvas = new PixelCanvas((int)chunk.Bounds.Width, (int)chunk.Bounds.Height);
+                    for (var y = cy; y < Math.Min(state.Height, cy + ChunkTiles); y++)
+                        for (var x = cx; x < Math.Min(state.Width, cx + ChunkTiles); x++)
+                        {
+                            var nationId = state.Tiles[y * state.Width + x].NationId;
+                            if (nationId == 0 || !colors.TryGetValue(nationId, out var argb))
+                                continue;
+                            var rgb = (argb & 0x00FFFFFF) << 8;
+                            var px = (x - cx) * TilePixels;
+                            var py = (y - cy) * TilePixels;
+                            canvas.Rect(px, py, TilePixels, TilePixels, rgb | 27);
+                            var edge = rgb | 190;
+                            if (x == 0 || state.Tiles[y * state.Width + x - 1].NationId != nationId)
+                                canvas.Rect(px, py, 1, 8, edge);
+                            if (y == 0 || state.Tiles[(y - 1) * state.Width + x].NationId != nationId)
+                                canvas.Rect(px, py, 8, 1, edge);
+                            if (x == state.Width - 1 || state.Tiles[y * state.Width + x + 1].NationId != nationId)
+                                canvas.Rect(px + 7, py, 1, 8, edge);
+                            if (y == state.Height - 1 || state.Tiles[(y + 1) * state.Width + x].NationId != nationId)
+                                canvas.Rect(px, py + 7, 8, 1, edge);
+                        }
+
+                    chunk.Territory = MakeBitmap(canvas, false);
+                }
             }
-        }
     }
 
     private static void DrawTerrainTile(PixelCanvas canvas, WorldState state, int x, int y, int px, int py)

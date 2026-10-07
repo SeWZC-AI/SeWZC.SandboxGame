@@ -26,7 +26,9 @@ public sealed partial class MainView : UserControl
 
     private readonly StackPanel _bridgeSettings = new()
     {
-        Orientation = Orientation.Horizontal, Spacing = 8, IsVisible = false,
+        Orientation = Orientation.Horizontal,
+        Spacing = 8,
+        IsVisible = false,
     };
 
     private readonly ComboBox _brushPicker = new() { Width = 100, MinHeight = 36, FontSize = 11 };
@@ -81,7 +83,7 @@ public sealed partial class MainView : UserControl
     private readonly TextBlock _worldTitle = Text("晨曦群岛", 22);
     private bool _allowAutosave = true;
     private ToolCategory _category = ToolCategory.Terrain;
-    private string? _checkpoint;
+    private WorldState? _checkpoint;
     private int[] _constructionTowns = [];
     private WorldEngine _engine;
     private int _focusedEventId;
@@ -103,7 +105,7 @@ public sealed partial class MainView : UserControl
     private EventGroup? _spotlightGroup;
     private (int LastId, int Count, int Watches) _spotlightRevision;
 
-    private WorldState? _spotlightState;
+    private ImmutableVector<WorldEvent>? _spotlightEvents;
     private Button? _storageUndo;
     private bool _toolsOpen;
     private bool _updatingToolContext;
@@ -151,11 +153,14 @@ public sealed partial class MainView : UserControl
 
         var header = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Margin = new Thickness(8, 0),
+            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
+            Margin = new Thickness(8, 0),
         };
         var brand = new StackPanel
         {
-            Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center,
+            Orientation = Orientation.Horizontal,
+            Spacing = 12,
+            VerticalAlignment = VerticalAlignment.Center,
         };
         var logo = new Grid
         {
@@ -193,7 +198,9 @@ public sealed partial class MainView : UserControl
         header.Children.Add(stats);
         var actions = new StackPanel
         {
-            Orientation = Orientation.Horizontal, Spacing = 7, VerticalAlignment = VerticalAlignment.Center,
+            Orientation = Orientation.Horizontal,
+            Spacing = 7,
+            VerticalAlignment = VerticalAlignment.Center,
         };
         _headerActions = actions;
         actions.Children.Add(Button("新世界", ShowNewWorld, "创建一片新的大陆"));
@@ -322,7 +329,9 @@ public sealed partial class MainView : UserControl
         toolsPanel.Children.Add(pagination);
         var settings = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = 5, Height = 36,
+            ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"),
+            ColumnSpacing = 5,
+            Height = 36,
         };
         Named(_toolContext, "tool-context");
         _toolContext.SelectionChanged += (_, _) => OnToolContextChanged();
@@ -430,7 +439,9 @@ public sealed partial class MainView : UserControl
         bottom.Children.Add(eventButton);
         var timeControls = new StackPanel
         {
-            Orientation = Orientation.Horizontal, Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center,
+            Orientation = Orientation.Horizontal,
+            Spacing = 4,
+            HorizontalAlignment = HorizontalAlignment.Center,
         };
         timeControls.Children.Add(Named(Button("工具", ToggleTools, "展开或收起地图工具", 48), "tools-toggle"));
         timeControls.Children.Add(Named(Button("漫游", SuspendTool, "停用当前工具并移动地图", 48), "tool-suspend"));
@@ -488,7 +499,9 @@ public sealed partial class MainView : UserControl
         var shell = new Grid { RowDefinitions = new RowDefinitions("48,*,22") };
         shell.Children.Add(new Border
         {
-            Child = header, BorderBrush = Line, BorderThickness = new Thickness(0, 0, 0, 1),
+            Child = header,
+            BorderBrush = Line,
+            BorderThickness = new Thickness(0, 0, 0, 1),
         });
         Grid.SetRow(_body, 1);
         shell.Children.Add(_body);
@@ -656,7 +669,7 @@ public sealed partial class MainView : UserControl
 
         _saveCapture?.Cancel();
         CloseModal();
-        _engine = WorldEngine.ImportJson(_checkpoint);
+        _engine = WorldEngine.FromSnapshot(_checkpoint.Value);
         _checkpoint = null;
         _paused = true;
         ClearMapSelection();
@@ -761,9 +774,9 @@ public sealed partial class MainView : UserControl
         foreach (var watch in _watched)
             watchHash = unchecked(watchHash * 31 + watch.GetHashCode());
         var revision = (state.Events.LastOrDefault()?.Id ?? 0, state.Events.Count, watchHash);
-        if (!ReferenceEquals(_spotlightState, state) || _spotlightRevision != revision)
+        if (!ReferenceEquals(_spotlightEvents, state.Events) || _spotlightRevision != revision)
         {
-            _spotlightState = state;
+            _spotlightEvents = state.Events;
             _spotlightRevision = revision;
             var candidates = state.Events.Where(e =>
                 e.Importance >= EventImportance.Notable && e.Kind is not (WorldEventKind.Editor
@@ -997,7 +1010,7 @@ public sealed partial class MainView : UserControl
                                                        || _savedEditRevision != _worldEditRevision;
     }
 
-    // 大型撤销捕获可能超过保存重试延迟，须从编辑结束重新计算静默期，避免立即再捕获一次。
+    // 从编辑结束重新计算保存静默期，避免连续命令立即触发自动保存。
     private void DeferAutosaveAfterEdit()
     {
         _lastSave = Math.Max(_lastSave, _clock.Elapsed.TotalSeconds - 25);
@@ -1079,7 +1092,7 @@ public sealed partial class MainView : UserControl
         CloseModal();
         ClearMapSelection();
         ResetInfrastructureFilters();
-        _checkpoint ??= _engine.ExportJson();
+        _checkpoint ??= _engine.State;
         _engine = engine;
         _paused = true;
         _accumulator = 0;
@@ -1546,7 +1559,10 @@ public sealed partial class MainView : UserControl
     {
         return new Border
         {
-            Child = child, Background = Ink, CornerRadius = new CornerRadius(9), Padding = new Thickness(8),
+            Child = child,
+            Background = Ink,
+            CornerRadius = new CornerRadius(9),
+            Padding = new Thickness(8),
         };
     }
 

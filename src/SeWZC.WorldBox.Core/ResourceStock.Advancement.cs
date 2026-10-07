@@ -2,56 +2,8 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-public sealed partial class ResourceStock
+public readonly partial record struct ResourceStock
 {
-    /// <summary>饮水数量。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Water { get; set; }
-
-    /// <summary>合金数量。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Alloy { get; set; }
-
-    /// <summary>动力单元数量。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double EnergyCells { get; set; }
-
-    /// <summary>魔晶数量。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Crystals { get; set; }
-
-    /// <summary>煤数量。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Coal { get; set; }
-
-    /// <summary>石油数量。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Oil { get; set; }
-
-    /// <summary>稀土数量。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double RareEarth { get; set; }
-
-    /// <summary>舟船数量。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Boats { get; set; }
-
-    /// <summary>运输机数量。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Aircraft { get; set; }
-
-    /// <summary>工具数量。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Tools { get; set; }
-
-    /// <summary>药品数量。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Medicine { get; set; }
-
-    /// <summary>弹药数量。</summary>
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public double Ammunition { get; set; }
-
     /// <summary>配方和库存查询使用的全部资源种类。</summary>
     public static IReadOnlyList<ResourceKind> Kinds { get; } = Array.AsReadOnly(Enum.GetValues<ResourceKind>());
 
@@ -81,89 +33,73 @@ public sealed partial class ResourceStock
         };
     }
 
-    /// <summary>替换指定种类数量。</summary>
+    /// <summary>返回替换指定资源数量后的库存，原库存保持不变。</summary>
     /// <param name="kind">资源种类。</param>
-    /// <param name="value">要替换的资源数量。</param>
-    public void Set(ResourceKind kind, double value)
+    /// <param name="value">新的资源数量。</param>
+    public ResourceStock WithAmount(ResourceKind kind, double value) => kind switch
     {
-        switch (kind)
-        {
-            case ResourceKind.Food:
-                Food = value;
-                break;
-            case ResourceKind.Wood:
-                Wood = value;
-                break;
-            case ResourceKind.Stone:
-                Stone = value;
-                break;
-            case ResourceKind.Ore:
-                Ore = value;
-                break;
-            case ResourceKind.Alloy:
-                Alloy = value;
-                break;
-            case ResourceKind.EnergyCells:
-                EnergyCells = value;
-                break;
-            case ResourceKind.Crystals:
-                Crystals = value;
-                break;
-            case ResourceKind.Coal:
-                Coal = value;
-                break;
-            case ResourceKind.Oil:
-                Oil = value;
-                break;
-            case ResourceKind.RareEarth:
-                RareEarth = value;
-                break;
-            case ResourceKind.Boats:
-                Boats = value;
-                break;
-            case ResourceKind.Aircraft:
-                Aircraft = value;
-                break;
-            case ResourceKind.Water:
-                Water = value;
-                break;
-            case ResourceKind.Tools:
-                Tools = value;
-                break;
-            case ResourceKind.Medicine:
-                Medicine = value;
-                break;
-            case ResourceKind.Ammunition:
-                Ammunition = value;
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(kind));
-        }
-    }
+        ResourceKind.Food => this with { Food = value },
+        ResourceKind.Wood => this with { Wood = value },
+        ResourceKind.Stone => this with { Stone = value },
+        ResourceKind.Ore => this with { Ore = value },
+        ResourceKind.Alloy => this with { Alloy = value },
+        ResourceKind.EnergyCells => this with { EnergyCells = value },
+        ResourceKind.Crystals => this with { Crystals = value },
+        ResourceKind.Coal => this with { Coal = value },
+        ResourceKind.Oil => this with { Oil = value },
+        ResourceKind.RareEarth => this with { RareEarth = value },
+        ResourceKind.Boats => this with { Boats = value },
+        ResourceKind.Aircraft => this with { Aircraft = value },
+        ResourceKind.Water => this with { Water = value },
+        ResourceKind.Tools => this with { Tools = value },
+        ResourceKind.Medicine => this with { Medicine = value },
+        ResourceKind.Ammunition => this with { Ammunition = value },
+        _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+    };
 
-    /// <summary>复制全部资源数量，返回独立的库存对象。</summary>
-    public ResourceStock Copy()
+    /// <summary>返回所有资源同时按倍率缩放后的库存。</summary>
+    /// <param name="factor">各类资源共同使用的数量倍率。</param>
+    public ResourceStock Scale(double factor) => new()
     {
-        return new ResourceStock
-        {
-            Water = Water,
-            Food = Food,
-            Wood = Wood,
-            Stone = Stone,
-            Ore = Ore,
-            Alloy = Alloy,
-            EnergyCells = EnergyCells,
-            Crystals = Crystals,
-            Coal = Coal,
-            Oil = Oil,
-            RareEarth = RareEarth,
-            Boats = Boats,
-            Aircraft = Aircraft,
-            Tools = Tools,
-            Medicine = Medicine,
-            Ammunition = Ammunition,
-        };
-    }
+        Food = Food * factor,
+        Wood = Wood * factor,
+        Stone = Stone * factor,
+        Ore = Ore * factor,
+        Alloy = Alloy * factor,
+        EnergyCells = EnergyCells * factor,
+        Crystals = Crystals * factor,
+        Coal = Coal * factor,
+        Oil = Oil * factor,
+        RareEarth = RareEarth * factor,
+        Boats = Boats * factor,
+        Aircraft = Aircraft * factor,
+        Water = Water * factor,
+        Tools = Tools * factor,
+        Medicine = Medicine * factor,
+        Ammunition = Ammunition * factor,
+    };
+
+    /// <summary>返回所有资源数量限制在零至指定上限内的库存。</summary>
+    /// <param name="maximum">每类资源的数量上限。</param>
+    public ResourceStock Clamp(double maximum) => new()
+    {
+        Food = Math.Clamp(Food, 0, maximum),
+        Wood = Math.Clamp(Wood, 0, maximum),
+        Stone = Math.Clamp(Stone, 0, maximum),
+        Ore = Math.Clamp(Ore, 0, maximum),
+        Alloy = Math.Clamp(Alloy, 0, maximum),
+        EnergyCells = Math.Clamp(EnergyCells, 0, maximum),
+        Crystals = Math.Clamp(Crystals, 0, maximum),
+        Coal = Math.Clamp(Coal, 0, maximum),
+        Oil = Math.Clamp(Oil, 0, maximum),
+        RareEarth = Math.Clamp(RareEarth, 0, maximum),
+        Boats = Math.Clamp(Boats, 0, maximum),
+        Aircraft = Math.Clamp(Aircraft, 0, maximum),
+        Water = Math.Clamp(Water, 0, maximum),
+        Tools = Math.Clamp(Tools, 0, maximum),
+        Medicine = Math.Clamp(Medicine, 0, maximum),
+        Ammunition = Math.Clamp(Ammunition, 0, maximum),
+    };
 
     /// <summary>返回资源种类的中文名称。</summary>
     /// <param name="kind">资源种类。</param>

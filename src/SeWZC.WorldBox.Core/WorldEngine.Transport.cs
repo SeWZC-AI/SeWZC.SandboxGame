@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -11,7 +12,7 @@ public sealed partial class WorldEngine
     /// <summary>在实际到达的聚落仓库借用载具，并预留旅程所需燃料。</summary>
     /// <param name="person">借用载具的居民。</param>
     /// <param name="home">出借载具的本地聚落仓库。</param>
-    private void PrepareJourneyTransport(Resident person, Settlement home)
+    private void PrepareJourneyTransport(ResidentCursor person, SettlementCursor home)
     {
         if (person.TravelMode != TravelMode.Foot || Distance(person.X, person.Y, home.X, home.Y) > 1)
             return;
@@ -24,18 +25,17 @@ public sealed partial class WorldEngine
             HasResearch(home.Id, Advancement.Electrification)
             && home.Resources.Aircraft >= 1 && home.Resources.Oil >= fuel)
         {
-            home.Resources.Aircraft--;
-            person.Inventory.Aircraft++;
-            home.Resources.Oil -= fuel;
+            home.Resources = home.Resources with { Aircraft = home.Resources.Aircraft - 1 };
+            person.Inventory = person.Inventory with { Aircraft = person.Inventory.Aircraft + 1 };
+            home.Resources = home.Resources with { Oil = home.Resources.Oil - fuel };
             person.TravelMode = TravelMode.Aircraft;
             AddEvent(WorldEventKind.Trade, $"{person.Name}在{home.Name}装载运输机，携带货物与消息启程；已消耗往返燃料 {fuel:0.#}。",
                 home.X, home.Y, EventAction.Started, home.Id, person.Id);
         }
         else if (HasResearch(home.Id, Advancement.Logistics) && home.Resources.Boats >= 1)
         {
-            home.Resources.Boats--;
-            person.Inventory.Boats++;
-            person.TravelMode = TravelMode.Boat;
+            home.Resources = home.Resources with { Boats = home.Resources.Boats - 1 };
+            person.Replace(person.Value with { Inventory = person.Inventory with { Boats = person.Inventory.Boats + 1 }, TravelMode = TravelMode.Boat });
         }
     }
 

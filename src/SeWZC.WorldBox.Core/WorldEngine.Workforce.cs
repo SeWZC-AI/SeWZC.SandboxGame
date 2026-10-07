@@ -1,10 +1,11 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
     private void BalanceLocalWorkforce()
     {
-        foreach (var town in State.Settlements)
+        foreach (var town in Current.Settlements)
         {
             if (town.FoundationPending || !_citizens.TryGetValue(town.Id, out var citizens))
                 continue;
@@ -27,7 +28,7 @@ public sealed partial class WorldEngine
                     Change(recruit, Profession.Messenger);
             }
 
-            var coastal = Circle(town.X, town.Y, 6).Any(i => EdibleAnimal(State.Tiles[i], true) != WildlifeKind.None);
+            var coastal = Circle(town.X, town.Y, 6).Any(i => EdibleAnimal(Current.Tiles[i], true) != WildlifeKind.None);
             if (coastal && adults.Length >= 8 && adults.All(r => r.Profession != Profession.Fisher))
             {
                 var recruit = adults.FirstOrDefault(r => r.Profession == Profession.Farmer && Available(r));
@@ -41,24 +42,24 @@ public sealed partial class WorldEngine
             {
                 bool Facility(BuildingKind kind)
                 {
-                    return State.Society.Buildings.Any(b =>
+                    return Current.Society.Buildings.Any(b =>
                         b.SettlementId == town.Id && b.Kind == kind && b.Enabled && b.Health > 0);
                 }
 
                 if (!(job switch
-                    {
-                        Profession.Engineer => Facility(BuildingKind.MachineWorkshop) ||
-                                               State.Society.Buildings.Any(b =>
-                                                   b.SettlementId == town.Id && (!b.IsCompleted || b.Health < 50)),
-                        Profession.Physician => Facility(BuildingKind.Hospital),
-                        Profession.Firefighter => Facility(BuildingKind.FireStation),
-                        Profession.Ranger => Facility(BuildingKind.Arsenal),
-                        Profession.Archivist => Facility(BuildingKind.Library),
-                        Profession.Battlemage => Facility(BuildingKind.StormSpire),
-                        Profession.Surveyor => Facility(BuildingKind.SurveyOffice),
-                        Profession.Gardener => Facility(BuildingKind.GroveSanctuary),
-                        _ => false,
-                    }))
+                {
+                    Profession.Engineer => Facility(BuildingKind.MachineWorkshop) ||
+                                           Current.Society.Buildings.Any(b =>
+                                               b.SettlementId == town.Id && (!b.IsCompleted || b.Health < 50)),
+                    Profession.Physician => Facility(BuildingKind.Hospital),
+                    Profession.Firefighter => Facility(BuildingKind.FireStation),
+                    Profession.Ranger => Facility(BuildingKind.Arsenal),
+                    Profession.Archivist => Facility(BuildingKind.Library),
+                    Profession.Battlemage => Facility(BuildingKind.StormSpire),
+                    Profession.Surveyor => Facility(BuildingKind.SurveyOffice),
+                    Profession.Gardener => Facility(BuildingKind.GroveSanctuary),
+                    _ => false,
+                }))
                     continue;
                 var unlock = ResearchRules.Unlocking(job);
                 if (unlock is null || !HasResearch(town.Id, unlock) ||
@@ -75,19 +76,17 @@ public sealed partial class WorldEngine
             }
         }
 
-        bool Available(Resident person)
+        bool Available(ResidentCursor person)
         {
             return !person.Agent.Goal.PlayerDirected && person.Agent.DestinationSettlementId == 0
-                                                     && person.TravelMode == TravelMode.Foot && (State.Tick == 0 ||
-                                                         State.Tick - person.Agent.JobChangedTick >= 120);
+                                                     && person.TravelMode == TravelMode.Foot && (Current.Tick == 0 ||
+                                                         Current.Tick - person.Agent.JobChangedTick >= 120);
         }
 
-        void Change(Resident person, Profession profession)
+        void Change(ResidentCursor person, Profession profession)
         {
-            person.Profession = profession;
-            person.Agent.JobChangedTick = State.Tick;
-            person.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Idle, TargetX = person.X, TargetY = person.Y };
-            person.Agent.NextThinkTick = State.Tick;
+            person.Replace(person.Value with { Profession = profession, Agent = person.Agent.Value with { JobChangedTick = Current.Tick } });
+            person.Replace(person.Value with { Agent = person.Agent.Value with { Goal = new AgentGoal { Kind = AgentGoalKind.Idle, TargetX = person.X, TargetY = person.Y }, NextThinkTick = Current.Tick } });
         }
     }
 }

@@ -295,8 +295,7 @@ public sealed partial class MainView
 
     private AgentState CreateMindDraft(int id)
     {
-        return JsonSerializer.Deserialize(_engine.ExportResidentMind(id), ResidentUiJsonContext.Default.AgentState) ??
-               throw new ArgumentException("认知数据为空。");
+        return _engine.GetResident(id)?.Agent ?? throw new ArgumentException("居民不存在。");
     }
 
     private void ShowGoalEditor(int id)
@@ -346,21 +345,21 @@ public sealed partial class MainView
                 for (var yy = Math.Max(0, resident.Y - 6);
                      yy <= Math.Min(_engine.State.Height - 1, resident.Y + 6);
                      yy++)
-                for (var xx = Math.Max(0, resident.X - 6);
-                     xx <= Math.Min(_engine.State.Width - 1, resident.X + 6);
-                     xx++)
-                {
-                    var index = yy * _engine.State.Width + xx;
-                    var tile = _engine.State.Tiles[index];
-                    if (kind == AgentGoalKind.FetchWater
-                            ? WorldEngine.IsWaterSource(tile)
-                            : kind == AgentGoalKind.Fish
-                                ? WorldEngine.IsWaterTerrain(tile.Terrain) && AnimalRules.Species.Any(s =>
-                                    AnimalRules.For(s).Aquatic && AnimalRules.For(s).Diet == AnimalDiet.Herbivore &&
-                                    tile.AnimalPopulation(s) > 0)
-                                : tile.WildlifeMask != 0 && RaceTerrainRules.CanWalk(tile, resident.Race))
-                        choices.Add(new EntityChoice(index + 1, $"{TerrainName(tile.Terrain)} {xx}, {yy}"));
-                }
+                    for (var xx = Math.Max(0, resident.X - 6);
+                         xx <= Math.Min(_engine.State.Width - 1, resident.X + 6);
+                         xx++)
+                    {
+                        var index = yy * _engine.State.Width + xx;
+                        var tile = _engine.State.Tiles[index];
+                        if (kind == AgentGoalKind.FetchWater
+                                ? WorldEngine.IsWaterSource(tile)
+                                : kind == AgentGoalKind.Fish
+                                    ? WorldEngine.IsWaterTerrain(tile.Terrain) && AnimalRules.Species.Any(s =>
+                                        AnimalRules.For(s).Aquatic && AnimalRules.For(s).Diet == AnimalDiet.Herbivore &&
+                                        tile.AnimalPopulation(s) > 0)
+                                    : tile.WildlifeMask != 0 && RaceTerrainRules.CanWalk(tile, resident.Race))
+                            choices.Add(new EntityChoice(index + 1, $"{TerrainName(tile.Terrain)} {xx}, {yy}"));
+                    }
             }
             else
                 choices.AddRange(_engine.State.Residents.Select(person => new EntityChoice(person.Id, person.Name)));
@@ -396,7 +395,7 @@ public sealed partial class MainView
             else if ((AgentGoalKind)goal.SelectedItem! is AgentGoalKind.FetchWater or AgentGoalKind.Hunt
                      or AgentGoalKind.Fish)
             {
-                if (choice.Id <= 0 || choice.Id > _engine.State.Tiles.Length)
+                if (choice.Id <= 0 || choice.Id > _engine.State.Tiles.Count)
                     return;
                 var sourceX = (choice.Id - 1) % _engine.State.Width;
                 var sourceY = (choice.Id - 1) / _engine.State.Width;
@@ -467,7 +466,9 @@ public sealed partial class MainView
                                   || targetTown != originalGoal.TargetSettlementId ||
                                   targetEntity != originalGoal.TargetEntityId
                                   || goalReason != originalGoal.Reason || keepDays != initialDuration;
-                mind.Goal = goalChanged
+                mind = mind with
+                {
+                    Goal = goalChanged
                     ? new AgentGoal
                     {
                         Kind = kind,
@@ -480,13 +481,20 @@ public sealed partial class MainView
                         StartedTick = _engine.State.Tick,
                         ReviewTick = _engine.State.Tick + keepDays,
                     }
-                    : originalGoal;
-                mind.Fatigue = Number(fatigue);
-                mind.SocialNeed = Number(social);
-                mind.Personality.Courage = Number(courage);
-                mind.Personality.Diligence = Number(diligence);
-                mind.Personality.Sociability = Number(sociability);
-                mind.Personality.Ambition = Number(ambition);
+                    : originalGoal
+                };
+                mind = mind with { Fatigue = Number(fatigue) };
+                mind = mind with { SocialNeed = Number(social) };
+                mind = mind with
+                {
+                    Personality = mind.Personality with
+                    {
+                        Courage = Number(courage),
+                        Diligence = Number(diligence),
+                        Sociability = Number(sociability),
+                        Ambition = Number(ambition),
+                    }
+                };
                 await SubmitEditAsync(() =>
                 {
                     _engine.EditResident(id, new ResidentEdit { Agent = mind });
@@ -638,9 +646,9 @@ public sealed partial class MainView
                     Hops = Integer(hops),
                 };
                 if (adding)
-                    mind.Memory.Add(revisedFact);
+                    mind = mind with { Memory = mind.Memory.Add(revisedFact) };
                 else
-                    mind.Memory[mind.Memory.IndexOf(fact)] = revisedFact;
+                    mind = mind with { Memory = mind.Memory.SetItem(mind.Memory.IndexOf(fact), revisedFact) };
                 fact = revisedFact;
                 if (!await SubmitEditAsync(() =>
                     {
@@ -650,12 +658,12 @@ public sealed partial class MainView
                         RefreshUi(true);
                         SetStatus("记忆已更新，世界历史保持原样");
                     }) && adding)
-                    mind.Memory.Remove(fact);
+                    mind = mind with { Memory = mind.Memory.Remove(fact) };
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
             {
                 if (adding)
-                    mind.Memory.Remove(fact);
+                    mind = mind with { Memory = mind.Memory.Remove(fact) };
                 SetStatus("未应用变更：" + FriendlyError(ex));
             }
         }), "memory-apply"));
@@ -666,7 +674,7 @@ public sealed partial class MainView
                 if (!CanSubmitEdit())
                     return;
                 var previousIndex = mind.Memory.IndexOf(fact);
-                mind.Memory.Remove(fact);
+                mind = mind with { Memory = mind.Memory.Remove(fact) };
                 if (!await SubmitEditAsync(() =>
                     {
                         _engine.EditResident(id, new ResidentEdit { Agent = mind });
@@ -675,7 +683,7 @@ public sealed partial class MainView
                         RefreshUi(true);
                         SetStatus("这条记忆已移除");
                     }) && previousIndex >= 0)
-                    mind.Memory.Insert(previousIndex, fact);
+                    mind = mind with { Memory = mind.Memory.Insert(previousIndex, fact) };
             }), "memory-delete"));
         }
 
@@ -910,7 +918,7 @@ public sealed partial class MainView
     {
         var stock = new ResourceStock();
         for (var i = 0; i < fields.Length; i++)
-            stock.Set(ResourceStock.Kinds[i], Number(fields[i]));
+            stock = stock.WithAmount(ResourceStock.Kinds[i], Number(fields[i]));
         return stock;
     }
 }

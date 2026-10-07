@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -68,7 +69,7 @@ public sealed partial class WorldEngine
     {
         if (!_settlements.TryGetValue(id, out var town))
             return 0;
-        _territoryCounts.Bind(State.Tiles);
+        _territoryCounts.Bind(Current.Tiles);
         if (_settlementAreas.TryGetValue(id, out var cached) && cached.Claims == _territoryCounts.Revision
                                                              && cached.Terrain == _territoryCounts.TraversalRevision &&
                                                              cached.X == town.X && cached.Y == town.Y &&
@@ -76,13 +77,13 @@ public sealed partial class WorldEngine
             return cached.Area;
         // 城镇加成须按本地独占登记陆地计算，避免借用国家总领土满足条件。
         var area = Circle(town.X, town.Y, 17).Count(i =>
-            Distance(town.X, town.Y, i % State.Width, i / State.Width) <= 17 && State.Tiles[i].ClaimedSettlementId == id
-                                                                             && State.Tiles[i].NationId ==
+            Distance(town.X, town.Y, i % Current.Width, i / Current.Width) <= 17 && Current.Tiles[i].ClaimedSettlementId == id
+                                                                             && Current.Tiles[i].NationId ==
                                                                              town.NationId &&
-                                                                             (State.Tiles[i].IsWalkable ||
-                                                                              State.Tiles[i].Terrain ==
+                                                                             (Current.Tiles[i].IsWalkable ||
+                                                                              Current.Tiles[i].Terrain ==
                                                                               TerrainType.Mountain) &&
-                                                                             !IsWaterTerrain(State.Tiles[i].Terrain));
+                                                                             !IsWaterTerrain(Current.Tiles[i].Terrain));
         _settlementAreas[id] = (_territoryCounts.Revision, _territoryCounts.TraversalRevision, town.X, town.Y,
             town.NationId, area);
         return area;
@@ -96,14 +97,14 @@ public sealed partial class WorldEngine
                                                           && GetSettlementArea(id) >= SettlementActivationArea;
     }
 
-    private int EffectiveSettlementRank(Settlement town)
+    private int EffectiveSettlementRank(SettlementCursor town)
     {
         return IsSettlementActive(town.Id) ? (int)town.Tier : 0;
     }
 
-    private bool SettlementNeedsClaimArea(Settlement town)
+    private bool SettlementNeedsClaimArea(SettlementCursor town)
     {
-        return State.Rules.Expansion && !town.FoundationPending
+        return Current.Rules.Expansion && !town.FoundationPending
                                      && (!IsSettlementActive(town.Id) || (town.Tier < SettlementTier.City &&
                                                                           town.Population >=
                                                                           ExpansionPopulation(town.Tier)
@@ -120,10 +121,10 @@ public sealed partial class WorldEngine
         var person = GetResident(residentId);
         return person is null || !InBounds(x, y)
             ? OutsideTerritoryGatheringMultiplier
-            : GatheringTerritoryMultiplier(person, State.Tiles[Index(x, y)]);
+            : GatheringTerritoryMultiplier(person, Current.Tiles[Index(x, y)]);
     }
 
-    private static double GatheringTerritoryMultiplier(Resident person, Tile source)
+    private static double GatheringTerritoryMultiplier(ResidentCursor person, TileCursor source)
     {
         return source.ClaimedSettlementId == person.SettlementId
                && source.NationId == person.NationId
@@ -149,9 +150,9 @@ public sealed partial class WorldEngine
         if (area < GetSettlementExpansionArea(id))
             return $"独占陆地 {area} / {GetSettlementExpansionArea(id)} 格，需占领最大半径一半的等价面积并实地登记";
         var center =
-            State.Society.Buildings.FirstOrDefault(b => b.SettlementId == id && b.Kind == BuildingKind.TownCenter);
+            Current.Society.Buildings.FirstOrDefault(b => b.SettlementId == id && b.Kind == BuildingKind.TownCenter);
         if (center is null || !center.IsCompleted || center.IsUpgrading || center.Health < 50
-            || State.Tiles[Index(town.X, town.Y)].FireTicks > 0)
+            || Current.Tiles[Index(town.X, town.Y)].FireTicks > 0)
             return "需要可工作的城镇中心组织扩充";
         return MissingResources(town.Resources, SettlementExpansionCost(town.Tier));
     }
@@ -163,14 +164,13 @@ public sealed partial class WorldEngine
         if (SettlementExpansionError(id) is { } error)
             throw new InvalidOperationException(error);
         var town = RequireTown(id);
-        Spend(town.Resources, SettlementExpansionCost(town.Tier));
-        town.ExpansionProgress = 0;
-        town.ExpansionRequired = town.Tier == SettlementTier.Village ? 60 : 120;
+        town.Resources = Spend(town.Resources, SettlementExpansionCost(town.Tier));
+        town.Replace(town.Value with { ExpansionProgress = 0, ExpansionRequired = town.Tier == SettlementTier.Village ? 60 : 120 });
         AddEvent(WorldEventKind.Construction, $"{town.Name}投入扩充材料，居民到城镇中心施工后升为{SettlementTierName(town.Tier + 1)}。",
             town.X, town.Y, EventAction.Started, town.Id);
     }
 
-    private bool WorkOnTownExpansion(Settlement town, double effort)
+    private bool WorkOnTownExpansion(SettlementCursor town, double effort)
     {
         if (!town.IsExpanding)
             return false;
@@ -178,7 +178,7 @@ public sealed partial class WorldEngine
         if (GetSettlementArea(town.Id) < GetSettlementExpansionArea(town.Id))
             return false;
         town.ExpansionProgress = Math.Min(town.ExpansionRequired,
-            town.ExpansionProgress + effort * State.Rules.DevelopmentRate);
+            town.ExpansionProgress + effort * Current.Rules.DevelopmentRate);
         if (town.ExpansionProgress < town.ExpansionRequired)
             return true;
         town.Tier++;

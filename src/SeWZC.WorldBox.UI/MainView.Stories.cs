@@ -103,7 +103,8 @@ public sealed partial class MainView
             return;
         }
 
-        panel.Children.Add(Text(person.Name + "的重要转折", 18, Mint));
+        _inspectorUpdates.Add(() => person = _engine.GetResident(person.Id) ?? person);
+        panel.Children.Add(LiveText(() => person.Name + "的重要转折", 18, Mint));
         panel.Children.Add(WatchControl(ObservedObjectKind.Resident, person.Id, "story-watch"));
         panel.Children.Add(Paragraph("时间线来自实际经历和保留事件。玩家编辑会明确标记；个人记忆可能过时，不代表世界事实。"));
         LiveRows(panel,
@@ -141,6 +142,7 @@ public sealed partial class MainView
 
     private void BuildMilitarySummary(StackPanel panel, Nation nation)
     {
+        _inspectorUpdates.Add(() => nation = _engine.State.Nations.FirstOrDefault(n => n.Id == nation.Id) ?? nation);
         panel.Children.Add(Text("作战目标与已收战报", 13, Mint));
         panel.Children.Add(Named(LiveText(() =>
         {

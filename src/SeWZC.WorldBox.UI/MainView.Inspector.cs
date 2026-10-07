@@ -369,7 +369,8 @@ public sealed partial class MainView
             var show = Named(
                 new CheckBox
                 {
-                    Content = "显示" + ResourceStock.Name(kind), IsChecked = _map.VisibleResources.Contains(kind),
+                    Content = "显示" + ResourceStock.Name(kind),
+                    IsChecked = _map.VisibleResources.Contains(kind),
                 },
                 "map-resource-" + kind.ToString().ToLowerInvariant());
             show.IsCheckedChanged += (_, _) =>
@@ -425,7 +426,9 @@ public sealed partial class MainView
             var item = new StackPanel { Margin = new Thickness(4, 0), Spacing = 2 };
             item.Children.Add(new Image
             {
-                Source = _map.ResidentPreview(race, Profession.Lumberjack), Width = 32, Height = 40,
+                Source = _map.ResidentPreview(race, Profession.Lumberjack),
+                Width = 32,
+                Height = 40,
             });
             item.Children.Add(Text(RaceName(race), 11));
             races.Children.Add(item);
@@ -439,7 +442,9 @@ public sealed partial class MainView
         {
             var item = new StackPanel
             {
-                Orientation = Orientation.Horizontal, Spacing = 3, Margin = new Thickness(3, 2),
+                Orientation = Orientation.Horizontal,
+                Spacing = 3,
+                Margin = new Thickness(3, 2),
             };
             item.Children.Add(new Image { Source = _map.AnimalPreview(kind), Width = 20, Height = 20 });
             item.Children.Add(Text(WorldEngine.WildlifeName(kind), 11));
@@ -452,7 +457,9 @@ public sealed partial class MainView
         {
             var item = new StackPanel
             {
-                Orientation = Orientation.Horizontal, Spacing = 3, Margin = new Thickness(3, 2),
+                Orientation = Orientation.Horizontal,
+                Spacing = 3,
+                Margin = new Thickness(3, 2),
             };
             item.Children.Add(new Image { Source = _map.PlantPreview(kind), Width = 20, Height = 20 });
             item.Children.Add(Text(PlantResources.Name(kind), 11));

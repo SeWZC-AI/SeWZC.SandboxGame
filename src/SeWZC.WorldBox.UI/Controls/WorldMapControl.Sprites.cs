@@ -16,8 +16,9 @@ public sealed partial class WorldMapControl
     private readonly List<Building> _sceneBuildings = [];
     private readonly List<SceneSprite> _sceneSprites = [];
     private readonly Dictionary<int, RaceKind> _settlementStyles = [];
-    private int _architecturePopulation, _architectureTownCount;
-    private WorldState? _architectureState;
+    private int _architectureTownCount;
+    private WorldEngine? _architectureEngine;
+    private ImmutableVector<Resident>? _architectureResidents;
     private long _architectureYear = -1;
     private (int Left, int Top, int Right, int Bottom) _sceneBuildingViewport;
     private bool _sceneBuildingsDirty = true;
@@ -97,13 +98,24 @@ public sealed partial class WorldMapControl
 
     private void CaptureArchitecture(WorldState state)
     {
-        if (ReferenceEquals(state, _architectureState) && _architectureYear == state.Tick / 120
-                                                       && _architecturePopulation == state.Residents.Count &&
-                                                       _architectureTownCount == state.Settlements.Count)
-            return;
-        _architectureState = state;
+        if (ReferenceEquals(Engine, _architectureEngine) && _architectureYear == state.Tick / 120 &&
+            _architectureTownCount == state.Settlements.Count && _architectureResidents is { } previous &&
+            previous.Count == state.Residents.Count)
+        {
+            if (ReferenceEquals(previous, state.Residents)) return;
+            var changed = false;
+            for (var i = 0; i < previous.Count; i++)
+                if (previous[i].Race != state.Residents[i].Race || previous[i].SettlementId != state.Residents[i].SettlementId)
+                {
+                    changed = true;
+                    break;
+                }
+            _architectureResidents = state.Residents;
+            if (!changed) return;
+        }
+        _architectureEngine = Engine;
+        _architectureResidents = state.Residents;
         _architectureYear = state.Tick / 120;
-        _architecturePopulation = state.Residents.Count;
         _architectureTownCount = state.Settlements.Count;
         _settlementStyles.Clear();
         foreach (var group in state.Residents.GroupBy(r => r.SettlementId))

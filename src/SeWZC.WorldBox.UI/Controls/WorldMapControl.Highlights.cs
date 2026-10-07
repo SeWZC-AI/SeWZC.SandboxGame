@@ -48,33 +48,33 @@ public sealed partial class WorldMapControl
 
         var viewport = VisibleTiles(state);
         for (var y = viewport.Top; y <= viewport.Bottom; y++)
-        for (var x = viewport.Left; x <= viewport.Right; x++)
-        {
-            var tile = state.Tiles[y * state.Width + x];
-            IBrush brush;
-            if (Overlay == 5)
+            for (var x = viewport.Left; x <= viewport.Right; x++)
             {
-                if (tile.ClaimedSettlementId == 0)
-                    continue;
-                brush = TownHighlights[tile.ClaimedSettlementId % TownHighlights.Length];
-            }
-            else if (Overlay == 6)
-            {
-                if (!WorldEngine.IsWaterSource(tile))
-                    continue;
-                var abundance = Math.Clamp(WorldEngine.DailyWaterYield(tile) / .1, 0, 1);
-                brush = WaterHighlights[(int)(abundance * 140)];
-            }
-            else if (Overlay == 7)
-                brush = FertilityHighlights[tile.Fertility];
-            else
-            {
-                if (tile.FireTicks == 0 && tile.DroughtTicks == 0)
-                    continue;
-                brush = tile.FireTicks > 0 ? FireHighlight : DroughtHighlight;
-            }
+                var tile = state.Tiles[y * state.Width + x];
+                IBrush brush;
+                if (Overlay == 5)
+                {
+                    if (tile.ClaimedSettlementId == 0)
+                        continue;
+                    brush = TownHighlights[tile.ClaimedSettlementId % TownHighlights.Length];
+                }
+                else if (Overlay == 6)
+                {
+                    if (!WorldEngine.IsWaterSource(tile))
+                        continue;
+                    var abundance = Math.Clamp(WorldEngine.DailyWaterYield(tile) / .1, 0, 1);
+                    brush = WaterHighlights[(int)(abundance * 140)];
+                }
+                else if (Overlay == 7)
+                    brush = FertilityHighlights[tile.Fertility];
+                else
+                {
+                    if (tile.FireTicks == 0 && tile.DroughtTicks == 0)
+                        continue;
+                    brush = tile.FireTicks > 0 ? FireHighlight : DroughtHighlight;
+                }
 
-            context.DrawRectangle(brush, null, new Rect(x * TilePixels, y * TilePixels, TilePixels, TilePixels));
-        }
+                context.DrawRectangle(brush, null, new Rect(x * TilePixels, y * TilePixels, TilePixels, TilePixels));
+            }
     }
 }

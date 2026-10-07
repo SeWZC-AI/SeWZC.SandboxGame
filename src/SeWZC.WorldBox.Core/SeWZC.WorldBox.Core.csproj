@@ -2,4 +2,7 @@
   <PropertyGroup>
     <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="SeWZC.WorldBox.Core.Tests" />
+  </ItemGroup>
 </Project>

@@ -2,29 +2,29 @@ using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
-public sealed partial class Building
+public sealed partial record Building
 {
     /// <summary>规划此设施用途的理由。</summary>
-    public string PlanningReason { get; set; } = "";
+    public string PlanningReason { get; init; } = "";
 
     /// <summary>选择此地建造的理由。</summary>
-    public string SiteReason { get; set; } = "";
+    public string SiteReason { get; init; } = "";
 
     /// <summary>设施等级，独立于聚落的村镇城等级。</summary>
     [JsonRequired]
-    public int Level { get; set; } = 1;
+    public int Level { get; init; } = 1;
 
     /// <summary>本轮升级或改向已累计的施工量。</summary>
-    public double UpgradeProgress { get; set; }
+    public double UpgradeProgress { get; init; }
 
     /// <summary>本轮升级或改向所需的总施工量，0 表示没有项目。</summary>
-    public double UpgradeRequired { get; set; }
+    public double UpgradeRequired { get; init; }
 
     /// <summary>桥梁当前允许通行的轴向。</summary>
-    public BridgeDirection Direction { get; set; }
+    public BridgeDirection Direction { get; init; }
 
     /// <summary>改造完成后采用的桥梁轴向，空值表示未安排改向。</summary>
-    public BridgeDirection? PendingDirection { get; set; }
+    public BridgeDirection? PendingDirection { get; init; }
 
     /// <summary>是否有正在进行的升级或改向项目。</summary>
     [JsonIgnore]

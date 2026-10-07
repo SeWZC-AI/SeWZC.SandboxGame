@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -47,8 +48,8 @@ public sealed partial class WorldEngine
     {
         // 按种子生成名称，避开现有及归档居民的重名。
         var names = GivenNames[(int)race];
-        var code = unchecked((uint)id * 4051u + (uint)State.Seed * 7919u) % 32768;
-        var used = State.Residents.Concat(State.ArchivedResidents).Select(r => r.Name)
+        var code = unchecked((uint)id * 4051u + (uint)Current.Seed * 7919u) % 32768;
+        var used = Current.Residents.Concat(Current.ArchivedResidents).Select(r => r.Name)
             .ToHashSet(StringComparer.Ordinal);
         for (var attempt = 0; attempt < 32768; attempt++)
         {
@@ -63,9 +64,9 @@ public sealed partial class WorldEngine
 
     private string NewPlaceName(string suffix)
     {
-        var used = State.Nations.Select(n => n.Name).Concat(State.Settlements.Select(t => t.Name))
+        var used = Current.Nations.Select(n => n.Name).Concat(Current.Settlements.Select(t => t.Name))
             .ToHashSet(StringComparer.Ordinal);
-        var code = unchecked((uint)State.NextId * 137u + (uint)State.Seed) % 512;
+        var code = unchecked((uint)Current.NextId * 137u + (uint)Current.Seed) % 512;
         for (var i = 0; i < 512; i++)
         {
             var n = (code + (uint)i) % 512;
@@ -74,6 +75,6 @@ public sealed partial class WorldEngine
                 return name;
         }
 
-        return PlaceRoots[code % 32] + State.NextId + suffix;
+        return PlaceRoots[code % 32] + Current.NextId + suffix;
     }
 }

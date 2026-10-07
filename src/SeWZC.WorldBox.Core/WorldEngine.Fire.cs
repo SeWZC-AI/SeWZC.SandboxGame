@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -45,8 +46,8 @@ public sealed partial class WorldEngine
     {
         if (!InBounds(x, y))
             return 0;
-        var fuel = TerrainFlammability(State.Tiles[Index(x, y)]);
-        foreach (var building in State.Society.Buildings)
+        var fuel = TerrainFlammability(Current.Tiles[Index(x, y)]);
+        foreach (var building in Current.Society.Buildings)
             if (building.X == x && building.Y == y && building.Health > 0)
                 fuel = Math.Max(fuel, BuildingFlammability(building));
         return fuel;
@@ -54,18 +55,18 @@ public sealed partial class WorldEngine
 
     private bool Ignite(int index)
     {
-        var tile = State.Tiles[index];
-        if (tile.FireTicks > 0 || GetTileFlammability(index % State.Width, index / State.Width) <= 0)
+        var tile = Current.Tiles[index];
+        if (tile.FireTicks > 0 || GetTileFlammability(index % Current.Width, index / Current.Width) <= 0)
             return false;
         tile.FireTicks = 60 + RandomInt(31);
         _burningTiles.Add(index);
-        EmitVisual(WorldVisualKind.Fire, index % State.Width, index / State.Width);
+        EmitVisual(WorldVisualKind.Fire, index % Current.Width, index / Current.Width);
         return true;
     }
 
     private void EndFire(int index, bool exhausted)
     {
-        var tile = State.Tiles[index];
+        var tile = Current.Tiles[index];
         tile.FireTicks = 0;
         _burningTiles.Remove(index);
         if (!exhausted || TerrainFlammability(tile) <= 0)
@@ -80,55 +81,58 @@ public sealed partial class WorldEngine
     /// <summary>尝试让邻近火源的成年居民消耗随身饮水扑救；返回是否产生扑救效果。</summary>
     /// <param name="person">扑火的居民。</param>
     public bool TryExtinguishFire(Resident person)
+
+    {
+        return TryExtinguishFire(RequireResident(person.Id));
+    }
+    private bool TryExtinguishFire(ResidentCursor person)
     {
         var goal = person.Agent.Goal;
         if (person.Health <= 0 || person.Age < 14 || goal.Kind != AgentGoalKind.ExtinguishFire
             || !InBounds(goal.TargetX, goal.TargetY) || Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > 1
-            || State.Tick - person.MoveStartedTick < person.MoveDurationTicks || !Walkable(person.X, person.Y)
-            || State.Tiles[Index(person.X, person.Y)].FireTicks > 0 || person.Inventory.Water < .1)
+            || Current.Tick - person.MoveStartedTick < person.MoveDurationTicks || !Walkable(person.X, person.Y)
+            || Current.Tiles[Index(person.X, person.Y)].FireTicks > 0 || person.Inventory.Water < .1)
             return false;
         var index = Index(goal.TargetX, goal.TargetY);
-        var tile = State.Tiles[index];
+        var tile = Current.Tiles[index];
         if (tile.FireTicks <= 0)
         {
-            person.Agent.NextThinkTick = State.Tick;
+            person.Agent.NextThinkTick = Current.Tick;
             return false;
         }
 
-        if (tile.FireSuppressionTick != State.Tick)
+        if (tile.FireSuppressionTick != Current.Tick)
         {
-            tile.FireSuppressionTick = State.Tick;
-            tile.FireSuppressed = 0;
+            tile.Replace(tile.Value with { FireSuppressionTick = Current.Tick, FireSuppressed = 0 });
         }
 
         // 每格共用每日扑救上限，避免聚集大量居民后火灾在一日内直接消失。
         var reduction = Math.Min(2 - tile.FireSuppressed, tile.FireTicks);
         if (reduction <= 0)
             return false;
-        person.Inventory.Water -= .1;
+        person.Inventory = person.Inventory with { Water = person.Inventory.Water - .1 };
         tile.FireSuppressed += reduction;
         tile.FireTicks -= reduction;
-        person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + .3);
-        person.Activity = ResidentActivity.Working;
+        person.Replace(person.Value with { Agent = person.Agent.Value with { Fatigue = Math.Min(100, person.Agent.Fatigue + .3) }, Activity = ResidentActivity.Working });
         if (tile.FireTicks == 0)
             EndFire(index, false);
         return true;
     }
 
-    private void AddFirefightingChoice(Resident person, List<GoalChoice> choices)
+    private void AddFirefightingChoice(ResidentCursor person, List<GoalChoice> choices)
     {
         if (_burningTiles.Count == 0 || person.Age < 14 || person.Inventory.Water < .1
             || person.Hunger >= 60 || person.Thirst >= 60 ||
-            State.Tiles[Index(person.X, person.Y)].FireTicks > 0)
+            Current.Tiles[Index(person.X, person.Y)].FireTicks > 0)
             return;
         foreach (var offset in VisibleResourceOffsets)
         {
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
-            if (!InBounds(x, y) || State.Tiles[Index(x, y)].FireTicks <= 0)
+            if (!InBounds(x, y) || Current.Tiles[Index(x, y)].FireTicks <= 0)
                 continue;
             if (!Directions.Any(d =>
-                    Walkable(x + d.X, y + d.Y) && State.Tiles[Index(x + d.X, y + d.Y)].FireTicks == 0))
+                    Walkable(x + d.X, y + d.Y) && Current.Tiles[Index(x + d.X, y + d.Y)].FireTicks == 0))
                 continue;
             choices.Add(new GoalChoice(AgentGoalKind.ExtinguishFire, x, y, 190 - offset.Distance,
                 "携带饮水赶到火场边缘，持续用水扑救；同一火场每日扑救量有限"));

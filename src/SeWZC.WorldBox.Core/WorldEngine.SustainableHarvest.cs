@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -9,7 +10,7 @@ public sealed partial class WorldEngine
         return IsWaterTerrain(tile.Terrain) ? 0 : 50 + tile.Fertility;
     }
 
-    private static double WildlifeHarvestEfficiency(Tile tile, WildlifeKind kind)
+    private static double WildlifeHarvestEfficiency(TileCursor tile, WildlifeKind kind)
     {
         if (kind == WildlifeKind.None)
             return 0;
@@ -19,18 +20,18 @@ public sealed partial class WorldEngine
         return density * density;
     }
 
-    private static double WildlifeHarvestAmount(Tile tile, WildlifeKind kind, double effort)
+    private static double WildlifeHarvestAmount(TileCursor tile, WildlifeKind kind, double effort)
     {
         return Math.Min(tile.AnimalPopulation(kind) * .1, Math.Max(0, effort) * WildlifeHarvestEfficiency(tile, kind));
     }
 
-    private static double PlantStock(Tile tile, bool wood = false)
+    private static double PlantStock(TileCursor tile, bool wood = false)
     {
         return tile.ResourceAmount * (tile.Improvement == LandImprovement.Farmland && !wood ? 1
             : wood ? tile.Plants.Trees : tile.Plants.Shrubs + tile.Plants.Grass + tile.Plants.Reeds);
     }
 
-    private static double NaturalPlantHarvestEfficiency(Tile tile, bool wood = false)
+    private static double NaturalPlantHarvestEfficiency(TileCursor tile, bool wood = false)
     {
         if (tile.Improvement == LandImprovement.Farmland && !wood)
             return 1;
@@ -42,7 +43,7 @@ public sealed partial class WorldEngine
     /// <param name="tile">采集植物的地格。</param>
     /// <param name="desired">希望采集的资源数量，实际量受可持续存量限制。</param>
     /// <param name="wood">是否采集木材；关闭时采集食物。</param>
-    private static double HarvestPlants(Tile tile, double desired, bool wood = false)
+    private static double HarvestPlants(TileCursor tile, double desired, bool wood = false)
     {
         var stock = PlantStock(tile, wood);
         var amount = Math.Min(stock * (tile.Improvement == LandImprovement.Farmland && !wood ? 1 : .1),
@@ -61,7 +62,7 @@ public sealed partial class WorldEngine
                 var quantity = plants.Get(kind) * before;
                 if (wood == (kind == PlantKind.Trees))
                     quantity -= amount * quantity / stock;
-                plants.Set(kind, Math.Max(0, quantity) / tile.ResourceAmount);
+                plants = plants.WithCoverage(kind, Math.Max(0, quantity) / tile.ResourceAmount);
             }
 
             tile.Plants = plants;
@@ -70,16 +71,16 @@ public sealed partial class WorldEngine
         return amount;
     }
 
-    private static bool WildlifeSiteProductive(Tile tile, bool aquatic)
+    private static bool WildlifeSiteProductive(TileCursor tile, bool aquatic)
     {
         var kind = EdibleAnimal(tile, aquatic);
         return kind != WildlifeKind.None && WildlifeHarvestEfficiency(tile, kind) >= .25;
     }
 
-    private bool WildlifeGoalProductive(Resident person)
+    private bool WildlifeGoalProductive(ResidentCursor person)
     {
         var source = person.Agent.Goal.TargetEntityId - 1;
-        return source >= 0 && source < State.Tiles.Length
-                           && WildlifeSiteProductive(State.Tiles[source], person.Agent.Goal.Kind == AgentGoalKind.Fish);
+        return source >= 0 && source < Current.Tiles.Count
+                           && WildlifeSiteProductive(Current.Tiles[source], person.Agent.Goal.Kind == AgentGoalKind.Fish);
     }
 }

@@ -1,8 +1,9 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private bool VisibleWorkSiteReachable(Resident person, int x, int y, bool adjacent)
+    private bool VisibleWorkSiteReachable(ResidentCursor person, int x, int y, bool adjacent)
     {
         var search = 0;
         if (VisibleSiteReachable(person, Index(x, y), ref search, TravelMode.Foot))
@@ -10,8 +11,8 @@ public sealed partial class WorldEngine
         if (!adjacent)
             return false;
         foreach (var (dx, dy) in Directions)
-            if (Walkable(x + dx, y + dy, person.Race) && !IsWaterTerrain(State.Tiles[Index(x + dx, y + dy)].Terrain)
-                                                      && State.Tiles[Index(x + dx, y + dy)].FireTicks == 0
+            if (Walkable(x + dx, y + dy, person.Race) && !IsWaterTerrain(Current.Tiles[Index(x + dx, y + dy)].Terrain)
+                                                      && Current.Tiles[Index(x + dx, y + dy)].FireTicks == 0
                                                       && VisibleSiteReachable(person, Index(x + dx, y + dy), ref search,
                                                           TravelMode.Foot))
                 return true;
@@ -20,27 +21,27 @@ public sealed partial class WorldEngine
 
     private bool AutomaticSiteUseful(BuildingKind kind, int index)
     {
-        var tile = State.Tiles[index];
+        var tile = Current.Tiles[index];
         if (kind is BuildingKind.Farm or BuildingKind.AutomatedFarm or BuildingKind.RunicGarden &&
             (tile.Fertility < 25 || tile.DroughtTicks > 0))
             return false;
         if (IsMaterialFacility(kind) || kind == BuildingKind.MiningHall)
         {
-            return Circle(index % State.Width, index / State.Width, 1).Any(i => i != index &&
-                State.Tiles[i].ResourceAmount > 0
+            return Circle(index % Current.Width, index / Current.Width, 1).Any(i => i != index &&
+                Current.Tiles[i].ResourceAmount > 0
                 && (kind == BuildingKind.LumberCamp
-                    ? IsForestTerrain(State.Tiles[i].Terrain)
+                    ? IsForestTerrain(Current.Tiles[i].Terrain)
                     : kind is BuildingKind.Quarry or BuildingKind.MiningHall
-                        ? TerrainRules.For(State.Tiles[i].Terrain).StoneYield +
-                        TerrainRules.For(State.Tiles[i].Terrain).OreYield > 0
-                        : TerrainRules.For(State.Tiles[i].Terrain).WoodYield +
-                        TerrainRules.For(State.Tiles[i].Terrain).StoneYield +
-                        TerrainRules.For(State.Tiles[i].Terrain).OreYield > 0));
+                        ? TerrainRules.For(Current.Tiles[i].Terrain).StoneYield +
+                        TerrainRules.For(Current.Tiles[i].Terrain).OreYield > 0
+                        : TerrainRules.For(Current.Tiles[i].Terrain).WoodYield +
+                        TerrainRules.For(Current.Tiles[i].Terrain).StoneYield +
+                        TerrainRules.For(Current.Tiles[i].Terrain).OreYield > 0));
         }
 
         if (IsHusbandry(kind))
         {
-            return HusbandryStockAt(index % State.Width, index / State.Width, kind == BuildingKind.Aquaculture)
+            return HusbandryStockAt(index % Current.Width, index / Current.Width, kind == BuildingKind.Aquaculture)
                 .Source >= 0;
         }
 
@@ -51,7 +52,7 @@ public sealed partial class WorldEngine
         return true;
     }
 
-    private string BuildingPurpose(Settlement town, BuildingKind kind)
+    private string BuildingPurpose(SettlementCursor town, BuildingKind kind)
     {
         return kind switch
         {
@@ -70,26 +71,25 @@ public sealed partial class WorldEngine
         };
     }
 
-    private string BuildingSiteReason(Settlement town, BuildingKind kind, int x, int y)
+    private string BuildingSiteReason(SettlementCursor town, BuildingKind kind, int x, int y)
     {
         return $"选址 {x}, {y}：距中心 {Distance(x, y, town.X, town.Y)} 格；"
                + (IsPublicInfrastructure(kind) ? "沿实际任务的通行路线建设" :
                    IsWaterfrontBuilding(kind) ? "紧贴本城镇占领陆岸，可从岸边施工" : "本城镇占领地，附近居民有可达施工位置")
                + (kind is BuildingKind.Farm or BuildingKind.AutomatedFarm or BuildingKind.RunicGarden
-                   ? $"；肥力 {State.Tiles[Index(x, y)].Fertility}/100"
+                   ? $"；肥力 {Current.Tiles[Index(x, y)].Fertility}/100"
                    : IsMaterialFacility(kind)
                        ? "；紧邻实际可采材料"
                        : "");
     }
 
-    private int BuildPlannedFacility(Settlement town, BuildingKind kind, int x, int y, string reason,
+    private int BuildPlannedFacility(SettlementCursor town, BuildingKind kind, int x, int y, string reason,
         BridgeDirection? direction = null, int level = 1)
     {
         var siteReason = BuildingSiteReason(town, kind, x, y);
         var id = BuildFacility(town.Id, kind, x, y, direction, level);
         var building = FindBuilding(id)!;
-        building.PlanningReason = reason;
-        building.SiteReason = siteReason;
+        building.Replace(building.Value with { PlanningReason = reason, SiteReason = siteReason });
         return id;
     }
 
@@ -121,7 +121,7 @@ public sealed partial class WorldEngine
     {
         if (!_settlements.TryGetValue(settlementId, out var town) || !InBounds(x, y))
             return double.NegativeInfinity;
-        var tile = State.Tiles[Index(x, y)];
+        var tile = Current.Tiles[Index(x, y)];
         var score = -Distance(x, y, town.X, town.Y) * .25 + (tile.RoadLevel > 0 ? 1 : 0);
         if (kind is BuildingKind.Farm or BuildingKind.AutomatedFarm or BuildingKind.RunicGarden)
             score += tile.Fertility / 10d - (tile.DroughtTicks > 0 ? 8 : 0);
@@ -131,7 +131,7 @@ public sealed partial class WorldEngine
             {
                 if (i == Index(x, y))
                     continue;
-                var source = State.Tiles[i];
+                var source = Current.Tiles[i];
                 var yields = TerrainRules.For(source.Terrain);
                 var yield = kind == BuildingKind.LumberCamp ? yields.WoodYield :
                     kind == BuildingKind.Quarry ? yields.StoneYield + yields.OreYield :
@@ -144,15 +144,15 @@ public sealed partial class WorldEngine
             score += Math.Min(3, WellWaterYield(tile)) * 15;
         if (kind == BuildingKind.Reservoir)
         {
-            score += Circle(x, y, 1).Where(i => i == Index(x, y) || IsFreshWater(State.Tiles[i]))
-                .Select(i => Math.Min(3, DailyWaterYield(State.Tiles[i])) * 20).DefaultIfEmpty().Max();
+            score += Circle(x, y, 1).Where(i => i == Index(x, y) || IsFreshWater(Current.Tiles[i]))
+                .Select(i => Math.Min(3, DailyWaterYield(Current.Tiles[i])) * 20).DefaultIfEmpty().Max();
         }
 
         if (kind is BuildingKind.SignalTower or BuildingKind.Watchtower)
             score += tile.Terrain is TerrainType.Mountain or TerrainType.Hills ? 5 : 0;
         if (kind == BuildingKind.ArcaneSanctum)
             score += TerrainRules.For(tile.Terrain).ManaRate * 4;
-        foreach (var building in State.Society.Buildings)
+        foreach (var building in Current.Society.Buildings)
         {
             var distance = Distance(x, y, building.X, building.Y);
             if (distance <= 2)
@@ -164,29 +164,29 @@ public sealed partial class WorldEngine
         return score;
     }
 
-    private int BestBuildingSite(Settlement town, BuildingKind kind, bool founding = false)
+    private int BestBuildingSite(SettlementCursor town, BuildingKind kind, bool founding = false)
     {
         var radius = founding ? _creatingDemo ? 3 : 6 : Math.Max(8, town.MaxClaimRadius);
         return Circle(town.X, town.Y, radius)
-            .Where(i => FacilityPlacementError(town.Id, kind, i % State.Width, i / State.Width, founding,
+            .Where(i => FacilityPlacementError(town.Id, kind, i % Current.Width, i / Current.Width, founding,
                             founding: founding) is null
                         && (founding || (AutomaticSiteUseful(kind, i) && _citizens[town.Id].Any(p => p.Health > 0 &&
                             p.Age >= 14 && p.ArmyId == 0
-                            && Distance(p.X, p.Y, i % State.Width, i / State.Width) <= 6
-                            && VisibleWorkSiteReachable(p, i % State.Width, i / State.Width, true)))))
-            .OrderByDescending(i => BuildingSiteScore(town.Id, kind, i % State.Width, i / State.Width)).ThenBy(i => i)
+                            && Distance(p.X, p.Y, i % Current.Width, i / Current.Width) <= 6
+                            && VisibleWorkSiteReachable(p, i % Current.Width, i / Current.Width, true)))))
+            .OrderByDescending(i => BuildingSiteScore(town.Id, kind, i % Current.Width, i / Current.Width)).ThenBy(i => i)
             .FirstOrDefault(-1);
     }
 
-    private bool BuildingGroundOwned(Building building)
+    private bool BuildingGroundOwned(BuildingCursor building)
     {
         return IsPublicInfrastructure(building.Kind)
-               || (State.Tiles[Index(building.X, building.Y)].ClaimedSettlementId == building.SettlementId
+               || (Current.Tiles[Index(building.X, building.Y)].ClaimedSettlementId == building.SettlementId
                    && _settlements.TryGetValue(building.SettlementId, out var town)
-                   && State.Tiles[Index(building.X, building.Y)].NationId == town.NationId);
+                   && Current.Tiles[Index(building.X, building.Y)].NationId == town.NationId);
     }
 
-    private bool PassiveFacility(Building building)
+    private bool PassiveFacility(BuildingCursor building)
     {
         return building.Kind is BuildingKind.Granary or BuildingKind.Housing or BuildingKind.Watchtower;
     }
@@ -196,16 +196,16 @@ public sealed partial class WorldEngine
     public int GetHousingCapacity(int settlementId)
     {
         var town = RequireTown(settlementId);
-        return Math.Min(20_000, town.Housing + State.Society.Buildings
+        return Math.Min(20_000, town.Housing + Current.Society.Buildings
             .Where(b => b.SettlementId == settlementId && b.Kind == BuildingKind.Housing && IsFacilityOperating(b))
             .Sum(b => b.Level * 20));
     }
 
     private double GranaryRestBonus(int settlementId)
     {
-        IEnumerable<Building>? buildings = _localWorkQueriesActive
+        IEnumerable<BuildingCursor>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(settlementId)
-            : State.Society.Buildings;
+            : Current.Society.Buildings;
         var bonus = 1d;
         if (buildings is null)
             return bonus;
@@ -223,7 +223,7 @@ public sealed partial class WorldEngine
     public double BoatTravelMultiplier(int x, int y, int nationId)
     {
         var bonus = 1d;
-        foreach (var dock in State.Society.Buildings)
+        foreach (var dock in Current.Society.Buildings)
             if (dock.Kind == BuildingKind.Dock && IsFacilityOperating(dock) &&
                 RequireTown(dock.SettlementId).NationId == nationId
                 && Distance(x, y, dock.X, dock.Y) <= 3)

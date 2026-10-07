@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -22,7 +23,7 @@ public sealed partial class WorldEngine
             _visuals.Dequeue();
     }
 
-    private void FinishLogging(Tile tile, int x, int y)
+    private void FinishLogging(TileCursor tile, int x, int y)
     {
         if (!IsForestTerrain(tile.Terrain) || tile.ResourceAmount > .000001)
             return;
@@ -37,7 +38,7 @@ public sealed partial class WorldEngine
     /// <param name="steps">最多预览的步数，计算时限制在 0 至 64。</param>
     public IReadOnlyList<RoutePoint> PreviewResidentRoute(int residentId, int steps = 24)
     {
-        var person = State.Residents.FirstOrDefault(r => r.Id == residentId);
+        var person = Current.Residents.FirstOrDefault(r => r.Id == residentId);
         if (person is null || person.ArmyId != 0 || person.Agent.Goal.Kind == AgentGoalKind.Idle)
             return [];
         var goal = person.Agent.Goal;
@@ -46,7 +47,7 @@ public sealed partial class WorldEngine
         var targetX = goal.TargetX;
         var targetY = goal.TargetY;
         var factory = goal.Kind == AgentGoalKind.Work
-            ? State.Society.Buildings.FirstOrDefault(b =>
+            ? Current.Society.Buildings.FirstOrDefault(b =>
                 b.Id == goal.TargetEntityId && b.SettlementId == person.SettlementId && b.IsCompleted)
             : null;
         var production = factory is null ? null : ProductionRules.For(factory.Kind);
@@ -57,7 +58,7 @@ public sealed partial class WorldEngine
             targetY = needsInputs ? home.Y : factory!.Y;
         }
 
-        var cursor = new Resident
+        var cursor = new ResidentCursor
         {
             X = person.X,
             Y = person.Y,
@@ -65,10 +66,13 @@ public sealed partial class WorldEngine
             FromY = person.FromY,
             TravelMode = person.TravelMode,
         };
-        cursor.Agent.Goal.NavigationTarget = goal.NavigationTarget;
-        cursor.Agent.Goal.NavigationVisited = new List<int>(goal.NavigationVisited);
-        cursor.Agent.Goal.NavigationBestDistance = goal.NavigationBestDistance;
-        cursor.Agent.Goal.NavigationWithoutProgress = goal.NavigationWithoutProgress;
+        cursor.Agent.Goal = new AgentGoal
+        {
+            NavigationTarget = goal.NavigationTarget,
+            NavigationVisited = goal.NavigationVisited,
+            NavigationBestDistance = goal.NavigationBestDistance,
+            NavigationWithoutProgress = goal.NavigationWithoutProgress,
+        };
         var route = new List<RoutePoint> { new(cursor.X, cursor.Y) };
         var visited = new HashSet<int> { Index(cursor.X, cursor.Y) };
         for (var i = 0; i < Math.Clamp(steps, 0, 64); i++)
@@ -76,7 +80,7 @@ public sealed partial class WorldEngine
             var interactionRange = production is not null || goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest
                                                               or AgentGoalKind.Socialize or AgentGoalKind.ReturnHome
                                                           || (goal.TargetEntityId != 0 &&
-                                                              State.Society.Buildings.Any(b =>
+                                                              Current.Society.Buildings.Any(b =>
                                                                   b.Id == goal.TargetEntityId &&
                                                                   (!b.IsCompleted || b.IsUpgrading ||
                                                                    IsWaterfrontBuilding(b.Kind))))
@@ -88,10 +92,7 @@ public sealed partial class WorldEngine
             var next = SelectAgentStep(cursor, targetX, targetY);
             if (next < 0 || !visited.Add(next))
                 break;
-            cursor.FromX = cursor.X;
-            cursor.FromY = cursor.Y;
-            cursor.X = next % State.Width;
-            cursor.Y = next / State.Width;
+            cursor.Replace(cursor.Value with { FromX = cursor.X, FromY = cursor.Y, X = next % Current.Width, Y = next / Current.Width });
             route.Add(new RoutePoint(cursor.X, cursor.Y));
         }
 
@@ -111,12 +112,10 @@ public sealed partial class WorldEngine
         if (!double.IsFinite(resources) || resources is < 0 or > 1_000_000 || fertility is < 0 or > 100 ||
             roadLevel is < 0 or > 3)
             throw new ArgumentException("地格资源、肥力或道路等级超出范围。");
-        var tile = State.Tiles[Index(x, y)];
+        var tile = Current.Tiles[Index(x, y)];
         if (!tile.IsWalkable && roadLevel > 0)
             throw new ArgumentException("道路需要可通行的陆地。");
-        tile.ResourceAmount = resources;
-        tile.Fertility = (byte)fertility;
-        tile.RoadLevel = (byte)roadLevel;
+        tile.Replace(tile.Value with { ResourceAmount = resources, Fertility = (byte)fertility, RoadLevel = (byte)roadLevel });
         AddEvent(WorldEventKind.Editor, "玩家调整当地资源、肥力与道路。", x, y);
     }
 }

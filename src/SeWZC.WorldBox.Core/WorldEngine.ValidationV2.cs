@@ -77,7 +77,6 @@ public sealed partial class WorldEngine
             person.MoveStartedTick >= 0 && person.MoveStartedTick <= tick &&
             person.MoveDurationTicks is >= 1 and <= 100, "移动位置或时间无效。");
         CheckV2(
-            person.Inventory is not null &&
             ResourceStock.Kinds.All(kind => Number(person.Inventory.Get(kind), 0, 1_000_000)), "背包数值无效。");
         CheckV2(Enum.IsDefined(person.TravelMode) && (person.TravelMode != TravelMode.Aircraft ||
                                                       person.Inventory.Aircraft >= 1)
@@ -85,7 +84,7 @@ public sealed partial class WorldEngine
                                                       person.Inventory.Boats >= 1), "运输工具状态无效。");
         var agent = person.Agent;
         CheckV2(
-            agent is not null && agent.Personality is not null && agent.Goal is not null && agent.Memory is not null &&
+            agent is not null && agent.Personality is not null && agent.Memory is not null &&
             agent.Memory.Count <= 16 && agent.Decisions is not null && agent.Decisions.Count <= 6 &&
             agent.CarriedMessages is not null && agent.CarriedMessages.Count <= 8, "心智结构或容量无效。");
         var personality = agent!.Personality;
@@ -95,7 +94,7 @@ public sealed partial class WorldEngine
             Number(agent.Fatigue, 0, 100) && Number(agent.SocialNeed, 0, 100), "性格或需求超出范围。");
         var goal = agent.Goal;
         CheckV2(goal.NavigationTarget >= -1 && goal.NavigationTarget < width * height
-                                            && goal.NavigationVisited is not null && goal.NavigationVisited.Count <= 256
+                                            && !goal.NavigationVisited.IsDefault && goal.NavigationVisited.Length <= 256
                                             && goal.NavigationVisited.All(i => i >= 0 && i < width * height)
                                             && goal.NavigationBestDistance is >= 0 and <= 512 &&
                                             goal.NavigationWithoutProgress is >= 0 and <= 64

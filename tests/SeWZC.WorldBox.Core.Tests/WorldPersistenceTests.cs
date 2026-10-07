@@ -97,19 +97,26 @@ public sealed class WorldPersistenceTests
         var fixture = new WorldFixture();
         var fact = new AgentFact
         {
-            Id = fixture.Engine.State.NextId++,
-            Kind = AgentFactKind.Danger, X = 16, Y = 16, Confidence = 0.8, Text = "现场危险观察",
+            Id = fixture.Engine.Current.NextId++,
+            Kind = AgentFactKind.Danger,
+            X = 16,
+            Y = 16,
+            Confidence = 0.8,
+            Text = "现场危险观察",
         };
         fixture.Resident.Agent.Memory.Add(fact);
-        fixture.Engine.State.PendingMessages.Add(new PendingMessage
+        fixture.Engine.Current.PendingMessages.Add(new PendingMessage
         {
-            SenderId = fixture.ResidentId, RecipientId = fixture.ResidentId, DeliverTick = 1, Facts = [fact],
+            SenderId = fixture.ResidentId,
+            RecipientId = fixture.ResidentId,
+            DeliverTick = 1,
+            Facts = [fact],
         });
 
         var restoredWorld = WorldEngine.ImportJson(fixture.Engine.ExportJson());
         var savedFact = restoredWorld.GetResident(fixture.ResidentId)!.Agent.Memory.Last();
 
-        Assert.Equal(fact, Assert.Single(Assert.Single(restoredWorld.State.PendingMessages).Facts));
+        Assert.Equal(fact, Assert.Single(Assert.Single(restoredWorld.Current.PendingMessages).Facts));
         Assert.Equal(fact, savedFact);
         Assert.Equal(0.4, savedFact.ReliabilityAt(12), 10);
     }
@@ -119,9 +126,11 @@ public sealed class WorldPersistenceTests
     public void Import_rejects_null_message_facts()
     {
         var fixture = new WorldFixture();
-        fixture.Engine.State.PendingMessages.Add(new PendingMessage
+        fixture.Engine.Current.PendingMessages.Add(new PendingMessage
         {
-            SenderId = fixture.ResidentId, RecipientId = fixture.ResidentId, DeliverTick = 1,
+            SenderId = fixture.ResidentId,
+            RecipientId = fixture.ResidentId,
+            DeliverTick = 1,
         });
         var saved = JsonNode.Parse(fixture.Engine.ExportJson())!;
         saved["PendingMessages"]![0]!["Facts"] = null;

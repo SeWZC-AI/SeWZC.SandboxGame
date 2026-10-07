@@ -76,8 +76,8 @@ public sealed record ResourceAmounts
         };
     }
 
-    /// <summary>创建可编辑的资源副本。</summary>
-    public ResourceStock Copy()
+    /// <summary>将费用或配方转换为库存值。</summary>
+    public ResourceStock ToStock()
     {
         return new ResourceStock
         {

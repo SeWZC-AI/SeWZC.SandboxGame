@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -16,7 +17,7 @@ public sealed partial class WorldEngine
             throw new ArgumentOutOfRangeException(nameof(steps));
         for (var step = 0; step < steps; step++)
         {
-            State.Tick++;
+            Current.Tick++;
             Reindex();
             BeginKnowledgeQueries();
             try
@@ -32,14 +33,14 @@ public sealed partial class WorldEngine
                 TickLocalConflicts();
                 TickMigrationAndSecession();
                 Reindex();
-                if (State.Tick % 12 == 0)
+                if (Current.Tick % 12 == 0)
                     GrowSettlements();
-                if (State.Tick % 30 == 0)
+                if (Current.Tick % 30 == 0)
                     RefreshTerritoryClaims();
                 UpdateArmies();
                 ArchiveDeadResidents();
                 Reindex();
-                foreach (var settlement in State.Settlements.Where(s => _citizens[s.Id].Count == 0).ToArray())
+                foreach (var settlement in Current.Settlements.Where(s => _citizens[s.Id].Count == 0).ToArray())
                     RemoveSettlement(settlement, "居民离散，聚落成为遗址");
                 RemoveEmptyNations();
                 ReconcileSocietyTopology();
@@ -53,61 +54,23 @@ public sealed partial class WorldEngine
         }
     }
 
-    private static void CapResources(ResourceStock stock)
-    {
-        stock.Food = Math.Clamp(stock.Food, 0, 1_000_000);
-        stock.Wood = Math.Clamp(stock.Wood, 0, 1_000_000);
-        stock.Stone = Math.Clamp(stock.Stone, 0, 1_000_000);
-        stock.Ore = Math.Clamp(stock.Ore, 0, 1_000_000);
-        stock.Alloy = Math.Clamp(stock.Alloy, 0, 1_000_000);
-        stock.EnergyCells = Math.Clamp(stock.EnergyCells, 0, 1_000_000);
-        stock.Crystals = Math.Clamp(stock.Crystals, 0, 1_000_000);
-        foreach (var kind in MineralAndVehicleResources)
-            stock.Set(kind, Math.Clamp(stock.Get(kind), 0, 1_000_000));
-        stock.Tools = Math.Clamp(stock.Tools, 0, 1_000_000);
-        stock.Medicine = Math.Clamp(stock.Medicine, 0, 1_000_000);
-        stock.Ammunition = Math.Clamp(stock.Ammunition, 0, 1_000_000);
-    }
-
     private void UpdateResidents()
     {
         // 先保存现有病例的位置，避免新感染在同一天沿居民遍历顺序连锁传播。
-        var infected = new HashSet<int>(State.Residents.Where(r => r.SicknessTicks > 0).Select(r => Index(r.X, r.Y)));
-        foreach (var person in State.Residents)
+        var infected = new HashSet<int>(Current.Residents.Where(r => r.SicknessTicks > 0).Select(r => Index(r.X, r.Y)));
+        foreach (var person in Current.Residents)
         {
-            if (State.Rules.Aging)
-                person.Age = Math.Min(1000, person.Age + 1d / 120);
-            if (person.Profession == Profession.Child && person.Age >= 14)
-                person.Profession = AssignProfession();
-            var maxAge = Lifespan(person.Race);
-            if (State.Rules.Aging && person.Age > maxAge)
-                DamageResident(person, .5, DeathCause.OldAge);
-            if ((!State.Rules.Hunger || person.Hunger <= 80) && person.Health > 0 && person.SicknessTicks == 0 &&
-                person.Age <= maxAge &&
-                (!State.Rules.Thirst || person.Thirst <= 95))
-                person.Health = Math.Min(100, person.Health + 0.15);
-            var tile = State.Tiles[Index(person.X, person.Y)];
-            if (tile.FireTicks > 0)
-                DamageResident(person, 4, DeathCause.Fire);
-            if (person.SicknessTicks > 0)
-            {
-                person.SicknessTicks--;
-                if (State.Rules.Disease)
-                    DamageResident(person, .2, DeathCause.Disease);
-                if (person.SicknessTicks == 0)
-                    person.DiseaseImmuneUntilTick = State.Tick + 180;
-            }
-            else if (State.Rules.Disease && person.DiseaseImmuneUntilTick <= State.Tick &&
-                     (State.Tick + person.Id) % 6 == 0
-                     && (infected.Contains(Index(person.X, person.Y)) || Directions.Any(d =>
-                         InBounds(person.X + d.X, person.Y + d.Y)
-                         && infected.Contains(Index(person.X + d.X, person.Y + d.Y)))) && RandomInt(100) < 6)
-                person.SicknessTicks = 72 + RandomInt(25);
-
-            if (person.Health <= 0)
-                continue;
-            if (person.SicknessTicks > 0)
-                person.Activity = ResidentActivity.Sick;
+            var age = Current.Rules.Aging ? Math.Min(1000, person.Age + 1d / 120) : person.Age;
+            var profession = person.Profession == Profession.Child && age >= 14 ? AssignProfession() : person.Profession;
+            var infectionDuration = 0;
+            if (person.SicknessTicks == 0 && Current.Rules.Disease && person.DiseaseImmuneUntilTick <= Current.Tick &&
+                (Current.Tick + person.Id) % 6 == 0
+                && (infected.Contains(Index(person.X, person.Y)) || Directions.Any(d =>
+                    InBounds(person.X + d.X, person.Y + d.Y)
+                    && infected.Contains(Index(person.X + d.X, person.Y + d.Y)))) && RandomInt(100) < 6)
+                infectionDuration = 72 + RandomInt(25);
+            person.Replace(person.Value.AdvanceVitals(Current.Rules, Current.Tiles[Index(person.X, person.Y)],
+                Current.Tick, profession, infectionDuration));
         }
 
         ArchiveDeadResidents();
@@ -115,17 +78,17 @@ public sealed partial class WorldEngine
 
     private void GrowSettlements()
     {
-        foreach (var town in State.Settlements.ToArray())
+        foreach (var town in Current.Settlements.ToArray())
         {
             var citizens = _citizens[town.Id];
             // 住宅与发展项目共享材料预算，须为下一项本地建设或研究留出实际交付的材料。
             var developmentReserve = LocalDevelopmentReserve(town);
-            if (State.Rules.Construction && State.Rules.Expansion && SettlementExpansionError(town.Id) is null
+            if (Current.Rules.Construction && Current.Rules.Expansion && SettlementExpansionError(town.Id) is null
                 && ResourceStock.Kinds.All(k =>
                     town.Resources.Get(k) >= SettlementExpansionCost(town.Tier).Get(k) + developmentReserve.Get(k)))
                 ExpandTown(town.Id);
-            if (State.Rules.Construction && town.Resources.Food >= citizens.Count * 2 + developmentReserve.Food
-                                         && GetHousingCapacity(town.Id) < 60 + State.Society.Buildings.Where(b =>
+            if (Current.Rules.Construction && town.Resources.Food >= citizens.Count * 2 + developmentReserve.Food
+                                         && GetHousingCapacity(town.Id) < 60 + Current.Society.Buildings.Where(b =>
                                                  b.SettlementId == town.Id && IsFacilityOperating(b))
                                              .Sum(b => b.Kind == BuildingKind.Farm
                                                  ? 30 * b.Efficiency
@@ -133,7 +96,7 @@ public sealed partial class WorldEngine
                                                      ? 120 * b.Efficiency
                                                      : 0)
                                          && citizens.Count > GetHousingCapacity(town.Id) * 0.75
-                                         && !State.Society.Buildings.Any(b =>
+                                         && !Current.Society.Buildings.Any(b =>
                                              b.SettlementId == town.Id && (!b.IsCompleted || b.IsUpgrading))
                                          && town.Resources.Wood >= 25 + developmentReserve.Wood &&
                                          town.Resources.Stone >= 8 + developmentReserve.Stone)
@@ -141,7 +104,7 @@ public sealed partial class WorldEngine
                 var site = BestBuildingSite(town, BuildingKind.Housing);
                 if (site >= 0)
                 {
-                    BuildPlannedFacility(town, BuildingKind.Housing, site % State.Width, site / State.Width,
+                    BuildPlannedFacility(town, BuildingKind.Housing, site % Current.Width, site / Current.Width,
                         BuildingPurpose(town, BuildingKind.Housing));
                 }
             }
@@ -149,32 +112,32 @@ public sealed partial class WorldEngine
             var adults = citizens.Where(p =>
                     p.Age >= 18 && p.Age < (p.Race == RaceKind.Elf ? 100 : 55) && p.Hunger < 30 && p.SicknessTicks == 0)
                 .ToArray();
-            if (State.Rules.Births && adults.Length >= 6 && citizens.Count < GetHousingCapacity(town.Id) &&
-                town.Resources.Food > citizens.Count * 0.8 && State.Residents.Count < MaxPopulation)
+            if (Current.Rules.Births && adults.Length >= 6 && citizens.Count < GetHousingCapacity(town.Id) &&
+                town.Resources.Food > citizens.Count * 0.8 && Current.Residents.Count < MaxPopulation)
             {
                 var births = Math.Min(Math.Max(1, adults.Length / 28),
-                    Math.Min(GetHousingCapacity(town.Id) - citizens.Count, MaxPopulation - State.Residents.Count));
+                    Math.Min(GetHousingCapacity(town.Id) - citizens.Count, MaxPopulation - Current.Residents.Count));
                 for (var b = 0; b < births; b++)
                 {
                     var child = NewResident(town, adults[RandomInt(adults.Length)].Race, 0);
-                    State.Residents.Add(child);
+                    Current.Residents.Add(child);
                     citizens.Add(child);
-                    town.Resources.Food = Math.Max(0, town.Resources.Food - 0.6);
+                    town.Resources = town.Resources with { Food = Math.Max(0, town.Resources.Food - 0.6) };
                 }
 
-                if (State.Tick % 120 == 0)
+                if (Current.Tick % 120 == 0)
                     AddEvent(WorldEventKind.Growth, $"{town.Name}迎来新生儿，人口增至{citizens.Count}。", town.X, town.Y);
             }
 
-            if (State.Rules.Expansion && State.Tick % 120 == 0 && citizens.Count >= 80 && !town.IsExpanding
+            if (Current.Rules.Expansion && Current.Tick % 120 == 0 && citizens.Count >= 80 && !town.IsExpanding
                 && ResourceStock.Kinds.All(k =>
                     town.Resources.Get(k) >= VillageFoundingCost.Get(k) + developmentReserve.Get(k)) &&
-                State.Settlements.Count < 256)
+                Current.Settlements.Count < 256)
                 ExpandSettlement(town, citizens);
         }
     }
 
-    private void ExpandSettlement(Settlement origin, List<Resident> citizens)
+    private void ExpandSettlement(SettlementCursor origin, List<ResidentCursor> citizens)
     {
         var pioneers = citizens.Where(p => p.ArmyId == 0 && p.Age >= 16 && p.Health >= 60
                                            && p.Agent.DestinationSettlementId == 0 &&
@@ -184,32 +147,32 @@ public sealed partial class WorldEngine
             return;
         // 建村地点须在出发前报告给原聚落，避免迁徙队伍使用未送达的信息。
         var location = origin.PublicKnowledge.Where(f => f.Kind == AgentFactKind.FoundingSite &&
-                                                         f.LearnedTick < State.Tick
-                                                         && State.Tick - f.ObservedTick <= 600 && f.Confidence >= .5 &&
+                                                         f.LearnedTick < Current.Tick
+                                                         && Current.Tick - f.ObservedTick <= 600 && f.Confidence >= .5 &&
                                                          InBounds(f.X, f.Y))
-            .Select(f => Index(f.X, f.Y)).Where(i => !IsWaterTerrain(State.Tiles[i].Terrain)
+            .Select(f => Index(f.X, f.Y)).Where(i => !IsWaterTerrain(Current.Tiles[i].Terrain)
                                                      && pioneers.All(p =>
-                                                         RaceTerrainRules.CanWalk(State.Tiles[i], p.Race)) &&
-                                                     State.Tiles[i].FireTicks == 0
-                                                     && !State.Society.Buildings.Any(b =>
-                                                         b.X == i % State.Width && b.Y == i / State.Width)
-                                                     && State.Tiles[i].Fertility >= 25 &&
-                                                     (State.Tiles[i].NationId == 0 ||
-                                                      State.Tiles[i].NationId == origin.NationId)
-                                                     && State.Tiles[i].ClaimedSettlementId == 0
+                                                         RaceTerrainRules.CanWalk(Current.Tiles[i], p.Race)) &&
+                                                     Current.Tiles[i].FireTicks == 0
+                                                     && !Current.Society.Buildings.Any(b =>
+                                                         b.X == i % Current.Width && b.Y == i / Current.Width)
+                                                     && Current.Tiles[i].Fertility >= 25 &&
+                                                     (Current.Tiles[i].NationId == 0 ||
+                                                      Current.Tiles[i].NationId == origin.NationId)
+                                                     && Current.Tiles[i].ClaimedSettlementId == 0
                                                      && FoundingSiteSuitable(i,
                                                          pioneers.Select(p => p.Race).Distinct().ToArray())
-                                                     && Distance(i % State.Width, i / State.Width, origin.X,
+                                                     && Distance(i % Current.Width, i / Current.Width, origin.X,
                                                          origin.Y) >= MinimumSettlementDistance
-                                                     && State.Settlements.All(t =>
-                                                         Distance(t.X, t.Y, i % State.Width, i / State.Width) >=
+                                                     && Current.Settlements.All(t =>
+                                                         Distance(t.X, t.Y, i % Current.Width, i / Current.Width) >=
                                                          MinimumSettlementDistance))
-            .OrderByDescending(i => State.Tiles[i].Fertility).ThenBy(i => i).FirstOrDefault(-1);
+            .OrderByDescending(i => Current.Tiles[i].Fertility).ThenBy(i => i).FirstOrDefault(-1);
         if (location < 0)
             return;
-        var x = location % State.Width;
-        var y = location / State.Width;
-        var town = new Settlement
+        var x = location % Current.Width;
+        var y = location / Current.Width;
+        var town = new SettlementCursor
         {
             Id = NewId(),
             Name = NewPlaceName("村"),
@@ -220,14 +183,14 @@ public sealed partial class WorldEngine
             FoundationPending = true,
             Resources = new ResourceStock(),
         };
-        Spend(origin.Resources, VillageFoundingCost);
-        State.Settlements.Add(town);
+        origin.Resources = Spend(origin.Resources, VillageFoundingCost);
+        Current.Settlements.Add(town);
         _settlements[town.Id] = town;
         _citizens[town.Id] = [];
         foreach (var pioneer in pioneers)
         {
             foreach (var resource in ResourceStock.Kinds)
-                pioneer.Inventory.Set(resource,
+                pioneer.Inventory = pioneer.Inventory.WithAmount(resource,
                     pioneer.Inventory.Get(resource) + VillageFoundingCost.Get(resource) / pioneers.Length);
             pioneer.SettlementId = town.Id;
             var address = new AgentFact
@@ -238,8 +201,8 @@ public sealed partial class WorldEngine
                 X = x,
                 Y = y,
                 Value = town.NationId,
-                ObservedTick = State.Tick,
-                LearnedTick = State.Tick,
+                ObservedTick = Current.Tick,
+                LearnedTick = Current.Tick,
                 OriginResidentId = pioneer.Id,
                 OriginProfession = pioneer.Profession,
                 SourceResidentId = pioneer.Id,
@@ -252,17 +215,17 @@ public sealed partial class WorldEngine
                 TargetX = x,
                 TargetY = y,
                 TargetSettlementId = town.Id,
-                StartedTick = State.Tick,
+                StartedTick = Current.Tick,
                 Reason =
-                    $"原聚落人口 {citizens.Count}，为拓荒扩展家园；已收到建村勘察报告，选址 {x}, {y} 肥力 {State.Tiles[location].Fertility}/100，周围有可登记陆地，背负粮木石步行建立新家园",
+                    $"原聚落人口 {citizens.Count}，为拓荒扩展家园；已收到建村勘察报告，选址 {x}, {y} 肥力 {Current.Tiles[location].Fertility}/100，周围有可登记陆地，背负粮木石步行建立新家园",
                 PlayerDirected = true,
-                ReviewTick = State.Tick + 150,
+                ReviewTick = Current.Tick + 150,
             };
             citizens.Remove(pioneer);
             _citizens[town.Id].Add(pioneer);
         }
 
-        State.Tiles[location].SettlementId = town.Id;
+        Current.Tiles[location].SettlementId = town.Id;
         ClaimTerritory(town, 4);
         InitializeSociety();
         AddEvent(WorldEventKind.Growth,
@@ -271,19 +234,19 @@ public sealed partial class WorldEngine
 
     private bool FoundingSiteSuitable(int index, RaceKind[] races)
     {
-        var x = index % State.Width;
-        var y = index / State.Width;
+        var x = index % Current.Width;
+        var y = index / Current.Width;
         // 建村地点须能连通取得最小占地范围，避免定居在四周无法利用的单个肥沃地格。
-        return Circle(x, y, 3).Count(i => !IsWaterTerrain(State.Tiles[i].Terrain) && State.Tiles[i].FireTicks == 0
-            && State.Tiles[i].ClaimedSettlementId == 0 &&
-            races.All(race => RaceTerrainRules.CanWalk(State.Tiles[i], race))) >= SettlementActivationArea;
+        return Circle(x, y, 3).Count(i => !IsWaterTerrain(Current.Tiles[i].Terrain) && Current.Tiles[i].FireTicks == 0
+            && Current.Tiles[i].ClaimedSettlementId == 0 &&
+            races.All(race => RaceTerrainRules.CanWalk(Current.Tiles[i], race))) >= SettlementActivationArea;
     }
 
     private void UpdateDisasters()
     {
         foreach (var index in _burningTiles.Order().ToArray())
         {
-            var tile = State.Tiles[index];
+            var tile = Current.Tiles[index];
             if (tile.FireTicks <= 0)
             {
                 _burningTiles.Remove(index);
@@ -297,37 +260,37 @@ public sealed partial class WorldEngine
                 continue;
             }
 
-            if (!State.Rules.FireSpread || State.Tick % 8 != 0)
+            if (!Current.Rules.FireSpread || Current.Tick % 8 != 0)
                 continue;
             var (dx, dy) = Directions[RandomInt(4)];
-            var x = index % State.Width + dx;
-            var y = index / State.Width + dy;
+            var x = index % Current.Width + dx;
+            var y = index / Current.Width + dy;
             if (!InBounds(x, y))
                 continue;
             var neighborIndex = Index(x, y);
-            if (State.Tiles[neighborIndex].FireTicks == 0 && RandomInt(1000) < GetTileFlammability(x, y) * 120)
+            if (Current.Tiles[neighborIndex].FireTicks == 0 && RandomInt(1000) < GetTileFlammability(x, y) * 120)
                 Ignite(neighborIndex);
         }
 
         foreach (var index in _dryTiles.ToArray())
-            if (--State.Tiles[index].DroughtTicks <= 0)
+            if (--Current.Tiles[index].DroughtTicks <= 0)
             {
-                State.Tiles[index].DroughtTicks = 0;
+                Current.Tiles[index].DroughtTicks = 0;
                 _dryTiles.Remove(index);
             }
 
-        if (State.NaturalDisasters && State.Rules.DisasterFrequency > 0 &&
-            State.Tick % (1200 / State.Rules.DisasterFrequency) == 0 && State.Residents.Count > 0)
+        if (Current.NaturalDisasters && Current.Rules.DisasterFrequency > 0 &&
+            Current.Tick % (1200 / Current.Rules.DisasterFrequency) == 0 && Current.Residents.Count > 0)
         {
-            var person = State.Residents[RandomInt(State.Residents.Count)];
-            TriggerDisaster(person.X, person.Y, (DisasterKind)RandomInt(State.Rules.Disease ? 3 : 2),
-                2 + State.Rules.DisasterStrength * 2);
+            var person = Current.Residents[RandomInt(Current.Residents.Count)];
+            TriggerDisaster(person.X, person.Y, (DisasterKind)RandomInt(Current.Rules.Disease ? 3 : 2),
+                2 + Current.Rules.DisasterStrength * 2);
         }
     }
 
     private void RefreshTerritoryClaims()
     {
-        foreach (var town in State.Settlements)
+        foreach (var town in Current.Settlements)
             town.MaxClaimRadius = Math.Max(town.MaxClaimRadius,
                 Math.Min(17, 6 + (_citizens.GetValueOrDefault(town.Id)?.Count ?? 0) / 15));
     }

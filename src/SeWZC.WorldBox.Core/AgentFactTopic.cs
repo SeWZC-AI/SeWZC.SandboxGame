@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>信息议题的共享行为，供不可变快照和机构报告使用。</summary>
@@ -43,7 +44,7 @@ internal abstract class AgentFactTopic
     internal virtual long RetentionBonus(AgentFact fact, int homeId) => 0;
     internal virtual PolicyKind SuggestedPolicy => PolicyKind.PublicHealth;
     internal virtual double Urgency(double value) => Math.Clamp(value, 0, 100);
-    internal virtual void Receive(WorldEngine engine, Settlement town, Resident carrier, AgentFact fact) { }
+    internal virtual void Receive(WorldEngine engine, SettlementCursor town, ResidentCursor carrier, AgentFact fact) { }
 
     private sealed class GeneralTopic : AgentFactTopic;
 
@@ -81,7 +82,7 @@ internal abstract class AgentFactTopic
     private sealed class PolicyTopic : AgentFactTopic
     {
         internal override long RetentionBonus(AgentFact fact, int homeId) => 60;
-        internal override void Receive(WorldEngine engine, Settlement town, Resident carrier, AgentFact fact) =>
+        internal override void Receive(WorldEngine engine, SettlementCursor town, ResidentCursor carrier, AgentFact fact) =>
             engine.ReceivePolicyFact(town, fact);
     }
 
@@ -93,7 +94,7 @@ internal abstract class AgentFactTopic
 
     private sealed class CultureTopic : AgentFactTopic
     {
-        internal override void Receive(WorldEngine engine, Settlement town, Resident carrier, AgentFact fact) =>
+        internal override void Receive(WorldEngine engine, SettlementCursor town, ResidentCursor carrier, AgentFact fact) =>
             engine.ReceiveCultureFact(carrier, fact);
     }
 
@@ -104,7 +105,7 @@ internal abstract class AgentFactTopic
         internal override long RetentionBonus(AgentFact fact, int homeId) => 60;
         internal override PolicyKind SuggestedPolicy => PolicyKind.Scholarship;
         internal override double Urgency(double value) => 40;
-        internal override void Receive(WorldEngine engine, Settlement town, Resident carrier, AgentFact fact) =>
+        internal override void Receive(WorldEngine engine, SettlementCursor town, ResidentCursor carrier, AgentFact fact) =>
             engine.ReceiveResearchFact(town, fact);
     }
 
@@ -117,14 +118,14 @@ internal abstract class AgentFactTopic
     private sealed class DiplomacyTopic : AgentFactTopic
     {
         internal override bool PrioritizeMessage(bool relay) => true;
-        internal override void Receive(WorldEngine engine, Settlement town, Resident carrier, AgentFact fact) =>
+        internal override void Receive(WorldEngine engine, SettlementCursor town, ResidentCursor carrier, AgentFact fact) =>
             engine.ReceiveDiplomaticNotice(town, fact);
     }
 
     private sealed class WarReportTopic : AgentFactTopic
     {
         internal override bool PrioritizeMessage(bool relay) => true;
-        internal override void Receive(WorldEngine engine, Settlement town, Resident carrier, AgentFact fact) =>
+        internal override void Receive(WorldEngine engine, SettlementCursor town, ResidentCursor carrier, AgentFact fact) =>
             engine.ReceiveWarReport(town, fact);
     }
 }

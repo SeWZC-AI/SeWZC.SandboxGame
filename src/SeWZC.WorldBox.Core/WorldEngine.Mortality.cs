@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -24,15 +25,14 @@ public sealed partial class WorldEngine
         };
     }
 
-    private void DamageResident(Resident person, double damage, DeathCause cause)
+    private void DamageResident(ResidentCursor person, double damage, DeathCause cause)
     {
         if (person.Health <= 0)
             return;
         person.Health = Math.Max(0, person.Health - damage);
         if (person.Health <= 0)
         {
-            person.DeathCause = cause;
-            person.DeathTick = State.Tick;
+            person.Replace(person.Value with { DeathCause = cause, DeathTick = Current.Tick });
         }
     }
 }

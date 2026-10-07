@@ -24,7 +24,7 @@ internal sealed class WildlifePopulationsJsonConverter : JsonConverter<WildlifeP
             if (!reader.Read() || reader.TokenType != JsonTokenType.Number || !reader.TryGetDouble(out var count)
                 || !double.IsFinite(count) || count < 0 || count > 1000)
                 throw new JsonException("动物种群数量无效。");
-            populations.Set((WildlifeKind)species, count);
+            populations = populations.WithPopulation((WildlifeKind)species, count);
         }
 
         if (reader.TokenType != JsonTokenType.EndArray)

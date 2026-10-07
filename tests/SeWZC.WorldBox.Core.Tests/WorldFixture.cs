@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.Core.Runtime;
 
 namespace SeWZC.WorldBox.Core.Tests;
 
@@ -8,15 +9,15 @@ internal sealed class WorldFixture
     internal WorldFixture()
     {
         Engine = WorldEngine.Create(42, 32, 32, false);
-        foreach (var tile in Engine.State.Tiles)
+        foreach (var tile in Engine.Current.Tiles)
             tile.Terrain = TerrainType.Grass;
         Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
-        Town = Engine.State.Settlements.Single();
-        ResidentId = Engine.State.Residents.Single().Id;
+        Town = Engine.Current.Settlements.Single();
+        ResidentId = Engine.Current.Residents.Single().Id;
     }
 
     internal WorldEngine Engine { get; }
-    internal Settlement Town { get; }
+    internal SettlementCursor Town { get; }
     internal int ResidentId { get; }
-    internal Resident Resident => Engine.GetResident(ResidentId)!;
+    internal ResidentCursor Resident => Engine.RequireResident(ResidentId)!;
 }

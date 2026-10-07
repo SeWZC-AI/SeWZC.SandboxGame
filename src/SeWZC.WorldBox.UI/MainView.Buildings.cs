@@ -312,7 +312,7 @@ public sealed partial class MainView
             sampledSearch = _structureSearch;
             if (_listRoads)
             {
-                roadRows = Enumerable.Range(0, _engine.State.Tiles.Length)
+                roadRows = Enumerable.Range(0, _engine.State.Tiles.Count)
                     .Where(i => _engine.State.Tiles[i].RoadLevel > 0 && (_structuresTownId == 0 ||
                                                                          _engine.State.Tiles[i].ClaimedSettlementId ==
                                                                          _structuresTownId)
@@ -403,22 +403,25 @@ public sealed partial class MainView
 
         if (kind.HasValue && town is not null)
         {
-            mind.Goal = new AgentGoal
+            mind = mind with
             {
-                Kind = kind.Value,
-                TargetX = town.X,
-                TargetY = town.Y,
-                TargetSettlementId = town.Id,
-                StartedTick = _engine.State.Tick,
-                ReviewTick = _engine.State.Tick + 48,
-                PlayerDirected = true,
-                Reason = kind == AgentGoalKind.Rest ? "玩家安排返回家园休息" : "玩家安排返回家园交付物资",
+                Goal = new AgentGoal
+                {
+                    Kind = kind.Value,
+                    TargetX = town.X,
+                    TargetY = town.Y,
+                    TargetSettlementId = town.Id,
+                    StartedTick = _engine.State.Tick,
+                    ReviewTick = _engine.State.Tick + 48,
+                    PlayerDirected = true,
+                    Reason = kind == AgentGoalKind.Rest ? "玩家安排返回家园休息" : "玩家安排返回家园交付物资",
+                }
             };
         }
         else
         {
-            mind.Goal.PlayerDirected = false;
-            mind.NextThinkTick = _engine.State.Tick;
+            mind = mind with { Goal = mind.Goal with { PlayerDirected = false } };
+            mind = mind with { NextThinkTick = _engine.State.Tick };
         }
 
         RunEdit(() => _engine.EditResident(id, new ResidentEdit { Agent = mind }),

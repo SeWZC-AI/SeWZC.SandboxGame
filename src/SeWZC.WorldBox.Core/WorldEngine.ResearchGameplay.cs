@@ -1,3 +1,4 @@
+using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -7,7 +8,7 @@ public sealed partial class WorldEngine
     /// <param name="job">职业。</param>
     public void AssignResearchProfession(int residentId, Profession job)
     {
-        var person = State.Residents.FirstOrDefault(r => r.Id == residentId) ?? throw new ArgumentException("居民不存在");
+        var person = Current.Residents.FirstOrDefault(r => r.Id == residentId) ?? throw new ArgumentException("居民不存在");
         var unlock = ResearchRules.Unlocking(job) ?? throw new ArgumentException("此岗位不属于研究解锁职业");
         if (!HasResearch(person.SettlementId, unlock) ||
             !HasResearchPrerequisites(person.SettlementId, unlock.Prerequisites))
@@ -16,9 +17,7 @@ public sealed partial class WorldEngine
             throw new InvalidOperationException("只能分配当地未出征、未在异地递送的成年居民");
         if (job is Profession.Battlemage or Profession.Gardener && person.MagicTalent < 25)
             throw new InvalidOperationException("此岗位需要魔法天赋至少 25");
-        person.Profession = job;
-        person.Agent.JobChangedTick = State.Tick;
-        person.Agent.NextThinkTick = State.Tick;
+        person.Replace(person.Value with { Profession = job, Agent = person.Agent.Value with { JobChangedTick = Current.Tick, NextThinkTick = Current.Tick } });
         person.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Idle, TargetX = person.X, TargetY = person.Y };
         RecordLife(person, "根据已掌握的研究，接受" + ProfessionName(job) + "岗位。");
     }
@@ -28,21 +27,19 @@ public sealed partial class WorldEngine
     /// <param name="buildingId">待操作建筑的稳定 ID。</param>
     public void RepairBuilding(int residentId, int buildingId)
     {
-        var person = State.Residents.FirstOrDefault(r => r.Id == residentId);
+        var person = Current.Residents.FirstOrDefault(r => r.Id == residentId);
         var b = FindBuilding(buildingId);
         if (person is null || b is null || person.Health <= 0 || person.Age < 14 ||
             person.Profession is not (Profession.Builder or Profession.Engineer or Profession.Firefighter)
             || !BuildingGroundOwned(b) || b.SettlementId != person.SettlementId ||
             Distance(person.X, person.Y, b.X, b.Y) > 1
-            || State.Tick - person.MoveStartedTick < person.MoveDurationTicks || b.Health is <= 0 or >= 100 ||
-            State.Tiles[Index(b.X, b.Y)].FireTicks > 0)
+            || Current.Tick - person.MoveStartedTick < person.MoveDurationTicks || b.Health is <= 0 or >= 100 ||
+            Current.Tiles[Index(b.X, b.Y)].FireTicks > 0)
             throw new InvalidOperationException("需本地建造者、工程师或消防员到受损设施 1 格内，且火势已扑灭");
         if (person.Inventory.Stone < .5)
             throw new InvalidOperationException("需要随身石材 0.5");
-        person.Inventory.Stone -= .5;
-        b.Health = Math.Min(100, b.Health + 10);
-        b.ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1);
-        b.LastServiceTick = State.Tick;
+        person.Inventory = person.Inventory with { Stone = person.Inventory.Stone - .5 };
+        b.Replace(b.Value with { Health = Math.Min(100, b.Health + 10), ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1), LastServiceTick = Current.Tick });
         EmitVisual(WorldVisualKind.Construction, b.X, b.Y);
     }
 
@@ -62,13 +59,13 @@ public sealed partial class WorldEngine
             .Select(a => a.Facility)
             .Concat(magic ? new[] { BuildingKind.Academy, BuildingKind.ArcaneSanctum } : new[] { BuildingKind.Academy })
             .Distinct().ToArray();
-        var buildings = State.Society.Buildings.Where(b => b.SettlementId == settlementId).ToArray();
+        var buildings = Current.Society.Buildings.Where(b => b.SettlementId == settlementId).ToArray();
 
-        bool Ready(Building b)
+        bool Ready(BuildingCursor b)
         {
             return b.Enabled && b.IsCompleted && !b.IsUpgrading && b.Health >= 50
-                   && BuildingGroundOwned(b) && State.Tiles[Index(b.X, b.Y)].FireTicks == 0
-                   && BuildingTerrainValid(b.Kind, State.Tiles[Index(b.X, b.Y)]);
+                   && BuildingGroundOwned(b) && Current.Tiles[Index(b.X, b.Y)].FireTicks == 0
+                   && BuildingTerrainValid(b.Kind, Current.Tiles[Index(b.X, b.Y)]);
         }
 
         var missingFacilities = required.Where(k => !buildings.Any(b => b.Kind == k && Ready(b))).Select(BuildingName)
@@ -139,7 +136,7 @@ public sealed partial class WorldEngine
     /// <param name="spell">法术类别。</param>
     public string? SpellUnlockError(int casterId, SpellKind spell)
     {
-        var caster = State.Residents.FirstOrDefault(r => r.Id == casterId);
+        var caster = Current.Residents.FirstOrDefault(r => r.Id == casterId);
         if (caster is null)
             return "施法居民不存在";
         var research = ResearchRules.Unlocking(spell);
@@ -163,15 +160,15 @@ public sealed partial class WorldEngine
             throw new InvalidOperationException(prerequisite);
         if (!InBounds(x, y) || radius is < 0 or > 4 || Distance(x, y, town.X, town.Y) > 24)
             throw new ArgumentException("铁路须位于聚落 24 格内，笔刷半径为 0–4");
-        var tiles = Circle(x, y, radius).Where(i => State.Tiles[i].NationId == town.NationId
-                                                    && State.Tiles[i].IsWalkable &&
-                                                    !IsWaterTerrain(State.Tiles[i].Terrain) &&
-                                                    State.Tiles[i].RoadLevel == 1).ToArray();
+        var tiles = Circle(x, y, radius).Where(i => Current.Tiles[i].NationId == town.NationId
+                                                    && Current.Tiles[i].IsWalkable &&
+                                                    !IsWaterTerrain(Current.Tiles[i].Terrain) &&
+                                                    Current.Tiles[i].RoadLevel == 1).ToArray();
         if (tiles.Length == 0)
             throw new InvalidOperationException("范围内没有己方可升级的陆地道路");
-        Spend(town.Resources, new ResourceStock { Stone = tiles.Length, Alloy = tiles.Length * .5 });
+        town.Resources = Spend(town.Resources, new ResourceStock { Stone = tiles.Length, Alloy = tiles.Length * .5 });
         foreach (var i in tiles)
-            State.Tiles[i].RoadLevel = 2;
+            Current.Tiles[i].RoadLevel = 2;
         AddEvent(WorldEventKind.Construction, town.Name + "铺设铁路，道路须实际相连才能供居民沿线通行。", x, y, EventAction.Completed,
             town.Id);
         RefreshTotals();
@@ -192,16 +189,16 @@ public sealed partial class WorldEngine
             return prerequisite;
         if (!InBounds(x, y) || radius is < 0 or > 4 || Distance(x, y, town.X, town.Y) > 24)
             return "目标须在聚落 24 格内";
-        var count = Circle(x, y, radius).Count(i => State.Tiles[i].NationId == town.NationId &&
-                                                    State.Tiles[i].IsWalkable
-                                                    && !IsWaterTerrain(State.Tiles[i].Terrain) &&
-                                                    State.Tiles[i].RoadLevel == 1);
+        var count = Circle(x, y, radius).Count(i => Current.Tiles[i].NationId == town.NationId &&
+                                                    Current.Tiles[i].IsWalkable
+                                                    && !IsWaterTerrain(Current.Tiles[i].Terrain) &&
+                                                    Current.Tiles[i].RoadLevel == 1);
         return count == 0
             ? "此处没有本国可升级的陆地道路"
             : MissingResources(town.Resources, new ResourceStock { Stone = count, Alloy = count * .5 });
     }
 
-    private string ExpansionFacilityStatus(Building b)
+    private string ExpansionFacilityStatus(BuildingCursor b)
     {
         var unlock = ResearchRules.Unlocking(b.Kind)!;
         if (!HasResearch(b.SettlementId, unlock) ||
@@ -209,7 +206,7 @@ public sealed partial class WorldEngine
             return "缺少本地研究：" + unlock.Name + "及其前置";
         if (b.Kind == BuildingKind.Waygate)
         {
-            var destinations = State.Society.Buildings.Count(other =>
+            var destinations = Current.Society.Buildings.Count(other =>
                 other.Id != b.Id && other.Kind == BuildingKind.Waygate && GateReady(other)
                 && RequireTown(other.SettlementId).NationId == RequireTown(b.SettlementId).NationId &&
                 Distance(b.X, b.Y, other.X, other.Y) <= 24);
@@ -217,7 +214,7 @@ public sealed partial class WorldEngine
         }
 
         var job = PreferredExpansionJob(b.Kind);
-        var staff = State.Residents.Count(p => p.SettlementId == b.SettlementId && p.Age >= 14 && p.Health > 0
+        var staff = Current.Residents.Count(p => p.SettlementId == b.SettlementId && p.Age >= 14 && p.Health > 0
                                                && p.ArmyId == 0 && (job is null || p.Profession == job) &&
                                                Distance(p.X, p.Y, b.X, b.Y) <= 1);
         return $"累计现场服务 {b.ServiceActions} 次\n到场人员 {staff}"
@@ -233,17 +230,17 @@ public sealed partial class WorldEngine
     /// <param name="destinationId">目的地折跃门的建筑 ID。</param>
     public string? WaygateTravelError(int residentId, int destinationId)
     {
-        var person = State.Residents.FirstOrDefault(r => r.Id == residentId);
+        var person = Current.Residents.FirstOrDefault(r => r.Id == residentId);
         var destination = FindBuilding(destinationId);
         if (person is null || person.Health <= 0 || person.Age < 14 || person.ArmyId != 0 ||
             person.TravelMode != TravelMode.Foot)
             return "需要活着的成年步行居民，且未编入军队";
-        if (person.FrozenUntilTick > State.Tick || State.Tick - person.MoveStartedTick < person.MoveDurationTicks)
+        if (person.FrozenUntilTick > Current.Tick || Current.Tick - person.MoveStartedTick < person.MoveDurationTicks)
             return "等待当前移动或冻结结束";
         if (destination is null || destination.Kind != BuildingKind.Waygate || !GateReady(destination)
             || RequireTown(destination.SettlementId).NationId != person.NationId)
             return "目标须为同国、已完工且掌握空间折跃的可用折跃门";
-        var source = State.Society.Buildings.FirstOrDefault(b =>
+        var source = Current.Society.Buildings.FirstOrDefault(b =>
             b.Id != destinationId && b.Kind == BuildingKind.Waygate && GateReady(b)
             && RequireTown(b.SettlementId).NationId == person.NationId && Distance(person.X, person.Y, b.X, b.Y) <= 1
             && Distance(b.X, b.Y, destination.X, destination.Y) <= 24);
@@ -253,15 +250,15 @@ public sealed partial class WorldEngine
             return "需要魔法天赋至少 25、训练至少 8";
         if (person.Mana < 30 || person.Inventory.Crystals < 2)
             return "需要个人魔力 30 和随身魔晶 2";
-        if (!RaceTerrainRules.CanWalk(State.Tiles[Index(destination.X, destination.Y)], person.Race))
+        if (!RaceTerrainRules.CanWalk(Current.Tiles[Index(destination.X, destination.Y)], person.Race))
             return "目标门地形不可通行";
         return null;
     }
 
-    private bool GateReady(Building b)
+    private bool GateReady(BuildingCursor b)
     {
         return b.Enabled && b.IsCompleted && b.Health >= 50 && !b.IsUpgrading && BuildingGroundOwned(b)
-               && State.Tiles[Index(b.X, b.Y)].FireTicks == 0 && HasResearch(b.SettlementId, Advancement.SpatialMagic)
+               && Current.Tiles[Index(b.X, b.Y)].FireTicks == 0 && HasResearch(b.SettlementId, Advancement.SpatialMagic)
                && ResearchPrerequisiteError(b.SettlementId, Advancement.SpatialMagic) is null;
     }
 
@@ -272,26 +269,21 @@ public sealed partial class WorldEngine
     {
         if (WaygateTravelError(residentId, destinationId) is { } error)
             throw new InvalidOperationException(error);
-        var person = State.Residents.First(r => r.Id == residentId);
+        var person = Current.Residents.First(r => r.Id == residentId);
         var target = FindBuilding(destinationId)!;
-        var source = State.Society.Buildings.First(b =>
+        var source = Current.Society.Buildings.First(b =>
             b.Id != target.Id && b.Kind == BuildingKind.Waygate && GateReady(b)
             && RequireTown(b.SettlementId).NationId == person.NationId && Distance(person.X, person.Y, b.X, b.Y) <= 1
             && Distance(b.X, b.Y, target.X, target.Y) <= 24);
         person.Mana -= 30;
-        person.Inventory.Crystals -= 2;
+        person.Inventory = person.Inventory with { Crystals = person.Inventory.Crystals - 2 };
         person.X = person.FromX = target.X;
         person.Y = person.FromY = target.Y;
-        person.MoveStartedTick = State.Tick;
-        person.MoveDurationTicks = 1;
-        person.Agent.Goal = new AgentGoal
-        {
-            Kind = AgentGoalKind.Idle, TargetX = target.X, TargetY = target.Y, Reason = "本人携带背包经折跃门抵达",
-        };
-        person.Agent.NextThinkTick = State.Tick + 1;
+        person.Replace(person.Value with { MoveStartedTick = Current.Tick, MoveDurationTicks = 1 });
+        person.Replace(person.Value with { Agent = person.Agent.Value with { Goal = new AgentGoal { Kind = AgentGoalKind.Idle, TargetX = target.X, TargetY = target.Y, Reason = "本人携带背包经折跃门抵达", }, NextThinkTick = Current.Tick + 1 } });
         source.ServiceActions = Math.Min(1_000_000_000, source.ServiceActions + 1);
         target.ServiceActions = Math.Min(1_000_000_000, target.ServiceActions + 1);
-        source.LastServiceTick = target.LastServiceTick = State.Tick;
+        source.LastServiceTick = target.LastServiceTick = Current.Tick;
         EmitVisual(WorldVisualKind.Waygate, target.X, target.Y, 2, source.X, source.Y);
         AddEvent(WorldEventKind.Magic, person.Name + "携带真实背包经折跃门抵达，消耗个人魔力 30、魔晶 2。", target.X, target.Y,
             residentId: person.Id);
@@ -302,15 +294,15 @@ public sealed partial class WorldEngine
     /// <param name="targetId">要攻击的敌方居民 ID。</param>
     public string? RangedAttackError(int attackerId, int targetId)
     {
-        var person = State.Residents.FirstOrDefault(r => r.Id == attackerId);
-        var target = State.Residents.FirstOrDefault(r => r.Id == targetId);
+        var person = Current.Residents.FirstOrDefault(r => r.Id == attackerId);
+        var target = Current.Residents.FirstOrDefault(r => r.Id == targetId);
         if (person is null || target is null || person.Health <= 0 || target.Health <= 0 || person.Age < 14 ||
             person.NationId == target.NationId)
             return "攻击者或目标无效";
         if (person.Profession != Profession.Ranger || !HasResearch(person.SettlementId, Advancement.Ballistics) ||
             ResearchPrerequisiteError(person.SettlementId, Advancement.Ballistics) is not null)
             return "需要掌握弹道学的游击射手";
-        if (person.FrozenUntilTick > State.Tick || State.Tick - person.LastRangedAttackTick < 3)
+        if (person.FrozenUntilTick > Current.Tick || Current.Tick - person.LastRangedAttackTick < 3)
             return "冻结中或射击尚未冷却";
         if (!IsKnownHostile(person, target.NationId))
             return "本人未收到对目标国家的交战军令";
@@ -327,16 +319,15 @@ public sealed partial class WorldEngine
     {
         if (RangedAttackError(attackerId, targetId) is { } error)
             throw new InvalidOperationException(error);
-        var person = State.Residents.First(r => r.Id == attackerId);
-        var target = State.Residents.First(r => r.Id == targetId);
-        person.Inventory.Ammunition--;
-        person.LastRangedAttackTick = State.Tick;
-        DamageResident(target, TryAbsorbShieldDamage(target, 12 * State.Rules.CombatDamageRate), DeathCause.Battle);
+        var person = Current.Residents.First(r => r.Id == attackerId);
+        var target = Current.Residents.First(r => r.Id == targetId);
+        person.Replace(person.Value with { Inventory = person.Inventory with { Ammunition = person.Inventory.Ammunition - 1 }, LastRangedAttackTick = Current.Tick });
+        DamageResident(target, TryAbsorbShieldDamage(target, 12 * Current.Rules.CombatDamageRate), DeathCause.Battle);
         EmitVisual(WorldVisualKind.Battle, target.X, target.Y, 1, person.X, person.Y);
         AddEvent(WorldEventKind.War, person.Name + "消耗一份随身弹药，向已知交战目标射击。", target.X, target.Y, residentId: person.Id);
     }
 
-    private bool ExpansionFacilityHasWork(Building b, Resident person)
+    private bool ExpansionFacilityHasWork(BuildingCursor b, ResidentCursor person)
     {
         var research = ResearchRules.Unlocking(b.Kind);
         if (research is null || !HasResearch(b.SettlementId, research) ||
@@ -354,12 +345,12 @@ public sealed partial class WorldEngine
                                           RequireTown(b.SettlementId).Resources.Water >= .5)
                                          || (RepairTargetForStation(b) is not null && (person.Inventory.Stone >= .5 ||
                                              RequireTown(b.SettlementId).Resources.Stone >= .5))),
-            BuildingKind.Library => person.Profession == Profession.Archivist && State.Tick - b.LastServiceTick >= 12,
+            BuildingKind.Library => person.Profession == Profession.Archivist && Current.Tick - b.LastServiceTick >= 12,
             BuildingKind.SurveyOffice => person.Profession == Profession.Surveyor &&
-                                         State.Tick - b.LastServiceTick >= 12,
+                                         Current.Tick - b.LastServiceTick >= 12,
             BuildingKind.Armory => person.Armor < 30 && RequireTown(b.SettlementId).Resources.Alloy >= 2,
             BuildingKind.WardTower => person.MagicTalent >= 25 && person.MagicTraining >= 8 && person.Mana >= 8 &&
-                                      State.Tick - b.LastServiceTick >= 12
+                                      Current.Tick - b.LastServiceTick >= 12
                                       && (person.Inventory.Crystals >= .25 ||
                                           RequireTown(b.SettlementId).Resources.Crystals >= .25)
                                       && LocalWardPatient(b) is not null,
@@ -373,35 +364,35 @@ public sealed partial class WorldEngine
                                            && (person.Inventory.Water >= .25 ||
                                                RequireTown(b.SettlementId).Resources.Water >= .25)
                                            && Circle(b.X, b.Y, 2).Any(i =>
-                                               CanRestoreTrees(State.Tiles[i]) && State.Tiles[i].Plants.Trees < .7),
+                                               CanRestoreTrees(Current.Tiles[i]) && Current.Tiles[i].Plants.Trees < .7),
             _ => false,
         };
     }
 
-    private int WaterSourceForStation(Building b)
+    private int WaterSourceForStation(BuildingCursor b)
     {
-        return Circle(b.X, b.Y, 1).Where(i => AvailableWater(i % State.Width, i / State.Width) > .05
-                                              && (i == Index(b.X, b.Y) || IsFreshWater(State.Tiles[i])))
-            .OrderByDescending(i => DailyWaterYield(State.Tiles[i])).FirstOrDefault(-1);
+        return Circle(b.X, b.Y, 1).Where(i => AvailableWater(i % Current.Width, i / Current.Width) > .05
+                                              && (i == Index(b.X, b.Y) || IsFreshWater(Current.Tiles[i])))
+            .OrderByDescending(i => DailyWaterYield(Current.Tiles[i])).FirstOrDefault(-1);
     }
 
-    private Resident? LocalWardPatient(Building b)
+    private ResidentCursor? LocalWardPatient(BuildingCursor b)
     {
-        return State.Residents.Where(p => p.SettlementId == b.SettlementId && p.Health > 0
+        return Current.Residents.Where(p => p.SettlementId == b.SettlementId && p.Health > 0
                                                                            && p.PersonalWard < 12 &&
                                                                            Distance(p.X, p.Y, b.X, b.Y) <= 3)
             .OrderBy(p => p.PersonalWard).ThenBy(p => p.Id).FirstOrDefault();
     }
 
-    private Resident? LocalHostile(Resident person, int x, int y, int radius)
+    private ResidentCursor? LocalHostile(ResidentCursor person, int x, int y, int radius)
     {
-        return State.Residents.Where(p => p.Health > 0
+        return Current.Residents.Where(p => p.Health > 0
                                           && p.NationId != person.NationId && Distance(p.X, p.Y, x, y) <= radius &&
                                           IsKnownHostile(person, p.NationId)
                                           && ClearSignalLine(x, y, p.X, p.Y)).OrderBy(p => p.Id).FirstOrDefault();
     }
 
-    private bool WorkExpansionFacility(Building b, Resident person, Settlement town, double effort)
+    private bool WorkExpansionFacility(BuildingCursor b, ResidentCursor person, SettlementCursor town, double effort)
     {
         // 服务人员须先从家乡仓库实际携带限量物资到岗，避免远程消耗库存。
         bool Supply(ResourceKind kind, double amount, double reserve = 0)
@@ -411,8 +402,8 @@ public sealed partial class WorldEngine
             if (Distance(person.X, person.Y, town.X, town.Y) > 1)
                 return false;
             var take = Math.Min(town.Resources.Get(kind), Math.Max(0, amount + reserve - person.Inventory.Get(kind)));
-            town.Resources.Set(kind, town.Resources.Get(kind) - take);
-            person.Inventory.Set(kind, person.Inventory.Get(kind) + take);
+            town.Resources = town.Resources.WithAmount(kind, town.Resources.Get(kind) - take);
+            person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + take);
             return person.Inventory.Get(kind) + .000001 >= amount + reserve;
         }
 
@@ -428,39 +419,37 @@ public sealed partial class WorldEngine
                 var patient = FindLocalWorkPatient(b);
                 if (patient is not null && Supply(ResourceKind.Medicine, .25))
                 {
-                    person.Inventory.Medicine -= .25;
-                    patient.Health = Math.Min(100, patient.Health + 3 * effort);
-                    patient.SicknessTicks = Math.Max(0, patient.SicknessTicks - 4);
-                    patient.DiseaseImmuneUntilTick = Math.Max(patient.DiseaseImmuneUntilTick, State.Tick + 120);
+                    person.Inventory = person.Inventory with { Medicine = person.Inventory.Medicine - .25 };
+                    patient.Replace(patient.Value with { Health = Math.Min(100, patient.Health + 3 * effort), SicknessTicks = Math.Max(0, patient.SicknessTicks - 4), DiseaseImmuneUntilTick = Math.Max(patient.DiseaseImmuneUntilTick, Current.Tick + 120) });
                     EmitVisual(WorldVisualKind.Heal, patient.X, patient.Y);
                     done = true;
                 }
 
                 break;
             case BuildingKind.FireStation:
-                var damaged = State.Society.Buildings.Where(other => other.SettlementId == b.SettlementId &&
+                var damaged = Current.Society.Buildings.Where(other => other.SettlementId == b.SettlementId &&
                                                                      other.Health is > 0 and < 100
                                                                      && Distance(person.X, person.Y, other.X,
                                                                          other.Y) <= 1 &&
-                                                                     State.Tiles[Index(other.X, other.Y)].FireTicks ==
+                                                                     Current.Tiles[Index(other.X, other.Y)].FireTicks ==
                                                                      0).OrderBy(other => other.Health)
                     .ThenBy(other => other.Id).FirstOrDefault();
                 if (damaged is not null && Supply(ResourceKind.Stone, .1))
                 {
-                    person.Inventory.Stone -= .1;
+                    person.Inventory = person.Inventory with { Stone = person.Inventory.Stone - .1 };
                     damaged.Health = Math.Min(100, damaged.Health + 2 * effort);
                     done = true;
                 }
 
                 break;
             case BuildingKind.Library:
-                var project = State.Society.Research.First(r => r.SettlementId == town.Id);
+                var project = Current.Society.Research.First(r => r.SettlementId == town.Id);
                 if (project.Completed.Count == 0)
                     break;
-                var knowledge = project.Completed[(int)(State.Tick / 12 % project.Completed.Count)];
+                var knowledge = project.Completed[(int)(Current.Tick / 12 % project.Completed.Count)];
                 var fact = MakeAgentFact(person, AgentFactKind.Research, town.Id, b.X, b.Y, knowledge.Id,
                     "在图书馆研读当地已有的" + knowledge.Name);
-                foreach (var pupil in State.Residents.Where(p =>
+                foreach (var pupil in Current.Residents.Where(p =>
                              p.SettlementId == town.Id && p.Health > 0 && Distance(p.X, p.Y, b.X, b.Y) <= 2))
                     RememberAgentFact(pupil, fact);
                 done = true;
@@ -472,8 +461,7 @@ public sealed partial class WorldEngine
             case BuildingKind.Armory:
                 if (Supply(ResourceKind.Alloy, 2))
                 {
-                    person.Inventory.Alloy -= 2;
-                    person.Armor = 30;
+                    person.Replace(person.Value with { Inventory = person.Inventory with { Alloy = person.Inventory.Alloy - 2 }, Armor = 30 });
                     done = true;
                 }
 
@@ -482,7 +470,7 @@ public sealed partial class WorldEngine
                 var wardPatient = LocalWardPatient(b);
                 if (wardPatient is not null && Supply(ResourceKind.Crystals, .25))
                 {
-                    person.Inventory.Crystals -= .25;
+                    person.Inventory = person.Inventory with { Crystals = person.Inventory.Crystals - .25 };
                     person.Mana -= 8;
                     wardPatient.PersonalWard = Math.Max(wardPatient.PersonalWard, 24);
                     EmitVisual(WorldVisualKind.Shield, wardPatient.X, wardPatient.Y);
@@ -494,9 +482,9 @@ public sealed partial class WorldEngine
                 var target = LocalHostile(person, b.X, b.Y, 5);
                 if (target is not null && Supply(ResourceKind.Crystals, .5))
                 {
-                    person.Inventory.Crystals -= .5;
+                    person.Inventory = person.Inventory with { Crystals = person.Inventory.Crystals - .5 };
                     person.Mana -= 12;
-                    DamageResident(target, TryAbsorbShieldDamage(target, 16 * effort * State.Rules.CombatDamageRate),
+                    DamageResident(target, TryAbsorbShieldDamage(target, 16 * effort * Current.Rules.CombatDamageRate),
                         DeathCause.Magic);
                     EmitVisual(WorldVisualKind.Ember, target.X, target.Y, 1, b.X, b.Y);
                     done = true;
@@ -507,19 +495,19 @@ public sealed partial class WorldEngine
                 if (!Supply(ResourceKind.Water, .25, .5))
                     break;
                 var ground = Circle(b.X, b.Y, 2)
-                    .FirstOrDefault(i => CanRestoreTrees(State.Tiles[i]) && State.Tiles[i].Plants.Trees < .7, -1);
+                    .FirstOrDefault(i => CanRestoreTrees(Current.Tiles[i]) && Current.Tiles[i].Plants.Trees < .7, -1);
                 if (ground < 0)
                     break;
-                person.Inventory.Water -= .25;
+                person.Inventory = person.Inventory with { Water = person.Inventory.Water - .25 };
                 person.Mana -= 2;
-                var tile = State.Tiles[ground];
+                var tile = Current.Tiles[ground];
                 var plants = tile.Plants;
-                plants.Trees = Math.Min(.7, plants.Trees + .02 * effort);
+                plants = plants with { Trees = Math.Min(.7, plants.Trees + .02 * effort) };
                 var total = plants.Total;
                 if (total > 1)
                 {
                     for (var i = 0; i < 4; i++)
-                        plants.Set((PlantKind)i, plants.Get((PlantKind)i) / total);
+                        plants = plants.WithCoverage((PlantKind)i, plants.Get((PlantKind)i) / total);
                 }
 
                 tile.Plants = plants;
@@ -529,24 +517,23 @@ public sealed partial class WorldEngine
                 var capacity = NaturalResourceCapacity(tile);
                 if (tile.ResourceAmount < capacity)
                     tile.ResourceAmount = Math.Min(capacity, tile.ResourceAmount + effort);
-                EmitVisual(WorldVisualKind.Harvest, ground % State.Width, ground / State.Width);
+                EmitVisual(WorldVisualKind.Harvest, ground % Current.Width, ground / Current.Width);
                 done = true;
                 break;
         }
 
         if (done)
         {
-            b.ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1);
-            b.LastServiceTick = State.Tick;
+            b.Replace(b.Value with { ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1), LastServiceTick = Current.Tick });
         }
 
         return done;
     }
 
-    private void SurveyFromOffice(Building b, Resident person)
+    private void SurveyFromOffice(BuildingCursor b, ResidentCursor person)
     {
         var range = HasResearch(b.SettlementId, Advancement.Observation) ? 6 : 4;
-        foreach (var town in State.Settlements)
+        foreach (var town in Current.Settlements)
             if (Distance(b.X, b.Y, town.X, town.Y) <= range && ClearSignalLine(b.X, b.Y, town.X, town.Y))
             {
                 RememberAgentFact(person,
@@ -555,28 +542,28 @@ public sealed partial class WorldEngine
             }
 
         var danger = Circle(b.X, b.Y, range).FirstOrDefault(i =>
-            Distance(b.X, b.Y, i % State.Width, i / State.Width) <= range
-            && State.Tiles[i].FireTicks > 0 && ClearSignalLine(b.X, b.Y, i % State.Width, i / State.Width), -1);
+            Distance(b.X, b.Y, i % Current.Width, i / Current.Width) <= range
+            && Current.Tiles[i].FireTicks > 0 && ClearSignalLine(b.X, b.Y, i % Current.Width, i / Current.Width), -1);
         if (danger >= 0)
         {
             RememberAgentFact(person,
-                MakeAgentFact(person, AgentFactKind.Danger, 0, danger % State.Width, danger / State.Width,
-                    State.Tiles[danger].FireTicks, "从勘测所观察到火情"));
+                MakeAgentFact(person, AgentFactKind.Danger, 0, danger % Current.Width, danger / Current.Width,
+                    Current.Tiles[danger].FireTicks, "从勘测所观察到火情"));
         }
 
         var water = Circle(b.X, b.Y, range).FirstOrDefault(i =>
-            Distance(b.X, b.Y, i % State.Width, i / State.Width) <= range
-            && IsWaterSource(State.Tiles[i]) && AvailableWater(i % State.Width, i / State.Width) > .05
-            && ClearSignalLine(b.X, b.Y, i % State.Width, i / State.Width), -1);
+            Distance(b.X, b.Y, i % Current.Width, i / Current.Width) <= range
+            && IsWaterSource(Current.Tiles[i]) && AvailableWater(i % Current.Width, i / Current.Width) > .05
+            && ClearSignalLine(b.X, b.Y, i % Current.Width, i / Current.Width), -1);
         if (water >= 0)
         {
             RememberAgentFact(person,
-                MakeAgentFact(person, AgentFactKind.WaterSource, water + 1, water % State.Width, water / State.Width, 1,
+                MakeAgentFact(person, AgentFactKind.WaterSource, water + 1, water % Current.Width, water / Current.Width, 1,
                     "从勘测所观察到实际水源"));
         }
     }
 
-    private static bool CanRestoreTrees(Tile tile)
+    private static bool CanRestoreTrees(TileCursor tile)
     {
         return tile.IsWalkable && !IsWaterTerrain(tile.Terrain) && tile.Improvement == LandImprovement.None
                && tile.Fertility >= 40 && tile.NaturalWaterYield >= .004 && tile.FireTicks == 0;
@@ -598,11 +585,11 @@ public sealed partial class WorldEngine
         };
     }
 
-    private bool ExpansionJobHasNearbyWork(Resident person)
+    private bool ExpansionJobHasNearbyWork(ResidentCursor person)
     {
-        var buildings = _localWorkQueriesActive
+        IReadOnlyList<BuildingCursor>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(person.SettlementId)
-            : State.Society.Buildings;
+            : Current.Society.Buildings;
         if (buildings is null)
             return false;
         foreach (var b in buildings)
@@ -613,7 +600,7 @@ public sealed partial class WorldEngine
         return false;
     }
 
-    private bool ActOnBuildingRepair(Resident person, Settlement home)
+    private bool ActOnBuildingRepair(ResidentCursor person, SettlementCursor home)
     {
         if (person.Agent.Goal.Kind != AgentGoalKind.Work)
             return false;
@@ -630,8 +617,8 @@ public sealed partial class WorldEngine
             }
 
             var take = Math.Min(home.Resources.Stone, .5 - person.Inventory.Stone);
-            home.Resources.Stone -= take;
-            person.Inventory.Stone += take;
+            home.Resources = home.Resources with { Stone = home.Resources.Stone - take };
+            person.Inventory = person.Inventory with { Stone = person.Inventory.Stone + take };
         }
 
         if (Distance(person.X, person.Y, b.X, b.Y) > 1)
@@ -640,7 +627,7 @@ public sealed partial class WorldEngine
             return true;
         }
 
-        if (person.Inventory.Stone >= .5 && State.Tiles[Index(b.X, b.Y)].FireTicks == 0)
+        if (person.Inventory.Stone >= .5 && Current.Tiles[Index(b.X, b.Y)].FireTicks == 0)
             TryWorkAtBuilding(person);
         return true;
     }
@@ -659,7 +646,7 @@ public sealed partial class WorldEngine
         };
     }
 
-    private bool ActOnExpansionFacility(Resident person, Settlement home)
+    private bool ActOnExpansionFacility(ResidentCursor person, SettlementCursor home)
     {
         var goal = person.Agent.Goal;
         if (goal.Kind != AgentGoalKind.Work)
@@ -670,7 +657,7 @@ public sealed partial class WorldEngine
             return false;
         if (!ExpansionFacilityHasWork(b, person))
         {
-            person.Agent.NextThinkTick = State.Tick;
+            person.Agent.NextThinkTick = Current.Tick;
             return true;
         }
 
@@ -679,9 +666,12 @@ public sealed partial class WorldEngine
         {
             if (person.Inventory.Stone < .5)
             {
-                goal.TargetX = home.X;
-                goal.TargetY = home.Y;
-                goal.Reason = "返仓领取实际石材，运至受损设施维修";
+                person.Agent.Goal = goal = goal with
+                {
+                    TargetX = home.X,
+                    TargetY = home.Y,
+                    Reason = "返仓领取实际石材，运至受损设施维修",
+                };
                 if (Distance(person.X, person.Y, home.X, home.Y) > 1)
                 {
                     MoveAgentTowards(person, home.X, home.Y);
@@ -689,26 +679,28 @@ public sealed partial class WorldEngine
                 }
 
                 var take = Math.Min(home.Resources.Stone, 1 - person.Inventory.Stone);
-                home.Resources.Stone -= take;
-                person.Inventory.Stone += take;
+                home.Resources = home.Resources with { Stone = home.Resources.Stone - take };
+                person.Inventory = person.Inventory with { Stone = person.Inventory.Stone + take };
             }
 
-            goal.TargetX = repair.X;
-            goal.TargetY = repair.Y;
-            goal.Reason = "携带石材，步行至消防站附近的受损设施维修";
+            person.Agent.Goal = goal = goal with
+            {
+                TargetX = repair.X,
+                TargetY = repair.Y,
+                Reason = "携带石材，步行至消防站附近的受损设施维修",
+            };
             if (Distance(person.X, person.Y, repair.X, repair.Y) > 1)
             {
                 MoveAgentTowards(person, repair.X, repair.Y);
                 return true;
             }
 
-            if (State.Tick - person.MoveStartedTick < person.MoveDurationTicks)
+            if (Current.Tick - person.MoveStartedTick < person.MoveDurationTicks)
                 return true;
             RepairBuilding(person.Id, repair.Id);
             if (repair.Id != b.Id)
             {
-                b.ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1);
-                b.LastServiceTick = State.Tick;
+                b.Replace(b.Value with { ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1), LastServiceTick = Current.Tick });
             }
 
             person.Activity = ResidentActivity.Working;
@@ -727,9 +719,12 @@ public sealed partial class WorldEngine
         };
         if (ExpansionSupply(b.Kind) is { } supply && person.Inventory.Get(supply.Kind) + .000001 < minimum)
         {
-            goal.TargetX = home.X;
-            goal.TargetY = home.Y;
-            goal.Reason = "亲自返仓领取" + ResourceStock.Name(supply.Kind) + "，运至" + BuildingName(b.Kind);
+            person.Agent.Goal = goal = goal with
+            {
+                TargetX = home.X,
+                TargetY = home.Y,
+                Reason = "亲自返仓领取" + ResourceStock.Name(supply.Kind) + "，运至" + BuildingName(b.Kind),
+            };
             if (Distance(person.X, person.Y, home.X, home.Y) > 1)
             {
                 MoveAgentTowards(person, home.X, home.Y);
@@ -738,13 +733,16 @@ public sealed partial class WorldEngine
 
             var take = Math.Min(home.Resources.Get(supply.Kind),
                 Math.Max(0, supply.Amount - person.Inventory.Get(supply.Kind)));
-            home.Resources.Set(supply.Kind, home.Resources.Get(supply.Kind) - take);
-            person.Inventory.Set(supply.Kind, person.Inventory.Get(supply.Kind) + take);
+            home.Resources = home.Resources.WithAmount(supply.Kind, home.Resources.Get(supply.Kind) - take);
+            person.Inventory = person.Inventory.WithAmount(supply.Kind, person.Inventory.Get(supply.Kind) + take);
         }
 
-        goal.TargetX = b.X;
-        goal.TargetY = b.Y;
-        goal.Reason = "携带补给，在" + BuildingName(b.Kind) + "提供现场服务";
+        person.Agent.Goal = goal = goal with
+        {
+            TargetX = b.X,
+            TargetY = b.Y,
+            Reason = "携带补给，在" + BuildingName(b.Kind) + "提供现场服务",
+        };
         if (Distance(person.X, person.Y, b.X, b.Y) > 0)
         {
             MoveAgentTowards(person, b.X, b.Y);
@@ -755,28 +753,20 @@ public sealed partial class WorldEngine
         person.Activity = ResidentActivity.Working;
         if (b.Kind == BuildingKind.Reservoir && person.Inventory.Water >= 3)
         {
-            person.Agent.Goal = new AgentGoal
-            {
-                Kind = AgentGoalKind.ReturnHome,
-                TargetX = home.X,
-                TargetY = home.Y,
-                TargetSettlementId = home.Id,
-                Reason = "蓄水站取水后亲自运回粮仓",
-            };
-            person.Agent.NextThinkTick = State.Tick + 30;
+            person.Replace(person.Value with { Agent = person.Agent.Value with { Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, TargetSettlementId = home.Id, Reason = "蓄水站取水后亲自运回粮仓", }, NextThinkTick = Current.Tick + 30 } });
         }
 
         return true;
     }
 
-    private Building? RepairTargetForStation(Building station)
+    private BuildingCursor? RepairTargetForStation(BuildingCursor station)
     {
-        return State.Society.Buildings
+        return Current.Society.Buildings
             .Where(other => other.SettlementId == station.SettlementId && other.Health is > 0 and < 100
                                                                        && BuildingGroundOwned(other) &&
                                                                        Distance(other.X, other.Y, station.X,
                                                                            station.Y) <= 4
-                                                                       && State.Tiles[Index(other.X, other.Y)]
+                                                                       && Current.Tiles[Index(other.X, other.Y)]
                                                                            .FireTicks == 0 &&
                                                                        ClearSignalLine(station.X, station.Y, other.X,
                                                                            other.Y))
