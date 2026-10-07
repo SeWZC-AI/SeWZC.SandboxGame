@@ -17,7 +17,10 @@ public sealed partial class WorldMapControl
     private readonly List<(Point Start, Point End)> _waterStreams = [];
     private readonly List<(WriteableBitmap Icon, Rect Bounds)> _wildlifeDraws = [];
 
-    private bool _ecologyDirty = true;
+    private ImmutableVector<Tile>? _ecologyTiles;
+    private ImmutableVector<SettlementResearch>? _ecologyResearch;
+    private ResourceVisibility _ecologyVisibility;
+    private int _ecologyResourceMask;
     private EcologyViewInput[] _ecologyInputs = [];
     private bool _ecologyShowWildlife, _ecologyShowPlants;
     private (int Left, int Right, int Top, int Bottom) _ecologyViewport;
@@ -268,11 +271,22 @@ public sealed partial class WorldMapControl
     {
         RenderedWildlifeCount = 0;
         RenderedPlantCount = 0;
-        if (_zoom < 3)
+        if (!Detail.Ecology)
             return;
         var viewport = VisibleTiles(state);
-        var changed = (_ecologyDirty || viewport != _ecologyViewport) && EcologyInputsChanged(state, viewport);
-        _ecologyDirty = false;
+        var resourceMask = 0;
+        foreach (var resource in VisibleResources)
+            resourceMask |= 1 << (int)resource;
+        var changed = (!ReferenceEquals(_ecologyTiles, state.Tiles) ||
+                       !ReferenceEquals(_ecologyResearch, state.Society.Research) ||
+                       viewport != _ecologyViewport || ResourceVisibility != _ecologyVisibility ||
+                       resourceMask != _ecologyResourceMask ||
+                       ShowWildlife != _ecologyShowWildlife || ShowPlants != _ecologyShowPlants) &&
+                      EcologyInputsChanged(state, viewport);
+        _ecologyTiles = state.Tiles;
+        _ecologyResearch = state.Society.Research;
+        _ecologyVisibility = ResourceVisibility;
+        _ecologyResourceMask = resourceMask;
         _ecologyViewport = viewport;
         if (changed)
         {
@@ -349,13 +363,20 @@ public sealed partial class WorldMapControl
         }
 
         foreach (var (icon, bounds) in _plantDraws)
-            context.DrawImage(icon, bounds);
-        RenderedPlantCount = _plantDraws.Count;
+            if (Visible(bounds))
+            {
+                context.DrawImage(icon, bounds);
+                RenderedPlantCount++;
+            }
         foreach (var (icon, bounds) in _depositDraws)
-            context.DrawImage(icon, bounds);
+            if (Visible(bounds))
+                context.DrawImage(icon, bounds);
         foreach (var (icon, bounds) in _wildlifeDraws)
-            context.DrawImage(icon, bounds);
-        RenderedWildlifeCount = _wildlifeDraws.Count;
+            if (Visible(bounds))
+            {
+                context.DrawImage(icon, bounds);
+                RenderedWildlifeCount++;
+            }
     }
 
     private bool EcologyInputsChanged(WorldState state, (int Left, int Right, int Top, int Bottom) viewport)

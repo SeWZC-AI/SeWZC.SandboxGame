@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
@@ -17,6 +18,9 @@ public sealed partial class WorldMapControl
     private double _frozenPresentationTime;
     private Point _geometryOrigin;
     private double _geometryZoom;
+    private double _geometryMotionTime;
+    private ImmutableVector<Resident>? _motionResidents;
+    private ImmutableVector<Army>? _motionArmies;
     private double _lastAnimatedFrameTime;
     private Point? _lastResidentClick;
     private bool _motionAttached;
@@ -146,6 +150,7 @@ public sealed partial class WorldMapControl
         }
 
         SelectedResidentId = residentId;
+        _residentGeometryDirty = true;
         SelectedBuildingId = null;
         CaptureSelectedRoute();
         _selection = null;
@@ -172,6 +177,7 @@ public sealed partial class WorldMapControl
     public void ClearResidentSelection()
     {
         SelectedResidentId = null;
+        _residentGeometryDirty = true;
         _followSelectedResident = false;
         InvalidateVisual();
     }
@@ -181,7 +187,11 @@ public sealed partial class WorldMapControl
         _residentMotion.Clear();
         _armyMotion.Clear();
         _renderedResidentPoints.Clear();
+        _residentIndex.Clear();
+        _visibleResidentSnapshot = null;
         _snapshotTick = -1;
+        _motionResidents = null;
+        _motionArmies = null;
         SimulationTickFraction = 0;
         _lastResidentClick = null;
         _residentClickCycle = 0;
@@ -196,6 +206,11 @@ public sealed partial class WorldMapControl
         if (Engine is null)
             return;
         var state = Engine.State;
+        if (_snapshotTick == state.Tick && ReferenceEquals(_motionResidents, state.Residents) &&
+            ReferenceEquals(_motionArmies, state.Armies))
+            return;
+        _motionResidents = state.Residents;
+        _motionArmies = state.Armies;
         var now = PresentationTime;
         var elapsedTicks = Math.Max(0, state.Tick - _snapshotTick);
         var reset = _snapshotTick < 0 || state.Tick < _snapshotTick;
@@ -275,13 +290,13 @@ public sealed partial class WorldMapControl
             // 总览保留 15 Hz；五倍近景合并为 20 Hz，给真实模拟步留下绘制预算。
             var cadence = _zoom < 1
                 ? 1d / 15
-                : _zoom >= 3 && SimulationTickDurationSeconds <= .040001
+                : Detail.ResidentSprites && SimulationTickDurationSeconds <= .040001
                     ? 1d / 20
                     : 1d / 30;
             if (frameTime - _lastAnimatedFrameTime >= cadence)
             {
                 _lastAnimatedFrameTime = frameTime;
-                _residentGeometryDirty = true;
+                _residentGeometryDirty |= HasMovingResidents(_geometryMotionTime);
                 FollowResident();
                 InvalidateVisual();
             }
@@ -298,6 +313,12 @@ public sealed partial class WorldMapControl
         var position = motion.Position(frameTime ?? MotionTime);
         _origin = new Point(Bounds.Width / 2 - (position.X + .5) * TilePixels * _zoom,
             Bounds.Height / 2 - (position.Y + .5) * TilePixels * _zoom);
+    }
+
+    private bool HasMovingResidents(double time)
+    {
+        return Engine is not null && VisibleResidents(Engine.State).Any(person =>
+            _residentMotion.TryGetValue(person.Id, out var track) && track.IsMoving(time));
     }
 
     private bool SelectObjectAt(Point point)
@@ -317,7 +338,7 @@ public sealed partial class WorldMapControl
 
         foreach (var building in Engine.State.Society.Buildings)
             if ((hasTile && building.X == tile.X && building.Y == tile.Y) ||
-                (_zoom >= 3 && BuildingBounds(building).Contains(worldPoint)))
+                (Detail.ResidentSprites && BuildingBounds(building).Contains(worldPoint)))
             {
                 var ground = GetTileScreenPosition(building.X, building.Y);
                 candidates.Add((1, building.Id, Distance(point, ground), ground.Y + 2 * _zoom, building.X, building.Y));
@@ -328,7 +349,7 @@ public sealed partial class WorldMapControl
         var directBuilding = footprint >= 0 ? candidates[footprint].Id : 0;
         candidates.Sort((a, b) => (a.Kind == 1 && a.Id == directBuilding) != (b.Kind == 1 && b.Id == directBuilding)
             ? a.Kind == 1 && a.Id == directBuilding ? -1 : 1
-            : _zoom >= 3 && Math.Abs(a.Depth - b.Depth) > .01
+            : Detail.ResidentSprites && Math.Abs(a.Depth - b.Depth) > .01
                 ? b.Depth.CompareTo(a.Depth)
                 : a.Kind != b.Kind
                     ? a.Kind.CompareTo(b.Kind)
