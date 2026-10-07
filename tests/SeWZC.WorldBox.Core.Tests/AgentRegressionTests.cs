@@ -134,7 +134,8 @@ internal static class AgentRegressionTests
             army.X = army.FromX = commander.X;
             army.Y = army.FromY = commander.Y;
             army.Gathering = false;
-            for (var i = 1; i < soldiers.Length; i++) FreezeAt(engine, soldiers[i], 40 + (i - 1) * 8, 40);
+            for (var i = 1; i < soldiers.Length; i++)
+                FreezeAt(engine, soldiers[i], 40 + (i - 1) * 8, 40);
             var opposite = first == DiplomaticStatus.War ? DiplomaticStatus.Neutral : DiplomaticStatus.War;
             var statuses = new[] { first, opposite, first };
             var orders = new AgentFact[statuses.Length];
@@ -156,7 +157,8 @@ internal static class AgentRegressionTests
                 "The same-day orders did not retain their issuance order.");
             for (var i = 0; i < orders.Length; i++)
             {
-                if (i > 0) FreezeAt(engine, soldiers[i], 40 + (i - 1) * 8, 40);
+                if (i > 0)
+                    FreezeAt(engine, soldiers[i], 40 + (i - 1) * 8, 40);
                 DeliverByConversation(engine, army, commander, soldiers[i + 1], orders[i]);
                 Check(army.LastOrderFactId == orders[i].Id && army.LastOrderTick == orders[i].ObservedTick
                                                            && army.KnownDiplomacy == statuses[i] &&
@@ -354,6 +356,7 @@ internal static class AgentRegressionTests
 
     private static void Check(bool condition, string message)
     {
-        if (!condition) throw new InvalidOperationException(message);
+        if (!condition)
+            throw new InvalidOperationException(message);
     }
 }

@@ -31,7 +31,8 @@ public sealed partial class WorldMapControl
         {
             var slot = (y - cy + 1) * TerrainInputStride + x - cx + 1;
             var input = TerrainImageInput(state.Tiles[y * state.Width + x]);
-            if (!first && chunk.TerrainInputs[slot] == input) continue;
+            if (!first && chunk.TerrainInputs[slot] == input)
+                continue;
             chunk.TerrainInputs[slot] = input;
             // 岸线、山脊、道路及像素边缘依赖邻格；先标记再绘制，避免更新顺序破坏邻接关系。
             for (var dy = -1; dy <= 1; dy++)
@@ -47,7 +48,8 @@ public sealed partial class WorldMapControl
         for (var y = minY; y < maxY; y++)
         for (var x = minX; x < maxX; x++)
         {
-            if (!_dirtyTerrainTiles[(y - cy + 1) * TerrainInputStride + x - cx + 1]) continue;
+            if (!_dirtyTerrainTiles[(y - cy + 1) * TerrainInputStride + x - cx + 1])
+                continue;
             DrawTerrainTile(canvas, state, x, y, (x - cx) * TilePixels + left, (y - cy) * TilePixels + top);
             DrawRoadTile(canvas, state, x, y, (x - cx) * TilePixels + left, (y - cy) * TilePixels + top);
             TerrainTilesDrawn++;

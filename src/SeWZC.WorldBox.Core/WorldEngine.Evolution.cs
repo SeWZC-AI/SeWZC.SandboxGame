@@ -36,7 +36,8 @@ public sealed partial class WorldEngine
         var stage = research.Completed.Count >= 3 ? "区域网络" :
             research.Completed.Count > 0 ? "专业分工" :
             town.Resources.Food >= town.Population * 2 ? "积累余粮" : "建立家园";
-        if (research.Completed.Any(k => ProductionRules.For(k) is not null)) stage = GetAdvancementStage(town.Id);
+        if (research.Completed.Any(k => ProductionRules.For(k) is not null))
+            stage = GetAdvancementStage(town.Id);
         if (town.IsExpanding)
         {
             return new DevelopmentSummary(stage, "扩充为" + SettlementTierName(town.Tier + 1), "居民到城镇中心施工；城镇中心等级独立",
@@ -74,9 +75,12 @@ public sealed partial class WorldEngine
     public string? FacilityPlacementError(int settlementId, BuildingKind kind, int x, int y, bool gift = false,
         BridgeDirection? direction = null, int bridgeLevel = 1, bool founding = false)
     {
-        if (!Enum.IsDefined(kind)) return "未知的建筑类型";
-        if (kind == BuildingKind.TownCenter) return "每处聚落的中心由定居和重建维护，无需另行放置";
-        if (!_settlements.TryGetValue(settlementId, out var town)) return "先选择归属聚落";
+        if (!Enum.IsDefined(kind))
+            return "未知的建筑类型";
+        if (kind == BuildingKind.TownCenter)
+            return "每处聚落的中心由定居和重建维护，无需另行放置";
+        if (!_settlements.TryGetValue(settlementId, out var town))
+            return "先选择归属聚落";
         if (!InBounds(x, y) || !BuildingTerrainValid(kind, State.Tiles[Index(x, y)]))
         {
             return IsWaterfrontBuilding(kind) ? "船坞和码头需要水中的近岸地块" :
@@ -86,35 +90,44 @@ public sealed partial class WorldEngine
 
         if (kind == BuildingKind.Well && WellWaterYield(State.Tiles[Index(x, y)]) <= 0)
             return "水井需要地块供水量高于 0.02 / 日，请选择供水更充足的地块";
-        if (!CanBuildRacialFacility(settlementId, kind)) return "需要当地有该种族的成年居民";
+        if (!CanBuildRacialFacility(settlementId, kind))
+            return "需要当地有该种族的成年居民";
         if (kind == BuildingKind.SacredGrove &&
             (!IsForestTerrain(State.Tiles[Index(x, y)].Terrain) || !State.Society.MagicEnabled))
             return "精灵圣林需要森林和开放的魔法规则";
         if (kind == BuildingKind.Bridge &&
             BridgePlacementError(x, y, direction ?? InferBridgeDirection(x, y), bridgeLevel) is
-                { } bridgeError) return bridgeError;
+                { } bridgeError)
+            return bridgeError;
         var range = kind is BuildingKind.MountainPass or BuildingKind.Bridge ? 24 : Math.Max(8, town.MaxClaimRadius);
-        if (Distance(x, y, town.X, town.Y) > range) return $"距归属聚落超过 {range} 格";
+        if (Distance(x, y, town.X, town.Y) > range)
+            return $"距归属聚落超过 {range} 格";
         if (kind is BuildingKind.MountainPass or BuildingKind.Bridge &&
-            !Directions.Any(d => Walkable(x + d.X, y + d.Y))) return "需要相邻的可通行施工位置，逐段向前建设";
+            !Directions.Any(d => Walkable(x + d.X, y + d.Y)))
+            return "需要相邻的可通行施工位置，逐段向前建设";
         if (IsWaterfrontBuilding(kind) && !Directions.Any(d => Walkable(x + d.X, y + d.Y)
                                                                && !IsWaterTerrain(State.Tiles[Index(x + d.X, y + d.Y)]
-                                                                   .Terrain))) return "需要紧邻自然陆岸，居民从岸边施工和工作";
+                                                                   .Terrain)))
+            return "需要紧邻自然陆岸，居民从岸边施工和工作";
         var tile = State.Tiles[Index(x, y)];
         if (tile.Terrain == TerrainType.Mountain && kind != BuildingKind.MountainPass && !State.Residents.Any(p =>
                 p.SettlementId == settlementId && p.Race == RaceKind.Dwarf && p.Health > 0 && p.Age >= 14))
             return "山地建设需要当地成年矮人";
-        if (tile.FireTicks > 0) return "此处正在燃烧";
+        if (tile.FireTicks > 0)
+            return "此处正在燃烧";
         if (!IsPublicInfrastructure(kind))
         {
-            if (tile.NationId != 0 && tile.NationId != town.NationId) return "此处属于其他国家";
-            if (tile.ClaimedSettlementId != 0 && tile.ClaimedSettlementId != town.Id) return "此地已由其他城镇独占登记";
+            if (tile.NationId != 0 && tile.NationId != town.NationId)
+                return "此处属于其他国家";
+            if (tile.ClaimedSettlementId != 0 && tile.ClaimedSettlementId != town.Id)
+                return "此地已由其他城镇独占登记";
             if (IsWaterfrontBuilding(kind))
             {
                 if (!Directions.Any(d =>
                         InBounds(x + d.X, y + d.Y) && !IsWaterTerrain(State.Tiles[Index(x + d.X, y + d.Y)].Terrain)
                                                    && State.Tiles[Index(x + d.X, y + d.Y)].ClaimedSettlementId ==
-                                                   town.Id)) return "需要紧邻本城镇已占领的陆岸";
+                                                   town.Id))
+                    return "需要紧邻本城镇已占领的陆岸";
             }
             else if (tile.ClaimedSettlementId != town.Id &&
                      !(founding && CanClaimTile(town, Index(x, y), RaceKind.Dwarf)))
@@ -127,28 +140,35 @@ public sealed partial class WorldEngine
             return "水产养殖厂需要紧邻河湖的陆地";
         if (kind == BuildingKind.Aquaculture && !gift && !HasResearch(settlementId, Advancement.Logistics))
             return "需要先掌握驿路运输";
-        if (kind == BuildingKind.Well && DailyWaterYield(tile) < .025) return "水井需要湿地或每日供水至少 0.025 的地块";
+        if (kind == BuildingKind.Well && DailyWaterYield(tile) < .025)
+            return "水井需要湿地或每日供水至少 0.025 的地块";
         if (kind is BuildingKind.LumberCamp or BuildingKind.Quarry && !Circle(x, y, 1).Any(i => i != Index(x, y)
                 && State.Tiles[i].ResourceAmount > 0 && (kind == BuildingKind.LumberCamp
                     ? IsForestTerrain(State.Tiles[i].Terrain)
                     : TerrainRules.For(State.Tiles[i].Terrain).StoneYield +
-                    TerrainRules.For(State.Tiles[i].Terrain).OreYield >= .5))) return "需要紧邻实际森林或石矿资源";
-        if (State.Society.Buildings.Count >= MaxBuildings - 256) return "世界建筑数量已达上限";
-        if (State.Society.Buildings.Any(b => b.X == x && b.Y == y)) return "此处已有建筑";
+                    TerrainRules.For(State.Tiles[i].Terrain).OreYield >= .5)))
+            return "需要紧邻实际森林或石矿资源";
+        if (State.Society.Buildings.Count >= MaxBuildings - 256)
+            return "世界建筑数量已达上限";
+        if (State.Society.Buildings.Any(b => b.X == x && b.Y == y))
+            return "此处已有建筑";
         if ((kind == BuildingKind.ArcaneSanctum || ProductionRules.For(kind)?.Research.Magic == true ||
-             ResearchRules.Unlocking(kind)?.Magic == true) && !State.Society.MagicEnabled) return "规则已关闭新的魔法发展";
+             ResearchRules.Unlocking(kind)?.Magic == true) && !State.Society.MagicEnabled)
+            return "规则已关闭新的魔法发展";
         if (kind == BuildingKind.SignalTower && (!HasResearch(settlementId, Advancement.Electrification) ||
                                                  !HasResearch(settlementId, Advancement.SignalNetwork)))
             return "无线信号塔需要电气化与信号网络";
         if (!gift && kind == BuildingKind.SacredGrove && !HasResearch(settlementId, Advancement.ArcaneArts))
             return "需要当地掌握奥术基础";
-        if (gift) return null;
+        if (gift)
+            return null;
         if (ResearchRules.Unlocking(kind) is { } unlock && (!HasResearch(settlementId, unlock)
                                                             || !HasResearchPrerequisites(settlementId,
                                                                 unlock.Prerequisites)))
             return "当地尚未掌握" + unlock.Name + "及其前置";
         if (kind is BuildingKind.MountainPass or BuildingKind.Bridge &&
-            !HasResearch(settlementId, Advancement.Logistics)) return "需要先掌握驿路运输";
+            !HasResearch(settlementId, Advancement.Logistics))
+            return "需要先掌握驿路运输";
         if (kind is BuildingKind.Waystation or BuildingKind.Dock && !HasResearch(settlementId, Advancement.Logistics))
             return "当地尚未掌握驿路运输";
         if (kind == BuildingKind.SignalTower && !HasResearch(settlementId, Advancement.SignalNetwork))
@@ -156,8 +176,8 @@ public sealed partial class WorldEngine
         if (kind == BuildingKind.ArcaneSanctum && !HasResearch(settlementId, Advancement.ArcaneArts))
             return "当地尚未掌握奥术基础";
         if (ProductionRules.For(kind) is { } advancement && (!HasResearch(settlementId, advancement.Research)
-                                                              || !HasResearchPrerequisites(settlementId,
-                                                                  advancement.Research.Prerequisites)))
+                                                             || !HasResearchPrerequisites(settlementId,
+                                                                 advancement.Research.Prerequisites)))
             return "当地尚未掌握" + advancement.Research.Name + "及其前置";
         return MissingResources(town.Resources, FacilityCost(kind, bridgeLevel));
     }
@@ -220,11 +240,15 @@ public sealed partial class WorldEngine
     /// <param name="radius">道路笔刷的作用半径，以地格为单位。</param>
     public string? RoadPlacementError(int settlementId, int x, int y, int radius = 0)
     {
-        if (!_settlements.TryGetValue(settlementId, out var town)) return "先选择负责修路的聚落";
-        if (!InBounds(x, y) || Distance(x, y, town.X, town.Y) > 24) return "距聚落超过 24 格";
-        if (radius is < 0 or > 4) return "道路范围无效";
+        if (!_settlements.TryGetValue(settlementId, out var town))
+            return "先选择负责修路的聚落";
+        if (!InBounds(x, y) || Distance(x, y, town.X, town.Y) > 24)
+            return "距聚落超过 24 格";
+        if (radius is < 0 or > 4)
+            return "道路范围无效";
         var count = Circle(x, y, radius).Count(i => State.Tiles[i].IsWalkable && State.Tiles[i].RoadLevel == 0);
-        if (count == 0) return "此处不可修路，或已有道路";
+        if (count == 0)
+            return "此处不可修路，或已有道路";
         return MissingResources(town.Resources, new ResourceStock { Wood = count * .5, Stone = count });
     }
 
@@ -235,7 +259,8 @@ public sealed partial class WorldEngine
         {
             var prior = home.PublicKnowledge.FirstOrDefault(f =>
                 f.Kind == AgentFactKind.FoundingSite && f.SubjectId == site.SubjectId);
-            if (prior is not null && prior.ObservedTick >= site.ObservedTick) continue;
+            if (prior is not null && prior.ObservedTick >= site.ObservedTick)
+                continue;
             var delivered = CopyAgentFact(site);
             delivered.LearnedTick = State.Tick;
             delivered.SourceResidentId = person.Id;
@@ -245,14 +270,16 @@ public sealed partial class WorldEngine
         foreach (var report in person.Agent.Memory
                      .Where(f => f.Kind == AgentFactKind.WarReport && f.LearnedTick < State.Tick).ToArray())
             ReceiveWarReport(home, report);
-        if (person.Profession is not (Profession.Trader or Profession.Messenger or Profession.Representative)) return;
+        if (person.Profession is not (Profession.Trader or Profession.Messenger or Profession.Representative))
+            return;
         foreach (var fact in person.Agent.Memory.Where(f =>
                      f.LearnedTick < State.Tick && f.Kind is AgentFactKind.SettlementLocation
                          or AgentFactKind.TradeExchange or AgentFactKind.DiplomaticNotice).ToArray())
         {
             var old = home.PublicKnowledge.FirstOrDefault(f =>
                 f.Kind == fact.Kind && f.SubjectId == fact.SubjectId && f.TargetNationId == fact.TargetNationId);
-            if (old is not null && old.ObservedTick >= fact.ObservedTick) continue;
+            if (old is not null && old.ObservedTick >= fact.ObservedTick)
+                continue;
             var delivered = CopyAgentFact(fact);
             delivered.LearnedTick = State.Tick;
             delivered.SourceResidentId = person.Id;
@@ -265,20 +292,24 @@ public sealed partial class WorldEngine
     {
         if (fact.Kind != AgentFactKind.DiplomaticNotice || fact.SubjectId == town.NationId || fact.Value is < 0 or > 2
             || !_nations.ContainsKey(fact.SubjectId) || fact.Confidence < .4 ||
-            town.Id != _nations[town.NationId].CapitalId) return;
+            town.Id != _nations[town.NationId].CapitalId)
+            return;
         // 宣战须实际递送且指向本国，才能成为本地军令，避免机构直接读取远方事实。
-        if (fact.TargetNationId != town.NationId) return;
+        if (fact.TargetNationId != town.NationId)
+            return;
         var status = (DiplomaticStatus)(int)fact.Value;
         if (status == DiplomaticStatus.Allied)
         {
             var relation = Relation(town.NationId, fact.SubjectId);
             if (!State.Rules.Alliances || relation.Status != DiplomaticStatus.Neutral ||
                 relation.AllianceOfferNationId != fact.SubjectId
-                || relation.AllianceOfferTick != fact.ObservedTick || State.Tick - fact.ObservedTick > 600) return;
+                || relation.AllianceOfferTick != fact.ObservedTick || State.Tick - fact.ObservedTick > 600)
+                return;
             var knowsSender = town.PublicKnowledge.Any(f =>
                 f.Kind == AgentFactKind.SettlementLocation && (int)f.Value == fact.SubjectId && f.Confidence >= .4 &&
                 State.Tick - f.ObservedTick < 1200);
-            if (!knowsSender) return;
+            if (!knowsSender)
+                return;
             relation.Status = DiplomaticStatus.Allied;
             relation.LastChangedTick = State.Tick;
             relation.AllianceOfferNationId = 0;
@@ -294,7 +325,8 @@ public sealed partial class WorldEngine
         var prior = town.PublicKnowledge.Where(f =>
                 f.SubjectId == fact.SubjectId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
             .OrderByDescending(f => f.ObservedTick).FirstOrDefault();
-        if (prior is not null && prior.ObservedTick >= fact.ObservedTick) return;
+        if (prior is not null && prior.ObservedTick >= fact.ObservedTick)
+            return;
         if (status == DiplomaticStatus.Neutral)
             SetLocalOpinion(Relation(town.NationId, fact.SubjectId), town.NationId, 0);
         PublishDiplomaticOrder(town.NationId, fact.SubjectId, status, fact.X, fact.Y, fact.ObservedTick,
@@ -310,19 +342,23 @@ public sealed partial class WorldEngine
 
     private static void SetLocalOpinion(DiplomaticRelation relation, int nationId, int opinion)
     {
-        if (nationId == relation.FirstNationId) relation.FirstOpinion = Math.Clamp(opinion, -100, 100);
-        else relation.SecondOpinion = Math.Clamp(opinion, -100, 100);
+        if (nationId == relation.FirstNationId)
+            relation.FirstOpinion = Math.Clamp(opinion, -100, 100);
+        else
+            relation.SecondOpinion = Math.Clamp(opinion, -100, 100);
         relation.Opinion = (int)Math.Round((relation.FirstOpinion + relation.SecondOpinion) / 2d,
             MidpointRounding.AwayFromZero);
     }
 
     private void TickDiplomacy()
     {
-        if (State.Tick % 60 != 0) return;
+        if (State.Tick % 60 != 0)
+            return;
         var assessments = new List<DiplomaticAssessment>();
         foreach (var nation in State.Nations)
         {
-            if (!_settlements.TryGetValue(nation.CapitalId, out var capital)) continue;
+            if (!_settlements.TryGetValue(nation.CapitalId, out var capital))
+                continue;
             var contacts = capital.PublicKnowledge.Where(f => f.Kind == AgentFactKind.SettlementLocation &&
                                                               f.LearnedTick < State.Tick
                                                               && f.Confidence >= .4 &&
@@ -333,9 +369,11 @@ public sealed partial class WorldEngine
             foreach (var contact in contacts)
             {
                 var otherId = (int)contact.Value;
-                if (!_nations.TryGetValue(otherId, out var other)) continue;
+                if (!_nations.TryGetValue(otherId, out var other))
+                    continue;
                 var relation = Relation(nation.Id, otherId);
-                if (relation.LastEvaluatedTick == State.Tick) continue;
+                if (relation.LastEvaluatedTick == State.Tick)
+                    continue;
                 var ownFood = capital.Resources.Food;
                 var cooperation = GetCulture(capital.CultureId).Cooperation;
                 var tradeReport = capital.PublicKnowledge
@@ -394,14 +432,18 @@ public sealed partial class WorldEngine
                         relation.LastEventId = dispute.Id;
                     }
                 }
-                else if (LocalOpinion(relation, side.Nation.Id) > -25 || side.Change >= 6) started = 0;
+                else if (LocalOpinion(relation, side.Nation.Id) > -25 || side.Change >= 6)
+                    started = 0;
 
-                if (first) relation.FirstEscalationTick = started;
-                else relation.SecondEscalationTick = started;
+                if (first)
+                    relation.FirstEscalationTick = started;
+                else
+                    relation.SecondEscalationTick = started;
             }
 
             relation.Reason = sides.Length == 1 ? sides[0].Reason : "双方各自依据已送达消息与当地情况累计态度；所示关系为双方态度均值";
-            if (State.Tick - relation.LastChangedTick < 360) continue;
+            if (State.Tick - relation.LastChangedTick < 360)
+                continue;
             // 每轮只处理一种外交动作，停战或宣战优先于结盟，避免同日立即反转关系。
             if (relation.Status == DiplomaticStatus.War)
             {
@@ -437,10 +479,12 @@ public sealed partial class WorldEngine
 
             if (!State.Rules.Alliances || relation.Status != DiplomaticStatus.Neutral
                                        || (relation.AllianceOfferNationId != 0 &&
-                                           State.Tick - relation.AllianceOfferTick <= 600)) continue;
+                                           State.Tick - relation.AllianceOfferTick <= 600))
+                continue;
             var proposer = sides.Where(a => LocalOpinion(relation, a.Nation.Id) >= 55)
                 .OrderByDescending(a => LocalOpinion(relation, a.Nation.Id)).FirstOrDefault();
-            if (proposer is null) continue;
+            if (proposer is null)
+                continue;
             var nation = proposer.Nation;
             var other = proposer.Other;
             var capital = proposer.Capital;
@@ -482,14 +526,16 @@ public sealed partial class WorldEngine
         relation.Status = status;
         relation.LastChangedTick = State.Tick;
         relation.Reason = reason;
-        if (status == DiplomaticStatus.Neutral) SetLocalOpinion(relation, nation.Id, 0);
+        if (status == DiplomaticStatus.Neutral)
+            SetLocalOpinion(relation, nation.Id, 0);
         var capital = _settlements[nation.CapitalId];
         var entry = AddEvent(status == DiplomaticStatus.War ? WorldEventKind.War : WorldEventKind.Diplomacy,
             $"{nation.Name}与{other.Name}{(status == DiplomaticStatus.War ? "开战" : status == DiplomaticStatus.Allied ? "结盟" : "停战")}：{reason}。消息须实际传往对方与前线。",
             capital.X, capital.Y);
         entry.SecondNationId = other.Id;
         entry.CauseEventId = contact.EventId > 0 ? contact.EventId : previous;
-        if (previous > 0 && previous != entry.CauseEventId) entry.AdditionalCauseEventIds.Add(previous);
+        if (previous > 0 && previous != entry.CauseEventId)
+            entry.AdditionalCauseEventIds.Add(previous);
         entry.Importance = EventImportance.Major;
         entry.Action = EventAction.Declaration;
         entry.SettlementId = capital.Id;
@@ -520,7 +566,8 @@ public sealed partial class WorldEngine
 
     private void TickMigrationAndSecession()
     {
-        if (State.Tick % 60 != 0) return;
+        if (State.Tick % 60 != 0)
+            return;
         foreach (var town in State.Settlements.ToArray())
         {
             var reports = State.Society.Reports.Where(r =>
@@ -548,7 +595,8 @@ public sealed partial class WorldEngine
             }
         }
 
-        if (!State.Rules.Migration) return;
+        if (!State.Rules.Migration)
+            return;
         foreach (var person in State.Residents.Where(r =>
                          r.Age >= 16 && r.ArmyId == 0 && r.Hunger > 65 && r.Agent.DestinationSettlementId == 0
                          && !r.Agent.Goal.PlayerDirected && r.Agent.Goal.Kind != AgentGoalKind.Migrate)
@@ -556,13 +604,16 @@ public sealed partial class WorldEngine
                      .ToArray())
         {
             if (person.Agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Hunt or AgentGoalKind.Fish
-                && person.Inventory.Food < FoodUse(person) * 8) continue;
+                && person.Inventory.Food < FoodUse(person) * 8)
+                continue;
             var destination = person.Agent.Memory.Where(f => f.Kind == AgentFactKind.FoodSupply &&
                                                              f.SubjectId != person.SettlementId
                                                              && f.Value > 50 && AgentFactReliability(f) >= .5)
                 .OrderByDescending(f => f.Value).FirstOrDefault();
-            if (destination is null || !_settlements.TryGetValue(destination.SubjectId, out var town)) continue;
-            if (IsKnownHostile(person, town.NationId)) continue;
+            if (destination is null || !_settlements.TryGetValue(destination.SubjectId, out var town))
+                continue;
+            if (IsKnownHostile(person, town.NationId))
+                continue;
             person.Agent.Goal = new AgentGoal
             {
                 Kind = AgentGoalKind.Migrate,
@@ -617,7 +668,8 @@ public sealed partial class WorldEngine
         RememberAgentFact(person,
             MakeAgentFact(person, AgentFactKind.SettlementLocation, town.Id, town.X, town.Y, town.NationId,
                 "步行抵达的新家园"));
-        if (_citizens.TryGetValue(old, out var previous)) previous.Remove(person);
+        if (_citizens.TryGetValue(old, out var previous))
+            previous.Remove(person);
         _citizens[town.Id].Add(person);
         var entry = AddEvent(WorldEventKind.Growth, $"{person.Name}依据获知的粮情，步行迁入{town.Name}。", town.X, town.Y);
         entry.ResidentId = person.Id;

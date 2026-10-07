@@ -2,6 +2,8 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class Advancement
 {
+    private static readonly IReadOnlyDictionary<int, Advancement> ById = All.ToDictionary(research => research.Id);
+
     /// <summary>农业改良。</summary>
     public static Advancement Agriculture { get; } = new(0, nameof(Agriculture), "农业改良", ResearchBranch.Resources,
         "基础", false, [], new ResourceAmounts { Food = 20, Wood = 15 }, 60, "农场实际采收增加 35%，解锁现场驯养、投喂和繁殖的牧场。",
@@ -259,8 +261,6 @@ public sealed partial class Advancement
         SpatialMagic,
         BattleMagic,
     ]);
-
-    private static readonly IReadOnlyDictionary<int, Advancement> ById = All.ToDictionary(research => research.Id);
 
     /// <summary>按存档或知识消息中的编号查找研究，无对应知识时返回空值。</summary>
     public static Advancement? Find(int id)

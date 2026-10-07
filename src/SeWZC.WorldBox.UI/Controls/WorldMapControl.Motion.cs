@@ -45,12 +45,14 @@ public sealed partial class WorldMapControl
         get => _simulationPaused;
         set
         {
-            if (_simulationPaused == value) return;
+            if (_simulationPaused == value)
+                return;
             _frozenPresentationTime = PresentationTime;
             _resumedAt = _presentationClock.Elapsed.TotalSeconds;
             _simulationPaused = value;
             _residentGeometryDirty = true;
-            if (!value) RequestMotionFrame();
+            if (!value)
+                RequestMotionFrame();
             InvalidateVisual();
         }
     }
@@ -61,9 +63,11 @@ public sealed partial class WorldMapControl
         get => _simulationTickDurationSeconds;
         set
         {
-            if (!double.IsFinite(value)) return;
+            if (!double.IsFinite(value))
+                return;
             var next = Math.Clamp(value, .016, 1.5);
-            if (Math.Abs(next - _simulationTickDurationSeconds) < .000001) return;
+            if (Math.Abs(next - _simulationTickDurationSeconds) < .000001)
+                return;
             // 先按旧速度记录当前插值时刻，再调整速度，避免移动位置突然跳变。
             _simulationAnchorTick = MotionTime;
             _simulationAnchorTime = PresentationTime;
@@ -153,7 +157,8 @@ public sealed partial class WorldMapControl
     /// <param name="residentId">居民 ID。</param>
     public void FocusResident(int residentId)
     {
-        if (!_residentMotion.TryGetValue(residentId, out var motion)) return;
+        if (!_residentMotion.TryGetValue(residentId, out var motion))
+            return;
         SelectResident(residentId, FollowSelectedResident);
         var position = motion.Position(MotionTime);
         _zoom = Math.Max(_zoom, 2.4);
@@ -188,7 +193,8 @@ public sealed partial class WorldMapControl
 
     private void CaptureMotionSnapshots()
     {
-        if (Engine is null) return;
+        if (Engine is null)
+            return;
         var state = Engine.State;
         var now = PresentationTime;
         var elapsedTicks = Math.Max(0, state.Tick - _snapshotTick);
@@ -209,7 +215,8 @@ public sealed partial class WorldMapControl
                 army.FromX, army.FromY, army.MoveStartedTick, army.MoveDurationTicks);
         RemoveExpired(_residentMotion);
         RemoveExpired(_armyMotion);
-        if (SelectedResidentId is { } selected && !_residentMotion.ContainsKey(selected)) ClearResidentSelection();
+        if (SelectedResidentId is { } selected && !_residentMotion.ContainsKey(selected))
+            ClearResidentSelection();
         _snapshotTick = state.Tick;
         _residentGeometryDirty = true;
         FollowResident();
@@ -219,7 +226,8 @@ public sealed partial class WorldMapControl
             int fromX, int fromY, long moveStartedTick, int moveDurationTicks)
         {
             var target = new Point(x, y);
-            if (!tracks.TryGetValue(id, out var track)) tracks[id] = track = new EntityMotionTrack(target);
+            if (!tracks.TryGetValue(id, out var track))
+                tracks[id] = track = new EntityMotionTrack(target);
             var displacement = Distance(track.Target, target);
             var editedPosition = sameTick && displacement > 0;
             // 编辑传送须直接定位，避免人物横扫整张地图；仅对有界相邻移动插值。
@@ -238,25 +246,31 @@ public sealed partial class WorldMapControl
             foreach (var pair in tracks)
                 if (pair.Value.SeenRevision != _motionRevision)
                     _expiredMotion.Add(pair.Key);
-            foreach (var id in _expiredMotion) tracks.Remove(id);
+            foreach (var id in _expiredMotion)
+                tracks.Remove(id);
         }
     }
 
     private void RequestMotionFrame()
     {
-        if (!_motionAttached || _framePending || IsSimulationPaused) return;
+        if (!_motionAttached || _framePending || IsSimulationPaused)
+            return;
         var now = MotionTime;
         if (!(Engine is not null && VisibleResidents(Engine.State).Any(person =>
                 _residentMotion.TryGetValue(person.Id, out var track) && track.IsMoving(now))) &&
-            !_armyMotion.Values.Any(track => track.IsMoving(now)) && !HasAnimatedEffects(PresentationTime)) return;
-        if (TopLevel.GetTopLevel(this) is not { } topLevel) return;
+            !_armyMotion.Values.Any(track => track.IsMoving(now)) && !HasAnimatedEffects(PresentationTime))
+            return;
+        if (TopLevel.GetTopLevel(this) is not { } topLevel)
+            return;
         _framePending = true;
         var epoch = _motionEpoch;
         topLevel.RequestAnimationFrame(_ =>
         {
-            if (epoch != _motionEpoch) return;
+            if (epoch != _motionEpoch)
+                return;
             _framePending = false;
-            if (!_motionAttached || IsSimulationPaused) return;
+            if (!_motionAttached || IsSimulationPaused)
+                return;
             var frameTime = PresentationTime;
             // 总览保留 15 Hz；五倍近景合并为 20 Hz，给真实模拟步留下绘制预算。
             var cadence = _zoom < 1
@@ -279,7 +293,8 @@ public sealed partial class WorldMapControl
     private void FollowResident(double? frameTime = null)
     {
         if (!_followSelectedResident || SelectedResidentId is not { } id ||
-            !_residentMotion.TryGetValue(id, out var motion) || !_cameraReady) return;
+            !_residentMotion.TryGetValue(id, out var motion) || !_cameraReady)
+            return;
         var position = motion.Position(frameTime ?? MotionTime);
         _origin = new Point(Bounds.Width / 2 - (position.X + .5) * TilePixels * _zoom,
             Bounds.Height / 2 - (position.Y + .5) * TilePixels * _zoom);
@@ -287,7 +302,8 @@ public sealed partial class WorldMapControl
 
     private bool SelectObjectAt(Point point)
     {
-        if (!IsNavigationTool || Engine is null) return false;
+        if (!IsNavigationTool || Engine is null)
+            return false;
         var hasTile = TryTile(point, out var tile);
         var worldPoint = new Point((point.X - _origin.X) / _zoom, (point.Y - _origin.Y) / _zoom);
         var radius = Math.Clamp(TilePixels * _zoom * .65, 7, 17);
@@ -295,7 +311,8 @@ public sealed partial class WorldMapControl
         foreach (var pair in _renderedResidentPoints)
         {
             var distance = Distance(point, pair.Value);
-            if (distance <= radius) candidates.Add((0, pair.Key, distance, pair.Value.Y + 2.2 * _zoom, tile.X, tile.Y));
+            if (distance <= radius)
+                candidates.Add((0, pair.Key, distance, pair.Value.Y + 2.2 * _zoom, tile.X, tile.Y));
         }
 
         foreach (var building in Engine.State.Society.Buildings)
@@ -320,9 +337,12 @@ public sealed partial class WorldMapControl
                         : a.Id.CompareTo(b.Id));
         if (hasTile)
             candidates.Add((2, 0, 0, 0, tile.X, tile.Y)); // 循环选择保留地格和被遮挡居民的入口。
-        if (candidates.Count == 0) return false;
-        if (_lastResidentClick is { } previous && Distance(previous, point) <= 4) _residentClickCycle++;
-        else _residentClickCycle = 0;
+        if (candidates.Count == 0)
+            return false;
+        if (_lastResidentClick is { } previous && Distance(previous, point) <= 4)
+            _residentClickCycle++;
+        else
+            _residentClickCycle = 0;
         _lastResidentClick = point;
         var selected = candidates[_residentClickCycle % candidates.Count];
         if (selected.Kind == 0)
@@ -335,8 +355,10 @@ public sealed partial class WorldMapControl
             ClearResidentSelection();
             _selection = (selected.X, selected.Y);
             SelectedBuildingId = selected.Kind == 1 ? selected.Id : null;
-            if (selected.Kind == 1) BuildingSelected?.Invoke(selected.Id);
-            else TileSelected?.Invoke(tile.X, tile.Y);
+            if (selected.Kind == 1)
+                BuildingSelected?.Invoke(selected.Id);
+            else
+                TileSelected?.Invoke(tile.X, tile.Y);
         }
 
         InvalidateVisual();
@@ -353,7 +375,8 @@ public sealed partial class WorldMapControl
 
     private void DrawResidentSelection(DrawingContext context)
     {
-        if (SelectedResidentId is not { } id || !TryGetResidentScreenPosition(id, out var point)) return;
+        if (SelectedResidentId is not { } id || !TryGetResidentScreenPosition(id, out var point))
+            return;
         var radius = Math.Max(6, _zoom * 3.5);
         context.DrawEllipse(null, SelectionPen, point, radius, radius);
         context.DrawLine(SelectionPen, new Point(point.X, point.Y - radius - 5),

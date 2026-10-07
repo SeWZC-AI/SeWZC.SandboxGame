@@ -18,12 +18,14 @@ public sealed partial class WorldEngine
     private void EmitVisual(WorldVisualKind kind, int x, int y, int radius = 1, int fromX = -1, int fromY = -1)
     {
         _visuals.Enqueue(new WorldVisual(++VisualSequence, kind, x, y, radius, fromX, fromY));
-        while (_visuals.Count > 256) _visuals.Dequeue();
+        while (_visuals.Count > 256)
+            _visuals.Dequeue();
     }
 
     private void FinishLogging(Tile tile, int x, int y)
     {
-        if (!IsForestTerrain(tile.Terrain) || tile.ResourceAmount > .000001) return;
+        if (!IsForestTerrain(tile.Terrain) || tile.ResourceAmount > .000001)
+            return;
         tile.Terrain = TerrainType.Grass;
         tile.ResourceAmount = 0;
         tile.Fertility = TerrainRules.Fertility(TerrainType.Grass);
@@ -36,9 +38,11 @@ public sealed partial class WorldEngine
     public IReadOnlyList<RoutePoint> PreviewResidentRoute(int residentId, int steps = 24)
     {
         var person = State.Residents.FirstOrDefault(r => r.Id == residentId);
-        if (person is null || person.ArmyId != 0 || person.Agent.Goal.Kind == AgentGoalKind.Idle) return [];
+        if (person is null || person.ArmyId != 0 || person.Agent.Goal.Kind == AgentGoalKind.Idle)
+            return [];
         var goal = person.Agent.Goal;
-        if (!InBounds(goal.TargetX, goal.TargetY)) return [];
+        if (!InBounds(goal.TargetX, goal.TargetY))
+            return [];
         var targetX = goal.TargetX;
         var targetY = goal.TargetY;
         var factory = goal.Kind == AgentGoalKind.Work
@@ -79,9 +83,11 @@ public sealed partial class WorldEngine
                 ? 1
                 : 0;
             if (Distance(cursor.X, cursor.Y, targetX, targetY) <= interactionRange &&
-                Walkable(cursor.X, cursor.Y)) break;
+                Walkable(cursor.X, cursor.Y))
+                break;
             var next = SelectAgentStep(cursor, targetX, targetY);
-            if (next < 0 || !visited.Add(next)) break;
+            if (next < 0 || !visited.Add(next))
+                break;
             cursor.FromX = cursor.X;
             cursor.FromY = cursor.Y;
             cursor.X = next % State.Width;
@@ -100,12 +106,14 @@ public sealed partial class WorldEngine
     /// <param name="roadLevel">新的道路等级，范围为 0 至 3；有道路时地格须可通行。</param>
     public void EditTile(int x, int y, double resources, int fertility, int roadLevel)
     {
-        if (!InBounds(x, y)) throw new ArgumentException("地格不存在。");
+        if (!InBounds(x, y))
+            throw new ArgumentException("地格不存在。");
         if (!double.IsFinite(resources) || resources is < 0 or > 1_000_000 || fertility is < 0 or > 100 ||
             roadLevel is < 0 or > 3)
             throw new ArgumentException("地格资源、肥力或道路等级超出范围。");
         var tile = State.Tiles[Index(x, y)];
-        if (!tile.IsWalkable && roadLevel > 0) throw new ArgumentException("道路需要可通行的陆地。");
+        if (!tile.IsWalkable && roadLevel > 0)
+            throw new ArgumentException("道路需要可通行的陆地。");
         tile.ResourceAmount = resources;
         tile.Fertility = (byte)fertility;
         tile.RoadLevel = (byte)roadLevel;

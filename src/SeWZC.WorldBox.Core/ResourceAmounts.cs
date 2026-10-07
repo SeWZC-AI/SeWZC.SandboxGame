@@ -5,34 +5,49 @@ public sealed class ResourceAmounts
 {
     /// <summary>水数量。</summary>
     public double Water { get; init; }
+
     /// <summary>食物数量。</summary>
     public double Food { get; init; }
+
     /// <summary>木材数量。</summary>
     public double Wood { get; init; }
+
     /// <summary>石料数量。</summary>
     public double Stone { get; init; }
+
     /// <summary>矿石数量。</summary>
     public double Ore { get; init; }
+
     /// <summary>合金数量。</summary>
     public double Alloy { get; init; }
+
     /// <summary>能源电池数量。</summary>
     public double EnergyCells { get; init; }
+
     /// <summary>晶石数量。</summary>
     public double Crystals { get; init; }
+
     /// <summary>煤数量。</summary>
     public double Coal { get; init; }
+
     /// <summary>石油数量。</summary>
     public double Oil { get; init; }
+
     /// <summary>稀土数量。</summary>
     public double RareEarth { get; init; }
+
     /// <summary>舟船数量。</summary>
     public double Boats { get; init; }
+
     /// <summary>飞机数量。</summary>
     public double Aircraft { get; init; }
+
     /// <summary>工具数量。</summary>
     public double Tools { get; init; }
+
     /// <summary>药品数量。</summary>
     public double Medicine { get; init; }
+
     /// <summary>弹药数量。</summary>
     public double Ammunition { get; init; }
 

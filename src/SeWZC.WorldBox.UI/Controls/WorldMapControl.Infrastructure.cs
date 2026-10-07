@@ -51,7 +51,8 @@ public sealed partial class WorldMapControl
 
     private void DrawInfrastructureLegend(DrawingContext context)
     {
-        if (Overlay != 4) return;
+        if (Overlay != 4)
+            return;
         _infrastructureLegendText ??= InfrastructureLegend.Select(item => new FormattedText(item.Label,
             CultureInfo.CurrentCulture, FlowDirection.LeftToRight, MapTypeface, 11, LabelBrush)).ToArray();
         var columns = Math.Clamp((int)(Bounds.Width - 72) / 52, 1, 6);
@@ -78,7 +79,8 @@ public sealed partial class WorldMapControl
             {
                 var tile = state.Tiles[y * state.Width + x];
                 if (tile.RoadLevel == 0 ||
-                    (InfrastructureTownId != 0 && tile.ClaimedSettlementId != InfrastructureTownId)) continue;
+                    (InfrastructureTownId != 0 && tile.ClaimedSettlementId != InfrastructureTownId))
+                    continue;
                 var rect = new Rect(x * TilePixels, y * TilePixels, TilePixels, TilePixels);
                 context.DrawRectangle(Brush(0x88EAD45F), null, rect);
                 var center = rect.Center;
@@ -89,21 +91,26 @@ public sealed partial class WorldMapControl
                     var yy = y + direction.Y;
                     if (xx >= state.Width || yy >= state.Height || state.Tiles[yy * state.Width + xx].RoadLevel == 0
                         || (InfrastructureTownId != 0 && state.Tiles[yy * state.Width + xx].ClaimedSettlementId !=
-                            InfrastructureTownId)) continue;
-                    if (!Engine!.CanTraverseStep(x, y, xx, yy, TravelMode.Foot)) continue;
+                            InfrastructureTownId))
+                        continue;
+                    if (!Engine!.CanTraverseStep(x, y, xx, yy, TravelMode.Foot))
+                        continue;
                     context.DrawLine(roadPen, center,
                         new Point(center.X + direction.X * TilePixels, center.Y + direction.Y * TilePixels));
                 }
             }
         }
 
-        if (!HighlightBuildings) return;
+        if (!HighlightBuildings)
+            return;
         foreach (var building in state.Society.Buildings)
         {
             if ((InfrastructureTownId != 0 && building.SettlementId != InfrastructureTownId)
-                || (InfrastructureKind.HasValue && building.Kind != InfrastructureKind.Value)) continue;
+                || (InfrastructureKind.HasValue && building.Kind != InfrastructureKind.Value))
+                continue;
             var rect = new Rect(building.X * TilePixels, building.Y * TilePixels, TilePixels, TilePixels);
-            if (!Visible(rect)) continue;
+            if (!Visible(rect))
+                continue;
             var color = building.Health < 50 ? 0xFFF07878u
                 : !building.Enabled ? 0xFF949EA7u
                 : !building.IsCompleted || building.IsUpgrading ? 0xFFFFC45Eu : InfrastructureColor(building.Kind);

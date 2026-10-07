@@ -17,7 +17,8 @@ internal static class SurvivalAndDisasterTests
 
     private static void Check(bool condition, string message)
     {
-        if (!condition) throw new Exception(message);
+        if (!condition)
+            throw new Exception(message);
     }
 
     private static WorldEngine Flat(int people = 4)
@@ -55,7 +56,8 @@ internal static class SurvivalAndDisasterTests
         }, false, false);
         e.State.Tick = 1;
         e.SpawnResidents(16, 16, RaceKind.Human, people);
-        foreach (var r in e.State.Residents) Hold(e, r, AgentGoalKind.Rest, 16, 16);
+        foreach (var r in e.State.Residents)
+            Hold(e, r, AgentGoalKind.Rest, 16, 16);
         return e;
     }
 
@@ -144,7 +146,8 @@ internal static class SurvivalAndDisasterTests
     private static void ConnectedSpawn()
     {
         var e = Flat(1);
-        for (var y = 0; y < 32; y++) e.PaintTerrain(18, y, TerrainType.River, 0);
+        for (var y = 0; y < 32; y++)
+            e.PaintTerrain(18, y, TerrainType.River, 0);
         e.State.Rules.Hunger = e.State.Rules.Thirst = true;
         e.State.Settlements.Single().Resources.Food = e.State.Settlements.Single().Resources.Water = 100;
         e.SpawnResidents(16, 16, RaceKind.Human, 30);
@@ -170,7 +173,8 @@ internal static class SurvivalAndDisasterTests
             "A hungry water seeker stayed committed while reachable food was present.");
         var e2 = Flat(1);
         var p = e2.State.Residents.Single();
-        for (var y = 0; y < 32; y++) e2.PaintTerrain(18, y, TerrainType.River, 0);
+        for (var y = 0; y < 32; y++)
+            e2.PaintTerrain(18, y, TerrainType.River, 0);
         foreach (var t in e2.State.Tiles)
             if (t.Terrain != TerrainType.River)
                 t.Fertility = 30;
@@ -262,7 +266,8 @@ internal static class SurvivalAndDisasterTests
     {
         var e = Flat(36);
         e.State.Rules.Disease = true;
-        foreach (var r in e.State.Residents.Skip(18)) Hold(e, r, AgentGoalKind.Rest, 28, 28);
+        foreach (var r in e.State.Residents.Skip(18))
+            Hold(e, r, AgentGoalKind.Rest, 28, 28);
         e.TriggerDisaster(16, 16, DisasterKind.Plague, 8);
         Check(e.State.Residents.Count(r => r.SicknessTicks > 0) == 1, "Plague instantly infected an entire town.");
         var patient = e.State.Residents.First(r => r.SicknessTicks > 0);

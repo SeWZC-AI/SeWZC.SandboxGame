@@ -20,12 +20,14 @@ internal static class DevelopmentDiagnostics
         var seed = positional.Length > 1 ? int.Parse(positional[1]) : 73921;
         var size = positional.Length > 2 ? int.Parse(positional[2]) : 256;
         var ticks = positional.Length > 3 ? int.Parse(positional[3]) : 3600;
-        if (ticks is < 1 or > 100_000) throw new ArgumentOutOfRangeException(nameof(ticks));
+        if (ticks is < 1 or > 100_000)
+            throw new ArgumentOutOfRangeException(nameof(ticks));
         var output = Path.GetFullPath(positional[0]);
         Directory.CreateDirectory(output);
         var engine = WorldEngine.Create(seed, size, size);
         engine.State.NaturalDisasters = !args.Contains("--no-disasters");
-        if (args.Contains("--peaceful")) engine.ConfigureWorld(WorldRules.For(WorldPreset.Flourishing), false, true);
+        if (args.Contains("--peaceful"))
+            engine.ConfigureWorld(WorldRules.For(WorldPreset.Flourishing), false, true);
         if (args.Contains("--technology") || args.Contains("--magic-practice") || args.Contains("--arcane-industry"))
         {
             foreach (var nation in engine.State.Nations)
@@ -60,21 +62,25 @@ internal static class DevelopmentDiagnostics
                 {
                     var project = engine.State.Society.Research.First(r => r.SettlementId == town.Id);
                     if (project.ActiveProject is not null || !engine.State.Society.Buildings.Any(b =>
-                            b.SettlementId == town.Id && b.Kind == BuildingKind.Academy && b.IsCompleted)) continue;
+                            b.SettlementId == town.Id && b.Kind == BuildingKind.Academy && b.IsCompleted))
+                        continue;
                     var candidate = targetRoute.Where(k => !engine.HasResearch(town.Id, k) &&
                                                            engine.ResearchPrerequisiteError(town.Id, k) is null
                                                            && WorldEngine.MissingResources(town.Resources,
                                                                WorldEngine.GetResearchCost(k)) is null)
                         .FirstOrDefault();
-                    if (candidate is not null) engine.StartResearch(town.Id, candidate);
+                    if (candidate is not null)
+                        engine.StartResearch(town.Id, candidate);
                 }
             }
 
             engine.Step(Math.Min(120, ticks - completed));
             Sample();
-            if (completionTick < 0 && CompleteTowns(engine).Length > 0) completionTick = engine.State.Tick;
+            if (completionTick < 0 && CompleteTowns(engine).Length > 0)
+                completionTick = engine.State.Tick;
             if (args.Contains("--until-empire") && completionTick >= 0 &&
-                engine.State.Tick >= completionTick + 1200) break;
+                engine.State.Tick >= completionTick + 1200)
+                break;
         }
 
         var save = engine.ExportJson();
@@ -128,8 +134,10 @@ internal static class DevelopmentDiagnostics
         void Sample()
         {
             var state = engine.State;
-            foreach (var entry in state.Events) observedEvents.TryAdd(entry.Id, entry);
-            foreach (var resident in state.ArchivedResidents) observedDeaths.TryAdd(resident.Id, resident);
+            foreach (var entry in state.Events)
+                observedEvents.TryAdd(entry.Id, entry);
+            foreach (var resident in state.ArchivedResidents)
+                observedDeaths.TryAdd(resident.Id, resident);
             var towns = state.Settlements.Select(town =>
             {
                 var people = state.Residents.Where(p => p.SettlementId == town.Id).ToArray();

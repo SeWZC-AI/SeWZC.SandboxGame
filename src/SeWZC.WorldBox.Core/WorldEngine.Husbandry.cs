@@ -32,7 +32,8 @@ public sealed partial class WorldEngine
         var largest = .02;
         foreach (var i in Circle(x, y, aquatic ? 1 : 0))
         {
-            if (aquatic && !IsFreshWater(State.Tiles[i])) continue;
+            if (aquatic && !IsFreshWater(State.Tiles[i]))
+                continue;
             foreach (var kind in AnimalRules.Species)
                 if (CanDomesticate(kind, aquatic) && State.Tiles[i].AnimalPopulation(kind) > largest)
                 {
@@ -61,9 +62,11 @@ public sealed partial class WorldEngine
                 b.Kind == BuildingKind.Pasture ? Advancement.Agriculture : Advancement.Industry)
             || (b.Kind == BuildingKind.Aquaculture && !HasResearch(b.SettlementId, Advancement.Logistics)))
             return false;
-        if (person.Profession != (b.Kind == BuildingKind.Pasture ? Profession.Farmer : Profession.Fisher)) return false;
+        if (person.Profession != (b.Kind == BuildingKind.Pasture ? Profession.Farmer : Profession.Fisher))
+            return false;
         var tile = State.Tiles[Index(b.X, b.Y)];
-        if (tile.DroughtTicks > 0 || tile.FireTicks > 0) return false;
+        if (tile.DroughtTicks > 0 || tile.FireTicks > 0)
+            return false;
         if (b.LivestockPopulation < .01)
             return HusbandryStockAt(b.X, b.Y, b.Kind == BuildingKind.Aquaculture).Source >= 0;
         var home = RequireTown(b.SettlementId);
@@ -77,7 +80,8 @@ public sealed partial class WorldEngine
     {
         var goal = person.Agent.Goal;
         if (goal.Kind != AgentGoalKind.Work || FindBuilding(goal.TargetEntityId) is not { } b || !IsHusbandry(b.Kind)
-            || !b.IsCompleted || b.IsUpgrading) return false;
+            || !b.IsCompleted || b.IsUpgrading)
+            return false;
         if (!HusbandryHasWork(b, person))
         {
             person.Agent.NextThinkTick = State.Tick;
@@ -118,7 +122,8 @@ public sealed partial class WorldEngine
             return true;
         }
 
-        if (TryWorkAtBuilding(person)) person.Activity = ResidentActivity.Working;
+        if (TryWorkAtBuilding(person))
+            person.Activity = ResidentActivity.Working;
         if (person.Inventory.Food >= TravelReserve(person) + 3)
         {
             var previous = person.Agent.Goal;
@@ -135,11 +140,13 @@ public sealed partial class WorldEngine
 
     private bool WorkHusbandry(Building b, Resident person, double effort)
     {
-        if (!HusbandryHasWork(b, person) || person.X != b.X || person.Y != b.Y) return false;
+        if (!HusbandryHasWork(b, person) || person.X != b.X || person.Y != b.Y)
+            return false;
         if (b.LivestockPopulation < .01)
         {
             var stock = HusbandryStockAt(b.X, b.Y, b.Kind == BuildingKind.Aquaculture);
-            if (stock.Source < 0) return false;
+            if (stock.Source < 0)
+                return false;
             var tile = State.Tiles[stock.Source];
             var take = Math.Min(1, tile.AnimalPopulation(stock.Kind) * .5);
             tile.SetAnimalPopulation(stock.Kind, tile.AnimalPopulation(stock.Kind) - take);

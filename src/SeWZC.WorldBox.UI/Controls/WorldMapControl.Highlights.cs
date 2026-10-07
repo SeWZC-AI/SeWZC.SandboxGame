@@ -30,7 +30,8 @@ public sealed partial class WorldMapControl
             foreach (var resident in VisibleResidents(state))
             {
                 if (Overlay == 9 && resident.TravelMode != TravelMode.Boat &&
-                    resident.Agent.Goal.Kind != AgentGoalKind.Fish) continue;
+                    resident.Agent.Goal.Kind != AgentGoalKind.Fish)
+                    continue;
                 var point = ResidentMapPosition(resident.Id, resident.X, resident.Y);
                 var pen = resident.Activity is ResidentActivity.Working or ResidentActivity.Studying ? WorkingHighlight
                     : resident.Activity == ResidentActivity.Resting ? RestingHighlight : TravelHighlight;
@@ -53,19 +54,23 @@ public sealed partial class WorldMapControl
             IBrush brush;
             if (Overlay == 5)
             {
-                if (tile.ClaimedSettlementId == 0) continue;
+                if (tile.ClaimedSettlementId == 0)
+                    continue;
                 brush = TownHighlights[tile.ClaimedSettlementId % TownHighlights.Length];
             }
             else if (Overlay == 6)
             {
-                if (!WorldEngine.IsWaterSource(tile)) continue;
+                if (!WorldEngine.IsWaterSource(tile))
+                    continue;
                 var abundance = Math.Clamp(WorldEngine.DailyWaterYield(tile) / .1, 0, 1);
                 brush = WaterHighlights[(int)(abundance * 140)];
             }
-            else if (Overlay == 7) brush = FertilityHighlights[tile.Fertility];
+            else if (Overlay == 7)
+                brush = FertilityHighlights[tile.Fertility];
             else
             {
-                if (tile.FireTicks == 0 && tile.DroughtTicks == 0) continue;
+                if (tile.FireTicks == 0 && tile.DroughtTicks == 0)
+                    continue;
                 brush = tile.FireTicks > 0 ? FireHighlight : DroughtHighlight;
             }
 

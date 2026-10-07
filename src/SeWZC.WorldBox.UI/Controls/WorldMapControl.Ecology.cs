@@ -66,7 +66,8 @@ public sealed partial class WorldMapControl
 
     private WriteableBitmap PlantIcon(PlantKind kind)
     {
-        if (_plantIcons.TryGetValue(kind, out var cached)) return cached;
+        if (_plantIcons.TryGetValue(kind, out var cached))
+            return cached;
         var c = new PixelCanvas(20, 20);
         const uint leaf = 0x92BF78FF, dark = 0x426B47FF, wood = 0xC2A474FF;
         switch (kind)
@@ -115,7 +116,8 @@ public sealed partial class WorldMapControl
 
     private WriteableBitmap AnimalIcon(WildlifeKind kind)
     {
-        if (_animalIcons.TryGetValue(kind, out var icon)) return icon;
+        if (_animalIcons.TryGetValue(kind, out var icon))
+            return icon;
         var canvas = new PixelCanvas(32, 32);
         var color = kind switch
         {
@@ -207,7 +209,8 @@ public sealed partial class WorldMapControl
             Box(2, -2.7, .7, .7);
         }
 
-        if (kind == WildlifeKind.Shark) Box(-.4, -3.2, .6, 1.5);
+        if (kind == WildlifeKind.Shark)
+            Box(-.4, -3.2, .6, 1.5);
         if (kind is WildlifeKind.Manatee or WildlifeKind.SeaTurtle or WildlifeKind.SeaCow)
         {
             color = 0x68AA99FF;
@@ -230,7 +233,8 @@ public sealed partial class WorldMapControl
 
     private WriteableBitmap DepositIcon(ResourceKind resource)
     {
-        if (_depositIcons.TryGetValue(resource, out var icon)) return icon;
+        if (_depositIcons.TryGetValue(resource, out var icon))
+            return icon;
         var c = new PixelCanvas(20, 20);
         if (resource == ResourceKind.Coal)
         {
@@ -264,7 +268,8 @@ public sealed partial class WorldMapControl
     {
         RenderedWildlifeCount = 0;
         RenderedPlantCount = 0;
-        if (_zoom < 3) return;
+        if (_zoom < 3)
+            return;
         var viewport = VisibleTiles(state);
         var changed = (_ecologyDirty || viewport != _ecologyViewport) && EcologyInputsChanged(state, viewport);
         _ecologyDirty = false;
@@ -310,7 +315,8 @@ public sealed partial class WorldMapControl
                     for (var group = 0; group < 6; group++)
                     {
                         var kind = groups[group];
-                        if (kind == WildlifeKind.None) continue;
+                        if (kind == WildlifeKind.None)
+                            continue;
                         var population = tile.AnimalPopulation(kind);
                         var scale = .25 + .75 *
                             Math.Clamp(population / Math.Max(1, capacities[(int)kind]), 0, 1);
@@ -342,10 +348,13 @@ public sealed partial class WorldMapControl
             context.DrawLine(WaterFlowPen, point, point + (end - start) * .2);
         }
 
-        foreach (var (icon, bounds) in _plantDraws) context.DrawImage(icon, bounds);
+        foreach (var (icon, bounds) in _plantDraws)
+            context.DrawImage(icon, bounds);
         RenderedPlantCount = _plantDraws.Count;
-        foreach (var (icon, bounds) in _depositDraws) context.DrawImage(icon, bounds);
-        foreach (var (icon, bounds) in _wildlifeDraws) context.DrawImage(icon, bounds);
+        foreach (var (icon, bounds) in _depositDraws)
+            context.DrawImage(icon, bounds);
+        foreach (var (icon, bounds) in _wildlifeDraws)
+            context.DrawImage(icon, bounds);
         RenderedWildlifeCount = _wildlifeDraws.Count;
     }
 

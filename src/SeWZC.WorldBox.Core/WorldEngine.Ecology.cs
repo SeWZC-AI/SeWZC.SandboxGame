@@ -64,7 +64,8 @@ public sealed partial class WorldEngine
     /// <param name="groups">至少六项的输出缓冲，按 <c>size * 2 + diet</c> 编码保存代表物种。</param>
     public static void FillVisibleWildlife(Tile tile, Span<WildlifeKind> groups)
     {
-        if (groups.Length < 6) throw new ArgumentException("显示缓冲必须覆盖六个分组。", nameof(groups));
+        if (groups.Length < 6)
+            throw new ArgumentException("显示缓冲必须覆盖六个分组。", nameof(groups));
         groups.Clear();
         Span<double> largest = stackalloc double[6];
         largest.Fill(.02);
@@ -75,7 +76,8 @@ public sealed partial class WorldEngine
             var animal = AnimalRules.For(kind);
             var group = (int)animal.Size * 2 + (int)animal.Diet;
             var population = tile.AnimalPopulation(kind);
-            if (population <= largest[group]) continue;
+            if (population <= largest[group])
+                continue;
             groups[group] = kind;
             largest[group] = population;
         }
@@ -105,7 +107,8 @@ public sealed partial class WorldEngine
             throw new ArgumentException("容量缓冲必须覆盖全部物种。", nameof(capacities));
         Span<byte> competitors = stackalloc byte[AnimalRules.SpeciesCount];
         var mask = AnimalRules.FillCapacities(tile, capacities, competitors) & ~AnimalRules.HerbivoreMask;
-        if (mask == 0) return;
+        if (mask == 0)
+            return;
         Span<double> populations = stackalloc double[AnimalRules.SpeciesCount];
         tile.CopyAnimalPopulations(populations);
         Span<double> biomass = stackalloc double[3];
@@ -138,7 +141,8 @@ public sealed partial class WorldEngine
             for (var diet = 0; diet < 2; diet++)
                 foreach (var kind in AnimalRules.Species)
                 {
-                    if ((int)AnimalRules.For(kind).Diet != diet) continue;
+                    if ((int)AnimalRules.For(kind).Diet != diet)
+                        continue;
                     var hash = unchecked((uint)i * 2654435761u + (uint)State.Seed * 31 + (uint)kind * 2246822519u);
                     var capacity = capacities[(int)kind];
                     if (diet == 1 && capacity > 0)
@@ -150,7 +154,8 @@ public sealed partial class WorldEngine
                         capacity = Math.Min(capacity, biomass * .12 / AnimalRules.For(kind).BodyMass);
                     }
 
-                    if (capacity > 0) tile.SetAnimalPopulation(kind, capacity * (.15 + hash % 30 / 100d));
+                    if (capacity > 0)
+                        tile.SetAnimalPopulation(kind, capacity * (.15 + hash % 30 / 100d));
                 }
         }
     }
@@ -232,7 +237,8 @@ public sealed partial class WorldEngine
                     var biomass = capacityBiomass[(int)definition.Size];
                     var share = capacitySharedBiomass[(int)definition.Size];
 
-                    if (biomass == 0) continue;
+                    if (biomass == 0)
+                        continue;
                     var capacity = Math.Min(_wildlifeCapacities[capacityOffset + (int)predator],
                         share * .12 / definition.BodyMass);
                     var rate = capacity * definition.BodyMass * predationRate / biomass;
@@ -281,14 +287,19 @@ public sealed partial class WorldEngine
             var offset = local * AnimalRules.SpeciesCount;
             var mask = _wildlifeMasks[local];
             var capacityOffset = i % bufferTiles * AnimalRules.SpeciesCount;
-            if (mask == 0) continue;
+            if (mask == 0)
+                continue;
             preyLosses.Clear();
             preyRenewal.Clear();
             var count = 0;
-            if (x + 1 < State.Width) neighbours[count++] = i + 1;
-            if (y + 1 < State.Height) neighbours[count++] = i + State.Width;
-            if (x > 0) neighbours[count++] = i - 1;
-            if (y > 0) neighbours[count++] = i - State.Width;
+            if (x + 1 < State.Width)
+                neighbours[count++] = i + 1;
+            if (y + 1 < State.Height)
+                neighbours[count++] = i + State.Width;
+            if (x > 0)
+                neighbours[count++] = i - 1;
+            if (y > 0)
+                neighbours[count++] = i - State.Width;
             var predators = mask & ~AnimalRules.HerbivoreMask;
             while (predators != 0)
             {
@@ -310,7 +321,8 @@ public sealed partial class WorldEngine
                 var fed = demand > 0 ? Math.Min(1, sharedBiomass / demand) : 1;
                 predatorSurvivors[species] =
                     Math.Max(0, population + normalGrowth) * (fed < 1 ? Math.Pow(fed, .75) : 1);
-                if (biomass <= 0) continue;
+                if (biomass <= 0)
+                    continue;
                 var consumption = predatorSurvivors[species] * animal.BodyMass * predationRate / biomass;
                 var limit = _wildlifePredatorLimits[capacityOffset + species];
                 var renewalRate = limit > 0
@@ -345,7 +357,8 @@ public sealed partial class WorldEngine
                     var loss = Math.Min(Math.Max(0, population + growth), preyLosses[species]);
                     available = Math.Max(0, population + growth - loss);
                 }
-                else available = predatorSurvivors[species];
+                else
+                    available = predatorSurvivors[species];
 
                 _wildlifeChanges[offset + species] += available - population;
                 // 迁移只能使用捕食后的存活量，避免负库存被截为零后凭空增加动物。
@@ -356,7 +369,8 @@ public sealed partial class WorldEngine
                     var targetOffset = targetLocal * AnimalRules.SpeciesCount + species;
                     var targetCapacityOffset = next % bufferTiles * AnimalRules.SpeciesCount;
                     var creek = tiles[next].Terrain == TerrainType.Stream && !animal.Aquatic;
-                    if (_wildlifeCapacities[targetCapacityOffset + species] <= 0 && !creek) continue;
+                    if (_wildlifeCapacities[targetCapacityOffset + species] <= 0 && !creek)
+                        continue;
                     var targetCapacity = _wildlifeCapacities[targetCapacityOffset + species];
                     if (animal.Diet == AnimalDiet.Carnivore && targetCapacity > 0)
                     {
@@ -364,7 +378,8 @@ public sealed partial class WorldEngine
                         targetCapacity = Math.Min(targetCapacity, preyMass * .12 / animal.BodyMass);
                     }
 
-                    if (targetCapacity <= 0 && !creek) continue;
+                    if (targetCapacity <= 0 && !creek)
+                        continue;
                     var preference =
                         Math.Clamp(
                             (capacity > 0 ? available / capacity : 2) - (targetCapacity > 0
@@ -386,7 +401,8 @@ public sealed partial class WorldEngine
         for (var i = snapshotFirst; i < snapshotLast; i++)
         {
             var local = i - snapshotFirst;
-            if ((i < first || i >= last) && _wildlifeIncoming[local] == 0) continue;
+            if ((i < first || i >= last) && _wildlifeIncoming[local] == 0)
+                continue;
             var tile = tiles[i];
             var mask = _wildlifeMasks[local] | _wildlifeIncoming[local];
             var others = tile.OtherWildlife;
@@ -399,8 +415,10 @@ public sealed partial class WorldEngine
                         _wildlifePopulations[local * AnimalRules.SpeciesCount + species] +
                         _wildlifeChanges[local * AnimalRules.SpeciesCount + species], 0, 1000);
                 population = population < .000001 ? 0 : population;
-                if (kind == tile.Wildlife) tile.WildlifePopulation = population;
-                else others.Set(kind, population);
+                if (kind == tile.Wildlife)
+                    tile.WildlifePopulation = population;
+                else
+                    others.Set(kind, population);
             }
 
             tile.OtherWildlife = others;
@@ -437,10 +455,12 @@ public sealed partial class WorldEngine
     private void RefreshSettlementName(Settlement town)
     {
         var suffix = SettlementTierName(town.Tier);
-        if (town.Name.EndsWith(suffix, StringComparison.Ordinal)) return;
+        if (town.Name.EndsWith(suffix, StringComparison.Ordinal))
+            return;
         var stem = town.Name.Length > 0 && town.Name[^1] is '城' or '镇' or '村' ? town.Name[..^1] : town.Name;
         var name = stem + suffix;
-        if (State.Settlements.Any(other => other.Id != town.Id && other.Name == name)) name = stem + town.Id + suffix;
+        if (State.Settlements.Any(other => other.Id != town.Id && other.Name == name))
+            name = stem + town.Id + suffix;
         town.Name = name;
     }
 

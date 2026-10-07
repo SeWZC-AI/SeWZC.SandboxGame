@@ -7,7 +7,8 @@ public static class PlantResources
     /// <param name="tile">要查询植物的地格。</param>
     public static IEnumerable<(PlantKind Kind, double Cover, double Quantity)> At(Tile tile)
     {
-        if (tile.FireTicks > 0 || tile.ResourceAmount <= 0) yield break;
+        if (tile.FireTicks > 0 || tile.ResourceAmount <= 0)
+            yield break;
         var cover = Math.Clamp(tile.ResourceAmount / 100, 0, 1) * (tile.DroughtTicks > 0 ? .4 : 1);
         if (tile.Improvement == LandImprovement.Farmland)
         {
@@ -19,7 +20,8 @@ public static class PlantResources
         {
             var kind = (PlantKind)species;
             var coverage = tile.Plants.Get(kind) * cover;
-            if (tile.Plants.Get(kind) > 0) yield return (kind, coverage, tile.ResourceAmount * tile.Plants.Get(kind));
+            if (tile.Plants.Get(kind) > 0)
+                yield return (kind, coverage, tile.ResourceAmount * tile.Plants.Get(kind));
         }
     }
 

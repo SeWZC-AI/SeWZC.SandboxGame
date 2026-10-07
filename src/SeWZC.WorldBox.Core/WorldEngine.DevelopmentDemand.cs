@@ -29,7 +29,8 @@ public sealed partial class WorldEngine
                      TerrainRules.For(tile.Terrain).StoneYield + TerrainRules.For(tile.Terrain).OreYield > 0 &&
                      tile.ResourceAmount >= 10;
             roads |= tile.NationId == town.NationId && tile.RoadLevel > 0;
-            if (coast && timber && stone && roads) break;
+            if (coast && timber && stone && roads)
+                break;
         }
 
         return new LocalDemand(town, adults, buildings, defense, adults.Any(p => p.Health < 90 || p.SicknessTicks > 0),
@@ -65,7 +66,8 @@ public sealed partial class WorldEngine
             BuildingKind.LumberCamp => demand.Timber && demand.Adults.Any(p => p.Profession == Profession.Lumberjack) &&
                                        stock.Wood < 40,
             BuildingKind.Quarry or BuildingKind.MiningHall => demand.Stone &&
-                                                              demand.Adults.Any(p => p.Profession == Profession.Miner) &&
+                                                              demand.Adults.Any(p =>
+                                                                  p.Profession == Profession.Miner) &&
                                                               stock.Stone + stock.Ore < 60,
             BuildingKind.Well => demand.Water && !Has(BuildingKind.Reservoir),
             BuildingKind.Granary => town.Population >= 60 && stock.Food >= town.Population,
@@ -111,29 +113,36 @@ public sealed partial class WorldEngine
     private double ResearchUtility(LocalDemand demand, Advancement research)
     {
         var town = demand.Town;
-        if (research.Magic && !demand.MagicTalent) return 0;
+        if (research.Magic && !demand.MagicTalent)
+            return 0;
         var useful = research switch
         {
             _ when research == Advancement.Ballistics || research == Advancement.ProtectiveEquipment
-                || research == Advancement.Warding || research == Advancement.BattleMagic => demand.Defense,
+                                                      || research == Advancement.Warding ||
+                                                      research == Advancement.BattleMagic => demand.Defense,
             _ when research == Advancement.Elementalism => demand.Defense || State.NaturalDisasters,
             _ when research == Advancement.RailTransport => demand.Roads,
             _ when research == Advancement.SpatialMagic => FacilityNeeded(demand, BuildingKind.Waygate),
             _ when research == Advancement.FireEngineering => FacilityNeeded(demand, BuildingKind.FireStation),
             _ when research == Advancement.Medicine || research == Advancement.Sanitation
-                || research == Advancement.Restoration => demand.Patients || State.Rules.Disease,
-            _ when research == Advancement.Pharmacology || research == Advancement.Alchemy => FacilityNeeded(demand, BuildingKind.Apothecary),
-            _ when research == Advancement.NatureBinding => FacilityNeeded(demand, BuildingKind.GroveSanctuary) || State.NaturalDisasters,
+                                                    || research == Advancement.Restoration => demand.Patients ||
+                State.Rules.Disease,
+            _ when research == Advancement.Pharmacology || research == Advancement.Alchemy => FacilityNeeded(demand,
+                BuildingKind.Apothecary),
+            _ when research == Advancement.NatureBinding => FacilityNeeded(demand, BuildingKind.GroveSanctuary) ||
+                                                            State.NaturalDisasters,
             _ when research == Advancement.Observation || research == Advancement.SignalNetwork => demand.Contacts ||
-                                                                      demand.Adults.Any(p =>
-                                                                          p.Profession == Profession.Miner),
+                demand.Adults.Any(p =>
+                    p.Profession == Profession.Miner),
             _ when research == Advancement.EfficientSmelting => demand.Buildings.Any(b =>
                 b.Kind is BuildingKind.Foundry or BuildingKind.DwarvenForge),
-            _ when research == Advancement.EnergyRecycling => demand.Buildings.Any(b => b.Kind == BuildingKind.PowerPlant),
+            _ when research == Advancement.EnergyRecycling => demand.Buildings.Any(b =>
+                b.Kind == BuildingKind.PowerPlant),
             _ when research == Advancement.Leylines => demand.Buildings.Any(b => b.Kind == BuildingKind.Crystallizer),
             _ => true,
         };
-        if (!useful) return 0;
+        if (!useful)
+            return 0;
         // 基本生计和下一条可用生产链优先，避免资源先被次要改进占用。
         return research switch
         {
@@ -142,7 +151,8 @@ public sealed partial class WorldEngine
             _ when research == Advancement.Irrigation => town.Resources.Food < town.Population ? 90 : 55,
             _ when research == Advancement.Forestry => town.Resources.Wood + town.Resources.Stone < 40 ? 85 : 50,
             _ when research == Advancement.Medicine || research == Advancement.Sanitation
-                || research == Advancement.Pharmacology => demand.Patients ? 88 : 45,
+                                                    || research == Advancement.Pharmacology =>
+                demand.Patients ? 88 : 45,
             _ when research == Advancement.FireEngineering => demand.Buildings.Any(b => b.Health < 90) ? 88 : 40,
             _ => ProductionRules.For(research) is not null ? 70 : 50,
         };

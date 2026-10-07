@@ -136,8 +136,10 @@ public sealed partial class MainView : UserControl
         };
         _map.TileSelected += (x, y) =>
         {
-            if (_mapPick is not null) FinishMapPick(x, y);
-            else SelectMapObject("tile", x: x, y: y);
+            if (_mapPick is not null)
+                FinishMapPick(x, y);
+            else
+                SelectMapObject("tile", x: x, y: y);
         };
         _map.ResidentSelected += id => SelectMapObject("resident", id);
         _map.BuildingSelected += id =>
@@ -200,9 +202,12 @@ public sealed partial class MainView : UserControl
         actions.Children.Add(_undo);
         actions.Children.Add(Button("概览", () =>
         {
-            if (_mapPick is not null) return;
-            if (_mobilePanel && _inspectorMode == "overview") CloseInspector();
-            else OpenInspector("overview");
+            if (_mapPick is not null)
+                return;
+            if (_mobilePanel && _inspectorMode == "overview")
+                CloseInspector();
+            else
+                OpenInspector("overview");
         }));
         actions.Children.Add(Named(Button("规则", ShowRules), "header-rules"));
         Grid.SetColumn(actions, 2);
@@ -284,7 +289,8 @@ public sealed partial class MainView : UserControl
                     }, $"tool-slot-{i}");
             button.Click += (_, _) =>
             {
-                if (_slotTools[slot] is { } tool) SelectTool(tool);
+                if (_slotTools[slot] is { } tool)
+                    SelectTool(tool);
             };
             _toolSlots[i] = button;
             _toolSwatches[i] = swatch;
@@ -413,9 +419,12 @@ public sealed partial class MainView : UserControl
         _eventText.TextTrimming = TextTrimming.CharacterEllipsis;
         eventButton.Click += (_, _) =>
         {
-            if (_mapPick is not null) return;
-            if (_engine.State.Events.FirstOrDefault(e => e.Id == _focusedEventId) is { } entry) FocusEvent(entry);
-            else OpenInspector("overview");
+            if (_mapPick is not null)
+                return;
+            if (_engine.State.Events.FirstOrDefault(e => e.Id == _focusedEventId) is { } entry)
+                FocusEvent(entry);
+            else
+                OpenInspector("overview");
         };
         bottom.Children.Add(BuildSelectionBar());
         bottom.Children.Add(eventButton);
@@ -523,7 +532,8 @@ public sealed partial class MainView : UserControl
                 _savedEditRevision = _worldEditRevision;
                 SetStatus("已恢复本机世界，每 30 秒自动保存");
             }
-            else SetStatus("新世界已诞生，可选择工具创造或观察文明演化");
+            else
+                SetStatus("新世界已诞生，可选择工具创造或观察文明演化");
         }
         catch (Exception ex)
         {
@@ -532,7 +542,8 @@ public sealed partial class MainView : UserControl
         }
 
         _ready = true;
-        if (_shell is not null) _shell.IsEnabled = true;
+        if (_shell is not null)
+            _shell.IsEnabled = true;
         _lastSave = _clock.Elapsed.TotalSeconds;
         _map.RefreshWorld(true);
         RefreshUi(true);
@@ -544,7 +555,8 @@ public sealed partial class MainView : UserControl
         var now = _clock.Elapsed.TotalSeconds;
         var elapsed = Math.Clamp(now - _previousTime, 0, .25);
         _previousTime = now;
-        if (!_ready) return;
+        if (!_ready)
+            return;
         var hidden = App.Storage?.IsBackground == true;
         _map.IsSimulationPaused = WorldTimeStopped;
         _map.SimulationTickDurationSeconds = .2 / _speed;
@@ -574,14 +586,16 @@ public sealed partial class MainView : UserControl
             {
                 // 追加模拟日前先预留上一轮地图刷新耗时；首日再贵也须推进，避免世界停滞。
                 if (count > 0 && Stopwatch.GetElapsedTime(work).TotalMilliseconds
-                    + _lastStepMilliseconds + _lastMapRefreshMilliseconds > budgetMilliseconds) break;
+                    + _lastStepMilliseconds + _lastMapRefreshMilliseconds > budgetMilliseconds)
+                    break;
                 var stepStarted = Stopwatch.GetTimestamp();
                 _engine.Step();
                 _accumulator -= .2;
                 count++;
                 _lastStepMilliseconds = Stopwatch.GetElapsedTime(stepStarted).TotalMilliseconds;
                 if (Stopwatch.GetElapsedTime(work).TotalMilliseconds + _lastMapRefreshMilliseconds >
-                    budgetMilliseconds) break;
+                    budgetMilliseconds)
+                    break;
             }
 
             if (count > 0)
@@ -621,16 +635,19 @@ public sealed partial class MainView : UserControl
 
     private void TogglePause()
     {
-        if (EditCaptureActive || _modal.IsVisible || _mapPick is not null) return;
+        if (EditCaptureActive || _modal.IsVisible || _mapPick is not null)
+            return;
         _paused = !_paused;
-        if (!_paused) _checkpoint = null;
+        if (!_paused)
+            _checkpoint = null;
         _map.IsSimulationPaused = WorldTimeStopped;
         RefreshUi(true);
     }
 
     private void RestoreCheckpoint()
     {
-        if (_mapPick is not null || EditCaptureActive) return;
+        if (_mapPick is not null || EditCaptureActive)
+            return;
         if (_checkpoint is null)
         {
             SetStatus("暂无可撤销的编辑。开始绘制时会保存恢复点，继续模拟后清除。");
@@ -664,7 +681,8 @@ public sealed partial class MainView : UserControl
         var available = _checkpoint is not null && !EditCaptureActive && _mapPick is null;
         _undo.IsEnabled = available;
         ToolTip.SetTip(_undo, available ? "撤销本轮编辑：恢复到编辑之前；继续模拟后清除恢复点" : "撤销本轮编辑：暂无恢复点；应用修改后可用，继续模拟后清除恢复点");
-        if (_storageUndo is not null) _storageUndo.IsEnabled = available;
+        if (_storageUndo is not null)
+            _storageUndo.IsEnabled = available;
     }
 
     private void UpdateSpeedButtons()
@@ -733,18 +751,23 @@ public sealed partial class MainView : UserControl
         _play.Content = _paused ? "继续" : "暂停";
         _play.IsEnabled = _mapPick is null && !EditCaptureActive;
         UpdateUndoButtons();
-        if (_paused) _simulationStatus.Text = "时间已暂停";
-        else if (_modal.IsVisible || _mapPick is not null || EditCaptureActive) _simulationStatus.Text = "窗口操作中，时间暂时停止";
-        else _simulationStatus.Text = _accumulator > .4 ? "设备限速，世界继续演化" : "世界正在演化";
+        if (_paused)
+            _simulationStatus.Text = "时间已暂停";
+        else if (_modal.IsVisible || _mapPick is not null || EditCaptureActive)
+            _simulationStatus.Text = "窗口操作中，时间暂时停止";
+        else
+            _simulationStatus.Text = _accumulator > .4 ? "设备限速，世界继续演化" : "世界正在演化";
         var watchHash = 17;
-        foreach (var watch in _watched) watchHash = unchecked(watchHash * 31 + watch.GetHashCode());
+        foreach (var watch in _watched)
+            watchHash = unchecked(watchHash * 31 + watch.GetHashCode());
         var revision = (state.Events.LastOrDefault()?.Id ?? 0, state.Events.Count, watchHash);
         if (!ReferenceEquals(_spotlightState, state) || _spotlightRevision != revision)
         {
             _spotlightState = state;
             _spotlightRevision = revision;
             var candidates = state.Events.Where(e =>
-                e.Importance >= EventImportance.Notable && e.Kind is not (WorldEventKind.Editor or WorldEventKind.Culture
+                e.Importance >= EventImportance.Notable && e.Kind is not (WorldEventKind.Editor
+                    or WorldEventKind.Culture
                     or WorldEventKind.Policy or WorldEventKind.Magic));
             _spotlightGroup = WorldStories.Group(candidates)
                 .OrderByDescending(g => _watched.Count > 0 && g.Entries.Any(IsWatched))
@@ -758,8 +781,10 @@ public sealed partial class MainView : UserControl
             : $"{DateLabel(spotlight.Latest.Tick)}\n{spotlight.Latest.Message}" +
               (spotlight.Count > 1 ? $"（同类 {spotlight.Count} 次）" : "");
         spotlightText = DisplayFormat.Text(spotlightText);
-        if (_eventText.Text != spotlightText) _eventText.Text = spotlightText;
-        if (_mobilePanel || force) RefreshInspector(force);
+        if (_eventText.Text != spotlightText)
+            _eventText.Text = spotlightText;
+        if (_mobilePanel || force)
+            RefreshInspector(force);
         RefreshSelectionSummary();
     }
 
@@ -773,7 +798,8 @@ public sealed partial class MainView : UserControl
         }));
         panel.Children.Add(Button("读取本机存档", async () =>
         {
-            if (!CanSubmitEdit()) return;
+            if (!CanSubmitEdit())
+                return;
             var source = _engine;
             var generation = _modalGeneration;
             var storage = App.Storage;
@@ -785,12 +811,14 @@ public sealed partial class MainView : UserControl
 
             try
             {
-                if (storage is null) return;
+                if (storage is null)
+                    return;
                 string? json;
                 await _saveGate.WaitAsync();
                 try
                 {
-                    if (!Current()) return;
+                    if (!Current())
+                        return;
                     json = await storage.LoadAsync();
                 }
                 finally
@@ -798,7 +826,8 @@ public sealed partial class MainView : UserControl
                     _saveGate.Release();
                 }
 
-                if (!Current()) return;
+                if (!Current())
+                    return;
                 if (json is null)
                 {
                     SetStatus("还没有本机存档");
@@ -814,13 +843,15 @@ public sealed partial class MainView : UserControl
             }
             catch (Exception ex)
             {
-                if (Current()) SetStatus($"读取失败：{FriendlyError(ex)}");
+                if (Current())
+                    SetStatus($"读取失败：{FriendlyError(ex)}");
             }
         }));
         panel.Children.Add(Button("导出世界文件", async () => await ExportWorldAsync()));
         panel.Children.Add(Button("导入世界文件", async () =>
         {
-            if (!CanSubmitEdit()) return;
+            if (!CanSubmitEdit())
+                return;
             var source = _engine;
             var generation = _modalGeneration;
             var storage = App.Storage;
@@ -832,9 +863,11 @@ public sealed partial class MainView : UserControl
 
             try
             {
-                if (storage is null) return;
+                if (storage is null)
+                    return;
                 var json = await storage.ImportAsync();
-                if (json is null || !Current()) return;
+                if (json is null || !Current())
+                    return;
                 var candidate = WorldEngine.ImportJson(json);
                 await SubmitEditAsync(() =>
                 {
@@ -844,7 +877,8 @@ public sealed partial class MainView : UserControl
             }
             catch (Exception ex)
             {
-                if (Current()) SetStatus($"导入失败，当前世界未改变：{FriendlyError(ex)}");
+                if (Current())
+                    SetStatus($"导入失败，当前世界未改变：{FriendlyError(ex)}");
             }
         }));
         _storageUndo = Button("撤销本轮编辑", RestoreCheckpoint);
@@ -856,7 +890,8 @@ public sealed partial class MainView : UserControl
     private async Task ExportWorldAsync()
     {
         var storage = App.Storage;
-        if (storage is null) return;
+        if (storage is null)
+            return;
         var source = _engine;
         var generation = _modalGeneration;
 
@@ -870,7 +905,8 @@ public sealed partial class MainView : UserControl
         try
         {
             // 排队请求须绑定原窗口和世界，避免窗口关闭后捕获新选中的世界。
-            if (!OriginalWindowOpen()) return;
+            if (!OriginalWindowOpen())
+                return;
             _saving = true;
             _saveCapture = capture;
             _lastSaveYield = Stopwatch.GetTimestamp();
@@ -888,11 +924,13 @@ public sealed partial class MainView : UserControl
         }
         catch (OperationCanceledException)
         {
-            if (OriginalWindowOpen()) SetStatus("已取消导出");
+            if (OriginalWindowOpen())
+                SetStatus("已取消导出");
         }
         catch (Exception ex)
         {
-            if (OriginalWindowOpen()) SetStatus($"导出失败：{FriendlyError(ex)}");
+            if (OriginalWindowOpen())
+                SetStatus($"导出失败：{FriendlyError(ex)}");
         }
         finally
         {
@@ -905,12 +943,14 @@ public sealed partial class MainView : UserControl
     private async Task SaveAsync(bool manual)
     {
         var storage = App.Storage;
-        if (storage is null || !_ready || (!manual && (_saving || !_allowAutosave || !WorldNeedsSave()))) return;
+        if (storage is null || !_ready || (!manual && (_saving || !_allowAutosave || !WorldNeedsSave())))
+            return;
         await _saveGate.WaitAsync();
         using var capture = new CancellationTokenSource();
         try
         {
-            if (!manual && !WorldNeedsSave()) return;
+            if (!manual && !WorldNeedsSave())
+                return;
             _saving = true;
             var source = _engine;
             var tick = source.State.Tick;
@@ -933,7 +973,8 @@ public sealed partial class MainView : UserControl
                 _allowAutosave = true;
                 SetStatus("世界已保存到本机");
             }
-            else SetStatus($"已自动保存（第 {year} 年，{DateTime.Now:HH:mm}）");
+            else
+                SetStatus($"已自动保存（第 {year} 年，{DateTime.Now:HH:mm}）");
         }
         catch (Exception) when (capture.IsCancellationRequested)
         {
@@ -965,14 +1006,16 @@ public sealed partial class MainView : UserControl
 
     private async ValueTask YieldDuringSave(CancellationToken cancellationToken)
     {
-        if (App.Storage?.IsBackground == true || Stopwatch.GetElapsedTime(_lastSaveYield).TotalMilliseconds < 4) return;
+        if (App.Storage?.IsBackground == true || Stopwatch.GetElapsedTime(_lastSaveYield).TotalMilliseconds < 4)
+            return;
         await Task.Delay(1, cancellationToken);
         _lastSaveYield = Stopwatch.GetTimestamp();
     }
 
     private void FinishSaveCapture(CancellationTokenSource capture)
     {
-        if (!ReferenceEquals(_saveCapture, capture)) return;
+        if (!ReferenceEquals(_saveCapture, capture))
+            return;
         // 捕获期间模拟暂停，恢复时不能把捕获耗时计入待推进的模拟时间。
         _saveCapture = null;
         _previousTime = _clock.Elapsed.TotalSeconds;
@@ -1007,7 +1050,8 @@ public sealed partial class MainView : UserControl
         panel.Children.Add(life);
         var create = Button("创造世界", async () =>
         {
-            if (!CanSubmitEdit()) return;
+            if (!CanSubmitEdit())
+                return;
             if (seed.Value is not { } seedNumber || seedNumber != decimal.Truncate(seedNumber))
             {
                 SetStatus("种子应为一个有效整数");
@@ -1062,7 +1106,8 @@ public sealed partial class MainView : UserControl
     private void ShowNationEditor(int nationId)
     {
         var nation = _engine.State.Nations.FirstOrDefault(n => n.Id == nationId);
-        if (nation is null) return;
+        if (nation is null)
+            return;
         var panel = ModalPanel("改写文明的方向", "编辑国家名称、库存与外交关系。变更将在暂停的世界中生效。");
         var name = Named(new TextBox { Text = nation.Name, MaxLength = 40 }, "nation-name");
         panel.Children.Add(name);
@@ -1150,7 +1195,8 @@ public sealed partial class MainView : UserControl
 
         panel.Children.Add(Button("应用变更", async () =>
         {
-            if (!CanSubmitEdit()) return;
+            if (!CanSubmitEdit())
+                return;
             var values = new double?[ResourceStock.Kinds.Count];
             if (string.IsNullOrWhiteSpace(name.Text) || name.Text.Any(char.IsControl))
             {
@@ -1167,7 +1213,8 @@ public sealed partial class MainView : UserControl
                 }
 
                 var value = Number(fields[i]);
-                if (value == (double)fields[i].Tag!) continue;
+                if (value == (double)fields[i].Tag!)
+                    continue;
                 if (value is < 0 or > 1_000_000)
                 {
                     SetStatus("修改后的资源须在 0 到 1,000,000 之间");
@@ -1229,7 +1276,8 @@ public sealed partial class MainView : UserControl
         foreach (var race in Enum.GetValues<RaceKind>())
             people.Children.Add(Button(RaceName(race), async () =>
             {
-                if (!CanSubmitEdit()) return;
+                if (!CanSubmitEdit())
+                    return;
                 var capital = _engine.State.Settlements.First(s => s.Id == nation.CapitalId);
                 await SubmitEditAsync(() =>
                 {
@@ -1254,7 +1302,8 @@ public sealed partial class MainView : UserControl
             panel.Children.Add(townPicker);
             panel.Children.Add(Button("让聚落独立", async () =>
             {
-                if (!CanSubmitEdit()) return;
+                if (!CanSubmitEdit())
+                    return;
                 try
                 {
                     var town = towns[townPicker.SelectedIndex];
@@ -1275,7 +1324,8 @@ public sealed partial class MainView : UserControl
                 }
             }));
         }
-        else panel.Children.Add(Paragraph("拥有两处及以上聚落后，可以拆分国家。"));
+        else
+            panel.Children.Add(Paragraph("拥有两处及以上聚落后，可以拆分国家。"));
 
         OpenModal(panel);
     }
@@ -1361,7 +1411,8 @@ public sealed partial class MainView : UserControl
 
     private void UpdateModalBounds()
     {
-        if (_modal.Child is not Border dialog) return;
+        if (_modal.Child is not Border dialog)
+            return;
         var available = Math.Max(180, Bounds.Height - (_isCompact ? 64 : 28));
         dialog.Width = Math.Min(520, Math.Max(260, Bounds.Width - 28));
         dialog.MaxHeight = available;
@@ -1388,11 +1439,16 @@ public sealed partial class MainView : UserControl
     {
         if (e.Key == Key.Escape)
         {
-            if (_mapPick is not null) FinishMapPick();
-            else if (_map.HasPendingPlacement) _map.CancelPlacement();
-            else if (_modal.IsVisible) CloseModal();
-            else if (_mobilePanel) CloseInspector();
-            else SuspendTool();
+            if (_mapPick is not null)
+                FinishMapPick();
+            else if (_map.HasPendingPlacement)
+                _map.CancelPlacement();
+            else if (_modal.IsVisible)
+                CloseModal();
+            else if (_mobilePanel)
+                CloseInspector();
+            else
+                SuspendTool();
             e.Handled = true;
         }
 
@@ -1406,7 +1462,8 @@ public sealed partial class MainView : UserControl
     private void SetStatus(string text)
     {
         _status.Text = text;
-        if (_modal.IsVisible && _modalFeedback is not null) _modalFeedback.Text = text;
+        if (_modal.IsVisible && _modalFeedback is not null)
+            _modalFeedback.Text = text;
     }
 
     private static string FriendlyError(Exception ex)
@@ -1453,7 +1510,8 @@ public sealed partial class MainView : UserControl
             VerticalContentAlignment = VerticalAlignment.Center,
         };
         button.Click += (_, _) => action();
-        if (tooltip is not null) ToolTip.SetTip(button, tooltip);
+        if (tooltip is not null)
+            ToolTip.SetTip(button, tooltip);
         var id = label switch
         {
             "新世界" => "header-new-world",
@@ -1473,7 +1531,8 @@ public sealed partial class MainView : UserControl
             "编辑这个国家" => "nation-edit",
             _ => null,
         };
-        if (id is not null) Named(button, id);
+        if (id is not null)
+            Named(button, id);
         return button;
     }
 

@@ -101,7 +101,8 @@ internal static class AdvancementTests
 
     private static void Know(WorldEngine engine, Settlement town, Advancement kind)
     {
-        if (kind == Advancement.SignalNetwork) Know(engine, town, Advancement.Electrification);
+        if (kind == Advancement.SignalNetwork)
+            Know(engine, town, Advancement.Electrification);
         if (ProductionRules.For(kind) is { } a)
         {
             foreach (var required in a.Research.Prerequisites)
@@ -140,7 +141,8 @@ internal static class AdvancementTests
 
             foreach (var kind in magic
                          ? new[] { Advancement.ArcaneArts, Advancement.Logistics }
-                         : new[] { Advancement.Agriculture, Advancement.Logistics }) Know(engine, town, kind);
+                         : new[] { Advancement.Agriculture, Advancement.Logistics })
+                Know(engine, town, kind);
             var academy = Facility(engine, town, BuildingKind.Academy);
 
             void Supply(ResourceStock cost)
@@ -158,7 +160,8 @@ internal static class AdvancementTests
                     };
                     for (var tick = 0;
                          tick < 100 && Math.Abs(worker.X - town.X) + Math.Abs(worker.Y - town.Y) > 1;
-                         tick++) engine.Step();
+                         tick++)
+                        engine.Step();
                 }
 
                 foreach (var resource in ResourceStock.Kinds.Where(r =>
@@ -184,7 +187,8 @@ internal static class AdvancementTests
 
             foreach (var definition in ResearchRules.All.Where(r => ResearchRules.Route(magic).Contains(r)))
             {
-                if (engine.HasResearch(town.Id, definition)) continue;
+                if (engine.HasResearch(town.Id, definition))
+                    continue;
                 if (ProductionRules.For(definition) is not { } a)
                 {
                     Supply(definition.Cost.Copy());
@@ -223,7 +227,8 @@ internal static class AdvancementTests
                 };
                 for (var tick = 0;
                      tick < 100 && Math.Abs(worker.X - town.X) + Math.Abs(worker.Y - town.Y) > 1;
-                     tick++) engine.Step();
+                     tick++)
+                    engine.Step();
                 Supply(a.BuildingCost.Copy());
                 var building = Facility(engine, town, a.Facility, false);
                 Hold(engine, worker, building.X, building.Y);
@@ -376,9 +381,10 @@ internal static class AdvancementTests
 
         foreach (var kind in new[]
                  {
-                     Advancement.Agriculture, Advancement.Logistics, Advancement.Irrigation,
-                     Advancement.Forestry, Advancement.Medicine, Advancement.ScientificMethod,
-                 }) engine.GrantReceivedResearch(town.Id, kind);
+                     Advancement.Agriculture, Advancement.Logistics, Advancement.Irrigation, Advancement.Forestry,
+                     Advancement.Medicine, Advancement.ScientificMethod,
+                 })
+            engine.GrantReceivedResearch(town.Id, kind);
         Facility(engine, town, BuildingKind.Academy);
         Facility(engine, town, BuildingKind.Waystation);
         engine.ConfigureWorld(engine.State.Rules with { Research = true, Construction = true }, false, false);
@@ -462,6 +468,7 @@ internal static class AdvancementTests
 
     private static void Check(bool value, string message)
     {
-        if (!value) throw new InvalidOperationException(message);
+        if (!value)
+            throw new InvalidOperationException(message);
     }
 }

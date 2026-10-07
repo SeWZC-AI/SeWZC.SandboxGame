@@ -14,7 +14,8 @@ public sealed partial class Tile
         get => _claimedSettlementId;
         set
         {
-            if (_claimedSettlementId == value) return;
+            if (_claimedSettlementId == value)
+                return;
             _claimedSettlementId = value;
             TerritoryCounts?.InvalidateClaims();
         }
@@ -27,7 +28,8 @@ public sealed partial class Tile
         get => _bridgeDirection;
         set
         {
-            if (_bridgeDirection == value) return;
+            if (_bridgeDirection == value)
+                return;
             _bridgeDirection = value;
             TerritoryCounts?.InvalidateTraversal();
         }

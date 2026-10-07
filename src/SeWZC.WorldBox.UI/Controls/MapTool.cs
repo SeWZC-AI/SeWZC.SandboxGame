@@ -22,21 +22,28 @@ public abstract record MapTool
 
     /// <summary>选择并查看地图对象的工具。</summary>
     public static MapTool Inspect { get; } = new NavigationTool("inspect");
+
     /// <summary>平移地图镜头的工具。</summary>
     public static MapTool Pan { get; } = new NavigationTool("pan");
+
     /// <summary>修改国家领土归属的工具。</summary>
     public static MapTool Territory { get; } = new TerritoryTool();
+
     /// <summary>建设道路的工具。</summary>
     public static MapTool Road { get; } = new RoadTool();
+
     /// <summary>建设铁路的工具。</summary>
     public static MapTool Rail { get; } = new RailTool();
 
     /// <summary>工具的稳定标识。</summary>
     public abstract string Id { get; }
+
     /// <summary>是否只操作镜头与选择而不修改世界。</summary>
     public virtual bool IsNavigation => false;
+
     /// <summary>触屏放置时是否需要先预览再确认。</summary>
     public virtual bool RequiresTouchConfirmation => false;
+
     /// <summary>是否使用方形范围显示工具预览。</summary>
     public virtual bool SquarePreview => false;
 
@@ -165,7 +172,8 @@ public abstract record MapTool
         public override string? PlacementError(WorldMapControl map, int x, int y)
         {
             var engine = map.Engine!;
-            if (!engine.State.Tiles[y * engine.State.Width + x].IsWalkable) return "请选择陆地上的灾害落点";
+            if (!engine.State.Tiles[y * engine.State.Width + x].IsWalkable)
+                return "请选择陆地上的灾害落点";
             return Disaster == DisasterKind.Plague &&
                    !engine.State.Residents.Any(r => Math.Abs(r.X - x) + Math.Abs(r.Y - y) <= map.DisasterRadius)
                 ? "作用范围内没有居民"

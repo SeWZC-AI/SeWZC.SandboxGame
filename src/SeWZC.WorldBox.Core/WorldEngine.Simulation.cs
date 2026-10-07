@@ -12,7 +12,8 @@ public sealed partial class WorldEngine
     /// <param name="steps">推进的日数，范围为 0 至 10,000；为零时不改变世界。</param>
     public void Step(int steps = 1)
     {
-        if (steps is < 0 or > 10_000) throw new ArgumentOutOfRangeException(nameof(steps));
+        if (steps is < 0 or > 10_000)
+            throw new ArgumentOutOfRangeException(nameof(steps));
         for (var step = 0; step < steps; step++)
         {
             State.Tick++;
@@ -31,8 +32,10 @@ public sealed partial class WorldEngine
                 TickLocalConflicts();
                 TickMigrationAndSecession();
                 Reindex();
-                if (State.Tick % 12 == 0) GrowSettlements();
-                if (State.Tick % 30 == 0) RefreshTerritoryClaims();
+                if (State.Tick % 12 == 0)
+                    GrowSettlements();
+                if (State.Tick % 30 == 0)
+                    RefreshTerritoryClaims();
                 UpdateArmies();
                 ArchiveDeadResidents();
                 Reindex();
@@ -59,7 +62,8 @@ public sealed partial class WorldEngine
         stock.Alloy = Math.Clamp(stock.Alloy, 0, 1_000_000);
         stock.EnergyCells = Math.Clamp(stock.EnergyCells, 0, 1_000_000);
         stock.Crystals = Math.Clamp(stock.Crystals, 0, 1_000_000);
-        foreach (var kind in MineralAndVehicleResources) stock.Set(kind, Math.Clamp(stock.Get(kind), 0, 1_000_000));
+        foreach (var kind in MineralAndVehicleResources)
+            stock.Set(kind, Math.Clamp(stock.Get(kind), 0, 1_000_000));
         stock.Tools = Math.Clamp(stock.Tools, 0, 1_000_000);
         stock.Medicine = Math.Clamp(stock.Medicine, 0, 1_000_000);
         stock.Ammunition = Math.Clamp(stock.Ammunition, 0, 1_000_000);
@@ -71,20 +75,27 @@ public sealed partial class WorldEngine
         var infected = new HashSet<int>(State.Residents.Where(r => r.SicknessTicks > 0).Select(r => Index(r.X, r.Y)));
         foreach (var person in State.Residents)
         {
-            if (State.Rules.Aging) person.Age = Math.Min(1000, person.Age + 1d / 120);
-            if (person.Profession == Profession.Child && person.Age >= 14) person.Profession = AssignProfession();
+            if (State.Rules.Aging)
+                person.Age = Math.Min(1000, person.Age + 1d / 120);
+            if (person.Profession == Profession.Child && person.Age >= 14)
+                person.Profession = AssignProfession();
             var maxAge = Lifespan(person.Race);
-            if (State.Rules.Aging && person.Age > maxAge) DamageResident(person, .5, DeathCause.OldAge);
+            if (State.Rules.Aging && person.Age > maxAge)
+                DamageResident(person, .5, DeathCause.OldAge);
             if ((!State.Rules.Hunger || person.Hunger <= 80) && person.Health > 0 && person.SicknessTicks == 0 &&
                 person.Age <= maxAge &&
-                (!State.Rules.Thirst || person.Thirst <= 95)) person.Health = Math.Min(100, person.Health + 0.15);
+                (!State.Rules.Thirst || person.Thirst <= 95))
+                person.Health = Math.Min(100, person.Health + 0.15);
             var tile = State.Tiles[Index(person.X, person.Y)];
-            if (tile.FireTicks > 0) DamageResident(person, 4, DeathCause.Fire);
+            if (tile.FireTicks > 0)
+                DamageResident(person, 4, DeathCause.Fire);
             if (person.SicknessTicks > 0)
             {
                 person.SicknessTicks--;
-                if (State.Rules.Disease) DamageResident(person, .2, DeathCause.Disease);
-                if (person.SicknessTicks == 0) person.DiseaseImmuneUntilTick = State.Tick + 180;
+                if (State.Rules.Disease)
+                    DamageResident(person, .2, DeathCause.Disease);
+                if (person.SicknessTicks == 0)
+                    person.DiseaseImmuneUntilTick = State.Tick + 180;
             }
             else if (State.Rules.Disease && person.DiseaseImmuneUntilTick <= State.Tick &&
                      (State.Tick + person.Id) % 6 == 0
@@ -93,8 +104,10 @@ public sealed partial class WorldEngine
                          && infected.Contains(Index(person.X + d.X, person.Y + d.Y)))) && RandomInt(100) < 6)
                 person.SicknessTicks = 72 + RandomInt(25);
 
-            if (person.Health <= 0) continue;
-            if (person.SicknessTicks > 0) person.Activity = ResidentActivity.Sick;
+            if (person.Health <= 0)
+                continue;
+            if (person.SicknessTicks > 0)
+                person.Activity = ResidentActivity.Sick;
         }
 
         ArchiveDeadResidents();
@@ -167,7 +180,8 @@ public sealed partial class WorldEngine
                                            && p.Agent.DestinationSettlementId == 0 &&
                                            Distance(p.X, p.Y, origin.X, origin.Y) <= 3)
             .OrderByDescending(p => p.Agent.Personality.Ambition).ThenBy(p => p.Id).Take(12).ToArray();
-        if (pioneers.Length < 6 || MissingResources(origin.Resources, VillageFoundingCost) is not null) return;
+        if (pioneers.Length < 6 || MissingResources(origin.Resources, VillageFoundingCost) is not null)
+            return;
         // 建村地点须在出发前报告给原聚落，避免迁徙队伍使用未送达的信息。
         var location = origin.PublicKnowledge.Where(f => f.Kind == AgentFactKind.FoundingSite &&
                                                          f.LearnedTick < State.Tick
@@ -191,7 +205,8 @@ public sealed partial class WorldEngine
                                                          Distance(t.X, t.Y, i % State.Width, i / State.Width) >=
                                                          MinimumSettlementDistance))
             .OrderByDescending(i => State.Tiles[i].Fertility).ThenBy(i => i).FirstOrDefault(-1);
-        if (location < 0) return;
+        if (location < 0)
+            return;
         var x = location % State.Width;
         var y = location / State.Width;
         var town = new Settlement
@@ -282,11 +297,13 @@ public sealed partial class WorldEngine
                 continue;
             }
 
-            if (!State.Rules.FireSpread || State.Tick % 8 != 0) continue;
+            if (!State.Rules.FireSpread || State.Tick % 8 != 0)
+                continue;
             var (dx, dy) = Directions[RandomInt(4)];
             var x = index % State.Width + dx;
             var y = index / State.Width + dy;
-            if (!InBounds(x, y)) continue;
+            if (!InBounds(x, y))
+                continue;
             var neighborIndex = Index(x, y);
             if (State.Tiles[neighborIndex].FireTicks == 0 && RandomInt(1000) < GetTileFlammability(x, y) * 120)
                 Ignite(neighborIndex);

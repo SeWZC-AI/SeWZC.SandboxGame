@@ -14,11 +14,13 @@ public sealed partial class MainView
 
     private void SetCategory(ToolCategory category)
     {
-        if (_mapPick is not null) return;
+        if (_mapPick is not null)
+            return;
         CancelPendingEdit();
         _navigation.Clear();
         _inspectorNavigationGeneration++;
-        if (_category != category) _toolPage = 0;
+        if (_category != category)
+            _toolPage = 0;
         _category = category;
         _toolsOpen = true;
         _mobilePanel = false;
@@ -29,8 +31,10 @@ public sealed partial class MainView
         var pages = Math.Max(1, (allItems.Count + _toolSlots.Length - 1) / _toolSlots.Length);
         _toolPage = Math.Clamp(_toolPage, 0, pages - 1);
         _toolPageLabel.Text = $"第 {_toolPage + 1} / {pages} 页";
-        if (_toolPrevious is not null) _toolPrevious.IsEnabled = _toolPage > 0;
-        if (_toolNext is not null) _toolNext.IsEnabled = _toolPage + 1 < pages;
+        if (_toolPrevious is not null)
+            _toolPrevious.IsEnabled = _toolPage > 0;
+        if (_toolNext is not null)
+            _toolNext.IsEnabled = _toolPage + 1 < pages;
         var items = allItems.Skip(_toolPage * _toolSlots.Length).Take(_toolSlots.Length).ToArray();
         _tools.Clear();
         for (var i = 0; i < _toolSlots.Length; i++)
@@ -43,7 +47,8 @@ public sealed partial class MainView
             _toolLabels[i].Text = choice?.Label ?? "—";
             _toolSwatches[i].Background = Brush.Parse(choice?.Color ?? "#2A3C46");
             ToolTip.SetTip(_toolSlots[i], choice?.Label ?? "此分组没有更多工具");
-            if (choice is not null) _tools.Add((choice.Key, _toolSlots[i]));
+            if (choice is not null)
+                _tools.Add((choice.Key, _toolSlots[i]));
         }
 
         foreach (var button in _categoryButtons)
@@ -93,7 +98,8 @@ public sealed partial class MainView
 
     private void OnToolContextChanged()
     {
-        if (_updatingToolContext || _mapPick is not null) return;
+        if (_updatingToolContext || _mapPick is not null)
+            return;
         if (_category.IsConstruction && _toolContext.SelectedIndex >= 0 &&
             _toolContext.SelectedIndex < _constructionTowns.Length)
             _map.SelectedSettlementId = _constructionTowns[_toolContext.SelectedIndex];
@@ -101,7 +107,8 @@ public sealed partial class MainView
 
     private void SelectTool(MapTool tool)
     {
-        if (_mapPick is not null) return;
+        if (_mapPick is not null)
+            return;
         CancelPendingEdit();
         _navigation.Clear();
         _inspectorNavigationGeneration++;
@@ -129,7 +136,8 @@ public sealed partial class MainView
 
     private void ToggleTools()
     {
-        if (_mapPick is not null) return;
+        if (_mapPick is not null)
+            return;
         CancelPendingEdit();
         _navigation.Clear();
         _inspectorNavigationGeneration++;
@@ -154,7 +162,8 @@ public sealed partial class MainView
 
     private void SuspendMapTool(bool endNavigation)
     {
-        if (_mapPick is not null) return;
+        if (_mapPick is not null)
+            return;
         CancelPendingEdit();
         if (endNavigation)
         {
@@ -176,7 +185,8 @@ public sealed partial class MainView
 
     private void CloseInspector()
     {
-        if (_mapPick is not null) return;
+        if (_mapPick is not null)
+            return;
         CancelPendingEdit();
         _navigation.Clear();
         _inspectorNavigationGeneration++;

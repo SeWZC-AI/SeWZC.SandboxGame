@@ -20,7 +20,8 @@ internal static class ProvisioningAndClaimsTests
 
     private static void Check(bool value, string message)
     {
-        if (!value) throw new Exception(message);
+        if (!value)
+            throw new Exception(message);
     }
 
     private static WorldEngine Flat(int population = 3)
@@ -58,7 +59,8 @@ internal static class ProvisioningAndClaimsTests
         }, false, false);
         e.State.Tick = 1;
         e.SpawnResidents(14, 16, RaceKind.Human, population);
-        foreach (var r in e.State.Residents) Hold(e, r, AgentGoalKind.Rest, r.X, r.Y);
+        foreach (var r in e.State.Residents)
+            Hold(e, r, AgentGoalKind.Rest, r.X, r.Y);
         return e;
     }
 
@@ -151,7 +153,8 @@ internal static class ProvisioningAndClaimsTests
             water.WaterDrawTick = e.State.Tick;
             water.WaterDrawn = terrain == TerrainType.River ? 4 : 0;
             water.DroughtTicks = 12;
-            foreach (var r in e.State.Residents) Hold(e, r, AgentGoalKind.Rest, 16, 16);
+            foreach (var r in e.State.Residents)
+                Hold(e, r, AgentGoalKind.Rest, 16, 16);
             e = WorldEngine.ImportJson(e.ExportJson());
             var home = e.State.Settlements.Single();
             foreach (var r in e.State.Residents)
@@ -175,7 +178,8 @@ internal static class ProvisioningAndClaimsTests
             carrier.MoveStartedTick = e.State.Tick;
             Check(!e.TryFetchWater(carrier) && carrier.Inventory.Water == collected,
                 "Water was collected before arrival.");
-            foreach (var r in e.State.Residents) Hold(e, r, AgentGoalKind.Rest, r.X, r.Y);
+            foreach (var r in e.State.Residents)
+                Hold(e, r, AgentGoalKind.Rest, r.X, r.Y);
             carrier.Inventory.Water = 5;
             var before = home.Resources.Water;
             Hold(e, carrier, AgentGoalKind.ReturnHome, home.X, home.Y);
@@ -220,7 +224,8 @@ internal static class ProvisioningAndClaimsTests
     {
         var e = Flat();
         var home = e.State.Settlements.Single();
-        for (var x = 17; x <= 24; x++) e.PaintTerrain(x, 16, TerrainType.River, 0);
+        for (var x = 17; x <= 24; x++)
+            e.PaintTerrain(x, 16, TerrainType.River, 0);
         e.GrantFacility(home.Id, BuildingKind.Bridge, 17, 16, BridgeDirection.Horizontal);
         e.GrantFacility(home.Id, BuildingKind.Bridge, 18, 16, BridgeDirection.Horizontal);
         Check(e.BridgePlacementError(19, 16, BridgeDirection.Horizontal) is not null,
@@ -285,7 +290,8 @@ internal static class ProvisioningAndClaimsTests
         e.State.Society.MagicEnabled = true;
         var research = e.State.Society.Research.Single();
         research.Completed = Advancement.All.OrderBy(research => research.Id).ToList();
-        foreach (var kind in ResourceStock.Kinds) town.Resources.Set(kind, 10_000);
+        foreach (var kind in ResourceStock.Kinds)
+            town.Resources.Set(kind, 10_000);
         e.PaintTerrain(18, 16, TerrainType.River, 0);
         e.PaintTerrain(20, 16, TerrainType.River, 0);
         e.PaintTerrain(14, 20, TerrainType.Forest, 0);
@@ -294,7 +300,8 @@ internal static class ProvisioningAndClaimsTests
         foreach (var kind in Enum.GetValues<BuildingKind>())
         {
             if (!e.CanBuildRacialFacility(town.Id, kind) || kind is BuildingKind.Bridge or BuildingKind.MountainPass ||
-                e.State.Society.Buildings.Any(b => b.Kind == kind)) continue;
+                e.State.Society.Buildings.Any(b => b.Kind == kind))
+                continue;
             var site = Enumerable.Range(0, e.State.Tiles.Length)
                 .FirstOrDefault(i => e.FacilityPlacementError(town.Id, kind, i % 32, i / 32, true) is null, -1);
             Check(site >= 0, "Fixture has no suitable terrain for " + kind);
@@ -305,7 +312,8 @@ internal static class ProvisioningAndClaimsTests
         var worker = e.State.Residents[0];
         worker.Profession = Profession.Farmer;
         Hold(e, worker, AgentGoalKind.Work, farm.X, farm.Y, farm.Id);
-        foreach (var r in e.State.Residents.Skip(1)) Hold(e, r, AgentGoalKind.Rest, town.X, town.Y);
+        foreach (var r in e.State.Residents.Skip(1))
+            Hold(e, r, AgentGoalKind.Rest, town.X, town.Y);
         e.State.Rules.Construction = true;
         town.Resources.Food = 0;
         farm.WorkSlots = 1;

@@ -105,7 +105,8 @@ internal static class VisualFixture
                 engine.GrantFacility(town.Id, kind, site % 64, site / 64);
             }
 
-            for (var dx = 0; dx <= 3; dx++) engine.BuildRoad(town.Id, town.X + dx, town.Y, 0);
+            for (var dx = 0; dx <= 3; dx++)
+                engine.BuildRoad(town.Id, town.X + dx, town.Y, 0);
         }
 
         engine.ConfigureWorld(

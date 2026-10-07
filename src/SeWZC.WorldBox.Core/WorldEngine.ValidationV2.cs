@@ -6,7 +6,8 @@ public sealed partial class WorldEngine
 {
     private static void CheckV2([DoesNotReturnIf(false)] bool valid, string reason)
     {
-        if (!valid) throw new ArgumentException("无效角色或存档：" + reason);
+        if (!valid)
+            throw new ArgumentException("无效角色或存档：" + reason);
     }
 
     private static bool BoundedText(string? value, int length)
@@ -110,8 +111,10 @@ public sealed partial class WorldEngine
             agent.NextThinkTick <= tick + 100_000 && agent.LastConversationTick >= 0 &&
             agent.LastConversationTick <= tick && agent.MissionStartedTick >= 0 && agent.MissionStartedTick <= tick &&
             agent.MissionRetryTick >= 0 && agent.MissionRetryTick <= tick + 100_000, "行动调度时间无效。");
-        foreach (var fact in agent.Memory!) ValidateFactV2(fact, tick, width, height);
-        foreach (var fact in agent.CarriedMessages!) ValidateFactV2(fact, tick, width, height);
+        foreach (var fact in agent.Memory!)
+            ValidateFactV2(fact, tick, width, height);
+        foreach (var fact in agent.CarriedMessages!)
+            ValidateFactV2(fact, tick, width, height);
         foreach (var decision in agent.Decisions!)
             CheckV2(
                 decision is not null && Enum.IsDefined(decision.Goal) && decision.Tick >= 0 && decision.Tick <= tick &&

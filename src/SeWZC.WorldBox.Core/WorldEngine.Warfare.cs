@@ -8,7 +8,8 @@ public sealed partial class WorldEngine
                 (f.TargetNationId == 0 || f.TargetNationId == resident.NationId) && f.SubjectId == targetNationId &&
                 f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
             .OrderByDescending(f => f.ObservedTick).ThenByDescending(f => f.Id).FirstOrDefault();
-        if (order is not null) return order.Kind == AgentFactKind.WarOrder;
+        if (order is not null)
+            return order.Kind == AgentFactKind.WarOrder;
         return State.Armies.Any(a =>
             a.Id == resident.ArmyId && a.TargetNationId == targetNationId && a.KnownDiplomacy == DiplomaticStatus.War);
     }
@@ -19,7 +20,8 @@ public sealed partial class WorldEngine
     {
         var capital = State.Settlements.FirstOrDefault(t => t.Id == _nations[nationId].CapitalId);
         var enemyCapital = State.Settlements.FirstOrDefault(t => t.Id == _nations[enemyId].CapitalId);
-        if (capital is null || enemyCapital is null) return;
+        if (capital is null || enemyCapital is null)
+            return;
         if (objective == WarObjective.DefendHomeland)
         {
             knownX = capital.X;
@@ -64,12 +66,14 @@ public sealed partial class WorldEngine
             military.LastReportReceivedTick = 0;
             military.Report = "尚未收到前线战报";
         }
-        else military.RecoveryUntilTick = Math.Max(military.RecoveryUntilTick, State.Tick + 360);
+        else
+            military.RecoveryUntilTick = Math.Max(military.RecoveryUntilTick, State.Tick + 360);
 
         capital.PublicKnowledge.RemoveAll(f =>
             f.SubjectId == enemyId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder);
         AddPublicFact(capital, fact);
-        if (capital.PublicKnowledge.Count > 24) capital.PublicKnowledge.RemoveAt(0);
+        if (capital.PublicKnowledge.Count > 24)
+            capital.PublicKnowledge.RemoveAt(0);
         foreach (var person in State.Residents.Where(r =>
                      r.NationId == nationId && Distance(r.X, r.Y, capital.X, capital.Y) <= 4))
             RememberAgentFact(person, fact);
@@ -81,9 +85,11 @@ public sealed partial class WorldEngine
         {
             foreach (var nation in State.Nations.ToArray())
             {
-                if (State.Armies.Any(a => a.NationId == nation.Id)) continue;
+                if (State.Armies.Any(a => a.NationId == nation.Id))
+                    continue;
                 var capital = State.Settlements.FirstOrDefault(s => s.Id == nation.CapitalId);
-                if (capital is null) continue;
+                if (capital is null)
+                    continue;
                 var order = capital.PublicKnowledge.Where(f =>
                         f.SubjectId != nation.Id && f.SubjectId > 0 &&
                         (f.TargetNationId == 0 || f.TargetNationId == nation.Id) &&
@@ -92,7 +98,8 @@ public sealed partial class WorldEngine
                 if (order is null || order.Kind != AgentFactKind.WarOrder ||
                     order.Id <= nation.Military.LastMobilizedOrderId
                     || (order.WarObjective == WarObjective.OccupySettlement &&
-                        State.Tick < nation.Military.RecoveryUntilTick)) continue;
+                        State.Tick < nation.Military.RecoveryUntilTick))
+                    continue;
                 var recruits = State.Residents.Where(r =>
                     r.NationId == nation.Id && r.ArmyId == 0 && r.Age >= 16 && r.Health > 50 &&
                     r.TravelMode == TravelMode.Foot
@@ -161,7 +168,8 @@ public sealed partial class WorldEngine
 
         foreach (var army in State.Armies.ToArray())
         {
-            if (!State.Armies.Contains(army)) continue;
+            if (!State.Armies.Contains(army))
+                continue;
             var soldiers = State.Residents.Where(r => r.ArmyId == army.Id && r.Health > 0).ToArray();
             army.Soldiers = soldiers.Length;
             if (soldiers.Length == 0)
@@ -218,7 +226,8 @@ public sealed partial class WorldEngine
                 }
 
                 DrinkCarriedWater(soldier);
-                if (!State.Rules.Hunger) soldier.Hunger = 0;
+                if (!State.Rules.Hunger)
+                    soldier.Hunger = 0;
                 else if (Distance(soldier.X, soldier.Y, army.X, army.Y) <= 2 && army.Supplies >= 0.06)
                 {
                     army.Supplies -= 0.06;
@@ -229,9 +238,11 @@ public sealed partial class WorldEngine
                     soldier.Inventory.Food -= 0.05;
                     soldier.Hunger = Math.Max(0, soldier.Hunger - 3);
                 }
-                else soldier.Hunger = Math.Min(100, soldier.Hunger + .8);
+                else
+                    soldier.Hunger = Math.Min(100, soldier.Hunger + .8);
 
-                if (State.Rules.Hunger && soldier.Hunger > 80) DamageResident(soldier, .30, DeathCause.Starvation);
+                if (State.Rules.Hunger && soldier.Hunger > 80)
+                    DamageResident(soldier, .30, DeathCause.Starvation);
             }
 
             var depot = State.Settlements.FirstOrDefault(s =>
@@ -259,16 +270,20 @@ public sealed partial class WorldEngine
                          army.Morale < 15 ||
                          (State.Rules.Hunger && army.Supplies <= 0 && soldiers.Average(r => r.Hunger) > 40))
                     EndCampaign(army, WarOutcome.SupplyShortage, soldiers);
-                else if (army.BlockedTicks >= 120) EndCampaign(army, WarOutcome.RouteBlocked, soldiers);
-                else if (State.Tick - army.StartedTick >= 720) EndCampaign(army, WarOutcome.Exhausted, soldiers);
+                else if (army.BlockedTicks >= 120)
+                    EndCampaign(army, WarOutcome.RouteBlocked, soldiers);
+                else if (State.Tick - army.StartedTick >= 720)
+                    EndCampaign(army, WarOutcome.Exhausted, soldiers);
             }
 
             if (army.Gathering && !army.Retreating)
             {
-                foreach (var soldier in soldiers) MoveAgentTowards(soldier, army.X, army.Y);
+                foreach (var soldier in soldiers)
+                    MoveAgentTowards(soldier, army.X, army.Y);
                 army.Status = "实地集结";
                 if (soldiers.Count(r => Distance(r.X, r.Y, army.X, army.Y) <= 1) >=
-                    Math.Max(2, soldiers.Length * 3 / 4)) army.Gathering = false;
+                    Math.Max(2, soldiers.Length * 3 / 4))
+                    army.Gathering = false;
                 continue;
             }
 
@@ -329,7 +344,8 @@ public sealed partial class WorldEngine
                                                                 && Distance(army.X, army.Y, a.X, a.Y) <= 6 &&
                                                                 Distance(a.X, a.Y, army.TargetX, army.TargetY) <= 8);
                 army.Status = "保卫家园，依据当地观察巡守";
-                if (intruder is not null) MoveArmy(army, commander, soldiers, intruder.X, intruder.Y);
+                if (intruder is not null)
+                    MoveArmy(army, commander, soldiers, intruder.X, intruder.Y);
                 else if (Distance(army.X, army.Y, army.TargetX, army.TargetY) > 1)
                     MoveArmy(army, commander, soldiers, army.TargetX, army.TargetY);
                 continue;
@@ -374,7 +390,8 @@ public sealed partial class WorldEngine
         army.MoveDurationTicks = commander.MoveDurationTicks;
         foreach (var soldier in soldiers)
         {
-            if (soldier.Id != commander.Id) MoveAgentTowards(soldier, commander.X, commander.Y);
+            if (soldier.Id != commander.Id)
+                MoveAgentTowards(soldier, commander.X, commander.Y);
             soldier.Activity = ResidentActivity.Marching;
             soldier.Agent.Goal.Kind = AgentGoalKind.March;
             soldier.Agent.Goal.TargetX = x;
@@ -393,7 +410,8 @@ public sealed partial class WorldEngine
             var dealt = TryAbsorbShieldDamage(resident, incoming);
             DamageResident(resident, dealt, DeathCause.Battle);
             damage -= incoming;
-            if (damage <= 0) break;
+            if (damage <= 0)
+                break;
         }
     }
 
@@ -414,13 +432,15 @@ public sealed partial class WorldEngine
         ApplyDamage(defenders, attack);
         ApplyDamage(soldiers, defense);
         army.Morale = Math.Max(0, army.Morale - 0.2);
-        if (defenders.Count(r => r.Health > 0) < Math.Max(2, soldiers.Length / 3)) CaptureSettlement(army, target);
+        if (defenders.Count(r => r.Health > 0) < Math.Max(2, soldiers.Length / 3))
+            CaptureSettlement(army, target);
     }
 
     private void CaptureSettlement(Army army, Settlement town)
     {
         var previous = town.NationId;
-        if (!_nations.TryGetValue(previous, out var previousNation)) return;
+        if (!_nations.TryGetValue(previous, out var previousNation))
+            return;
         TransferSettlementOwnership(town, army.NationId);
         foreach (var index in Circle(town.X, town.Y, 15))
             if (State.Tiles[index].NationId == previous &&
@@ -503,10 +523,12 @@ public sealed partial class WorldEngine
 
     private Queue<int>? FindPath(int startX, int startY, int endX, int endY)
     {
-        if (!Walkable(startX, startY) || !Walkable(endX, endY)) return null;
+        if (!Walkable(startX, startY) || !Walkable(endX, endY))
+            return null;
         var start = Index(startX, startY);
         var goal = Index(endX, endY);
-        if (start == goal) return new Queue<int>();
+        if (start == goal)
+            return new Queue<int>();
         var previous = new int[State.Tiles.Length];
         Array.Fill(previous, -1);
         var queue = new Queue<int>();
@@ -520,14 +542,17 @@ public sealed partial class WorldEngine
             {
                 var xx = x + dx;
                 var yy = y + dy;
-                if (!CanTraverseStep(x, y, xx, yy, TravelMode.Foot)) continue;
+                if (!CanTraverseStep(x, y, xx, yy, TravelMode.Foot))
+                    continue;
                 var next = Index(xx, yy);
-                if (previous[next] != -1) continue;
+                if (previous[next] != -1)
+                    continue;
                 previous[next] = current;
                 if (next == goal)
                 {
                     var path = new List<int>();
-                    for (var i = goal; i != start; i = previous[i]) path.Add(i);
+                    for (var i = goal; i != start; i = previous[i])
+                        path.Add(i);
                     path.Reverse();
                     return new Queue<int>(path);
                 }
@@ -558,7 +583,8 @@ public sealed partial class WorldEngine
         }
 
         var tile = State.Tiles[Index(settlement.X, settlement.Y)];
-        if (tile.SettlementId == settlement.Id) tile.SettlementId = 0;
+        if (tile.SettlementId == settlement.Id)
+            tile.SettlementId = 0;
         State.Conflicts.RemoveAll(c => c.SettlementId == settlement.Id);
         foreach (var ground in State.Tiles)
             if (ground.ClaimedSettlementId == settlement.Id)
@@ -585,7 +611,8 @@ public sealed partial class WorldEngine
             foreach (var tile in State.Tiles)
                 if (tile.NationId == nation.Id)
                     tile.NationId = 0;
-            foreach (var army in State.Armies.Where(a => a.NationId == nation.Id).ToArray()) DisbandArmy(army);
+            foreach (var army in State.Armies.Where(a => a.NationId == nation.Id).ToArray())
+                DisbandArmy(army);
         }
     }
 }

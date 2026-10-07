@@ -94,7 +94,8 @@ foreach (var (name, test) in tests)
     }
     catch (Exception error)
     {
-        while (error is TargetInvocationException { InnerException: { } inner }) error = inner;
+        while (error is TargetInvocationException { InnerException: { } inner })
+            error = inner;
         failures++;
         Console.Error.WriteLine($"FAIL {name}: {error}");
     }
@@ -195,7 +196,8 @@ static void ToolPagination()
         foreach (var tool in Field<MapTool?[]>(view, "_slotTools"))
             if (tool is not null)
                 found.Add(tool.Id);
-        if (page < pageCount - 1) Click(view, "tool-page-next");
+        if (page < pageCount - 1)
+            Click(view, "tool-page-next");
     }
 
     Assert(
@@ -209,7 +211,8 @@ static void ToolPagination()
         foreach (var tool in Field<MapTool?[]>(view, "_slotTools"))
             if (tool is not null)
                 found.Add(tool.Id);
-        if (page < pageCount - 1) Click(view, "tool-page-next");
+        if (page < pageCount - 1)
+            Click(view, "tool-page-next");
     }
 
     Assert(Enum.GetValues<TerrainType>().All(t => found.Contains(t.ToString())), "Pagination hid a terrain tool");
@@ -278,7 +281,8 @@ static void BuildingOcclusion()
     var view = View(engine);
     var map = Map(view);
     map.FocusTile(centre.X, centre.Y);
-    for (var i = 0; i < 8; i++) map.ZoomIn();
+    for (var i = 0; i < 8; i++)
+        map.ZoomIn();
     engine.State.Society.Buildings.RemoveAll(b => b.Id != centre.Id && b.X == centre.X && b.Y == centre.Y - 1);
     var before = engine.ExportJson();
     Call(map, "BuildScene", engine.State);
@@ -516,7 +520,8 @@ static void InspectorHistoryBoundaries()
     Click(view, "inspector-back");
     Assert(!Field<bool>(view, "_mobilePanel"), "Clicking the current global tab created a duplicate history entry");
     Call(view, "OpenInspector", "overview", true);
-    for (var i = 0; i < 33; i++) Click(view, i % 2 == 0 ? "inspector-nations" : "inspector-overview");
+    for (var i = 0; i < 33; i++)
+        Click(view, i % 2 == 0 ? "inspector-nations" : "inspector-overview");
     Click(view, "inspector-back");
     Assert(Field<bool>(view, "_mobilePanel") && Field<string>(view, "_inspectorMode") == "overview",
         "Reaching the history limit discarded the most recent page");
@@ -704,7 +709,8 @@ static void DeferredModalSubmissions()
                     "Pending submit left draft controls editable or blocked cancellation");
             }
 
-            if (abandon == "cancel") Click(view, "modal-cancel");
+            if (abandon == "cancel")
+                Click(view, "modal-cancel");
             else if (abandon == "window")
             {
                 Call(view, "ShowRules");
@@ -844,7 +850,8 @@ static void DeferredModalSubmissions()
             pending = Field<Task?>(view, "_prepareEditTask") ??
                       throw new Exception("Research submit did not wait for its checkpoint");
             Click(view, "research-node-Logistics");
-            if (leaveResearch) Click(view, "settlement-tab-communication");
+            if (leaveResearch)
+                Click(view, "settlement-tab-communication");
         }
         finally
         {
@@ -854,7 +861,7 @@ static void DeferredModalSubmissions()
         AwaitUi(() => pending.IsCompleted && Field<Task?>(view, "_prepareEditTask") is null,
             "Deferred research did not finish its capture boundary");
         var project = engine.State.Society.Research.Single(r => r.SettlementId == town.Id).ActiveProject;
-        Advancement? expected = leaveResearch ? null : Advancement.Agriculture;
+        var expected = leaveResearch ? null : Advancement.Agriculture;
         Assert(project == expected,
             leaveResearch
                 ? "Leaving the research page committed its abandoned project"
@@ -917,8 +924,10 @@ static void DeferredMapStrokes()
                       throw new Exception("First map stroke did not wait for its checkpoint");
             Assert(!pending.IsCompleted && engine.ExportJson() == before,
                 "A blocked map stroke changed the world before capturing its checkpoint");
-            if (abandon == "pan") Call(view, "SuspendTool");
-            else if (abandon == "modal") Call(view, "ShowRules");
+            if (abandon == "pan")
+                Call(view, "SuspendTool");
+            else if (abandon == "modal")
+                Call(view, "ShowRules");
             else
             {
                 Call(view, "ShowGoalEditor", engine.State.Residents[0].Id);
@@ -1661,7 +1670,8 @@ static void VisibleTerrain()
     map.Arrange(new Rect(0, 0, 320, 480));
     map.RefreshWorld(true);
     var before = engine.ExportJson();
-    for (var i = 0; i < 20; i++) map.ZoomIn();
+    for (var i = 0; i < 20; i++)
+        map.ZoomIn();
     map.RefreshWorld();
     Assert(map.TerrainTilesScanned < engine.State.Tiles.Length / 8,
         $"Near camera scans {map.TerrainTilesScanned} of {engine.State.Tiles.Length} tiles");
@@ -1729,7 +1739,8 @@ static void EcologyCache()
 
     var map = Map(View(engine));
     map.FocusTile(16, 16);
-    for (var i = 0; i < 7; i++) map.ZoomIn();
+    for (var i = 0; i < 7; i++)
+        map.ZoomIn();
     using var target = new RenderTargetBitmap(new PixelSize(256, 256), new Vector(96, 96));
 
     void Draw()
@@ -1749,7 +1760,8 @@ static void EcologyCache()
     Assert(map.EcologyCacheBuildCount == builds, "An unrelated simulation day rebuilt ecology");
     engine.State.Tick--;
     Assert(engine.ExportJson() == before, "Drawing ecology changed the saved world");
-    foreach (var tile in engine.State.Tiles) tile.ResourceAmount = 200;
+    foreach (var tile in engine.State.Tiles)
+        tile.ResourceAmount = 200;
     map.RefreshWorld();
     Draw();
     Assert(map.EcologyCacheBuildCount == builds, "Saturated resources rebuilt identical ecology");
@@ -1882,7 +1894,8 @@ static void ResidentGeometryLayers()
     map.FocusTile(person.X, person.Y);
     Call(map, "RebuildResidents");
     Assert(Field<object?>(map, "_cargoGeometry") is not null, "Readable medium-zoom cargo was removed");
-    for (var i = 0; i < 4; i++) map.ZoomIn();
+    for (var i = 0; i < 4; i++)
+        map.ZoomIn();
     Call(map, "RebuildResidents");
     Assert(Field<object?>(map, "_cargoGeometry") is null && Field<object?>(map, "_heads") is null,
         "Near-scene sprites also constructed unused silhouette details");
@@ -2006,7 +2019,8 @@ static void DesktopSave()
     }
     finally
     {
-        if (Directory.Exists(directory)) Directory.Delete(directory, true);
+        if (Directory.Exists(directory))
+            Directory.Delete(directory, true);
     }
 }
 
@@ -2034,7 +2048,8 @@ static void CloseZoom()
     var map = Map(View(engine));
     var before = engine.ExportJson();
     map.SelectResident(engine.State.Residents[0].Id);
-    for (var i = 0; i < 30; i++) map.ZoomIn();
+    for (var i = 0; i < 30; i++)
+        map.ZoomIn();
     var size = map.GetTileScreenPosition(1, 0).X - map.GetTileScreenPosition(0, 0).X;
     Assert(Math.Abs(size - 24 * 8) < .001, "Close zoom should reach 24x");
     map.RefreshWorld();
@@ -2080,7 +2095,8 @@ static void TownDisappears(string mode, bool closeInspector)
     Call(view, "RefreshUi", true);
     Assert(ReferenceEquals(initialContent, Field<ScrollViewer>(view, "_inspectorScroll").Content),
         "Ordinary refresh must preserve existing controls");
-    if (closeInspector) Call(view, "CloseInspector");
+    if (closeInspector)
+        Call(view, "CloseInspector");
 
     engine.Step();
     Assert(engine.State.Settlements.Count == 1, "The selected town must disappear during simulation");
@@ -2355,7 +2371,8 @@ static (WorldEngine Engine, int ResidentId, Building Target) WorkingWorld(Profes
         engine.StartResearch(home.Id, Advancement.Agriculture);
     }
 
-    if (profession == Profession.Mage) engine.GrantFacility(home.Id, BuildingKind.ArcaneSanctum, home.X + 2, home.Y);
+    if (profession == Profession.Mage)
+        engine.GrantFacility(home.Id, BuildingKind.ArcaneSanctum, home.X + 2, home.Y);
     var id = engine.State.Residents[0].Id;
     engine.EditResident(id, new ResidentEdit
     {
@@ -2454,7 +2471,8 @@ static WorldEngine TwoTownWorld(bool largeTotal = false)
     };
     towns[1].Resources = new ResourceStock { Food = largeTotal ? 900_000.5 : .2, Wood = 1.75, Stone = .1, Ore = .375 };
     engine.TransferTerritory(towns[1].X, towns[1].Y, towns[0].NationId, 0);
-    foreach (var town in towns) engine.TransferTerritory(town.X, town.Y, town.NationId, 5);
+    foreach (var town in towns)
+        engine.TransferTerritory(town.X, town.Y, town.NationId, 5);
     return engine;
 }
 
@@ -2546,7 +2564,8 @@ static void AwaitUi(Func<bool> completed, string message)
 
 static void Assert(bool condition, string message)
 {
-    if (!condition) throw new Exception(message);
+    if (!condition)
+        throw new Exception(message);
 }
 
 /// <summary>Headless 测试应用。</summary>

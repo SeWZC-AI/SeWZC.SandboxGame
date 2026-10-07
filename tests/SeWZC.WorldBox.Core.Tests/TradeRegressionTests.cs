@@ -34,7 +34,8 @@ internal static class TradeRegressionTests
         foreach (var person in fixture.Engine.State.Residents)
         {
             person.Inventory.Food = 1.2;
-            if (person == fixture.Trader) continue;
+            if (person == fixture.Trader)
+                continue;
             var home = fixture.Engine.State.Settlements.Single(t => t.Id == person.SettlementId);
             person.X = person.FromX = person.Agent.Goal.TargetX = home.X;
             person.Y = person.FromY = person.Agent.Goal.TargetY = home.Y;
@@ -95,7 +96,8 @@ internal static class TradeRegressionTests
     private static (WorldEngine Engine, Resident Trader, Settlement Source, Settlement Destination) AtExchange()
     {
         var fixture = Fixture();
-        for (var tick = 0; tick < 200 && fixture.Trader.Agent.Goal.WorkTicks < 2; tick++) fixture.Engine.Step();
+        for (var tick = 0; tick < 200 && fixture.Trader.Agent.Goal.WorkTicks < 2; tick++)
+            fixture.Engine.Step();
         Check(fixture.Trader.Agent.Goal.Kind == AgentGoalKind.Trade && fixture.Trader.Agent.Goal.WorkTicks == 2
                                                                     && Distance(fixture.Trader, fixture.Destination) <=
                                                                     1,
@@ -122,7 +124,8 @@ internal static class TradeRegressionTests
         var sourceWood = source.Resources.Wood;
         for (var tick = 0;
              tick < 150 && !(Distance(trader, source) <= 1 && trader.Inventory.Wood == 0);
-             tick++) engine.Step();
+             tick++)
+            engine.Step();
         Check(source.Resources.Food > sourceFood && Math.Abs(source.Resources.Wood - sourceWood - .8) < 1e-8,
             "The merchant failed to bring unused cargo and payment back to the warehouse.");
         CheckTotals(engine, total);
@@ -151,8 +154,10 @@ internal static class TradeRegressionTests
         foreach (var freeSpace in new[] { 0d, 1d })
         {
             var (engine, trader, _, destination) = AtExchange();
-            if (fullWarehouse) destination.Resources.Food = 1_000_000 - freeSpace;
-            else trader.Inventory.Wood = 1_000_000 - freeSpace * .4;
+            if (fullWarehouse)
+                destination.Resources.Food = 1_000_000 - freeSpace;
+            else
+                trader.Inventory.Wood = 1_000_000 - freeSpace * .4;
             var food = trader.Inventory.Food;
             var wood = trader.Inventory.Wood;
             var total = Totals(engine);
@@ -243,6 +248,7 @@ internal static class TradeRegressionTests
 
     private static void Check(bool condition, string message)
     {
-        if (!condition) throw new InvalidOperationException(message);
+        if (!condition)
+            throw new InvalidOperationException(message);
     }
 }

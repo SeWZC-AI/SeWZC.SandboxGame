@@ -11,7 +11,8 @@ public sealed partial class WorldEngine
 
     private static double WildlifeHarvestEfficiency(Tile tile, WildlifeKind kind)
     {
-        if (kind == WildlifeKind.None) return 0;
+        if (kind == WildlifeKind.None)
+            return 0;
         var capacity = AnimalRules.EnvironmentalCapacity(tile, kind);
         var density = Math.Min(1, tile.AnimalPopulation(kind) / Math.Max(.05, capacity));
         // 稀少的动物更难找到，降低采集效率能促使居民在种群耗尽前转向其他来源。
@@ -31,7 +32,8 @@ public sealed partial class WorldEngine
 
     private static double NaturalPlantHarvestEfficiency(Tile tile, bool wood = false)
     {
-        if (tile.Improvement == LandImprovement.Farmland && !wood) return 1;
+        if (tile.Improvement == LandImprovement.Farmland && !wood)
+            return 1;
         var density = Math.Clamp(PlantStock(tile, wood) / 20, 0, 1);
         return density * density;
     }
@@ -45,7 +47,8 @@ public sealed partial class WorldEngine
         var stock = PlantStock(tile, wood);
         var amount = Math.Min(stock * (tile.Improvement == LandImprovement.Farmland && !wood ? 1 : .1),
             Math.Max(0, desired));
-        if (amount <= 0) return 0;
+        if (amount <= 0)
+            return 0;
         var before = tile.ResourceAmount;
         tile.ResourceAmount -= amount;
         if (tile.Improvement != LandImprovement.Farmland)
@@ -56,7 +59,8 @@ public sealed partial class WorldEngine
             {
                 var kind = (PlantKind)species;
                 var quantity = plants.Get(kind) * before;
-                if (wood == (kind == PlantKind.Trees)) quantity -= amount * quantity / stock;
+                if (wood == (kind == PlantKind.Trees))
+                    quantity -= amount * quantity / stock;
                 plants.Set(kind, Math.Max(0, quantity) / tile.ResourceAmount);
             }
 

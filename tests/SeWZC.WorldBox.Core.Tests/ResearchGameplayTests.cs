@@ -50,8 +50,10 @@ internal static class ResearchGameplayTests
             Secession = false,
         }, false, true);
         var town = e.State.Settlements.Single();
-        foreach (var k in ResourceStock.Kinds) town.Resources.Set(k, 200);
-        foreach (var r in ResearchRules.All) e.GrantReceivedResearch(town.Id, r);
+        foreach (var k in ResourceStock.Kinds)
+            town.Resources.Set(k, 200);
+        foreach (var r in ResearchRules.All)
+            e.GrantReceivedResearch(town.Id, r);
         e.State.Tick = 100;
         var person = e.State.Residents.First();
         person.Age = 30;
@@ -86,7 +88,8 @@ internal static class ResearchGameplayTests
 
     private static void Check(bool valid, string message)
     {
-        if (!valid) throw new Exception(message);
+        if (!valid)
+            throw new Exception(message);
     }
 
     private static void Reject(Action action)
@@ -219,7 +222,8 @@ internal static class ResearchGameplayTests
         foreach (var b in facilities)
         {
             var recipe = ProductionRules.For(b.Kind);
-            if (recipe is null) continue;
+            if (recipe is null)
+                continue;
             person.Inventory = recipe.Input.Copy();
             person.Mana = 100;
             Work(person, b);

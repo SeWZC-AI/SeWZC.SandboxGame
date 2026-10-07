@@ -14,7 +14,8 @@ internal static class SimulationPerformance
         int Option(string name, int fallback, int minimum, int maximum)
         {
             var index = Array.IndexOf(args, name);
-            if (index < 0) return fallback;
+            if (index < 0)
+                return fallback;
             if (index + 1 >= args.Length || !int.TryParse(args[index + 1], out var value)
                                          || value < minimum || value > maximum)
                 throw new ArgumentException($"{name} requires an integer in [{minimum}, {maximum}].");
@@ -75,7 +76,8 @@ internal static class SimulationPerformance
             if (expectedDigest is not null && digest != expectedDigest)
                 throw new InvalidOperationException("Repeated worlds diverged.");
             expectedDigest = digest;
-            if (bytes.Length <= WorldEngine.MaxSaveBytes) _ = WorldEngine.ImportJson(save);
+            if (bytes.Length <= WorldEngine.MaxSaveBytes)
+                _ = WorldEngine.ImportJson(save);
             measurements.Add(new
             {
                 repetition,
@@ -134,7 +136,8 @@ internal static class SimulationPerformance
             File.WriteAllText(output, report, new UTF8Encoding(false));
             Console.WriteLine($"REPORT {output}");
         }
-        else Console.WriteLine(report);
+        else
+            Console.WriteLine(report);
 
         return 0;
     }

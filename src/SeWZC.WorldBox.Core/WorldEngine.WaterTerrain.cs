@@ -47,7 +47,8 @@ public sealed partial class WorldEngine
 
     private void TickPlants()
     {
-        if (!State.Rules.ResourceRegeneration) return;
+        if (!State.Rules.ResourceRegeneration)
+            return;
         // 将每年植物复评分摊到每日各行，避免年末全图更新峰值。
         var band = (int)((State.Tick - 1) % 120);
         var firstRow = band * State.Height / 120;
@@ -57,7 +58,8 @@ public sealed partial class WorldEngine
         for (var x = 0; x < State.Width; x++)
         {
             var tile = State.Tiles[Index(x, y)];
-            if (!tile.IsWalkable || tile.Improvement != LandImprovement.None) continue;
+            if (!tile.IsWalkable || tile.Improvement != LandImprovement.None)
+                continue;
             if (tile.FireTicks > 0)
             {
                 tile.Plants = new PlantCoverage();
@@ -66,10 +68,14 @@ public sealed partial class WorldEngine
 
             var plants = tile.Plants;
             nearby.Clear();
-            if (x + 1 < State.Width) Include(State.Tiles[Index(x + 1, y)].Plants, nearby);
-            if (y + 1 < State.Height) Include(State.Tiles[Index(x, y + 1)].Plants, nearby);
-            if (x > 0) Include(State.Tiles[Index(x - 1, y)].Plants, nearby);
-            if (y > 0) Include(State.Tiles[Index(x, y - 1)].Plants, nearby);
+            if (x + 1 < State.Width)
+                Include(State.Tiles[Index(x + 1, y)].Plants, nearby);
+            if (y + 1 < State.Height)
+                Include(State.Tiles[Index(x, y + 1)].Plants, nearby);
+            if (x > 0)
+                Include(State.Tiles[Index(x - 1, y)].Plants, nearby);
+            if (y > 0)
+                Include(State.Tiles[Index(x, y - 1)].Plants, nearby);
             for (var species = 0; species < 4; species++)
             {
                 var kind = (PlantKind)species;

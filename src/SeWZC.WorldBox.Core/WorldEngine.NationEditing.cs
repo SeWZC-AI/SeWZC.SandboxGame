@@ -7,7 +7,8 @@ public sealed partial class WorldEngine
     /// <param name="colorArgb">新的 ARGB 编码颜色。</param>
     public void SetNationColor(int nationId, uint colorArgb)
     {
-        if (!_nations.TryGetValue(nationId, out var nation)) throw new ArgumentException("国家不存在。", nameof(nationId));
+        if (!_nations.TryGetValue(nationId, out var nation))
+            throw new ArgumentException("国家不存在。", nameof(nationId));
         nation.ColorArgb = colorArgb | 0xFF000000;
     }
 
@@ -16,8 +17,10 @@ public sealed partial class WorldEngine
     /// <param name="level">古代工具等级，范围为 1 至 5。</param>
     public void SetNationTechnology(int nationId, int level)
     {
-        if (!_nations.TryGetValue(nationId, out var nation)) throw new ArgumentException("国家不存在。", nameof(nationId));
-        if (level is < 1 or > 5) throw new ArgumentOutOfRangeException(nameof(level), "古代工具技术等级须在 1 到 5 之间。");
+        if (!_nations.TryGetValue(nationId, out var nation))
+            throw new ArgumentException("国家不存在。", nameof(nationId));
+        if (level is < 1 or > 5)
+            throw new ArgumentOutOfRangeException(nameof(level), "古代工具技术等级须在 1 到 5 之间。");
         nation.Technology = level;
         AddEvent(WorldEventKind.Editor, $"{nation.Name}的工具技术调整至 {level} 级。");
     }
@@ -31,11 +34,13 @@ public sealed partial class WorldEngine
     {
         if (!_nations.TryGetValue(nationId, out var nation))
             throw new ArgumentException("请选择存在的目标国家。", nameof(nationId));
-        if (!InBounds(x, y)) return;
+        if (!InBounds(x, y))
+            return;
         radius = Math.Clamp(radius, 0, 32);
         var indexes = Circle(x, y, radius).ToHashSet();
         foreach (var town in State.Settlements.Where(s => s.NationId != nationId && indexes.Contains(Index(s.X, s.Y)))
-                     .ToArray()) TransferSettlementOwnership(town, nationId);
+                     .ToArray())
+            TransferSettlementOwnership(town, nationId);
         foreach (var index in indexes)
             if (State.Tiles[index].NationId != nationId && State.Tiles[index].SettlementId == 0)
             {
@@ -58,12 +63,15 @@ public sealed partial class WorldEngine
                 {
                     var xx = current % State.Width + dx;
                     var yy = current / State.Width + dy;
-                    if (!InBounds(xx, yy)) continue;
+                    if (!InBounds(xx, yy))
+                        continue;
                     var next = Index(xx, yy);
                     var tile = State.Tiles[next];
                     if (seen.Contains(next) || !tile.IsWalkable || IsWaterTerrain(tile.Terrain)
-                        || (tile.ClaimedSettlementId != 0 && tile.ClaimedSettlementId != town.Id)) continue;
-                    if (tile.ClaimedSettlementId != town.Id && !indexes.Contains(next)) continue;
+                        || (tile.ClaimedSettlementId != 0 && tile.ClaimedSettlementId != town.Id))
+                        continue;
+                    if (tile.ClaimedSettlementId != town.Id && !indexes.Contains(next))
+                        continue;
                     tile.NationId = nationId;
                     tile.ClaimedSettlementId = town.Id;
                     seen.Add(next);
@@ -90,7 +98,8 @@ public sealed partial class WorldEngine
         name = (name ?? "").Trim();
         if (name.Length is < 1 or > 40 || name.Any(char.IsControl))
             throw new ArgumentException("国名须为 1–40 个可见字符。", nameof(name));
-        if (State.Nations.Count >= 64) throw new InvalidOperationException("国家数量已达上限。");
+        if (State.Nations.Count >= 64)
+            throw new InvalidOperationException("国家数量已达上限。");
         var parent = _nations[town.NationId];
         if (State.Settlements.Count(s => s.NationId == parent.Id) < 2)
             throw new InvalidOperationException("拆分需要原国家至少拥有两个聚落。");
@@ -123,7 +132,8 @@ public sealed partial class WorldEngine
     private void TransferSettlementOwnership(Settlement town, int targetNationId)
     {
         var previousId = town.NationId;
-        if (previousId == targetNationId) return;
+        if (previousId == targetNationId)
+            return;
         var previousNation = _nations[previousId];
         town.NationId = targetNationId;
         foreach (var ground in State.Tiles)
@@ -131,16 +141,20 @@ public sealed partial class WorldEngine
                 ground.NationId = targetNationId;
         State.Tiles[Index(town.X, town.Y)].NationId = targetNationId;
         var remainingHome = State.Settlements.FirstOrDefault(s => s.NationId == previousId);
-        if (previousNation.CapitalId == town.Id) previousNation.CapitalId = remainingHome?.Id ?? 0;
+        if (previousNation.CapitalId == town.Id)
+            previousNation.CapitalId = remainingHome?.Id ?? 0;
         if (remainingHome is not null)
         {
             foreach (var resident in State.Residents.Where(r => r.SettlementId == town.Id))
-                if (resident.ArmyId != 0) resident.SettlementId = remainingHome.Id;
-                else resident.NationId = targetNationId;
+                if (resident.ArmyId != 0)
+                    resident.SettlementId = remainingHome.Id;
+                else
+                    resident.NationId = targetNationId;
         }
         else
         {
-            foreach (var army in State.Armies.Where(a => a.NationId == previousId).ToArray()) DisbandArmy(army);
+            foreach (var army in State.Armies.Where(a => a.NationId == previousId).ToArray())
+                DisbandArmy(army);
             foreach (var resident in State.Residents.Where(r => r.SettlementId == town.Id))
                 resident.NationId = targetNationId;
         }

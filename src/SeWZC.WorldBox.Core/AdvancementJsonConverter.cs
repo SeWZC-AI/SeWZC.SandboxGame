@@ -9,7 +9,7 @@ internal sealed class AdvancementJsonConverter : JsonConverter<Advancement>
     public override Advancement Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType != JsonTokenType.Number || !reader.TryGetInt32(out var id)
-            || Advancement.Find(id) is not { } research)
+                                                     || Advancement.Find(id) is not { } research)
             throw new JsonException("研究编号无效。");
         return research;
     }

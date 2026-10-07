@@ -13,7 +13,8 @@ public sealed partial class Tile
         get => _improvement;
         set
         {
-            if (_improvement == value) return;
+            if (_improvement == value)
+                return;
             _improvement = value;
             TerritoryCounts?.InvalidateTraversal();
         }

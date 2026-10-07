@@ -92,7 +92,8 @@ public sealed partial class MainView
                                ? $"\n冻结剩余 {current.FrozenUntilTick - _engine.State.Tick} 日"
                                : "");
         }), "resident-research-role"));
-        if (person.Health <= 0) return;
+        if (person.Health <= 0)
+            return;
         if (person.Profession == Profession.Ranger)
         {
             panel.Children.Add(Named(Button("选择射击目标", () =>

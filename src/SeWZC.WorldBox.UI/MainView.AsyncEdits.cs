@@ -34,18 +34,22 @@ public sealed partial class MainView
     private void CancelPendingEdit()
     {
         _mapEditCapture?.Cancel();
-        if (_editSubmission is not { Committing: false } request) return;
+        if (_editSubmission is not { Committing: false } request)
+            return;
         _editSubmission = null;
         request.Cancellation.Cancel();
     }
 
     private void LockSubmissionInputs(EditSubmission request)
     {
-        if (!request.Modal) return;
+        if (!request.Modal)
+            return;
         foreach (var control in _modal.GetLogicalDescendants().OfType<Control>().ToArray())
         {
-            if (control is not (TextBox or NumericUpDown or ComboBox or CheckBox or Avalonia.Controls.Button)) continue;
-            if (AutomationProperties.GetAutomationId(control) is "modal-close" or "modal-cancel") continue;
+            if (control is not (TextBox or NumericUpDown or ComboBox or CheckBox or Avalonia.Controls.Button))
+                continue;
+            if (AutomationProperties.GetAutomationId(control) is "modal-close" or "modal-cancel")
+                continue;
             request.Inputs.Add((control, control.IsEnabled));
             control.IsEnabled = false;
         }
@@ -89,7 +93,8 @@ public sealed partial class MainView
         finally
         {
             _editCaptureCount--;
-            if (ReferenceEquals(_prepareEditTask, capture)) _prepareEditTask = null;
+            if (ReferenceEquals(_prepareEditTask, capture))
+                _prepareEditTask = null;
             _previousTime = _clock.Elapsed.TotalSeconds;
             _map.IsSimulationPaused = WorldTimeStopped;
             UpdateUndoButtons();
@@ -115,23 +120,27 @@ public sealed partial class MainView
 
         try
         {
-            if (!Current()) throw new OperationCanceledException(cancellation.Token);
+            if (!Current())
+                throw new OperationCanceledException(cancellation.Token);
             _saveCapture?.Cancel();
             if (_checkpoint is null)
             {
                 var checkpoint = await PrepareCheckpointAsync(source, cancellation.Token, Current);
-                if (!Current()) throw new OperationCanceledException(cancellation.Token);
+                if (!Current())
+                    throw new OperationCanceledException(cancellation.Token);
                 _checkpoint ??= checkpoint;
             }
 
-            if (!Current()) throw new OperationCanceledException(cancellation.Token);
+            if (!Current())
+                throw new OperationCanceledException(cancellation.Token);
             _paused = true;
             _map.IsSimulationPaused = true;
             UpdateUndoButtons();
         }
         finally
         {
-            if (ReferenceEquals(_mapEditCapture, cancellation)) _mapEditCapture = null;
+            if (ReferenceEquals(_mapEditCapture, cancellation))
+                _mapEditCapture = null;
             _map.IsSimulationPaused = WorldTimeStopped;
         }
     }
@@ -142,7 +151,8 @@ public sealed partial class MainView
     /// <returns>命令是否执行成功；部分执行后失败仍保留撤销恢复点。</returns>
     private async Task<bool> SubmitEditAsync(Action command, bool replaceCheckpoint = false)
     {
-        if (!CanSubmitEdit()) return false;
+        if (!CanSubmitEdit())
+            return false;
         var request = new EditSubmission(_engine, _modalGeneration, _modal.IsVisible, _inspectorNavigationGeneration);
         _editSubmission = request;
         var previousCheckpoint = _checkpoint;
@@ -155,7 +165,8 @@ public sealed partial class MainView
                 ? await PrepareCheckpointAsync(request.Source, request.Cancellation.Token,
                     () => SubmissionCurrent(request))
                 : previousCheckpoint;
-            if (!SubmissionCurrent(request)) return false;
+            if (!SubmissionCurrent(request))
+                return false;
             // 只在原请求仍有效且即将同步提交时发布恢复点，避免失效请求覆盖当前世界的撤销状态。
             _checkpoint = checkpoint;
             _paused = true;
@@ -199,9 +210,12 @@ public sealed partial class MainView
         }
         finally
         {
-            if (request.Committing) DeferAutosaveAfterEdit();
-            if (ReferenceEquals(_editSubmission, request)) _editSubmission = null;
-            foreach (var (control, enabled) in request.Inputs) control.IsEnabled = enabled;
+            if (request.Committing)
+                DeferAutosaveAfterEdit();
+            if (ReferenceEquals(_editSubmission, request))
+                _editSubmission = null;
+            foreach (var (control, enabled) in request.Inputs)
+                control.IsEnabled = enabled;
             request.Cancellation.Dispose();
             _previousTime = _clock.Elapsed.TotalSeconds;
             _map.IsSimulationPaused = WorldTimeStopped;

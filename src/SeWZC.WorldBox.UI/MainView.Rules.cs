@@ -88,9 +88,11 @@ public sealed partial class MainView
         panel.Children.Add(Paragraph("关闭新的魔法发展保留既有能力。已有施法者继续使用魔法；训练与恢复速率和时间倍率分别控制。"));
         preset.SelectionChanged += (_, _) =>
         {
-            if (preset.SelectedIndex <= 0) return;
+            if (preset.SelectedIndex <= 0)
+                return;
             draft = WorldRules.For((WorldPreset)(preset.SelectedIndex - 1));
-            foreach (var entry in switches) entry.Box.IsChecked = entry.Get(draft);
+            foreach (var entry in switches)
+                entry.Box.IsChecked = entry.Get(draft);
             conflict.SelectedIndex = draft.Conflict;
             frequency.SelectedIndex = draft.DisasterFrequency;
             strength.SelectedIndex = draft.DisasterStrength - 1;
@@ -102,7 +104,8 @@ public sealed partial class MainView
         };
         panel.Children.Add(Named(Button("应用世界规则", () => RunEdit(() =>
         {
-            foreach (var entry in switches) entry.Set(draft, entry.Box.IsChecked == true);
+            foreach (var entry in switches)
+                entry.Set(draft, entry.Box.IsChecked == true);
             draft.GatheringRate = Number(gathering);
             draft.CombatDamageRate = Number(combat);
             draft.Conflict = Math.Max(0, conflict.SelectedIndex);

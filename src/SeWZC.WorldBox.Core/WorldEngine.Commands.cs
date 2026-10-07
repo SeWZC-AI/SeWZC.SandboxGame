@@ -9,8 +9,10 @@ public sealed partial class WorldEngine
     /// <param name="radius">笔刷作用半径，以地格为单位。</param>
     public void PaintTerrain(int x, int y, TerrainType terrain, int radius = 2)
     {
-        if (!Enum.IsDefined(terrain)) throw new ArgumentOutOfRangeException(nameof(terrain));
-        if (!InBounds(x, y)) return;
+        if (!Enum.IsDefined(terrain))
+            throw new ArgumentOutOfRangeException(nameof(terrain));
+        if (!InBounds(x, y))
+            return;
         radius = Math.Clamp(radius, 0, 32);
         foreach (var index in Circle(x, y, radius))
         {
@@ -65,10 +67,13 @@ public sealed partial class WorldEngine
     /// <param name="count">请求投放的居民数量，仍受世界人口上限限制。</param>
     public void SpawnResidents(int x, int y, RaceKind race, int count = 12)
     {
-        if (!Enum.IsDefined(race)) throw new ArgumentOutOfRangeException(nameof(race));
-        if (!InBounds(x, y)) return;
+        if (!Enum.IsDefined(race))
+            throw new ArgumentOutOfRangeException(nameof(race));
+        if (!InBounds(x, y))
+            return;
         var index = FindWalkable(x, y, 8, race);
-        if (index < 0 || State.Residents.Count >= MaxPopulation) return;
+        if (index < 0 || State.Residents.Count >= MaxPopulation)
+            return;
         x = index % State.Width;
         y = index / State.Width;
         count = Math.Clamp(count, 1, Math.Min(200, MaxPopulation - State.Residents.Count));
@@ -78,7 +83,8 @@ public sealed partial class WorldEngine
             .OrderBy(s => Distance(s.X, s.Y, x, y)).FirstOrDefault();
         if (settlement is null)
         {
-            if (State.Nations.Count >= 64 || State.Settlements.Count >= 256) return;
+            if (State.Nations.Count >= 64 || State.Settlements.Count >= 256)
+                return;
             var nation = new Nation
             {
                 Id = NewId(),
@@ -136,9 +142,11 @@ public sealed partial class WorldEngine
                 var yy = spawnSites[site] / State.Width + dy;
                 if (!InBounds(xx, yy) || Distance(x, y, xx, yy) > 3
                                       || !CanTraverseStep(spawnSites[site] % State.Width,
-                                          spawnSites[site] / State.Width, xx, yy, TravelMode.Foot, race)) continue;
+                                          spawnSites[site] / State.Width, xx, yy, TravelMode.Foot, race))
+                    continue;
                 var next = Index(xx, yy);
-                if (spawnSeen.Add(next)) spawnSites.Add(next);
+                if (spawnSeen.Add(next))
+                    spawnSites.Add(next);
             }
 
         for (var i = 0; i < count; i++)
@@ -159,7 +167,8 @@ public sealed partial class WorldEngine
         }
 
         InitializeSociety();
-        foreach (var person in _citizens[settlement.Id]) InitializeAgent(person);
+        foreach (var person in _citizens[settlement.Id])
+            InitializeAgent(person);
         RefreshTotals();
     }
 
@@ -206,8 +215,10 @@ public sealed partial class WorldEngine
     /// <param name="radius">灾害作用半径，以地格为单位。</param>
     public void TriggerDisaster(int x, int y, DisasterKind kind, int radius = 5)
     {
-        if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
-        if (!InBounds(x, y)) return;
+        if (!Enum.IsDefined(kind))
+            throw new ArgumentOutOfRangeException(nameof(kind));
+        if (!InBounds(x, y))
+            return;
         radius = Math.Clamp(radius, 1, 32);
         foreach (var index in Circle(x, y, radius))
         {
@@ -227,7 +238,8 @@ public sealed partial class WorldEngine
                          .ThenBy(i => i))
                 if (Ignite(index) && ++started >= seeds)
                     break;
-            if (started == 0) return;
+            if (started == 0)
+                return;
         }
 
         if (kind == DisasterKind.Meteor)
@@ -235,7 +247,8 @@ public sealed partial class WorldEngine
             foreach (var index in Circle(x, y, radius))
             {
                 var tile = State.Tiles[index];
-                if (!tile.IsWalkable) continue;
+                if (!tile.IsWalkable)
+                    continue;
                 tile.Terrain = TerrainType.Sand;
                 tile.RiverWidth = 0;
                 tile.Improvement = LandImprovement.None;
@@ -281,7 +294,8 @@ public sealed partial class WorldEngine
     /// <param name="name">新的名称。</param>
     public void RenameNation(int nationId, string name)
     {
-        if (!_nations.TryGetValue(nationId, out var nation)) throw new ArgumentException("国家不存在。", nameof(nationId));
+        if (!_nations.TryGetValue(nationId, out var nation))
+            throw new ArgumentException("国家不存在。", nameof(nationId));
         name = (name ?? "").Trim();
         if (name.Length is < 1 or > 40 || name.Any(char.IsControl))
             throw new ArgumentException("国名须为 1–40 个可见字符。", nameof(name));
@@ -310,31 +324,47 @@ public sealed partial class WorldEngine
         double? coal = null, double? oil = null, double? rareEarth = null, double? boats = null,
         double? aircraft = null, double? water = null)
     {
-        if (!_nations.ContainsKey(nationId)) throw new ArgumentException("国家不存在。", nameof(nationId));
+        if (!_nations.ContainsKey(nationId))
+            throw new ArgumentException("国家不存在。", nameof(nationId));
         var amounts = new[]
         {
             food, wood, stone, ore, alloy, energyCells, crystals, coal, oil, rareEarth, boats, aircraft, water,
         };
         if (amounts.Any(v => v.HasValue && (!double.IsFinite(v.Value) || v.Value < 0 || v.Value > 1_000_000)))
             throw new ArgumentOutOfRangeException(nameof(food), "资源须在 0 到 1,000,000 之间。");
-        if (amounts.All(v => !v.HasValue)) return;
+        if (amounts.All(v => !v.HasValue))
+            return;
         var towns = State.Settlements.Where(s => s.NationId == nationId).ToArray();
-        if (towns.Length == 0) return;
+        if (towns.Length == 0)
+            return;
         foreach (var town in towns)
         {
-            if (food is { } f) town.Resources.Food = f / towns.Length;
-            if (wood is { } w) town.Resources.Wood = w / towns.Length;
-            if (stone is { } s) town.Resources.Stone = s / towns.Length;
-            if (ore is { } o) town.Resources.Ore = o / towns.Length;
-            if (alloy is { } a) town.Resources.Alloy = a / towns.Length;
-            if (energyCells is { } e) town.Resources.EnergyCells = e / towns.Length;
-            if (crystals is { } c) town.Resources.Crystals = c / towns.Length;
-            if (coal is { } co) town.Resources.Coal = co / towns.Length;
-            if (oil is { } oi) town.Resources.Oil = oi / towns.Length;
-            if (rareEarth is { } re) town.Resources.RareEarth = re / towns.Length;
-            if (boats is { } bo) town.Resources.Boats = bo / towns.Length;
-            if (aircraft is { } ai) town.Resources.Aircraft = ai / towns.Length;
-            if (water is { } wa) town.Resources.Water = wa / towns.Length;
+            if (food is { } f)
+                town.Resources.Food = f / towns.Length;
+            if (wood is { } w)
+                town.Resources.Wood = w / towns.Length;
+            if (stone is { } s)
+                town.Resources.Stone = s / towns.Length;
+            if (ore is { } o)
+                town.Resources.Ore = o / towns.Length;
+            if (alloy is { } a)
+                town.Resources.Alloy = a / towns.Length;
+            if (energyCells is { } e)
+                town.Resources.EnergyCells = e / towns.Length;
+            if (crystals is { } c)
+                town.Resources.Crystals = c / towns.Length;
+            if (coal is { } co)
+                town.Resources.Coal = co / towns.Length;
+            if (oil is { } oi)
+                town.Resources.Oil = oi / towns.Length;
+            if (rareEarth is { } re)
+                town.Resources.RareEarth = re / towns.Length;
+            if (boats is { } bo)
+                town.Resources.Boats = bo / towns.Length;
+            if (aircraft is { } ai)
+                town.Resources.Aircraft = ai / towns.Length;
+            if (water is { } wa)
+                town.Resources.Water = wa / towns.Length;
         }
 
         RefreshTotals();
@@ -349,7 +379,8 @@ public sealed partial class WorldEngine
     {
         if (first == second || !_nations.ContainsKey(first) || !_nations.ContainsKey(second))
             throw new ArgumentException("请选择两个不同且存在的国家。");
-        if (!Enum.IsDefined(status)) throw new ArgumentOutOfRangeException(nameof(status));
+        if (!Enum.IsDefined(status))
+            throw new ArgumentOutOfRangeException(nameof(status));
         var relation = Relation(first, second);
         relation.Status = status;
         relation.FirstOpinion = relation.SecondOpinion = relation.Opinion =
@@ -386,7 +417,8 @@ public sealed partial class WorldEngine
         var relation = State.Diplomacies.FirstOrDefault(r =>
             (r.FirstNationId == first && r.SecondNationId == second) ||
             (r.FirstNationId == second && r.SecondNationId == first));
-        if (relation is not null) return relation;
+        if (relation is not null)
+            return relation;
         relation = new DiplomaticRelation
         {
             FirstNationId = Math.Min(first, second), SecondNationId = Math.Max(first, second),
@@ -434,12 +466,14 @@ public sealed partial class WorldEngine
                 ClaimTerritory(settlement, 6);
                 AddEvent(WorldEventKind.Editor, $"地形改变，{settlement.Name}迁往可居住的土地。", settlement.X, settlement.Y);
             }
-            else RemoveSettlement(settlement, "家园被地形变化摧毁");
+            else
+                RemoveSettlement(settlement, "家园被地形变化摧毁");
         }
 
         foreach (var resident in State.Residents)
         {
-            if (CanTraverse(State.Tiles[Index(resident.X, resident.Y)], resident.TravelMode, resident.Race)) continue;
+            if (CanTraverse(State.Tiles[Index(resident.X, resident.Y)], resident.TravelMode, resident.Race))
+                continue;
             var position = FindWalkable(resident.X, resident.Y, 10, resident.Race);
             if (position >= 0)
             {
@@ -459,14 +493,16 @@ public sealed partial class WorldEngine
         ArchiveDeadResidents();
         foreach (var army in State.Armies.ToArray())
         {
-            if (Walkable(army.X, army.Y)) continue;
+            if (Walkable(army.X, army.Y))
+                continue;
             var position = FindWalkable(army.X, army.Y, 10);
             if (position >= 0)
             {
                 army.X = position % State.Width;
                 army.Y = position / State.Width;
             }
-            else DisbandArmy(army);
+            else
+                DisbandArmy(army);
         }
 
         RemoveEmptyNations();

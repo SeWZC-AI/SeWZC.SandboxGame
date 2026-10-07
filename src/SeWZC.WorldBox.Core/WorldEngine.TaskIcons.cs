@@ -11,7 +11,8 @@ public sealed partial class WorldEngine
         // 取水和捕鱼的目标编号表示资源地格，不能作为建筑 ID 查找。
         if (goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic)
             facility ??= FindBuilding(goal.TargetEntityId);
-        else facility = null;
+        else
+            facility = null;
         return goal.Kind switch
         {
             AgentGoalKind.Eat => ResidentTaskIcon.Eat,

@@ -52,7 +52,8 @@ internal static class SavePerformance
             samples,
         }, new JsonSerializerOptions { WriteIndented = true });
         var output = Array.IndexOf(args, "--output");
-        if (output >= 0) File.WriteAllText(args[output + 1], report);
+        if (output >= 0)
+            File.WriteAllText(args[output + 1], report);
         Console.WriteLine(report);
         return 0;
     }

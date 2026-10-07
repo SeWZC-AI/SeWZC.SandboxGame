@@ -62,11 +62,14 @@ internal static class ResearchTreeTests
         foreach (var invalid in new[] { "-1", "2147483647", "1.5", "\"Agriculture\"", "{}", "null" })
         foreach (var active in new[] { false, true })
         {
-            if (active && invalid == "null") continue;
+            if (active && invalid == "null")
+                continue;
             var json = JsonNode.Parse(save)!;
             var savedResearch = json["Society"]!["Research"]![0]!;
-            if (active) savedResearch["ActiveProject"] = JsonNode.Parse(invalid);
-            else savedResearch["Completed"]![0] = JsonNode.Parse(invalid);
+            if (active)
+                savedResearch["ActiveProject"] = JsonNode.Parse(invalid);
+            else
+                savedResearch["Completed"]![0] = JsonNode.Parse(invalid);
             try
             {
                 WorldEngine.ImportJson(json.ToJsonString());
@@ -90,7 +93,8 @@ internal static class ResearchTreeTests
         engine.SpawnResidents(16, 16, RaceKind.Human, 4);
         var town = engine.State.Settlements.Single();
         TestLand.ClaimAllTowns(engine);
-        foreach (var b in engine.State.Society.Buildings) b.ConstructionProgress = b.ConstructionRequired;
+        foreach (var b in engine.State.Society.Buildings)
+            b.ConstructionProgress = b.ConstructionRequired;
         engine.ConfigureWorld(new WorldRules
         {
             Births = false,
@@ -172,7 +176,8 @@ internal static class ResearchTreeTests
                  {
                      Advancement.Irrigation, Advancement.Forestry, Advancement.Medicine,
                      Advancement.ScientificMethod, Advancement.EfficientSmelting,
-                 }) engine.GrantReceivedResearch(town.Id, k);
+                 })
+            engine.GrantReceivedResearch(town.Id, k);
         engine.SetDevelopmentFocus(town.NationId, DevelopmentFocus.Technology);
         engine.State.Rules.Research = true;
         town.Resources.Alloy = 20;
@@ -189,6 +194,7 @@ internal static class ResearchTreeTests
 
     private static void Require(bool condition, string message)
     {
-        if (!condition) throw new Exception(message);
+        if (!condition)
+            throw new Exception(message);
     }
 }

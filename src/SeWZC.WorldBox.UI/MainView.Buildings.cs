@@ -35,8 +35,10 @@ public sealed partial class MainView
 
     private void OpenBuilding(Building building)
     {
-        if (_mapPick is not null) return;
-        if (_mobilePanel && _inspectorMode == "building" && _selectedBuildingId == building.Id) return;
+        if (_mapPick is not null)
+            return;
+        if (_mobilePanel && _inspectorMode == "building" && _selectedBuildingId == building.Id)
+            return;
         RememberLocation();
         _selectedBuildingId = building.Id;
         _selectedTile = (building.X, building.Y);
@@ -96,7 +98,8 @@ public sealed partial class MainView
         panel.Children.Add(actions);
         actions.Children.Add(Named(Button("定位建筑", () =>
         {
-            if (Current() is { } b) _map.FocusTile(b.X, b.Y);
+            if (Current() is { } b)
+                _map.FocusTile(b.X, b.Y);
             CloseInspector();
         }), "building-locate"));
         actions.Children.Add(Named(Button("修复建筑", () => RunEdit(() => _engine.RestoreBuilding(id), "建筑已修复")),
@@ -115,7 +118,8 @@ public sealed partial class MainView
         {
             var toggle = Named(Button(building.Enabled ? "停用建筑" : "恢复运营", () =>
             {
-                if (Current() is { } b) RunEdit(() => _engine.SetBuildingEnabled(id, !b.Enabled), "建筑运营状态已更新");
+                if (Current() is { } b)
+                    RunEdit(() => _engine.SetBuildingEnabled(id, !b.Enabled), "建筑运营状态已更新");
             }), "building-toggle");
             _inspectorUpdates.Add(() => toggle.Content = Current()?.Enabled == true ? "停用建筑" : "恢复运营");
             actions.Children.Add(toggle);
@@ -151,7 +155,8 @@ public sealed partial class MainView
     private void ShowBuildingUpgrade(int id, bool reorient)
     {
         var building = _engine.State.Society.Buildings.FirstOrDefault(b => b.Id == id);
-        if (building is null) return;
+        if (building is null)
+            return;
         if (!reorient && building.Level >= 3)
         {
             var completed = ModalPanel("升级建筑", $"{BuildingLabel(building)}已达到最高等级（3 级）。");
@@ -191,7 +196,8 @@ public sealed partial class MainView
 
     private void BuildStructuresInspector(StackPanel panel)
     {
-        if (!_engine.State.Settlements.Any(t => t.Id == _structuresTownId)) _structuresTownId = 0;
+        if (!_engine.State.Settlements.Any(t => t.Id == _structuresTownId))
+            _structuresTownId = 0;
         _map.InfrastructureTownId = _structuresTownId;
         _map.InfrastructureKind = _structuresBuildingKind;
         if (!_openedStructureHighlights)
@@ -299,7 +305,8 @@ public sealed partial class MainView
         {
             var latestEventId = _engine.State.Events.LastOrDefault()?.Id ?? 0;
             if (sampledTick == _engine.State.Tick && sampledEventId == latestEventId &&
-                sampledSearch == _structureSearch) return;
+                sampledSearch == _structureSearch)
+                return;
             sampledTick = _engine.State.Tick;
             sampledEventId = latestEventId;
             sampledSearch = _structureSearch;
@@ -384,7 +391,8 @@ public sealed partial class MainView
 
     private void QuickResidentGoal(int id, AgentGoalKind? kind)
     {
-        if (_engine.GetResident(id) is not { Health: > 0 } person) return;
+        if (_engine.GetResident(id) is not { Health: > 0 } person)
+            return;
         var mind = CloneMind(id);
         var town = _engine.State.Settlements.FirstOrDefault(t => t.Id == person.SettlementId);
         if (kind.HasValue && person.ArmyId != 0)

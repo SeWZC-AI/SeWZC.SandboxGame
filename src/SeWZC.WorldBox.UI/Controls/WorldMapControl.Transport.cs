@@ -17,9 +17,11 @@ public sealed partial class WorldMapControl
     {
         foreach (var person in VisibleResidents(state))
         {
-            if (!ShowVehicle(person) || (_zoom >= 3 && person.TravelMode != TravelMode.Aircraft)) continue;
+            if (!ShowVehicle(person) || (_zoom >= 3 && person.TravelMode != TravelMode.Aircraft))
+                continue;
             var point = ResidentMapPosition(person.Id, person.X, person.Y);
-            if (!Visible(new Rect(point.X - 6, point.Y - 6, 12, 12))) continue;
+            if (!Visible(new Rect(point.X - 6, point.Y - 6, 12, 12)))
+                continue;
             DrawVehicle(context, person, point);
         }
     }

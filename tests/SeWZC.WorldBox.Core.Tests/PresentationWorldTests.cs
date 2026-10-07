@@ -15,7 +15,8 @@ internal static class PresentationWorldTests
 
     private static void Check(bool condition, string message)
     {
-        if (!condition) throw new InvalidOperationException(message);
+        if (!condition)
+            throw new InvalidOperationException(message);
     }
 
     private static WorldEngine World(int size = 64, bool clearWildlife = false)
@@ -27,7 +28,8 @@ internal static class PresentationWorldTests
             tile.Fertility = 80;
         }
 
-        if (clearWildlife) TestLand.ClearWildlife(engine);
+        if (clearWildlife)
+            TestLand.ClearWildlife(engine);
         engine.State.NaturalDisasters = false;
         engine.SpawnResidents(16, 16, RaceKind.Human, 4);
         TestLand.ClaimAllTowns(engine);

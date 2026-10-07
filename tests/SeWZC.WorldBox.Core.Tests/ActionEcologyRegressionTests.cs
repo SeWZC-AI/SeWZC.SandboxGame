@@ -24,7 +24,8 @@ internal static class ActionEcologyRegressionTests
 
     private static void Check(bool value, string message)
     {
-        if (!value) throw new Exception(message);
+        if (!value)
+            throw new Exception(message);
     }
 
     [UnitTest]
@@ -49,7 +50,8 @@ internal static class ActionEcologyRegressionTests
         Check(1 - tile.WildlifePopulation > sparse * 4 && tile.WildlifePopulation > 0,
             "Sparse hunting did not slow down");
         tile.WildlifePopulation = .06;
-        for (var i = 0; i < 500; i++) e.TryHarvestWildlife(p);
+        for (var i = 0; i < 500; i++)
+            e.TryHarvestWildlife(p);
         Check(tile.WildlifePopulation > 0, "Repeated hunters exhausted the final breeding population");
         var better = e.State.Tiles[24 * 32 + 27];
         better.Plants = new PlantCoverage { Grass = 1 };
@@ -59,7 +61,8 @@ internal static class ActionEcologyRegressionTests
             BindingFlags.Instance | BindingFlags.NonPublic)!;
         var found = ((int Site, int Source, bool Fishing))query.Invoke(e, [p])!;
         Check(found.Source == 24 * 32 + 27, "Hunter stayed on sparse nearby prey instead of a productive visible site");
-        foreach (var resident in e.State.Residents) resident.Race = RaceKind.Orc;
+        foreach (var resident in e.State.Residents)
+            resident.Race = RaceKind.Orc;
         var habitat = e.State.Tiles[19 * 32 + 19];
         habitat.Terrain = TerrainType.Forest;
         habitat.ResourceAmount = 100;
@@ -83,10 +86,12 @@ internal static class ActionEcologyRegressionTests
         tile.ResourceAmount = .1;
         var gather =
             typeof(WorldEngine).GetMethod("GatherActualResources", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        for (var i = 0; i < 500; i++) gather.Invoke(e, [p, Profession.Farmer]);
+        for (var i = 0; i < 500; i++)
+            gather.Invoke(e, [p, Profession.Farmer]);
         Check(tile.ResourceAmount > 0 && tile.Plants.Grass == 1 && PlantResources.At(tile).Single().Quantity > 0,
             "Collection cleared scarce plants or their displayed quantity");
-        foreach (var ground in e.State.Tiles) ground.ResourceAmount = 1;
+        foreach (var ground in e.State.Tiles)
+            ground.ResourceAmount = 1;
         var rich = 24 * 32 + 27;
         e.State.Tiles[rich].ResourceAmount = 100;
         var query = typeof(WorldEngine).GetMethod("FindVisibleResourceSite",
@@ -188,7 +193,8 @@ internal static class ActionEcologyRegressionTests
         }, false, true);
         e.State.Tick = 120;
         var t = e.State.Settlements.Single();
-        foreach (var k in ResourceStock.Kinds) t.Resources.Set(k, 200);
+        foreach (var k in ResourceStock.Kinds)
+            t.Resources.Set(k, 200);
         foreach (var p in e.State.Residents)
         {
             p.Age = 30;
@@ -373,7 +379,8 @@ internal static class ActionEcologyRegressionTests
             e.GrantReceivedResearch(t.Id, k);
         var id = e.GrantFacility(t.Id, BuildingKind.Foundry, 19, 16);
         var b = e.State.Society.Buildings.Single(b => b.Id == id);
-        foreach (var other in e.State.Residents.Skip(1)) other.Agent.NextThinkTick = 10000;
+        foreach (var other in e.State.Residents.Skip(1))
+            other.Agent.NextThinkTick = 10000;
         p.X = p.FromX = 17;
         p.Y = p.FromY = 16;
         p.Inventory = new ResourceStock { Food = 2, Water = 2, Ore = 8, Coal = 4 };
@@ -437,9 +444,9 @@ internal static class ActionEcologyRegressionTests
         e.ConfigureWorld(e.State.Rules with { Construction = true, Research = true, Thirst = true }, false, true);
         foreach (var k in new[]
                  {
-                     Advancement.Agriculture, Advancement.Logistics, Advancement.Industry,
-                     Advancement.Ballistics,
-                 }) e.GrantReceivedResearch(t.Id, k);
+                     Advancement.Agriculture, Advancement.Logistics, Advancement.Industry, Advancement.Ballistics,
+                 })
+            e.GrantReceivedResearch(t.Id, k);
         e.GrantFacility(t.Id, BuildingKind.Academy, 18, 18);
         var research = e.State.Society.Research.Single();
         research.ActiveProject = Advancement.ScientificMethod;

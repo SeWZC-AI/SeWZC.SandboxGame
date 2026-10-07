@@ -17,7 +17,8 @@ public sealed partial class WorldEngine
             NationId = person.NationId,
             Experience = experience,
         });
-        while (person.History.Count > 24) person.History.RemoveAt(0);
+        while (person.History.Count > 24)
+            person.History.RemoveAt(0);
     }
 
     private void ObserveProject(ProjectObservation observation, double progress)
@@ -28,9 +29,11 @@ public sealed partial class WorldEngine
             observation.DevelopmentRate = State.Rules.DevelopmentRate;
         }
 
-        if (observation.Samples.Count > 0 && State.Tick - observation.Samples[^1].Tick < 4) return;
+        if (observation.Samples.Count > 0 && State.Tick - observation.Samples[^1].Tick < 4)
+            return;
         observation.Samples.Add(new ProgressSample { Tick = State.Tick, Progress = progress });
-        if (observation.Samples.Count > 7) observation.Samples.RemoveAt(0);
+        if (observation.Samples.Count > 7)
+            observation.Samples.RemoveAt(0);
     }
 
     private void ObserveProjects()
@@ -49,7 +52,8 @@ public sealed partial class WorldEngine
     /// <param name="required">项目完成所需的总工作量。</param>
     public CompletionEstimate GetCompletionEstimate(ProjectObservation observation, double progress, double required)
     {
-        if (progress >= required) return new CompletionEstimate(0, "已完成");
+        if (progress >= required)
+            return new CompletionEstimate(0, "已完成");
         var samples = observation.Samples;
         if (observation.DevelopmentRate != State.Rules.DevelopmentRate || samples.Count < 4)
             return new CompletionEstimate(null, "暂无法估算：等待足够的实际工作记录");
@@ -61,7 +65,8 @@ public sealed partial class WorldEngine
         if (mean <= 0 || rates.Any(r => r < mean * .5 || r > mean * 1.5))
             return new CompletionEstimate(null, "暂无法估算：近期工作速率不稳定");
         var duration = Math.Ceiling((required - progress) / mean);
-        if (!double.IsFinite(duration) || duration > 100_000) return new CompletionEstimate(null, "暂无法估算：有效工作速率过低");
+        if (!double.IsFinite(duration) || duration > 100_000)
+            return new CompletionEstimate(null, "暂无法估算：有效工作速率过低");
         var remaining = (long)duration;
         return new CompletionEstimate(remaining, $"按近期实际速率，预计还需约 {remaining} 日；人员与供给变化会影响结果");
     }
@@ -131,7 +136,8 @@ public sealed partial class WorldEngine
             }
         }
 
-        foreach (var building in state.Society.Buildings) Project(building.Observation, building.ConstructionProgress);
+        foreach (var building in state.Society.Buildings)
+            Project(building.Observation, building.ConstructionProgress);
         foreach (var research in state.Society.Research)
         {
             Project(research.Observation, research.Progress);
@@ -178,7 +184,8 @@ public sealed partial class WorldEngine
                     && Enum.IsDefined(army.Objective) && Enum.IsDefined(army.Outcome) && Time(army.StartedTick)
                     && army.InitialSoldiers is >= 0 and <= MaxPopulation && army.BlockedTicks is >= 0 and <= 100_000,
                 "作战目标或进程无效。");
-        foreach (var report in state.Society.Reports) CheckV2(Reference(report.EventId), "制度报告事件引用无效。");
+        foreach (var report in state.Society.Reports)
+            CheckV2(Reference(report.EventId), "制度报告事件引用无效。");
         foreach (var person in state.Residents.Concat(state.ArchivedResidents))
             ValidateStoryReferences(person, state.NextId);
         foreach (var person in state.Residents.Concat(state.ArchivedResidents))

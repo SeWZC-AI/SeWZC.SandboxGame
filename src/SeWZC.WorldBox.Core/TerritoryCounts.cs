@@ -23,7 +23,8 @@ internal sealed class TerritoryCounts
     /// <param name="tiles">要绑定归属变更通知的地格数组。</param>
     public void Bind(Tile[] tiles)
     {
-        if (ReferenceEquals(_tiles, tiles)) return;
+        if (ReferenceEquals(_tiles, tiles))
+            return;
         if (_tiles is not null)
         {
             foreach (var tile in _tiles)
@@ -38,7 +39,8 @@ internal sealed class TerritoryCounts
         foreach (var tile in tiles)
         {
             tile.TerritoryCounts = this;
-            if (tile.NationId != 0) _counts[tile.NationId] = _counts.GetValueOrDefault(tile.NationId) + 1;
+            if (tile.NationId != 0)
+                _counts[tile.NationId] = _counts.GetValueOrDefault(tile.NationId) + 1;
         }
     }
 
@@ -50,7 +52,9 @@ internal sealed class TerritoryCounts
     public void Change(int previous, int next)
     {
         Revision++;
-        if (previous != 0) _counts[previous] = _counts.GetValueOrDefault(previous) - 1;
-        if (next != 0) _counts[next] = _counts.GetValueOrDefault(next) + 1;
+        if (previous != 0)
+            _counts[previous] = _counts.GetValueOrDefault(previous) - 1;
+        if (next != 0)
+            _counts[next] = _counts.GetValueOrDefault(next) + 1;
     }
 }

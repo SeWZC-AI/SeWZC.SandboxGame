@@ -24,7 +24,8 @@ public sealed partial class WorldEngine
             tile.Fertility = (byte)Math.Clamp(15 + Noise(x / 23d, y / 23d, 1201) * 85, 0, 100);
             tile.Rainfall = Math.Round(.002 + Math.Pow(Noise(x / 27d, y / 27d, 1601), 3) * .24, 6);
             flow[i] = .2 + tile.Rainfall * 15;
-            if (!IsWaterTerrain(tile.Terrain)) continue;
+            if (!IsWaterTerrain(tile.Terrain))
+                continue;
             visited[i] = true;
             frontier.Enqueue(i, (tile.Elevation, i));
         }
@@ -37,9 +38,11 @@ public sealed partial class WorldEngine
             {
                 var x = current % State.Width + dx;
                 var y = current / State.Width + dy;
-                if (!InBounds(x, y)) continue;
+                if (!InBounds(x, y))
+                    continue;
                 var next = Index(x, y);
-                if (visited[next]) continue;
+                if (visited[next])
+                    continue;
                 visited[next] = true;
                 parents[next] = current;
                 frontier.Enqueue(next, (Math.Max(priority.Height, tiles[next].Elevation), next));
@@ -53,12 +56,15 @@ public sealed partial class WorldEngine
         for (var y = 7; y < State.Height - 7; y += 12)
         for (var x = 7; x < State.Width - 7; x += 12)
         {
-            if (Noise(x, y, 977) < .64) continue;
+            if (Noise(x, y, 977) < .64)
+                continue;
             var area = Circle(x, y, 3).ToArray();
             if (area.Any(i =>
-                    IsWaterTerrain(tiles[i].Terrain) || tiles[i].Elevation > 178 || _demoHabitat?[i] >= 0)) continue;
+                    IsWaterTerrain(tiles[i].Terrain) || tiles[i].Elevation > 178 || _demoHabitat?[i] >= 0))
+                continue;
             var radius = Noise(x, y, 983) > .7 ? 2 : 1;
-            foreach (var i in Circle(x, y, radius)) tiles[i].Terrain = TerrainType.Lake;
+            foreach (var i in Circle(x, y, radius))
+                tiles[i].Terrain = TerrainType.Lake;
         }
 
         var sources = Enumerable.Range(0, tiles.Length)
@@ -73,7 +79,8 @@ public sealed partial class WorldEngine
         {
             if (selected.Any(i =>
                     Distance(i % State.Width, i / State.Width, source % State.Width, source / State.Width) <
-                    Math.Max(8, State.Width / 10))) continue;
+                    Math.Max(8, State.Width / 10)))
+                continue;
             var path = new List<int>();
             var current = source;
             var reserved = false;
@@ -89,18 +96,21 @@ public sealed partial class WorldEngine
                 current = parents[current];
             }
 
-            if (reserved || current < 0 || path.Count < 8) continue;
+            if (reserved || current < 0 || path.Count < 8)
+                continue;
             selected.Add(source);
             foreach (var i in path)
                 centers[i] = (byte)Math.Max(centers[i],
                     flow[i] < 30 ? 1 : flow[i] < 85 ? 2 : flow[i] < 190 ? 3 : flow[i] < 420 ? 4 : 5);
-            if (selected.Count >= desired) break;
+            if (selected.Count >= desired)
+                break;
         }
 
         // 河道横截面按一至五格精确生成，避免圆形笔刷把河流涂得过宽。
         for (var i = 0; i < centers.Length; i++)
         {
-            if (centers[i] == 0) continue;
+            if (centers[i] == 0)
+                continue;
             var width = centers[i];
             var parent = parents[i];
             var vertical = parent >= 0 && parent % State.Width == i % State.Width;
@@ -108,11 +118,13 @@ public sealed partial class WorldEngine
             {
                 var x = i % State.Width + (vertical ? offset : 0);
                 var y = i / State.Width + (vertical ? 0 : offset);
-                if (!InBounds(x, y)) continue;
+                if (!InBounds(x, y))
+                    continue;
                 var next = Index(x, y);
                 var tile = tiles[next];
                 if (tile.Terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.Lake ||
-                    _demoHabitat?[next] >= 0) continue;
+                    _demoHabitat?[next] >= 0)
+                    continue;
                 var riverWidth = Math.Max(tile.RiverWidth, width);
                 tile.Terrain = riverWidth == 1 ? TerrainType.Stream :
                     riverWidth <= 3 ? TerrainType.River : TerrainType.LargeRiver;
@@ -135,9 +147,11 @@ public sealed partial class WorldEngine
             {
                 var x = current % State.Width + dx;
                 var y = current / State.Width + dy;
-                if (!InBounds(x, y)) continue;
+                if (!InBounds(x, y))
+                    continue;
                 var next = Index(x, y);
-                if (distances[next] != int.MaxValue) continue;
+                if (distances[next] != int.MaxValue)
+                    continue;
                 distances[next] = distances[current] + 1;
                 queue.Enqueue(next);
             }
@@ -147,7 +161,8 @@ public sealed partial class WorldEngine
             var tile = tiles[i];
             var shore = distances[i] == int.MaxValue ? 0 : .1 * Math.Exp(-Math.Pow(distances[i] / 4d, 2));
             tile.NaturalWaterYield = IsWaterTerrain(tile.Terrain) ? 0 : Math.Round(tile.Rainfall + shore, 6);
-            if (!IsWaterTerrain(tile.Terrain)) tile.Terrain = GeneratedBiome(tile, i, distances[i]);
+            if (!IsWaterTerrain(tile.Terrain))
+                tile.Terrain = GeneratedBiome(tile, i, distances[i]);
             tile.ResourceAmount = IsWaterTerrain(tile.Terrain) ? 0 : 50 + tile.Fertility;
             SeedDeposit(tile, i % State.Width, i / State.Width);
         }
@@ -193,9 +208,12 @@ public sealed partial class WorldEngine
             };
         }
 
-        if (tile.Elevation < 79) return TerrainType.Sand;
-        if (tile.Elevation > 197) return TerrainType.Snow;
-        if (tile.Elevation > 180) return TerrainType.Mountain;
+        if (tile.Elevation < 79)
+            return TerrainType.Sand;
+        if (tile.Elevation > 197)
+            return TerrainType.Snow;
+        if (tile.Elevation > 180)
+            return TerrainType.Mountain;
         if (tile.Elevation > 149)
         {
             return tile.Fertility >= 55 && tile.NaturalWaterYield >= .032
@@ -203,18 +221,24 @@ public sealed partial class WorldEngine
                 : TerrainType.Hills;
         }
 
-        if (Math.Abs((y + .5) / State.Height * 2 - 1) > .72) return TerrainType.Tundra;
+        if (Math.Abs((y + .5) / State.Height * 2 - 1) > .72)
+            return TerrainType.Tundra;
         if (tile.NaturalWaterYield < .016)
         {
             return tile.Fertility >= 65 ? TerrainType.DryFertile :
                 tile.Fertility < 30 ? TerrainType.Desert : TerrainType.Savanna;
         }
 
-        if (tile.Fertility < 30) return TerrainType.Scrub;
-        if (waterDistance <= 3 && tile.Fertility >= 70 && tile.Elevation < 135) return TerrainType.Floodplain;
-        if (tile.NaturalWaterYield >= .132) return tile.Fertility >= 65 ? TerrainType.Rainforest : TerrainType.Wetland;
-        if (tile.NaturalWaterYield >= .076) return TerrainType.Forest;
-        if (tile.NaturalWaterYield >= .044) return TerrainType.Woodland;
+        if (tile.Fertility < 30)
+            return TerrainType.Scrub;
+        if (waterDistance <= 3 && tile.Fertility >= 70 && tile.Elevation < 135)
+            return TerrainType.Floodplain;
+        if (tile.NaturalWaterYield >= .132)
+            return tile.Fertility >= 65 ? TerrainType.Rainforest : TerrainType.Wetland;
+        if (tile.NaturalWaterYield >= .076)
+            return TerrainType.Forest;
+        if (tile.NaturalWaterYield >= .044)
+            return TerrainType.Woodland;
         return tile.Fertility >= 70 ? TerrainType.Meadow : TerrainType.Grass;
     }
 
@@ -232,18 +256,22 @@ public sealed partial class WorldEngine
             {
                 var distance = Distance(x, y, targetX, targetY);
                 if (distance >= bestDistance || sites.Any(i =>
-                        Distance(x, y, i % State.Width, i / State.Width) < MinimumSettlementDistance)) continue;
+                        Distance(x, y, i % State.Width, i / State.Width) < MinimumSettlementDistance))
+                    continue;
                 if (State.Tiles[Index(x, y)].Fertility < 40 || !Circle(x, y, 6).All(i =>
-                        RaceTerrainRules.For((RaceKind)race, State.Tiles[i].Terrain).Habitable)) continue;
+                        RaceTerrainRules.For((RaceKind)race, State.Tiles[i].Terrain).Habitable))
+                    continue;
                 best = Index(x, y);
                 bestDistance = distance;
             }
 
-            if (best < 0) break;
+            if (best < 0)
+                break;
             sites.Add(best);
         }
 
-        if (sites.Count == 4) return sites.ToArray();
+        if (sites.Count == 4)
+            return sites.ToArray();
         // 使用有界且确定的兜底布局，保证小地图和极端种子仍有四处独立宜居的开局区域。
         _demoHabitat = new int[State.Tiles.Length];
         Array.Fill(_demoHabitat, -1);

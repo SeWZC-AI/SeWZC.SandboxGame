@@ -20,14 +20,17 @@ public sealed partial class MainView
         foreach (var control in this.GetVisualDescendants().OfType<Control>())
         {
             var id = AutomationProperties.GetAutomationId(control);
-            if (string.IsNullOrWhiteSpace(id)) continue;
+            if (string.IsNullOrWhiteSpace(id))
+                continue;
             var origin = control.TranslatePoint(default, this);
             var bounds = origin is { } point ? new Rect(point, control.Bounds.Size) : default;
             var visibleBounds = bounds.Intersect(new Rect(Bounds.Size));
             foreach (var ancestor in control.GetVisualAncestors())
             {
-                if (ancestor == this) break;
-                if (!ancestor.ClipToBounds) continue;
+                if (ancestor == this)
+                    break;
+                if (!ancestor.ClipToBounds)
+                    continue;
                 if (ancestor.TranslatePoint(default, this) is { } ancestorOrigin)
                     visibleBounds = visibleBounds.Intersect(new Rect(ancestorOrigin, ancestor.Bounds.Size));
             }

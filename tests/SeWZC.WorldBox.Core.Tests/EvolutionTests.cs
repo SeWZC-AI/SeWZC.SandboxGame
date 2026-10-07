@@ -16,7 +16,8 @@ internal static class EvolutionTests
 
     private static void Check(bool value, string message)
     {
-        if (!value) throw new InvalidOperationException(message);
+        if (!value)
+            throw new InvalidOperationException(message);
     }
 
     private static WorldEngine Flat(int size = 64, int population = 24)

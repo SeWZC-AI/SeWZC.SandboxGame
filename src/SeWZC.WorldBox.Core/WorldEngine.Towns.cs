@@ -66,7 +66,8 @@ public sealed partial class WorldEngine
     /// <param name="id">聚落的稳定 ID。</param>
     public int GetSettlementArea(int id)
     {
-        if (!_settlements.TryGetValue(id, out var town)) return 0;
+        if (!_settlements.TryGetValue(id, out var town))
+            return 0;
         _territoryCounts.Bind(State.Tiles);
         if (_settlementAreas.TryGetValue(id, out var cached) && cached.Claims == _territoryCounts.Revision
                                                              && cached.Terrain == _territoryCounts.TraversalRevision &&
@@ -134,10 +135,14 @@ public sealed partial class WorldEngine
     /// <param name="id">聚落的稳定 ID。</param>
     public string? SettlementExpansionError(int id)
     {
-        if (!_settlements.TryGetValue(id, out var town)) return "聚落已不存在";
-        if (town.FoundationPending) return "先完成建村登记";
-        if (town.Tier == SettlementTier.City) return "已完成城级扩充";
-        if (town.IsExpanding) return "已有城镇扩充工程";
+        if (!_settlements.TryGetValue(id, out var town))
+            return "聚落已不存在";
+        if (town.FoundationPending)
+            return "先完成建村登记";
+        if (town.Tier == SettlementTier.City)
+            return "已完成城级扩充";
+        if (town.IsExpanding)
+            return "已有城镇扩充工程";
         if (town.Population < ExpansionPopulation(town.Tier))
             return $"人口 {town.Population} / {ExpansionPopulation(town.Tier)}";
         var area = GetSettlementArea(id);
@@ -146,7 +151,8 @@ public sealed partial class WorldEngine
         var center =
             State.Society.Buildings.FirstOrDefault(b => b.SettlementId == id && b.Kind == BuildingKind.TownCenter);
         if (center is null || !center.IsCompleted || center.IsUpgrading || center.Health < 50
-            || State.Tiles[Index(town.X, town.Y)].FireTicks > 0) return "需要可工作的城镇中心组织扩充";
+            || State.Tiles[Index(town.X, town.Y)].FireTicks > 0)
+            return "需要可工作的城镇中心组织扩充";
         return MissingResources(town.Resources, SettlementExpansionCost(town.Tier));
     }
 
@@ -154,7 +160,8 @@ public sealed partial class WorldEngine
     /// <param name="id">聚落的稳定 ID。</param>
     public void ExpandTown(int id)
     {
-        if (SettlementExpansionError(id) is { } error) throw new InvalidOperationException(error);
+        if (SettlementExpansionError(id) is { } error)
+            throw new InvalidOperationException(error);
         var town = RequireTown(id);
         Spend(town.Resources, SettlementExpansionCost(town.Tier));
         town.ExpansionProgress = 0;
@@ -165,12 +172,15 @@ public sealed partial class WorldEngine
 
     private bool WorkOnTownExpansion(Settlement town, double effort)
     {
-        if (!town.IsExpanding) return false;
+        if (!town.IsExpanding)
+            return false;
         // 领地不足时暂停晋升完工，保留已经支付的材料和施工进度，避免重复收费。
-        if (GetSettlementArea(town.Id) < GetSettlementExpansionArea(town.Id)) return false;
+        if (GetSettlementArea(town.Id) < GetSettlementExpansionArea(town.Id))
+            return false;
         town.ExpansionProgress = Math.Min(town.ExpansionRequired,
             town.ExpansionProgress + effort * State.Rules.DevelopmentRate);
-        if (town.ExpansionProgress < town.ExpansionRequired) return true;
+        if (town.ExpansionProgress < town.ExpansionRequired)
+            return true;
         town.Tier++;
         town.ExpansionProgress = town.ExpansionRequired = 0;
         RefreshSettlementName(town);
@@ -195,7 +205,8 @@ public sealed partial class WorldEngine
                         + (area < GetSettlementExpansionArea(id) ? "\n领地不足，扩充暂停" : "");
         }
 
-        if (town.Tier == SettlementTier.City) return text;
+        if (town.Tier == SettlementTier.City)
+            return text;
         return
             text + $"\n升{SettlementTierName(town.Tier + 1)}要求：人口 {town.Population}/{ExpansionPopulation(town.Tier)}\n"
                  + "扩充材料：" + ResourceStock.Format(SettlementExpansionCost(town.Tier)) + "\n" +

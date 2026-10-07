@@ -92,20 +92,29 @@ public sealed partial class WorldEngine
     public string GetBuildingDetailStatus(int id)
     {
         var b = State.Society.Buildings.FirstOrDefault(building => building.Id == id);
-        if (b is null) return "建筑已被移除";
+        if (b is null)
+            return "建筑已被移除";
         var tile = State.Tiles[Index(b.X, b.Y)];
         if (b.Kind is BuildingKind.MountainPass or BuildingKind.Bridge
             && tile.Improvement ==
             (b.Kind == BuildingKind.Bridge ? LandImprovement.Bridge : LandImprovement.MountainPass))
             return b.IsUpgrading ? "施工期间保留原通道，完工后更新通行效果" : "";
-        if (!BuildingGroundOwned(b)) return "暂停：所在地已脱离城镇占领区域，重新连接领地后可恢复运营";
-        if (!b.IsCompleted) return $"施工进度 {b.ConstructionProgress:0.#} / {b.ConstructionRequired:0}，等待居民到场施工";
-        if (b.Health < 50) return "暂停：生命低于 50，修复至至少 50 后恢复功能";
-        if (!b.Enabled) return "已停用；点击“恢复运营”重新启用";
-        if (b.IsUpgrading) return "升级施工中，暂停原有功能";
-        if (tile.FireTicks > 0) return $"暂停：所在地着火，剩余 {tile.FireTicks} 日；可安排居民灭火";
-        if (!BuildingTerrainValid(b.Kind, tile)) return "暂停：地形已改变，不再适合此设施；请恢复原地形或换址建设";
-        if (b.Kind == BuildingKind.Well && WellWaterYield(tile) <= 0) return "暂停：当地供水不足，水井无法出水";
+        if (!BuildingGroundOwned(b))
+            return "暂停：所在地已脱离城镇占领区域，重新连接领地后可恢复运营";
+        if (!b.IsCompleted)
+            return $"施工进度 {b.ConstructionProgress:0.#} / {b.ConstructionRequired:0}，等待居民到场施工";
+        if (b.Health < 50)
+            return "暂停：生命低于 50，修复至至少 50 后恢复功能";
+        if (!b.Enabled)
+            return "已停用；点击“恢复运营”重新启用";
+        if (b.IsUpgrading)
+            return "升级施工中，暂停原有功能";
+        if (tile.FireTicks > 0)
+            return $"暂停：所在地着火，剩余 {tile.FireTicks} 日；可安排居民灭火";
+        if (!BuildingTerrainValid(b.Kind, tile))
+            return "暂停：地形已改变，不再适合此设施；请恢复原地形或换址建设";
+        if (b.Kind == BuildingKind.Well && WellWaterYield(tile) <= 0)
+            return "暂停：当地供水不足，水井无法出水";
         var town = RequireTown(b.SettlementId);
         if (!CanBuildRacialFacility(town.Id, b.Kind))
             return $"暂停：本聚落没有存活的成年{RaceNames[(int)BuildingRace(b.Kind)!.Value]}";
@@ -113,8 +122,10 @@ public sealed partial class WorldEngine
         {
             var missingKnowledge = recipe.Research.Prerequisites.Append(recipe.Research).Distinct()
                 .Where(k => !HasResearch(town.Id, k)).Select(research => research.Name).ToArray();
-            if (missingKnowledge.Length > 0) return "缺少本地研究：" + string.Join("、", missingKnowledge);
-            if (ProductionYield(b, recipe) <= 0) return "无法产粮：土地肥力为 0";
+            if (missingKnowledge.Length > 0)
+                return "缺少本地研究：" + string.Join("、", missingKnowledge);
+            if (ProductionYield(b, recipe) <= 0)
+                return "无法产粮：土地肥力为 0";
             var missing = MissingResources(town.Resources, recipe.Input);
             return $"累计加工 {b.ProductionBatches} 批" + (missing is null ? "" : "\n仓库原料：" + missing + "；已携带原料的工人仍可加工");
         }
@@ -123,11 +134,14 @@ public sealed partial class WorldEngine
         {
             var missing = new[] { Advancement.Electrification, Advancement.SignalNetwork }
                 .Where(k => !HasResearch(town.Id, k)).Select(research => research.Name).ToArray();
-            if (missing.Length > 0) return "缺少本地研究：" + string.Join("、", missing);
+            if (missing.Length > 0)
+                return "缺少本地研究：" + string.Join("、", missing);
         }
 
-        if (IsHusbandry(b.Kind)) return GetProductionStatus(b.Id);
-        if (b.Kind >= BuildingKind.Reservoir) return ExpansionFacilityStatus(b);
+        if (IsHusbandry(b.Kind))
+            return GetProductionStatus(b.Id);
+        if (b.Kind >= BuildingKind.Reservoir)
+            return ExpansionFacilityStatus(b);
         if (b.Kind == BuildingKind.Academy)
         {
             var research = State.Society.Research.First(r => r.SettlementId == town.Id);
@@ -138,21 +152,28 @@ public sealed partial class WorldEngine
 
         if (b.Kind == BuildingKind.TownCenter)
             return town.IsExpanding ? $"城镇扩充进度 {town.ExpansionProgress:0.#} / {town.ExpansionRequired:0}" : "";
-        if (PassiveFacility(b)) return "";
+        if (PassiveFacility(b))
+            return "";
         if (b.Kind is BuildingKind.ArcaneSanctum or BuildingKind.SacredGrove && !State.Society.MagicEnabled)
             return "暂停训练：世界规则已关闭新的魔法发展";
-        if (b.Kind == BuildingKind.SacredGrove && !IsForestTerrain(tile.Terrain)) return "暂停训练：圣林须位于森林、疏林或雨林";
-        if (b.Kind == BuildingKind.Well && AvailableWater(b.X, b.Y) <= 0) return "今日供水已用完，次日恢复额度";
-        if (b.Kind == BuildingKind.LumberCamp && FindWorkshopResource(b, Profession.Lumberjack) < 0) return "附近木材已采尽";
+        if (b.Kind == BuildingKind.SacredGrove && !IsForestTerrain(tile.Terrain))
+            return "暂停训练：圣林须位于森林、疏林或雨林";
+        if (b.Kind == BuildingKind.Well && AvailableWater(b.X, b.Y) <= 0)
+            return "今日供水已用完，次日恢复额度";
+        if (b.Kind == BuildingKind.LumberCamp && FindWorkshopResource(b, Profession.Lumberjack) < 0)
+            return "附近木材已采尽";
         if (b.Kind == BuildingKind.Workshop && FindWorkshopResource(b, Profession.Lumberjack) < 0 &&
-            FindWorkshopResource(b, Profession.Miner) < 0) return "邻格没有可采木材、石材或矿石";
+            FindWorkshopResource(b, Profession.Miner) < 0)
+            return "邻格没有可采木材、石材或矿石";
         if (b.Kind is BuildingKind.Quarry or BuildingKind.MiningHall && FindWorkshopResource(b, Profession.Miner) < 0)
             return "附近石材与矿石已采尽";
-        if (b.Kind == BuildingKind.HuntingCamp && !WildlifeSiteProductive(tile, false)) return "本格猎物稀少，等待种群恢复或另寻猎场";
+        if (b.Kind == BuildingKind.HuntingCamp && !WildlifeSiteProductive(tile, false))
+            return "本格猎物稀少，等待种群恢复或另寻猎场";
         if (b.Kind is BuildingKind.Infirmary or BuildingKind.HerbGarden && FindLocalWorkPatient(b, true) is null)
             return "3 格内没有需要治疗的同聚落居民";
         if (b.Kind is BuildingKind.Waystation or BuildingKind.SignalTower or BuildingKind.Dock or BuildingKind.Market &&
-            town.Resources.Food < .01) return $"值守缺粮：仓库粮食 {town.Resources.Food:0.###}，每次需要 0.01";
+            town.Resources.Food < .01)
+            return $"值守缺粮：仓库粮食 {town.Resources.Food:0.###}，每次需要 0.01";
         if (b.Kind == BuildingKind.ArcaneSanctum && town.Resources.Food < .03)
             return $"训练缺粮：仓库粮食 {town.Resources.Food:0.###}，每次需要 0.03";
         if (b.Kind == BuildingKind.Infirmary && town.Resources.Food < .05)
@@ -167,7 +188,8 @@ public sealed partial class WorldEngine
     {
         var building = State.Society.Buildings.FirstOrDefault(b => b.Id == id) ??
                        throw new ArgumentException("建筑已不存在。");
-        if (building.Kind == BuildingKind.TownCenter) throw new InvalidOperationException("城镇中心是公共家园，不能停用。");
+        if (building.Kind == BuildingKind.TownCenter)
+            throw new InvalidOperationException("城镇中心是公共家园，不能停用。");
         building.Enabled = enabled;
         building.Workers.Clear();
         AddEvent(WorldEventKind.Editor, $"玩家{(enabled ? "启用" : "停用")}{BuildingName(building.Kind)}。", building.X,
@@ -197,7 +219,8 @@ public sealed partial class WorldEngine
     public string GetResidentTaskSummary(int id)
     {
         var person = GetResident(id);
-        if (person is null || person.Health <= 0) return "已离世，保留生平记录";
+        if (person is null || person.Health <= 0)
+            return "已离世，保留生平记录";
         var goal = person.Agent.Goal;
         var building = goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic
             ? FindBuilding(goal.TargetEntityId)
@@ -207,8 +230,10 @@ public sealed partial class WorldEngine
         if (building is not null)
         {
             var name = BuildingName(building.Kind);
-            if (!building.IsCompleted) return "建造" + name;
-            if (building.IsUpgrading) return building.PendingDirection.HasValue ? "改造桥梁方向" : "升级" + name;
+            if (!building.IsCompleted)
+                return "建造" + name;
+            if (building.IsUpgrading)
+                return building.PendingDirection.HasValue ? "改造桥梁方向" : "升级" + name;
             if (building.Kind == BuildingKind.TownCenter)
                 return "在城镇中心扩充为" + (home is null ? "下一等级" : SettlementTierName(home.Tier + 1));
             if (ProductionRules.For(building.Kind) is { } recipe)
@@ -271,7 +296,8 @@ public sealed partial class WorldEngine
     public string GetResidentActionSummary(int id)
     {
         var person = GetResident(id);
-        if (person is null || person.Health <= 0) return "已离世，保留生平记录";
+        if (person is null || person.Health <= 0)
+            return "已离世，保留生平记录";
         var goal = person.Agent.Goal;
         var task = GetResidentTaskSummary(id);
         var taskHeader = $"当前任务：{task}\n";
