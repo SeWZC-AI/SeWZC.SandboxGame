@@ -95,10 +95,11 @@ public sealed partial class WorldEngine
     {
         if (!InBounds(x, y))
             return 0;
-        var tile = Current.Tiles[Index(x, y)];
+        var index = Index(x, y);
+        var tile = Current.Tiles[index].Value;
         if (tile.FireTicks > 0)
             return 0;
-        var supply = GetWaterSupply(x, y);
+        var supply = IsWaterTerrain(tile.Terrain) ? DailyWaterYield(tile) : WaterSupplyAt(index, tile).Supply;
         return Math.Max(0, supply - (tile.WaterDrawTick == Current.Tick ? tile.WaterDrawn : 0));
     }
 
@@ -128,16 +129,32 @@ public sealed partial class WorldEngine
     {
         if (!InBounds(x, y))
             return 0;
-        var tile = Current.Tiles[Index(x, y)];
+        var index = Index(x, y);
+        var tile = Current.Tiles[index].Value;
         if (tile.FireTicks > 0)
             return 0;
+        return IsWaterTerrain(tile.Terrain) ? DailyWaterYield(tile) : WaterSupplyAt(index, tile).Supply;
+    }
+
+    // 已知地格只查询一次供水和水井状态；调用方处理边界和火场。
+    private (double Supply, bool Reliable) WaterSupplyAt(int index, Tile tile)
+    {
         var natural = DailyWaterYield(tile);
-        if (IsWaterTerrain(tile.Terrain))
-            return natural;
+        if (IsFreshWater(tile)) return (natural, true);
         var well = _localWorkQueriesActive
-            ? _localWaterWells.GetValueOrDefault(Index(x, y))
-            : Current.Society.Buildings.FirstOrDefault(b => b.Kind == BuildingKind.Well && b.X == x && b.Y == y);
-        return natural + (well is not null && IsBuildingOperational(well) ? WellWaterYield(tile) : 0);
+            ? _localWaterWells.GetValueOrDefault(index)
+            : FindWaterWell(index);
+        var operating = well is not null && IsBuildingOperational(well);
+        return (IsWaterTerrain(tile.Terrain) ? natural : natural + (operating ? WellWaterYield(tile) : 0), operating);
+    }
+
+    private BuildingCursor? FindWaterWell(int index)
+    {
+        var x = index % Current.Width;
+        var y = index / Current.Width;
+        foreach (var building in Current.Society.Buildings)
+            if (building.Kind == BuildingKind.Well && building.X == x && building.Y == y) return building;
+        return null;
     }
 
     private double DrawWater(ResidentCursor person, int source, double wanted)
@@ -150,25 +167,31 @@ public sealed partial class WorldEngine
     // 日常补水可直接作为需求转换的输入；装瓶取水才另行更新背包。
     private double WithdrawWater(Resident person, int source, double wanted)
     {
-        if (source < 0 || source >= Current.Tiles.Count || Current.Tick - person.MoveStartedTick < person.MoveDurationTicks
-            || Distance(person.X, person.Y, source % Current.Width, source / Current.Width) >
-            (IsFreshWater(Current.Tiles[source]) ? 1 : 0))
+        if ((uint)source >= (uint)Current.Tiles.Count
+            || Current.Tick - person.MoveStartedTick < person.MoveDurationTicks)
             return 0;
         var tile = Current.Tiles[source];
-        var amount = Math.Min(Math.Max(0, wanted), AvailableWater(source % Current.Width, source / Current.Width));
+        var before = tile.Value;
+        var fresh = IsFreshWater(before);
+        if (Distance(person.X, person.Y, source % Current.Width, source / Current.Width) > (fresh ? 1 : 0)
+            || before.FireTicks > 0) return 0;
+        var supply = IsWaterTerrain(before.Terrain) ? DailyWaterYield(before) : WaterSupplyAt(source, before).Supply;
+        var drawn = before.WaterDrawTick == Current.Tick ? before.WaterDrawn : 0;
+        var available = Math.Max(0, supply - drawn);
+        var amount = Math.Min(Math.Max(0, wanted), available);
         amount = Math.Min(amount, 1_000_000 - person.Inventory.Water);
         if (amount <= 0) return 0;
-        if (!IsFreshWater(tile))
+        // 取水额度和采集记录属于同一次现场操作，合并为一个不可变地格更新。
+        if (!fresh || amount > .05)
         {
-            tile.Replace(tile.Value with
+            tile.Replace(before with
             {
-                WaterDrawTick = Current.Tick,
-                WaterDrawn = (tile.WaterDrawTick == Current.Tick ? tile.WaterDrawn : 0) + amount,
+                WaterDrawTick = fresh ? before.WaterDrawTick : Current.Tick,
+                WaterDrawn = fresh ? before.WaterDrawn : drawn + amount,
+                LastHarvestTick = amount > .05 ? Current.Tick : before.LastHarvestTick,
+                Harvested = amount > .05 ? Math.Min(1_000_000_000, before.Harvested + amount) : before.Harvested,
             });
         }
-
-        if (amount > .05)
-            RecordHarvest(tile, amount);
         return amount;
     }
 
@@ -188,9 +211,17 @@ public sealed partial class WorldEngine
             var fullDay = available >= required;
             if (sufficient && !fullDay) return;
             var distance = Distance(person.X, person.Y, bank % Current.Width, bank / Current.Width);
-            var familiar = person.Agent.Memory.Any(fact => fact.Kind == AgentFactKind.WaterSource
-                && fact.SubjectId == source + 1 && fact.OriginResidentId == person.Id
-                && fact.ReliabilityAt(Current.Tick) >= .5);
+            var bankUpperScore = urgent ? -distance + Math.Min(1, available / required) * .01
+                : Math.Min(1, available) * (reliable ? 2 : 1) * 1.1 / (1 + distance * .4);
+            if (fullDay == sufficient && bankUpperScore <= bestScore) return;
+            var familiar = false;
+            foreach (var fact in person.Agent.Value.Memory)
+                if (fact.Kind == AgentFactKind.WaterSource && fact.SubjectId == source + 1
+                    && fact.OriginResidentId == person.Id && fact.ReliabilityAt(Current.Tick) >= .5)
+                {
+                    familiar = true;
+                    break;
+                }
             // 严重缺水优先缩短到岸时间；日常取水重视足够装瓶的供水及亲眼确认过的可靠来源。
             var score = urgent ? -distance + Math.Min(1, available / required) * .01
                 : Math.Min(1, available) * (reliable ? 2 : 1) * (familiar ? 1.1 : 1) / (1 + distance * .4);
@@ -204,37 +235,39 @@ public sealed partial class WorldEngine
 
         void Consider(int source)
         {
-            if (source < 0 || source >= Current.Tiles.Count || !IsWaterSource(Current.Tiles[source]) ||
-                Current.Tiles[source].FireTicks > 0)
+            if (source < 0 || source >= Current.Tiles.Count)
                 return;
-            var x = source % Current.Width;
-            var y = source / Current.Width;
-            var available = AvailableWater(x, y);
+            var tile = Current.Tiles[source].Value;
+            if (!IsWaterSource(tile) || tile.FireTicks > 0) return;
+            var water = WaterSupplyAt(source, tile);
+            var available = Math.Max(0, water.Supply - (tile.WaterDrawTick == Current.Tick ? tile.WaterDrawn : 0));
             if (available <= 0)
                 return;
-            var well = _localWorkQueriesActive ? _localWaterWells.GetValueOrDefault(source)
-                : Current.Society.Buildings.FirstOrDefault(building => building.Kind == BuildingKind.Well
-                    && building.X == x && building.Y == y);
-            var reliable = IsFreshWater(Current.Tiles[source]) || well is not null && IsBuildingOperational(well);
-            if (RaceTerrainRules.CanWalk(Current.Tiles[source], person.Race))
+            if (RaceTerrainRules.CanWalk(tile, person.Race))
             {
-                ConsiderBank(source, source, available, reliable);
+                ConsiderBank(source, source, available, water.Reliable);
                 return;
             }
 
+            var x = source % Current.Width;
+            var y = source / Current.Width;
             foreach (var (dx, dy) in Directions)
             {
                 var xx = x + dx;
                 var yy = y + dy;
                 if (!Walkable(xx, yy, person.Race) || Current.Tiles[Index(xx, yy)].FireTicks > 0)
                     continue;
-                ConsiderBank(Index(xx, yy), source, available, reliable);
+                ConsiderBank(Index(xx, yy), source, available, water.Reliable);
             }
         }
 
         foreach (var offset in VisibleResourceOffsets)
         {
             if (offset.Distance > 6) break;
+            // 后续水源的岸边至多近一格；最高供水和熟悉加成也不能超过此评分上界。
+            var nearestBank = Math.Max(0, offset.Distance - 1);
+            var upperScore = urgent ? -nearestBank + .01 : 2.2 / (1 + nearestBank * .4);
+            if (sufficient && upperScore <= bestScore) break;
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
             if (InBounds(x, y))
@@ -244,8 +277,13 @@ public sealed partial class WorldEngine
         // 远方已知水源可引导探索，但当日补水须使用当前可见且可达的岸边。
         if (bestSource >= 0 && Distance(person.X, person.Y, bestSource % Current.Width, bestSource / Current.Width) <= 6)
         {
-            var existing = person.Agent.Memory.FirstOrDefault(f =>
-                f.Kind == AgentFactKind.WaterSource && f.SubjectId == bestSource + 1);
+            AgentFact? existing = null;
+            foreach (var fact in person.Agent.Value.Memory)
+                if (fact.Kind == AgentFactKind.WaterSource && fact.SubjectId == bestSource + 1)
+                {
+                    existing = fact;
+                    break;
+                }
             if (existing is null || Current.Tick - existing.ObservedTick >= 120)
             {
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.WaterSource, bestSource + 1,

@@ -1,12 +1,37 @@
+using System.Collections.Immutable;
+
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>种族的地形适应规则。</summary>
 public static class RaceTerrainRules
 {
+    private static readonly int TerrainCount = Enum.GetValues<TerrainType>().Length;
+    private static readonly int RaceCount = Enum.GetValues<RaceKind>().Length;
+    private static readonly ImmutableArray<TerrainAdaptation> Adaptations = CreateAdaptations();
+    private static readonly TerrainAdaptation DefaultAdaptation = new(false, 1.25, .75);
+
     /// <summary>查询种族对指定地形的适应参数。</summary>
     /// <param name="race">居民种族。</param>
     /// <param name="terrain">地形类别。</param>
-    public static TerrainAdaptation For(RaceKind race, TerrainType terrain)
+    public static ref readonly TerrainAdaptation For(RaceKind race, TerrainType terrain)
+    {
+        var terrainIndex = (int)terrain;
+        if ((uint)terrainIndex >= (uint)TerrainCount) return ref DefaultAdaptation;
+        var raceIndex = (int)race;
+        if ((uint)raceIndex >= (uint)RaceCount) raceIndex = (int)RaceKind.Human;
+        return ref Adaptations.ItemRef(raceIndex * TerrainCount + terrainIndex);
+    }
+
+    private static ImmutableArray<TerrainAdaptation> CreateAdaptations()
+    {
+        var values = ImmutableArray.CreateBuilder<TerrainAdaptation>(RaceCount * TerrainCount);
+        foreach (var race in Enum.GetValues<RaceKind>())
+        foreach (var terrain in Enum.GetValues<TerrainType>())
+            values.Add(CreateAdaptation(race, terrain));
+        return values.MoveToImmutable();
+    }
+
+    private static TerrainAdaptation CreateAdaptation(RaceKind race, TerrainType terrain)
     {
         var common = terrain is TerrainType.Grass or TerrainType.Meadow or TerrainType.Woodland
             or TerrainType.Floodplain;

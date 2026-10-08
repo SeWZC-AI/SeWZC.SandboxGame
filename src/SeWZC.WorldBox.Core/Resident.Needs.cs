@@ -8,8 +8,9 @@ public sealed partial record Resident
             DeathCause, DeathTick, Activity, Mana));
 
     private Resident AdvanceNeeds(WorldRules rules, long tick, VitalState vitals, double socialGrowth = .07,
-        double deliveredWater = 0)
+        double deliveredWater = 0, AgentState? arrivedAgent = null)
     {
+        var beforeAgent = arrivedAgent ?? Agent;
         var food = Inventory.Food;
         var water = Inventory.Water + deliveredWater;
         var thirst = Thirst;
@@ -17,7 +18,7 @@ public sealed partial record Resident
         var health = vitals.Health;
         var deathCause = vitals.DeathCause;
         var deathTick = vitals.DeathTick;
-        var socialNeed = Math.Min(100, Agent.SocialNeed + socialGrowth);
+        var socialNeed = Math.Min(100, beforeAgent.SocialNeed + socialGrowth);
 
         void Damage(double amount, DeathCause cause)
         {
@@ -56,9 +57,9 @@ public sealed partial record Resident
         if (food == Inventory.Food && water == Inventory.Water && thirst == Thirst && hunger == Hunger && health == Health &&
             deathCause == DeathCause && deathTick == DeathTick && socialNeed == Agent.SocialNeed && vitals.Age == Age && vitals.Profession == Profession
             && vitals.Sickness == SicknessTicks && vitals.Immunity == DiseaseImmuneUntilTick
-            && vitals.Activity == Activity && vitals.Mana == Mana && !crisis)
+            && vitals.Activity == Activity && vitals.Mana == Mana && !crisis && ReferenceEquals(beforeAgent, Agent))
             return this;
-        var agent = socialNeed == Agent.SocialNeed ? Agent : Agent with { SocialNeed = socialNeed };
+        var agent = socialNeed == beforeAgent.SocialNeed ? beforeAgent : beforeAgent with { SocialNeed = socialNeed };
         if (crisis) agent = agent with { Goal = agent.Goal with { ReviewTick = tick }, NextThinkTick = tick };
         return this with
         {

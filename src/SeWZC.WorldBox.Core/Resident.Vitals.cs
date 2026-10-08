@@ -11,11 +11,13 @@ public sealed partial record Resident
     }
 
     internal Resident AdvanceDay(WorldRules rules, Tile tile, long tick, Profession profession, int infectionDuration,
-        double manaRecovery, bool consumeNeeds, double socialGrowth = .07, double deliveredWater = 0)
+        double manaRecovery, bool consumeNeeds, double socialGrowth = .07, double deliveredWater = 0,
+        int arrivedTile = -1)
     {
         var vitals = CalculateVitals(rules, tile, tick, profession, infectionDuration, manaRecovery);
-        var next = consumeNeeds && vitals.Health > 0 ? AdvanceNeeds(rules, tick, vitals, socialGrowth, deliveredWater)
-            : ApplyVitals(vitals, vitals.Health > 0 ? socialGrowth : 0, deliveredWater);
+        var arrivedAgent = arrivedTile >= 0 ? Agent.RememberRouteTile(arrivedTile) : Agent;
+        var next = consumeNeeds && vitals.Health > 0 ? AdvanceNeeds(rules, tick, vitals, socialGrowth, deliveredWater, arrivedAgent)
+            : ApplyVitals(vitals, vitals.Health > 0 ? socialGrowth : 0, deliveredWater, arrivedAgent);
         if (consumeNeeds && vitals.Health > 0 && !Agent.Goal.PlayerDirected
             && (SicknessTicks == 0 && vitals.Sickness > 0 || Health >= 40 && vitals.Health < 40))
             next = next with { Agent = next.Agent with
@@ -65,11 +67,14 @@ public sealed partial record Resident
         return new(age, profession, health, sickness, immunity, deathCause, deathTick, activity, mana);
     }
 
-    private Resident ApplyVitals(VitalState vitals, double socialGrowth = 0, double deliveredWater = 0)
+    private Resident ApplyVitals(VitalState vitals, double socialGrowth = 0, double deliveredWater = 0,
+        AgentState? arrivedAgent = null)
     {
-        var socialNeed = Math.Min(100, Agent.SocialNeed + socialGrowth);
+        var agent = arrivedAgent ?? Agent;
+        var socialNeed = Math.Min(100, agent.SocialNeed + socialGrowth);
         if (vitals == new VitalState(Age, Profession, Health, SicknessTicks, DiseaseImmuneUntilTick,
-                DeathCause, DeathTick, Activity, Mana) && socialNeed == Agent.SocialNeed && deliveredWater == 0) return this;
+                DeathCause, DeathTick, Activity, Mana) && socialNeed == Agent.SocialNeed && deliveredWater == 0
+            && ReferenceEquals(agent, Agent)) return this;
         return this with
         {
             Age = vitals.Age, Profession = vitals.Profession, Health = vitals.Health,
@@ -77,7 +82,7 @@ public sealed partial record Resident
             DeathCause = vitals.DeathCause, DeathTick = vitals.DeathTick,
             Activity = vitals.Activity, Mana = vitals.Mana,
             Inventory = deliveredWater > 0 ? Inventory with { Water = Inventory.Water + deliveredWater } : Inventory,
-            Agent = socialNeed == Agent.SocialNeed ? Agent : Agent with { SocialNeed = socialNeed },
+            Agent = socialNeed == agent.SocialNeed ? agent : agent with { SocialNeed = socialNeed },
         };
     }
 

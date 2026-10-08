@@ -118,7 +118,7 @@ public sealed class ImmutableVector<T> : IReadOnlyList<T> where T : class
 
     private object?[] MergeLeafChange()
     {
-        var leaf = _changedLeaf!.AsSpan().ToArray();
+        var leaf = CopyNode(_changedLeaf!);
         leaf[_changedIndex & Mask] = _changedValue;
         return leaf;
     }
@@ -128,7 +128,7 @@ public sealed class ImmutableVector<T> : IReadOnlyList<T> where T : class
     private static object?[] SetLeaf(object?[] previous, int shift, int index, object?[] leaf)
     {
         if (shift == 0) return leaf;
-        var node = previous.AsSpan().ToArray();
+        var node = CopyNode(previous);
         var slot = (index >> shift) & Mask;
         node[slot] = SetLeaf((object?[])node[slot]!, shift - Bits, index, leaf);
         return node;
@@ -136,7 +136,7 @@ public sealed class ImmutableVector<T> : IReadOnlyList<T> where T : class
 
     private static object?[] Set(object?[]? previous, int shift, int index, T value)
     {
-        var node = previous is null ? new object?[Width] : previous.AsSpan().ToArray();
+        var node = previous is null ? new object?[Width] : CopyNode(previous);
         var slot = (index >> shift) & Mask;
         if (shift == 0) node[slot] = value;
         else node[slot] = Set((object?[]?)node[slot], shift - Bits, index, value);
@@ -161,11 +161,15 @@ public sealed class ImmutableVector<T> : IReadOnlyList<T> where T : class
             var value = shift == 0 ? transform((T)previous[slot]!)
                 : (object)MapNode((object?[])previous[slot]!, shift - Bits, Math.Min(block, count - slot * block), transform);
             if (ReferenceEquals(previous[slot], value)) continue;
-            changed ??= previous.AsSpan().ToArray();
+            changed ??= CopyNode(previous);
             changed[slot] = value;
         }
         return changed ?? previous;
     }
+
+    // 节点固定为八项，直接复制引用，避免短数组复制进入通用批量写屏障路径。
+    private static object?[] CopyNode(object?[] previous) =>
+        [previous[0], previous[1], previous[2], previous[3], previous[4], previous[5], previous[6], previous[7]];
 
     /// <summary>返回在末尾添加对象后的序列。</summary>
     /// <param name="value">要添加的不可变对象。</param>

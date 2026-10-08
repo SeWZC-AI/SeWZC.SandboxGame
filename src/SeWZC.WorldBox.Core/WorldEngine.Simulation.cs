@@ -93,7 +93,9 @@ public sealed partial class WorldEngine
                 && person.Inventory.Water < waterUse
                 ? WithdrawWater(person, Index(person.X, person.Y), waterUse - person.Inventory.Water) : 0;
             return person.AdvanceDay(Current.Rules, tile, Current.Tick, profession, infectionDuration, manaRecovery,
-                person.ArmyId == 0 && hasHome, hasHome && (Current.Tick + person.Id) % 4 == 0 ? .28 : 0, water);
+                person.ArmyId == 0 && hasHome, hasHome && (Current.Tick + person.Id) % 4 == 0 ? .28 : 0, water,
+                hasHome && person.ArmyId == 0 && person.Health > 0
+                    && Current.Tick - person.MoveStartedTick == person.MoveDurationTicks ? Index(person.X, person.Y) : -1);
         });
 
         ArchiveDeadResidents();

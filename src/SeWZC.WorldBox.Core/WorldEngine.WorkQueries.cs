@@ -23,11 +23,11 @@ public sealed partial class WorldEngine
 
     private BuildingCursor? FindBuilding(int id)
     {
-        return id == 0
-            ? null
-            : _localWorkQueriesActive
-                ? _workBuildingsById.GetValueOrDefault(id)
-                : Current.Society.Buildings.FirstOrDefault(b => b.Id == id);
+        if (id == 0) return null;
+        if (_localWorkQueriesActive) return _workBuildingsById.GetValueOrDefault(id);
+        foreach (var building in Current.Society.Buildings)
+            if (building.Id == id) return building;
+        return null;
     }
 
     private static int ReservedWork(in AgentGoal goal)
