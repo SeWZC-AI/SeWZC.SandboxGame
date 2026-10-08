@@ -27,6 +27,9 @@ public sealed partial record Tile
         private readonly double[] _populations;
         internal readonly int ActiveMask;
 
+        /// <summary>接管种群紧凑数组；调用后不再写入该数组。</summary>
+        /// <param name="mask">非正零种群的物种位掩码，不包含 None。</param>
+        /// <param name="populations">按掩码内物种编号升序排列的数量，长度等于置位数。</param>
         private WildlifeStorage(uint mask, double[] populations)
         {
             _mask = mask;

@@ -5,6 +5,113 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>依据本地需求、身体条件和真实工作地点调整分工。</summary>
 public sealed class WorkforceTests
 {
+    /// <summary>儿童病患也产生医师需求，能够保留现有医师或从临时劳工中补招。</summary>
+    /// <param name="initialProfession">健康候选人的初始职业。</param>
+    [Theory]
+    [InlineData(Profession.Physician)]
+    [InlineData(Profession.Laborer)]
+    public void A_sick_child_keeps_or_creates_a_local_physician_job(Profession initialProfession)
+    {
+        var fixture = Prepare();
+        var people = fixture.Engine.Current.Residents.Where(person => person.Id != fixture.ResidentId).ToArray();
+        var patient = people[0];
+        patient.Replace(patient.Value with { Age = 10, Profession = Profession.Child, Health = 70, SicknessTicks = 20 });
+        var physician = people[1];
+        physician.Profession = initialProfession;
+        GrantResearch(fixture, Advancement.Sanitation);
+        var ground = fixture.Engine.Current.Tiles[16 * 32 + 17];
+        ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Id, NationId = fixture.Town.NationId });
+        var hospitalId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Hospital, 17, 16);
+        fixture.Engine.Current.Tick = 150;
+
+        fixture.Engine.TickSociety();
+
+        Assert.Equal(Profession.Physician, physician.Profession);
+        Assert.Equal(hospitalId, physician.Agent.WorkplaceId);
+        Assert.Single(fixture.Engine.State.Residents, person => person.Profession == Profession.Physician);
+        Assert.Equal(Profession.Child, patient.Profession);
+    }
+
+    /// <summary>人类能够在天然山地邻格开采矿石，石材充足不能抵消矿石缺口。</summary>
+    [Fact]
+    public void A_mountain_edge_provides_mining_jobs_when_only_ore_is_missing()
+    {
+        var fixture = Prepare();
+        foreach (var tile in fixture.Engine.Current.Tiles)
+            tile.Replace(tile.Value with { ResourceAmount = 0, Deposit = null, DepositAmount = 0 });
+        fixture.Town.Resources = fixture.Town.Resources with { Stone = 100, Ore = 0 };
+        var mountainIndex = 16 * 32 + 17;
+        var mountain = fixture.Engine.Current.Tiles[mountainIndex];
+        mountain.Replace(mountain.Value with { Terrain = TerrainType.Mountain, ResourceAmount = 100 });
+        fixture.Engine.Current.Tick = 150;
+
+        fixture.Engine.TickSociety();
+
+        var miners = fixture.Engine.State.Residents.Where(person => person.Profession == Profession.Miner).ToArray();
+        Assert.NotEmpty(miners);
+        Assert.All(miners, person =>
+        {
+            Assert.NotEqual(mountainIndex, person.Agent.WorkAreaIndex);
+            Assert.Equal(1, Math.Abs(person.Agent.WorkAreaIndex % 32 - 17)
+                + Math.Abs(person.Agent.WorkAreaIndex / 32 - 16));
+        });
+        Assert.Equal(100, mountain.ResourceAmount);
+    }
+
+    /// <summary>矮人已有的天然山地工作点可继续使用，不因普通种族的通行限制被撤销。</summary>
+    [Fact]
+    public void A_dwarf_keeps_a_work_area_on_a_natural_mountain()
+    {
+        var fixture = Prepare();
+        foreach (var tile in fixture.Engine.Current.Tiles)
+            tile.Replace(tile.Value with { ResourceAmount = 0, Deposit = null, DepositAmount = 0 });
+        fixture.Town.Resources = fixture.Town.Resources with { Stone = 0, Ore = 0 };
+        var mountainIndex = 16 * 32 + 17;
+        var mountain = fixture.Engine.Current.Tiles[mountainIndex];
+        mountain.Replace(mountain.Value with { Terrain = TerrainType.Mountain, ResourceAmount = 100 });
+        var miner = fixture.Engine.Current.Residents.First(person => person.Id != fixture.ResidentId);
+        miner.Replace(miner.Value with { Race = RaceKind.Dwarf, Profession = Profession.Miner });
+        miner.Agent.WorkAreaIndex = mountainIndex;
+        fixture.Engine.Current.Tick = 150;
+
+        fixture.Engine.TickSociety();
+
+        Assert.Equal(Profession.Miner, miner.Profession);
+        Assert.Equal(mountainIndex, miner.Agent.WorkAreaIndex);
+    }
+
+    /// <summary>已解锁且已发现的阶段矿藏短缺仍需要矿工，安排岗位本身不能发现未知矿藏。</summary>
+    /// <param name="kind">待补充的阶段矿藏资源。</param>
+    /// <param name="discovered">本地是否已发现该矿藏。</param>
+    [Theory]
+    [InlineData(ResourceKind.Coal, true)]
+    [InlineData(ResourceKind.Oil, true)]
+    [InlineData(ResourceKind.RareEarth, true)]
+    [InlineData(ResourceKind.Coal, false)]
+    public void Known_deposit_demand_is_not_hidden_by_full_stone_and_ore(ResourceKind kind, bool discovered)
+    {
+        var fixture = Prepare();
+        foreach (var tile in fixture.Engine.Current.Tiles)
+            tile.Replace(tile.Value with { ResourceAmount = 0, Deposit = null, DepositAmount = 0 });
+        var deposit = fixture.Engine.Current.Tiles[16 * 32 + 17];
+        deposit.Replace(deposit.Value with { Deposit = kind, DepositAmount = 100, DepositDiscovered = discovered });
+        GrantResearch(fixture, WorldEngine.DepositResearch(kind)!);
+        fixture.Town.Resources = fixture.Town.Resources with { Stone = 10_000, Ore = 10_000, Coal = 16, Oil = 16, RareEarth = 16 };
+        fixture.Town.Resources = fixture.Town.Resources.WithAmount(kind, 0);
+        var miner = fixture.Engine.Current.Residents.First(person => person.Id != fixture.ResidentId);
+        miner.Profession = Profession.Miner;
+        miner.Agent.WorkAreaIndex = 16 * 32 + 17;
+        fixture.Engine.Current.Tick = 150;
+
+        fixture.Engine.TickSociety();
+
+        Assert.Equal(discovered ? Profession.Miner : Profession.Laborer, miner.Profession);
+        Assert.Equal(discovered ? 16 * 32 + 17 : -1, miner.Agent.WorkAreaIndex);
+        Assert.Equal(discovered, deposit.DepositDiscovered);
+        Assert.Equal(100, deposit.DepositAmount);
+        Assert.Equal(0, miner.Inventory.Get(kind));
+    }
+
     /// <summary>容量减少后，多余的本地专业工人可以等待换岗，但不能共同保留同一个容量不足的固定岗位。</summary>
     [Fact]
     public void Reduced_workplace_capacity_releases_excess_assignments_even_during_a_career_cooldown()
@@ -162,6 +269,13 @@ public sealed class WorkforceTests
         fixture.Engine.TickSociety();
 
         Assert.Equal(workplace, suitable.Agent.WorkplaceId);
+    }
+
+    private static void GrantResearch(WorldFixture fixture, Advancement research)
+    {
+        foreach (var prerequisite in research.Prerequisites)
+            GrantResearch(fixture, prerequisite);
+        fixture.Engine.GrantReceivedResearch(fixture.Town.Id, research);
     }
 
     private static WorldFixture Prepare()

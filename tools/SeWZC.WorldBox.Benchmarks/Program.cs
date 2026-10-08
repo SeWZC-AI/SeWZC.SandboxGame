@@ -178,7 +178,7 @@ foreach (var scenario in cases)
         var saved = engine.ExportJson();
         var observed = Convert.ToHexString(SHA256.HashData(CanonicalState(saved)));
         if (options.Contains("--save-final"))
-            File.WriteAllText(args[0] + "." + repetition + ".final.json", saved);
+            File.WriteAllText(args[0] + "." + scenario.Name + "." + repetition + ".final.json", saved);
         if (checksum is not null && checksum != observed)
             throw new InvalidOperationException("相同初态的重复模拟产生了不同结果。");
         checksum = observed;
@@ -204,7 +204,7 @@ foreach (var scenario in cases)
         TieredPGO = Environment.GetEnvironmentVariable("DOTNET_TieredPGO"),
         ServerGarbageCollection = System.Runtime.GCSettings.IsServerGC,
         GcLatencyMode = System.Runtime.GCSettings.LatencyMode.ToString(),
-        CpuClock = "Linux CLOCK_PROCESS_CPUTIME_ID", AllocationScope = "All managed threads",
+        CpuClock = OperatingSystem.IsLinux() ? "Linux CLOCK_PROCESS_CPUTIME_ID" : null, AllocationScope = "All managed threads",
         MeanMsPerDay = times.Average(), TimesMsPerDay = times, DailyTimesMs = dailyTimes,
         DailyMeasurements = dailySamples, AnnualResults = annualResults,
         P95MsPerDay = Percentile(dailyTimes.SelectMany(days => days), .95),

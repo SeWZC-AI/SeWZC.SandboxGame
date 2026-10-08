@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace SeWZC.WorldBox.Core.Runtime;
 
-/// <summary>Settlement 的引擎内定位引用；每次写入提交新的不可变状态。</summary>
+/// <summary>Settlement 的引擎内定位引用；连续仓库补给在阶段结束或读取快照时合并提交。</summary>
 internal sealed partial class SettlementCursor : StateCursor<global::SeWZC.WorldBox.Core.Settlement>
 {
     public SettlementCursor() : this(new()) { }

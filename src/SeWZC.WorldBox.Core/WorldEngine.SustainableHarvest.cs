@@ -6,7 +6,7 @@ public sealed partial class WorldEngine
     // 恢复按十六日累计，各行错峰；固定更新格数会令大地图上的同一片土地恢复得更慢。
     private void RegenerateNaturalResources()
     {
-        if (!Current.Rules.ResourceRegeneration) return;
+        if (!Current.Rules.ResourceRegeneration || Current.Tick == 0) return;
         const int interval = 16;
         var band = (int)((Current.Tick - 1) % interval);
         var first = band * Current.Height / interval * Current.Width;

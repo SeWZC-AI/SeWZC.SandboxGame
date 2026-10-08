@@ -1633,7 +1633,7 @@ public sealed partial class WorldEngine
             var needed = job switch
             {
                 Profession.Lumberjack => (int)Math.Ceiling(Math.Max(0, 60 - town.Resources.Wood) / 12),
-                Profession.Miner => (int)Math.Ceiling(Math.Max(0, 80 - town.Resources.Stone - town.Resources.Ore) / 12),
+                Profession.Miner => (int)Math.Ceiling(LocalMineralDeficit(town) / 12),
                 Profession.Farmer => (int)Math.Ceiling(Math.Max(0, town.Population * .4 - town.Resources.Food) / 3),
                 Profession.Builder => Math.Max(SettlementNeedsClaimArea(town) ? 1 : 0,
                     buildings.Where(b => !b.IsCompleted || b.IsUpgrading || b.Health < 50).Sum(b => b.WorkSlots)),

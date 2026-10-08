@@ -30,11 +30,11 @@ public sealed partial class WorldEngine
             {
                 if (person.Health <= 0) continue;
                 dailyFood += FoodUse(person);
+                if (Distance(person.X, person.Y, town.X, town.Y) <= 6
+                    && (person.Health < 90 || person.SicknessTicks > 0)) patients++;
                 if (person.Age < 16 || person.ArmyId != 0) continue;
                 adults.Add(person);
                 counts[(int)person.Profession]++;
-                if (Distance(person.X, person.Y, town.X, town.Y) <= 6
-                    && (person.Health < 90 || person.SicknessTicks > 0)) patients++;
             }
             if (adults.Count == 0) continue;
             var fieldYield = 0d;
@@ -44,18 +44,20 @@ public sealed partial class WorldEngine
             var fishingSites = 0;
             var fishingYield = 0d;
             var plots = new List<NaturalWorkPlot>();
+            var mountainWorkers = adults.Any(person => person.Race == RaceKind.Dwarf);
             foreach (var index in Circle(town.X, town.Y, 6))
             {
                 var tile = Current.Tiles[index];
                 var yield = tile.PlantSiteYield(false);
-                if (NaturalWorkPlotAvailable(tile, Profession.Farmer))
+                if (NaturalWorkPlotAvailable(index, Profession.Farmer, town))
                 {
                     fieldYield += .7 * yield; fields++;
                     plots.Add(new(index, Profession.Farmer));
                 }
-                if (NaturalWorkPlotAvailable(tile, Profession.Lumberjack))
+                if (NaturalWorkPlotAvailable(index, Profession.Lumberjack, town))
                 { timber++; plots.Add(new(index, Profession.Lumberjack)); }
-                if (NaturalWorkPlotAvailable(tile, Profession.Miner))
+                if (NaturalWorkPlotAvailable(index, Profession.Miner, town)
+                    && (tile.IsWalkable || mountainWorkers))
                 { stone++; plots.Add(new(index, Profession.Miner)); }
                 if (IsFreshWater(tile) && EdibleAnimal(tile, true) is var fish && fish != WildlifeKind.None
                     && WildlifeHarvestEfficiency(tile, fish) >= .25)
@@ -74,7 +76,7 @@ public sealed partial class WorldEngine
             targets[(int)Profession.Lumberjack] = Math.Min(timber,
                 (int)Math.Ceiling(Math.Max(0, 60 - town.Resources.Wood) / 12));
             targets[(int)Profession.Miner] = Math.Min(stone,
-                (int)Math.Ceiling(Math.Max(0, 80 - town.Resources.Stone - town.Resources.Ore) / 12));
+                (int)Math.Ceiling(LocalMineralDeficit(town) / 12));
             targets[(int)Profession.Representative] = town.RepresentativeId == 0 ? 0 : 1;
             if (Current.Rules.Expansion && SettlementNeedsClaimArea(town))
                 targets[(int)Profession.Builder] = Math.Max(1, (GetSettlementExpansionArea(town.Id)

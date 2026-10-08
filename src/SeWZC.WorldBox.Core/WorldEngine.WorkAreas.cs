@@ -8,17 +8,45 @@ public sealed partial class WorldEngine
     /// <param name="Profession">可在此从事的专业劳动。</param>
     private readonly record struct NaturalWorkPlot(int Index, Profession Profession);
 
-    private static bool NaturalWorkPlotAvailable(TileCursor tile, Profession profession)
+    private bool NaturalWorkPlotAvailable(int index, Profession profession, SettlementCursor town)
     {
-        if (!tile.IsWalkable || tile.FireTicks > 0) return false;
+        var tile = Current.Tiles[index];
+        if (tile.FireTicks > 0) return false;
+        // 矮人可进入天然山地，其他种族也可站在邻格采矿；岗位须与实际开采规则一致。
+        if (profession == Profession.Miner)
+            return (tile.IsWalkable || tile.Terrain == TerrainType.Mountain)
+                && (ResourceSiteYield(index, profession) >= .5 || KnownDepositWorkAvailable(index, town));
+        if (!tile.IsWalkable) return false;
         return profession switch
         {
             Profession.Farmer => tile.PlantHarvestEfficiency(false) >= .25 && .7 * tile.PlantSiteYield(false) >= .04,
             Profession.Lumberjack => tile.PlantHarvestEfficiency(true) >= .25 && tile.PlantSiteYield(true) > 0,
-            Profession.Miner => tile.ResourceAmount > 0
-                && TerrainRules.For(tile.Terrain).StoneYield + TerrainRules.For(tile.Terrain).OreYield >= .5,
             _ => false,
         };
+    }
+
+    private bool KnownDepositWorkAvailable(int index, SettlementCursor town)
+    {
+        foreach (var nearby in Circle(index % Current.Width, index / Current.Width, 1))
+        {
+            var tile = Current.Tiles[nearby];
+            if (Distance(nearby % Current.Width, nearby / Current.Width, town.X, town.Y) > 6
+                || !tile.DepositDiscovered || tile.DepositAmount <= 0 || tile.FireTicks > 0
+                || tile.Deposit is not { } kind || town.Resources.Get(kind) >= 16
+                || DepositResearch(kind) is not { } research || !HasResearch(town.Id, research)) continue;
+            return true;
+        }
+        return false;
+    }
+
+    private double LocalMineralDeficit(SettlementCursor town)
+    {
+        var reserve = LocalDevelopmentReserve(town);
+        return Math.Max(0, Math.Max(80, reserve.Stone) - town.Resources.Stone)
+            + Math.Max(0, Math.Max(80, reserve.Ore) - town.Resources.Ore)
+            + (HasResearch(town.Id, Advancement.Industry) ? Math.Max(0, 16 - town.Resources.Coal) : 0)
+            + (HasResearch(town.Id, Advancement.Electrification) ? Math.Max(0, 16 - town.Resources.Oil) : 0)
+            + (HasResearch(town.Id, Advancement.AdvancedComputing) ? Math.Max(0, 16 - town.Resources.RareEarth) : 0);
     }
 
     private void AssignNaturalWorkAreas(SettlementCursor town, List<ResidentCursor> adults, List<NaturalWorkPlot> plots)
@@ -39,7 +67,8 @@ public sealed partial class WorldEngine
             var previous = person.Agent.WorkAreaIndex;
             var previousPlot = new NaturalWorkPlot(previous, person.Profession);
             if (person.Agent.WorkplaceId == 0 && plots.Contains(previousPlot)
-                && occupied.GetValueOrDefault(previousPlot) == 1) continue;
+                && occupied.GetValueOrDefault(previousPlot) == 1
+                && RaceTerrainRules.CanWalk(Current.Tiles[previous], person.Race)) continue;
             if (previous >= 0) occupied[previousPlot]--;
             var selected = -1;
             var bestDistance = int.MaxValue;
