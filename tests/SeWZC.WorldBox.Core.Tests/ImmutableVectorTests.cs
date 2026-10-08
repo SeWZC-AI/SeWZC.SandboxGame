@@ -7,6 +7,52 @@ public sealed class ImmutableVectorTests
 {
     private sealed record Item(int Id);
 
+    /// <summary>局部可变更新读取原序列的差异，跨分支冻结后不能改写任何已返回的版本。</summary>
+    [Theory]
+    [InlineData(9)]
+    [InlineData(65)]
+    [InlineData(513)]
+    public void Builder_freezes_independent_versions_across_branch_boundaries(int count)
+    {
+        var before = ImmutableVector<Item>.CreateRange(Enumerable.Range(0, count).Select(id => new Item(id)))
+            .SetItem(0, new Item(-1));
+        var builder = new ImmutableVector<Item>.Builder(before);
+        Assert.Same(before, builder.Freeze());
+
+        builder.SetItem(1, new Item(-2));
+        builder.SetItem(count - 1, new Item(-3));
+        var first = builder.Freeze();
+        builder.SetItem(0, new Item(-4));
+        builder.SetItem(count - 1, new Item(-5));
+        var second = builder.Freeze();
+
+        Assert.Equal(-1, before[0].Id);
+        Assert.Equal(1, before[1].Id);
+        Assert.Equal(count - 1, before[count - 1].Id);
+        Assert.Equal(-1, first[0].Id);
+        Assert.Equal(-2, first[1].Id);
+        Assert.Equal(-3, first[count - 1].Id);
+        Assert.Equal(-4, second[0].Id);
+        Assert.Equal(-5, second[count - 1].Id);
+        Assert.Same(before[2], second[2]);
+        Assert.Same(second, builder.Freeze());
+    }
+
+    /// <summary>无效的批量写入不污染已保留的有效更新。</summary>
+    [Fact]
+    public void Builder_rejects_invalid_indices_without_losing_valid_updates()
+    {
+        ImmutableVector<Item> before = [new(1)];
+        var builder = new ImmutableVector<Item>.Builder(before);
+        builder.SetItem(0, new Item(2));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => builder.SetItem(-1, new Item(3)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => builder.SetItem(1, new Item(3)));
+
+        Assert.Equal(1, before[0].Id);
+        Assert.Equal(2, builder.Freeze()[0].Id);
+    }
+
     /// <summary>整批转换读取尚未合并的差异，并保留输入和未改变的对象。</summary>
     [Theory]
     [InlineData(9)]

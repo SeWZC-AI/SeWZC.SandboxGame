@@ -9,14 +9,17 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor> wher
     private readonly List<TCursor> _items = [];
     private readonly Action<ImmutableVector<T>> _publish;
     private readonly Func<T, TCursor> _create;
-    public ImmutableVector<T> Snapshot { get; private set; }
+    private ImmutableVector<T> _snapshot;
+    private ImmutableVector<T>.Builder? _updates;
+    private int _updateDepth;
+    public ImmutableVector<T> Snapshot { get { FlushUpdates(); return _snapshot; } }
     public int Count => _items.Count;
     public int Length => Count;
     internal long MembershipRevision { get; private set; }
 
     public EntityListCursor(ImmutableVector<T> snapshot, Action<ImmutableVector<T>> publish, Func<T, TCursor> create)
     {
-        Snapshot = snapshot;
+        _snapshot = snapshot;
         _publish = publish;
         _create = create;
         foreach (var value in snapshot)
@@ -31,10 +34,35 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor> wher
 
     private void Bind(TCursor cursor) => cursor.Bind(value =>
     {
-        if (ReferenceEquals(cursor.Collection, this))
-            Commit(Snapshot.SetItem(cursor.Position, value));
+        if (!ReferenceEquals(cursor.Collection, this)) return;
+        if (_updateDepth > 0)
+            (_updates ??= new(_snapshot)).SetItem(cursor.Position, value);
+        else
+            Commit(_snapshot.SetItem(cursor.Position, value));
     });
-    private void Commit(ImmutableVector<T> snapshot) { Snapshot = snapshot; _publish(snapshot); }
+    private void Commit(ImmutableVector<T> snapshot) { _snapshot = snapshot; _publish(snapshot); }
+
+    internal UpdateScope BeginUpdates()
+    {
+        _updateDepth++;
+        return new(this);
+    }
+
+    internal void FlushUpdates()
+    {
+        if (_updates is null) return;
+        var snapshot = _updates.Freeze();
+        _updates = null;
+        Commit(snapshot);
+    }
+
+    internal readonly struct UpdateScope(EntityListCursor<T, TCursor> owner) : IDisposable
+    {
+        public void Dispose()
+        {
+            if (--owner._updateDepth == 0) owner.FlushUpdates();
+        }
+    }
     internal void Transform(Func<T, T> transform)
     {
         var next = Snapshot.Map(transform);

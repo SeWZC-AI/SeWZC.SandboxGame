@@ -6,7 +6,7 @@ namespace SeWZC.WorldBox.Core;
 /// <summary>按索引保存不可变对象的持久化序列；相邻项更新共享上层树，保留当前叶分支的差异。</summary>
 /// <typeparam name="T">不可变对象类型。</typeparam>
 [CollectionBuilder(typeof(ImmutableVectorBuilder), nameof(ImmutableVectorBuilder.Create))]
-public sealed class ImmutableVector<T> : IReadOnlyList<T> where T : class
+public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : class
 {
     private const int Bits = 3;
     private const int Width = 1 << Bits;

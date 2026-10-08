@@ -17,6 +17,9 @@ public sealed partial class WorldEngine
             throw new ArgumentOutOfRangeException(nameof(steps));
         for (var step = 0; step < steps; step++)
         {
+            using var tileUpdates = Current.Tiles.BeginUpdates();
+            using var residentUpdates = Current.Residents.BeginUpdates();
+            using var settlementUpdates = Current.Settlements.BeginUpdates();
             Current.Tick++;
             Reindex();
             BeginKnowledgeQueries();

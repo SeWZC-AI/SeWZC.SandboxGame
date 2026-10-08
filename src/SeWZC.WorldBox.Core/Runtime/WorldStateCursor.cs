@@ -7,7 +7,17 @@ internal sealed partial class WorldStateCursor : StateCursor<global::SeWZC.World
 {
     public WorldStateCursor() : this(new() { Width = 0, Height = 0, Tiles = [] }) { }
     public WorldStateCursor(global::SeWZC.WorldBox.Core.WorldState value) : base(value) { }
-    public static implicit operator global::SeWZC.WorldBox.Core.WorldState(WorldStateCursor cursor) => cursor.Value;
+    internal global::SeWZC.WorldBox.Core.WorldState Snapshot
+    {
+        get
+        {
+            _Tiles?.FlushUpdates();
+            _Residents?.FlushUpdates();
+            _Settlements?.FlushUpdates();
+            return Value;
+        }
+    }
+    public static implicit operator global::SeWZC.WorldBox.Core.WorldState(WorldStateCursor cursor) => cursor.Snapshot;
     public static implicit operator WorldStateCursor(global::SeWZC.WorldBox.Core.WorldState value) => new(value);
     public int FormatVersion { get => Value.FormatVersion; set { if (!EqualityComparer<int>.Default.Equals(Value.FormatVersion, value)) ReplaceChanged(Value with { FormatVersion = value }); } }
     public int Seed { get => Value.Seed; set { if (!EqualityComparer<int>.Default.Equals(Value.Seed, value)) ReplaceChanged(Value with { Seed = value }); } }
