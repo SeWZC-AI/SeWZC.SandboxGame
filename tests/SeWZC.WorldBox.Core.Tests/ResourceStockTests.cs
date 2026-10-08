@@ -3,7 +3,7 @@ using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.Core.Tests;
 
-/// <summary>可变库存的读取、修改和副本隔离检查。</summary>
+/// <summary>不可变库存的读取、修改和副本隔离检查。</summary>
 public sealed class ResourceStockTests
 {
     /// <summary>每种资源使用不同金额，检测字段映射错误。</summary>
@@ -110,6 +110,64 @@ public sealed class ResourceStockTests
     public void Empty_stock_serializes_as_an_empty_object()
     {
         Assert.Equal("{}", JsonSerializer.Serialize(new ResourceStock()));
+    }
+
+    /// <summary>平铺存档恢复后的库存仍按所有资源金额比较及散列。</summary>
+    [Fact]
+    public void Saved_stock_preserves_flat_fields_and_value_equality()
+    {
+        var original = Stock();
+        var json = JsonSerializer.Serialize(original);
+        using var document = JsonDocument.Parse(json);
+        Assert.Equal(ResourceStock.Kinds.Count, document.RootElement.EnumerateObject().Count());
+
+        var restored = JsonSerializer.Deserialize<ResourceStock>(json);
+
+        Assert.Equal(original, restored);
+        Assert.Equal(original.GetHashCode(), restored.GetHashCode());
+        foreach (var kind in ResourceStock.Kinds)
+            Assert.Equal(original.Get(kind), restored.Get(kind));
+    }
+
+    /// <summary>清空资源后与缺省库存相等，保留的旧库存不受影响。</summary>
+    [Fact]
+    public void Clearing_resources_restores_empty_value_equality()
+    {
+        var original = Stock();
+        var emptied = original;
+        foreach (var kind in ResourceStock.Kinds)
+            emptied = emptied.WithAmount(kind, 0);
+
+        Assert.Equal(default, emptied);
+        Assert.Equal(default(ResourceStock).GetHashCode(), emptied.GetHashCode());
+        Assert.Equal("{}", JsonSerializer.Serialize(emptied));
+        Assert.Equal(Stock(), original);
+    }
+
+    /// <summary>负零金额保留位模式，同时遵守浮点值相等及散列约定。</summary>
+    [Fact]
+    public void Signed_zero_keeps_its_bits_and_numeric_equality()
+    {
+        var stock = new ResourceStock { Ore = -0d };
+
+        Assert.Equal(long.MinValue, BitConverter.DoubleToInt64Bits(stock.Ore));
+        Assert.Equal(long.MinValue, BitConverter.DoubleToInt64Bits(stock.Clamp(10).Ore));
+        Assert.Equal(default, stock);
+        Assert.Equal(default(ResourceStock).GetHashCode(), stock.GetHashCode());
+    }
+
+    /// <summary>限制全部资源数量产生独立库存，粮水和其他资源使用相同边界。</summary>
+    [Fact]
+    public void Clamp_limits_all_resources_and_preserves_original()
+    {
+        var original = Stock() with { Wood = -1 };
+
+        var clamped = original.Clamp(8);
+
+        foreach (var kind in ResourceStock.Kinds)
+            Assert.Equal(Math.Clamp(original.Get(kind), 0, 8), clamped.Get(kind));
+        Assert.Equal(-1, original.Wood);
+        Assert.Equal(16, original.Ammunition);
     }
 
     /// <summary>同时缩放各类资源，原库存保留所有原值。</summary>
