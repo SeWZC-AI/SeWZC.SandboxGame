@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using Avalonia;
@@ -49,6 +50,7 @@ public sealed partial class WorldMapControl : Control
     private readonly Dictionary<IPointer, Point> _touches = [];
 
     private readonly List<Resident> _visibleResidents = [];
+    private readonly RecentActivityCounter _renderedFrames = new();
     private readonly MapResidentIndex _residentIndex = new();
     private readonly HashSet<(int X, int Y)> _residentMarkers = [];
     private ImmutableVector<Resident>? _visibleResidentSnapshot;
@@ -112,6 +114,7 @@ public sealed partial class WorldMapControl : Control
             DisposeChunks();
             ResetMotion();
             _settlementLabels.Clear();
+            _renderedFrames.Clear();
             _engine = value;
             _selection = null;
             _cameraReady = false;
@@ -415,7 +418,10 @@ public sealed partial class WorldMapControl : Control
         }
 
         RequestMotionFrame();
+        _renderedFrames.Record(Stopwatch.GetTimestamp());
     }
+
+    internal int GetRecentFrameCount(long timestamp) => _renderedFrames.Count(timestamp);
 
     private bool Visible(Rect world)
     {

@@ -338,6 +338,17 @@ public sealed partial class MainView
         panel.Children.Add(Named(Button("聚落列表", () => OpenInspector("settlements")), "overview-settlements"));
         panel.Children.Add(Named(Button("科技与魔法研究", () => OpenInspector("research")), "overview-research"));
         panel.Children.Add(Named(Button("消息与通信", () => OpenInspector("communication")), "overview-communication"));
+        var performance = Named(new CheckBox
+        {
+            Content = "显示 FPS 和模拟速度",
+            IsChecked = _performancePanel.IsVisible,
+        }, "map-performance-stats");
+        performance.IsCheckedChanged += (_, _) =>
+        {
+            _performancePanel.IsVisible = performance.IsChecked == true;
+            RefreshPerformanceStats();
+        };
+        panel.Children.Add(performance);
         var borders = Named(new CheckBox { Content = "显示国界", IsChecked = _map.ShowBorders }, "map-borders");
         borders.IsCheckedChanged += (_, _) =>
         {
