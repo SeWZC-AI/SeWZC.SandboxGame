@@ -167,9 +167,13 @@ public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : clas
         return changed ?? previous;
     }
 
-    // 节点固定为八项，直接复制引用，避免短数组复制进入通用批量写屏障路径。
-    private static object?[] CopyNode(object?[] previous) =>
-        [previous[0], previous[1], previous[2], previous[3], previous[4], previous[5], previous[6], previous[7]];
+    // 节点容量固定，批量复制引用；调用方在冻结前独占新节点。
+    private static object?[] CopyNode(object?[] previous)
+    {
+        var node = new object?[Width];
+        previous.AsSpan().CopyTo(node);
+        return node;
+    }
 
     /// <summary>返回在末尾添加对象后的序列。</summary>
     /// <param name="value">要添加的不可变对象。</param>

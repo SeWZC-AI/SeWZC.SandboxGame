@@ -35,7 +35,8 @@ public sealed partial class WorldEngine
         else if (HasResearch(home.Id, Advancement.Logistics) && home.Resources.Boats >= 1)
         {
             home.Resources = home.Resources with { Boats = home.Resources.Boats - 1 };
-            person.Replace(person.Value with { Inventory = person.Inventory with { Boats = person.Inventory.Boats + 1 }, TravelMode = TravelMode.Boat });
+            person.Inventory = person.Inventory with { Boats = person.Inventory.Boats + 1 };
+            person.TravelMode = TravelMode.Boat;
         }
     }
 

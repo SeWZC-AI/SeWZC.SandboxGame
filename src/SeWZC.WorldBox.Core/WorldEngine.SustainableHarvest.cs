@@ -3,6 +3,27 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    // 恢复按十六日累计，各行错峰；固定更新格数会令大地图上的同一片土地恢复得更慢。
+    private void RegenerateNaturalResources()
+    {
+        if (!Current.Rules.ResourceRegeneration) return;
+        const int interval = 16;
+        var band = (int)((Current.Tick - 1) % interval);
+        var first = band * Current.Height / interval * Current.Width;
+        var last = (band + 1) * Current.Height / interval * Current.Width;
+        for (var index = first; index < last; index++)
+        {
+            var tile = Current.Tiles[index];
+            var before = tile.Value;
+            if (!before.IsWalkable || before.FireTicks > 0) continue;
+            var capacity = NaturalResourceCapacity(before);
+            if (before.ResourceAmount >= capacity) continue;
+            ref readonly var yields = ref TerrainRules.For(before.Terrain);
+            var renewal = (yields.FoodYield + yields.WoodYield) * (before.DroughtTicks > 0 ? .2 : 1);
+            tile.ResourceAmount = Math.Min(capacity, before.ResourceAmount + renewal * 2 * interval);
+        }
+    }
+
     /// <summary>按陆地肥力计算自然资源恢复上限，水域地格返回零。</summary>
     /// <param name="tile">要评估资源容量的地格。</param>
     public static double NaturalResourceCapacity(Tile tile)
@@ -12,12 +33,8 @@ public sealed partial class WorldEngine
 
     private static double WildlifeHarvestEfficiency(TileCursor tile, WildlifeKind kind)
     {
-        if (kind == WildlifeKind.None)
-            return 0;
-        var capacity = tile.EnvironmentalCapacity(kind);
-        var density = Math.Min(1, tile.AnimalPopulation(kind) / Math.Max(.05, capacity));
         // 稀少的动物更难找到，降低采集效率能促使居民在种群耗尽前转向其他来源。
-        return density * density;
+        return tile.HarvestEfficiency(kind);
     }
 
     private static double WildlifeHarvestAmount(TileCursor tile, WildlifeKind kind, double effort)
@@ -33,10 +50,7 @@ public sealed partial class WorldEngine
 
     private static double NaturalPlantHarvestEfficiency(TileCursor tile, bool wood = false)
     {
-        if (tile.Improvement == LandImprovement.Farmland && !wood)
-            return 1;
-        var density = Math.Clamp(PlantStock(tile, wood) / 20, 0, 1);
-        return density * density;
+        return tile.PlantHarvestEfficiency(wood);
     }
 
     /// <summary>扣除可采集的植物生物量，保留未采集的物种，并返回实际采集量。</summary>

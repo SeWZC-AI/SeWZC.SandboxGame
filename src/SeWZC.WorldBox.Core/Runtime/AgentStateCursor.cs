@@ -41,6 +41,8 @@ internal sealed partial class AgentStateCursor : StateCursor<global::SeWZC.World
     public int ExplorationHeading { get => Value.ExplorationHeading; set { if (!EqualityComparer<int>.Default.Equals(Value.ExplorationHeading, value)) ReplaceChanged(Value with { ExplorationHeading = value }); } }
     public ResourceKind? MaterialPriority { get => Value.MaterialPriority; set { if (!EqualityComparer<ResourceKind?>.Default.Equals(Value.MaterialPriority, value)) ReplaceChanged(Value with { MaterialPriority = value }); } }
     public long JobChangedTick { get => Value.JobChangedTick; set { if (!EqualityComparer<long>.Default.Equals(Value.JobChangedTick, value)) ReplaceChanged(Value with { JobChangedTick = value }); } }
+    public int WorkplaceId { get => Value.WorkplaceId; set { if (Value.WorkplaceId != value) ReplaceChanged(Value with { WorkplaceId = value }); } }
+    public int WorkAreaIndex { get => Value.WorkAreaIndex; set { if (Value.WorkAreaIndex != value) ReplaceChanged(Value with { WorkAreaIndex = value }); } }
 
     protected override void OnReplace(in global::SeWZC.WorldBox.Core.AgentState before, in global::SeWZC.WorldBox.Core.AgentState after)
     {

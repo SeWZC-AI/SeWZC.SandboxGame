@@ -29,6 +29,7 @@ public sealed partial class WorldEngine
             Profession.Battlemage => "战斗法师",
             Profession.Surveyor => "测绘员",
             Profession.Gardener => "园艺师",
+            Profession.Laborer => "劳动者",
             _ => "未知职业",
         };
     }

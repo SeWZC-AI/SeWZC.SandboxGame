@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using System.Numerics;
 
 namespace SeWZC.WorldBox.Core;
 
@@ -17,20 +18,23 @@ public sealed partial record Tile
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public WildlifePopulations OtherWildlife
     {
-        get => _wildlife.Populations;
-        init => _wildlife = new WildlifeStorage(value);
+        get => _wildlife.ToPopulations();
+        init => _wildlife = WildlifeStorage.Create(value);
     }
 
     /// <summary>当前数量大于零的物种位掩码，位序对应物种编号。</summary>
     [JsonIgnore]
-    public int WildlifeMask => _wildlife.Populations.ActiveMask | (WildlifePopulation > 0 ? 1 << (int)Wildlife : 0);
+    public int WildlifeMask => _wildlife.ActiveMask | (WildlifePopulation > 0 ? 1 << (int)Wildlife : 0);
 
     internal WildlifeKind EdibleAnimal(bool aquatic)
     {
         var result = WildlifeKind.None;
         var largest = 0d;
-        foreach (var kind in AnimalRules.EdibleAnimals(aquatic))
+        var mask = WildlifeMask & AnimalRules.EdibleMask(aquatic);
+        while (mask != 0)
         {
+            var kind = (WildlifeKind)BitOperations.TrailingZeroCount((uint)mask);
+            mask &= mask - 1;
             var population = AnimalPopulation(kind);
             var biomass = population * AnimalRules.For(kind).BodyMass;
             if (population >= .05 && biomass > largest)
@@ -46,13 +50,13 @@ public sealed partial record Tile
     /// <param name="kind">动物物种。</param>
     public double AnimalPopulation(WildlifeKind kind)
     {
-        return kind == Wildlife ? WildlifePopulation : _wildlife.Populations.Get(kind);
+        return kind == Wildlife ? WildlifePopulation : _wildlife.Get(kind);
     }
 
     /// <summary>复制此格所有物种的数量。</summary>
     internal void CopyAnimalPopulations(Span<double> destination)
     {
-        _wildlife.Populations.CopyTo(destination);
+        _wildlife.CopyTo(destination);
         destination[(int)Wildlife] = WildlifePopulation;
     }
 
@@ -64,7 +68,7 @@ public sealed partial record Tile
         if (kind == Wildlife)
             return this with { WildlifePopulation = population };
         if (Wildlife == WildlifeKind.None && population > 0)
-            return this with { OtherWildlife = OtherWildlife.WithPopulation(kind, 0), Wildlife = kind, WildlifePopulation = population };
-        return this with { OtherWildlife = OtherWildlife.WithPopulation(kind, population) };
+            return this with { _wildlife = _wildlife.WithPopulation(kind, 0), Wildlife = kind, WildlifePopulation = population };
+        return this with { _wildlife = _wildlife.WithPopulation(kind, population) };
     }
 }

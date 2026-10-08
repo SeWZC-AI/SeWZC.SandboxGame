@@ -108,4 +108,18 @@ public sealed partial record AgentState
         get => _identity.JobChangedTick;
         init { if (!(_identity.JobChangedTick == value)) _identity = _identity with { JobChangedTick = value }; }
     }
+
+    /// <summary>在家园当面接受的固定工作设施 ID；零表示没有固定设施。</summary>
+    public int WorkplaceId
+    {
+        get => _identity.WorkplaceId;
+        init { if (_identity.WorkplaceId != value) _identity = _identity with { WorkplaceId = value }; }
+    }
+
+    /// <summary>在家园接受的自然劳动地块索引；负一表示没有固定采集范围。</summary>
+    public int WorkAreaIndex
+    {
+        get => _identity.WorkAreaIndex;
+        init { if (_identity.WorkAreaIndex != value) _identity = _identity with { WorkAreaIndex = value }; }
+    }
 }

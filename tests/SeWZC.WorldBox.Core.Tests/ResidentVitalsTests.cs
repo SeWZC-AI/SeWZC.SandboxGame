@@ -5,6 +5,51 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>居民基础生命状态的纯转换及伤害次序。</summary>
 public sealed class ResidentVitalsTests
 {
+    /// <summary>身体字段结果与不可变实体转换一致，并能与后续动作合并而保留旧快照。</summary>
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void Daily_field_results_combine_with_actions_before_freezing(bool fire, bool sick)
+    {
+        var fixture = new WorldFixture();
+        fixture.Resident.Replace(fixture.Resident.Value with
+        {
+            X = 16, Y = 16, Age = 25, Health = 60, Hunger = 85, Thirst = 96,
+            SicknessTicks = sick ? 1 : 0, Inventory = new ResourceStock { Food = .01, Water = .01 },
+        });
+        var original = fixture.Resident.Value;
+        var rules = fixture.Engine.State.Rules;
+        var tile = new Tile { FireTicks = fire ? 1 : 0 };
+        var fields = original.CalculateDay(rules, tile, 12, original.Profession, 0, .1, true);
+        var immutable = original.AdvanceDay(rules, tile, 12, original.Profession, 0, .1, true);
+        fixture.Resident.ApplyDay(fields);
+        Assert.Equal(immutable, fixture.Resident.Value);
+        fixture.Resident.X = 15;
+        fixture.Resident.Agent.Fatigue = 30;
+        Assert.Equal(immutable with { X = 15, Agent = immutable.Agent with { Fatigue = 30 } }, fixture.Engine.State.Residents[0]);
+        Assert.Equal(16, original.X);
+        Assert.NotEqual(30, original.Agent.Fatigue);
+    }
+    /// <summary>实际补给在一次日转换中消费，专业用品和死亡时未消费的补给仍保留。</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Home_supplies_are_merged_with_the_day_transition(bool lethalFire)
+    {
+        var before = new Resident { Age = 25, Health = lethalFire ? 1 : 100 };
+        var supplies = new ResourceStock { Food = 1, Water = 1, Medicine = 2 };
+
+        var after = before.AdvanceDay(new WorldRules(), new Tile { FireTicks = lethalFire ? 1 : 0 },
+            1, Profession.Farmer, 0, 0, true, suppliedInventory: supplies);
+
+        Assert.Equal(lethalFire ? 1 : .96, after.Inventory.Food, 10);
+        Assert.Equal(lethalFire ? 1 : .975, after.Inventory.Water, 10);
+        Assert.Equal(2, after.Inventory.Medicine);
+        Assert.Equal(0, before.Inventory.Food);
+        Assert.Equal(0, before.Inventory.Medicine);
+    }
+
     /// <summary>新发疫病及时请求自主复评，不等远期工作安排到期。</summary>
     [Fact]
     public void New_illness_requests_a_recovery_review()

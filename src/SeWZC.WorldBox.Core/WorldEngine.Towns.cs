@@ -12,7 +12,7 @@ public sealed partial class WorldEngine
     /// <summary>居民在本城镇独占区域外采集时的产量倍率。</summary>
     public const double OutsideTerritoryGatheringMultiplier = .5;
 
-    private readonly Dictionary<int, (long Claims, long Terrain, int X, int Y, int Nation, int Area)> _settlementAreas =
+    private readonly Dictionary<int, (long Claims, int X, int Y, int Nation, int Area)> _settlementAreas =
         [];
 
     /// <summary>建立新村需要实际运输和交付的初始物资。</summary>
@@ -70,8 +70,8 @@ public sealed partial class WorldEngine
         if (!_settlements.TryGetValue(id, out var town))
             return 0;
         _territoryCounts.Bind(Current.Tiles);
-        if (_settlementAreas.TryGetValue(id, out var cached) && cached.Claims == _territoryCounts.Revision
-                                                             && cached.Terrain == _territoryCounts.TraversalRevision &&
+        // 面积取决于归属与陆水转换；其他地方的起火及桥梁轴向变化不改变登记面积。
+        if (_settlementAreas.TryGetValue(id, out var cached) && cached.Claims == _territoryCounts.Revision &&
                                                              cached.X == town.X && cached.Y == town.Y &&
                                                              cached.Nation == town.NationId)
             return cached.Area;
@@ -84,7 +84,7 @@ public sealed partial class WorldEngine
                                                                               Current.Tiles[i].Terrain ==
                                                                               TerrainType.Mountain) &&
                                                                              !IsWaterTerrain(Current.Tiles[i].Terrain));
-        _settlementAreas[id] = (_territoryCounts.Revision, _territoryCounts.TraversalRevision, town.X, town.Y,
+        _settlementAreas[id] = (_territoryCounts.Revision, town.X, town.Y,
             town.NationId, area);
         return area;
     }

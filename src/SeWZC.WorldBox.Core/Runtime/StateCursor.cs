@@ -9,6 +9,8 @@ internal abstract class StateCursor<T>(T value)
     private T _value = value;
     public ref readonly T Value => ref _value;
 
+    internal virtual void FlushPending() { }
+
     public void Bind(Action<T> publish) => _publish = publish;
     internal void Synchronize(in T value)
     {
@@ -18,7 +20,7 @@ internal abstract class StateCursor<T>(T value)
     }
     protected virtual void OnReplace(in T before, in T after) { }
 
-    public void Replace(in T value)
+    public virtual void Replace(in T value)
     {
         if (typeof(T).IsValueType ? EqualityComparer<T>.Default.Equals(_value, value) : ReferenceEquals(_value, value)) return;
         ReplaceChanged(value);

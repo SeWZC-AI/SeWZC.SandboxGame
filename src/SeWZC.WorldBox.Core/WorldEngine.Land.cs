@@ -351,7 +351,8 @@ public sealed partial class WorldEngine
             tile.DepositAmount -= amount;
             person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + amount);
             RecordHarvest(tile, amount);
-            person.Replace(person.Value with { Activity = ResidentActivity.Working, Agent = person.Agent.Value with { Fatigue = Math.Min(100, person.Agent.Fatigue + .45 * WorkInterval(person)) } });
+            person.Activity = ResidentActivity.Working;
+            person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + .45 * WorkInterval(person));
             return amount > 0;
         }
 

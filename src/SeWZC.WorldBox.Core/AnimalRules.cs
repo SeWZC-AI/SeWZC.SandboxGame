@@ -71,6 +71,7 @@ public static class AnimalRules
 
     internal static readonly int HerbivoreMask = Species.Where(k => For(k).Diet == AnimalDiet.Herbivore)
         .Aggregate(0, (mask, k) => mask | (1 << (int)k));
+    private static readonly int EdibleWaterMask = EdibleWaterAnimals.Aggregate(0, (mask, kind) => mask | (1 << (int)kind));
 
     private static readonly int[] HabitatMasks = Enum.GetValues<TerrainType>()
         .Select(t => Species.Where(k => (For(k).Habitats & Habitat(t)) != 0)
@@ -114,6 +115,8 @@ public static class AnimalRules
     {
         return aquatic ? EdibleWaterAnimals : EdibleLandAnimals;
     }
+
+    internal static int EdibleMask(bool aquatic) => aquatic ? EdibleWaterMask : HerbivoreMask;
 
     internal static ReadOnlySpan<WildlifeKind> PreyFor(WildlifeKind predator)
     {

@@ -62,4 +62,7 @@ public enum Profession
 
     /// <summary>园艺师。</summary>
     Gardener,
+
+    /// <summary>尚无固定专业岗位，参与临时生产、搬运和建设的劳动者。</summary>
+    Laborer,
 }

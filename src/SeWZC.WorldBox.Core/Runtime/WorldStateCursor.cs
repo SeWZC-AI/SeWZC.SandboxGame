@@ -13,6 +13,7 @@ internal sealed partial class WorldStateCursor : StateCursor<global::SeWZC.World
         {
             _Tiles?.FlushUpdates();
             _Residents?.FlushUpdates();
+            _ArchivedResidents?.FlushUpdates();
             _Settlements?.FlushUpdates();
             FlushScalars();
             return Value;
@@ -72,7 +73,7 @@ internal sealed partial class WorldStateCursor : StateCursor<global::SeWZC.World
     public bool NaturalDisasters { get => Value.NaturalDisasters; set { if (!EqualityComparer<bool>.Default.Equals(Value.NaturalDisasters, value)) ReplaceChanged(Value with { NaturalDisasters = value }); } }
     public int Year => 1 + (int)(Tick / 120);
     public int Day => 1 + (int)(Tick % 120);
-    public int Population => Value.Population;
+    public int Population => Residents.Count;
     public WorldRules Rules { get => Value.Rules; set { if (!EqualityComparer<WorldRules>.Default.Equals(Value.Rules, value)) ReplaceChanged(Value with { Rules = value }); } }
     private EntityListCursor<global::SeWZC.WorldBox.Core.LocalConflict, LocalConflictCursor>? _Conflicts;
     public EntityListCursor<global::SeWZC.WorldBox.Core.LocalConflict, LocalConflictCursor> Conflicts

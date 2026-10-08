@@ -892,20 +892,22 @@ public sealed partial class WorldEngine
 
     private bool IsFacilityOperating(BuildingCursor building)
     {
-        return BuildingGroundOwned(building) && building.Enabled && building.IsCompleted && !building.IsUpgrading &&
-               building.Health >= 50 && BuildingTerrainValid(building.Kind, Current.Tiles[Index(building.X, building.Y)])
-               && Current.Tiles[Index(building.X, building.Y)].FireTicks == 0 && (PassiveFacility(building) ||
-                   building.Kind is BuildingKind.MountainPass or BuildingKind.Bridge or BuildingKind.TownCenter
-                       or BuildingKind.Well or BuildingKind.Waygate || (building.LastWorkedTick >= Current.Tick - 12
-                                                                        && Current.Residents.Any(r =>
-                                                                            building.Workers.Contains(r.Id) &&
-                                                                            r.SettlementId == building.SettlementId &&
-                                                                            r.Health > 0 &&
-                                                                            (BuildingRace(building.Kind) is not
-                                                                            { } race ||
-                                                                             (r.Race == race && r.Age >= 14)) &&
-                                                                            Distance(r.X, r.Y, building.X,
-                                                                                building.Y) <= 1)));
+        if (!BuildingGroundOwned(building) || !building.Enabled || !building.IsCompleted || building.IsUpgrading
+            || building.Health < 50 || !BuildingTerrainValid(building.Kind, Current.Tiles[Index(building.X, building.Y)])
+            || Current.Tiles[Index(building.X, building.Y)].FireTicks > 0)
+            return false;
+        if (PassiveFacility(building) || building.Kind is BuildingKind.MountainPass or BuildingKind.Bridge
+                or BuildingKind.TownCenter or BuildingKind.Well or BuildingKind.Waygate)
+            return true;
+        if (building.LastWorkedTick < Current.Tick - 12)
+            return false;
+        var race = BuildingRace(building.Kind);
+        foreach (var id in building.Workers)
+            if (FindLiveResident(id) is { } worker && worker.SettlementId == building.SettlementId
+                && worker.Health > 0 && (race is null || worker.Race == race && worker.Age >= 14)
+                && Distance(worker.X, worker.Y, building.X, building.Y) <= 1)
+                return true;
+        return false;
     }
 
     private bool ClearSignalLine(int x0, int y0, int x1, int y1)
@@ -1535,19 +1537,7 @@ public sealed partial class WorldEngine
                 TryAutomaticMagic(person);
         }
 
-        // 按模拟日序分摊资源恢复。
-        const int batch = 128;
-        for (var offset = 0; offset < Math.Min(batch, Current.Tiles.Count); offset++)
-        {
-            var tile = Current.Tiles[(int)((Current.Tick * batch + offset) % Current.Tiles.Count)];
-            if (!Current.Rules.ResourceRegeneration || !tile.IsWalkable || tile.FireTicks > 0)
-                continue;
-            var yields = TerrainRules.For(tile.Terrain);
-            var renewal = (yields.FoodYield + yields.WoodYield) * (tile.DroughtTicks > 0 ? 0.2 : 1);
-            var capacity = NaturalResourceCapacity(tile);
-            if (tile.ResourceAmount < capacity)
-                tile.ResourceAmount = Math.Min(capacity, tile.ResourceAmount + renewal * 2);
-        }
+        RegenerateNaturalResources();
         liveResidents.Clear();
     }
 
@@ -1640,23 +1630,31 @@ public sealed partial class WorldEngine
 
         void Recruit(Profession job)
         {
-            var needed = job == Profession.Miner ? Math.Clamp(local.Length / 12, 2, 6) : job == Profession.Mage ? 2 : 1;
+            var needed = job switch
+            {
+                Profession.Lumberjack => (int)Math.Ceiling(Math.Max(0, 60 - town.Resources.Wood) / 12),
+                Profession.Miner => (int)Math.Ceiling(Math.Max(0, 80 - town.Resources.Stone - town.Resources.Ore) / 12),
+                Profession.Farmer => (int)Math.Ceiling(Math.Max(0, town.Population * .4 - town.Resources.Food) / 3),
+                Profession.Builder => Math.Max(SettlementNeedsClaimArea(town) ? 1 : 0,
+                    buildings.Where(b => !b.IsCompleted || b.IsUpgrading || b.Health < 50).Sum(b => b.WorkSlots)),
+                _ => buildings.Where(b => WorkplaceProfession(b.Kind) == job && b.Enabled && b.IsCompleted && b.Health >= 50).Sum(b => b.WorkSlots),
+            };
+            needed = Math.Clamp(needed, 0, local.Length);
             if (local.Count(r => r.Profession == job) >= needed)
                 return;
             var recruit = local.Where(r =>
                     r.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner or Profession.Builder
-                        or Profession.Scholar
-                    && !r.Agent.Goal.PlayerDirected && Current.Tick - r.Agent.JobChangedTick >= 120
+                        or Profession.Scholar or Profession.Laborer
+                    && AvailableForLocalAssignment(r, town)
                     && r.Profession != job
-                    && (r.Profession == Profession.Farmer
+                    && (r.Profession == Profession.Laborer || (r.Profession == Profession.Farmer
                         ? local.Count(p => p.Profession == Profession.Farmer) >= 4
-                        : local.Count(p => p.Profession == r.Profession) >= 2)
-                    && (job != Profession.Mage || r.MagicTalent >= 35))
-                .OrderByDescending(r => r.Agent.Personality.Diligence).ThenBy(r => r.Id).FirstOrDefault();
+                        : local.Count(p => p.Profession == r.Profession) >= 2))
+                    && SuitableForProfession(r, job))
+                .OrderByDescending(r => ProfessionSuitability(r, job)).ThenBy(r => r.Id).FirstOrDefault();
             if (recruit is null)
                 return;
-            recruit.Replace(recruit.Value with { Profession = job, Agent = recruit.Agent.Value with { JobChangedTick = Current.Tick, NextThinkTick = Current.Tick } });
-            recruit.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Idle, TargetX = recruit.X, TargetY = recruit.Y };
+            ChangeLocalProfession(recruit, job);
             RecordLife(recruit, $"因家园发展需要，接受新的{ProfessionName(job)}岗位。");
             if (recruit.History.Count > 24)
                 recruit.History.RemoveAt(0);
