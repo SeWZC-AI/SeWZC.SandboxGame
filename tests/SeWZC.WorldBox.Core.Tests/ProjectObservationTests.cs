@@ -1,5 +1,3 @@
-using SeWZC.WorldBox.Core;
-
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>项目观测的不可变状态转换检查。</summary>
@@ -50,9 +48,11 @@ public sealed class ProjectObservationTests
     {
         var original = new ProjectObservation
         {
-            Samples = [
-                new() { Tick = 0 }, new() { Tick = 4 }, new() { Tick = 8 }, new() { Tick = 12 },
-                new() { Tick = 16 }, new() { Tick = 20 }, new() { Tick = 24 },
+            Samples =
+            [
+                new ProgressSample { Tick = 0 }, new ProgressSample { Tick = 4 }, new ProgressSample { Tick = 8 },
+                new ProgressSample { Tick = 12 },
+                new ProgressSample { Tick = 16 }, new ProgressSample { Tick = 20 }, new ProgressSample { Tick = 24 },
             ],
         };
 

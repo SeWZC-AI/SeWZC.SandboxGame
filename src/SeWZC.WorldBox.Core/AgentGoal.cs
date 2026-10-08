@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
@@ -18,7 +19,7 @@ public sealed record AgentGoal
     public ImmutableArray<int> NavigationVisited { get; init; } = [];
 
     /// <summary>依据当时六格视野规划的短路线，包含起点和至多六个后续地格。</summary>
-    [System.Text.Json.Serialization.JsonRequired]
+    [JsonRequired]
     public ImmutableArray<int> NavigationRoute { get; init; } = [];
 
     /// <summary>短路线中下次要走的地格位置；空路线为零。</summary>
@@ -76,40 +77,54 @@ public sealed record AgentGoal
         or AgentGoalKind.FetchWater or AgentGoalKind.DeliverMessage or AgentGoalKind.Trade or AgentGoalKind.Petition;
 
     /// <summary>到达且未被冻结后登记一天驻留；无需驻留的目标保持零，完成等待后保留原值。</summary>
-    public AgentGoal Attend() => NeedsResidence
-        ? WorkTicks < MaximumResidenceTicks ? this with { WorkTicks = WorkTicks + 1 } : this
-        : WorkTicks == 0 ? this : this with { WorkTicks = 0 };
+    public AgentGoal Attend()
+    {
+        return NeedsResidence
+            ? WorkTicks < MaximumResidenceTicks ? this with { WorkTicks = WorkTicks + 1 } : this
+            : WorkTicks == 0
+                ? this
+                : this with { WorkTicks = 0 };
+    }
 
     /// <summary>更换导航目的地时建立新的导航记录；目标未改变时继续使用原进度。</summary>
     /// <param name="target">目标地格索引。</param>
     /// <param name="distance">当前位置到目标的距离。</param>
-    public AgentGoal BeginNavigation(int target, int distance) => NavigationTarget == target
-        ? this
-        : this with
-        {
-            NavigationTarget = target,
-            NavigationVisited = [],
-            NavigationRoute = [],
-            NavigationRouteOffset = 0,
-            NavigationBestDistance = distance,
-            NavigationWithoutProgress = 0,
-            NavigationRetryTick = 0,
-        };
+    public AgentGoal BeginNavigation(int target, int distance)
+    {
+        return NavigationTarget == target
+            ? this
+            : this with
+            {
+                NavigationTarget = target,
+                NavigationVisited = [],
+                NavigationRoute = [],
+                NavigationRouteOffset = 0,
+                NavigationBestDistance = distance,
+                NavigationWithoutProgress = 0,
+                NavigationRetryTick = 0,
+            };
+    }
 
     /// <summary>记下经过的地格，不修改旧目标持有的路线记录。</summary>
     /// <param name="index">经过的地格索引。</param>
-    public AgentGoal Visit(int index) => NavigationVisited.Contains(index) || NavigationVisited.Length >= 256
-        ? this
-        : this with { NavigationVisited = NavigationVisited.Add(index) };
+    public AgentGoal Visit(int index)
+    {
+        return NavigationVisited.Contains(index) || NavigationVisited.Length >= 256
+            ? this
+            : this with { NavigationVisited = NavigationVisited.Add(index) };
+    }
 
     /// <summary>重试原任务时清除受阻导航记录，保留任务和先前最佳距离。</summary>
-    public AgentGoal ResetNavigation() => this with
+    public AgentGoal ResetNavigation()
     {
-        NavigationTarget = -1,
-        NavigationVisited = [],
-        NavigationRoute = [],
-        NavigationRouteOffset = 0,
-        NavigationWithoutProgress = 0,
-        NavigationRetryTick = 0,
-    };
+        return this with
+        {
+            NavigationTarget = -1,
+            NavigationVisited = [],
+            NavigationRoute = [],
+            NavigationRouteOffset = 0,
+            NavigationWithoutProgress = 0,
+            NavigationRetryTick = 0,
+        };
+    }
 }

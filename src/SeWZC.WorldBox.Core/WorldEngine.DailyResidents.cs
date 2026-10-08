@@ -2,9 +2,11 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    private readonly ParallelOptions _bodyParallelism =
+        new() { MaxDegreeOfParallelism = Math.Min(2, Environment.ProcessorCount) };
+
     private DailyResidentInput[] _dailyResidentInputs = [];
     private Resident.DailyState[] _dailyResidentOutputs = [];
-    private readonly ParallelOptions _bodyParallelism = new() { MaxDegreeOfParallelism = Math.Min(2, Environment.ProcessorCount) };
 
     // 公共库存及随机性在主线程结算，个人身体转换只有下列已确定的输入。
     private readonly struct DailyResidentInput
@@ -20,7 +22,11 @@ public sealed partial class WorldEngine
         internal double DeliveredWater { get; init; }
         internal int ArrivedTile { get; init; }
 
-        internal Resident.DailyState Advance(WorldRules rules, long tick) => Person.CalculateDay(rules, Tile, tick,
-            Profession, InfectionDuration, ManaRecovery, ConsumeNeeds, SocialGrowth, DeliveredWater, ArrivedTile, Inventory);
+        internal Resident.DailyState Advance(WorldRules rules, long tick)
+        {
+            return Person.CalculateDay(rules, Tile, tick,
+                Profession, InfectionDuration, ManaRecovery, ConsumeNeeds, SocialGrowth, DeliveredWater, ArrivedTile,
+                Inventory);
+        }
     }
 }

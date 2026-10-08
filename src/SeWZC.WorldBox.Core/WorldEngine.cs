@@ -1,5 +1,5 @@
-using System.Collections.Immutable;
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>驱动世界模拟的引擎，也是世界查询与编辑的入口。</summary>
@@ -20,15 +20,19 @@ public sealed partial class WorldEngine
     private readonly Dictionary<int, List<ResidentCursor>> _citizens = [];
     private readonly HashSet<int> _dryTiles = [];
     private readonly Dictionary<int, NationCursor> _nations = [];
-    private readonly Dictionary<int, SettlementCursor> _settlements = [];
     private readonly Dictionary<int, ResidentCursor> _residentLookup = [];
-    private long _residentLookupRevision = -1;
-    private object? _indexedPeople, _indexedTowns, _indexedNations;
-    private long _indexedPeopleRevision = -1, _indexedGroupsRevision = -1,
-        _indexedTownsRevision = -1, _indexedNationsRevision = -1;
+    private readonly Dictionary<int, SettlementCursor> _settlements = [];
     private readonly TerritoryCounts _territoryCounts = new();
 
     private bool _creatingDemo;
+    private object? _indexedPeople, _indexedTowns, _indexedNations;
+
+    private long _indexedPeopleRevision = -1,
+        _indexedGroupsRevision = -1,
+        _indexedTownsRevision = -1,
+        _indexedNationsRevision = -1;
+
+    private long _residentLookupRevision = -1;
 
     private WorldEngine(WorldState state) : this(new WorldStateCursor(state)) { }
 
@@ -43,6 +47,7 @@ public sealed partial class WorldEngine
             if (Current.Tiles[i]?.DroughtTicks > 0)
                 _dryTiles.Add(i);
         }
+
         _territoryCounts.Bind(Current.Tiles);
     }
 
@@ -66,7 +71,9 @@ public sealed partial class WorldEngine
             Width = width,
             Height = height,
             RandomState = (uint)seed ^ 0xA341316Cu,
-            Tiles = new EntityListCursor<Tile, TileCursor>(ImmutableVector<Tile>.CreateRange(Enumerable.Repeat(new Tile(), width * height)), _ => { }, value => new TileCursor(value)),
+            Tiles = new EntityListCursor<Tile, TileCursor>(
+                ImmutableVector<Tile>.CreateRange(Enumerable.Repeat(new Tile(), width * height)), _ => { },
+                value => new TileCursor(value)),
         };
         if (state.RandomState == 0)
             state.RandomState = 1;
@@ -109,9 +116,12 @@ public sealed partial class WorldEngine
         var nations = Current.Nations;
         // 定位引用本身持续读取最新状态；只有成员或居民家园变化才重建分组。
         if (ReferenceEquals(_indexedPeople, people) && ReferenceEquals(_indexedTowns, towns)
-            && ReferenceEquals(_indexedNations, nations) && _indexedPeopleRevision == people.MembershipRevision
-            && _indexedGroupsRevision == people.GroupRevision && _indexedTownsRevision == towns.MembershipRevision
-            && _indexedNationsRevision == nations.MembershipRevision) return;
+                                                    && ReferenceEquals(_indexedNations, nations) &&
+                                                    _indexedPeopleRevision == people.MembershipRevision
+                                                    && _indexedGroupsRevision == people.GroupRevision &&
+                                                    _indexedTownsRevision == towns.MembershipRevision
+                                                    && _indexedNationsRevision == nations.MembershipRevision)
+            return;
         _settlements.Clear();
         _nations.Clear();
         foreach (var group in _citizens.Values)
@@ -152,6 +162,7 @@ public sealed partial class WorldEngine
                 _residentLookup.Add(resident.Id, resident);
             _residentLookupRevision = Current.Residents.MembershipRevision;
         }
+
         return _residentLookup.GetValueOrDefault(id);
     }
 
@@ -258,9 +269,10 @@ public sealed partial class WorldEngine
         {
             resident.Health = 0;
             if (resident.DeathCause == DeathCause.None)
-            {
-                resident.Replace(resident.Value with { DeathCause = DeathCause.PlayerIntervention, DeathTick = Current.Tick });
-            }
+                resident.Replace(resident.Value with
+                {
+                    DeathCause = DeathCause.PlayerIntervention, DeathTick = Current.Tick,
+                });
 
             var death = AddEvent(WorldEventKind.Death,
                 $"{resident.Name}逝世：{DeathCauseName(resident.DeathCause)}，终年 {resident.Age:0.0} 岁。", resident.X,
@@ -310,21 +322,21 @@ public sealed partial class WorldEngine
     private void GenerateTerrain()
     {
         for (var y = 0; y < Current.Height; y++)
-            for (var x = 0; x < Current.Width; x++)
+        for (var x = 0; x < Current.Width; x++)
+        {
+            var nx = (x + 0.5) / Current.Width * 2 - 1;
+            var ny = (y + 0.5) / Current.Height * 2 - 1;
+            var radial = Math.Sqrt(nx * nx + ny * ny);
+            var broad = Noise(x / (Current.Width * 0.16), y / (Current.Height * 0.16), 0);
+            var fine = Noise(x / 7.0, y / 7.0, 71);
+            var elevation = 0.75 - radial * 0.58 + (broad - 0.5) * 0.48 + (fine - 0.5) * 0.10;
+            Current.Tiles[Index(x, y)] = new TileCursor
             {
-                var nx = (x + 0.5) / Current.Width * 2 - 1;
-                var ny = (y + 0.5) / Current.Height * 2 - 1;
-                var radial = Math.Sqrt(nx * nx + ny * ny);
-                var broad = Noise(x / (Current.Width * 0.16), y / (Current.Height * 0.16), 0);
-                var fine = Noise(x / 7.0, y / 7.0, 71);
-                var elevation = 0.75 - radial * 0.58 + (broad - 0.5) * 0.48 + (fine - 0.5) * 0.10;
-                Current.Tiles[Index(x, y)] = new TileCursor
-                {
-                    Terrain = elevation < .20 ? TerrainType.DeepWater :
-                        elevation < .27 ? TerrainType.Water : TerrainType.Grass,
-                    Elevation = (byte)Math.Clamp(elevation * 255, 0, 255),
-                };
-            }
+                Terrain = elevation < .20 ? TerrainType.DeepWater :
+                    elevation < .27 ? TerrainType.Water : TerrainType.Grass,
+                Elevation = (byte)Math.Clamp(elevation * 255, 0, 255),
+            };
+        }
     }
 
     private double Noise(double x, double y, int salt)
@@ -353,9 +365,10 @@ public sealed partial class WorldEngine
         ReconcileConnectedClaims();
         _territoryCounts.Bind(Current.Tiles);
         foreach (var nation in Current.Nations)
-        {
-            nation.Replace(nation.Value with { Population = 0, Territory = _territoryCounts.Get(nation.Id), Resources = new ResourceStock() });
-        }
+            nation.Replace(nation.Value with
+            {
+                Population = 0, Territory = _territoryCounts.Get(nation.Id), Resources = new ResourceStock(),
+            });
 
         foreach (var settlement in Current.Settlements)
         {

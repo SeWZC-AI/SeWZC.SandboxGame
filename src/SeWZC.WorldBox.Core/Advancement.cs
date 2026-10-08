@@ -7,8 +7,6 @@ namespace SeWZC.WorldBox.Core;
 [JsonConverter(typeof(AdvancementJsonConverter))]
 public sealed partial record Advancement
 {
-    private readonly string? _effect;
-
     /// <summary>定义研究项目。</summary>
     /// <param name="id">研究编号，用于存档、知识消息和位索引。</param>
     /// <param name="key">界面自动化和诊断标识。</param>
@@ -49,7 +47,7 @@ public sealed partial record Advancement
         Prerequisites = prerequisites.ToImmutableArray();
         Cost = cost;
         Work = work;
-        _effect = effect;
+        Effect = effect;
         UnlockedBuildings = buildings?.ToImmutableArray() ?? [];
         UnlockedProfessions = professions?.ToImmutableArray() ?? [];
         UnlockedSpells = spells?.ToImmutableArray() ?? [];
@@ -107,8 +105,8 @@ public sealed partial record Advancement
     {
         get
         {
-            if (_effect is not null)
-                return _effect;
+            if (field is not null)
+                return field;
             var recipe = ProductionRules.For(this)!;
             return "解锁" + recipe.FacilityName + "。\n" + recipe.Description;
         }

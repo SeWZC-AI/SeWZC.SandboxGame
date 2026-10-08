@@ -46,12 +46,15 @@ public readonly record struct PlantCoverage
     /// <summary>返回替换自然植物份额后的值；作物不存储在此结构中，返回原值。</summary>
     /// <param name="kind">植物类别。</param>
     /// <param name="cover">要设置的自然植物组成份额。</param>
-    public PlantCoverage WithCoverage(PlantKind kind, double cover) => kind switch
+    public PlantCoverage WithCoverage(PlantKind kind, double cover)
     {
-        PlantKind.Trees => this with { Trees = cover },
-        PlantKind.Shrubs => this with { Shrubs = cover },
-        PlantKind.Grass => this with { Grass = cover },
-        PlantKind.Reeds => this with { Reeds = cover },
-        _ => this,
-    };
+        return kind switch
+        {
+            PlantKind.Trees => this with { Trees = cover },
+            PlantKind.Shrubs => this with { Shrubs = cover },
+            PlantKind.Grass => this with { Grass = cover },
+            PlantKind.Reeds => this with { Reeds = cover },
+            _ => this,
+        };
+    }
 }

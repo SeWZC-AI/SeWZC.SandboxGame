@@ -4,7 +4,6 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial record Tile
 {
-
     /// <summary>独占登记此格的聚落 ID，0 表示尚未登记。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int ClaimedSettlementId { get; init; }

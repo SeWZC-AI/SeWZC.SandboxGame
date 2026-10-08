@@ -5,7 +5,6 @@ namespace SeWZC.WorldBox.Core;
 /// <summary>世界地图的基本空间单元。</summary>
 public sealed partial record Tile
 {
-
     /// <summary>当前地形。</summary>
     public TerrainType Terrain { get; init; }
 
@@ -63,11 +62,19 @@ public sealed partial record Tile
 
     /// <summary>可采集的共享自然资源存量。</summary>
     public double ResourceAmount { get; init; } = 100;
+
     /// <summary>返回改变地形后的地格；离开河道时清除河道宽度。</summary>
     /// <param name="terrain">新的地形。</param>
-    public Tile WithTerrain(TerrainType terrain) => Terrain == terrain ? this : this with
+    public Tile WithTerrain(TerrainType terrain)
     {
-        Terrain = terrain,
-        RiverWidth = terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver ? RiverWidth : (byte)0,
-    };
+        return Terrain == terrain
+            ? this
+            : this with
+            {
+                Terrain = terrain,
+                RiverWidth = terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver
+                    ? RiverWidth
+                    : (byte)0,
+            };
+    }
 }

@@ -1,5 +1,3 @@
-using SeWZC.WorldBox.Core;
-
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>自然植物份额与作物分离的检查。</summary>
@@ -41,6 +39,7 @@ public sealed class PlantCoverageTests
         Assert.Equal(trees.Total, grass.Total);
         Assert.NotEqual(trees, grass);
     }
+
     /// <summary>替换自然植物份额产生新值，旧覆盖保留原组成。</summary>
     [Fact]
     public void WithCoverage_preserves_original_shares()
@@ -53,5 +52,4 @@ public sealed class PlantCoverageTests
         Assert.Equal(.7, changed.Trees);
         Assert.Equal(.2, changed.Shrubs);
     }
-
 }

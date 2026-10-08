@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -73,14 +74,14 @@ public sealed partial class WorldEngine
         // 先保存现有病例的位置，避免新感染在同一天沿居民遍历顺序连锁传播。
         var infected = new HashSet<int>(Current.Residents.Where(r => r.SicknessTicks > 0).Select(r => Index(r.X, r.Y)));
         BeginDailyDrinking();
-        foreach (var town in Current.Settlements) town.BeginResourceUpdates();
+        foreach (var town in Current.Settlements)
+            town.BeginResourceUpdates();
         try
         {
             var count = Current.Residents.Count;
             if (count < 2048 || Environment.ProcessorCount <= 1 || OperatingSystem.IsBrowser())
-            {
-                foreach (var cursor in Current.Residents) cursor.ApplyDay(Prepare(cursor).Advance(rules, tick));
-            }
+                foreach (var cursor in Current.Residents)
+                    cursor.ApplyDay(Prepare(cursor).Advance(rules, tick));
             else
             {
                 if (_dailyResidentInputs.Length < count)
@@ -88,6 +89,7 @@ public sealed partial class WorldEngine
                     _dailyResidentInputs = new DailyResidentInput[count];
                     _dailyResidentOutputs = new Resident.DailyState[count];
                 }
+
                 for (var index = 0; index < count; index++)
                     _dailyResidentInputs[index] = Prepare(Current.Residents[index]);
                 // 随机感染、公共补给与取水按原顺序准备；工作线程只读取不可变输入。
@@ -99,7 +101,8 @@ public sealed partial class WorldEngine
                     for (var index = first; index < last; index++)
                         _dailyResidentOutputs[index] = _dailyResidentInputs[index].Advance(rules, tick);
                 });
-                foreach (var cursor in Current.Residents) cursor.ApplyDay(_dailyResidentOutputs[cursor.Position]);
+                foreach (var cursor in Current.Residents)
+                    cursor.ApplyDay(_dailyResidentOutputs[cursor.Position]);
                 Array.Clear(_dailyResidentInputs, 0, count);
                 Array.Clear(_dailyResidentOutputs, 0, count);
             }
@@ -107,7 +110,8 @@ public sealed partial class WorldEngine
         finally
         {
             EndDailyDrinking();
-            foreach (var town in Current.Settlements) town.EndResourceUpdates();
+            foreach (var town in Current.Settlements)
+                town.EndResourceUpdates();
         }
 
         ArchiveDeadResidents();
@@ -117,18 +121,22 @@ public sealed partial class WorldEngine
             InitializeAgent(cursor);
             var inventory = cursor.Inventory;
             if (cursor.Health > 0 && cursor.ArmyId == 0
-                && _settlements.TryGetValue(cursor.SettlementId, out var home)
-                && Distance(cursor.X, cursor.Y, home.X, home.Y) <= 1
-                && Walkable(cursor.X, cursor.Y, cursor.Race)
-                && tick - cursor.MoveStartedTick >= cursor.MoveDurationTicks
-                && !(cursor.TravelMode == TravelMode.Boat && cursor.Agent.Goal.Kind == AgentGoalKind.Fish))
+                                  && _settlements.TryGetValue(cursor.SettlementId, out var home)
+                                  && Distance(cursor.X, cursor.Y, home.X, home.Y) <= 1
+                                  && Walkable(cursor.X, cursor.Y, cursor.Race)
+                                  && tick - cursor.MoveStartedTick >= cursor.MoveDurationTicks
+                                  && !(cursor.TravelMode == TravelMode.Boat &&
+                                       cursor.Agent.Goal.Kind == AgentGoalKind.Fish))
             {
                 TransferPersonalProduction(cursor, home);
                 inventory = ProvisionAtHome(cursor, home);
             }
+
             var person = cursor.Value;
             var age = rules.Aging ? Math.Min(1000, person.Age + 1d / 120) : person.Age;
-            var profession = person.Profession == Profession.Child && age >= 14 ? AssignProfession() : person.Profession;
+            var profession = person.Profession == Profession.Child && age >= 14
+                ? AssignProfession()
+                : person.Profession;
             var infectionDuration = 0;
             if (person.SicknessTicks == 0 && rules.Disease && person.DiseaseImmuneUntilTick <= tick
                 && infected.Count > 0 && (tick + person.Id) % 6 == 0)
@@ -141,29 +149,42 @@ public sealed partial class WorldEngine
                         exposed = true;
                         break;
                     }
-                if (exposed && RandomInt(100) < 6) infectionDuration = 72 + RandomInt(25);
+
+                if (exposed && RandomInt(100) < 6)
+                    infectionDuration = 72 + RandomInt(25);
             }
+
             var tile = tiles[Index(person.X, person.Y)];
-            var manaRecovery = person.Mana >= 100 || rules.MagicRate == 0 ? 0
+            var manaRecovery = person.Mana >= 100 || rules.MagicRate == 0
+                ? 0
                 : .025 * rules.MagicRate * TerrainRules.For(tile.Terrain).ManaRate
-                * (.5 + person.MagicTalent / 100)
-                * (HasResearch(person.SettlementId, Advancement.ManaAttunement) ? 1.5 : 1);
+                  * (.5 + person.MagicTalent / 100)
+                  * (HasResearch(person.SettlementId, Advancement.ManaAttunement) ? 1.5 : 1);
             var hasHome = _settlements.ContainsKey(person.SettlementId);
             var waterUse = WaterUse(age, tile);
             var water = hasHome && person.ArmyId == 0 && person.Health > 0 && rules.Thirst
-                && inventory.Water < waterUse
-                ? WithdrawWater(person, Index(person.X, person.Y), waterUse - inventory.Water) : 0;
+                        && inventory.Water < waterUse
+                ? WithdrawWater(person, Index(person.X, person.Y), waterUse - inventory.Water)
+                : 0;
             return new DailyResidentInput
             {
-                Person = person, Inventory = inventory, Tile = tile.Value, Profession = profession, InfectionDuration = infectionDuration,
-                ManaRecovery = manaRecovery, ConsumeNeeds =
-                    person.ArmyId == 0 && hasHome, SocialGrowth = hasHome && (tick + person.Id) % 4 == 0 ? .28 : 0,
-                DeliveredWater = water, ArrivedTile =
+                Person = person,
+                Inventory = inventory,
+                Tile = tile.Value,
+                Profession = profession,
+                InfectionDuration = infectionDuration,
+                ManaRecovery = manaRecovery,
+                ConsumeNeeds =
+                    person.ArmyId == 0 && hasHome,
+                SocialGrowth = hasHome && (tick + person.Id) % 4 == 0 ? .28 : 0,
+                DeliveredWater = water,
+                ArrivedTile =
                     hasHome && person.ArmyId == 0 && person.Health > 0
-                        && tick - person.MoveStartedTick == person.MoveDurationTicks ? Index(person.X, person.Y) : -1,
+                    && tick - person.MoveStartedTick == person.MoveDurationTicks
+                        ? Index(person.X, person.Y)
+                        : -1,
             };
         }
-
     }
 
     private void GrowSettlements()
@@ -178,18 +199,18 @@ public sealed partial class WorldEngine
                     town.Resources.Get(k) >= SettlementExpansionCost(town.Tier).Get(k) + developmentReserve.Get(k)))
                 ExpandTown(town.Id);
             if (Current.Rules.Construction && town.Resources.Food >= citizens.Count * 2 + developmentReserve.Food
-                                         && GetHousingCapacity(town.Id) < 60 + Current.Society.Buildings.Where(b =>
-                                                 b.SettlementId == town.Id && IsFacilityOperating(b))
-                                             .Sum(b => b.Kind == BuildingKind.Farm
-                                                 ? 30 * b.Efficiency
-                                                 : b.Kind is BuildingKind.AutomatedFarm or BuildingKind.RunicGarden
-                                                     ? 120 * b.Efficiency
-                                                     : 0)
-                                         && citizens.Count > GetHousingCapacity(town.Id) * 0.75
-                                         && !Current.Society.Buildings.Any(b =>
-                                             b.SettlementId == town.Id && (!b.IsCompleted || b.IsUpgrading))
-                                         && town.Resources.Wood >= 25 + developmentReserve.Wood &&
-                                         town.Resources.Stone >= 8 + developmentReserve.Stone)
+                                           && GetHousingCapacity(town.Id) < 60 + Current.Society.Buildings.Where(b =>
+                                                   b.SettlementId == town.Id && IsFacilityOperating(b))
+                                               .Sum(b => b.Kind == BuildingKind.Farm
+                                                   ? 30 * b.Efficiency
+                                                   : b.Kind is BuildingKind.AutomatedFarm or BuildingKind.RunicGarden
+                                                       ? 120 * b.Efficiency
+                                                       : 0)
+                                           && citizens.Count > GetHousingCapacity(town.Id) * 0.75
+                                           && !Current.Society.Buildings.Any(b =>
+                                               b.SettlementId == town.Id && (!b.IsCompleted || b.IsUpgrading))
+                                           && town.Resources.Wood >= 25 + developmentReserve.Wood &&
+                                           town.Resources.Stone >= 8 + developmentReserve.Stone)
             {
                 var site = BestBuildingSite(town, BuildingKind.Housing);
                 if (site >= 0)
@@ -238,7 +259,8 @@ public sealed partial class WorldEngine
         // 建村地点须在出发前报告给原聚落，避免迁徙队伍使用未送达的信息。
         var location = origin.PublicKnowledge.Where(f => f.Kind == AgentFactKind.FoundingSite &&
                                                          f.LearnedTick < Current.Tick
-                                                         && Current.Tick - f.ObservedTick <= 600 && f.Confidence >= .5 &&
+                                                         && Current.Tick - f.ObservedTick <= 600 &&
+                                                         f.Confidence >= .5 &&
                                                          InBounds(f.X, f.Y))
             .Select(f => Index(f.X, f.Y)).Where(i => !IsWaterTerrain(Current.Tiles[i].Terrain)
                                                      && pioneers.All(p =>
@@ -329,16 +351,25 @@ public sealed partial class WorldEngine
         // 建村地点须能连通取得最小占地范围，避免定居在四周无法利用的单个肥沃地格。
         var available = 0;
         for (var nearbyY = Math.Max(0, y - 3); nearbyY <= Math.Min(Current.Height - 1, y + 3); nearbyY++)
-            for (var nearbyX = Math.Max(0, x - 3); nearbyX <= Math.Min(Current.Width - 1, x + 3); nearbyX++)
-            {
-                if ((nearbyX - x) * (nearbyX - x) + (nearbyY - y) * (nearbyY - y) > 9) continue;
-                var tile = Current.Tiles[Index(nearbyX, nearbyY)].Value;
-                if (IsWaterTerrain(tile.Terrain) || tile.FireTicks > 0 || tile.ClaimedSettlementId != 0) continue;
-                var usable = true;
-                foreach (var race in races)
-                    if (!RaceTerrainRules.CanWalk(tile, race)) { usable = false; break; }
-                if (usable && ++available >= SettlementActivationArea) return true;
-            }
+        for (var nearbyX = Math.Max(0, x - 3); nearbyX <= Math.Min(Current.Width - 1, x + 3); nearbyX++)
+        {
+            if ((nearbyX - x) * (nearbyX - x) + (nearbyY - y) * (nearbyY - y) > 9)
+                continue;
+            var tile = Current.Tiles[Index(nearbyX, nearbyY)].Value;
+            if (IsWaterTerrain(tile.Terrain) || tile.FireTicks > 0 || tile.ClaimedSettlementId != 0)
+                continue;
+            var usable = true;
+            foreach (var race in races)
+                if (!RaceTerrainRules.CanWalk(tile, race))
+                {
+                    usable = false;
+                    break;
+                }
+
+            if (usable && ++available >= SettlementActivationArea)
+                return true;
+        }
+
         return false;
     }
 

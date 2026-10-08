@@ -15,7 +15,14 @@ public sealed class MapResidentIndexTests
     public void Moving_resident_is_found_along_the_segment(int left, int right)
     {
         var index = new MapResidentIndex();
-        var resident = new Resident { Id = 1, FromX = 14, X = 19, FromY = 8, Y = 8 };
+        var resident = new Resident
+        {
+            Id = 1,
+            FromX = 14,
+            X = 19,
+            FromY = 8,
+            Y = 8,
+        };
         var results = new List<Resident>();
 
         index.Query([resident], left, 8, right, 8, results);
@@ -27,7 +34,14 @@ public sealed class MapResidentIndexTests
     [Fact]
     public void Query_excludes_residents_outside_the_viewport()
     {
-        var resident = new Resident { Id = 1, FromX = 4, X = 4, FromY = 4, Y = 4 };
+        var resident = new Resident
+        {
+            Id = 1,
+            FromX = 4,
+            X = 4,
+            FromY = 4,
+            Y = 4,
+        };
         var results = new List<Resident>();
 
         new MapResidentIndex().Query([resident], 5, 5, 6, 6, results);
@@ -40,7 +54,14 @@ public sealed class MapResidentIndexTests
     public void New_snapshot_replaces_cached_positions()
     {
         var index = new MapResidentIndex();
-        var resident = new Resident { Id = 1, FromX = 4, X = 4, FromY = 4, Y = 4 };
+        var resident = new Resident
+        {
+            Id = 1,
+            FromX = 4,
+            X = 4,
+            FromY = 4,
+            Y = 4,
+        };
         var moved = resident with { FromX = 32, X = 32, FromY = 32, Y = 32 };
         var results = new List<Resident>();
         index.Query([resident], 4, 4, 4, 4, results);

@@ -45,34 +45,30 @@ public sealed partial class WorldMapControl : Control
     private readonly Dictionary<(int X, int Y), MapChunk> _chunks = [];
     private readonly List<(int X, int Y)> _fires = [];
     private readonly Dictionary<int, IBrush> _nationBrushes = [];
+    private readonly RecentActivityCounter _renderedFrames = new();
+    private readonly MapResidentIndex _residentIndex = new();
+    private readonly HashSet<(int X, int Y)> _residentMarkers = [];
     private readonly StreamGeometry?[] _residents = new StreamGeometry?[4];
     private readonly Dictionary<int, (string Name, double Size, FormattedText Text)> _settlementLabels = [];
     private readonly Dictionary<IPointer, Point> _touches = [];
 
     private readonly List<Resident> _visibleResidents = [];
-    private readonly RecentActivityCounter _renderedFrames = new();
-    private readonly MapResidentIndex _residentIndex = new();
-    private readonly HashSet<(int X, int Y)> _residentMarkers = [];
-    private ImmutableVector<Resident>? _visibleResidentSnapshot;
-    private ImmutableVector<Tile>? _chunkTileSnapshot;
-    private ImmutableVector<Nation>? _chunkNationSnapshot;
-    private long _tileRevision;
-    private long _nationRevision;
-    private MapTool _activeTool = MapTool.Inspect;
-    private WorldEngine? _cachedEngine;
     private ImmutableVector<Building>? _activityBuildingSnapshot;
-    private ImmutableVector<Settlement>? _labelSettlementSnapshot;
+    private WorldEngine? _cachedEngine;
     private bool _cameraReady;
+    private ImmutableVector<Nation>? _chunkNationSnapshot;
+    private ImmutableVector<Tile>? _chunkTileSnapshot;
 
     private (int Left, int Right, int Top, int Bottom) _chunkViewport;
     private bool _dragging;
-    private WorldEngine? _engine;
     private bool _gestureMoved;
     private StreamGeometry? _heads;
     private Point? _hover;
+    private ImmutableVector<Settlement>? _labelSettlementSnapshot;
     private Settlement[] _labelSettlements = [];
     private (int X, int Y)? _lastPaint;
     private Point _lastPosition;
+    private long _nationRevision;
     private Point _origin;
     private bool _panning;
     private bool _pinching;
@@ -82,10 +78,9 @@ public sealed partial class WorldMapControl : Control
     private FormattedText? _scaleLabel;
     private int _scaleLabelTiles;
     private (int X, int Y)? _selection;
-    private bool _showBorders = true;
+    private long _tileRevision;
+    private ImmutableVector<Resident>? _visibleResidentSnapshot;
     private double _zoom = 0.4;
-
-    private MapDetailLevel Detail => new(TilePixels * _zoom);
 
     /// <summary>初始化世界地图控件。</summary>
     public WorldMapControl()
@@ -95,13 +90,15 @@ public sealed partial class WorldMapControl : Control
         RenderOptions.SetBitmapInterpolationMode(this, BitmapInterpolationMode.None);
     }
 
+    private MapDetailLevel Detail => new(TilePixels * _zoom);
+
     /// <summary>当前显示的世界引擎；切换时清除选择、动画与地图缓存。</summary>
     public WorldEngine? Engine
     {
-        get => _engine;
+        get;
         set
         {
-            if (ReferenceEquals(_engine, value))
+            if (ReferenceEquals(field, value))
                 return;
             CancelPlacement();
             _touches.Clear();
@@ -115,7 +112,7 @@ public sealed partial class WorldMapControl : Control
             ResetMotion();
             _settlementLabels.Clear();
             _renderedFrames.Clear();
-            _engine = value;
+            field = value;
             _selection = null;
             _cameraReady = false;
             RefreshWorld(true);
@@ -125,16 +122,16 @@ public sealed partial class WorldMapControl : Control
     /// <summary>当前地图工具。</summary>
     public MapTool ActiveTool
     {
-        get => _activeTool;
+        get;
         set
         {
             CancelPlacement();
-            _activeTool = value ?? throw new ArgumentNullException(nameof(value));
+            field = value ?? throw new ArgumentNullException(nameof(value));
             _lastPaint = null;
             Cursor = new Cursor(IsNavigationTool ? StandardCursorType.Arrow : StandardCursorType.Cross);
             InvalidateVisual();
         }
-    }
+    } = MapTool.Inspect;
 
     /// <summary>地形和领土笔刷半径，以地格为单位。</summary>
     public int BrushRadius { get; set; } = 2;
@@ -148,13 +145,13 @@ public sealed partial class WorldMapControl : Control
     /// <summary>是否绘制国家领土边界。</summary>
     public bool ShowBorders
     {
-        get => _showBorders;
+        get;
         set
         {
-            _showBorders = value;
+            field = value;
             InvalidateVisual();
         }
-    }
+    } = true;
 
     private bool IsNavigationTool => ActiveTool.IsNavigation;
 
@@ -262,6 +259,7 @@ public sealed partial class WorldMapControl : Control
             _labelSettlementSnapshot = state.Settlements;
             _labelSettlements = state.Settlements.OrderByDescending(settlement => settlement.Population).ToArray();
         }
+
         _relayOverlayDirty = true;
         if (!ReferenceEquals(_activityBuildingSnapshot, state.Society.Buildings))
         {
@@ -270,6 +268,7 @@ public sealed partial class WorldMapControl : Control
             foreach (var building in state.Society.Buildings)
                 _activityBuildings[building.Id] = building;
         }
+
         CaptureArchitecture(Engine.State);
         CaptureEffects();
         CaptureSelectedRoute();
@@ -421,7 +420,10 @@ public sealed partial class WorldMapControl : Control
         _renderedFrames.Record(Stopwatch.GetTimestamp());
     }
 
-    internal int GetRecentFrameCount(long timestamp) => _renderedFrames.Count(timestamp);
+    internal int GetRecentFrameCount(long timestamp)
+    {
+        return _renderedFrames.Count(timestamp);
+    }
 
     private bool Visible(Rect world)
     {
@@ -466,11 +468,13 @@ public sealed partial class WorldMapControl : Control
             _chunkTileSnapshot = state.Tiles;
             _tileRevision++;
         }
+
         if (!ReferenceEquals(_chunkNationSnapshot, state.Nations))
         {
             _chunkNationSnapshot = state.Nations;
             _nationRevision++;
         }
+
         _chunkViewport = view;
         var colors = new Dictionary<int, uint>();
         uint colorHash = 0;
@@ -484,92 +488,94 @@ public sealed partial class WorldMapControl : Control
 
         _fires.Clear();
         for (var cy = view.Item3 * ChunkTiles; cy <= view.Item4 * ChunkTiles; cy += ChunkTiles)
-            for (var cx = view.Item1 * ChunkTiles; cx <= view.Item2 * ChunkTiles; cx += ChunkTiles)
+        for (var cx = view.Item1 * ChunkTiles; cx <= view.Item2 * ChunkTiles; cx += ChunkTiles)
+        {
+            var key = (cx, cy);
+            if (!_chunks.TryGetValue(key, out var chunk))
             {
-                var key = (cx, cy);
-                if (!_chunks.TryGetValue(key, out var chunk))
-                {
-                    chunk = new MapChunk(new Rect(cx * TilePixels, cy * TilePixels,
-                        Math.Min(ChunkTiles, state.Width - cx) * TilePixels,
-                        Math.Min(ChunkTiles, state.Height - cy) * TilePixels));
-                    _chunks[key] = chunk;
-                }
-                if (chunk.TileRevision == _tileRevision && chunk.NationRevision == _nationRevision)
-                {
-                    _fires.AddRange(chunk.Fires);
-                    continue;
-                }
-                chunk.Fires.Clear();
-                var terrainHash = 2166136261;
-                var territoryHash = colorHash;
-                var containsTerritory = false;
-                // 缓存摘要包含一格邻域，使岸线和边界编辑也能令相邻分块失效。
-                for (var y = Math.Max(0, cy - 1); y < Math.Min(state.Height, cy + ChunkTiles + 1); y++)
-                    for (var x = Math.Max(0, cx - 1); x < Math.Min(state.Width, cx + ChunkTiles + 1); x++)
-                    {
-                        TerrainTilesScanned++;
-                        var tile = state.Tiles[y * state.Width + x];
-                        // 地形图像只需关注森林变树桩的资源阈值；动物和植物数量由独立图层刷新，避免频繁重建地形。
-                        terrainHash = unchecked((terrainHash ^ TerrainImageInput(tile)) * 16777619);
-                        territoryHash = unchecked((territoryHash ^ (uint)tile.NationId) * 16777619);
-                        containsTerritory |= tile.NationId != 0 && x >= cx && x < cx + ChunkTiles && y >= cy &&
-                                             y < cy + ChunkTiles;
-                        if (x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles && tile.FireTicks > 0)
-                            chunk.Fires.Add((x, y));
-                    }
-
-                _fires.AddRange(chunk.Fires);
-                chunk.TileRevision = _tileRevision;
-                chunk.NationRevision = _nationRevision;
-
-                if (chunk.Terrain is null || chunk.TerrainHash != terrainHash)
-                {
-                    // 分块边缘落在小数屏幕坐标时会露出细缝，须用一像素邻格图案补边；透明领地图层不能重叠以免加深颜色。
-                    var left = cx > 0 ? 1 : 0;
-                    var top = cy > 0 ? 1 : 0;
-                    var right = cx + ChunkTiles < state.Width ? 1 : 0;
-                    var bottom = cy + ChunkTiles < state.Height ? 1 : 0;
-                    chunk.TerrainBounds = new Rect(chunk.Bounds.X - left, chunk.Bounds.Y - top,
-                        chunk.Bounds.Width + left + right, chunk.Bounds.Height + top + bottom);
-                    var canvas = UpdateTerrainCanvas(chunk, state, cx, cy, left, top);
-                    chunk.Terrain?.Dispose();
-                    chunk.Terrain = MakeBitmap(canvas, true);
-                    chunk.TerrainHash = terrainHash;
-                }
-
-                if (!chunk.TerritoryCached || chunk.TerritoryHash != territoryHash)
-                {
-                    chunk.Territory?.Dispose();
-                    chunk.Territory = null;
-                    chunk.TerritoryHash = territoryHash;
-                    chunk.TerritoryCached = true;
-                    if (!containsTerritory)
-                        continue;
-                    var canvas = new PixelCanvas((int)chunk.Bounds.Width, (int)chunk.Bounds.Height);
-                    for (var y = cy; y < Math.Min(state.Height, cy + ChunkTiles); y++)
-                        for (var x = cx; x < Math.Min(state.Width, cx + ChunkTiles); x++)
-                        {
-                            var nationId = state.Tiles[y * state.Width + x].NationId;
-                            if (nationId == 0 || !colors.TryGetValue(nationId, out var argb))
-                                continue;
-                            var rgb = (argb & 0x00FFFFFF) << 8;
-                            var px = (x - cx) * TilePixels;
-                            var py = (y - cy) * TilePixels;
-                            canvas.Rect(px, py, TilePixels, TilePixels, rgb | 27);
-                            var edge = rgb | 190;
-                            if (x == 0 || state.Tiles[y * state.Width + x - 1].NationId != nationId)
-                                canvas.Rect(px, py, 1, 8, edge);
-                            if (y == 0 || state.Tiles[(y - 1) * state.Width + x].NationId != nationId)
-                                canvas.Rect(px, py, 8, 1, edge);
-                            if (x == state.Width - 1 || state.Tiles[y * state.Width + x + 1].NationId != nationId)
-                                canvas.Rect(px + 7, py, 1, 8, edge);
-                            if (y == state.Height - 1 || state.Tiles[(y + 1) * state.Width + x].NationId != nationId)
-                                canvas.Rect(px, py + 7, 8, 1, edge);
-                        }
-
-                    chunk.Territory = MakeBitmap(canvas, false);
-                }
+                chunk = new MapChunk(new Rect(cx * TilePixels, cy * TilePixels,
+                    Math.Min(ChunkTiles, state.Width - cx) * TilePixels,
+                    Math.Min(ChunkTiles, state.Height - cy) * TilePixels));
+                _chunks[key] = chunk;
             }
+
+            if (chunk.TileRevision == _tileRevision && chunk.NationRevision == _nationRevision)
+            {
+                _fires.AddRange(chunk.Fires);
+                continue;
+            }
+
+            chunk.Fires.Clear();
+            var terrainHash = 2166136261;
+            var territoryHash = colorHash;
+            var containsTerritory = false;
+            // 缓存摘要包含一格邻域，使岸线和边界编辑也能令相邻分块失效。
+            for (var y = Math.Max(0, cy - 1); y < Math.Min(state.Height, cy + ChunkTiles + 1); y++)
+            for (var x = Math.Max(0, cx - 1); x < Math.Min(state.Width, cx + ChunkTiles + 1); x++)
+            {
+                TerrainTilesScanned++;
+                var tile = state.Tiles[y * state.Width + x];
+                // 地形图像只需关注森林变树桩的资源阈值；动物和植物数量由独立图层刷新，避免频繁重建地形。
+                terrainHash = unchecked((terrainHash ^ TerrainImageInput(tile)) * 16777619);
+                territoryHash = unchecked((territoryHash ^ (uint)tile.NationId) * 16777619);
+                containsTerritory |= tile.NationId != 0 && x >= cx && x < cx + ChunkTiles && y >= cy &&
+                                     y < cy + ChunkTiles;
+                if (x >= cx && x < cx + ChunkTiles && y >= cy && y < cy + ChunkTiles && tile.FireTicks > 0)
+                    chunk.Fires.Add((x, y));
+            }
+
+            _fires.AddRange(chunk.Fires);
+            chunk.TileRevision = _tileRevision;
+            chunk.NationRevision = _nationRevision;
+
+            if (chunk.Terrain is null || chunk.TerrainHash != terrainHash)
+            {
+                // 分块边缘落在小数屏幕坐标时会露出细缝，须用一像素邻格图案补边；透明领地图层不能重叠以免加深颜色。
+                var left = cx > 0 ? 1 : 0;
+                var top = cy > 0 ? 1 : 0;
+                var right = cx + ChunkTiles < state.Width ? 1 : 0;
+                var bottom = cy + ChunkTiles < state.Height ? 1 : 0;
+                chunk.TerrainBounds = new Rect(chunk.Bounds.X - left, chunk.Bounds.Y - top,
+                    chunk.Bounds.Width + left + right, chunk.Bounds.Height + top + bottom);
+                var canvas = UpdateTerrainCanvas(chunk, state, cx, cy, left, top);
+                chunk.Terrain?.Dispose();
+                chunk.Terrain = MakeBitmap(canvas, true);
+                chunk.TerrainHash = terrainHash;
+            }
+
+            if (!chunk.TerritoryCached || chunk.TerritoryHash != territoryHash)
+            {
+                chunk.Territory?.Dispose();
+                chunk.Territory = null;
+                chunk.TerritoryHash = territoryHash;
+                chunk.TerritoryCached = true;
+                if (!containsTerritory)
+                    continue;
+                var canvas = new PixelCanvas((int)chunk.Bounds.Width, (int)chunk.Bounds.Height);
+                for (var y = cy; y < Math.Min(state.Height, cy + ChunkTiles); y++)
+                for (var x = cx; x < Math.Min(state.Width, cx + ChunkTiles); x++)
+                {
+                    var nationId = state.Tiles[y * state.Width + x].NationId;
+                    if (nationId == 0 || !colors.TryGetValue(nationId, out var argb))
+                        continue;
+                    var rgb = (argb & 0x00FFFFFF) << 8;
+                    var px = (x - cx) * TilePixels;
+                    var py = (y - cy) * TilePixels;
+                    canvas.Rect(px, py, TilePixels, TilePixels, rgb | 27);
+                    var edge = rgb | 190;
+                    if (x == 0 || state.Tiles[y * state.Width + x - 1].NationId != nationId)
+                        canvas.Rect(px, py, 1, 8, edge);
+                    if (y == 0 || state.Tiles[(y - 1) * state.Width + x].NationId != nationId)
+                        canvas.Rect(px, py, 8, 1, edge);
+                    if (x == state.Width - 1 || state.Tiles[y * state.Width + x + 1].NationId != nationId)
+                        canvas.Rect(px + 7, py, 1, 8, edge);
+                    if (y == state.Height - 1 || state.Tiles[(y + 1) * state.Width + x].NationId != nationId)
+                        canvas.Rect(px, py + 7, 8, 1, edge);
+                }
+
+                chunk.Territory = MakeBitmap(canvas, false);
+            }
+        }
     }
 
     private static void DrawTerrainTile(PixelCanvas canvas, WorldState state, int x, int y, int px, int py)
@@ -864,6 +870,7 @@ public sealed partial class WorldMapControl : Control
                     GeometryRect(silhouette, x, y, resident.Profession == Profession.Soldier ? size * 1.4 : size,
                         Math.Max(2.4, 1.5 / _zoom));
                 }
+
                 if (headContext is not null)
                     GeometryRect(headContext, x, y - 1.4, 1.8, 1.4);
                 if (!details)

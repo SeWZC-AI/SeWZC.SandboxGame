@@ -9,14 +9,17 @@ namespace SeWZC.WorldBox.Core;
 public sealed class ImmutableVectorJsonConverter<T> : JsonConverter<ImmutableVector<T>> where T : class
 {
     /// <inheritdoc />
-    public override ImmutableVector<T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override ImmutableVector<T> Read(ref Utf8JsonReader reader, Type typeToConvert,
+        JsonSerializerOptions options)
     {
-        if (reader.TokenType != JsonTokenType.StartArray) throw new JsonException("实体集合必须是数组。");
+        if (reader.TokenType != JsonTokenType.StartArray)
+            throw new JsonException("实体集合必须是数组。");
         var info = (JsonTypeInfo<T>)options.GetTypeInfo(typeof(T));
         var items = new List<T>();
         while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
             items.Add(JsonSerializer.Deserialize(ref reader, info)!);
-        if (reader.TokenType != JsonTokenType.EndArray) throw new JsonException("实体集合不完整。");
+        if (reader.TokenType != JsonTokenType.EndArray)
+            throw new JsonException("实体集合不完整。");
         return ImmutableVector<T>.CreateRange(items);
     }
 
@@ -25,7 +28,8 @@ public sealed class ImmutableVectorJsonConverter<T> : JsonConverter<ImmutableVec
     {
         var info = (JsonTypeInfo<T>)options.GetTypeInfo(typeof(T));
         writer.WriteStartArray();
-        foreach (var item in value) JsonSerializer.Serialize(writer, item, info);
+        foreach (var item in value)
+            JsonSerializer.Serialize(writer, item, info);
         writer.WriteEndArray();
     }
 }

@@ -1,5 +1,3 @@
-using SeWZC.WorldBox.Core;
-
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>居民基础生命状态的纯转换及伤害次序。</summary>
@@ -15,8 +13,14 @@ public sealed class ResidentVitalsTests
         var fixture = new WorldFixture();
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            X = 16, Y = 16, Age = 25, Health = 60, Hunger = 85, Thirst = 96,
-            SicknessTicks = sick ? 1 : 0, Inventory = new ResourceStock { Food = .01, Water = .01 },
+            X = 16,
+            Y = 16,
+            Age = 25,
+            Health = 60,
+            Hunger = 85,
+            Thirst = 96,
+            SicknessTicks = sick ? 1 : 0,
+            Inventory = new ResourceStock { Food = .01, Water = .01 },
         });
         var original = fixture.Resident.Value;
         var rules = fixture.Engine.State.Rules;
@@ -27,10 +31,12 @@ public sealed class ResidentVitalsTests
         Assert.Equal(immutable, fixture.Resident.Value);
         fixture.Resident.X = 15;
         fixture.Resident.Agent.Fatigue = 30;
-        Assert.Equal(immutable with { X = 15, Agent = immutable.Agent with { Fatigue = 30 } }, fixture.Engine.State.Residents[0]);
+        Assert.Equal(immutable with { X = 15, Agent = immutable.Agent with { Fatigue = 30 } },
+            fixture.Engine.State.Residents[0]);
         Assert.Equal(16, original.X);
         Assert.NotEqual(30, original.Agent.Fatigue);
     }
+
     /// <summary>实际补给在一次日转换中消费，专业用品和死亡时未消费的补给仍保留。</summary>
     [Theory]
     [InlineData(false)]
@@ -56,7 +62,8 @@ public sealed class ResidentVitalsTests
     {
         var before = new Resident
         {
-            Age = 25, Inventory = new ResourceStock { Food = 1, Water = 1 },
+            Age = 25,
+            Inventory = new ResourceStock { Food = 1, Water = 1 },
             Agent = new AgentState { NextThinkTick = 100, Goal = new AgentGoal { ReviewTick = 100 } },
         };
 
@@ -82,12 +89,15 @@ public sealed class ResidentVitalsTests
         Assert.Equal(10, before.Thirst);
         Assert.Equal(0, before.Inventory.Water);
     }
+
     /// <summary>合并日结算仍包含年龄、疫病、魔力和真实粮水消费，保留源值。</summary>
     [Fact]
     public void Combined_day_matches_body_then_needs_for_a_living_adult()
     {
-        var before = new Resident { Age = 20, Health = 60, SicknessTicks = 2,
-            Inventory = new ResourceStock { Food = 1, Water = 1 } };
+        var before = new Resident
+        {
+            Age = 20, Health = 60, SicknessTicks = 2, Inventory = new ResourceStock { Food = 1, Water = 1 },
+        };
         var rules = new WorldRules();
         var tile = new Tile();
 
@@ -104,8 +114,7 @@ public sealed class ResidentVitalsTests
     [Fact]
     public void Lethal_fire_prevents_consuming_supplies()
     {
-        var before = new Resident { Age = 20, Health = 1,
-            Inventory = new ResourceStock { Food = 1, Water = 1 } };
+        var before = new Resident { Age = 20, Health = 1, Inventory = new ResourceStock { Food = 1, Water = 1 } };
 
         var after = before.AdvanceDay(new WorldRules(), new Tile { FireTicks = 1 }, 2,
             Profession.Farmer, 0, .1, true);
@@ -114,6 +123,7 @@ public sealed class ResidentVitalsTests
         Assert.Equal(2, after.DeathTick);
         Assert.Equal(before.Inventory, after.Inventory);
     }
+
     /// <summary>老龄、火灾与疾病连续伤害保留首先致死的原因。</summary>
     [Fact]
     public void Vitals_preserve_the_first_lethal_damage_and_the_source()

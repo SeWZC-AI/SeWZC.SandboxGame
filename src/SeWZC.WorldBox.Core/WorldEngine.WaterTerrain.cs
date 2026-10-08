@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -39,8 +40,7 @@ public sealed partial class WorldEngine
                 or TerrainType.AlpineMeadow => new PlantCoverage { Grass = .6, Shrubs = .15 },
             TerrainType.Forest or TerrainType.Woodland or TerrainType.Rainforest => new PlantCoverage
             {
-                Trees = .7,
-                Shrubs = .3,
+                Trees = .7, Shrubs = .3,
             },
             TerrainType.Wetland => new PlantCoverage { Reeds = .6, Grass = .3 },
             _ => new PlantCoverage(),
@@ -57,53 +57,53 @@ public sealed partial class WorldEngine
         var lastRow = (band + 1) * Current.Height / 120;
         Span<double> nearby = stackalloc double[4];
         for (var y = firstRow; y < lastRow; y++)
-            for (var x = 0; x < Current.Width; x++)
+        for (var x = 0; x < Current.Width; x++)
+        {
+            var tile = Current.Tiles[Index(x, y)];
+            if (!tile.IsWalkable || tile.Improvement != LandImprovement.None)
+                continue;
+            if (tile.FireTicks > 0)
             {
-                var tile = Current.Tiles[Index(x, y)];
-                if (!tile.IsWalkable || tile.Improvement != LandImprovement.None)
-                    continue;
-                if (tile.FireTicks > 0)
-                {
-                    tile.Plants = new PlantCoverage();
-                    continue;
-                }
-
-                var plants = tile.Plants;
-                nearby.Clear();
-                if (x + 1 < Current.Width)
-                    Include(Current.Tiles[Index(x + 1, y)].Plants, nearby);
-                if (y + 1 < Current.Height)
-                    Include(Current.Tiles[Index(x, y + 1)].Plants, nearby);
-                if (x > 0)
-                    Include(Current.Tiles[Index(x - 1, y)].Plants, nearby);
-                if (y > 0)
-                    Include(Current.Tiles[Index(x, y - 1)].Plants, nearby);
-                for (var species = 0; species < 4; species++)
-                {
-                    var kind = (PlantKind)species;
-                    var suitable = kind == PlantKind.Reeds ? tile.NaturalWaterYield >= .01
-                        : kind == PlantKind.Trees ? tile.NaturalWaterYield >= .004 && tile.Fertility >= 40
-                        : tile.Fertility >= 15;
-                    var value = plants.Get(kind);
-                    var capacity = suitable ? tile.Fertility / 100d * (tile.DroughtTicks > 0 ? .3 : 1) : 0;
-                    value = suitable
-                        ? value + .06 * value * (1 - value / Math.Max(.01, capacity)) + nearby[species] * .012
-                        : value * .8;
-                    plants = plants.WithCoverage(kind, Math.Clamp(value, 0, 1));
-                }
-
-                var total = plants.Total;
-                if (total > 1)
-                {
-                    for (var species = 0; species < 4; species++)
-                        plants = plants.WithCoverage((PlantKind)species, plants.Get((PlantKind)species) / total);
-                }
-
-                tile.Plants = plants;
-                if (tile.Terrain is TerrainType.Grass or TerrainType.DryFertile &&
-                    plants.Trees * Math.Min(1, tile.ResourceAmount / 100) >= .5 && tile.ClaimedSettlementId == 0)
-                    tile.Terrain = TerrainType.Forest;
+                tile.Plants = new PlantCoverage();
+                continue;
             }
+
+            var plants = tile.Plants;
+            nearby.Clear();
+            if (x + 1 < Current.Width)
+                Include(Current.Tiles[Index(x + 1, y)].Plants, nearby);
+            if (y + 1 < Current.Height)
+                Include(Current.Tiles[Index(x, y + 1)].Plants, nearby);
+            if (x > 0)
+                Include(Current.Tiles[Index(x - 1, y)].Plants, nearby);
+            if (y > 0)
+                Include(Current.Tiles[Index(x, y - 1)].Plants, nearby);
+            for (var species = 0; species < 4; species++)
+            {
+                var kind = (PlantKind)species;
+                var suitable = kind == PlantKind.Reeds ? tile.NaturalWaterYield >= .01
+                    : kind == PlantKind.Trees ? tile.NaturalWaterYield >= .004 && tile.Fertility >= 40
+                    : tile.Fertility >= 15;
+                var value = plants.Get(kind);
+                var capacity = suitable ? tile.Fertility / 100d * (tile.DroughtTicks > 0 ? .3 : 1) : 0;
+                value = suitable
+                    ? value + .06 * value * (1 - value / Math.Max(.01, capacity)) + nearby[species] * .012
+                    : value * .8;
+                plants = plants.WithCoverage(kind, Math.Clamp(value, 0, 1));
+            }
+
+            var total = plants.Total;
+            if (total > 1)
+            {
+                for (var species = 0; species < 4; species++)
+                    plants = plants.WithCoverage((PlantKind)species, plants.Get((PlantKind)species) / total);
+            }
+
+            tile.Plants = plants;
+            if (tile.Terrain is TerrainType.Grass or TerrainType.DryFertile &&
+                plants.Trees * Math.Min(1, tile.ResourceAmount / 100) >= .5 && tile.ClaimedSettlementId == 0)
+                tile.Terrain = TerrainType.Forest;
+        }
 
         static void Include(PlantCoverage plants, Span<double> nearby)
         {

@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -66,10 +67,7 @@ public sealed partial class WorldEngine
             return false;
         if (!building.Enabled || building.Health < 50 || !RacialBuildingHasWork(building, person))
         {
-            person.Agent.Goal = goal = goal with
-            {
-                Reason = "种族、物资或现场工作条件未满足",
-            };
+            person.Agent.Goal = goal = goal with { Reason = "种族、物资或现场工作条件未满足" };
             person.Agent.NextThinkTick = Current.Tick + 1;
             return true;
         }
@@ -79,9 +77,7 @@ public sealed partial class WorldEngine
         {
             person.Agent.Goal = goal = goal with
             {
-                TargetX = home.X,
-                TargetY = home.Y,
-                Reason = "实地返仓领取" + BuildingName(building.Kind) + "的劳动物资",
+                TargetX = home.X, TargetY = home.Y, Reason = "实地返仓领取" + BuildingName(building.Kind) + "的劳动物资",
             };
             if (Distance(person.X, person.Y, home.X, home.Y) > 1)
             {
@@ -99,11 +95,7 @@ public sealed partial class WorldEngine
             }
         }
 
-        person.Agent.Goal = goal = goal with
-        {
-            TargetX = building.X,
-            TargetY = building.Y,
-        };
+        person.Agent.Goal = goal = goal with { TargetX = building.X, TargetY = building.Y };
         if (Distance(person.X, person.Y, building.X, building.Y) > 0)
         {
             MoveAgentTowards(person, building.X, building.Y);
@@ -118,8 +110,12 @@ public sealed partial class WorldEngine
         {
             var returning = new AgentGoal
             {
-                Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y,
-                TargetSettlementId = home.Id, StartedTick = Current.Tick, Reason = "亲自运回特殊设施的劳动产出",
+                Kind = AgentGoalKind.ReturnHome,
+                TargetX = home.X,
+                TargetY = home.Y,
+                TargetSettlementId = home.Id,
+                StartedTick = Current.Tick,
+                Reason = "亲自运回特殊设施的劳动产出",
             };
             ChangeWorkReservation(person.Agent.Goal, returning);
             person.Replace(person.Value with

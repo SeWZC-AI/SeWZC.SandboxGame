@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>聚落的本地研究状态。</summary>

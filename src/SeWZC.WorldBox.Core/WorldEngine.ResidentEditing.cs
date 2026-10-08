@@ -1,5 +1,5 @@
-using SeWZC.WorldBox.Core.Runtime;
 using System.Text.Json;
+using SeWZC.WorldBox.Core.Runtime;
 
 namespace SeWZC.WorldBox.Core;
 
@@ -10,7 +10,7 @@ public sealed partial class WorldEngine
     public Resident? GetResident(int id)
     {
         return (Current.Residents.FirstOrDefault(r => r.Id == id) ??
-               Current.ArchivedResidents.FirstOrDefault(r => r.Id == id))?.Value;
+                Current.ArchivedResidents.FirstOrDefault(r => r.Id == id))?.Value;
     }
 
     /// <summary>将指定居民的认知与行动状态序列化为 JSON。</summary>
@@ -24,7 +24,8 @@ public sealed partial class WorldEngine
     /// <param name="id">居民的稳定 ID。</param>
     public string ExportResidentHistory(int id)
     {
-        return JsonSerializer.Serialize(RequireResident(id).History.ToList(), WorldJsonContext.Default.ListResidentHistoryEntry);
+        return JsonSerializer.Serialize(RequireResident(id).History.ToList(),
+            WorldJsonContext.Default.ListResidentHistoryEntry);
     }
 
     /// <summary>解析并校验认知 JSON 后应用到居民，影响其未来行为。</summary>
@@ -73,7 +74,9 @@ public sealed partial class WorldEngine
 
     internal ResidentCursor RequireResident(int id)
     {
-        return Current.Residents.FirstOrDefault(r => r.Id == id) ?? Current.ArchivedResidents.FirstOrDefault(r => r.Id == id) ?? throw new ArgumentException("居民不存在。", nameof(id));
+        return Current.Residents.FirstOrDefault(r => r.Id == id) ??
+               Current.ArchivedResidents.FirstOrDefault(r => r.Id == id) ??
+               throw new ArgumentException("居民不存在。", nameof(id));
     }
 
     /// <summary>设置自然灾害和魔法开关，保留已有发展成果。</summary>
@@ -108,9 +111,7 @@ public sealed partial class WorldEngine
                 throw new ArgumentException("目标聚落不存在。");
             candidate.Replace(candidate.Value with { SettlementId = townId, NationId = town.NationId });
             if (townId != original.SettlementId)
-            {
                 candidate.Replace(candidate.Value with { X = town.X, Y = town.Y, ArmyId = 0 });
-            }
         }
 
         if (patch.X is { } x)
@@ -130,15 +131,17 @@ public sealed partial class WorldEngine
             candidate.Agent.WorkplaceId = 0;
             candidate.Agent.WorkAreaIndex = -1;
         }
+
         if (patch.Age is { } age)
             candidate.Age = age;
         if (patch.Health is { } health)
         {
             candidate.Health = health;
             if (isLive && health <= 0)
-            {
-                candidate.Replace(candidate.Value with { DeathCause = DeathCause.PlayerIntervention, DeathTick = Current.Tick });
-            }
+                candidate.Replace(candidate.Value with
+                {
+                    DeathCause = DeathCause.PlayerIntervention, DeathTick = Current.Tick,
+                });
         }
 
         if (patch.Hunger is { } hunger)
@@ -172,14 +175,10 @@ public sealed partial class WorldEngine
         if (patch.MagicTraining is { } training)
             candidate.MagicTraining = training;
         if (patch.Agent is not null)
-        {
             candidate.Agent = new AgentStateCursor(patch.Agent);
-        }
 
         if (patch.History is not null)
-        {
             candidate.History = patch.History.ToList();
-        }
 
         ValidateResidentV2(candidate, Current.Tick, Current.Width, Current.Height);
         ValidateStoryReferences(candidate, Current.NextId);
@@ -228,18 +227,16 @@ public sealed partial class WorldEngine
         {
             candidate.Agent.Goal = candidate.Agent.Goal with
             {
-                Kind = thought.Goal,
-                Reason = thought.Reason,
-                PlayerDirected = true,
-                ReviewTick = Current.Tick + 24,
+                Kind = thought.Goal, Reason = thought.Reason, PlayerDirected = true, ReviewTick = Current.Tick + 24,
             };
         }
 
         candidate.Agent.NextThinkTick = Current.Tick;
         if (candidate.X != original.X || candidate.Y != original.Y)
-        {
-            candidate.Replace(candidate.Value with { FromX = candidate.X, FromY = candidate.Y, MoveStartedTick = Current.Tick, MoveDurationTicks = 1 });
-        }
+            candidate.Replace(candidate.Value with
+            {
+                FromX = candidate.X, FromY = candidate.Y, MoveStartedTick = Current.Tick, MoveDurationTicks = 1,
+            });
 
         var startMission = isLive && patch.Agent is not null &&
                            candidate.Agent.Goal.Kind is AgentGoalKind.DeliverMessage or AgentGoalKind.Trade
@@ -278,7 +275,17 @@ public sealed partial class WorldEngine
                 });
             }
 
-            candidate.Replace(candidate.Value with { Agent = candidate.Agent.Value with { Goal = candidate.Agent.Goal with { TargetX = destination.X, TargetY = destination.Y, StartedTick = Current.Tick, }, MissionRetryTick = Current.Tick } });
+            candidate.Replace(candidate.Value with
+            {
+                Agent = candidate.Agent.Value with
+                {
+                    Goal = candidate.Agent.Goal with
+                    {
+                        TargetX = destination.X, TargetY = destination.Y, StartedTick = Current.Tick,
+                    },
+                    MissionRetryTick = Current.Tick,
+                },
+            });
         }
         else if (patch.Agent is not null && candidate.Agent.Goal.Kind is not AgentGoalKind.Trade
                      and not AgentGoalKind.DeliverMessage and not AgentGoalKind.Petition)

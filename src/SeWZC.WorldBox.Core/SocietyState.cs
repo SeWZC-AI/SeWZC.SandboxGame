@@ -1,5 +1,6 @@
-using System.Text.Json.Serialization;
 using System.Collections.Immutable;
+using System.Text.Json.Serialization;
+
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>世界的社会发展状态。</summary>

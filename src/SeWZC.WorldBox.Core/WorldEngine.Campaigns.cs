@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -61,7 +62,8 @@ public sealed partial class WorldEngine
         }
     }
 
-    private void RecordBattle(ArmyCursor army, IEnumerable<ResidentCursor> soldiers, IEnumerable<ResidentCursor>? defenders = null)
+    private void RecordBattle(ArmyCursor army, IEnumerable<ResidentCursor> soldiers,
+        IEnumerable<ResidentCursor>? defenders = null)
     {
         if (army.BattleRecorded)
             return;
@@ -87,7 +89,15 @@ public sealed partial class WorldEngine
                                                            || fact.EventId == record.LastReportEventId ||
                                                            fact.ObservedTick < record.LastReportObservedTick)
             return;
-        record.Replace(record.Value with { LastReportEventId = fact.EventId, LastReportObservedTick = fact.ObservedTick, LastReportReceivedTick = Current.Tick, ReportedOutcome = (WarOutcome)(int)fact.Value, Report = fact.Text, RecoveryUntilTick = Math.Max(record.RecoveryUntilTick, Current.Tick + 360) });
+        record.Replace(record.Value with
+        {
+            LastReportEventId = fact.EventId,
+            LastReportObservedTick = fact.ObservedTick,
+            LastReportReceivedTick = Current.Tick,
+            ReportedOutcome = (WarOutcome)(int)fact.Value,
+            Report = fact.Text,
+            RecoveryUntilTick = Math.Max(record.RecoveryUntilTick, Current.Tick + 360),
+        });
         var received = AddEvent(WorldEventKind.War, $"{nation.Name}首都实际收到战报：{fact.Text}。", town.X, town.Y,
             EventAction.Report, town.Id, causeEventId: fact.EventId, evidenceFactId: fact.Id);
         received.Replace(received.Value with { NationId = nation.Id, SecondNationId = fact.SubjectId });

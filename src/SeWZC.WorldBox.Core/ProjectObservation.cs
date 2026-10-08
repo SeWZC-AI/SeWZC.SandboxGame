@@ -19,10 +19,12 @@ public sealed record ProjectObservation
 
     /// <summary>返回登记劳动者后的观察记录；已有劳动者或记录已满时返回原记录。</summary>
     /// <param name="residentId">实际提供劳动的居民 ID。</param>
-    public ProjectObservation AddContributor(int residentId) =>
-        Contributors.Length >= 32 || Contributors.Contains(residentId)
+    public ProjectObservation AddContributor(int residentId)
+    {
+        return Contributors.Length >= 32 || Contributors.Contains(residentId)
             ? this
             : this with { Contributors = Contributors.Add(residentId) };
+    }
 
     /// <summary>按四日间隔采样；速率变化时丢弃旧样本，最多保留七条。</summary>
     /// <param name="tick">当前模拟日序。</param>
@@ -37,8 +39,7 @@ public sealed record ProjectObservation
             samples = samples.RemoveAt(0);
         return this with
         {
-            DevelopmentRate = rate,
-            Samples = samples.Add(new ProgressSample { Tick = tick, Progress = progress }),
+            DevelopmentRate = rate, Samples = samples.Add(new ProgressSample { Tick = tick, Progress = progress }),
         };
     }
 }

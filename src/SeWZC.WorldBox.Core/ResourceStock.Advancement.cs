@@ -1,5 +1,3 @@
-using System.Text.Json.Serialization;
-
 namespace SeWZC.WorldBox.Core;
 
 public readonly partial record struct ResourceStock
@@ -36,26 +34,29 @@ public readonly partial record struct ResourceStock
     /// <summary>返回替换指定资源数量后的库存，原库存保持不变。</summary>
     /// <param name="kind">资源种类。</param>
     /// <param name="value">新的资源数量。</param>
-    public ResourceStock WithAmount(ResourceKind kind, double value) => kind switch
+    public ResourceStock WithAmount(ResourceKind kind, double value)
     {
-        ResourceKind.Food => this with { Food = value },
-        ResourceKind.Wood => this with { Wood = value },
-        ResourceKind.Stone => this with { Stone = value },
-        ResourceKind.Ore => this with { Ore = value },
-        ResourceKind.Alloy => this with { Alloy = value },
-        ResourceKind.EnergyCells => this with { EnergyCells = value },
-        ResourceKind.Crystals => this with { Crystals = value },
-        ResourceKind.Coal => this with { Coal = value },
-        ResourceKind.Oil => this with { Oil = value },
-        ResourceKind.RareEarth => this with { RareEarth = value },
-        ResourceKind.Boats => this with { Boats = value },
-        ResourceKind.Aircraft => this with { Aircraft = value },
-        ResourceKind.Water => this with { Water = value },
-        ResourceKind.Tools => this with { Tools = value },
-        ResourceKind.Medicine => this with { Medicine = value },
-        ResourceKind.Ammunition => this with { Ammunition = value },
-        _ => throw new ArgumentOutOfRangeException(nameof(kind)),
-    };
+        return kind switch
+        {
+            ResourceKind.Food => this with { Food = value },
+            ResourceKind.Wood => this with { Wood = value },
+            ResourceKind.Stone => this with { Stone = value },
+            ResourceKind.Ore => this with { Ore = value },
+            ResourceKind.Alloy => this with { Alloy = value },
+            ResourceKind.EnergyCells => this with { EnergyCells = value },
+            ResourceKind.Crystals => this with { Crystals = value },
+            ResourceKind.Coal => this with { Coal = value },
+            ResourceKind.Oil => this with { Oil = value },
+            ResourceKind.RareEarth => this with { RareEarth = value },
+            ResourceKind.Boats => this with { Boats = value },
+            ResourceKind.Aircraft => this with { Aircraft = value },
+            ResourceKind.Water => this with { Water = value },
+            ResourceKind.Tools => this with { Tools = value },
+            ResourceKind.Medicine => this with { Medicine = value },
+            ResourceKind.Ammunition => this with { Ammunition = value },
+            _ => throw new ArgumentOutOfRangeException(nameof(kind)),
+        };
+    }
 
     /// <summary>返回所有资源同时按倍率缩放后的库存。</summary>
     /// <param name="factor">各类资源共同使用的数量倍率。</param>
@@ -92,6 +93,7 @@ public readonly partial record struct ResourceStock
         var water = Math.Clamp(Water, 0, maximum);
         var materials = _materials;
         if (materials is not null && !materials.Within(maximum))
+        {
             materials = NormalizeMaterials(new Materials
             {
                 Wood = Math.Clamp(Wood, 0, maximum),
@@ -109,6 +111,8 @@ public readonly partial record struct ResourceStock
                 Medicine = Math.Clamp(Medicine, 0, maximum),
                 Ammunition = Math.Clamp(Ammunition, 0, maximum),
             });
+        }
+
         return new ResourceStock(food, water, materials);
     }
 

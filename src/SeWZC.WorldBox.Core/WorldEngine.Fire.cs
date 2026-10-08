@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -85,6 +86,7 @@ public sealed partial class WorldEngine
     {
         return TryExtinguishFire(RequireResident(person.Id));
     }
+
     private bool TryExtinguishFire(ResidentCursor person)
     {
         var goal = person.Agent.Goal;
@@ -102,9 +104,7 @@ public sealed partial class WorldEngine
         }
 
         if (tile.FireSuppressionTick != Current.Tick)
-        {
             tile.Replace(tile.Value with { FireSuppressionTick = Current.Tick, FireSuppressed = 0 });
-        }
 
         // 每格共用每日扑救上限，避免聚集大量居民后火灾在一日内直接消失。
         var reduction = Math.Min(2 - tile.FireSuppressed, tile.FireTicks);
@@ -143,7 +143,9 @@ public sealed partial class WorldEngine
                     safeEdge = true;
                     break;
                 }
-            if (!safeEdge) continue;
+
+            if (!safeEdge)
+                continue;
             choices.Add(new GoalChoice(AgentGoalKind.ExtinguishFire, x, y, 190 - offset.Distance,
                 "携带饮水赶到火场边缘，持续用水扑救；同一火场每日扑救量有限"));
             return;

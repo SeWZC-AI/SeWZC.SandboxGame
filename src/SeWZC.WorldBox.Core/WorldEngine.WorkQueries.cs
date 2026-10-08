@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -18,15 +19,25 @@ public sealed partial class WorldEngine
     private bool _localWorkQueriesActive;
 
     // 自主常规采集及常规设施劳动四日错峰；扑火、消防站现场维修、驻留、日常需求及交通仍逐日处理。
-    private int WorkInterval(ResidentCursor person) => _localWorkQueriesActive && !person.Agent.Goal.PlayerDirected ? 4 : 1;
-    private bool IsWorkDay(ResidentCursor person) => (Current.Tick + person.Id) % WorkInterval(person) == 0;
+    private int WorkInterval(ResidentCursor person)
+    {
+        return _localWorkQueriesActive && !person.Agent.Goal.PlayerDirected ? 4 : 1;
+    }
+
+    private bool IsWorkDay(ResidentCursor person)
+    {
+        return (Current.Tick + person.Id) % WorkInterval(person) == 0;
+    }
 
     private BuildingCursor? FindBuilding(int id)
     {
-        if (id == 0) return null;
-        if (_localWorkQueriesActive) return _workBuildingsById.GetValueOrDefault(id);
+        if (id == 0)
+            return null;
+        if (_localWorkQueriesActive)
+            return _workBuildingsById.GetValueOrDefault(id);
         foreach (var building in Current.Society.Buildings)
-            if (building.Id == id) return building;
+            if (building.Id == id)
+                return building;
         return null;
     }
 
@@ -120,7 +131,7 @@ public sealed partial class WorldEngine
     private void RemoveLocalWorkResident(ResidentCursor resident)
     {
         if (!_localWorkQueriesActive || !_localWorkResidents.TryGetValue(resident.SettlementId, out var group)
-                                    || !group.Remove(resident))
+                                     || !group.Remove(resident))
             return;
         var workId = ReservedWork(resident.Agent.Goal);
         if (workId != 0 && resident.ArmyId == 0)
@@ -134,7 +145,8 @@ public sealed partial class WorldEngine
             : Current.Residents;
     }
 
-    private BuildingCursor? FindLocalWorkBuilding(ResidentCursor resident, int range, bool preferNearest, bool followTarget = false)
+    private BuildingCursor? FindLocalWorkBuilding(ResidentCursor resident, int range, bool preferNearest,
+        bool followTarget = false)
     {
         IReadOnlyList<BuildingCursor>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(resident.SettlementId)
@@ -177,7 +189,7 @@ public sealed partial class WorldEngine
                 Current.Tick < resident.Agent.Goal.NavigationRetryTick)
                 continue;
             var priority = WorkPriority(building, resident, preferSpecialty) * 2
-                + (resident.Agent.WorkplaceId == building.Id ? 0 : 1);
+                           + (resident.Agent.WorkplaceId == building.Id ? 0 : 1);
             if (selected is not null && !(priority < bestPriority || (priority == bestPriority
                                                                       && ((preferNearest && distance < bestDistance)
                                                                           || ((!preferNearest ||
@@ -200,9 +212,10 @@ public sealed partial class WorldEngine
         ResidentCursor? selected = null;
         foreach (var patient in residents)
         {
-            if (patient.Health <= 0 || patient.SettlementId != building.SettlementId || Distance(patient.X, patient.Y, building.X,
-                                                                  building.Y) > 3
-                                                              || !(patient.Health < 99 || patient.SicknessTicks > 0))
+            if (patient.Health <= 0 || patient.SettlementId != building.SettlementId || Distance(patient.X, patient.Y,
+                    building.X,
+                    building.Y) > 3
+                || !(patient.Health < 99 || patient.SicknessTicks > 0))
                 continue;
             if (firstOnly)
                 return patient;

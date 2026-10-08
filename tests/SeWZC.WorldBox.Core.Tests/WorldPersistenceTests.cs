@@ -1,5 +1,4 @@
 using System.Text.Json.Nodes;
-using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.Core.Tests;
 
@@ -28,7 +27,9 @@ public sealed class WorldPersistenceTests
             Assert.Equal(area, restored.Agent.WorkAreaIndex);
             Assert.Equal(workplace, restored.Agent.WorkplaceId);
         }
-        else Assert.Throws<ArgumentException>(() => WorldEngine.ImportJson(document.ToJsonString()));
+        else
+            Assert.Throws<ArgumentException>(() => WorldEngine.ImportJson(document.ToJsonString()));
+
         Assert.Equal(before, fixture.Engine.State);
     }
 
@@ -64,6 +65,7 @@ public sealed class WorldPersistenceTests
 
         Assert.Equal(before, fixture.Engine.State);
     }
+
     /// <summary>输入为空或格式损坏时拒绝导入。</summary>
     [Theory]
     [InlineData("")]
@@ -148,6 +150,7 @@ public sealed class WorldPersistenceTests
         Assert.Equal(expected, string.Concat(chunks));
         Assert.Equal(expected, fixture.Engine.ExportJson());
     }
+
     /// <summary>保存恢复后仍按原始观察时间和议题规则计算可信度。</summary>
     [Fact]
     public void Round_trip_preserves_fact_snapshot_and_topic_behavior()
@@ -165,10 +168,7 @@ public sealed class WorldPersistenceTests
         fixture.Resident.Agent.Memory.Add(fact);
         fixture.Engine.Current.PendingMessages.Add(new PendingMessage
         {
-            SenderId = fixture.ResidentId,
-            RecipientId = fixture.ResidentId,
-            DeliverTick = 1,
-            Facts = [fact],
+            SenderId = fixture.ResidentId, RecipientId = fixture.ResidentId, DeliverTick = 1, Facts = [fact],
         });
 
         var restoredWorld = WorldEngine.ImportJson(fixture.Engine.ExportJson());
@@ -186,9 +186,7 @@ public sealed class WorldPersistenceTests
         var fixture = new WorldFixture();
         fixture.Engine.Current.PendingMessages.Add(new PendingMessage
         {
-            SenderId = fixture.ResidentId,
-            RecipientId = fixture.ResidentId,
-            DeliverTick = 1,
+            SenderId = fixture.ResidentId, RecipientId = fixture.ResidentId, DeliverTick = 1,
         });
         var saved = JsonNode.Parse(fixture.Engine.ExportJson())!;
         saved["PendingMessages"]![0]!["Facts"] = null;
@@ -210,5 +208,4 @@ public sealed class WorldPersistenceTests
         Assert.Throws<ArgumentException>(() => WorldEngine.ImportJson(saved.ToJsonString()));
         Assert.Equal(before, fixture.Engine.State);
     }
-
 }

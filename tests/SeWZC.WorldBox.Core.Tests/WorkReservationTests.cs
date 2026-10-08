@@ -1,5 +1,3 @@
-using SeWZC.WorldBox.Core;
-
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>设施劳动中的工位预约交接与死亡释放。</summary>
@@ -12,17 +10,26 @@ public sealed class WorkReservationTests
         var fixture = new WorldFixture();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         fixture.Engine.Current.Tick = 1;
-        var building = fixture.Engine.Current.Society.Buildings.Single(candidate => candidate.Kind == BuildingKind.TownCenter);
+        var building =
+            fixture.Engine.Current.Society.Buildings.Single(candidate => candidate.Kind == BuildingKind.TownCenter);
         building.Health = 10;
         building.WorkSlots = 1;
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with
             {
-                Age = 25, Profession = Profession.Builder, X = 16, Y = 16, FromX = 16, FromY = 16,
+                Age = 25,
+                Profession = Profession.Builder,
+                X = 16,
+                Y = 16,
+                FromX = 16,
+                FromY = 16,
                 Inventory = new ResourceStock { Stone = 1 },
                 Agent = person.Agent.Value with
                 {
-                    Goal = new AgentGoal { Kind = AgentGoalKind.Work, TargetEntityId = building.Id, PlayerDirected = true },
+                    Goal = new AgentGoal
+                    {
+                        Kind = AgentGoalKind.Work, TargetEntityId = building.Id, PlayerDirected = true,
+                    },
                 },
             });
         var other = fixture.Engine.Current.Residents.Single(person => person.Id != fixture.ResidentId);
@@ -44,9 +51,17 @@ public sealed class WorkReservationTests
         fixture.Engine.SpawnResidents(0, 16, RaceKind.Human, 2);
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with
         {
-            Aging = false, Hunger = false, Thirst = false, Disease = false, Births = false,
-            Construction = false, Expansion = false, Research = false,
-            Migration = false, Secession = false, Wars = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Research = false,
+            Migration = false,
+            Secession = false,
+            Wars = false,
         }, false, true);
         var otherTown = fixture.Engine.Current.Settlements.Single(town => town.Id != fixture.Town.Id);
         fixture.Town.MaxClaimRadius = 8;
@@ -56,12 +71,14 @@ public sealed class WorkReservationTests
             ground.NationId = fixture.Town.NationId;
             ground.ClaimedSettlementId = fixture.Town.Id;
         }
+
         for (var x = 0; x <= 5; x++)
         {
             var ground = fixture.Engine.Current.Tiles[16 * 32 + x];
             ground.NationId = otherTown.NationId;
             ground.ClaimedSettlementId = otherTown.Id;
         }
+
         GrantResearch(fixture, Advancement.BattleMagic);
         var towerId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.StormSpire, 8, 16);
         var clinicId = fixture.Engine.GrantFacility(otherTown.Id, BuildingKind.Infirmary, 5, 16);
@@ -73,42 +90,71 @@ public sealed class WorkReservationTests
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with
             {
-                Age = 25, Health = 100, SicknessTicks = 0, Profession = Profession.Builder,
-                X = 5, Y = 16, FromX = 5, FromY = 16, MoveStartedTick = 0, MoveDurationTicks = 1,
+                Age = 25,
+                Health = 100,
+                SicknessTicks = 0,
+                Profession = Profession.Builder,
+                X = 5,
+                Y = 16,
+                FromX = 5,
+                FromY = 16,
+                MoveStartedTick = 0,
+                MoveDurationTicks = 1,
                 Inventory = new ResourceStock { Food = 1, Water = 1 },
                 Agent = person.Agent.Value with { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal() },
             });
         var caster = fixture.Resident;
         caster.Replace(caster.Value with
         {
-            X = 8, FromX = 8, Profession = Profession.Battlemage, MagicTalent = 100, MagicTraining = 8, Mana = 100,
+            X = 8,
+            FromX = 8,
+            Profession = Profession.Battlemage,
+            MagicTalent = 100,
+            MagicTraining = 8,
+            Mana = 100,
             Inventory = new ResourceStock { Food = 1, Water = 1, Crystals = 2 },
             Agent = caster.Agent.Value with
             {
                 Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.Work, TargetEntityId = towerId, TargetX = 8, TargetY = 16,
-                    PlayerDirected = true, ReviewTick = 100,
+                    Kind = AgentGoalKind.Work,
+                    TargetEntityId = towerId,
+                    TargetX = 8,
+                    TargetY = 16,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
                 },
             },
         });
         caster.Agent.Memory.Add(new AgentFact
         {
-            Id = 90_001, Kind = AgentFactKind.WarOrder, SubjectId = otherTown.NationId,
-            TargetNationId = caster.NationId, OriginResidentId = caster.Id, SourceResidentId = caster.Id,
-            Value = 1, Confidence = 1,
+            Id = 90_001,
+            Kind = AgentFactKind.WarOrder,
+            SubjectId = otherTown.NationId,
+            TargetNationId = caster.NationId,
+            OriginResidentId = caster.Id,
+            SourceResidentId = caster.Id,
+            Value = 1,
+            Confidence = 1,
         });
-        var otherResidents = fixture.Engine.Current.Residents.Where(person => person.SettlementId == otherTown.Id).ToArray();
+        var otherResidents = fixture.Engine.Current.Residents.Where(person => person.SettlementId == otherTown.Id)
+            .ToArray();
         var victim = otherResidents[0];
         victim.Replace(victim.Value with
         {
-            Health = 1, Armor = 0, PersonalWard = 0,
+            Health = 1,
+            Armor = 0,
+            PersonalWard = 0,
             Agent = victim.Agent.Value with
             {
                 Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.Work, TargetEntityId = clinicId, TargetX = 5, TargetY = 16,
-                    PlayerDirected = true, ReviewTick = 100,
+                    Kind = AgentGoalKind.Work,
+                    TargetEntityId = clinicId,
+                    TargetX = 5,
+                    TargetY = 16,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
                 },
             },
         });
@@ -138,15 +184,30 @@ public sealed class WorkReservationTests
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with
         {
-            Aging = false, Hunger = false, Thirst = false, Disease = false, Births = false,
-            Construction = false, Expansion = false, Research = false,
-            Migration = false, Secession = false, Wars = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Research = false,
+            Migration = false,
+            Secession = false,
+            Wars = false,
         }, false, false);
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with
             {
-                Race = race, Age = 25, Profession = Profession.Builder,
-                X = 14, Y = 16, FromX = 14, FromY = 16, MoveStartedTick = 0, MoveDurationTicks = 1,
+                Race = race,
+                Age = 25,
+                Profession = Profession.Builder,
+                X = 14,
+                Y = 16,
+                FromX = 14,
+                FromY = 16,
+                MoveStartedTick = 0,
+                MoveDurationTicks = 1,
                 Inventory = new ResourceStock { Food = 1, Water = 1 },
                 Agent = person.Agent.Value with { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal() },
             });
@@ -156,6 +217,7 @@ public sealed class WorkReservationTests
             ground.NationId = fixture.Town.NationId;
             ground.ClaimedSettlementId = fixture.Town.Id;
         }
+
         var site = fixture.Engine.Current.Tiles[16 * 32 + 14];
         site.Terrain = kind switch
         {
@@ -170,6 +232,7 @@ public sealed class WorkReservationTests
             fixture.Engine.Current.Tiles[17 * 32 + 14].Terrain = TerrainType.River;
             GrantResearch(fixture, Advancement.CivilEngineering);
         }
+
         var buildingId = fixture.Engine.GrantFacility(fixture.Town.Id, kind, 14, 16);
         var building = fixture.Engine.Current.Society.Buildings.Single(candidate => candidate.Id == buildingId);
         building.WorkSlots = 1;
@@ -180,7 +243,11 @@ public sealed class WorkReservationTests
             : new ResourceStock { Food = 3, Water = 1 };
         fixture.Resident.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Work, TargetEntityId = buildingId, TargetX = 14, TargetY = 16, ReviewTick = 100,
+            Kind = AgentGoalKind.Work,
+            TargetEntityId = buildingId,
+            TargetX = 14,
+            TargetY = 16,
+            ReviewTick = 100,
         };
         var replacement = fixture.Engine.Current.Residents.Single(person => person.Id != fixture.ResidentId);
         replacement.Agent.NextThinkTick = 0;
@@ -192,7 +259,6 @@ public sealed class WorkReservationTests
         Assert.Contains(replacement.Id, building.Workers);
         Assert.DoesNotContain(fixture.ResidentId, building.Workers);
         Assert.Equal(AgentGoalKind.Work, Assert.Single(replacement.Agent.Decisions).Goal);
-
     }
 
     private static void GrantResearch(WorldFixture fixture, Advancement research)

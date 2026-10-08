@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -26,10 +27,12 @@ public sealed partial class WorldEngine
     {
         foreach (var building in Current.Society.Buildings)
             if (!building.IsCompleted)
-                building.Observation = building.Observation.Observe(Current.Tick, Current.Rules.DevelopmentRate, building.ConstructionProgress);
+                building.Observation = building.Observation.Observe(Current.Tick, Current.Rules.DevelopmentRate,
+                    building.ConstructionProgress);
         foreach (var research in Current.Society.Research)
             if (research.ActiveProject is not null)
-                research.Observation = research.Observation.Observe(Current.Tick, Current.Rules.DevelopmentRate, research.Progress);
+                research.Observation =
+                    research.Observation.Observe(Current.Tick, Current.Rules.DevelopmentRate, research.Progress);
     }
 
     /// <summary>依据近期稳定的实际工作速率估算项目剩余日数；依据不足时给出原因。</summary>
@@ -175,10 +178,10 @@ public sealed partial class WorldEngine
         foreach (var person in state.Residents.Concat(state.ArchivedResidents))
             ValidateStoryReferences(person, state.NextId);
         foreach (var person in state.Residents.Concat(state.ArchivedResidents))
-            foreach (var entry in person.History)
-                CheckV2(
-                    Reference(entry.EventId) && Reference(entry.EvidenceFactId) && Reference(entry.SettlementId) &&
-                    Reference(entry.NationId), "人物经历关联无效。");
+        foreach (var entry in person.History)
+            CheckV2(
+                Reference(entry.EventId) && Reference(entry.EvidenceFactId) && Reference(entry.SettlementId) &&
+                Reference(entry.NationId), "人物经历关联无效。");
         foreach (var fact in state.Residents.Concat(state.ArchivedResidents)
                      .SelectMany(r => r.Agent.Memory.Concat(r.Agent.CarriedMessages))
                      .Concat(state.Settlements.SelectMany(t => t.PublicKnowledge))

@@ -1,5 +1,3 @@
-using SeWZC.WorldBox.Core;
-
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>自主评估错峰与供水等待的即时边界。</summary>
@@ -19,7 +17,11 @@ public sealed class AgentCadenceTests
         fixture.Resident.Agent.NextThinkTick = due;
         fixture.Resident.Agent.Goal = new AgentGoal
         {
-            Kind = kind, TargetX = 16, TargetY = 16, WorkTicks = 2, ReviewTick = due,
+            Kind = kind,
+            TargetX = 16,
+            TargetY = 16,
+            WorkTicks = 2,
+            ReviewTick = due,
         };
 
         fixture.Engine.Step();
@@ -42,7 +44,11 @@ public sealed class AgentCadenceTests
         fixture.Resident.Activity = activity;
         fixture.Resident.Agent.Goal = new AgentGoal
         {
-            Kind = kind, TargetX = 16, TargetY = 16, PlayerDirected = true, ReviewTick = 100,
+            Kind = kind,
+            TargetX = 16,
+            TargetY = 16,
+            PlayerDirected = true,
+            ReviewTick = 100,
         };
         var before = fixture.Resident.Value;
 
@@ -63,20 +69,31 @@ public sealed class AgentCadenceTests
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with
             {
-                X = 16, Y = 16, FromX = 16, FromY = 16,
+                X = 16,
+                Y = 16,
+                FromX = 16,
+                FromY = 16,
                 Inventory = new ResourceStock { Food = 10, Water = 10 },
                 Agent = person.Agent.Value with
                 {
-                    Initialized = true, NextThinkTick = 100,
+                    Initialized = true,
+                    NextThinkTick = 100,
                     Goal = new AgentGoal { Kind = AgentGoalKind.Rest, PlayerDirected = true, ReviewTick = 100 },
                 },
             });
         fixture.Resident.Agent.Memory.Add(new AgentFact
         {
-            Id = 90_001, Kind = AgentFactKind.SettlementLocation, SubjectId = fixture.Town.Id,
-            X = 16, Y = 16, ObservedTick = 1, LearnedTick = 1,
-            OriginResidentId = fixture.ResidentId, SourceResidentId = fixture.ResidentId,
-            Confidence = 1, Text = "亲眼见到家园",
+            Id = 90_001,
+            Kind = AgentFactKind.SettlementLocation,
+            SubjectId = fixture.Town.Id,
+            X = 16,
+            Y = 16,
+            ObservedTick = 1,
+            LearnedTick = 1,
+            OriginResidentId = fixture.ResidentId,
+            SourceResidentId = fixture.ResidentId,
+            Confidence = 1,
+            Text = "亲眼见到家园",
         });
 
         fixture.Engine.Step();
@@ -103,8 +120,7 @@ public sealed class AgentCadenceTests
         fixture.Resident.Agent.NextThinkTick = fixture.Engine.Current.Tick + 4;
         fixture.Resident.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Gather, TargetX = 16, TargetY = 16,
-            ReviewTick = fixture.Engine.Current.Tick + 4,
+            Kind = AgentGoalKind.Gather, TargetX = 16, TargetY = 16, ReviewTick = fixture.Engine.Current.Tick + 4,
         };
         fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
 
@@ -125,7 +141,8 @@ public sealed class AgentCadenceTests
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with
             {
-                Hunger = 90, Inventory = new ResourceStock { Water = 10 },
+                Hunger = 90,
+                Inventory = new ResourceStock { Water = 10 },
                 FrozenUntilTick = fixture.Engine.Current.Tick + 6,
                 Agent = person.Agent.Value with { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal() },
             });
@@ -139,7 +156,7 @@ public sealed class AgentCadenceTests
             Assert.Equal(0, (person.Agent.NextThinkTick + person.Id) % 4);
             return person.Agent.NextThinkTick - fixture.Engine.State.Tick;
         }).Distinct().Order().ToArray();
-        Assert.Equal<long>([3, 4, 5, 6], intervals);
+        Assert.Equal([3, 4, 5, 6], intervals);
         var restored = WorldEngine.ImportJson(fixture.Engine.ExportJson());
         Assert.Equal(fixture.Engine.State.Residents.Select(person => person.Agent.NextThinkTick),
             restored.State.Residents.Select(person => person.Agent.NextThinkTick));
@@ -164,13 +181,15 @@ public sealed class AgentCadenceTests
         var tile = fixture.Engine.Current.Tiles[16 * 32 + 16];
         tile.Replace(tile.Value with
         {
-            NaturalWaterYield = .025, DroughtTicks = 0, ResourceAmount = 100,
-            Fertility = fertility, Plants = new PlantCoverage { Grass = 1 },
+            NaturalWaterYield = .025,
+            DroughtTicks = 0,
+            ResourceAmount = 100,
+            Fertility = fertility,
+            Plants = new PlantCoverage { Grass = 1 },
         });
         fixture.Resident.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Gather, TargetX = 16, TargetY = 16,
-            StartedTick = fixture.Engine.Current.Tick - 4,
+            Kind = AgentGoalKind.Gather, TargetX = 16, TargetY = 16, StartedTick = fixture.Engine.Current.Tick - 4,
         };
 
         fixture.Engine.Step();
@@ -216,6 +235,7 @@ public sealed class AgentCadenceTests
         Assert.Equal(0, (fixture.Resident.Agent.NextThinkTick + fixture.ResidentId) % 4);
         Assert.Equal(fixture.Resident.Agent.NextThinkTick, fixture.Resident.Agent.Goal.ReviewTick);
     }
+
     /// <summary>非评估日的普通空闲居民继续结算需求，保留尚未评估的目标。</summary>
     [Fact]
     public void Ordinary_idle_waits_for_its_review_day()
@@ -236,7 +256,8 @@ public sealed class AgentCadenceTests
     public void Critical_thirst_overrides_the_review_schedule()
     {
         var fixture = Prepare();
-        foreach (var tile in fixture.Engine.Current.Tiles) tile.NaturalWaterYield = 0;
+        foreach (var tile in fixture.Engine.Current.Tiles)
+            tile.NaturalWaterYield = 0;
         fixture.Town.Resources = new ResourceStock { Food = 40 };
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 90;
@@ -267,8 +288,11 @@ public sealed class AgentCadenceTests
         var source = 17 * 32 + 16;
         fixture.Resident.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 17,
-            TargetEntityId = source + 1, WorkTicks = 3,
+            Kind = AgentGoalKind.FetchWater,
+            TargetX = 16,
+            TargetY = 17,
+            TargetEntityId = source + 1,
+            WorkTicks = 3,
         };
         var tile = fixture.Engine.Current.Tiles[source];
         fixture.AddWell(16, 17, .025);
@@ -296,14 +320,20 @@ public sealed class AgentCadenceTests
         fixture.Engine.Current.Tick = 1;
         person.Replace(person.Value with
         {
-            X = 16, Y = 17, FromX = 16, FromY = 17,
+            X = 16,
+            Y = 17,
+            FromX = 16,
+            FromY = 17,
             Inventory = new ResourceStock { Water = target - .1 },
             Agent = person.Agent.Value with
             {
                 Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 17,
-                    TargetEntityId = 17 * 32 + 16 + 1, ReviewTick = 40,
+                    Kind = AgentGoalKind.FetchWater,
+                    TargetX = 16,
+                    TargetY = 17,
+                    TargetEntityId = 17 * 32 + 16 + 1,
+                    ReviewTick = 40,
                 },
                 NextThinkTick = 40,
             },
@@ -332,8 +362,12 @@ public sealed class AgentCadenceTests
         fixture.Town.Resources = new ResourceStock();
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            X = 16, Y = 17, FromX = 16, FromY = 17,
-            Age = 20, MoveStartedTick = movementStarted == 0 ? 0 : fixture.Engine.Current.Tick,
+            X = 16,
+            Y = 17,
+            FromX = 16,
+            FromY = 17,
+            Age = 20,
+            MoveStartedTick = movementStarted == 0 ? 0 : fixture.Engine.Current.Tick,
             MoveDurationTicks = movementStarted == 0 ? 1 : 3,
             Inventory = new ResourceStock { Food = 10, Water = .1 },
             Agent = fixture.Resident.Agent.Value with
@@ -341,8 +375,11 @@ public sealed class AgentCadenceTests
                 NextThinkTick = 40,
                 Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 17,
-                    TargetEntityId = 17 * 32 + 16 + 1, ReviewTick = 40,
+                    Kind = AgentGoalKind.FetchWater,
+                    TargetX = 16,
+                    TargetY = 17,
+                    TargetEntityId = 17 * 32 + 16 + 1,
+                    ReviewTick = 40,
                 },
             },
         });
@@ -359,13 +396,20 @@ public sealed class AgentCadenceTests
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with
         {
-            Births = false, Construction = false, Expansion = false,
-            Wars = false, Secession = false, Migration = false,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Wars = false,
+            Secession = false,
+            Migration = false,
         }, false, false);
         fixture.Engine.Current.Tick = 8 + (4 - fixture.ResidentId % 4) % 4;
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            X = 16, Y = 16, FromX = 16, FromY = 16,
+            X = 16,
+            Y = 16,
+            FromX = 16,
+            FromY = 16,
             Inventory = new ResourceStock { Food = 10, Water = 10 },
             Agent = fixture.Resident.Agent.Value with { Initialized = true, NextThinkTick = 0, Goal = new AgentGoal() },
         });

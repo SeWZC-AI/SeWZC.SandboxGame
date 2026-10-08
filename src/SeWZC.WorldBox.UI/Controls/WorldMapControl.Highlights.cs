@@ -9,11 +9,11 @@ public sealed partial class WorldMapControl
     private static readonly uint[] TownHighlightColors =
         [0xAA5CAEE8, 0xAA9ADA72, 0xAAE1AE60, 0xAAC293E0, 0xAAE48090, 0xAA62CFBC];
 
-    private readonly Dictionary<uint, IBrush> _tileHighlightBrushes = [];
-
     private static readonly Pen WorkingHighlight = new(Brush(0xFF79D58F)),
         RestingHighlight = new(Brush(0xFFB6A2EF)),
         TravelHighlight = new(Brush(0xFF65C8FA));
+
+    private readonly Dictionary<uint, IBrush> _tileHighlightBrushes = [];
 
     private void DrawExtraHighlights(DrawingContext context, WorldState state)
     {
@@ -48,16 +48,17 @@ public sealed partial class WorldMapControl
         {
             var viewport = VisibleTiles(state, 0);
             for (var y = viewport.Top; y <= viewport.Bottom; y++)
-                for (var x = viewport.Left; x <= viewport.Right; x++)
-                {
-                    var color = TileHighlightColor(state.Tiles[y * state.Width + x]);
-                    if (color == 0)
-                        continue;
-                    if (!_tileHighlightBrushes.TryGetValue(color, out var brush))
-                        _tileHighlightBrushes[color] = brush = Brush(color);
-                    context.DrawRectangle(brush, null, new Rect(x * TilePixels, y * TilePixels,
-                        TilePixels, TilePixels));
-                }
+            for (var x = viewport.Left; x <= viewport.Right; x++)
+            {
+                var color = TileHighlightColor(state.Tiles[y * state.Width + x]);
+                if (color == 0)
+                    continue;
+                if (!_tileHighlightBrushes.TryGetValue(color, out var brush))
+                    _tileHighlightBrushes[color] = brush = Brush(color);
+                context.DrawRectangle(brush, null, new Rect(x * TilePixels, y * TilePixels,
+                    TilePixels, TilePixels));
+            }
+
             return;
         }
 
@@ -88,24 +89,26 @@ public sealed partial class WorldMapControl
         var left = (int)chunk.Bounds.X / TilePixels;
         var top = (int)chunk.Bounds.Y / TilePixels;
         for (var y = 0; y < canvas.Height; y++)
-            for (var x = 0; x < canvas.Width; x++)
-            {
-                var tile = state.Tiles[(top + y) * state.Width + left + x];
-                var argb = TileHighlightColor(tile);
-                var rgba = (argb << 8) | (argb >> 24);
-                var offset = (y * canvas.Width + x) * 4;
-                if (canvas.Pixels[offset] == (byte)(rgba >> 24) &&
-                    canvas.Pixels[offset + 1] == (byte)(rgba >> 16) &&
-                    canvas.Pixels[offset + 2] == (byte)(rgba >> 8) && canvas.Pixels[offset + 3] == (byte)rgba)
-                    continue;
-                canvas.Pixel(x, y, rgba);
-                changed = true;
-            }
+        for (var x = 0; x < canvas.Width; x++)
+        {
+            var tile = state.Tiles[(top + y) * state.Width + left + x];
+            var argb = TileHighlightColor(tile);
+            var rgba = (argb << 8) | (argb >> 24);
+            var offset = (y * canvas.Width + x) * 4;
+            if (canvas.Pixels[offset] == (byte)(rgba >> 24) &&
+                canvas.Pixels[offset + 1] == (byte)(rgba >> 16) &&
+                canvas.Pixels[offset + 2] == (byte)(rgba >> 8) && canvas.Pixels[offset + 3] == (byte)rgba)
+                continue;
+            canvas.Pixel(x, y, rgba);
+            changed = true;
+        }
+
         if (changed)
         {
             chunk.Highlight?.Dispose();
             chunk.Highlight = MakeBitmap(canvas, false);
         }
+
         chunk.HighlightTileRevision = _tileRevision;
         chunk.HighlightOverlay = Overlay;
     }
@@ -114,11 +117,13 @@ public sealed partial class WorldMapControl
     {
         return Overlay switch
         {
-            5 => tile.ClaimedSettlementId == 0 ? 0u :
-                TownHighlightColors[tile.ClaimedSettlementId % TownHighlightColors.Length],
-            6 => !WorldEngine.IsWaterSource(tile) ? 0u :
-                ((uint)(40 + (int)(Math.Clamp(WorldEngine.DailyWaterYield(tile) / .1, 0, 1) * 140)) << 24) |
-                0x52BDEBu,
+            5 => tile.ClaimedSettlementId == 0
+                ? 0u
+                : TownHighlightColors[tile.ClaimedSettlementId % TownHighlightColors.Length],
+            6 => !WorldEngine.IsWaterSource(tile)
+                ? 0u
+                : ((uint)(40 + (int)(Math.Clamp(WorldEngine.DailyWaterYield(tile) / .1, 0, 1) * 140)) << 24) |
+                  0x52BDEBu,
             7 => ((uint)(40 + tile.Fertility * 1.4) << 24) | 0x89D773u,
             _ => tile.FireTicks > 0 ? 0xBBF07858u : tile.DroughtTicks > 0 ? 0xAADEB65Cu : 0u,
         };

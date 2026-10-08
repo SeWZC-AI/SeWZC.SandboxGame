@@ -1,5 +1,3 @@
-using SeWZC.WorldBox.Core;
-
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>行动目标的纯导航与驻留进度转换检查。</summary>
@@ -51,8 +49,12 @@ public sealed class AgentGoalTests
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with
         {
-            Births = false, Construction = false, Research = false, Expansion = false,
-            Migration = false, Secession = false,
+            Births = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Migration = false,
+            Secession = false,
         }, false, false);
         fixture.Resident.X = fixture.Town.X;
         fixture.Resident.Y = fixture.Town.Y;
@@ -63,8 +65,12 @@ public sealed class AgentGoalTests
         fixture.Resident.FrozenUntilTick = frozen ? 3 : 0;
         fixture.Resident.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.ReturnHome, TargetX = fixture.Town.X, TargetY = fixture.Town.Y,
-            TargetSettlementId = fixture.Town.Id, PlayerDirected = true, ReviewTick = 100,
+            Kind = AgentGoalKind.ReturnHome,
+            TargetX = fixture.Town.X,
+            TargetY = fixture.Town.Y,
+            TargetSettlementId = fixture.Town.Id,
+            PlayerDirected = true,
+            ReviewTick = 100,
         };
 
         fixture.Engine.Step();
@@ -81,8 +87,12 @@ public sealed class AgentGoalTests
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with
         {
-            Births = false, Construction = false, Research = false, Expansion = false,
-            Migration = false, Secession = false,
+            Births = false,
+            Construction = false,
+            Research = false,
+            Expansion = false,
+            Migration = false,
+            Secession = false,
         }, false, false);
         fixture.Resident.X = 16;
         fixture.Resident.Y = 16;
@@ -90,8 +100,11 @@ public sealed class AgentGoalTests
         fixture.Resident.FromY = 16;
         fixture.Resident.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Explore, TargetX = 19, TargetY = 16,
-            PlayerDirected = true, ReviewTick = 100,
+            Kind = AgentGoalKind.Explore,
+            TargetX = 19,
+            TargetY = 16,
+            PlayerDirected = true,
+            ReviewTick = 100,
         };
         var before = fixture.Engine.State.Residents[0];
 

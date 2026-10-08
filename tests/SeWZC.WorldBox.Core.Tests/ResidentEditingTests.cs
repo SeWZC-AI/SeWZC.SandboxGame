@@ -1,6 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.Core.Tests;
 
@@ -189,6 +188,7 @@ public sealed class ResidentEditingTests
 
         Assert.Equal("原记录", Assert.Single(fixture.Resident.History).Text);
     }
+
     /// <summary>编辑信息产生新身份，已公开的旧观察不被改写，决策依据同步修订。</summary>
     [Fact]
     public void Fact_revision_replaces_the_snapshot_and_updates_decision_evidence()
@@ -209,5 +209,4 @@ public sealed class ResidentEditingTests
         Assert.Equal(revised.Id, fixture.Resident.Agent.Decisions.Last().EvidenceFactId);
         Assert.NotEqual("新的观察描述", prior.Text);
     }
-
 }

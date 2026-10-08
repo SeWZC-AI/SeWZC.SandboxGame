@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>居民之间的一场局部资源冲突。</summary>

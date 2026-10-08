@@ -14,12 +14,19 @@ public readonly partial record struct ResourceStock
     }
 
     /// <inheritdoc />
-    public bool Equals(ResourceStock other) => Food.Equals(other.Food) && Water.Equals(other.Water)
-        && (ReferenceEquals(_materials, other._materials)
-            || (_materials ?? Materials.Empty).Equals(other._materials ?? Materials.Empty));
+    public bool Equals(ResourceStock other)
+    {
+        return Food.Equals(other.Food) && Water.Equals(other.Water)
+                                       && (ReferenceEquals(_materials, other._materials)
+                                           || (_materials ?? Materials.Empty).Equals(
+                                               other._materials ?? Materials.Empty));
+    }
 
     /// <inheritdoc />
-    public override int GetHashCode() => HashCode.Combine(Food, Water, _materials ?? Materials.Empty);
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Food, Water, _materials ?? Materials.Empty);
+    }
 
     private Materials? ReplaceMaterial(ResourceKind kind, double value)
     {
@@ -48,7 +55,10 @@ public readonly partial record struct ResourceStock
         return value != 0 ? changed : NormalizeMaterials(changed);
     }
 
-    private static Materials? NormalizeMaterials(Materials materials) => materials.IsEmpty ? null : materials;
+    private static Materials? NormalizeMaterials(Materials materials)
+    {
+        return materials.IsEmpty ? null : materials;
+    }
 
     private sealed record Materials
     {
@@ -86,20 +96,22 @@ public readonly partial record struct ResourceStock
             && BitConverter.DoubleToInt64Bits(Medicine) == 0
             && BitConverter.DoubleToInt64Bits(Ammunition) == 0;
 
-        internal bool Within(double maximum) =>
-            Wood >= 0 && Wood <= maximum
-            && Stone >= 0 && Stone <= maximum
-            && Ore >= 0 && Ore <= maximum
-            && Alloy >= 0 && Alloy <= maximum
-            && EnergyCells >= 0 && EnergyCells <= maximum
-            && Crystals >= 0 && Crystals <= maximum
-            && Coal >= 0 && Coal <= maximum
-            && Oil >= 0 && Oil <= maximum
-            && RareEarth >= 0 && RareEarth <= maximum
-            && Boats >= 0 && Boats <= maximum
-            && Aircraft >= 0 && Aircraft <= maximum
-            && Tools >= 0 && Tools <= maximum
-            && Medicine >= 0 && Medicine <= maximum
-            && Ammunition >= 0 && Ammunition <= maximum;
+        internal bool Within(double maximum)
+        {
+            return Wood >= 0 && Wood <= maximum
+                             && Stone >= 0 && Stone <= maximum
+                             && Ore >= 0 && Ore <= maximum
+                             && Alloy >= 0 && Alloy <= maximum
+                             && EnergyCells >= 0 && EnergyCells <= maximum
+                             && Crystals >= 0 && Crystals <= maximum
+                             && Coal >= 0 && Coal <= maximum
+                             && Oil >= 0 && Oil <= maximum
+                             && RareEarth >= 0 && RareEarth <= maximum
+                             && Boats >= 0 && Boats <= maximum
+                             && Aircraft >= 0 && Aircraft <= maximum
+                             && Tools >= 0 && Tools <= maximum
+                             && Medicine >= 0 && Medicine <= maximum
+                             && Ammunition >= 0 && Ammunition <= maximum;
+        }
     }
 }

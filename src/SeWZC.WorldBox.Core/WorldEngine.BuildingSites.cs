@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -48,7 +49,7 @@ public sealed partial class WorldEngine
         if (kind == BuildingKind.Well && WellWaterYield(tile) < .1)
             return false;
         if (kind == BuildingKind.Reservoir && !Circle(index % Current.Width, index / Current.Width, 1)
-            .Any(source => IsFreshWater(Current.Tiles[source]) && Current.Tiles[source].FireTicks == 0))
+                .Any(source => IsFreshWater(Current.Tiles[source]) && Current.Tiles[source].FireTicks == 0))
             return false;
         if (kind == BuildingKind.HuntingCamp)
             return EdibleAnimal(tile) != WildlifeKind.None;
@@ -148,7 +149,8 @@ public sealed partial class WorldEngine
         if (kind == BuildingKind.Reservoir)
         {
             score += Circle(x, y, 1).Where(i => i == Index(x, y) || IsFreshWater(Current.Tiles[i]))
-                .Select(i => Math.Min(3, GetDailyWaterCapacity(i % Current.Width, i / Current.Width)) * 20).DefaultIfEmpty().Max();
+                .Select(i => Math.Min(3, GetDailyWaterCapacity(i % Current.Width, i / Current.Width)) * 20)
+                .DefaultIfEmpty().Max();
         }
 
         if (kind is BuildingKind.SignalTower or BuildingKind.Watchtower)
@@ -177,7 +179,8 @@ public sealed partial class WorldEngine
                             p.Age >= 14 && p.ArmyId == 0
                             && Distance(p.X, p.Y, i % Current.Width, i / Current.Width) <= 6
                             && VisibleWorkSiteReachable(p, i % Current.Width, i / Current.Width, true)))))
-            .OrderByDescending(i => BuildingSiteScore(town.Id, kind, i % Current.Width, i / Current.Width)).ThenBy(i => i)
+            .OrderByDescending(i => BuildingSiteScore(town.Id, kind, i % Current.Width, i / Current.Width))
+            .ThenBy(i => i)
             .FirstOrDefault(-1);
     }
 

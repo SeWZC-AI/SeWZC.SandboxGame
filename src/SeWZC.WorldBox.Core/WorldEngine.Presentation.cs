@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -79,7 +80,10 @@ public sealed partial class WorldEngine
             cursor.Agent.Goal = navigation;
             if (next < 0 || !visited.Add(next))
                 break;
-            cursor.Replace(cursor.Value with { FromX = cursor.X, FromY = cursor.Y, X = next % Current.Width, Y = next / Current.Width });
+            cursor.Replace(cursor.Value with
+            {
+                FromX = cursor.X, FromY = cursor.Y, X = next % Current.Width, Y = next / Current.Width,
+            });
             route.Add(new RoutePoint(cursor.X, cursor.Y));
         }
 
@@ -102,7 +106,10 @@ public sealed partial class WorldEngine
         var tile = Current.Tiles[Index(x, y)];
         if (!tile.IsWalkable && roadLevel > 0)
             throw new ArgumentException("道路需要可通行的陆地。");
-        tile.Replace(tile.Value with { ResourceAmount = resources, Fertility = (byte)fertility, RoadLevel = (byte)roadLevel });
+        tile.Replace(tile.Value with
+        {
+            ResourceAmount = resources, Fertility = (byte)fertility, RoadLevel = (byte)roadLevel,
+        });
         AddEvent(WorldEventKind.Editor, "玩家调整当地资源、肥力与道路。", x, y);
     }
 }

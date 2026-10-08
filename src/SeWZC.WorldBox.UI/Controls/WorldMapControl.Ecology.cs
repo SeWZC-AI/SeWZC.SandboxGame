@@ -16,14 +16,14 @@ public sealed partial class WorldMapControl
     private readonly Dictionary<PlantKind, WriteableBitmap> _plantIcons = [];
     private readonly List<(Point Start, Point End)> _waterStreams = [];
     private readonly List<(WriteableBitmap Icon, Rect Bounds)> _wildlifeDraws = [];
+    private EcologyViewInput[] _ecologyInputs = [];
+    private ImmutableVector<SettlementResearch>? _ecologyResearch;
+    private int _ecologyResourceMask;
+    private bool _ecologyShowWildlife, _ecologyShowPlants;
 
     private ImmutableVector<Tile>? _ecologyTiles;
-    private ImmutableVector<SettlementResearch>? _ecologyResearch;
-    private ResourceVisibility _ecologyVisibility;
-    private int _ecologyResourceMask;
-    private EcologyViewInput[] _ecologyInputs = [];
-    private bool _ecologyShowWildlife, _ecologyShowPlants;
     private (int Left, int Right, int Top, int Bottom) _ecologyViewport;
+    private ResourceVisibility _ecologyVisibility;
 
     /// <summary>近景生态绘制缓存重建次数，用于呈现诊断。</summary>
     public int EcologyCacheBuildCount { get; private set; }
@@ -298,61 +298,61 @@ public sealed partial class WorldMapControl
             _plantDraws.Clear();
             _waterStreams.Clear();
             for (var y = viewport.Top; y <= viewport.Bottom; y++)
-                for (var x = viewport.Left; x <= viewport.Right; x++)
+            for (var x = viewport.Left; x <= viewport.Right; x++)
+            {
+                var tile = state.Tiles[y * state.Width + x];
+                if (tile.Deposit is { } resource && VisibleResources.Contains(resource) &&
+                    Engine!.IsDepositVisible(tile, ResourceVisibility))
                 {
-                    var tile = state.Tiles[y * state.Width + x];
-                    if (tile.Deposit is { } resource && VisibleResources.Contains(resource) &&
-                        Engine!.IsDepositVisible(tile, ResourceVisibility))
-                    {
-                        _depositDraws.Add((DepositIcon(resource),
-                            new Rect((x + .62) * TilePixels, (y + .05) * TilePixels, 2.8, 2.8)));
-                    }
+                    _depositDraws.Add((DepositIcon(resource),
+                        new Rect((x + .62) * TilePixels, (y + .05) * TilePixels, 2.8, 2.8)));
+                }
 
-                    if (ShowPlants)
+                if (ShowPlants)
+                {
+                    var slot = 0;
+                    foreach (var (kind, cover, _) in PlantResources.At(tile))
                     {
-                        var slot = 0;
-                        foreach (var (kind, cover, _) in PlantResources.At(tile))
-                        {
-                            var size = 2.8 * (.25 + .75 * cover);
-                            _plantDraws.Add((PlantIcon(kind),
-                                new Rect((x + .23 + slot * .34) * TilePixels - size / 2, (y + .22) * TilePixels - size / 2,
-                                    size, size)));
-                            slot++;
-                        }
-                    }
-
-                    if (ShowWildlife && tile.WildlifeMask != 0)
-                    {
-                        WorldEngine.FillWildlifeCapacities(tile, capacities);
-                        WorldEngine.FillVisibleWildlife(tile, groups);
-                        var slot = 0;
-                        for (var group = 0; group < 6; group++)
-                        {
-                            var kind = groups[group];
-                            if (kind == WildlifeKind.None)
-                                continue;
-                            var population = tile.AnimalPopulation(kind);
-                            var scale = .25 + .75 *
-                                Math.Clamp(population / Math.Max(1, capacities[(int)kind]), 0, 1);
-                            var size = (AnimalRules.For(kind).Size == AnimalSize.Large ? 3.2 :
-                                AnimalRules.For(kind).Size == AnimalSize.Small ? 2.2 : 2.8) * scale;
-                            var cx = (x + .25 + slot % 3 * .28) * TilePixels;
-                            var cy = (y + .76 - slot / 3 * .3) * TilePixels;
-                            _wildlifeDraws.Add((AnimalIcon(kind), new Rect(cx - size / 2, cy - size / 2, size, size)));
-                            slot++;
-                        }
-                    }
-
-                    if (tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver &&
-                        _waterStreams.Count < 120)
-                    {
-                        var vertical = y + 1 < state.Height &&
-                                       state.Tiles[(y + 1) * state.Width + x].Terrain is TerrainType.River
-                                           or TerrainType.Stream or TerrainType.LargeRiver;
-                        _waterStreams.Add((new Point((x + .3) * TilePixels, (y + .3) * TilePixels),
-                            new Point((x + (vertical ? .3 : .8)) * TilePixels, (y + (vertical ? .8 : .3)) * TilePixels)));
+                        var size = 2.8 * (.25 + .75 * cover);
+                        _plantDraws.Add((PlantIcon(kind),
+                            new Rect((x + .23 + slot * .34) * TilePixels - size / 2, (y + .22) * TilePixels - size / 2,
+                                size, size)));
+                        slot++;
                     }
                 }
+
+                if (ShowWildlife && tile.WildlifeMask != 0)
+                {
+                    WorldEngine.FillWildlifeCapacities(tile, capacities);
+                    WorldEngine.FillVisibleWildlife(tile, groups);
+                    var slot = 0;
+                    for (var group = 0; group < 6; group++)
+                    {
+                        var kind = groups[group];
+                        if (kind == WildlifeKind.None)
+                            continue;
+                        var population = tile.AnimalPopulation(kind);
+                        var scale = .25 + .75 *
+                            Math.Clamp(population / Math.Max(1, capacities[(int)kind]), 0, 1);
+                        var size = (AnimalRules.For(kind).Size == AnimalSize.Large ? 3.2 :
+                            AnimalRules.For(kind).Size == AnimalSize.Small ? 2.2 : 2.8) * scale;
+                        var cx = (x + .25 + slot % 3 * .28) * TilePixels;
+                        var cy = (y + .76 - slot / 3 * .3) * TilePixels;
+                        _wildlifeDraws.Add((AnimalIcon(kind), new Rect(cx - size / 2, cy - size / 2, size, size)));
+                        slot++;
+                    }
+                }
+
+                if (tile.Terrain is TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver &&
+                    _waterStreams.Count < 120)
+                {
+                    var vertical = y + 1 < state.Height &&
+                                   state.Tiles[(y + 1) * state.Width + x].Terrain is TerrainType.River
+                                       or TerrainType.Stream or TerrainType.LargeRiver;
+                    _waterStreams.Add((new Point((x + .3) * TilePixels, (y + .3) * TilePixels),
+                        new Point((x + (vertical ? .3 : .8)) * TilePixels, (y + (vertical ? .8 : .3)) * TilePixels)));
+                }
+            }
         }
 
         foreach (var (start, end) in _waterStreams)
@@ -368,6 +368,7 @@ public sealed partial class WorldMapControl
                 context.DrawImage(icon, bounds);
                 RenderedPlantCount++;
             }
+
         foreach (var (icon, bounds) in _depositDraws)
             if (Visible(bounds))
                 context.DrawImage(icon, bounds);
@@ -394,28 +395,28 @@ public sealed partial class WorldMapControl
         _ecologyShowPlants = ShowPlants;
         var slot = 0;
         for (var y = viewport.Top; y <= viewport.Bottom; y++)
-            for (var x = viewport.Left; x <= viewport.Right; x++)
+        for (var x = viewport.Left; x <= viewport.Right; x++)
+        {
+            var tile = state.Tiles[y * state.Width + x];
+            var deposit = tile.Deposit is { } resource && VisibleResources.Contains(resource)
+                                                       && Engine!.IsDepositVisible(tile, ResourceVisibility)
+                ? tile.Deposit
+                : null;
+            var vertical = y + 1 < state.Height && state.Tiles[(y + 1) * state.Width + x].Terrain is
+                TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver;
+            // 输入精确比较；饱和资源及灾害剩余时长不改变图形，不触发整层重建。
+            var input = new EcologyViewInput(tile.Terrain, tile.Fertility, tile.Improvement, tile.SettlementId != 0,
+                tile.DroughtTicks > 0, tile.FireTicks > 0, tile.ResourceAmount > 0,
+                Math.Clamp(tile.ResourceAmount / 100, 0, 1), tile.NaturalWaterYield, tile.Plants,
+                tile.Wildlife, tile.WildlifePopulation, tile.OtherWildlife, deposit, vertical);
+            if (_ecologyInputs[slot] != input)
             {
-                var tile = state.Tiles[y * state.Width + x];
-                var deposit = tile.Deposit is { } resource && VisibleResources.Contains(resource)
-                                                           && Engine!.IsDepositVisible(tile, ResourceVisibility)
-                    ? tile.Deposit
-                    : null;
-                var vertical = y + 1 < state.Height && state.Tiles[(y + 1) * state.Width + x].Terrain is
-                    TerrainType.River or TerrainType.Stream or TerrainType.LargeRiver;
-                // 输入精确比较；饱和资源及灾害剩余时长不改变图形，不触发整层重建。
-                var input = new EcologyViewInput(tile.Terrain, tile.Fertility, tile.Improvement, tile.SettlementId != 0,
-                    tile.DroughtTicks > 0, tile.FireTicks > 0, tile.ResourceAmount > 0,
-                    Math.Clamp(tile.ResourceAmount / 100, 0, 1), tile.NaturalWaterYield, tile.Plants,
-                    tile.Wildlife, tile.WildlifePopulation, tile.OtherWildlife, deposit, vertical);
-                if (_ecologyInputs[slot] != input)
-                {
-                    _ecologyInputs[slot] = input;
-                    changed = true;
-                }
-
-                slot++;
+                _ecologyInputs[slot] = input;
+                changed = true;
             }
+
+            slot++;
+        }
 
         return changed;
     }
