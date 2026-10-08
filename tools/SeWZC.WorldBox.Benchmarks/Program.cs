@@ -3,6 +3,8 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using SeWZC.WorldBox.Core;
 
+const int daysPerYear = 120;
+const int bytesPerMegabyte = 1_000_000;
 (string Name, int Size, int Population, int Days)[] cases =
 [
     ("64x64-144", 64, 144, 36),
@@ -28,9 +30,11 @@ var startDay = ReadIntegerOption(options, "--start-day=", options.Contains("--st
 if (startDay is < 0 or > 10_000) throw new ArgumentOutOfRangeException(nameof(startDay));
 if (options.Contains("--large")) cases = cases.Where(scenario => scenario.Size == 256).ToArray();
 if (options.Contains("--steady")) cases = cases.Select(scenario => (scenario.Name, scenario.Size, scenario.Population, 64)).ToArray();
-if (years > 0) cases = cases.Select(scenario => (scenario.Name, scenario.Size, scenario.Population, years * 120)).ToArray();
+if (years > 0) cases = cases.Select(scenario => (scenario.Name, scenario.Size, scenario.Population, years * daysPerYear)).ToArray();
+Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(args[0]))!);
 var core = typeof(WorldEngine).Assembly;
 var coreSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(core.Location)));
+var benchmarkSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(typeof(BenchmarkStatistics).Assembly.Location)));
 var results = new List<object>();
 if (options.Contains("--verify"))
 {
@@ -114,6 +118,7 @@ foreach (var scenario in cases)
     var dailyTimes = new List<double[]>();
     var dailySamples = new List<DailyMeasurement[]>();
     var annualResults = new List<object>();
+    var repetitionResults = new List<object>();
     var replenishedResidents = new List<int>();
     var allocations = new List<long>();
     var collections = new List<int[]>();
@@ -128,9 +133,6 @@ foreach (var scenario in cases)
         var days = new double[scenario.Days];
         var samples = new DailyMeasurement[scenario.Days];
         var replenished = 0;
-        var gen0 = GC.CollectionCount(0);
-        var gen1 = GC.CollectionCount(1);
-        var gen2 = GC.CollectionCount(2);
         for (var day = 0; day < scenario.Days; day++)
         {
             replenished += MaintainPopulation(engine, populationFloor);
@@ -143,38 +145,59 @@ foreach (var scenario in cases)
             var started = Stopwatch.GetTimestamp();
             engine.Step();
             days[day] = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
-            var cpuAfter = BenchmarkClock.ReadProcessCpu();
             var allocated = GC.GetTotalAllocatedBytes(precise: true) - dayAllocated;
+            if (allocated < 0)
+                throw new InvalidOperationException($"GC allocation counter decreased at tick {engine.State.Tick}. Disable DATAS with DOTNET_GCDynamicAdaptationMode=0 on runtimes affected by dotnet/runtime#131069.");
+            var cpuAfter = BenchmarkClock.ReadProcessCpu();
             var g0 = GC.CollectionCount(0) - dayGen0;
             var g1 = GC.CollectionCount(1) - dayGen1;
             var g2 = GC.CollectionCount(2) - dayGen2;
             var pause = g0 + g1 + g2 > 0 ? GC.GetGCMemoryInfo().PauseDurations.ToArray().Sum(duration => duration.TotalMilliseconds) : 0;
             samples[day] = new(engine.State.Tick, population, engine.State.Population, days[day],
                 (cpuAfter - cpuBefore) / 1_000_000d, allocated, g0, g1, g2, pause);
-            if (years > 0 && (day + 1) % 120 == 0)
+            if (years > 0 && (day + 1) % daysPerYear == 0)
             {
-                var yearDays = days.AsSpan(day - 119, 120).ToArray();
-                var yearSamples = samples.AsSpan(day - 119, 120).ToArray();
+                var yearSamples = samples.AsSpan(day + 1 - daysPerYear, daysPerYear).ToArray();
+                var yearTiming = BenchmarkStatistics.From(yearSamples.Select(sample => sample.WallMs));
+                var yearAllocation = BenchmarkStatistics.From(yearSamples.Select(sample => sample.AllocatedBytes / (double)bytesPerMegabyte));
                 annualResults.Add(new
                 {
-                    Repetition = repetition, Year = (day + 1) / 120, EndTick = engine.State.Tick,
-                    MeanMsPerDay = yearDays.Average(), P95MsPerDay = Percentile(yearDays, .95), MaxMsPerDay = yearDays.Max(),
-                    MinPopulation = yearSamples.Min(sample => sample.StartPopulation),
-                    MaxPopulation = yearSamples.Max(sample => sample.StartPopulation), EndPopulation = engine.State.Population,
+                    Repetition = repetition, Year = (day + 1) / daysPerYear,
+                    StartTick = yearSamples[0].Tick - 1, EndTick = engine.State.Tick, SampleCount = yearSamples.Length,
+                    MeanMsPerDay = yearTiming.Mean, P95MsPerDay = yearTiming.P95, MaxMsPerDay = yearTiming.Max,
+                    MeanAllocatedMBPerDay = yearAllocation.Mean, P95AllocatedMBPerDay = yearAllocation.P95, MaxAllocatedMBPerDay = yearAllocation.Max,
+                    GcCollections = new[] { yearSamples.Sum(sample => sample.Gen0), yearSamples.Sum(sample => sample.Gen1), yearSamples.Sum(sample => sample.Gen2) },
+                    MinPopulation = yearSamples.Min(sample => Math.Min(sample.StartPopulation, sample.EndPopulation)),
+                    MaxPopulation = yearSamples.Max(sample => Math.Max(sample.StartPopulation, sample.EndPopulation)), EndPopulation = engine.State.Population,
+                    EndSettlements = engine.State.Settlements.Count, EndBuildings = engine.State.Society.Buildings.Count,
+                    EndArmies = engine.State.Armies.Count,
                 });
-                if ((day + 1) % 1200 == 0)
+                if ((day + 1) % (10 * daysPerYear) == 0)
                 {
-                    Console.WriteLine($"{scenario.Name} {repetition}: year {(day + 1) / 120}, P95 {Percentile(yearDays, .95):F3}, population {engine.State.Population}, replenished {replenished}");
+                    Console.WriteLine($"{scenario.Name} {repetition}: year {(day + 1) / daysPerYear}, time ms/day mean/P95/max {yearTiming.Mean:F3}/{yearTiming.P95:F3}/{yearTiming.Max:F3}, allocation MB/day mean/P95/max {yearAllocation.Mean:F3}/{yearAllocation.P95:F3}/{yearAllocation.Max:F3}, population {engine.State.Population}, replenished {replenished}");
                     File.WriteAllText(args[0] + ".progress.json", JsonSerializer.Serialize(annualResults));
                 }
             }
         }
-        times.Add(days.Average());
+        var timing = BenchmarkStatistics.From(days);
+        var allocation = BenchmarkStatistics.From(samples.Select(sample => sample.AllocatedBytes / (double)bytesPerMegabyte));
+        times.Add(timing.Mean);
         dailyTimes.Add(days);
         dailySamples.Add(samples);
         replenishedResidents.Add(replenished);
         allocations.Add(samples.Sum(sample => sample.AllocatedBytes) / scenario.Days);
-        collections.Add([GC.CollectionCount(0) - gen0, GC.CollectionCount(1) - gen1, GC.CollectionCount(2) - gen2]);
+        collections.Add([samples.Sum(sample => sample.Gen0), samples.Sum(sample => sample.Gen1), samples.Sum(sample => sample.Gen2)]);
+        repetitionResults.Add(new
+        {
+            Repetition = repetition, StartTick = measureStartTick, EndTick = engine.State.Tick, SampleCount = samples.Length,
+            MeanMsPerDay = timing.Mean, P95MsPerDay = timing.P95, MaxMsPerDay = timing.Max,
+            MeanAllocatedMBPerDay = allocation.Mean, P95AllocatedMBPerDay = allocation.P95, MaxAllocatedMBPerDay = allocation.Max,
+            GcCollections = collections[^1], ReplenishedResidents = replenished,
+            MinPopulation = samples.Min(sample => Math.Min(sample.StartPopulation, sample.EndPopulation)),
+            MaxPopulation = samples.Max(sample => Math.Max(sample.StartPopulation, sample.EndPopulation)), EndPopulation = engine.State.Population,
+            EndSettlements = engine.State.Settlements.Count, EndBuildings = engine.State.Society.Buildings.Count,
+            EndArmies = engine.State.Armies.Count,
+        });
         var saved = engine.ExportJson();
         var observed = Convert.ToHexString(SHA256.HashData(CanonicalState(saved)));
         if (options.Contains("--save-final"))
@@ -183,8 +206,11 @@ foreach (var scenario in cases)
             throw new InvalidOperationException("相同初态的重复模拟产生了不同结果。");
         checksum = observed;
         finalPopulation = engine.State.Population;
-        Console.WriteLine($"{scenario.Name} {repetition}: {times[^1]:F3} ms/day, P95 {Percentile(days, .95):F3}, max {days.Max():F3}, {allocations[^1]} bytes/day");
+        Console.WriteLine($"{scenario.Name} {repetition}: time ms/day mean/P95/max {timing.Mean:F3}/{timing.P95:F3}/{timing.Max:F3}, allocation MB/day mean/P95/max {allocation.Mean:F3}/{allocation.P95:F3}/{allocation.Max:F3}");
     }
+    var allSamples = dailySamples.SelectMany(samples => samples).ToArray();
+    var totalTiming = BenchmarkStatistics.From(allSamples.Select(sample => sample.WallMs));
+    var totalAllocation = BenchmarkStatistics.From(allSamples.Select(sample => sample.AllocatedBytes / (double)bytesPerMegabyte));
     // 各次终态已逐一比较；同一终态的保存续演只需在计时外验证一次。
     var restored = WorldEngine.ImportJson(engine.ExportJson());
     engine.Step();
@@ -194,23 +220,31 @@ foreach (var scenario in cases)
     results.Add(new
     {
         scenario.Name, scenario.Size, InitialPopulation = measuredInitialPopulation, RequestedPopulation = scenario.Population, Seed = benchmarkSeed, scenario.Days,
-        MeasureStartTick = measureStartTick,
+        MeasureStartTick = measureStartTick, MeasureEndTick = measureStartTick + scenario.Days,
+        SimulatedYears = scenario.Days / (double)daysPerYear, DaysPerYear = daysPerYear, SampleCount = allSamples.Length,
         WarmupDays = warmupDays, Repetitions = repetitions, PopulationFloor = populationFloor,
         PreAdvanceReplenished = preAdvanceReplenished,
         ReplenishmentOutsideStepTiming = true, ReplenishedResidents = replenishedResidents,
         Rules = engine.State.Rules, engine.State.NaturalDisasters, engine.State.Society.MagicEnabled,
         CoreAssemblySha256 = coreSha256, CoreModuleVersionId = core.ManifestModule.ModuleVersionId,
+        BenchmarkAssemblySha256 = benchmarkSha256,
         TieredCompilation = Environment.GetEnvironmentVariable("DOTNET_TieredCompilation"),
         TieredPGO = Environment.GetEnvironmentVariable("DOTNET_TieredPGO"),
         ServerGarbageCollection = System.Runtime.GCSettings.IsServerGC,
         GcLatencyMode = System.Runtime.GCSettings.LatencyMode.ToString(),
+        GcConfiguration = GC.GetConfigurationVariables(),
         CpuClock = OperatingSystem.IsLinux() ? "Linux CLOCK_PROCESS_CPUTIME_ID" : null, AllocationScope = "All managed threads",
-        MeanMsPerDay = times.Average(), TimesMsPerDay = times, DailyTimesMs = dailyTimes,
-        DailyMeasurements = dailySamples, AnnualResults = annualResults,
-        P95MsPerDay = Percentile(dailyTimes.SelectMany(days => days), .95),
-        MaxMsPerDay = dailyTimes.SelectMany(days => days).Max(),
+        AllocationBytesPerMB = bytesPerMegabyte, PercentileMethod = "Nearest rank: ceil(sample count * 0.95)",
+        MeanMsPerDay = totalTiming.Mean, P95MsPerDay = totalTiming.P95, MaxMsPerDay = totalTiming.Max,
+        MeanAllocatedMBPerDay = totalAllocation.Mean, P95AllocatedMBPerDay = totalAllocation.P95, MaxAllocatedMBPerDay = totalAllocation.Max,
+        TotalStepMs = allSamples.Sum(sample => sample.WallMs), TotalAllocatedMB = allSamples.Sum(sample => sample.AllocatedBytes) / (double)bytesPerMegabyte,
+        MinPopulation = allSamples.Min(sample => Math.Min(sample.StartPopulation, sample.EndPopulation)),
+        MaxPopulation = allSamples.Max(sample => Math.Max(sample.StartPopulation, sample.EndPopulation)),
+        TimesMsPerDay = times, DailyTimesMs = dailyTimes,
+        DailyMeasurements = dailySamples, AnnualResults = annualResults, RepetitionResults = repetitionResults,
         BytesPerDay = allocations, GcCollections = collections,
-        FinalPopulation = finalPopulation, StateSha256 = checksum, SaveContinuationVerified = true,
+        FinalPopulation = finalPopulation, StateSha256 = checksum,
+        RepeatedSimulationVerified = repetitions > 1, SaveContinuationVerified = true,
         engine.State.FormatVersion, engine.State.SimulationVersion,
         Runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
         Architecture = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString(),
@@ -219,6 +253,7 @@ foreach (var scenario in cases)
         CpuQuota = File.Exists("/sys/fs/cgroup/cpu.max") ? File.ReadAllText("/sys/fs/cgroup/cpu.max").Trim() : null,
         MemoryLimit = File.Exists("/sys/fs/cgroup/memory.max") ? File.ReadAllText("/sys/fs/cgroup/memory.max").Trim() : null,
     });
+    Console.WriteLine($"Summary {scenario.Name}, ticks {measureStartTick}..{measureStartTick + scenario.Days}, {allSamples.Length} samples: time ms/day mean/P95/max {totalTiming.Mean:F3}/{totalTiming.P95:F3}/{totalTiming.Max:F3}, allocation MB/day mean/P95/max {totalAllocation.Mean:F3}/{totalAllocation.P95:F3}/{totalAllocation.Max:F3}");
 }
 File.WriteAllText(args[0], JsonSerializer.Serialize(results, new JsonSerializerOptions { WriteIndented = true }));
 
@@ -229,12 +264,6 @@ static int ReadIntegerOption(HashSet<string> options, string prefix, int fallbac
     if (values.Length != 1 || !int.TryParse(values[0].AsSpan(prefix.Length), out var value))
         throw new ArgumentException($"{prefix} 只能指定一次，且必须为整数。");
     return value;
-}
-
-static double Percentile(IEnumerable<double> values, double fraction)
-{
-    var sorted = values.Order().ToArray();
-    return sorted[(int)Math.Ceiling(sorted.Length * fraction) - 1];
 }
 
 // 压力场景只通过正常居民生成入口补充成年居民，不修改存活者、库存、需求或世界规则。

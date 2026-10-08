@@ -2,6 +2,8 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <ServerGarbageCollection>true</ServerGarbageCollection>
+    <!-- 避免 DATAS 改变堆数导致分配计数失真，见 dotnet/runtime#131069。 -->
+    <GarbageCollectionAdaptationMode>0</GarbageCollectionAdaptationMode>
     <TieredCompilation>true</TieredCompilation>
     <TieredPGO>true</TieredPGO>
   </PropertyGroup>
