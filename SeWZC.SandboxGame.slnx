@@ -19,4 +19,7 @@
     <Project Path="tests/SeWZC.WorldBox.Core.Tests/SeWZC.WorldBox.Core.Tests.csproj" />
     <Project Path="tests/SeWZC.WorldBox.UI.Tests/SeWZC.WorldBox.UI.Tests.csproj" />
   </Folder>
+  <Folder Name="/3.Tools/">
+    <Project Path="tools/SeWZC.WorldBox.Benchmarks/SeWZC.WorldBox.Benchmarks.csproj" />
+  </Folder>
 </Solution>
