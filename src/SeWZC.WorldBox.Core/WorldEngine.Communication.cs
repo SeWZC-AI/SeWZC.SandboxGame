@@ -49,7 +49,9 @@ public sealed partial class WorldEngine
                                       or Profession.Messenger
                                   && _settlements.TryGetValue(person.SettlementId, out var camp) &&
                                   !camp.FoundationPending
-                                  && Distance(person.X, person.Y, camp.X, camp.Y) >= MinimumSettlementDistance - 6)
+                                  && Distance(person.X, person.Y, camp.X, camp.Y) >= MinimumSettlementDistance - 6
+                                  && !person.Agent.Value.Memory.Any(f =>
+                                      f.Kind == AgentFactKind.FoundingSite && Current.Tick - f.ObservedTick < 120))
         {
             var site = Circle(person.X, person.Y, 3).Where(i => RaceTerrainRules.CanWalk(Current.Tiles[i], person.Race)
                                                                 && !IsWaterTerrain(Current.Tiles[i].Terrain) &&
@@ -61,8 +63,7 @@ public sealed partial class WorldEngine
                                                                     Distance(t.X, t.Y, i % Current.Width,
                                                                         i / Current.Width) >= MinimumSettlementDistance))
                 .OrderByDescending(i => Current.Tiles[i].Fertility).ThenBy(i => i).FirstOrDefault(-1);
-            if (site >= 0 && !person.Agent.Memory.Any(f =>
-                    f.Kind == AgentFactKind.FoundingSite && Current.Tick - f.ObservedTick < 120))
+            if (site >= 0)
             {
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.FoundingSite, camp.Id, site % Current.Width,
                         site / Current.Width,
@@ -256,12 +257,15 @@ public sealed partial class WorldEngine
             if ((Current.Tick + senderIndex) % conversationInterval != 0 || Current.Tick - sender.Agent.LastConversationTick < 6
                                                    || sender.Health <= 0)
                 continue;
-            var conversationRadius = Current.Society.Buildings.Any(b =>
-                b.Kind is BuildingKind.Market or BuildingKind.AssemblyHall or BuildingKind.TradeGuild &&
-                IsFacilityOperating(b)
-                && Distance(sender.X, sender.Y, b.X, b.Y) <= 3)
-                ? 3
-                : 2;
+            var conversationRadius = 2;
+            foreach (var building in Current.Society.Buildings)
+                if (building.Kind is BuildingKind.Market or BuildingKind.AssemblyHall or BuildingKind.TradeGuild
+                    && IsFacilityOperating(building)
+                    && Distance(sender.X, sender.Y, building.X, building.Y) <= 3)
+                {
+                    conversationRadius = 3;
+                    break;
+                }
             var count = 0;
             var cells = 0;
             var ownTile = Index(sender.X, sender.Y);
@@ -319,16 +323,23 @@ public sealed partial class WorldEngine
                 || (Current.Tick + sender.Id) % 24 != 0 || !_settlements.TryGetValue(sender.SettlementId, out var home)
                 || Distance(sender.X, sender.Y, home.X, home.Y) > 1)
                 continue;
-            foreach (var address in sender.Agent.Memory.Where(f => f.Kind == AgentFactKind.SettlementLocation
-                                                                   && f.SubjectId != home.Id &&
-                                                                   f.LearnedTick < Current.Tick).Take(3))
+            var addresses = 0;
+            foreach (var address in sender.Agent.Value.Memory)
             {
+                if (address.Kind != AgentFactKind.SettlementLocation || address.SubjectId == home.Id
+                    || address.LearnedTick >= Current.Tick) continue;
+                if (++addresses > 3) break;
                 if (!CanRelayInformation(home.Id, address.SubjectId, out var travelTicks)
                     || !_settlements.TryGetValue(address.SubjectId, out var destination))
                     continue;
-                var recipient = Current.Residents.Where(r => r.SettlementId == destination.Id
-                                                           && Distance(r.X, r.Y, destination.X, destination.Y) <= 2)
-                    .OrderByDescending(r => r.Id == destination.RepresentativeId).ThenBy(r => r.Id).FirstOrDefault();
+                ResidentCursor? recipient = null;
+                foreach (var resident in Current.Residents)
+                {
+                    if (resident.SettlementId != destination.Id
+                        || Distance(resident.X, resident.Y, destination.X, destination.Y) > 2) continue;
+                    if (resident.Id == destination.RepresentativeId) { recipient = resident; break; }
+                    if (recipient is null || resident.Id < recipient.Id) recipient = resident;
+                }
                 if (recipient is null)
                     continue;
                 var facts = SelectMessageFacts(sender, true);

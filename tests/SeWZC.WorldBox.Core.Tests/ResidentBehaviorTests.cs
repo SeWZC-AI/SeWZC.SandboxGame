@@ -5,6 +5,46 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>居民自主选路、供水、避险与休养的最小现场场景。</summary>
 public sealed class ResidentBehaviorTests
 {
+    /// <summary>短路线来自原有视野，抵达后继续使用；存档恢复保持路线与下一步一致。</summary>
+    [Fact]
+    public void Navigation_keeps_a_visible_route_across_save_and_arrival()
+    {
+        var fixture = Prepare();
+        SetJourney(fixture, 10, 10, 15, 10);
+        fixture.Engine.Step();
+        var goal = fixture.Resident.Agent.Goal;
+        Assert.InRange(goal.NavigationRoute.Length, 2, 7);
+        Assert.All(goal.NavigationRoute, index =>
+            Assert.InRange(Math.Abs(index % 32 - 10) + Math.Abs(index / 32 - 10), 0, 6));
+        var restored = WorldEngine.ImportJson(fixture.Engine.ExportJson());
+        var next = goal.NavigationRoute[goal.NavigationRouteOffset];
+
+        fixture.Engine.Step(fixture.Resident.MoveDurationTicks);
+        restored.Step(restored.State.Residents[0].MoveDurationTicks);
+
+        Assert.Equal(next, fixture.Resident.Y * 32 + fixture.Resident.X);
+        Assert.Equal(fixture.Engine.ExportJson(), restored.ExportJson());
+        Assert.Equal(2, goal.NavigationRouteOffset);
+    }
+
+    /// <summary>已规划路线的下一格被切断后重新观察，不能穿过新障碍。</summary>
+    [Fact]
+    public void Navigation_replans_when_the_cached_next_step_is_blocked()
+    {
+        var fixture = Prepare();
+        SetJourney(fixture, 10, 10, 15, 10);
+        fixture.Engine.Step();
+        var goal = fixture.Resident.Agent.Goal;
+        var blocked = goal.NavigationRoute[goal.NavigationRouteOffset];
+        fixture.Engine.Current.Tiles[blocked].Terrain = TerrainType.Mountain;
+
+        fixture.Engine.Step(fixture.Resident.MoveDurationTicks);
+
+        Assert.NotEqual(blocked, fixture.Resident.Y * 32 + fixture.Resident.X);
+        Assert.True(RaceTerrainRules.CanWalk(fixture.Engine.State.Tiles[fixture.Resident.Y * 32 + fixture.Resident.X],
+            fixture.Resident.Race));
+    }
+
     /// <summary>目标在视野内外时均比较可见道路，允许先偏离目标方向再沿更快的路前进。</summary>
     [Theory]
     [InlineData(14)]

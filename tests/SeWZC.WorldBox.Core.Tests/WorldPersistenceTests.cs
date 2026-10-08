@@ -6,6 +6,25 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>当前保存格式、必需字段和异步取消的检查。</summary>
 public sealed class WorldPersistenceTests
 {
+    /// <summary>短路线不能跳格、越出原视野或带有越界的进度，拒绝导入不改变原世界。</summary>
+    [Theory]
+    [InlineData(10 * 32 + 12, 1)]
+    [InlineData(10 * 32 + 11, 3)]
+    [InlineData(10 * 32 + 11, -1)]
+    public void Import_rejects_invalid_short_routes(int next, int offset)
+    {
+        var fixture = new WorldFixture();
+        var before = fixture.Engine.State;
+        var document = JsonNode.Parse(fixture.Engine.ExportJson())!;
+        var goal = document["Residents"]![0]!["Agent"]!["Goal"]!;
+        goal["NavigationRoute"] = new JsonArray(10 * 32 + 10, next);
+        goal["NavigationRouteOffset"] = offset;
+
+        Assert.Throws<ArgumentException>(() => WorldEngine.ImportJson(document.ToJsonString()));
+
+        Assert.Equal(before, fixture.Engine.State);
+    }
+
     /// <summary>行动目标成为引用记录后，空目标仍须在导入阶段拒绝。</summary>
     [Fact]
     public void Null_goal_is_rejected_without_changing_the_source_world()

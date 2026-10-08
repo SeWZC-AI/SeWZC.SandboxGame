@@ -8,6 +8,89 @@ public sealed class ImmutableWorldTests
 {
     private static string Serialize(WorldState state) => JsonSerializer.Serialize(state, WorldJsonContext.Default.WorldState);
 
+    /// <summary>共享种群存储不改变旧地格、值比较或平面存档；其他地格更新保留动物数量。</summary>
+    [Fact]
+    public void Tile_wildlife_storage_preserves_snapshots_and_serialization()
+    {
+        var before = new Tile
+        {
+            Wildlife = WildlifeKind.Deer, WildlifePopulation = 4,
+            OtherWildlife = new WildlifePopulations { Rabbit = 2, Wolf = 1 },
+        };
+        var watered = before with { WaterDrawTick = 12, WaterDrawn = .025 };
+        var changed = watered.WithAnimalPopulation(WildlifeKind.Rabbit, 3);
+        var reverted = changed.WithAnimalPopulation(WildlifeKind.Rabbit, 2);
+
+        Assert.Equal(2, before.AnimalPopulation(WildlifeKind.Rabbit));
+        Assert.Equal(3, changed.AnimalPopulation(WildlifeKind.Rabbit));
+        Assert.Equal(watered, reverted);
+        Assert.Equal(watered.GetHashCode(), reverted.GetHashCode());
+        var json = JsonSerializer.Serialize(changed, WorldJsonContext.Default.Tile);
+        Assert.Equal(changed, JsonSerializer.Deserialize(json, WorldJsonContext.Default.Tile));
+        using var document = JsonDocument.Parse(json);
+        Assert.True(document.RootElement.TryGetProperty("OtherWildlife", out _));
+        Assert.False(document.RootElement.TryGetProperty("WildlifeStorage", out _));
+        var negativeZero = before with { OtherWildlife = new WildlifePopulations { Wolf = -0d } };
+        Assert.Equal(long.MinValue, BitConverter.DoubleToInt64Bits(negativeZero.AnimalPopulation(WildlifeKind.Wolf)));
+    }
+
+    /// <summary>日内 ID 和随机序列立即供后续行为读取，冻结时合并元数据并保留旧快照。</summary>
+    [Fact]
+    public void Scalar_updates_freeze_together_with_entity_changes()
+    {
+        var fixture = new WorldFixture();
+        var initial = fixture.Engine.State;
+        var current = fixture.Engine.Current;
+        WorldState middle;
+        using (current.BeginScalarUpdates())
+        {
+            current.Tick = 120;
+            current.NextId += 2;
+            current.RandomState = 123;
+            fixture.Resident.Health = 80;
+            Assert.Equal(2, current.Year);
+            Assert.Equal(1, current.Day);
+            middle = fixture.Engine.State;
+            using (current.BeginScalarUpdates()) current.NextId++;
+            current.Tick++;
+            current.RandomState = 456;
+        }
+
+        Assert.Equal(initial.NextId + 2, middle.NextId);
+        Assert.Equal(123u, middle.RandomState);
+        Assert.Equal(80, middle.Residents[0].Health);
+        Assert.Equal(initial.NextId + 3, fixture.Engine.State.NextId);
+        Assert.Equal(121, fixture.Engine.State.Tick);
+        Assert.Equal(456u, fixture.Engine.State.RandomState);
+        Assert.Equal(100, initial.Residents[0].Health);
+        Assert.Equal(0, initial.Tick);
+    }
+
+    /// <summary>低频任务状态共享后仍按值比较，并使用原有平面存档字段。</summary>
+    [Fact]
+    public void Agent_identity_preserves_equality_and_flat_serialization()
+    {
+        var before = new AgentState
+        {
+            Initialized = true, DestinationSettlementId = 12, MissionOriginSettlementId = 3,
+            MissionStartedTick = 20, MissionRetryTick = 24, ExplorationHeading = 6,
+            LastConversationTick = 18, JobChangedTick = 9, MaterialPriority = ResourceKind.Stone,
+        };
+        var changed = before with { Fatigue = 20, DestinationSettlementId = 13 };
+        var reverted = changed with { Fatigue = 0, DestinationSettlementId = 12 };
+
+        Assert.Equal(before, reverted);
+        Assert.Equal(before.GetHashCode(), reverted.GetHashCode());
+        Assert.Equal(12, before.DestinationSettlementId);
+        var json = JsonSerializer.Serialize(before, WorldJsonContext.Default.AgentState);
+        Assert.Equal(before, JsonSerializer.Deserialize(json, WorldJsonContext.Default.AgentState));
+        using var saved = JsonDocument.Parse(json);
+        Assert.Equal(12, saved.RootElement.GetProperty("DestinationSettlementId").GetInt32());
+        Assert.Equal(20, saved.RootElement.GetProperty("MissionStartedTick").GetInt64());
+        Assert.False(saved.RootElement.TryGetProperty("Identity", out _));
+        Assert.Equal(-120, new AgentState().JobChangedTick);
+    }
+
     /// <summary>低频身体状态仍按值比较并保存为原有平面字段，日常更新保留此前状态。</summary>
     [Fact]
     public void Resident_effects_preserve_value_equality_and_flat_serialization()

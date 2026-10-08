@@ -123,7 +123,7 @@ public sealed partial class WorldEngine
             state.Diplomacies.Count <= 2016 &&
             state.Events is not null && state.Events.Count <= 400, "世界记录数量超出范围。");
         Require(
-            state.SimulationVersion == 20 && state.PendingMessages is not null &&
+            state.SimulationVersion == 21 && state.PendingMessages is not null &&
             state.PendingMessages.Count <= MaxPopulation * 2 && state.ArchivedResidents is not null &&
             state.ArchivedResidents.Count <= 256 && state.Society is not null, "认知或社会记录无效。");
         var ids = new HashSet<int>();

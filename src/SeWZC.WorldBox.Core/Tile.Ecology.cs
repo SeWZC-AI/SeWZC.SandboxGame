@@ -15,11 +15,15 @@ public sealed partial record Tile
 
     /// <summary>除主种群外，按物种存储的动物数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public WildlifePopulations OtherWildlife { get; init; }
+    public WildlifePopulations OtherWildlife
+    {
+        get => _wildlife.Populations;
+        init => _wildlife = new WildlifeStorage(value);
+    }
 
     /// <summary>当前数量大于零的物种位掩码，位序对应物种编号。</summary>
     [JsonIgnore]
-    public int WildlifeMask => OtherWildlife.ActiveMask | (WildlifePopulation > 0 ? 1 << (int)Wildlife : 0);
+    public int WildlifeMask => _wildlife.Populations.ActiveMask | (WildlifePopulation > 0 ? 1 << (int)Wildlife : 0);
 
     internal WildlifeKind EdibleAnimal(bool aquatic)
     {
@@ -42,13 +46,13 @@ public sealed partial record Tile
     /// <param name="kind">动物物种。</param>
     public double AnimalPopulation(WildlifeKind kind)
     {
-        return kind == Wildlife ? WildlifePopulation : OtherWildlife.Get(kind);
+        return kind == Wildlife ? WildlifePopulation : _wildlife.Populations.Get(kind);
     }
 
     /// <summary>复制此格所有物种的数量。</summary>
     internal void CopyAnimalPopulations(Span<double> destination)
     {
-        OtherWildlife.CopyTo(destination);
+        _wildlife.Populations.CopyTo(destination);
         destination[(int)Wildlife] = WildlifePopulation;
     }
 

@@ -17,6 +17,7 @@ public sealed partial class WorldEngine
             throw new ArgumentOutOfRangeException(nameof(steps));
         for (var step = 0; step < steps; step++)
         {
+            using var scalarUpdates = Current.BeginScalarUpdates();
             using var tileUpdates = Current.Tiles.BeginUpdates();
             using var residentUpdates = Current.Residents.BeginUpdates();
             using var settlementUpdates = Current.Settlements.BeginUpdates();
@@ -66,40 +67,52 @@ public sealed partial class WorldEngine
 
     private void UpdateResidents()
     {
+        var rules = Current.Rules;
+        var tick = Current.Tick;
+        var tiles = Current.Tiles;
         // 先保存现有病例的位置，避免新感染在同一天沿居民遍历顺序连锁传播。
         var infected = new HashSet<int>(Current.Residents.Where(r => r.SicknessTicks > 0).Select(r => Index(r.X, r.Y)));
-        Current.Residents.Transform(person =>
+        BeginDailyDrinking();
+        try
         {
-            var age = Current.Rules.Aging ? Math.Min(1000, person.Age + 1d / 120) : person.Age;
-            var profession = person.Profession == Profession.Child && age >= 14 ? AssignProfession() : person.Profession;
-            var infectionDuration = 0;
-            if (person.SicknessTicks == 0 && Current.Rules.Disease && person.DiseaseImmuneUntilTick <= Current.Tick
-                && infected.Count > 0 && (Current.Tick + person.Id) % 6 == 0)
+            Current.Residents.Transform(person =>
             {
-                var exposed = infected.Contains(Index(person.X, person.Y));
-                foreach (var (dx, dy) in Directions)
-                    if (InBounds(person.X + dx, person.Y + dy)
-                        && infected.Contains(Index(person.X + dx, person.Y + dy)))
-                    {
-                        exposed = true;
-                        break;
-                    }
-                if (exposed && RandomInt(100) < 6) infectionDuration = 72 + RandomInt(25);
-            }
-            var tile = Current.Tiles[Index(person.X, person.Y)];
-            var manaRecovery = .025 * Current.Rules.MagicRate * TerrainRules.For(tile.Terrain).ManaRate
-                * (.5 + person.MagicTalent / 100)
-                * (HasResearch(person.SettlementId, Advancement.ManaAttunement) ? 1.5 : 1);
-            var hasHome = _settlements.ContainsKey(person.SettlementId);
-            var waterUse = WaterUse(person);
-            var water = hasHome && person.ArmyId == 0 && person.Health > 0 && Current.Rules.Thirst
-                && person.Inventory.Water < waterUse
-                ? WithdrawWater(person, Index(person.X, person.Y), waterUse - person.Inventory.Water) : 0;
-            return person.AdvanceDay(Current.Rules, tile, Current.Tick, profession, infectionDuration, manaRecovery,
-                person.ArmyId == 0 && hasHome, hasHome && (Current.Tick + person.Id) % 4 == 0 ? .28 : 0, water,
-                hasHome && person.ArmyId == 0 && person.Health > 0
-                    && Current.Tick - person.MoveStartedTick == person.MoveDurationTicks ? Index(person.X, person.Y) : -1);
-        });
+                var age = rules.Aging ? Math.Min(1000, person.Age + 1d / 120) : person.Age;
+                var profession = person.Profession == Profession.Child && age >= 14 ? AssignProfession() : person.Profession;
+                var infectionDuration = 0;
+                if (person.SicknessTicks == 0 && rules.Disease && person.DiseaseImmuneUntilTick <= tick
+                    && infected.Count > 0 && (tick + person.Id) % 6 == 0)
+                {
+                    var exposed = infected.Contains(Index(person.X, person.Y));
+                    foreach (var (dx, dy) in Directions)
+                        if (InBounds(person.X + dx, person.Y + dy)
+                            && infected.Contains(Index(person.X + dx, person.Y + dy)))
+                        {
+                            exposed = true;
+                            break;
+                        }
+                    if (exposed && RandomInt(100) < 6) infectionDuration = 72 + RandomInt(25);
+                }
+                var tile = tiles[Index(person.X, person.Y)];
+                var manaRecovery = person.Mana >= 100 || rules.MagicRate == 0 ? 0
+                    : .025 * rules.MagicRate * TerrainRules.For(tile.Terrain).ManaRate
+                    * (.5 + person.MagicTalent / 100)
+                    * (HasResearch(person.SettlementId, Advancement.ManaAttunement) ? 1.5 : 1);
+                var hasHome = _settlements.ContainsKey(person.SettlementId);
+                var waterUse = WaterUse(person);
+                var water = hasHome && person.ArmyId == 0 && person.Health > 0 && rules.Thirst
+                    && person.Inventory.Water < waterUse
+                    ? WithdrawWater(person, Index(person.X, person.Y), waterUse - person.Inventory.Water) : 0;
+                return person.AdvanceDay(rules, tile, tick, profession, infectionDuration, manaRecovery,
+                    person.ArmyId == 0 && hasHome, hasHome && (tick + person.Id) % 4 == 0 ? .28 : 0, water,
+                    hasHome && person.ArmyId == 0 && person.Health > 0
+                        && tick - person.MoveStartedTick == person.MoveDurationTicks ? Index(person.X, person.Y) : -1);
+            });
+        }
+        finally
+        {
+            EndDailyDrinking();
+        }
 
         ArchiveDeadResidents();
     }
@@ -260,14 +273,24 @@ public sealed partial class WorldEngine
             $"{_nations[origin.NationId].Name}派出 {pioneers.Length} 名成年人，携物资前往{town.Name}；仓库等待实物抵达。", x, y);
     }
 
-    private bool FoundingSiteSuitable(int index, RaceKind[] races)
+    private bool FoundingSiteSuitable(int index, ReadOnlySpan<RaceKind> races)
     {
         var x = index % Current.Width;
         var y = index / Current.Width;
         // 建村地点须能连通取得最小占地范围，避免定居在四周无法利用的单个肥沃地格。
-        return Circle(x, y, 3).Count(i => !IsWaterTerrain(Current.Tiles[i].Terrain) && Current.Tiles[i].FireTicks == 0
-            && Current.Tiles[i].ClaimedSettlementId == 0 &&
-            races.All(race => RaceTerrainRules.CanWalk(Current.Tiles[i], race))) >= SettlementActivationArea;
+        var available = 0;
+        for (var nearbyY = Math.Max(0, y - 3); nearbyY <= Math.Min(Current.Height - 1, y + 3); nearbyY++)
+            for (var nearbyX = Math.Max(0, x - 3); nearbyX <= Math.Min(Current.Width - 1, x + 3); nearbyX++)
+            {
+                if ((nearbyX - x) * (nearbyX - x) + (nearbyY - y) * (nearbyY - y) > 9) continue;
+                var tile = Current.Tiles[Index(nearbyX, nearbyY)].Value;
+                if (IsWaterTerrain(tile.Terrain) || tile.FireTicks > 0 || tile.ClaimedSettlementId != 0) continue;
+                var usable = true;
+                foreach (var race in races)
+                    if (!RaceTerrainRules.CanWalk(tile, race)) { usable = false; break; }
+                if (usable && ++available >= SettlementActivationArea) return true;
+            }
+        return false;
     }
 
     private void UpdateDisasters()

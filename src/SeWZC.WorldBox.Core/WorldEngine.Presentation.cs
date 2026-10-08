@@ -58,21 +58,7 @@ public sealed partial class WorldEngine
             targetY = needsInputs ? home.Y : factory!.Y;
         }
 
-        var cursor = new ResidentCursor
-        {
-            X = person.X,
-            Y = person.Y,
-            FromX = person.FromX,
-            FromY = person.FromY,
-            TravelMode = person.TravelMode,
-        };
-        cursor.Agent.Goal = new AgentGoal
-        {
-            NavigationTarget = goal.NavigationTarget,
-            NavigationVisited = goal.NavigationVisited,
-            NavigationBestDistance = goal.NavigationBestDistance,
-            NavigationWithoutProgress = goal.NavigationWithoutProgress,
-        };
+        var cursor = new ResidentCursor(person.Value);
         var route = new List<RoutePoint> { new(cursor.X, cursor.Y) };
         var visited = new HashSet<int> { Index(cursor.X, cursor.Y) };
         for (var i = 0; i < Math.Clamp(steps, 0, 64); i++)
@@ -87,7 +73,7 @@ public sealed partial class WorldEngine
                 ? 1
                 : 0;
             if (Distance(cursor.X, cursor.Y, targetX, targetY) <= interactionRange &&
-                Walkable(cursor.X, cursor.Y))
+                Walkable(cursor.X, cursor.Y, cursor.Race))
                 break;
             var next = SelectAgentStep(cursor, targetX, targetY, out var navigation);
             cursor.Agent.Goal = navigation;

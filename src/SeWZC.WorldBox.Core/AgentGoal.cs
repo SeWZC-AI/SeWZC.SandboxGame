@@ -17,6 +17,16 @@ public sealed record AgentGoal
     /// <summary>当前绕路阶段访问过的地格索引，用于避免循环；取得新的最短目标距离后清空。</summary>
     public ImmutableArray<int> NavigationVisited { get; init; } = [];
 
+    /// <summary>依据当时六格视野规划的短路线，包含起点和至多六个后续地格。</summary>
+    [System.Text.Json.Serialization.JsonRequired]
+    public ImmutableArray<int> NavigationRoute { get; init; } = [];
+
+    /// <summary>短路线中下次要走的地格位置；空路线为零。</summary>
+    public int NavigationRouteOffset { get; init; }
+
+    /// <summary>规划短路线时使用的交通方式，方式改变后重新规划。</summary>
+    public TravelMode NavigationRouteMode { get; init; }
+
     /// <summary>当前导航曾达到的最短目标距离，以地格计。</summary>
     public int NavigationBestDistance { get; init; }
 
@@ -79,6 +89,8 @@ public sealed record AgentGoal
         {
             NavigationTarget = target,
             NavigationVisited = [],
+            NavigationRoute = [],
+            NavigationRouteOffset = 0,
             NavigationBestDistance = distance,
             NavigationWithoutProgress = 0,
             NavigationRetryTick = 0,
@@ -95,6 +107,8 @@ public sealed record AgentGoal
     {
         NavigationTarget = -1,
         NavigationVisited = [],
+        NavigationRoute = [],
+        NavigationRouteOffset = 0,
         NavigationWithoutProgress = 0,
         NavigationRetryTick = 0,
     };

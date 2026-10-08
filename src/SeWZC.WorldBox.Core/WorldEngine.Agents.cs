@@ -12,7 +12,7 @@ public sealed partial class WorldEngine
     private int _localMoveSearch;
     private int[] _localMoveVisited = [];
     private double[] _localMoveCosts = [];
-    private readonly PriorityQueue<(int Index, int First), (double Cost, int Index)> _localRoutes =
+    private readonly PriorityQueue<(int Index, int First, double Cost), (double Cost, int Index)> _localRoutes =
         new(LocalRoutePriorityComparer.Instance);
     private VisibleAccessCache? _visibleAccessCache;
     private TravelMode _visibleAccessMode;
@@ -293,9 +293,9 @@ public sealed partial class WorldEngine
         return 3 + (int)((4 - phase) % 4);
     }
 
-    private void DeferGoalReview(ResidentCursor person)
+    private void DeferGoalReview(ResidentCursor person, int? interval = null)
     {
-        var next = Current.Tick + GoalReviewInterval(person);
+        var next = Current.Tick + (interval ?? GoalReviewInterval(person));
         person.Agent.Replace(person.Agent.Value with
         {
             Goal = person.Agent.Goal with { ReviewTick = next },
@@ -348,6 +348,13 @@ public sealed partial class WorldEngine
 
         AddRecoveryChoice(person, home, choices);
 
+        // 正在实地解决缺粮或补水时继续当前劳动；现场枯竭、疲劳和新的身体危险仍会提前复评。
+        if (choices.Count == 0 && !interrupted && ProvisionGoalContinues(person))
+        {
+            DeferGoalReview(person, 24);
+            return;
+        }
+
         if (choices.Count == 0 && !interrupted && (
                 ProductiveGoalContinues(person, home)
                 || (agent.Goal.Kind == AgentGoalKind.Rest && RecoveryGoalContinues(person)
@@ -374,7 +381,7 @@ public sealed partial class WorldEngine
                                                                 DailyWaterYield(
                                                                     Current.Tiles[agent.Goal.TargetEntityId - 1]) >= .1))
             && person.Inventory.Food < TravelReserve(person) + 2
-            && (agent.Goal.Kind != AgentGoalKind.FetchWater || person.Inventory.Water < WaterReserve(person) + 2))
+            && (agent.Goal.Kind != AgentGoalKind.FetchWater || person.Inventory.Water < WaterCollectionTarget(person)))
         {
             DeferGoalReview(person);
             return;
@@ -591,6 +598,47 @@ public sealed partial class WorldEngine
 
         AddAgentMissionChoices(person, home, choices);
         CommitAgentChoice(person, home, choices, interrupted, activeMission);
+    }
+
+    private bool ProvisionGoalContinues(ResidentCursor person)
+    {
+        var goal = person.Agent.Goal;
+        if (person.Agent.Fatigue >= 60 || person.Thirst >= 60
+            || Current.Tick < goal.NavigationRetryTick
+            || Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > 6)
+            return false;
+        if (goal.Kind == AgentGoalKind.FetchWater)
+        {
+            var source = goal.TargetEntityId - 1;
+            return source >= 0 && source < Current.Tiles.Count && person.Hunger < 60
+                && person.Inventory.Water < WaterCollectionTarget(person)
+                && GetWaterSupply(source % Current.Width, source / Current.Width) >= .1;
+        }
+        if (person.Hunger < 60 || person.Inventory.Food >= TravelReserve(person) + 2
+            || Current.Rules.Thirst && person.Inventory.Water < WaterUse(person)
+                && GetWaterSupply(person.X, person.Y) < WaterUse(person))
+            return false;
+        if (goal.Kind == AgentGoalKind.Gather)
+        {
+            var source = Index(goal.TargetX, goal.TargetY);
+            var tile = Current.Tiles[source];
+            var efficiency = NaturalPlantHarvestEfficiency(tile);
+            if (efficiency < .25) return false;
+            var dailyYield = .7 * ResourceSiteYield(source, Profession.Farmer, efficiency, out _)
+                * RaceTerrainRules.For(person.Race, tile.Terrain).Productivity * GatheringCondition(person)
+                * (.75 + person.Agent.Personality.Diligence * .5) * Current.Rules.GatheringRate
+                * AgentFoodPolicyMultiplier(person) * GatheringTerritoryMultiplier(person, tile);
+            return dailyYield >= FoodUse(person);
+        }
+        if (goal.Kind is not (AgentGoalKind.Hunt or AgentGoalKind.Fish) || !WildlifeGoalProductive(person))
+            return false;
+        var wildlifeSource = Current.Tiles[goal.TargetEntityId - 1];
+        var animal = EdibleAnimal(wildlifeSource, goal.Kind == AgentGoalKind.Fish);
+        var interval = WorkInterval(person);
+        var harvest = WildlifeHarvestAmount(wildlifeSource, animal,
+            interval * .15 * Current.Rules.GatheringRate * GatheringCondition(person)
+            * GatheringTerritoryMultiplier(person, wildlifeSource));
+        return harvest * AnimalRules.For(animal).BodyMass / interval >= FoodUse(person);
     }
 
     private void CommitAgentChoice(ResidentCursor person, SettlementCursor home, List<GoalChoice> choices,
@@ -997,7 +1045,6 @@ public sealed partial class WorldEngine
                 break;
             case AgentGoalKind.FetchWater:
                 person.Agent.Goal = goal;
-                if (goal.TargetEntityId > 0 && !IsWorkDay(person)) break;
                 TryFetchWater(person);
                 break;
             case AgentGoalKind.Hunt:
@@ -1167,7 +1214,12 @@ public sealed partial class WorldEngine
         var remaining = Distance(xNext, yNext, targetX, targetY);
         var goal = remaining < navigation.NavigationBestDistance
             ? navigation with { NavigationBestDistance = remaining, NavigationWithoutProgress = 0, NavigationVisited = [] }
-            : navigation with { NavigationWithoutProgress = Math.Min(64, navigation.NavigationWithoutProgress + 1) };
+            : navigation with
+            {
+                NavigationWithoutProgress = Math.Min(64, navigation.NavigationWithoutProgress + 1),
+                NavigationVisited = navigation.NavigationVisited.Contains(Index(person.X, person.Y))
+                    ? navigation.NavigationVisited : navigation.NavigationVisited.Add(Index(person.X, person.Y)),
+            };
         person.Replace(person.Value with
         {
             FromX = person.X, FromY = person.Y, X = xNext, Y = yNext,
@@ -1221,6 +1273,23 @@ public sealed partial class WorldEngine
         {
             return -1;
         }
+        var route = goal.NavigationRoute;
+        var routeOffset = goal.NavigationRouteOffset;
+        if (routeOffset > 0 && routeOffset < route.Length && route[routeOffset - 1] == start
+            && goal.NavigationRouteMode == mode)
+        {
+            var next = route[routeOffset];
+            var nextX = next % width;
+            var nextY = next / width;
+            if (CanTraverseStep(originX, originY, nextX, nextY, mode, race)
+                && (mode == TravelMode.Aircraft || Current.Tiles[next].FireTicks == 0)
+                && !goal.NavigationVisited.Contains(next))
+            {
+                if (goal.NavigationWithoutProgress >= 64 || goal.NavigationVisited.Length >= 256) return -1;
+                goal = goal with { NavigationRouteOffset = routeOffset + 1 };
+                return next;
+            }
+        }
         // 飞行无需观察地面绕行；相邻且可直接抵达的目标也无需展开搜索。
         if ((mode == TravelMode.Aircraft || Distance(originX, originY, targetX, targetY) == 1))
             foreach (var (dx, dy) in Directions)
@@ -1235,11 +1304,7 @@ public sealed partial class WorldEngine
             }
 
         // 取得新的最短目标距离后清除旧绕路；暂时离开目标方向时仍记住已走地点，防止反复折返。
-        if (!goal.NavigationVisited.Contains(start))
-        {
-            if (goal.NavigationVisited.Length >= 256) return -1;
-            goal = goal.Visit(start);
-        }
+        if (!goal.NavigationVisited.Contains(start) && goal.NavigationVisited.Length >= 256) return -1;
 
         // 导航仅使用六格可见地形，桥梁轴向与实际移动及军队寻路共用规则，避免预览可走却无法通行。
         if (_localMoveVisited.Length != Current.Tiles.Count)
@@ -1258,6 +1323,7 @@ public sealed partial class WorldEngine
         Span<byte> flags = stackalloc byte[diameter * diameter];
         flags.Clear();
         Span<double> entryCosts = stackalloc double[diameter * diameter];
+        Span<int> routeParents = stackalloc int[diameter * diameter];
         foreach (var index in person.Agent.Value.FamiliarTiles)
         {
             var localX = index % width - originX + 6;
@@ -1273,7 +1339,7 @@ public sealed partial class WorldEngine
                 flags[localY * diameter + localX] |= 2;
         }
         // 可见目标先试两条实际可走的折线路径，取得成本上界；只剪去不可能优于它们的分支。
-        // 仍按原来的成本和索引出队，等价最短路的选择顺序不变。
+        // 视野内按实际成本加剩余距离下界出队，仍依据实际耗时选择最短路。
         var targetVisible = Distance(originX, originY, targetX, targetY) <= 6;
         var minimumTargetDistance = Math.Max(0, Distance(originX, originY, targetX, targetY) - 6);
         var upperCost = targetVisible
@@ -1310,14 +1376,19 @@ public sealed partial class WorldEngine
         _localMoveVisited[start] = search;
         _localMoveCosts[start] = 0;
         _localRoutes.Clear();
-        _localRoutes.Enqueue((start, -1), (0, start));
+        _localRoutes.Enqueue((start, -1, 0), (0, start));
         var bestStep = -1;
+        var bestDestination = -1;
         var bestScore = double.PositiveInfinity;
-        while (_localRoutes.TryDequeue(out var current, out var priority))
+        while (_localRoutes.TryDequeue(out var current, out _))
         {
-            if (priority.Cost > _localMoveCosts[current.Index])
+            if (current.Cost > _localMoveCosts[current.Index])
                 continue;
-            if (current.Index == target) return current.First;
+            if (current.Index == target)
+            {
+                goal = PlanAgentRoute(goal, start, target, originX, originY, width, mode, routeParents);
+                return current.First;
+            }
             var currentX = current.Index % width;
             var currentY = current.Index / width;
             var fromTile = Current.Tiles[current.Index].Value;
@@ -1326,10 +1397,13 @@ public sealed partial class WorldEngine
             {
                 // 视野外只估计剩余距离，不读取远方地形；熟悉程度是轻微偏好，不能抵消明显绕远。
                 var score = Distance(currentX, currentY, targetX, targetY) * 2
-                    + priority.Cost;
-                if (score < bestScore)
+                    + current.Cost;
+                if (score < bestScore || score == bestScore && current.First == bestStep
+                    && Distance(originX, originY, currentX, currentY)
+                        > Distance(originX, originY, bestDestination % width, bestDestination / width))
                 {
                     bestStep = current.First;
+                    bestDestination = current.Index;
                     bestScore = score;
                 }
             }
@@ -1353,7 +1427,7 @@ public sealed partial class WorldEngine
                     entryCosts[localIndex] = AgentMoveDuration(person, index) * ((flags[localIndex] & 1) != 0 ? .92 : 1);
                     flags[localIndex] |= 8;
                 }
-                var cost = priority.Cost + entryCosts[localIndex];
+                var cost = current.Cost + entryCosts[localIndex];
                 var targetDistance = Distance(x, y, targetX, targetY);
                 if (targetVisible && cost + targetDistance * .92 > upperCost + .000000001)
                     continue;
@@ -1365,11 +1439,39 @@ public sealed partial class WorldEngine
                     continue;
                 _localMoveVisited[index] = search;
                 _localMoveCosts[index] = cost;
-                _localRoutes.Enqueue((index, first), (cost, index));
+                routeParents[localIndex] = current.Index;
+                // 视野内使用不超过实际最小步时的估计引导搜索，仍保证最短实际耗时。
+                var estimated = targetVisible ? targetDistance * .92 : 0;
+                _localRoutes.Enqueue((index, first, cost), (cost + estimated, index));
             }
         }
 
-        return goal.NavigationWithoutProgress >= 64 ? -1 : bestStep;
+        if (goal.NavigationWithoutProgress >= 64) return -1;
+        if (bestDestination >= 0)
+            goal = PlanAgentRoute(goal, start, bestDestination, originX, originY, width, mode, routeParents);
+        return bestStep;
+    }
+
+    private static AgentGoal PlanAgentRoute(AgentGoal goal, int start, int destination,
+        int originX, int originY, int width, TravelMode mode, ReadOnlySpan<int> parents)
+    {
+        Span<int> reverse = stackalloc int[85];
+        var count = 0;
+        while (destination != start && count < reverse.Length)
+        {
+            reverse[count++] = destination;
+            var local = (destination / width - originY + 6) * 13 + destination % width - originX + 6;
+            destination = parents[local];
+        }
+        var route = new int[Math.Min(count, 6) + 1];
+        route[0] = start;
+        for (var position = 1; position < route.Length; position++) route[position] = reverse[count - position];
+        return goal with
+        {
+            NavigationRoute = System.Runtime.InteropServices.ImmutableCollectionsMarshal.AsImmutableArray(route),
+            NavigationRouteOffset = 2,
+            NavigationRouteMode = mode,
+        };
     }
 
     private double AgentFoodPolicyMultiplier(ResidentCursor person)
