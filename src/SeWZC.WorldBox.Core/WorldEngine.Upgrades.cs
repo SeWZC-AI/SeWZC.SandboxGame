@@ -40,14 +40,18 @@ public sealed partial class WorldEngine
     /// <param name="race">居民种族。</param>
     public bool CanTraverseStep(int fromX, int fromY, int toX, int toY, TravelMode mode, RaceKind race = RaceKind.Human)
     {
-        if (!InBounds(fromX, fromY) || !InBounds(toX, toY) || Distance(fromX, fromY, toX, toY) != 1
-            || !CanTraverse(Current.Tiles[Index(toX, toY)], mode, race))
+        if (!InBounds(fromX, fromY) || !InBounds(toX, toY) || Distance(fromX, fromY, toX, toY) != 1)
             return false;
+        return CanTraverseAdjacentTiles(Current.Tiles[Index(fromX, fromY)], Current.Tiles[Index(toX, toY)],
+            fromY == toY, mode, race);
+    }
+
+    // 已确认相邻且在地图内的搜索地格直接共用通行规则，不重复转换坐标和验证距离。
+    private static bool CanTraverseAdjacentTiles(Tile from, Tile to, bool horizontal, TravelMode mode, RaceKind race)
+    {
+        if (!CanTraverse(to, mode, race)) return false;
         if (mode != TravelMode.Foot)
             return true;
-        var horizontal = fromY == toY;
-        var from = Current.Tiles[Index(fromX, fromY)];
-        var to = Current.Tiles[Index(toX, toY)];
         return (from.Improvement != LandImprovement.Bridge ||
                 horizontal == (from.BridgeDirection == BridgeDirection.Horizontal))
                && (to.Improvement != LandImprovement.Bridge ||

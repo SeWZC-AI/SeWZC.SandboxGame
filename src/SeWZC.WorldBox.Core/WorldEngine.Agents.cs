@@ -78,9 +78,6 @@ public sealed partial class WorldEngine
                     continue;
                 }
 
-                if (Current.Tick - person.MoveStartedTick == person.MoveDurationTicks)
-                    person.Agent.Replace(person.Agent.Value.RememberRouteTile(Index(person.X, person.Y)));
-
                 var arrivedHome = Distance(person.X, person.Y, home.X, home.Y) <= 1 &&
                                   Walkable(person.X, person.Y, person.Race)
                                   && Current.Tick - person.MoveStartedTick >= person.MoveDurationTicks;
@@ -145,13 +142,21 @@ public sealed partial class WorldEngine
     // 探索口粮来自家乡仓库，不能把额外携带的补给当作新生产货物。
     private double TravelReserve(ResidentCursor person)
     {
-        return person.Profession is Profession.Trader or Profession.Messenger
-               && !person.Agent.Memory.Any(f => f.Kind == AgentFactKind.SettlementLocation && f.Value != person.NationId
-                   && Current.Tick - f.ObservedTick < 1200) ? 6
-            : person.Profession is Profession.Lumberjack or Profession.Miner ? 4
-            : Math.Clamp(
-                .8 + Distance(person.X, person.Y, person.Agent.Goal.TargetX, person.Agent.Goal.TargetY) *
-                FoodUse(person) * 6, .8, 8);
+        if (person.Profession is Profession.Trader or Profession.Messenger)
+        {
+            var knowsForeignTown = false;
+            foreach (var fact in person.Agent.Value.Memory)
+                if (fact.Kind == AgentFactKind.SettlementLocation && fact.Value != person.NationId
+                    && Current.Tick - fact.ObservedTick < 1200)
+                {
+                    knowsForeignTown = true;
+                    break;
+                }
+            if (!knowsForeignTown) return 6;
+        }
+        return person.Profession is Profession.Lumberjack or Profession.Miner ? 4 : Math.Clamp(
+            .8 + Distance(person.X, person.Y, person.Agent.Goal.TargetX, person.Agent.Goal.TargetY) *
+            FoodUse(person) * 6, .8, 8);
     }
 
     private void TransferPersonalProduction(ResidentCursor person, SettlementCursor home)
@@ -1043,12 +1048,13 @@ public sealed partial class WorldEngine
                HasResearch(person.SettlementId, Advancement.Forestry)
                 ? 1.25
                 : 1);
+        var inventory = person.Inventory;
         if (profession == Profession.Farmer)
         {
             var amount = HarvestPlants(tile,
                 0.7 * siteYield * productivity * AgentFoodPolicyMultiplier(person) *
                 GatheringTerritoryMultiplier(person, tile));
-            person.Inventory = person.Inventory with { Food = person.Inventory.Food + amount };
+            inventory = inventory with { Food = inventory.Food + amount };
             RecordHarvest(tile, amount);
         }
         else if (profession == Profession.Lumberjack)
@@ -1056,7 +1062,7 @@ public sealed partial class WorldEngine
             var amount = HarvestPlants(tile,
                 0.28 * siteYield * productivity * (person.Race == RaceKind.Elf ? 1.2 : 1) *
                 GatheringTerritoryMultiplier(person, tile), true);
-            person.Inventory = person.Inventory with { Wood = person.Inventory.Wood + amount };
+            inventory = inventory with { Wood = inventory.Wood + amount };
             RecordHarvest(tile, amount);
             FinishLogging(tile, person.X, person.Y);
         }
@@ -1065,9 +1071,14 @@ public sealed partial class WorldEngine
             if (tile.ResourceAmount <= 0 ||
                 TerrainRules.For(tile.Terrain).StoneYield + TerrainRules.For(tile.Terrain).OreYield <= 0)
             {
-                tile = Directions.Select(d => (X: person.X + d.X, Y: person.Y + d.Y))
-                    .Where(p => InBounds(p.X, p.Y)).Select(p => Current.Tiles[Index(p.X, p.Y)])
-                    .FirstOrDefault(t => t.Terrain == TerrainType.Mountain && t.ResourceAmount > 0) ?? tile;
+                foreach (var (dx, dy) in Directions)
+                    if (InBounds(person.X + dx, person.Y + dy)
+                        && Current.Tiles[Index(person.X + dx, person.Y + dy)] is
+                            { Terrain: TerrainType.Mountain, ResourceAmount: > 0 } mountain)
+                    {
+                        tile = mountain;
+                        break;
+                    }
             }
 
             var amount = Math.Min(tile.ResourceAmount,
@@ -1078,17 +1089,23 @@ public sealed partial class WorldEngine
             RecordHarvest(tile, amount);
             var minerals = TerrainRules.For(tile.Terrain);
             var oreRatio = minerals.OreYield / Math.Max(.001, minerals.StoneYield + minerals.OreYield);
-            person.Inventory = person.Inventory with
+            inventory = inventory with
             {
-                Stone = person.Inventory.Stone + amount * (1 - oreRatio),
-                Ore = person.Inventory.Ore + amount * oreRatio,
+                Stone = inventory.Stone + amount * (1 - oreRatio),
+                Ore = inventory.Ore + amount * oreRatio,
             };
         }
 
-        if (profession != Profession.Miner && !person.Agent.Goal.PlayerDirected &&
-            NaturalPlantHarvestEfficiency(tile, profession == Profession.Lumberjack) < .25)
-            person.Agent.NextThinkTick = Current.Tick + 1;
-        person.Replace(person.Value with { Agent = person.Agent.Value with { Fatigue = Math.Min(100, person.Agent.Fatigue + 0.30 * WorkInterval(person)) }, Activity = ResidentActivity.Working });
+        var agent = person.Agent.Value;
+        var nextThink = profession != Profession.Miner && !agent.Goal.PlayerDirected
+            && NaturalPlantHarvestEfficiency(tile, profession == Profession.Lumberjack) < .25
+            ? Current.Tick + 1 : agent.NextThinkTick;
+        person.Replace(person.Value with
+        {
+            Inventory = inventory,
+            Agent = agent with { Fatigue = Math.Min(100, agent.Fatigue + 0.30 * WorkInterval(person)), NextThinkTick = nextThink },
+            Activity = ResidentActivity.Working,
+        });
     }
 
     /// <summary>仅依据六格可见范围内的地形推进一步，并保留居民自身的导航进度。</summary>
@@ -1174,25 +1191,31 @@ public sealed partial class WorldEngine
 
     private int SelectAgentStep(ResidentCursor person, int targetX, int targetY, out AgentGoal goal)
     {
+        var originX = person.X;
+        var originY = person.Y;
+        var width = Current.Width;
+        var height = Current.Height;
+        var mode = person.TravelMode;
+        var race = person.Race;
         var target = Index(targetX, targetY);
-        var start = Index(person.X, person.Y);
+        var start = Index(originX, originY);
         goal = person.Agent.Goal;
         if (goal.NavigationTarget != target)
-            goal = goal.BeginNavigation(target, Distance(person.X, person.Y, targetX, targetY));
+            goal = goal.BeginNavigation(target, Distance(originX, originY, targetX, targetY));
 
         if (Current.Tick < goal.NavigationRetryTick)
         {
             return -1;
         }
         // 飞行无需观察地面绕行；相邻且可直接抵达的目标也无需展开搜索。
-        if ((person.TravelMode == TravelMode.Aircraft || Distance(person.X, person.Y, targetX, targetY) == 1))
+        if ((mode == TravelMode.Aircraft || Distance(originX, originY, targetX, targetY) == 1))
             foreach (var (dx, dy) in Directions)
             {
-                var x = person.X + dx;
-                var y = person.Y + dy;
-                if (Distance(x, y, targetX, targetY) < Distance(person.X, person.Y, targetX, targetY)
-                    && CanTraverseStep(person.X, person.Y, x, y, person.TravelMode, person.Race)
-                    && (person.TravelMode == TravelMode.Aircraft || Current.Tiles[Index(x, y)].FireTicks == 0)
+                var x = originX + dx;
+                var y = originY + dy;
+                if (Distance(x, y, targetX, targetY) < Distance(originX, originY, targetX, targetY)
+                    && CanTraverseStep(originX, originY, x, y, mode, race)
+                    && (mode == TravelMode.Aircraft || Current.Tiles[Index(x, y)].FireTicks == 0)
                     && !goal.NavigationVisited.Contains(Index(x, y)))
                     return Index(x, y);
             }
@@ -1216,6 +1239,59 @@ public sealed partial class WorldEngine
         }
 
         var search = ++_localMoveSearch;
+        // 单次导航内的记忆标记和进入成本固定；栈上缓冲只覆盖六格视野，不跨居民或世界步骤复用。
+        const int diameter = 13;
+        Span<byte> flags = stackalloc byte[diameter * diameter];
+        flags.Clear();
+        Span<double> entryCosts = stackalloc double[diameter * diameter];
+        foreach (var index in person.Agent.Value.FamiliarTiles)
+        {
+            var localX = index % width - originX + 6;
+            var localY = index / width - originY + 6;
+            if ((uint)localX < diameter && (uint)localY < diameter)
+                flags[localY * diameter + localX] |= 1;
+        }
+        foreach (var index in goal.NavigationVisited)
+        {
+            var localX = index % width - originX + 6;
+            var localY = index / width - originY + 6;
+            if ((uint)localX < diameter && (uint)localY < diameter)
+                flags[localY * diameter + localX] |= 2;
+        }
+        // 可见目标先试两条实际可走的折线路径，取得成本上界；只剪去不可能优于它们的分支。
+        // 仍按原来的成本和索引出队，等价最短路的选择顺序不变。
+        var targetVisible = Distance(originX, originY, targetX, targetY) <= 6;
+        var upperCost = targetVisible
+            ? Math.Min(DirectCost(true, flags, entryCosts), DirectCost(false, flags, entryCosts))
+            : double.PositiveInfinity;
+
+        double DirectCost(bool horizontalFirst, Span<byte> routeFlags, Span<double> routeCosts)
+        {
+            var x = originX;
+            var y = originY;
+            var cost = 0d;
+            while (x != targetX || y != targetY)
+            {
+                var nextX = x;
+                var nextY = y;
+                if (x != targetX && (horizontalFirst || y == targetY)) nextX += Math.Sign(targetX - x);
+                else nextY += Math.Sign(targetY - y);
+                var index = Index(nextX, nextY);
+                var localIndex = (nextY - originY + 6) * diameter + nextX - originX + 6;
+                if ((routeFlags[localIndex] & 2) != 0 || Current.Tiles[index].FireTicks > 0
+                    || !CanTraverseStep(x, y, nextX, nextY, mode, race))
+                    return double.PositiveInfinity;
+                if ((routeFlags[localIndex] & 8) == 0)
+                {
+                    routeCosts[localIndex] = AgentMoveDuration(person, index) * ((routeFlags[localIndex] & 1) != 0 ? .92 : 1);
+                    routeFlags[localIndex] |= 8;
+                }
+                cost += routeCosts[localIndex];
+                x = nextX;
+                y = nextY;
+            }
+            return cost;
+        }
         _localMoveVisited[start] = search;
         _localMoveCosts[start] = 0;
         _localRoutes.Clear();
@@ -1227,10 +1303,14 @@ public sealed partial class WorldEngine
             if (priority.Cost > _localMoveCosts[current.Index])
                 continue;
             if (current.Index == target) return current.First;
+            var currentX = current.Index % width;
+            var currentY = current.Index / width;
+            var fromTile = Current.Tiles[current.Index].Value;
+            flags[(currentY - originY + 6) * diameter + currentX - originX + 6] |= 4;
             if (current.First >= 0)
             {
                 // 视野外只估计剩余距离，不读取远方地形；熟悉程度是轻微偏好，不能抵消明显绕远。
-                var score = Distance(current.Index % Current.Width, current.Index / Current.Width, targetX, targetY) * 2
+                var score = Distance(currentX, currentY, targetX, targetY) * 2
                     + priority.Cost;
                 if (score < bestScore)
                 {
@@ -1240,19 +1320,27 @@ public sealed partial class WorldEngine
             }
             foreach (var (dx, dy) in Directions)
             {
-                var x = current.Index % Current.Width + dx;
-                var y = current.Index / Current.Width + dy;
-                if (Distance(person.X, person.Y, x, y) > 6
-                    || !CanTraverseStep(current.Index % Current.Width, current.Index / Current.Width, x, y, person.TravelMode,
-                        person.Race)
-                    || (person.TravelMode != TravelMode.Aircraft && Current.Tiles[Index(x, y)].FireTicks > 0))
+                var x = currentX + dx;
+                var y = currentY + dy;
+                if (Distance(originX, originY, x, y) > 6)
                     continue;
-                var index = Index(x, y);
-                if (goal.NavigationVisited.Contains(index))
+                var localIndex = (y - originY + 6) * diameter + x - originX + 6;
+                if ((flags[localIndex] & 6) != 0 || (uint)x >= width || (uint)y >= height)
+                    continue;
+                var index = y * width + x;
+                var toTile = Current.Tiles[index].Value;
+                if (!CanTraverseAdjacentTiles(fromTile, toTile, dy == 0, mode, race)
+                    || mode != TravelMode.Aircraft && toTile.FireTicks > 0)
                     continue;
                 var first = current.First < 0 ? index : current.First;
-                var cost = priority.Cost + AgentMoveDuration(person, index)
-                    * (person.Agent.Value.FamiliarTiles.Contains(index) ? .92 : 1);
+                if ((flags[localIndex] & 8) == 0)
+                {
+                    entryCosts[localIndex] = AgentMoveDuration(person, index) * ((flags[localIndex] & 1) != 0 ? .92 : 1);
+                    flags[localIndex] |= 8;
+                }
+                var cost = priority.Cost + entryCosts[localIndex];
+                if (targetVisible && cost + Distance(x, y, targetX, targetY) * .92 > upperCost + .000000001)
+                    continue;
                 if (_localMoveVisited[index] == search && _localMoveCosts[index] <= cost)
                     continue;
                 _localMoveVisited[index] = search;

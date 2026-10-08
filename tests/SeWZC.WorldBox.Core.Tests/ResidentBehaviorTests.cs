@@ -83,6 +83,39 @@ public sealed class ResidentBehaviorTests
         Assert.Equal(16, fixture.Resident.Agent.Goal.TargetY);
     }
 
+    /// <summary>近处自然供水充足时，仍比较评分更高的远处河岸。</summary>
+    [Fact]
+    public void Water_collection_compares_a_farther_river_with_abundant_groundwater()
+    {
+        var fixture = Prepare(thirst: true);
+        fixture.Resident.Inventory = new ResourceStock { Food = 10 };
+        fixture.Resident.Thirst = 20;
+        fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
+        fixture.Engine.Current.Tiles[16 * 32 + 17].NaturalWaterYield = 1;
+        fixture.Engine.Current.Tiles[16 * 32 + 20].Terrain = TerrainType.River;
+
+        fixture.Engine.Step();
+
+        Assert.Equal(16 * 32 + 20 + 1, fixture.Resident.Agent.Goal.TargetEntityId);
+        Assert.Equal(19, fixture.Resident.Agent.Goal.TargetX);
+    }
+
+    /// <summary>严重缺水时近处不足一天的水不能排除远处足量水源。</summary>
+    [Fact]
+    public void Critical_water_collection_does_not_stop_at_an_insufficient_nearby_source()
+    {
+        var fixture = Prepare(thirst: true);
+        fixture.Resident.Inventory = new ResourceStock { Food = 10 };
+        fixture.Resident.Thirst = 90;
+        fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
+        fixture.Engine.Current.Tiles[16 * 32 + 17].NaturalWaterYield = .01;
+        fixture.Engine.Current.Tiles[16 * 32 + 21].Terrain = TerrainType.River;
+
+        fixture.Engine.Step();
+
+        Assert.Equal(16 * 32 + 21 + 1, fixture.Resident.Agent.Goal.TargetEntityId);
+    }
+
     /// <summary>严重脱水时先去最近的足量水源，不能为惯常河岸延误补水。</summary>
     [Fact]
     public void Critical_thirst_prefers_nearby_sufficient_water()

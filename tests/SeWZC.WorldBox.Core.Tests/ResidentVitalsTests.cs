@@ -112,4 +112,18 @@ public sealed class ResidentVitalsTests
         Assert.Equal(Profession.Builder, after.Profession);
         Assert.Equal(Profession.Child, before.Profession);
     }
+
+    /// <summary>身体和需求均未变化时，实际抵达仍须记入熟路，并保留输入快照。</summary>
+    [Fact]
+    public void Arrival_is_remembered_when_vitals_and_needs_do_not_change()
+    {
+        var before = new Resident { Age = 20, Health = 100, Mana = 100 };
+        var rules = new WorldRules { Aging = false, Hunger = false, Thirst = false, Disease = false };
+
+        var after = before.AdvanceDay(rules, new Tile(), 1, before.Profession, 0, 0, true, 0, arrivedTile: 10);
+
+        Assert.Empty(before.Agent.FamiliarTiles);
+        Assert.Equal<int>([10], after.Agent.FamiliarTiles);
+        Assert.Equal(before with { Agent = after.Agent }, after);
+    }
 }

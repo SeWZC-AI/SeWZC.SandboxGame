@@ -336,8 +336,15 @@ public sealed partial class WorldEngine
             ? (uint)project.Id < 64 && (_knowledgeByTown.GetValueOrDefault(settlementId) & (1UL << project.Id)) != 0
             : (_localWorkQueriesActive
                 ? _localResearch.GetValueOrDefault(settlementId)
-                : Current.Society.Research.FirstOrDefault(r => r.SettlementId == settlementId))?.Completed
+                : FindSettlementResearch(settlementId))?.Completed
             .Contains(project) == true;
+    }
+
+    private SettlementResearchCursor? FindSettlementResearch(int settlementId)
+    {
+        foreach (var research in Current.Society.Research)
+            if (research.SettlementId == settlementId) return research;
+        return null;
     }
 
     /// <summary>查询聚落所属国家的古代工具等级。</summary>
