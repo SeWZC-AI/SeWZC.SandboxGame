@@ -42,7 +42,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>引擎持有的当前不可变世界快照；继续模拟或编辑不会修改已取得的快照。</summary>
-    public WorldState State => Current.Value;
+    public WorldState State => Current.Snapshot;
 
     internal WorldStateCursor Current { get; }
 

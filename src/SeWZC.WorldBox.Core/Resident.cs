@@ -47,38 +47,70 @@ public sealed partial record Resident
     public int SicknessTicks { get; init; }
 
     /// <summary>所加入的军队 ID，0 表示未编入军队。</summary>
-    public int ArmyId { get; init; }
+    public int ArmyId
+    {
+        get => _effects.ArmyId;
+        init { if (_effects.ArmyId != value) _effects = _effects with { ArmyId = value }; }
+    }
 
     /// <summary>供档案显示的性格特征文字。</summary>
     public string Trait { get; init; } = "勤劳";
 
     /// <summary>疫病康复后的暂时免疫截止日序。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public long DiseaseImmuneUntilTick { get; init; }
+    public long DiseaseImmuneUntilTick
+    {
+        get => _effects.DiseaseImmuneUntilTick;
+        init { if (_effects.DiseaseImmuneUntilTick != value) _effects = _effects with { DiseaseImmuneUntilTick = value }; }
+    }
 
     /// <summary>死亡直接原因，存活时为 <c>None</c>。</summary>
     [JsonRequired]
-    public DeathCause DeathCause { get; init; }
+    public DeathCause DeathCause
+    {
+        get => _effects.DeathCause;
+        init { if (_effects.DeathCause != value) _effects = _effects with { DeathCause = value }; }
+    }
 
     /// <summary>死亡时的模拟日序。</summary>
     [JsonRequired]
-    public long DeathTick { get; init; }
+    public long DeathTick
+    {
+        get => _effects.DeathTick;
+        init { if (_effects.DeathTick != value) _effects = _effects with { DeathTick = value }; }
+    }
 
     /// <summary>当前个人护甲强度。</summary>
     [JsonRequired]
-    public double Armor { get; init; }
+    public double Armor
+    {
+        get => _effects.Armor;
+        init { if (BitConverter.DoubleToInt64Bits(_effects.Armor) != BitConverter.DoubleToInt64Bits(value)) _effects = _effects with { Armor = value }; }
+    }
 
     /// <summary>当前可吸收伤害的个人符文护甲余量。</summary>
     [JsonRequired]
-    public double PersonalWard { get; init; }
+    public double PersonalWard
+    {
+        get => _effects.PersonalWard;
+        init { if (BitConverter.DoubleToInt64Bits(_effects.PersonalWard) != BitConverter.DoubleToInt64Bits(value)) _effects = _effects with { PersonalWard = value }; }
+    }
 
     /// <summary>冰霜减速效果的截止日序。</summary>
     [JsonRequired]
-    public long FrozenUntilTick { get; init; }
+    public long FrozenUntilTick
+    {
+        get => _effects.FrozenUntilTick;
+        init { if (_effects.FrozenUntilTick != value) _effects = _effects with { FrozenUntilTick = value }; }
+    }
 
     /// <summary>最近一次远程攻击的模拟日序。</summary>
     [JsonRequired]
-    public long LastRangedAttackTick { get; init; } = -100;
+    public long LastRangedAttackTick
+    {
+        get => _effects.LastRangedAttackTick;
+        init { if (_effects.LastRangedAttackTick != value) _effects = _effects with { LastRangedAttackTick = value }; }
+    }
 
     /// <summary>当前移动采用的交通方式。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]

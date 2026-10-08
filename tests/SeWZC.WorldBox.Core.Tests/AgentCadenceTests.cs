@@ -114,6 +114,69 @@ public sealed class AgentCadenceTests
         Assert.Equal(AgentGoalKind.Gather, fixture.Resident.Agent.Goal.Kind);
         Assert.True(fixture.Resident.Hunger > 90);
     }
+
+    /// <summary>紧急判断立即执行，首次复评对齐个人四日错峰，保存恢复保留后续安排。</summary>
+    [Fact]
+    public void Survival_reviews_are_spread_without_delaying_the_initial_emergency()
+    {
+        var fixture = Prepare();
+        fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 5);
+        fixture.Town.Resources = new ResourceStock();
+        foreach (var person in fixture.Engine.Current.Residents)
+            person.Replace(person.Value with
+            {
+                Hunger = 90, Inventory = new ResourceStock { Water = 10 },
+                FrozenUntilTick = fixture.Engine.Current.Tick + 6,
+                Agent = person.Agent.Value with { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal() },
+            });
+
+        fixture.Engine.Step();
+
+        var intervals = fixture.Engine.State.Residents.Select(person =>
+        {
+            Assert.Equal(fixture.Engine.State.Tick, person.Agent.Goal.StartedTick);
+            Assert.Equal(person.Agent.NextThinkTick, person.Agent.Goal.ReviewTick);
+            Assert.Equal(0, (person.Agent.NextThinkTick + person.Id) % 4);
+            return person.Agent.NextThinkTick - fixture.Engine.State.Tick;
+        }).Distinct().Order().ToArray();
+        Assert.Equal<long>([3, 4, 5, 6], intervals);
+        var restored = WorldEngine.ImportJson(fixture.Engine.ExportJson());
+        Assert.Equal(fixture.Engine.State.Residents.Select(person => person.Agent.NextThinkTick),
+            restored.State.Residents.Select(person => person.Agent.NextThinkTick));
+        var due = fixture.Resident.Agent.NextThinkTick;
+        var days = (int)(due - fixture.Engine.State.Tick);
+        fixture.Engine.Step(days);
+        restored.Step(days);
+        Assert.Equal(due + 4, fixture.Resident.Agent.NextThinkTick);
+        Assert.Equal(fixture.Engine.ExportJson(), restored.ExportJson());
+    }
+
+    /// <summary>到场等粮的紧急任务也按个人日期复评，现场查看粮仓不能重新聚集评估日期。</summary>
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void Arrived_food_crisis_keeps_the_personal_review_phase(int offset)
+    {
+        var fixture = Prepare();
+        fixture.Engine.Current.Tick += offset;
+        fixture.Town.Resources = new ResourceStock();
+        fixture.Resident.Inventory = new ResourceStock { Water = 10 };
+        fixture.Resident.Hunger = 90;
+        fixture.Resident.Agent.NextThinkTick = 100;
+        fixture.Resident.Agent.Goal = new AgentGoal
+        {
+            Kind = AgentGoalKind.Eat, TargetX = 16, TargetY = 16, ReviewTick = 100,
+        };
+
+        fixture.Engine.Step();
+
+        Assert.Equal(ResidentActivity.Eating, fixture.Resident.Activity);
+        Assert.InRange(fixture.Resident.Agent.NextThinkTick - fixture.Engine.State.Tick, 3, 6);
+        Assert.Equal(0, (fixture.Resident.Agent.NextThinkTick + fixture.ResidentId) % 4);
+        Assert.Equal(fixture.Resident.Agent.NextThinkTick, fixture.Resident.Agent.Goal.ReviewTick);
+    }
     /// <summary>非评估日的普通空闲居民继续结算需求，保留尚未评估的目标。</summary>
     [Fact]
     public void Ordinary_idle_waits_for_its_review_day()

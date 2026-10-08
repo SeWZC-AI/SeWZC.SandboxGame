@@ -8,6 +8,125 @@ public sealed class ImmutableWorldTests
 {
     private static string Serialize(WorldState state) => JsonSerializer.Serialize(state, WorldJsonContext.Default.WorldState);
 
+    /// <summary>低频身体状态仍按值比较并保存为原有平面字段，日常更新保留此前状态。</summary>
+    [Fact]
+    public void Resident_effects_preserve_value_equality_and_flat_serialization()
+    {
+        var before = new Resident
+        {
+            DiseaseImmuneUntilTick = 120, DeathCause = DeathCause.OldAge, DeathTick = 30,
+            ArmyId = 12, Armor = 8, PersonalWard = 6, FrozenUntilTick = 24, LastRangedAttackTick = 20,
+        };
+        var changed = before with { Age = 60, PersonalWard = 3 };
+        var restored = changed with { Age = before.Age, PersonalWard = 6 };
+
+        Assert.Equal(before, restored);
+        Assert.Equal(before.GetHashCode(), restored.GetHashCode());
+        Assert.Equal(6, before.PersonalWard);
+        Assert.Equal(3, changed.PersonalWard);
+        Assert.Equal(120, changed.DiseaseImmuneUntilTick);
+        var json = JsonSerializer.Serialize(before, WorldJsonContext.Default.Resident);
+        var roundTrip = JsonSerializer.Deserialize(json, WorldJsonContext.Default.Resident);
+        Assert.Equal(before, roundTrip);
+        using var saved = JsonDocument.Parse(json);
+        Assert.Equal(8, saved.RootElement.GetProperty("Armor").GetDouble());
+        Assert.Equal(20, saved.RootElement.GetProperty("LastRangedAttackTick").GetInt64());
+        Assert.False(saved.RootElement.TryGetProperty("Effects", out _));
+    }
+
+    /// <summary>低频双精度状态仍保留负零及 NaN 的输入位模式。</summary>
+    [Fact]
+    public void Resident_effects_preserve_double_bit_patterns()
+    {
+        var nanBits = 0x7ff8000000000001L;
+        var before = new Resident();
+        var changed = before with { Armor = -0d, PersonalWard = BitConverter.Int64BitsToDouble(nanBits) };
+
+        Assert.Equal(long.MinValue, BitConverter.DoubleToInt64Bits(changed.Armor));
+        Assert.Equal(nanBits, BitConverter.DoubleToInt64Bits(changed.PersonalWard));
+        Assert.Equal(0, BitConverter.DoubleToInt64Bits(before.Armor));
+        Assert.Equal(-100, new Resident().LastRangedAttackTick);
+        Assert.Equal(before, changed with { Armor = 0, PersonalWard = 0 });
+    }
+
+    /// <summary>日内更新立即用于后续劳动和查询，读取世界时冻结完整快照，继续更新不污染旧版本。</summary>
+    [Fact]
+    public void Deferred_updates_are_visible_and_snapshots_remain_independent()
+    {
+        var fixture = new WorldFixture();
+        var initial = fixture.Engine.State;
+        var tile = fixture.Engine.Current.Tiles[0];
+        WorldState middle;
+        using (fixture.Engine.Current.Tiles.BeginUpdates())
+        using (fixture.Engine.Current.Residents.BeginUpdates())
+        using (fixture.Engine.Current.Settlements.BeginUpdates())
+        {
+            fixture.Resident.Inventory = new ResourceStock { Food = 3 };
+            fixture.Town.Resources = new ResourceStock { Food = 9 };
+            tile.Fertility = 42;
+            Assert.Equal(3, fixture.Resident.Inventory.Food);
+            middle = fixture.Engine.State;
+            fixture.Resident.Inventory = new ResourceStock { Food = 5 };
+            fixture.Town.Resources = new ResourceStock { Food = 7 };
+            tile.Fertility = 60;
+        }
+
+        Assert.Equal(3, middle.Residents[0].Inventory.Food);
+        Assert.Equal(42, middle.Tiles[0].Fertility);
+        Assert.Equal(9, middle.Settlements[0].Resources.Food);
+        Assert.Equal(5, fixture.Engine.State.Residents[0].Inventory.Food);
+        Assert.Equal(60, fixture.Engine.State.Tiles[0].Fertility);
+        Assert.Equal(7, fixture.Engine.State.Settlements[0].Resources.Food);
+        Assert.Equal(initial.Residents[0].Inventory.Food, WorldEngine.FromSnapshot(initial).State.Residents[0].Inventory.Food);
+        Assert.NotEqual(42, initial.Tiles[0].Fertility);
+    }
+
+    /// <summary>批量写入、身体转换、成员增删和嵌套范围共用最新状态，不能遗失待提交更新。</summary>
+    [Fact]
+    public void Deferred_updates_survive_transforms_and_membership_changes()
+    {
+        var fixture = new WorldFixture();
+        var before = fixture.Engine.State;
+        var removed = fixture.Resident;
+        using (fixture.Engine.Current.Residents.BeginUpdates())
+        {
+            using (fixture.Engine.Current.Residents.BeginUpdates())
+                fixture.Resident.Health = 80;
+            fixture.Engine.Current.Residents.Transform(person => person with { Hunger = 20 });
+            fixture.Resident.Agent.Fatigue = 25;
+            fixture.Engine.Current.Residents.Remove(fixture.Resident);
+            fixture.Engine.Current.Residents.Add(new Resident { Id = 900, Name = "新居民" });
+            fixture.Engine.Current.Residents[0].Inventory = new ResourceStock { Food = 7 };
+        }
+
+        var after = Assert.Single(fixture.Engine.State.Residents);
+        Assert.Equal(900, after.Id);
+        Assert.Equal(7, after.Inventory.Food);
+        Assert.Equal(80, removed.Health);
+        Assert.Equal(20, removed.Hunger);
+        Assert.Equal(25, removed.Agent.Fatigue);
+        Assert.Equal(100, before.Residents[0].Health);
+        Assert.Equal(0, before.Residents[0].Agent.Fatigue);
+    }
+
+    /// <summary>退出失败的模拟范围仍提交已经发生的劳动，范围外继续写入正常发布。</summary>
+    [Fact]
+    public void Deferred_update_scope_flushes_on_exception()
+    {
+        var fixture = new WorldFixture();
+        void Fail()
+        {
+            using var updates = fixture.Engine.Current.Residents.BeginUpdates();
+            fixture.Resident.Health = 80;
+            throw new InvalidOperationException();
+        }
+        Assert.Throws<InvalidOperationException>(Fail);
+
+        Assert.Equal(80, fixture.Engine.State.Residents[0].Health);
+        fixture.Resident.Hunger = 20;
+        Assert.Equal(20, fixture.Engine.State.Residents[0].Hunger);
+    }
+
     /// <summary>整批需求转换后，已有嵌套定位引用仍保留新身体和认知状态。</summary>
     [Fact]
     public void Batch_transition_synchronizes_existing_nested_cursors()

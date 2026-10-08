@@ -283,9 +283,15 @@ public sealed partial class WorldEngine
                                                                             home.Resources.RareEarth < 16);
     }
 
-    private int GoalReviewInterval(ResidentCursor person) =>
-        person.Hunger > 60 && person.Inventory.Food < .05
-        || Current.Rules.Thirst && person.Thirst > 80 && person.Inventory.Water < .025 ? 4 : 24;
+    // 初次紧急判断仍立即执行；后续复评对齐个人四日错峰，首次对齐只需三至六日。
+    private int GoalReviewInterval(ResidentCursor person)
+    {
+        if (!(person.Hunger > 60 && person.Inventory.Food < .05)
+            && !(Current.Rules.Thirst && person.Thirst > 80 && person.Inventory.Water < .025)) return 24;
+        var earliest = Current.Tick + 3;
+        var phase = (earliest + person.Id) % 4;
+        return 3 + (int)((4 - phase) % 4);
+    }
 
     private void DeferGoalReview(ResidentCursor person)
     {
@@ -890,7 +896,9 @@ public sealed partial class WorldEngine
                 person.Activity = ResidentActivity.Eating;
                 if (inspectFood)
                 {
-                    var next = Math.Min(person.Agent.NextThinkTick, Current.Tick + 4);
+                    var reviewInterval = GoalReviewInterval(person);
+                    var next = Math.Min(person.Agent.NextThinkTick,
+                        Current.Tick + (reviewInterval < 24 ? reviewInterval : 4));
                     var observed = person.Agent.Value.Remember(MakeAgentFact(person, AgentFactKind.FoodSupply, home.Id,
                         home.X, home.Y, home.Resources.Food, $"实地查看粮仓：{home.Resources.Food:0.0} 份粮食"), home.Id);
                     person.Agent.Replace(observed with { Goal = goal with { ReviewTick = next }, NextThinkTick = next });

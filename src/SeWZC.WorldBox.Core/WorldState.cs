@@ -84,7 +84,7 @@ public readonly record struct WorldState
 
     /// <summary>模拟规则版本，用于校验存档的续演兼容性。</summary>
     [JsonRequired]
-    public int SimulationVersion { get; init; } = 19;
+    public int SimulationVersion { get; init; } = 20;
 
     /// <summary>世界的社会发展状态。</summary>
     public SocietyState Society { get; init; } = new();
