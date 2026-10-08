@@ -178,9 +178,29 @@ public sealed partial class WorldEngine
         // 可见范围之外的水源须有实际获知的地址，避免居民凭全图状态找水。
         var bestBank = -1;
         var bestSource = -1;
-        var bestScore = 0d;
+        var bestScore = double.NegativeInfinity;
         var sufficient = false;
         var required = WaterUse(person);
+        var urgent = person.Thirst >= 80 && person.Inventory.Water < required;
+
+        void ConsiderBank(int bank, int source, double available, bool reliable)
+        {
+            var fullDay = available >= required;
+            if (sufficient && !fullDay) return;
+            var distance = Distance(person.X, person.Y, bank % Current.Width, bank / Current.Width);
+            var familiar = person.Agent.Memory.Any(fact => fact.Kind == AgentFactKind.WaterSource
+                && fact.SubjectId == source + 1 && fact.OriginResidentId == person.Id
+                && fact.ReliabilityAt(Current.Tick) >= .5);
+            // 严重缺水优先缩短到岸时间；日常取水重视足够装瓶的供水及亲眼确认过的可靠来源。
+            var score = urgent ? -distance + Math.Min(1, available / required) * .01
+                : Math.Min(1, available) * (reliable ? 2 : 1) * (familiar ? 1.1 : 1) / (1 + distance * .4);
+            if (fullDay == sufficient && score <= bestScore
+                || !VisibleSiteReachable(person, bank, ref reachable)) return;
+            bestScore = score;
+            bestBank = bank;
+            bestSource = source;
+            sufficient = fullDay;
+        }
 
         void Consider(int source)
         {
@@ -189,22 +209,16 @@ public sealed partial class WorldEngine
                 return;
             var x = source % Current.Width;
             var y = source / Current.Width;
-            var available = Math.Min(1, AvailableWater(x, y));
+            var available = AvailableWater(x, y);
             if (available <= 0)
                 return;
-            var fullDay = available >= required;
+            var well = _localWorkQueriesActive ? _localWaterWells.GetValueOrDefault(source)
+                : Current.Society.Buildings.FirstOrDefault(building => building.Kind == BuildingKind.Well
+                    && building.X == x && building.Y == y);
+            var reliable = IsFreshWater(Current.Tiles[source]) || well is not null && IsBuildingOperational(well);
             if (RaceTerrainRules.CanWalk(Current.Tiles[source], person.Race))
             {
-                var distance = Distance(person.X, person.Y, x, y);
-                var score = available / (1 + distance * .25);
-                if ((fullDay || score > bestScore) && VisibleSiteReachable(person, source, ref reachable))
-                {
-                    bestScore = score;
-                    bestBank = source;
-                    bestSource = source;
-                    sufficient = fullDay;
-                }
-
+                ConsiderBank(source, source, available, reliable);
                 return;
             }
 
@@ -214,29 +228,17 @@ public sealed partial class WorldEngine
                 var yy = y + dy;
                 if (!Walkable(xx, yy, person.Race) || Current.Tiles[Index(xx, yy)].FireTicks > 0)
                     continue;
-                var distance = Distance(person.X, person.Y, xx, yy);
-                var score = available / (1 + distance * .25);
-                if (!fullDay && score <= bestScore)
-                    continue;
-                if (!VisibleSiteReachable(person, Index(xx, yy), ref reachable))
-                    continue;
-                bestScore = score;
-                bestBank = Index(xx, yy);
-                bestSource = source;
-                sufficient = fullDay;
-                if (sufficient) return;
+                ConsiderBank(Index(xx, yy), source, available, reliable);
             }
         }
 
         foreach (var offset in VisibleResourceOffsets)
         {
+            if (offset.Distance > 6) break;
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
             if (InBounds(x, y))
                 Consider(Index(x, y));
-            // 找到眼前可达、至少供应本人一日饮水的来源即执行；不足时保留可用的部分供水。
-            if (sufficient)
-                break;
         }
 
         // 远方已知水源可引导探索，但当日补水须使用当前可见且可达的岸边。
@@ -247,7 +249,7 @@ public sealed partial class WorldEngine
             if (existing is null || Current.Tick - existing.ObservedTick >= 120)
             {
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.WaterSource, bestSource + 1,
-                    bestSource % Current.Width, bestSource / Current.Width, 1, "实地发现可取水的河湖或有供水的陆地"));
+                    bestSource % Current.Width, bestSource / Current.Width, 1, "实地发现可取水的河湖、水井或有供水的陆地"));
             }
         }
 
@@ -257,7 +259,8 @@ public sealed partial class WorldEngine
     private bool AddProvisionChoices(ResidentCursor person, SettlementCursor home, List<GoalChoice> choices)
     {
         var needsWater = person.Inventory.Water < .3
-                         && (person.Thirst >= 10 || AvailableWater(person.X, person.Y) < WaterUse(person));
+                         && (person.Thirst >= 10 || person.Inventory.Water < WaterUse(person) * 4
+                             || AvailableWater(person.X, person.Y) < WaterUse(person));
         if (Current.Rules.Thirst &&
             (needsWater || (person.Id % 5 == 0 && person.Inventory.Water < WaterReserve(person) + 3)))
         {
@@ -277,7 +280,9 @@ public sealed partial class WorldEngine
                         water.Bank / Current.Width,
                         needsWater ? 65 + person.Thirst :
                         atHome && home.Resources.Water < home.Population * .5 ? 72 : 18,
-                        "前往实际见过的河湖或有供水的陆地取水，随身携带并运回家园", EntityId: water.Source + 1));
+                        person.Thirst >= 80 ? "严重缺水，优先就近补充饮水"
+                            : "比较眼前可达水源的供水量与距离，优先到河湖、水井或熟悉水源装水，再随身携带并运回家园",
+                        EntityId: water.Source + 1));
                 }
                 else if (needsWater && water.Bank < 0)
                 {

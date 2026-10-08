@@ -14,8 +14,15 @@ public sealed partial record Resident
         double manaRecovery, bool consumeNeeds, double socialGrowth = .07, double deliveredWater = 0)
     {
         var vitals = CalculateVitals(rules, tile, tick, profession, infectionDuration, manaRecovery);
-        return consumeNeeds && vitals.Health > 0 ? AdvanceNeeds(rules, tick, vitals, socialGrowth, deliveredWater)
+        var next = consumeNeeds && vitals.Health > 0 ? AdvanceNeeds(rules, tick, vitals, socialGrowth, deliveredWater)
             : ApplyVitals(vitals, vitals.Health > 0 ? socialGrowth : 0, deliveredWater);
+        if (consumeNeeds && vitals.Health > 0 && !Agent.Goal.PlayerDirected
+            && (SicknessTicks == 0 && vitals.Sickness > 0 || Health >= 40 && vitals.Health < 40))
+            next = next with { Agent = next.Agent with
+            {
+                Goal = next.Agent.Goal with { ReviewTick = tick }, NextThinkTick = tick,
+            } };
+        return next;
     }
 
     private VitalState CalculateVitals(WorldRules rules, Tile tile, long tick, Profession profession,

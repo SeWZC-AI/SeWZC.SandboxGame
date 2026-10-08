@@ -459,6 +459,9 @@ public sealed partial class WorldEngine
         if (Current.Tiles[Index(building.X, building.Y)].FireTicks > 0
             || !BuildingTerrainValid(building.Kind, Current.Tiles[Index(building.X, building.Y)]))
             return false;
+        if (building.LastWorkedTick == Current.Tick && building.Workers.Count >= building.WorkSlots &&
+            !building.Workers.Contains(resident.Id))
+            return false;
         if (building.Health < 50)
         {
             return building.Health > 0 && resident.Profession is Profession.Builder or Profession.Engineer
@@ -467,9 +470,6 @@ public sealed partial class WorldEngine
                                            RequireTown(building.SettlementId).Resources.Stone >= .5);
         }
 
-        if (building.LastWorkedTick == Current.Tick && building.Workers.Count >= building.WorkSlots &&
-            !building.Workers.Contains(resident.Id))
-            return false;
         if (!building.IsCompleted || building.IsUpgrading)
             return true;
         if (BuildingRace(building.Kind) is { } race && resident.Race != race)

@@ -5,6 +5,37 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>设施劳动中的工位预约交接与死亡释放。</summary>
 public sealed class WorkReservationTests
 {
+    /// <summary>严重损坏设施的维修也受现场工位上限约束，满员后不扣第二人的石材。</summary>
+    [Fact]
+    public void Repair_work_respects_the_daily_work_slot_limit()
+    {
+        var fixture = new WorldFixture();
+        fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
+        fixture.Engine.Current.Tick = 1;
+        var building = fixture.Engine.Current.Society.Buildings.Single(candidate => candidate.Kind == BuildingKind.TownCenter);
+        building.Health = 10;
+        building.WorkSlots = 1;
+        foreach (var person in fixture.Engine.Current.Residents)
+            person.Replace(person.Value with
+            {
+                Age = 25, Profession = Profession.Builder, X = 16, Y = 16, FromX = 16, FromY = 16,
+                Inventory = new ResourceStock { Stone = 1 },
+                Agent = person.Agent.Value with
+                {
+                    Goal = new AgentGoal { Kind = AgentGoalKind.Work, TargetEntityId = building.Id, PlayerDirected = true },
+                },
+            });
+        var other = fixture.Engine.Current.Residents.Single(person => person.Id != fixture.ResidentId);
+
+        Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
+        var repairedHealth = building.Health;
+        Assert.False(fixture.Engine.TryWorkAtBuilding(other.Value));
+
+        Assert.Equal(repairedHealth, building.Health);
+        Assert.Equal(1, other.Inventory.Stone);
+        Assert.Equal(fixture.ResidentId, Assert.Single(building.Workers));
+    }
+
     /// <summary>现场致死伤害立即释放死者预约，后续居民无需等到日末归档才能接手医疗。</summary>
     [Fact]
     public void Lethal_damage_during_actions_releases_the_work_slot()

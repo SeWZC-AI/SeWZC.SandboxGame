@@ -87,6 +87,9 @@ public sealed partial class WorldEngine
             agent is not null && agent.Personality is not null && !agent.Memory.IsDefault &&
             agent.Memory.Length <= 16 && agent.Decisions is not null && agent.Decisions.Count <= 6 &&
             agent.CarriedMessages is not null && agent.CarriedMessages.Count <= 8, "心智结构或容量无效。");
+        CheckV2(!agent!.FamiliarTiles.IsDefault && agent.FamiliarTiles.Length <= AgentState.MaximumFamiliarTiles
+            && agent.FamiliarTiles.All(index => index >= 0 && index < width * height)
+            && agent.FamiliarTiles.Distinct().Count() == agent.FamiliarTiles.Length, "熟路记忆无效。");
         var personality = agent!.Personality;
         CheckV2(
             Number(personality.Courage, 0, 1) && Number(personality.Diligence, 0, 1) &&

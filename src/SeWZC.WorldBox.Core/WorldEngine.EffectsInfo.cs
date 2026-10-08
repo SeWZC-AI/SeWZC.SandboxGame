@@ -60,6 +60,9 @@ public sealed partial class WorldEngine
             $"{(adaptation.Habitable ? "宜居" : "不宜居")}   地形移动耗时 ×{adaptation.Movement:0.00}   现场生产 ×{adaptation.Productivity:0.00}",
             "种族与当前地形"));
         effects.Add(new EffectInfo("勤勉", $"野外采集效率 ×{.75 + person.Agent.Personality.Diligence * .5:0.00}", ""));
+        if (person.Agent.FamiliarTiles.Length > 0)
+            effects.Add(new EffectInfo("路线习惯", $"熟悉地格 {person.Agent.FamiliarTiles.Length} 格\n耗时相近时倾向熟路，仍避开阻路和火场",
+                "本人的实际到访记录"));
         if (GatheringTerritoryMultiplier(person, Current.Tiles[Index(person.X, person.Y)]) < 1)
         {
             effects.Add(new EffectInfo("领地外采集", $"食物、木材、石矿、矿藏、狩猎、捕鱼与取水速度 ×{OutsideTerritoryGatheringMultiplier:0.00}",

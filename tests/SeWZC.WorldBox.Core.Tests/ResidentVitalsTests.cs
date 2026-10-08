@@ -5,6 +5,24 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>居民基础生命状态的纯转换及伤害次序。</summary>
 public sealed class ResidentVitalsTests
 {
+    /// <summary>新发疫病及时请求自主复评，不等远期工作安排到期。</summary>
+    [Fact]
+    public void New_illness_requests_a_recovery_review()
+    {
+        var before = new Resident
+        {
+            Age = 25, Inventory = new ResourceStock { Food = 1, Water = 1 },
+            Agent = new AgentState { NextThinkTick = 100, Goal = new AgentGoal { ReviewTick = 100 } },
+        };
+
+        var after = before.AdvanceDay(new WorldRules(), new Tile(), 7, Profession.Farmer, 80, 0, true);
+
+        Assert.Equal(80, after.SicknessTicks);
+        Assert.Equal(7, after.Agent.NextThinkTick);
+        Assert.Equal(7, after.Agent.Goal.ReviewTick);
+        Assert.Equal(100, before.Agent.NextThinkTick);
+    }
+
     /// <summary>现场取得的日常饮水直接进入结算，不凭空留下额外瓶装库存。</summary>
     [Fact]
     public void Delivered_water_is_consumed_by_the_day_transition()
