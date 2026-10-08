@@ -18,31 +18,34 @@ internal sealed class MapResidentIndex
             foreach (var cell in _cells.Values)
                 cell.Clear();
             foreach (var resident in residents)
-            {
                 for (var y = Math.Min(resident.Y, resident.FromY) / CellTiles;
-                     y <= Math.Max(resident.Y, resident.FromY) / CellTiles; y++)
-                    for (var x = Math.Min(resident.X, resident.FromX) / CellTiles;
-                         x <= Math.Max(resident.X, resident.FromX) / CellTiles; x++)
-                    {
-                        if (!_cells.TryGetValue((x, y), out var cell))
-                            _cells[(x, y)] = cell = [];
-                        cell.Add(resident);
-                    }
-            }
+                     y <= Math.Max(resident.Y, resident.FromY) / CellTiles;
+                     y++)
+                for (var x = Math.Min(resident.X, resident.FromX) / CellTiles;
+                     x <= Math.Max(resident.X, resident.FromX) / CellTiles;
+                     x++)
+                {
+                    if (!_cells.TryGetValue((x, y), out var cell))
+                        _cells[(x, y)] = cell = [];
+                    cell.Add(resident);
+                }
+
             _residents = residents;
         }
 
         result.Clear();
         _seen.Clear();
         for (var y = top / CellTiles; y <= bottom / CellTiles; y++)
-            for (var x = left / CellTiles; x <= right / CellTiles; x++)
-                if (_cells.TryGetValue((x, y), out var cell))
-                    foreach (var resident in cell)
-                        if (Math.Min(resident.X, resident.FromX) <= right &&
-                            Math.Max(resident.X, resident.FromX) >= left &&
-                            Math.Min(resident.Y, resident.FromY) <= bottom &&
-                            Math.Max(resident.Y, resident.FromY) >= top && _seen.Add(resident.Id))
-                            result.Add(resident);
+        for (var x = left / CellTiles; x <= right / CellTiles; x++)
+            if (_cells.TryGetValue((x, y), out var cell))
+            {
+                foreach (var resident in cell)
+                    if (Math.Min(resident.X, resident.FromX) <= right &&
+                        Math.Max(resident.X, resident.FromX) >= left &&
+                        Math.Min(resident.Y, resident.FromY) <= bottom &&
+                        Math.Max(resident.Y, resident.FromY) >= top && _seen.Add(resident.Id))
+                        result.Add(resident);
+            }
     }
 
     public void Clear()

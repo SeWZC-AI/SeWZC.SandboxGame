@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -120,13 +121,18 @@ public sealed partial class WorldEngine
                 tile.Terrain = TerrainType.Grass;
         }
         else if (building.Kind == BuildingKind.MountainPass)
-        {
-            tile.Replace(tile.Value with { Improvement = LandImprovement.MountainPass, RoadLevel = (byte)building.Level });
-        }
+            tile.Replace(tile.Value with
+            {
+                Improvement = LandImprovement.MountainPass, RoadLevel = (byte)building.Level,
+            });
         else if (building.Kind == BuildingKind.Bridge)
-        {
-            tile.Replace(tile.Value with { Improvement = LandImprovement.Bridge, RoadLevel = (byte)building.Level, BridgeDirection = building.Direction, BridgeLevel = (byte)building.Level });
-        }
+            tile.Replace(tile.Value with
+            {
+                Improvement = LandImprovement.Bridge,
+                RoadLevel = (byte)building.Level,
+                BridgeDirection = building.Direction,
+                BridgeLevel = (byte)building.Level,
+            });
 
         RegisterBuildingGround(building);
     }
@@ -276,7 +282,10 @@ public sealed partial class WorldEngine
     {
         if (amount <= 0)
             return;
-        tile.Replace(tile.Value with { LastHarvestTick = Current.Tick, Harvested = Math.Min(1_000_000_000, tile.Harvested + amount) });
+        tile.Replace(tile.Value with
+        {
+            LastHarvestTick = Current.Tick, Harvested = Math.Min(1_000_000_000, tile.Harvested + amount),
+        });
     }
 
     private int VisibleDepositSite(ResidentCursor person)
@@ -439,6 +448,7 @@ public sealed partial class WorldEngine
             if (FindWaterWell(Index(x, y)) is not null)
                 lines.Add($"每日可打水量 {GetDailyWaterCapacity(x, y):0.###}\n今日剩余可打水量 {AvailableWater(x, y):0.###}");
         }
+
         if (IsWaterTerrain(tile.Terrain))
             lines.Add(tile.Terrain == TerrainType.Stream ? "通行：可涉水，速度较慢" : "通行：需要桥梁或舟船");
         if (tile.IsWalkable)

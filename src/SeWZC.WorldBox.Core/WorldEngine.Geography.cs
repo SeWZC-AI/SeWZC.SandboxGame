@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -55,23 +56,24 @@ public sealed partial class WorldEngine
                 flow[parents[order[p]]] += flow[order[p]];
 
         for (var y = 7; y < Current.Height - 7; y += 12)
-            for (var x = 7; x < Current.Width - 7; x += 12)
-            {
-                if (Noise(x, y, 977) < .64)
-                    continue;
-                var area = Circle(x, y, 3).ToArray();
-                if (area.Any(i =>
-                        IsWaterTerrain(tiles[i].Terrain) || tiles[i].Elevation > 178 || _demoHabitat?[i] >= 0))
-                    continue;
-                var radius = Noise(x, y, 983) > .7 ? 2 : 1;
-                foreach (var i in Circle(x, y, radius))
-                    tiles[i].Terrain = TerrainType.Lake;
-            }
+        for (var x = 7; x < Current.Width - 7; x += 12)
+        {
+            if (Noise(x, y, 977) < .64)
+                continue;
+            var area = Circle(x, y, 3).ToArray();
+            if (area.Any(i =>
+                    IsWaterTerrain(tiles[i].Terrain) || tiles[i].Elevation > 178 || _demoHabitat?[i] >= 0))
+                continue;
+            var radius = Noise(x, y, 983) > .7 ? 2 : 1;
+            foreach (var i in Circle(x, y, radius))
+                tiles[i].Terrain = TerrainType.Lake;
+        }
 
         var sources = Enumerable.Range(0, tiles.Length)
             .Where(i => parents[i] >= 0 && !IsWaterTerrain(tiles[i].Terrain) && tiles[i].Elevation >= 120 &&
                         flow[i] < 12)
-            .OrderByDescending(i => tiles[i].Elevation + Noise(i % Current.Width / 7d, i / Current.Width / 7d, 1879) * 65)
+            .OrderByDescending(i =>
+                tiles[i].Elevation + Noise(i % Current.Width / 7d, i / Current.Width / 7d, 1879) * 65)
             .ThenBy(i => i);
         var selected = new List<int>();
         var desired = Math.Clamp(tiles.Length / 4096 + 2, 2, 12);
@@ -177,7 +179,13 @@ public sealed partial class WorldEngine
         if (_demoHabitat is not null && index >= 0 && _demoHabitat[index] >= 0)
         {
             var race = (RaceKind)_demoHabitat[index];
-            tile.Replace(tile.Value with { Fertility = race == RaceKind.Dwarf ? (byte)60 : race == RaceKind.Orc ? (byte)55 : (byte)80, Rainfall = race == RaceKind.Elf ? .096 : race == RaceKind.Orc ? .012 : race == RaceKind.Dwarf ? .064 : .036 });
+            tile.Replace(tile.Value with
+            {
+                Fertility = race == RaceKind.Dwarf ? (byte)60 : race == RaceKind.Orc ? (byte)55 : (byte)80,
+                Rainfall = race == RaceKind.Elf ? .096 :
+                race == RaceKind.Orc ? .012 :
+                race == RaceKind.Dwarf ? .064 : .036,
+            });
             var variation = Noise(index % Current.Width / 2d, index / Current.Width / 2d, 1901);
             if (variation > .58)
             {
@@ -247,18 +255,18 @@ public sealed partial class WorldEngine
             var best = -1;
             var bestDistance = int.MaxValue;
             for (var y = 6; y < Current.Height - 6; y++)
-                for (var x = 6; x < Current.Width - 6; x++)
-                {
-                    var distance = Distance(x, y, targetX, targetY);
-                    if (distance >= bestDistance || sites.Any(i =>
-                            Distance(x, y, i % Current.Width, i / Current.Width) < MinimumSettlementDistance))
-                        continue;
-                    if (Current.Tiles[Index(x, y)].Fertility < 40 || !Circle(x, y, 6).All(i =>
-                            RaceTerrainRules.For((RaceKind)race, Current.Tiles[i].Terrain).Habitable))
-                        continue;
-                    best = Index(x, y);
-                    bestDistance = distance;
-                }
+            for (var x = 6; x < Current.Width - 6; x++)
+            {
+                var distance = Distance(x, y, targetX, targetY);
+                if (distance >= bestDistance || sites.Any(i =>
+                        Distance(x, y, i % Current.Width, i / Current.Width) < MinimumSettlementDistance))
+                    continue;
+                if (Current.Tiles[Index(x, y)].Fertility < 40 || !Circle(x, y, 6).All(i =>
+                        RaceTerrainRules.For((RaceKind)race, Current.Tiles[i].Terrain).Habitable))
+                    continue;
+                best = Index(x, y);
+                bestDistance = distance;
+            }
 
             if (best < 0)
                 break;

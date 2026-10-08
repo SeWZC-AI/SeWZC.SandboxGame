@@ -1,4 +1,3 @@
-using SeWZC.WorldBox.Core.Runtime;
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -42,7 +41,7 @@ public sealed partial class WorldEngine
         return tile.Deposit is { } kind
                && (visibility == ResourceVisibility.All || (visibility == ResourceVisibility.Researched
                                                             && (tile.DepositDiscovered || (DepositResearch(kind) is
-                                                            { } research &&
+                                                                    { } research &&
                                                                 Current.Society.Research.Any(r =>
                                                                     r.Completed.Contains(research))))));
     }

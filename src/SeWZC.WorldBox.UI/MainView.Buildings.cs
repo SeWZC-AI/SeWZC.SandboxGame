@@ -415,7 +415,7 @@ public sealed partial class MainView
                     ReviewTick = _engine.State.Tick + 48,
                     PlayerDirected = true,
                     Reason = kind == AgentGoalKind.Rest ? "玩家安排返回家园休息" : "玩家安排返回家园交付物资",
-                }
+                },
             };
         }
         else

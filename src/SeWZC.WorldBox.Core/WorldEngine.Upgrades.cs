@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -10,9 +11,7 @@ public sealed partial class WorldEngine
     {
         var cost = GetBuildingCost(kind);
         if (kind == BuildingKind.Bridge)
-        {
             cost = cost.Scale(Math.Clamp(level, 1, 3));
-        }
 
         return cost;
     }
@@ -49,7 +48,8 @@ public sealed partial class WorldEngine
     // 已确认相邻且在地图内的搜索地格直接共用通行规则，不重复转换坐标和验证距离。
     private static bool CanTraverseAdjacentTiles(Tile from, Tile to, bool horizontal, TravelMode mode, RaceKind race)
     {
-        if (!CanTraverse(to, mode, race)) return false;
+        if (!CanTraverse(to, mode, race))
+            return false;
         if (mode != TravelMode.Foot)
             return true;
         return (from.Improvement != LandImprovement.Bridge ||
@@ -68,19 +68,19 @@ public sealed partial class WorldEngine
         var dy = 1 - dx;
         var best = int.MaxValue;
         for (var sign = -1; sign <= 1; sign += 2)
-            for (var distance = 1; distance <= 6; distance++)
-            {
-                var xx = x + dx * sign * distance;
-                var yy = y + dy * sign * distance;
-                if (!InBounds(xx, yy))
-                    break;
-                var tile = Current.Tiles[Index(xx, yy)];
-                if (IsWaterTerrain(tile.Terrain))
-                    continue;
-                if (tile.IsWalkable && tile.Improvement != LandImprovement.Bridge)
-                    best = Math.Min(best, distance);
+        for (var distance = 1; distance <= 6; distance++)
+        {
+            var xx = x + dx * sign * distance;
+            var yy = y + dy * sign * distance;
+            if (!InBounds(xx, yy))
                 break;
-            }
+            var tile = Current.Tiles[Index(xx, yy)];
+            if (IsWaterTerrain(tile.Terrain))
+                continue;
+            if (tile.IsWalkable && tile.Improvement != LandImprovement.Bridge)
+                best = Math.Min(best, distance);
+            break;
+        }
 
         return best;
     }
@@ -177,8 +177,14 @@ public sealed partial class WorldEngine
             throw new InvalidOperationException(error);
         var building = Current.Society.Buildings.First(b => b.Id == id);
         if (!gift)
-            RequireTown(building.SettlementId).Resources = Spend(RequireTown(building.SettlementId).Resources, GetUpgradeCost(building, direction.HasValue));
-        building.Replace(building.Value with { PendingDirection = direction, UpgradeProgress = 0, UpgradeRequired = direction.HasValue ? 15 : 30 * building.Level });
+            RequireTown(building.SettlementId).Resources = Spend(RequireTown(building.SettlementId).Resources,
+                GetUpgradeCost(building, direction.HasValue));
+        building.Replace(building.Value with
+        {
+            PendingDirection = direction,
+            UpgradeProgress = 0,
+            UpgradeRequired = direction.HasValue ? 15 : 30 * building.Level,
+        });
         building.Workers.Clear();
         building.LastWorkedTick = -100;
         var entry = AddEvent(WorldEventKind.Construction,
@@ -195,7 +201,13 @@ public sealed partial class WorldEngine
             building.Direction = direction;
         else
             building.Level++;
-        building.Replace(building.Value with { PendingDirection = null, UpgradeProgress = 0, UpgradeRequired = 0, WorkSlots = Math.Min(20, (building.Kind == BuildingKind.Farm ? 5 : 3) + building.Level - 1) });
+        building.Replace(building.Value with
+        {
+            PendingDirection = null,
+            UpgradeProgress = 0,
+            UpgradeRequired = 0,
+            WorkSlots = Math.Min(20, (building.Kind == BuildingKind.Farm ? 5 : 3) + building.Level - 1),
+        });
         CompleteLandImprovement(building);
         AddEvent(WorldEventKind.Construction, $"{BuildingName(building.Kind)}施工完成，当前 {building.Level} 级。",
             building.X, building.Y, EventAction.Completed, building.SettlementId,

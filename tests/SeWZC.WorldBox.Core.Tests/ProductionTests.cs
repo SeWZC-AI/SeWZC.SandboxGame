@@ -1,4 +1,3 @@
-using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.Core.Runtime;
 
 namespace SeWZC.WorldBox.Core.Tests;
@@ -33,10 +32,7 @@ public sealed class ProductionTests
         worker.Inventory = new ResourceStock { Coal = 1, Ore = 2 };
         worker.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Work,
-            TargetEntityId = foundry.Id,
-            TargetX = 17,
-            TargetY = 16,
+            Kind = AgentGoalKind.Work, TargetEntityId = foundry.Id, TargetX = 17, TargetY = 16,
         };
         return (fixture, foundry);
     }
@@ -119,11 +115,7 @@ public sealed class ProductionTests
     public void Worker_can_produce_only_once_per_tick()
     {
         var (fixture, foundry) = FoundryWorld();
-        fixture.Resident.Inventory = fixture.Resident.Inventory with
-        {
-            Coal = 2,
-            Ore = 4,
-        };
+        fixture.Resident.Inventory = fixture.Resident.Inventory with { Coal = 2, Ore = 4 };
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident));

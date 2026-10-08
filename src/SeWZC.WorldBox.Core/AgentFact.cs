@@ -57,22 +57,33 @@ public sealed record AgentFact
     /// <summary>观察或转述的内容说明。</summary>
     public string Text { get; init; } = "";
 
+    internal AgentFactTopic Topic => AgentFactTopic.For(Kind);
+
     /// <summary>根据原始观察时间和议题有效期，计算指定日序的可信度。</summary>
     /// <param name="tick">评估信息的模拟日序。</param>
-    public double ReliabilityAt(long tick) =>
-        Math.Clamp(Confidence, 0, 1) * Math.Clamp(1 - (tick - ObservedTick) / Topic.Lifetime, 0, 1);
+    public double ReliabilityAt(long tick)
+    {
+        return Math.Clamp(Confidence, 0, 1) * Math.Clamp(1 - (tick - ObservedTick) / Topic.Lifetime, 0, 1);
+    }
 
     /// <summary>判断两条信息是否描述同一议题主体及地点。</summary>
     /// <param name="other">用于比较的信息快照。</param>
-    public bool HasSameSubject(AgentFact other) =>
-        Kind == other.Kind && SubjectId == other.SubjectId && TargetNationId == other.TargetNationId &&
-        (!Topic.DistinguishesLocation || (X == other.X && Y == other.Y));
+    public bool HasSameSubject(AgentFact other)
+    {
+        return Kind == other.Kind && SubjectId == other.SubjectId && TargetNationId == other.TargetNationId &&
+               (!Topic.DistinguishesLocation || (X == other.X && Y == other.Y));
+    }
 
-    internal AgentFactTopic Topic => AgentFactTopic.For(Kind);
+    internal bool Supersedes(AgentFact old)
+    {
+        return ObservedTick > old.ObservedTick || (ObservedTick == old.ObservedTick &&
+                                                   (Topic.OrdersSameDayById && Id != old.Id
+                                                       ? Id > old.Id
+                                                       : Confidence > old.Confidence));
+    }
 
-    internal bool Supersedes(AgentFact old) =>
-        ObservedTick > old.ObservedTick || (ObservedTick == old.ObservedTick &&
-            (Topic.OrdersSameDayById && Id != old.Id ? Id > old.Id : Confidence > old.Confidence));
-
-    internal long RetentionPriority(int homeId) => LearnedTick + Topic.RetentionBonus(this, homeId);
+    internal long RetentionPriority(int homeId)
+    {
+        return LearnedTick + Topic.RetentionBonus(this, homeId);
+    }
 }

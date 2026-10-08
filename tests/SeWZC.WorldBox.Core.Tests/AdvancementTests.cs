@@ -1,5 +1,5 @@
+using System.Globalization;
 using System.Text.Json;
-using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.Core.Tests;
 
@@ -34,7 +34,7 @@ public sealed class AdvancementTests
         var json = JsonSerializer.Serialize(research);
         var restored = JsonSerializer.Deserialize<Advancement>(json);
 
-        Assert.Equal(research.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), json);
+        Assert.Equal(research.Id.ToString(CultureInfo.InvariantCulture), json);
         Assert.Same(research, restored);
     }
 

@@ -106,8 +106,7 @@ public sealed partial class WorldMapControl
         {
             _drawnPlacementMessage = _placementMessage;
             _drawnPlacementText = new FormattedText(_placementMessage, CultureInfo.CurrentCulture,
-                FlowDirection.LeftToRight, MapTypeface, 11, LabelBrush)
-            { MaxTextWidth = 210 };
+                FlowDirection.LeftToRight, MapTypeface, 11, LabelBrush) { MaxTextWidth = 210 };
         }
 
         var text = _drawnPlacementText;
@@ -163,16 +162,16 @@ public sealed partial class WorldMapControl
             {
                 _relayOverlay.Clear();
                 for (var i = 0; i < state.Settlements.Count; i++)
-                    for (var j = i + 1; j < state.Settlements.Count; j++)
+                for (var j = i + 1; j < state.Settlements.Count; j++)
+                {
+                    var a = state.Settlements[i];
+                    var b = state.Settlements[j];
+                    if (Engine!.CanRelayInformation(a.Id, b.Id, out _))
                     {
-                        var a = state.Settlements[i];
-                        var b = state.Settlements[j];
-                        if (Engine!.CanRelayInformation(a.Id, b.Id, out _))
-                        {
-                            _relayOverlay.Add((new Point((a.X + .5) * TilePixels, (a.Y + .5) * TilePixels),
-                                new Point((b.X + .5) * TilePixels, (b.Y + .5) * TilePixels)));
-                        }
+                        _relayOverlay.Add((new Point((a.X + .5) * TilePixels, (a.Y + .5) * TilePixels),
+                            new Point((b.X + .5) * TilePixels, (b.Y + .5) * TilePixels)));
                     }
+                }
 
                 _relayOverlayDirty = false;
             }

@@ -16,9 +16,20 @@ public sealed partial record Resident
     /// <param name="Thirst">结算后的口渴程度。</param>
     /// <param name="Inventory">扣除需求并计入补给后的随身库存。</param>
     /// <param name="Agent">结算后的认知与行动状态。</param>
-    internal readonly record struct DailyState(double Age, Profession Profession, double Health, int Sickness,
-        long Immunity, DeathCause DeathCause, long DeathTick, ResidentActivity Activity, double Mana,
-        double Hunger, double Thirst, ResourceStock Inventory, AgentState Agent)
+    internal readonly record struct DailyState(
+        double Age,
+        Profession Profession,
+        double Health,
+        int Sickness,
+        long Immunity,
+        DeathCause DeathCause,
+        long DeathTick,
+        ResidentActivity Activity,
+        double Mana,
+        double Hunger,
+        double Thirst,
+        ResourceStock Inventory,
+        AgentState Agent)
     {
         internal Resident Apply(Resident value)
         {
@@ -26,12 +37,23 @@ public sealed partial record Resident
                 && Sickness == value.SicknessTicks && Immunity == value.DiseaseImmuneUntilTick
                 && DeathCause == value.DeathCause && DeathTick == value.DeathTick && Activity == value.Activity
                 && Mana == value.Mana && Hunger == value.Hunger && Thirst == value.Thirst
-                && Inventory == value.Inventory && ReferenceEquals(Agent, value.Agent)) return value;
+                && Inventory == value.Inventory && ReferenceEquals(Agent, value.Agent))
+                return value;
             return value with
             {
-                Age = Age, Profession = Profession, Health = Health, SicknessTicks = Sickness,
-                DiseaseImmuneUntilTick = Immunity, DeathCause = DeathCause, DeathTick = DeathTick,
-                Activity = Activity, Mana = Mana, Hunger = Hunger, Thirst = Thirst, Inventory = Inventory, Agent = Agent,
+                Age = Age,
+                Profession = Profession,
+                Health = Health,
+                SicknessTicks = Sickness,
+                DiseaseImmuneUntilTick = Immunity,
+                DeathCause = DeathCause,
+                DeathTick = DeathTick,
+                Activity = Activity,
+                Mana = Mana,
+                Hunger = Hunger,
+                Thirst = Thirst,
+                Inventory = Inventory,
+                Agent = Agent,
             };
         }
     }

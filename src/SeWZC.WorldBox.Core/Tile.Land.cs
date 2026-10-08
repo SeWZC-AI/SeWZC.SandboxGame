@@ -4,7 +4,6 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial record Tile
 {
-
     /// <summary>当前地块改良，影响通行和资源生产。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public LandImprovement Improvement { get; init; }

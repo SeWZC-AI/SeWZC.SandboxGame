@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -36,10 +37,11 @@ public sealed partial class WorldEngine
 
         return new LocalDemand(town, adults, buildings, defense, adults.Any(p => p.Health < 90 || p.SicknessTicks > 0),
             Current.Rules.Thirst && (town.Resources.Water < Math.Max(2, town.Population * .5) ||
-                                   adults.Any(p => p.Thirst > 20)),
+                                     adults.Any(p => p.Thirst > 20)),
             coast, timber, stone,
             adults.Any(p => p.Agent.Memory.Any(f =>
-                f.Kind == AgentFactKind.SettlementLocation && f.SubjectId != town.Id && f.ReliabilityAt(Current.Tick) >= .5)),
+                f.Kind == AgentFactKind.SettlementLocation && f.SubjectId != town.Id &&
+                f.ReliabilityAt(Current.Tick) >= .5)),
             adults.Any(p => p.MagicTalent >= 35), roads);
     }
 

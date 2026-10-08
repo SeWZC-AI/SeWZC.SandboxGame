@@ -19,7 +19,10 @@ internal sealed class RecentActivityCounter
         return _timestamps.Count;
     }
 
-    internal void Clear() => _timestamps.Clear();
+    internal void Clear()
+    {
+        _timestamps.Clear();
+    }
 
     private void Expire(long timestamp)
     {

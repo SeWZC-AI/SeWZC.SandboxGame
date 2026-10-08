@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -72,18 +73,19 @@ public sealed partial class WorldEngine
         _territoryCounts.Bind(Current.Tiles);
         // 面积取决于归属与陆水转换；其他地方的起火及桥梁轴向变化不改变登记面积。
         if (_settlementAreas.TryGetValue(id, out var cached) && cached.Claims == _territoryCounts.Revision &&
-                                                             cached.X == town.X && cached.Y == town.Y &&
-                                                             cached.Nation == town.NationId)
+            cached.X == town.X && cached.Y == town.Y &&
+            cached.Nation == town.NationId)
             return cached.Area;
         // 城镇加成须按本地独占登记陆地计算，避免借用国家总领土满足条件。
         var area = Circle(town.X, town.Y, 17).Count(i =>
-            Distance(town.X, town.Y, i % Current.Width, i / Current.Width) <= 17 && Current.Tiles[i].ClaimedSettlementId == id
-                                                                             && Current.Tiles[i].NationId ==
-                                                                             town.NationId &&
-                                                                             (Current.Tiles[i].IsWalkable ||
-                                                                              Current.Tiles[i].Terrain ==
-                                                                              TerrainType.Mountain) &&
-                                                                             !IsWaterTerrain(Current.Tiles[i].Terrain));
+            Distance(town.X, town.Y, i % Current.Width, i / Current.Width) <= 17 &&
+            Current.Tiles[i].ClaimedSettlementId == id
+            && Current.Tiles[i].NationId ==
+            town.NationId &&
+            (Current.Tiles[i].IsWalkable ||
+             Current.Tiles[i].Terrain ==
+             TerrainType.Mountain) &&
+            !IsWaterTerrain(Current.Tiles[i].Terrain));
         _settlementAreas[id] = (_territoryCounts.Revision, town.X, town.Y,
             town.NationId, area);
         return area;
@@ -105,11 +107,11 @@ public sealed partial class WorldEngine
     private bool SettlementNeedsClaimArea(SettlementCursor town)
     {
         return Current.Rules.Expansion && !town.FoundationPending
-                                     && (!IsSettlementActive(town.Id) || (town.Tier < SettlementTier.City &&
-                                                                          town.Population >=
-                                                                          ExpansionPopulation(town.Tier)
-                                                                          && GetSettlementArea(town.Id) <
-                                                                          GetSettlementExpansionArea(town.Id)));
+                                       && (!IsSettlementActive(town.Id) || (town.Tier < SettlementTier.City &&
+                                                                            town.Population >=
+                                                                            ExpansionPopulation(town.Tier)
+                                                                            && GetSettlementArea(town.Id) <
+                                                                            GetSettlementExpansionArea(town.Id)));
     }
 
     /// <summary>查询居民在此地采集所用的本城镇领地内外倍率。</summary>
@@ -165,7 +167,10 @@ public sealed partial class WorldEngine
             throw new InvalidOperationException(error);
         var town = RequireTown(id);
         town.Resources = Spend(town.Resources, SettlementExpansionCost(town.Tier));
-        town.Replace(town.Value with { ExpansionProgress = 0, ExpansionRequired = town.Tier == SettlementTier.Village ? 60 : 120 });
+        town.Replace(town.Value with
+        {
+            ExpansionProgress = 0, ExpansionRequired = town.Tier == SettlementTier.Village ? 60 : 120,
+        });
         AddEvent(WorldEventKind.Construction, $"{town.Name}投入扩充材料，居民到城镇中心施工后升为{SettlementTierName(town.Tier + 1)}。",
             town.X, town.Y, EventAction.Started, town.Id);
     }

@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -17,7 +18,7 @@ public sealed partial class WorldEngine
             return;
         var residents = Current.Residents.ToDictionary(r => r.Id);
         Current.Conflicts.RemoveAll(c => (c.Stage == ConflictStage.Resolved && Current.Tick - c.LastChangedTick > 360)
-                                       || !_settlements.ContainsKey(c.SettlementId));
+                                         || !_settlements.ContainsKey(c.SettlementId));
         foreach (var conflict in Current.Conflicts.Where(c => c.Stage != ConflictStage.Resolved))
         {
             conflict.Participants.RemoveAll(id => !residents.ContainsKey(id));
@@ -30,7 +31,8 @@ public sealed partial class WorldEngine
             var pressured = together && HasResourcePressure(first!) &&
                             HasResourcePressure(residents[conflict.SecondResidentId]);
             conflict.Tension =
-                Math.Clamp(conflict.Tension + (pressured && Current.Rules.Conflict > 0 ? 4 * Current.Rules.Conflict : -12),
+                Math.Clamp(
+                    conflict.Tension + (pressured && Current.Rules.Conflict > 0 ? 4 * Current.Rules.Conflict : -12),
                     0, 100);
             if (conflict.Tension <= 0 || !Current.Rules.Wars || Current.Rules.Conflict == 0)
             {
@@ -77,8 +79,9 @@ public sealed partial class WorldEngine
         foreach (var town in Current.Settlements)
         {
             if (Current.Conflicts.Count >= 128 || Current.Conflicts.Any(c => c.SettlementId == town.Id
-                                                                         && (c.Stage != ConflictStage.Resolved ||
-                                                                             Current.Tick - c.LastChangedTick < 120)))
+                                                                             && (c.Stage != ConflictStage.Resolved ||
+                                                                                 Current.Tick - c.LastChangedTick <
+                                                                                 120)))
                 continue;
             var candidates = _citizens[town.Id].Where(r => r.Age >= 14 && r.ArmyId == 0 && HasResourcePressure(r))
                 .OrderBy(r => r.Id).Take(32).ToArray();

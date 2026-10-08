@@ -1,5 +1,3 @@
-using SeWZC.WorldBox.Core;
-
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>国家编辑对本地权威状态的更新和拒绝检查。</summary>
@@ -12,7 +10,7 @@ public sealed class NationEditingTests
         var fixture = new WorldFixture();
         var wood = fixture.Town.Resources.Wood;
 
-        fixture.Engine.SetNationResources(fixture.Town.NationId, food: 12.5);
+        fixture.Engine.SetNationResources(fixture.Town.NationId, 12.5);
 
         Assert.Equal(12.5, fixture.Town.Resources.Food);
         Assert.Equal(12.5, fixture.Engine.Current.Nations.Single().Resources.Food);
@@ -25,7 +23,7 @@ public sealed class NationEditingTests
     {
         var fixture = new WorldFixture();
 
-        fixture.Engine.SetNationResources(fixture.Town.NationId, food: 0);
+        fixture.Engine.SetNationResources(fixture.Town.NationId, 0);
 
         Assert.Equal(0, fixture.Town.Resources.Food);
         Assert.Equal(0, fixture.Engine.Current.Nations.Single().Resources.Food);
@@ -43,7 +41,7 @@ public sealed class NationEditingTests
         var before = fixture.Engine.ExportJson();
 
         Assert.Throws<ArgumentOutOfRangeException>(() => fixture.Engine.SetNationResources(
-            fixture.Town.NationId, food: 9, wood: invalid));
+            fixture.Town.NationId, 9, invalid));
 
         Assert.Equal(before, fixture.Engine.ExportJson());
     }

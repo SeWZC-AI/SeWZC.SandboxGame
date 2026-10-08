@@ -1,5 +1,5 @@
-using SeWZC.WorldBox.Core.Runtime;
 using System.Collections.Immutable;
+using SeWZC.WorldBox.Core.Runtime;
 
 namespace SeWZC.WorldBox.Core;
 
@@ -228,7 +228,8 @@ public sealed partial class WorldEngine
         };
     }
 
-    private bool WarehouseCanSupply(SettlementCursor town, ResidentCursor person, ProductionRecipe recipe, bool firstBatch)
+    private bool WarehouseCanSupply(SettlementCursor town, ResidentCursor person, ProductionRecipe recipe,
+        bool firstBatch)
     {
         if (!firstBatch && town.Resources.Get(recipe.Output) >= ProductionStockTarget(town, recipe.Output))
             return false;
@@ -271,10 +272,7 @@ public sealed partial class WorldEngine
             return false;
         if (!CanProduce(building, person, recipe))
         {
-            person.Agent.Goal = goal = goal with
-            {
-                Reason = GetProductionStatus(building.Id),
-            };
+            person.Agent.Goal = goal = goal with { Reason = GetProductionStatus(building.Id) };
             person.Agent.NextThinkTick = Current.Tick + 1;
             return true;
         }
@@ -283,9 +281,7 @@ public sealed partial class WorldEngine
         {
             person.Agent.Goal = goal = goal with
             {
-                TargetX = home.X,
-                TargetY = home.Y,
-                Reason = "前往家园取料，亲自运至" + BuildingName(building.Kind),
+                TargetX = home.X, TargetY = home.Y, Reason = "前往家园取料，亲自运至" + BuildingName(building.Kind),
             };
             if (Distance(person.X, person.Y, home.X, home.Y) > 1)
             {
@@ -315,9 +311,7 @@ public sealed partial class WorldEngine
 
         person.Agent.Goal = goal = goal with
         {
-            TargetX = building.X,
-            TargetY = building.Y,
-            Reason = "携带实际原料，前往" + BuildingName(building.Kind) + "加工",
+            TargetX = building.X, TargetY = building.Y, Reason = "携带实际原料，前往" + BuildingName(building.Kind) + "加工",
         };
         if (Distance(person.X, person.Y, building.X, building.Y) > 1)
         {
@@ -368,9 +362,13 @@ public sealed partial class WorldEngine
         var yield = ProductionYield(building, recipe);
         var netYield = yield - recipe.Input.Get(recipe.Output);
         if (netYield > 0)
+        {
             batches = Math.Min(batches, (int)Math.Min(batches,
                 Math.Floor((1_000_000 - person.Inventory.Get(recipe.Output)) / netYield)));
-        if (batches <= 0) return false;
+        }
+
+        if (batches <= 0)
+            return false;
         var inventory = Spend(person.Inventory, recipe.Input.ToStock().Scale(batches));
         inventory = inventory.WithAmount(recipe.Output, inventory.Get(recipe.Output) + yield * batches);
         person.Inventory = inventory;

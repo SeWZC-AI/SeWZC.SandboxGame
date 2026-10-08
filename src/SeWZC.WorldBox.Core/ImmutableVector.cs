@@ -11,15 +11,12 @@ public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : clas
     private const int Bits = 3;
     private const int Width = 1 << Bits;
     private const int Mask = Width - 1;
+    private readonly int _changedIndex;
+    private readonly object?[]? _changedLeaf;
+    private readonly T? _changedValue;
+    private readonly int _leafStart;
     private readonly object?[] _root;
     private readonly int _shift;
-    private readonly int _leafStart;
-    private readonly object?[]? _changedLeaf;
-    private readonly int _changedIndex;
-    private readonly T? _changedValue;
-
-    /// <summary>集合中的对象数量。</summary>
-    public int Count { get; }
 
     /// <summary>建立空序列。</summary>
     public ImmutableVector() : this(new object?[Width], 0, 0) { }
@@ -44,17 +41,39 @@ public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : clas
         _changedValue = changedValue;
     }
 
+    /// <summary>集合中的对象数量。</summary>
+    public int Count { get; }
+
     /// <summary>读取指定索引的对象。</summary>
     /// <param name="index">从零开始的索引。</param>
     public T this[int index]
     {
         get
         {
-            if ((uint)index >= (uint)Count) throw new ArgumentOutOfRangeException(nameof(index));
-            if (index == _changedIndex) return _changedValue!;
+            if ((uint)index >= (uint)Count)
+                throw new ArgumentOutOfRangeException(nameof(index));
+            if (index == _changedIndex)
+                return _changedValue!;
             var leaf = (index & ~Mask) == _leafStart ? _changedLeaf! : FindLeaf(index);
             return (T)leaf[index & Mask]!;
         }
+    }
+
+    /// <inheritdoc />
+    public IEnumerator<T> GetEnumerator()
+    {
+        for (var index = 0; index < Count; index += Width)
+        {
+            var leaf = index == _leafStart ? _changedLeaf! : FindLeaf(index);
+            var length = Math.Min(Width, Count - index);
+            for (var slot = 0; slot < length; slot++)
+                yield return index + slot == _changedIndex ? _changedValue! : (T)leaf[slot]!;
+        }
+    }
+
+    IEnumerator IEnumerable.GetEnumerator()
+    {
+        return GetEnumerator();
     }
 
     private object?[] FindLeaf(int index)
@@ -69,31 +88,34 @@ public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : clas
     /// <param name="items">不可变对象组成的输入序列。</param>
     public static ImmutableVector<T> CreateRange(IEnumerable<T> items)
     {
-        if (items is ImmutableVector<T> vector) return vector;
+        if (items is ImmutableVector<T> vector)
+            return vector;
         return Create(items.ToArray());
     }
 
     internal static ImmutableVector<T> Create(ReadOnlySpan<T> items)
     {
-        if (items.IsEmpty) return new();
+        if (items.IsEmpty)
+            return new ImmutableVector<T>();
         var shift = 0;
-        while ((1L << (shift + Bits)) < items.Length) shift += Bits;
-        return new(Build(items, shift), shift, items.Length);
+        while (1L << (shift + Bits) < items.Length)
+            shift += Bits;
+        return new ImmutableVector<T>(Build(items, shift), shift, items.Length);
     }
 
     private static object?[] Build(ReadOnlySpan<T> items, int shift)
     {
         var node = new object?[Width];
         if (shift == 0)
-        {
-            for (var i = 0; i < items.Length; i++) node[i] = items[i];
-        }
+            for (var i = 0; i < items.Length; i++)
+                node[i] = items[i];
         else
         {
             var length = 1 << shift;
             for (var i = 0; i * length < items.Length; i++)
                 node[i] = Build(items.Slice(i * length, Math.Min(length, items.Length - i * length)), shift - Bits);
         }
+
         return node;
     }
 
@@ -102,18 +124,25 @@ public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : clas
     /// <param name="value">替换后的不可变对象。</param>
     public ImmutableVector<T> SetItem(int index, T value)
     {
-        if ((uint)index >= (uint)Count) throw new ArgumentOutOfRangeException(nameof(index));
+        if ((uint)index >= (uint)Count)
+            throw new ArgumentOutOfRangeException(nameof(index));
         if (index == _changedIndex)
-            return ReferenceEquals(_changedValue, value) ? this
-                : new(_root, _shift, Count, _leafStart, _changedLeaf, index, value);
+        {
+            return ReferenceEquals(_changedValue, value)
+                ? this
+                : new ImmutableVector<T>(_root, _shift, Count, _leafStart, _changedLeaf, index, value);
+        }
+
         var start = index & ~Mask;
         var sameLeaf = start == _leafStart;
         var leaf = sameLeaf ? _changedLeaf! : FindLeaf(index);
-        if (ReferenceEquals(leaf[index & Mask], value)) return this;
+        if (ReferenceEquals(leaf[index & Mask], value))
+            return this;
         // 相邻项只合并叶分支差异，切换叶分支时才复制上层路径；不修改旧数组或串接历史版本。
         var root = sameLeaf ? _root : MergeChange();
-        if (sameLeaf) leaf = MergeLeafChange();
-        return new(root, _shift, Count, start, leaf, index, value);
+        if (sameLeaf)
+            leaf = MergeLeafChange();
+        return new ImmutableVector<T>(root, _shift, Count, start, leaf, index, value);
     }
 
     private object?[] MergeLeafChange()
@@ -123,11 +152,15 @@ public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : clas
         return leaf;
     }
 
-    private object?[] MergeChange() => _leafStart < 0 ? _root : SetLeaf(_root, _shift, _leafStart, MergeLeafChange());
+    private object?[] MergeChange()
+    {
+        return _leafStart < 0 ? _root : SetLeaf(_root, _shift, _leafStart, MergeLeafChange());
+    }
 
     private static object?[] SetLeaf(object?[] previous, int shift, int index, object?[] leaf)
     {
-        if (shift == 0) return leaf;
+        if (shift == 0)
+            return leaf;
         var node = CopyNode(previous);
         var slot = (index >> shift) & Mask;
         node[slot] = SetLeaf((object?[])node[slot]!, shift - Bits, index, leaf);
@@ -138,8 +171,10 @@ public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : clas
     {
         var node = previous is null ? new object?[Width] : CopyNode(previous);
         var slot = (index >> shift) & Mask;
-        if (shift == 0) node[slot] = value;
-        else node[slot] = Set((object?[]?)node[slot], shift - Bits, index, value);
+        if (shift == 0)
+            node[slot] = value;
+        else
+            node[slot] = Set((object?[]?)node[slot], shift - Bits, index, value);
         return node;
     }
 
@@ -149,7 +184,7 @@ public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : clas
     {
         var root = MergeChange();
         var mapped = MapNode(root, _shift, Count, transform);
-        return ReferenceEquals(root, mapped) ? this : new(mapped, _shift, Count);
+        return ReferenceEquals(root, mapped) ? this : new ImmutableVector<T>(mapped, _shift, Count);
     }
 
     private static object?[] MapNode(object?[] previous, int shift, int count, Func<T, T> transform)
@@ -158,12 +193,16 @@ public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : clas
         var block = 1 << shift;
         for (var slot = 0; slot < Width && slot * block < count; slot++)
         {
-            var value = shift == 0 ? transform((T)previous[slot]!)
-                : (object)MapNode((object?[])previous[slot]!, shift - Bits, Math.Min(block, count - slot * block), transform);
-            if (ReferenceEquals(previous[slot], value)) continue;
+            var value = shift == 0
+                ? transform((T)previous[slot]!)
+                : (object)MapNode((object?[])previous[slot]!, shift - Bits, Math.Min(block, count - slot * block),
+                    transform);
+            if (ReferenceEquals(previous[slot], value))
+                continue;
             changed ??= CopyNode(previous);
             changed[slot] = value;
         }
+
         return changed ?? previous;
     }
 
@@ -181,40 +220,32 @@ public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : clas
     {
         var root = MergeChange();
         var shift = _shift;
-        if (Count == (1L << (shift + Bits)))
+        if (Count == 1L << (shift + Bits))
         {
             var grown = new object?[Width];
             grown[0] = root;
             root = grown;
             shift += Bits;
         }
-        return new(Set(root, shift, Count, value), shift, Count + 1);
+
+        return new ImmutableVector<T>(Set(root, shift, Count, value), shift, Count + 1);
     }
 
     /// <summary>返回删除指定索引后、维持其他对象原有顺序的序列。</summary>
     /// <param name="index">要删除的对象索引。</param>
     public ImmutableVector<T> RemoveAt(int index)
     {
-        if ((uint)index >= (uint)Count) throw new ArgumentOutOfRangeException(nameof(index));
+        if ((uint)index >= (uint)Count)
+            throw new ArgumentOutOfRangeException(nameof(index));
         var items = new T[Count - 1];
-        for (var i = 0; i < items.Length; i++) items[i] = this[i < index ? i : i + 1];
+        for (var i = 0; i < items.Length; i++)
+            items[i] = this[i < index ? i : i + 1];
         return Create(items);
     }
 
     /// <summary>返回空序列。</summary>
-    public ImmutableVector<T> Clear() => Count == 0 ? this : new();
-
-    /// <inheritdoc />
-    public IEnumerator<T> GetEnumerator()
+    public ImmutableVector<T> Clear()
     {
-        for (var index = 0; index < Count; index += Width)
-        {
-            var leaf = index == _leafStart ? _changedLeaf! : FindLeaf(index);
-            var length = Math.Min(Width, Count - index);
-            for (var slot = 0; slot < length; slot++)
-                yield return index + slot == _changedIndex ? _changedValue! : (T)leaf[slot]!;
-        }
+        return Count == 0 ? this : new ImmutableVector<T>();
     }
-
-    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }

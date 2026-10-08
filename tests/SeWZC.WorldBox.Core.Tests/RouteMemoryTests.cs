@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Text.Json.Nodes;
-using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.Core.Tests;
 
@@ -11,7 +10,10 @@ public sealed class RouteMemoryTests
     [Fact]
     public void Familiar_places_evict_the_oldest_visit_without_mutating_the_source()
     {
-        var before = new AgentState { FamiliarTiles = Enumerable.Range(0, AgentState.MaximumFamiliarTiles).ToImmutableArray() };
+        var before = new AgentState
+        {
+            FamiliarTiles = Enumerable.Range(0, AgentState.MaximumFamiliarTiles).ToImmutableArray(),
+        };
 
         var after = before.RememberRouteTile(99);
 
@@ -85,10 +87,13 @@ public sealed class RouteMemoryTests
         var fixture = new WorldFixture();
         var before = fixture.Engine.State;
         var person = before.Residents[0];
-        var oversized = person with { Agent = person.Agent with
+        var oversized = person with
         {
-            FamiliarTiles = Enumerable.Range(0, AgentState.MaximumFamiliarTiles + 1).ToImmutableArray(),
-        } };
+            Agent = person.Agent with
+            {
+                FamiliarTiles = Enumerable.Range(0, AgentState.MaximumFamiliarTiles + 1).ToImmutableArray(),
+            },
+        };
 
         Assert.Throws<ArgumentException>(() => WorldEngine.FromSnapshot(before with
         {

@@ -1,5 +1,4 @@
 using System.Text.Json;
-using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.Core.Tests;
 
@@ -37,9 +36,16 @@ public sealed class ImmutableWorldTests
     {
         var before = new Resident
         {
-            Id = 12, Name = "林", Race = RaceKind.Elf, NationId = 3, SettlementId = 4,
-            CultureId = 5, Trait = "好奇", Profession = Profession.Mage,
-            MagicTalent = 40, MagicTraining = 20,
+            Id = 12,
+            Name = "林",
+            Race = RaceKind.Elf,
+            NationId = 3,
+            SettlementId = 4,
+            CultureId = 5,
+            Trait = "好奇",
+            Profession = Profession.Mage,
+            MagicTalent = 40,
+            MagicTraining = 20,
         };
         var after = before with { Age = 30, SettlementId = 8, MagicTraining = 24 };
         Assert.Equal(4, before.SettlementId);
@@ -59,7 +65,10 @@ public sealed class ImmutableWorldTests
         Assert.Equal(long.MinValue, BitConverter.DoubleToInt64Bits(signedZero.MagicTraining));
     }
 
-    private static string Serialize(WorldState state) => JsonSerializer.Serialize(state, WorldJsonContext.Default.WorldState);
+    private static string Serialize(WorldState state)
+    {
+        return JsonSerializer.Serialize(state, WorldJsonContext.Default.WorldState);
+    }
 
     /// <summary>日内死亡、生成及位置改写合并冻结；中途读取的人口和快照仍准确。</summary>
     [Fact]
@@ -85,8 +94,9 @@ public sealed class ImmutableWorldTests
             Assert.Equal(2, fixture.Engine.Current.Population);
             Assert.Equal(0, middle.Residents[0].Hunger);
         }
+
         var after = fixture.Engine.State;
-        Assert.Equal<int>([survivor.Id, 123], after.Residents.Select(p => p.Id));
+        Assert.Equal([survivor.Id, 123], after.Residents.Select(p => p.Id));
         Assert.Equal(40, after.Residents[0].Hunger);
         Assert.Equal(90, after.Residents[1].Health);
         Assert.Equal(3, before.Population);
@@ -121,6 +131,7 @@ public sealed class ImmutableWorldTests
             fixture.Resident.Replace(original);
             Assert.Equal(original, fixture.Resident.Value);
         }
+
         Assert.Equal(original, fixture.Engine.State.Residents[0]);
         Assert.Equal(original, before.Residents[0]);
     }
@@ -131,7 +142,8 @@ public sealed class ImmutableWorldTests
     {
         var before = new Tile
         {
-            Wildlife = WildlifeKind.Deer, WildlifePopulation = 4,
+            Wildlife = WildlifeKind.Deer,
+            WildlifePopulation = 4,
             OtherWildlife = new WildlifePopulations { Rabbit = 2, Wolf = 1 },
         };
         var watered = before with { WaterDrawTick = 12, WaterDrawn = .025 };
@@ -172,7 +184,8 @@ public sealed class ImmutableWorldTests
         var cleared = tile.WithAnimalPopulation(WildlifeKind.SnowLeopard, 0);
         Assert.Equal(2, tile.AnimalPopulation(WildlifeKind.SnowLeopard));
         Assert.Equal(0, cleared.AnimalPopulation(WildlifeKind.SnowLeopard));
-        var promoted = new Tile { OtherWildlife = tile.OtherWildlife }.WithAnimalPopulation(WildlifeKind.SnowLeopard, 3);
+        var promoted =
+            new Tile { OtherWildlife = tile.OtherWildlife }.WithAnimalPopulation(WildlifeKind.SnowLeopard, 3);
         Assert.Equal(WildlifeKind.SnowLeopard, promoted.Wildlife);
         Assert.Equal(0, promoted.OtherWildlife.SnowLeopard);
     }
@@ -194,7 +207,11 @@ public sealed class ImmutableWorldTests
             Assert.Equal(2, current.Year);
             Assert.Equal(1, current.Day);
             middle = fixture.Engine.State;
-            using (current.BeginScalarUpdates()) current.NextId++;
+            using (current.BeginScalarUpdates())
+            {
+                current.NextId++;
+            }
+
             current.Tick++;
             current.RandomState = 456;
         }
@@ -215,10 +232,17 @@ public sealed class ImmutableWorldTests
     {
         var before = new AgentState
         {
-            Initialized = true, DestinationSettlementId = 12, MissionOriginSettlementId = 3,
-            MissionStartedTick = 20, MissionRetryTick = 24, ExplorationHeading = 6,
-            LastConversationTick = 18, JobChangedTick = 9, MaterialPriority = ResourceKind.Stone,
-            WorkplaceId = 2_000_001, WorkAreaIndex = 30,
+            Initialized = true,
+            DestinationSettlementId = 12,
+            MissionOriginSettlementId = 3,
+            MissionStartedTick = 20,
+            MissionRetryTick = 24,
+            ExplorationHeading = 6,
+            LastConversationTick = 18,
+            JobChangedTick = 9,
+            MaterialPriority = ResourceKind.Stone,
+            WorkplaceId = 2_000_001,
+            WorkAreaIndex = 30,
         };
         var changed = before with { Fatigue = 20, DestinationSettlementId = 13 };
         var reverted = changed with { Fatigue = 0, DestinationSettlementId = 12 };
@@ -243,8 +267,14 @@ public sealed class ImmutableWorldTests
     {
         var before = new Resident
         {
-            DiseaseImmuneUntilTick = 120, DeathCause = DeathCause.OldAge, DeathTick = 30,
-            ArmyId = 12, Armor = 8, PersonalWard = 6, FrozenUntilTick = 24, LastRangedAttackTick = 20,
+            DiseaseImmuneUntilTick = 120,
+            DeathCause = DeathCause.OldAge,
+            DeathTick = 30,
+            ArmyId = 12,
+            Armor = 8,
+            PersonalWard = 6,
+            FrozenUntilTick = 24,
+            LastRangedAttackTick = 20,
         };
         var changed = before with { Age = 60, PersonalWard = 3 };
         var restored = changed with { Age = before.Age, PersonalWard = 6 };
@@ -306,7 +336,8 @@ public sealed class ImmutableWorldTests
         Assert.Equal(5, fixture.Engine.State.Residents[0].Inventory.Food);
         Assert.Equal(60, fixture.Engine.State.Tiles[0].Fertility);
         Assert.Equal(7, fixture.Engine.State.Settlements[0].Resources.Food);
-        Assert.Equal(initial.Residents[0].Inventory.Food, WorldEngine.FromSnapshot(initial).State.Residents[0].Inventory.Food);
+        Assert.Equal(initial.Residents[0].Inventory.Food,
+            WorldEngine.FromSnapshot(initial).State.Residents[0].Inventory.Food);
         Assert.NotEqual(42, initial.Tiles[0].Fertility);
     }
 
@@ -320,7 +351,10 @@ public sealed class ImmutableWorldTests
         using (fixture.Engine.Current.Residents.BeginUpdates())
         {
             using (fixture.Engine.Current.Residents.BeginUpdates())
+            {
                 fixture.Resident.Health = 80;
+            }
+
             fixture.Engine.Current.Residents.Transform(person => person with { Hunger = 20 });
             fixture.Resident.Agent.Fatigue = 25;
             fixture.Engine.Current.Residents.Remove(fixture.Resident);
@@ -343,12 +377,14 @@ public sealed class ImmutableWorldTests
     public void Deferred_update_scope_flushes_on_exception()
     {
         var fixture = new WorldFixture();
+
         void Fail()
         {
             using var updates = fixture.Engine.Current.Residents.BeginUpdates();
             fixture.Resident.Health = 80;
             throw new InvalidOperationException();
         }
+
         Assert.Throws<InvalidOperationException>(Fail);
 
         Assert.Equal(80, fixture.Engine.State.Residents[0].Health);
@@ -366,8 +402,7 @@ public sealed class ImmutableWorldTests
 
         fixture.Engine.Current.Residents.Transform(person => person with
         {
-            Health = 80,
-            Agent = person.Agent with { Fatigue = 25 },
+            Health = 80, Agent = person.Agent with { Fatigue = 25 },
         });
         agent.Memory.Add(new AgentFact { SubjectId = 99 });
 
@@ -453,7 +488,7 @@ public sealed class ImmutableWorldTests
         var actor = fixture.Engine.GetResident(fixture.ResidentId)!;
 
         fixture.Engine.EditResident(actor.Id, new ResidentEdit { Name = "新姓名", Health = 80 });
-        fixture.Engine.SetNationResources(fixture.Town.NationId, food: 10);
+        fixture.Engine.SetNationResources(fixture.Town.NationId, 10);
 
         Assert.Equal(saved, Serialize(before));
         Assert.NotEqual("新姓名", actor.Name);
@@ -494,8 +529,7 @@ public sealed class ImmutableWorldTests
 
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            Agent = agent.Value with { Fatigue = 25 },
-            Activity = ResidentActivity.Working,
+            Agent = agent.Value with { Fatigue = 25 }, Activity = ResidentActivity.Working,
         });
         agent.SocialNeed = 30;
 
@@ -535,6 +569,7 @@ public sealed class ImmutableWorldTests
                 changed = true;
                 fixture.Engine.EditResident(fixture.ResidentId, new ResidentEdit { Name = "保存期间的新姓名" });
             }
+
             return ValueTask.CompletedTask;
         });
 

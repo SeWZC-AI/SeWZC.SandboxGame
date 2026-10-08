@@ -1,5 +1,3 @@
-using SeWZC.WorldBox.Core;
-
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>研究操作向对应处理器递送参数的检查。</summary>
@@ -34,7 +32,14 @@ public sealed class ResearchActionTests
         public int? RailSettlement { get; private set; }
         public int WaygateCalls { get; private set; }
 
-        public void ShowRailEditor(int settlementId) => RailSettlement = settlementId;
-        public void ShowWaygateEditor() => WaygateCalls++;
+        public void ShowRailEditor(int settlementId)
+        {
+            RailSettlement = settlementId;
+        }
+
+        public void ShowWaygateEditor()
+        {
+            WaygateCalls++;
+        }
     }
 }

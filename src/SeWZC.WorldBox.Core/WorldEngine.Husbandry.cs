@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -92,11 +93,7 @@ public sealed partial class WorldEngine
         if (b.LivestockPopulation >= .01 && (person.Inventory.Food < LivestockFeed(b) ||
                                              person.Inventory.Water < .75 + LivestockWater(b)))
         {
-            person.Agent.Goal = goal = goal with
-            {
-                TargetX = home.X,
-                TargetY = home.Y,
-            };
+            person.Agent.Goal = goal = goal with { TargetX = home.X, TargetY = home.Y };
             if (Distance(person.X, person.Y, home.X, home.Y) > 1)
             {
                 MoveAgentTowards(person, home.X, home.Y);
@@ -117,11 +114,7 @@ public sealed partial class WorldEngine
             DrawWater(person, Index(person.X, person.Y), Math.Max(0, 1.5 - person.Inventory.Water));
         }
 
-        person.Agent.Goal = goal = goal with
-        {
-            TargetX = b.X,
-            TargetY = b.Y,
-        };
+        person.Agent.Goal = goal = goal with { TargetX = b.X, TargetY = b.Y };
         if (Distance(person.X, person.Y, b.X, b.Y) > 0)
         {
             MoveAgentTowards(person, b.X, b.Y);
@@ -136,10 +129,7 @@ public sealed partial class WorldEngine
             var previous = person.Agent.Goal;
             person.Agent.Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.ReturnHome,
-                TargetX = home.X,
-                TargetY = home.Y,
-                StartedTick = Current.Tick,
+                Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, StartedTick = Current.Tick,
             };
             ChangeWorkReservation(previous, person.Agent.Goal);
             person.Agent.NextThinkTick = Current.Tick;
@@ -168,8 +158,7 @@ public sealed partial class WorldEngine
                 return false;
             person.Inventory = person.Inventory with
             {
-                Food = person.Inventory.Food - LivestockFeed(b),
-                Water = person.Inventory.Water - LivestockWater(b),
+                Food = person.Inventory.Food - LivestockFeed(b), Water = person.Inventory.Water - LivestockWater(b),
             };
             var tile = Current.Tiles[Index(b.X, b.Y)];
             if (b.Kind == BuildingKind.Pasture)
@@ -182,12 +171,18 @@ public sealed partial class WorldEngine
             {
                 var harvest = Math.Min(b.LivestockPopulation - 2, .04 * Math.Min(1.5, effort));
                 b.LivestockPopulation -= harvest;
-                person.Inventory = person.Inventory with { Food = person.Inventory.Food + harvest * (b.Kind == BuildingKind.Pasture ? 8 : 9) };
+                person.Inventory = person.Inventory with
+                {
+                    Food = person.Inventory.Food + harvest * (b.Kind == BuildingKind.Pasture ? 8 : 9),
+                };
                 b.ProductionBatches = Math.Min(1_000_000_000, b.ProductionBatches + 1);
             }
         }
 
-        b.Replace(b.Value with { ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1), LastServiceTick = Current.Tick });
+        b.Replace(b.Value with
+        {
+            ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1), LastServiceTick = Current.Tick,
+        });
         return true;
     }
 }

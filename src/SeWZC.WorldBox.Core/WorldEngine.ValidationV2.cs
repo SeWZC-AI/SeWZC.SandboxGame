@@ -88,8 +88,10 @@ public sealed partial class WorldEngine
             agent.Memory.Length <= 16 && agent.Decisions is not null && agent.Decisions.Count <= 6 &&
             agent.CarriedMessages is not null && agent.CarriedMessages.Count <= 8, "心智结构或容量无效。");
         CheckV2(!agent!.FamiliarTiles.IsDefault && agent.FamiliarTiles.Length <= AgentState.MaximumFamiliarTiles
-            && agent.FamiliarTiles.All(index => index >= 0 && index < width * height)
-            && agent.FamiliarTiles.Distinct().Count() == agent.FamiliarTiles.Length, "熟路记忆无效。");
+                                                && agent.FamiliarTiles.All(index =>
+                                                    index >= 0 && index < width * height)
+                                                && agent.FamiliarTiles.Distinct().Count() == agent.FamiliarTiles.Length,
+            "熟路记忆无效。");
         var personality = agent!.Personality;
         CheckV2(
             Number(personality.Courage, 0, 1) && Number(personality.Diligence, 0, 1) &&
@@ -105,20 +107,25 @@ public sealed partial class WorldEngine
                                             && goal.NavigationRetryTick >= 0 &&
                                             goal.NavigationRetryTick <= tick + 100_000, "寻路记录无效。");
         CheckV2(!goal.NavigationRoute.IsDefault && goal.NavigationRoute.Length <= 7
-            && goal.NavigationRoute.All(index => index >= 0 && index < width * height)
-            && goal.NavigationRouteOffset >= 0 && goal.NavigationRouteOffset <= goal.NavigationRoute.Length
-            && (goal.NavigationRoute.IsEmpty ? goal.NavigationRouteOffset == 0
-                : goal.NavigationRoute.Length >= 2 && goal.NavigationRouteOffset >= 1)
-            && Enum.IsDefined(goal.NavigationRouteMode), "短路线记录无效。");
+                                                && goal.NavigationRoute.All(index =>
+                                                    index >= 0 && index < width * height)
+                                                && goal.NavigationRouteOffset >= 0 && goal.NavigationRouteOffset <=
+                                                goal.NavigationRoute.Length
+                                                && (goal.NavigationRoute.IsEmpty
+                                                    ? goal.NavigationRouteOffset == 0
+                                                    : goal.NavigationRoute.Length >= 2 &&
+                                                      goal.NavigationRouteOffset >= 1)
+                                                && Enum.IsDefined(goal.NavigationRouteMode), "短路线记录无效。");
         for (var position = 1; position < goal.NavigationRoute.Length; position++)
         {
             var before = goal.NavigationRoute[position - 1];
             var after = goal.NavigationRoute[position];
             var origin = goal.NavigationRoute[0];
             CheckV2(Math.Abs(before % width - after % width) + Math.Abs(before / width - after / width) == 1
-                && Math.Abs(origin % width - after % width) + Math.Abs(origin / width - after / width) <= 6,
+                    && Math.Abs(origin % width - after % width) + Math.Abs(origin / width - after / width) <= 6,
                 "短路线必须使用当时视野内的相邻地格。");
         }
+
         CheckV2(
             Enum.IsDefined(goal.Kind) && Coordinates(goal.TargetX, goal.TargetY, width, height) &&
             goal.TargetEntityId >= 0 && goal.TargetSettlementId >= 0 && goal.StartedTick >= 0 &&

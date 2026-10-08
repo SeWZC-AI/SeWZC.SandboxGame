@@ -1,4 +1,3 @@
-using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.Core.Runtime;
 
 namespace SeWZC.WorldBox.Core.Tests;
@@ -71,9 +70,16 @@ public sealed class MedicalWorkTests
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, residentCount - 1);
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with
         {
-            Aging = false, Hunger = false, Thirst = false, Births = false,
-            Construction = false, Expansion = false, Research = false,
-            Migration = false, Secession = false, Wars = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Research = false,
+            Migration = false,
+            Secession = false,
+            Wars = false,
         }, false, false);
         for (var x = 14; x <= 15; x++)
         {
@@ -81,14 +87,23 @@ public sealed class MedicalWorkTests
             ground.NationId = fixture.Town.NationId;
             ground.ClaimedSettlementId = fixture.Town.Id;
         }
+
         var clinicId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Infirmary, 14, 16);
         var clinic = fixture.Engine.Current.Society.Buildings.Single(building => building.Id == clinicId);
         fixture.Town.Resources = new ResourceStock { Food = 100 };
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with
             {
-                Age = 25, Health = 100, SicknessTicks = 0, DiseaseImmuneUntilTick = 180,
-                X = 14, Y = 16, FromX = 14, FromY = 16, MoveStartedTick = 0, MoveDurationTicks = 1,
+                Age = 25,
+                Health = 100,
+                SicknessTicks = 0,
+                DiseaseImmuneUntilTick = 180,
+                X = 14,
+                Y = 16,
+                FromX = 14,
+                FromY = 16,
+                MoveStartedTick = 0,
+                MoveDurationTicks = 1,
                 Agent = person.Agent.Value with
                 {
                     Initialized = true, NextThinkTick = 100, Goal = new AgentGoal { ReviewTick = 100 },
@@ -103,8 +118,12 @@ public sealed class MedicalWorkTests
             {
                 Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.Work, TargetEntityId = clinicId, TargetX = 14, TargetY = 16,
-                    PlayerDirected = true, ReviewTick = 100,
+                    Kind = AgentGoalKind.Work,
+                    TargetEntityId = clinicId,
+                    TargetX = 14,
+                    TargetY = 16,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
                 },
             },
         });

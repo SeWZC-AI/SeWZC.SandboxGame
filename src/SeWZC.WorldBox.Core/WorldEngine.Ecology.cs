@@ -1,5 +1,5 @@
-using SeWZC.WorldBox.Core.Runtime;
 using System.Numerics;
+using SeWZC.WorldBox.Core.Runtime;
 
 namespace SeWZC.WorldBox.Core;
 
@@ -127,9 +127,10 @@ public sealed partial class WorldEngine
     private void SeedWildlife()
     {
         foreach (var tile in Current.Tiles)
-        {
-            tile.Replace(tile.Value with { Wildlife = WildlifeKind.None, WildlifePopulation = 0, OtherWildlife = new WildlifePopulations() });
-        }
+            tile.Replace(tile.Value with
+            {
+                Wildlife = WildlifeKind.None, WildlifePopulation = 0, OtherWildlife = new WildlifePopulations(),
+            });
 
         Span<double> capacities = stackalloc double[AnimalRules.SpeciesCount];
         Span<byte> competitors = stackalloc byte[AnimalRules.SpeciesCount];
@@ -422,8 +423,13 @@ public sealed partial class WorldEngine
             {
                 primary = WildlifeKind.None;
                 for (var species = 1; species < AnimalRules.SpeciesCount; species++)
-                    if (populations[species] > 0) { primary = (WildlifeKind)species; break; }
+                    if (populations[species] > 0)
+                    {
+                        primary = (WildlifeKind)species;
+                        break;
+                    }
             }
+
             tile.Replace(tile.Value.WithAnimalPopulations(primary, populations));
         }
     }

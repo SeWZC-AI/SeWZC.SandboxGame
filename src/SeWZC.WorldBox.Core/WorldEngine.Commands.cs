@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -19,13 +20,26 @@ public sealed partial class WorldEngine
         {
             var tile = Current.Tiles[index];
             tile.Terrain = terrain;
-            tile.Replace(tile.Value with { Improvement = LandImprovement.None, RoadLevel = 0, BridgeLevel = 0, LastHarvestTick = 0, Harvested = 0 });
+            tile.Replace(tile.Value with
+            {
+                Improvement = LandImprovement.None,
+                RoadLevel = 0,
+                BridgeLevel = 0,
+                LastHarvestTick = 0,
+                Harvested = 0,
+            });
             SeedDeposit(tile, index % Current.Width, index / Current.Width);
             tile.Fertility = TerrainRules.Fertility(terrain);
             tile.NaturalWaterYield = terrain == TerrainType.Wetland ? 1 :
                 terrain == TerrainType.DryFertile ? .001 :
                 IsWaterTerrain(terrain) ? 0 : .004;
-            tile.Replace(tile.Value with { Rainfall = tile.NaturalWaterYield, RiverWidth = terrain == TerrainType.Stream ? (byte)1 : terrain == TerrainType.River ? (byte)2 : terrain == TerrainType.LargeRiver ? (byte)4 : (byte)0 });
+            tile.Replace(tile.Value with
+            {
+                Rainfall = tile.NaturalWaterYield,
+                RiverWidth = terrain == TerrainType.Stream ? (byte)1 :
+                terrain == TerrainType.River ? (byte)2 :
+                terrain == TerrainType.LargeRiver ? (byte)4 : (byte)0,
+            });
             SeedPlants(tile);
             tile.ResourceAmount = NaturalResourceCapacity(tile);
             tile.Elevation = terrain switch
@@ -225,7 +239,8 @@ public sealed partial class WorldEngine
         {
             var started = 0;
             var seeds = Math.Clamp(1 + radius / 10, 1, 3);
-            foreach (var index in Circle(x, y, radius).OrderBy(i => Distance(x, y, i % Current.Width, i / Current.Width))
+            foreach (var index in Circle(x, y, radius)
+                         .OrderBy(i => Distance(x, y, i % Current.Width, i / Current.Width))
                          .ThenBy(i => i))
                 if (Ignite(index) && ++started >= seeds)
                     break;
@@ -241,7 +256,17 @@ public sealed partial class WorldEngine
                 if (!tile.IsWalkable)
                     continue;
                 tile.Terrain = TerrainType.Sand;
-                tile.Replace(tile.Value with { RiverWidth = 0, Improvement = LandImprovement.None, Fertility = 5, ResourceAmount = 0, RoadLevel = 0, BridgeLevel = 0, Plants = default, FireTicks = 12 });
+                tile.Replace(tile.Value with
+                {
+                    RiverWidth = 0,
+                    Improvement = LandImprovement.None,
+                    Fertility = 5,
+                    ResourceAmount = 0,
+                    RoadLevel = 0,
+                    BridgeLevel = 0,
+                    Plants = default,
+                    FireTicks = 12,
+                });
                 _burningTiles.Add(index);
             }
 
@@ -256,9 +281,9 @@ public sealed partial class WorldEngine
         if (kind == DisasterKind.Plague)
         {
             foreach (var resident in Current.Residents.Where(r => r.Health > 0 && r.SicknessTicks == 0
-                                                                             && r.DiseaseImmuneUntilTick <=
-                                                                             Current.Tick &&
-                                                                             Distance(r.X, r.Y, x, y) <= radius)
+                                                                               && r.DiseaseImmuneUntilTick <=
+                                                                               Current.Tick &&
+                                                                               Distance(r.X, r.Y, x, y) <= radius)
                          .OrderBy(r => Distance(r.X, r.Y, x, y)).ThenBy(r => r.Id)
                          .Take(Math.Clamp(1 + radius / 10, 1, 3)))
             {
@@ -303,7 +328,10 @@ public sealed partial class WorldEngine
     /// <param name="boats">要设置的国家舟船总量，空值表示保留现有库存。</param>
     /// <param name="aircraft">要设置的国家运输机总量，空值表示保留现有库存。</param>
     /// <param name="water">要设置的国家饮水总量，空值表示保留现有库存。</param>
-    public void SetNationResources(int nationId, double? food = null, double? wood = null, double? stone = null, double? ore = null, double? alloy = null, double? energyCells = null, double? crystals = null, double? coal = null, double? oil = null, double? rareEarth = null, double? boats = null, double? aircraft = null, double? water = null)
+    public void SetNationResources(int nationId, double? food = null, double? wood = null, double? stone = null,
+        double? ore = null, double? alloy = null, double? energyCells = null, double? crystals = null,
+        double? coal = null, double? oil = null, double? rareEarth = null, double? boats = null,
+        double? aircraft = null, double? water = null)
     {
         if (!_nations.ContainsKey(nationId))
             throw new ArgumentException("国家不存在。", nameof(nationId));
@@ -366,10 +394,19 @@ public sealed partial class WorldEngine
         relation.Status = status;
         relation.FirstOpinion = relation.SecondOpinion = relation.Opinion =
             status == DiplomaticStatus.War ? -80 : status == DiplomaticStatus.Allied ? 80 : 0;
-        relation.Replace(relation.Value with { LastChangedTick = Current.Tick, Reason = "玩家直接调整外交关系", AllianceOfferNationId = 0 });
+        relation.Replace(relation.Value with
+        {
+            LastChangedTick = Current.Tick, Reason = "玩家直接调整外交关系", AllianceOfferNationId = 0,
+        });
         var diplomaticEvent = AddEvent(status == DiplomaticStatus.War ? WorldEventKind.War : WorldEventKind.Diplomacy,
             $"{_nations[first].Name}与{_nations[second].Name}{(status == DiplomaticStatus.War ? "开战" : status == DiplomaticStatus.Allied ? "结盟" : "恢复中立关系")}。");
-        diplomaticEvent.Replace(diplomaticEvent.Value with { NationId = first, SecondNationId = second, Action = EventAction.Declaration, CauseEventId = relation.LastEventId });
+        diplomaticEvent.Replace(diplomaticEvent.Value with
+        {
+            NationId = first,
+            SecondNationId = second,
+            Action = EventAction.Declaration,
+            CauseEventId = relation.LastEventId,
+        });
         PublishDiplomaticOrder(first, second, status, eventId: diplomaticEvent.Id);
         PublishDiplomaticOrder(second, first, status, eventId: diplomaticEvent.Id,
             objective: WarObjective.DefendHomeland);
@@ -397,8 +434,7 @@ public sealed partial class WorldEngine
             return relation;
         relation = new DiplomaticRelationCursor
         {
-            FirstNationId = Math.Min(first, second),
-            SecondNationId = Math.Max(first, second),
+            FirstNationId = Math.Min(first, second), SecondNationId = Math.Max(first, second),
         };
         Current.Diplomacies.Add(relation);
         return relation;
@@ -407,9 +443,9 @@ public sealed partial class WorldEngine
     private IEnumerable<int> Circle(int cx, int cy, int radius)
     {
         for (var y = Math.Max(0, cy - radius); y <= Math.Min(Current.Height - 1, cy + radius); y++)
-            for (var x = Math.Max(0, cx - radius); x <= Math.Min(Current.Width - 1, cx + radius); x++)
-                if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= radius * radius)
-                    yield return Index(x, y);
+        for (var x = Math.Max(0, cx - radius); x <= Math.Min(Current.Width - 1, cx + radius); x++)
+            if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= radius * radius)
+                yield return Index(x, y);
     }
 
     private void RelocateInvalidEntities()
@@ -437,7 +473,10 @@ public sealed partial class WorldEngine
                 .FirstOrDefault(-1);
             if (position >= 0)
             {
-                settlement.Replace(settlement.Value with { X = position % Current.Width, Y = position / Current.Width });
+                settlement.Replace(settlement.Value with
+                {
+                    X = position % Current.Width, Y = position / Current.Width,
+                });
                 Current.Tiles[position].SettlementId = settlement.Id;
                 ClaimTerritory(settlement, 6);
                 AddEvent(WorldEventKind.Editor, $"地形改变，{settlement.Name}迁往可居住的土地。", settlement.X, settlement.Y);
@@ -472,9 +511,7 @@ public sealed partial class WorldEngine
                 continue;
             var position = FindWalkable(army.X, army.Y, 10);
             if (position >= 0)
-            {
                 army.Replace(army.Value with { X = position % Current.Width, Y = position / Current.Width });
-            }
             else
                 DisbandArmy(army);
         }

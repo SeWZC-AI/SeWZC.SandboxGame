@@ -1,4 +1,3 @@
-using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.Core.Runtime;
 
 namespace SeWZC.WorldBox.Core.Tests;
@@ -28,8 +27,11 @@ internal sealed class WorldFixture
         var tile = Engine.Current.Tiles[y * Engine.Current.Width + x];
         tile.Replace(tile.Value with
         {
-            Terrain = TerrainType.Grass, NaturalWaterYield = naturalWater, DroughtTicks = 0,
-            NationId = Town.NationId, ClaimedSettlementId = Town.Id,
+            Terrain = TerrainType.Grass,
+            NaturalWaterYield = naturalWater,
+            DroughtTicks = 0,
+            NationId = Town.NationId,
+            ClaimedSettlementId = Town.Id,
         });
         return Engine.GrantFacility(Town.Id, BuildingKind.Well, x, y);
     }

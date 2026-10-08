@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -6,7 +7,8 @@ public sealed partial class WorldEngine
     // 恢复按十六日累计，各行错峰；固定更新格数会令大地图上的同一片土地恢复得更慢。
     private void RegenerateNaturalResources()
     {
-        if (!Current.Rules.ResourceRegeneration || Current.Tick == 0) return;
+        if (!Current.Rules.ResourceRegeneration || Current.Tick == 0)
+            return;
         const int interval = 16;
         var band = (int)((Current.Tick - 1) % interval);
         var first = band * Current.Height / interval * Current.Width;
@@ -15,9 +17,11 @@ public sealed partial class WorldEngine
         {
             var tile = Current.Tiles[index];
             var before = tile.Value;
-            if (!before.IsWalkable || before.FireTicks > 0) continue;
+            if (!before.IsWalkable || before.FireTicks > 0)
+                continue;
             var capacity = NaturalResourceCapacity(before);
-            if (before.ResourceAmount >= capacity) continue;
+            if (before.ResourceAmount >= capacity)
+                continue;
             ref readonly var yields = ref TerrainRules.For(before.Terrain);
             var renewal = (yields.FoodYield + yields.WoodYield) * (before.DroughtTicks > 0 ? .2 : 1);
             tile.ResourceAmount = Math.Min(capacity, before.ResourceAmount + renewal * 2 * interval);
@@ -78,8 +82,8 @@ public sealed partial class WorldEngine
                     quantity -= amount * quantity / stock;
                 plants = plants.WithCoverage(kind, remaining > 0 ? Math.Max(0, quantity) / remaining : 0);
             }
-
         }
+
         tile.Replace(tile.Value with { ResourceAmount = remaining, Plants = plants });
 
         return amount;
@@ -95,6 +99,7 @@ public sealed partial class WorldEngine
     {
         var source = person.Agent.Goal.TargetEntityId - 1;
         return source >= 0 && source < Current.Tiles.Count
-                           && WildlifeSiteProductive(Current.Tiles[source], person.Agent.Goal.Kind == AgentGoalKind.Fish);
+                           && WildlifeSiteProductive(Current.Tiles[source],
+                               person.Agent.Goal.Kind == AgentGoalKind.Fish);
     }
 }

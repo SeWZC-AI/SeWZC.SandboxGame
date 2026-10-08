@@ -1,5 +1,3 @@
-using SeWZC.WorldBox.Core;
-
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>居民自主选路、供水、避险与休养的最小现场场景。</summary>
@@ -27,8 +25,13 @@ public sealed class ResidentBehaviorTests
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = true }, false, false);
         fixture.Town.Resources = new ResourceStock();
         foreach (var tile in fixture.Engine.Current.Tiles)
-            tile.Replace(tile.Value with { ResourceAmount = 0, Wildlife = WildlifeKind.None,
-                WildlifePopulation = 0, OtherWildlife = new WildlifePopulations() });
+            tile.Replace(tile.Value with
+            {
+                ResourceAmount = 0,
+                Wildlife = WildlifeKind.None,
+                WildlifePopulation = 0,
+                OtherWildlife = new WildlifePopulations(),
+            });
         fixture.Resident.Inventory = new ResourceStock { Water = 10 };
         fixture.Resident.Hunger = 90;
         fixture.Resident.FrozenUntilTick = 100;
@@ -60,12 +63,21 @@ public sealed class ResidentBehaviorTests
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = true }, false, false);
         fixture.Town.Resources = new ResourceStock();
         foreach (var tile in fixture.Engine.Current.Tiles)
-            tile.Replace(tile.Value with { Terrain = TerrainType.Mountain, ResourceAmount = 0,
-                Wildlife = WildlifeKind.None, WildlifePopulation = 0, OtherWildlife = new WildlifePopulations() });
-        for (var x = 16; x <= 20; x++) fixture.Engine.Current.Tiles[16 * 32 + x].Terrain = TerrainType.Grass;
+            tile.Replace(tile.Value with
+            {
+                Terrain = TerrainType.Mountain,
+                ResourceAmount = 0,
+                Wildlife = WildlifeKind.None,
+                WildlifePopulation = 0,
+                OtherWildlife = new WildlifePopulations(),
+            });
+        for (var x = 16; x <= 20; x++)
+            fixture.Engine.Current.Tiles[16 * 32 + x].Terrain = TerrainType.Grass;
         var source = fixture.Engine.Current.Tiles[16 * 32 + 20];
-        source.Replace(source.Value with { ResourceAmount = 100, Fertility = 100,
-            Plants = new PlantCoverage { Grass = 1 } });
+        source.Replace(source.Value with
+        {
+            ResourceAmount = 100, Fertility = 100, Plants = new PlantCoverage { Grass = 1 },
+        });
         fixture.Resident.Inventory = new ResourceStock { Water = 10 };
         fixture.Resident.Hunger = 90;
         fixture.Resident.FrozenUntilTick = 100;
@@ -73,8 +85,10 @@ public sealed class ResidentBehaviorTests
         Assert.Equal(AgentGoalKind.Gather, fixture.Resident.Agent.Goal.Kind);
         Assert.Equal(20, fixture.Resident.Agent.Goal.TargetX);
         var blocked = fixture.Engine.Current.Tiles[16 * 32 + 18];
-        if (fire) blocked.FireTicks = 12;
-        else blocked.Terrain = TerrainType.Mountain;
+        if (fire)
+            blocked.FireTicks = 12;
+        else
+            blocked.Terrain = TerrainType.Mountain;
         fixture.Resident.Agent.Goal = new AgentGoal();
         fixture.Resident.Agent.NextThinkTick = 0;
 
@@ -100,6 +114,7 @@ public sealed class ResidentBehaviorTests
             Assert.Equal(recovered, source.ResourceAmount);
             return recovered;
         }
+
         var small = Recover(32);
         Assert.True(small > 0);
         Assert.Equal(small, Recover(64));
@@ -113,8 +128,13 @@ public sealed class ResidentBehaviorTests
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = true }, false, false);
         fixture.Town.Resources = new ResourceStock();
         foreach (var tile in fixture.Engine.Current.Tiles)
-            tile.Replace(tile.Value with { ResourceAmount = 0, Wildlife = WildlifeKind.None,
-                WildlifePopulation = 0, OtherWildlife = new WildlifePopulations() });
+            tile.Replace(tile.Value with
+            {
+                ResourceAmount = 0,
+                Wildlife = WildlifeKind.None,
+                WildlifePopulation = 0,
+                OtherWildlife = new WildlifePopulations(),
+            });
         fixture.Resident.Inventory = new ResourceStock { Water = 10 };
         fixture.Resident.Hunger = 90;
         fixture.Resident.FrozenUntilTick = 100;
@@ -124,7 +144,8 @@ public sealed class ResidentBehaviorTests
         Assert.Equal(AgentGoalKind.Explore, fixture.Resident.Agent.Goal.Kind);
         var target = fixture.Resident.Agent.Goal;
         Assert.InRange(Math.Abs(target.TargetX - 16) + Math.Abs(target.TargetY - 16), 1, 6);
-        Assert.True(RaceTerrainRules.CanWalk(fixture.Engine.State.Tiles[target.TargetY * 32 + target.TargetX], RaceKind.Human));
+        Assert.True(RaceTerrainRules.CanWalk(fixture.Engine.State.Tiles[target.TargetY * 32 + target.TargetX],
+            RaceKind.Human));
         Assert.Equal(0, fixture.Resident.Inventory.Food);
         Assert.True(fixture.Resident.Hunger > 90);
     }
@@ -141,11 +162,14 @@ public sealed class ResidentBehaviorTests
         var fixture = Prepare();
         fixture.Town.Resources = new ResourceStock();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = true }, false, false);
-        foreach (var tile in fixture.Engine.Current.Tiles) tile.ResourceAmount = 0;
+        foreach (var tile in fixture.Engine.Current.Tiles)
+            tile.ResourceAmount = 0;
         var source = fixture.Engine.Current.Tiles[16 * 32 + 17];
         source.Replace(source.Value with
         {
-            ResourceAmount = 100, Plants = new PlantCoverage { Grass = 1 }, Fertility = 50,
+            ResourceAmount = 100,
+            Plants = new PlantCoverage { Grass = 1 },
+            Fertility = 50,
             Improvement = LandImprovement.None,
         });
         fixture.Resident.Inventory = new ResourceStock { Water = 10 };
@@ -220,7 +244,8 @@ public sealed class ResidentBehaviorTests
     {
         var fixture = Prepare();
         SetJourney(fixture, 10, 10, targetX, 10);
-        for (var x = 10; x <= 15; x++) fixture.Engine.Current.Tiles[11 * 32 + x].RoadLevel = 1;
+        for (var x = 10; x <= 15; x++)
+            fixture.Engine.Current.Tiles[11 * 32 + x].RoadLevel = 1;
 
         fixture.Engine.Step();
 
@@ -279,7 +304,7 @@ public sealed class ResidentBehaviorTests
     [Fact]
     public void Ordinary_water_collection_prefers_a_reliable_river()
     {
-        var fixture = Prepare(thirst: true);
+        var fixture = Prepare(true);
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 20;
         fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
@@ -298,7 +323,7 @@ public sealed class ResidentBehaviorTests
     [Fact]
     public void Water_collection_compares_a_farther_river_with_abundant_groundwater()
     {
-        var fixture = Prepare(thirst: true);
+        var fixture = Prepare(true);
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 20;
         fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
@@ -315,7 +340,7 @@ public sealed class ResidentBehaviorTests
     [Fact]
     public void Critical_water_collection_does_not_stop_at_an_insufficient_nearby_source()
     {
-        var fixture = Prepare(thirst: true);
+        var fixture = Prepare(true);
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 90;
         fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
@@ -331,7 +356,7 @@ public sealed class ResidentBehaviorTests
     [Fact]
     public void Critical_thirst_prefers_nearby_sufficient_water()
     {
-        var fixture = Prepare(thirst: true);
+        var fixture = Prepare(true);
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 90;
         fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
@@ -349,7 +374,7 @@ public sealed class ResidentBehaviorTests
     [InlineData(false, 20)]
     public void Water_collection_accounts_for_well_operation(bool enabled, int expectedX)
     {
-        var fixture = Prepare(thirst: true);
+        var fixture = Prepare(true);
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 20;
         fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
@@ -359,6 +384,7 @@ public sealed class ResidentBehaviorTests
             ground.NationId = fixture.Town.NationId;
             ground.ClaimedSettlementId = fixture.Town.Id;
         }
+
         fixture.Engine.Current.Tiles[16 * 32 + 17].NaturalWaterYield = .08;
         fixture.Engine.Current.Tiles[16 * 32 + 18].NaturalWaterYield = .06;
         fixture.Engine.Current.Tiles[16 * 32 + 20].Terrain = TerrainType.River;
@@ -374,11 +400,12 @@ public sealed class ResidentBehaviorTests
     [Fact]
     public void Water_collection_rejects_an_inaccessible_river()
     {
-        var fixture = Prepare(thirst: true);
+        var fixture = Prepare(true);
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 20;
         fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
-        for (var y = 0; y < 32; y++) fixture.Engine.Current.Tiles[y * 32 + 18].Terrain = TerrainType.Mountain;
+        for (var y = 0; y < 32; y++)
+            fixture.Engine.Current.Tiles[y * 32 + 18].Terrain = TerrainType.Mountain;
         fixture.AddWell(17, 16, .08);
         fixture.Engine.Current.Tiles[16 * 32 + 20].Terrain = TerrainType.River;
 
@@ -391,7 +418,7 @@ public sealed class ResidentBehaviorTests
     [Fact]
     public void Water_collection_replenishes_a_low_reserve_before_thirst()
     {
-        var fixture = Prepare(thirst: true);
+        var fixture = Prepare(true);
         fixture.Resident.Inventory = new ResourceStock { Food = 10, Water = .08 };
         fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
         fixture.Engine.Current.Tiles[16 * 32 + 16].NaturalWaterYield = .03;
@@ -408,13 +435,12 @@ public sealed class ResidentBehaviorTests
     [Fact]
     public void Ordinary_ground_does_not_supply_collectable_water()
     {
-        var fixture = Prepare(thirst: true);
+        var fixture = Prepare(true);
         fixture.Engine.Current.Tiles[16 * 32 + 16].NaturalWaterYield = .08;
         fixture.Resident.Inventory = new ResourceStock { Food = 10, Water = .03 };
         fixture.Resident.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 16,
-            TargetEntityId = 16 * 32 + 16 + 1,
+            Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 16, TargetEntityId = 16 * 32 + 16 + 1,
         };
 
         Assert.False(fixture.Engine.TryFetchWater(fixture.Resident.Value));
@@ -433,7 +459,7 @@ public sealed class ResidentBehaviorTests
     [InlineData(true, 10)]
     public void Water_collection_abandons_a_well_that_cannot_build_reserves(bool enabled, int drought)
     {
-        var fixture = Prepare(thirst: true);
+        var fixture = Prepare(true);
         var wellId = fixture.AddWell(16, 17, .101);
         fixture.Engine.Current.Society.Buildings.Single(building => building.Id == wellId).Enabled = enabled;
         fixture.Engine.Current.Tiles[17 * 32 + 16].DroughtTicks = drought;
@@ -443,8 +469,7 @@ public sealed class ResidentBehaviorTests
         fixture.Resident.Agent.NextThinkTick = fixture.Engine.Current.Tick + 100;
         fixture.Resident.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 17,
-            TargetEntityId = 17 * 32 + 16 + 1,
+            Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 17, TargetEntityId = 17 * 32 + 16 + 1,
         };
 
         Assert.False(fixture.Engine.TryFetchWater(fixture.Resident.Value));
@@ -460,14 +485,17 @@ public sealed class ResidentBehaviorTests
     [InlineData(false, false, 0)]
     [InlineData(true, false, 2.4)]
     [InlineData(true, true, .6)]
-    public void Tile_water_summary_separates_environment_from_collectable_water(bool well, bool drought, double capacity)
+    public void Tile_water_summary_separates_environment_from_collectable_water(bool well, bool drought,
+        double capacity)
     {
         var fixture = new WorldFixture();
-        if (well) fixture.AddWell(16, 17, .1);
+        if (well)
+            fixture.AddWell(16, 17, .1);
         var ground = fixture.Engine.Current.Tiles[17 * 32 + 16];
         ground.NaturalWaterYield = .1;
         ground.DroughtTicks = drought ? 10 : 0;
-        if (drought) ground.NaturalWaterYield = .2;
+        if (drought)
+            ground.NaturalWaterYield = .2;
 
         var summary = fixture.Engine.GetTileProductionSummary(16, 17);
 
@@ -503,7 +531,8 @@ public sealed class ResidentBehaviorTests
     public void Fleeing_uses_a_reachable_safe_place()
     {
         var fixture = Prepare();
-        foreach (var tile in fixture.Engine.Current.Tiles) tile.Terrain = TerrainType.Mountain;
+        foreach (var tile in fixture.Engine.Current.Tiles)
+            tile.Terrain = TerrainType.Mountain;
         fixture.Engine.Current.Tiles[16 * 32 + 16].Terrain = TerrainType.Grass;
         fixture.Engine.Current.Tiles[16 * 32 + 17].Terrain = TerrainType.Grass;
         fixture.Engine.Current.Tiles[16 * 32 + 21].Terrain = TerrainType.Grass;
@@ -537,7 +566,8 @@ public sealed class ResidentBehaviorTests
     public void Firefighting_requires_a_reachable_safe_edge()
     {
         var fixture = Prepare();
-        for (var y = 0; y < 32; y++) fixture.Engine.Current.Tiles[y * 32 + 17].Terrain = TerrainType.Mountain;
+        for (var y = 0; y < 32; y++)
+            fixture.Engine.Current.Tiles[y * 32 + 17].Terrain = TerrainType.Mountain;
         fixture.Engine.TriggerDisaster(19, 16, DisasterKind.Fire, 1);
 
         fixture.Engine.Step();
@@ -579,14 +609,24 @@ public sealed class ResidentBehaviorTests
             ground.NationId = fixture.Town.NationId;
             ground.ClaimedSettlementId = fixture.Town.Id;
         }
+
         var clinicId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Infirmary, 14, 16);
         var clinic = fixture.Engine.Current.Society.Buildings.Single(building => building.Id == clinicId);
         var worker = fixture.Engine.Current.Residents.Single(person => person.Id != fixture.ResidentId);
         worker.Replace(worker.Value with
         {
-            Age = 25, Profession = Profession.Builder, X = 14, Y = 16, FromX = 14, FromY = 16,
-            Agent = worker.Agent.Value with { Initialized = true, NextThinkTick = 100,
-                Goal = new AgentGoal { PlayerDirected = true, ReviewTick = 100 } },
+            Age = 25,
+            Profession = Profession.Builder,
+            X = 14,
+            Y = 16,
+            FromX = 14,
+            FromY = 16,
+            Agent = worker.Agent.Value with
+            {
+                Initialized = true,
+                NextThinkTick = 100,
+                Goal = new AgentGoal { PlayerDirected = true, ReviewTick = 100 },
+            },
         });
         clinic.Enabled = enabled;
         clinic.LastWorkedTick = fixture.Engine.Current.Tick;
@@ -620,16 +660,33 @@ public sealed class ResidentBehaviorTests
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with
         {
-            Aging = false, Hunger = false, Thirst = thirst, Disease = false, Births = false,
-            Construction = false, Expansion = false, Research = false, Trade = false,
-            Migration = false, Secession = false, Wars = false, Conflict = 0, FireSpread = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = thirst,
+            Disease = false,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Research = false,
+            Trade = false,
+            Migration = false,
+            Secession = false,
+            Wars = false,
+            Conflict = 0,
+            FireSpread = false,
             ResourceRegeneration = false,
         }, false, false);
-        foreach (var tile in fixture.Engine.Current.Tiles) tile.NaturalWaterYield = 0;
+        foreach (var tile in fixture.Engine.Current.Tiles)
+            tile.NaturalWaterYield = 0;
         fixture.Engine.Current.Tick = 8 + (3 - fixture.ResidentId % 4 + 4) % 4;
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            Age = 25, Profession = Profession.Farmer, X = 16, Y = 16, FromX = 16, FromY = 16,
+            Age = 25,
+            Profession = Profession.Farmer,
+            X = 16,
+            Y = 16,
+            FromX = 16,
+            FromY = 16,
             Inventory = new ResourceStock { Food = 10, Water = 10 },
             Agent = fixture.Resident.Agent.Value with { Initialized = true, NextThinkTick = 0, Goal = new AgentGoal() },
         });
@@ -641,14 +698,20 @@ public sealed class ResidentBehaviorTests
     {
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            X = x, Y = y, FromX = x, FromY = y,
+            X = x,
+            Y = y,
+            FromX = x,
+            FromY = y,
             Agent = fixture.Resident.Agent.Value with
             {
                 NextThinkTick = 100,
                 Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.Explore, TargetX = targetX, TargetY = targetY,
-                    PlayerDirected = true, ReviewTick = 100,
+                    Kind = AgentGoalKind.Explore,
+                    TargetX = targetX,
+                    TargetY = targetY,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
                 },
             },
         });

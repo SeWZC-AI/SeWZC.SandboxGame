@@ -16,9 +16,11 @@ public static class RaceTerrainRules
     public static ref readonly TerrainAdaptation For(RaceKind race, TerrainType terrain)
     {
         var terrainIndex = (int)terrain;
-        if ((uint)terrainIndex >= (uint)TerrainCount) return ref DefaultAdaptation;
+        if ((uint)terrainIndex >= (uint)TerrainCount)
+            return ref DefaultAdaptation;
         var raceIndex = (int)race;
-        if ((uint)raceIndex >= (uint)RaceCount) raceIndex = (int)RaceKind.Human;
+        if ((uint)raceIndex >= (uint)RaceCount)
+            raceIndex = (int)RaceKind.Human;
         return ref Adaptations.ItemRef(raceIndex * TerrainCount + terrainIndex);
     }
 

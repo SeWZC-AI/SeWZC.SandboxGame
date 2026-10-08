@@ -14,15 +14,15 @@ public sealed partial class WorldMapControl
 
     private readonly Dictionary<(RaceKind, Profession, int), WriteableBitmap> _personIcons = [];
     private readonly List<Building> _sceneBuildings = [];
-    private readonly List<SceneSprite> _sceneSprites = [];
     private readonly HashSet<int> _sceneResidentDraws = [];
+    private readonly List<SceneSprite> _sceneSprites = [];
     private readonly Dictionary<int, RaceKind> _settlementStyles = [];
-    private int _architectureTownCount;
     private WorldEngine? _architectureEngine;
     private ImmutableVector<Resident>? _architectureResidents;
+    private int _architectureTownCount;
     private long _architectureYear = -1;
-    private (int Left, int Top, int Right, int Bottom) _sceneBuildingViewport;
     private ImmutableVector<Building>? _sceneBuildingSnapshot;
+    private (int Left, int Top, int Right, int Bottom) _sceneBuildingViewport;
     private bool _sceneDirty = true;
 
     private void BuildScene(WorldState state)
@@ -84,6 +84,7 @@ public sealed partial class WorldMapControl
                 resident.Id == SelectedResidentId)
                 _sceneResidentDraws.Add(resident.Id);
         }
+
         foreach (var sprite in _sceneSprites)
             if (sprite.Building is { } building)
                 DrawBuilding(context, building);
@@ -121,17 +122,22 @@ public sealed partial class WorldMapControl
             _architectureTownCount == state.Settlements.Count && _architectureResidents is { } previous &&
             previous.Count == state.Residents.Count)
         {
-            if (ReferenceEquals(previous, state.Residents)) return;
+            if (ReferenceEquals(previous, state.Residents))
+                return;
             var changed = false;
             for (var i = 0; i < previous.Count; i++)
-                if (previous[i].Race != state.Residents[i].Race || previous[i].SettlementId != state.Residents[i].SettlementId)
+                if (previous[i].Race != state.Residents[i].Race ||
+                    previous[i].SettlementId != state.Residents[i].SettlementId)
                 {
                     changed = true;
                     break;
                 }
+
             _architectureResidents = state.Residents;
-            if (!changed) return;
+            if (!changed)
+                return;
         }
+
         _architectureEngine = Engine;
         _architectureResidents = state.Residents;
         _architectureYear = state.Tick / 120;

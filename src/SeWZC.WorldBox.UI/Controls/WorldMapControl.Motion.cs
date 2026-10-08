@@ -16,15 +16,15 @@ public sealed partial class WorldMapControl
     private bool _followSelectedResident;
     private bool _framePending;
     private double _frozenPresentationTime;
+    private double _geometryMotionTime;
     private Point _geometryOrigin;
     private double _geometryZoom;
-    private double _geometryMotionTime;
-    private ImmutableVector<Resident>? _motionResidents;
-    private ImmutableVector<Army>? _motionArmies;
     private double _lastAnimatedFrameTime;
     private Point? _lastResidentClick;
+    private ImmutableVector<Army>? _motionArmies;
     private bool _motionAttached;
     private int _motionEpoch;
+    private ImmutableVector<Resident>? _motionResidents;
     private long _motionRevision;
     private double _renderFrameTime;
     private double _renderMotionTime;
@@ -33,7 +33,6 @@ public sealed partial class WorldMapControl
     private double _resumedAt;
     private double _simulationAnchorTick, _simulationAnchorTime;
     private bool _simulationPaused;
-    private double _simulationTickDurationSeconds = .2;
     private long _snapshotTick = -1;
 
     /// <summary>下一模拟日已积累的时间比例，用于确定移动插值的时间基准。</summary>
@@ -64,21 +63,21 @@ public sealed partial class WorldMapControl
     /// <summary>当前速度下，移动插值使用的每模拟日实际秒数。</summary>
     public double SimulationTickDurationSeconds
     {
-        get => _simulationTickDurationSeconds;
+        get;
         set
         {
             if (!double.IsFinite(value))
                 return;
             var next = Math.Clamp(value, .016, 1.5);
-            if (Math.Abs(next - _simulationTickDurationSeconds) < .000001)
+            if (Math.Abs(next - field) < .000001)
                 return;
             // 先按旧速度记录当前插值时刻，再调整速度，避免移动位置突然跳变。
             _simulationAnchorTick = MotionTime;
             _simulationAnchorTime = PresentationTime;
-            _simulationTickDurationSeconds = next;
+            field = next;
             RequestMotionFrame();
         }
-    }
+    } = .2;
 
     /// <summary>当前选中的居民 ID，空值表示未选中居民。</summary>
     public int? SelectedResidentId { get; private set; }

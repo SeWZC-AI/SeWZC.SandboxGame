@@ -7,6 +7,7 @@ public static class TerrainRules
 {
     private static readonly ImmutableArray<TerrainParameters> Parameters =
         Enum.GetValues<TerrainType>().Select(CreateParameters).ToImmutableArray();
+
     private static readonly TerrainParameters DefaultParameters = CreateParameters((TerrainType)(-1));
 
     /// <summary>返回地形的基础通行、肥力、采集和魔力参数。</summary>
@@ -14,7 +15,8 @@ public static class TerrainRules
     public static ref readonly TerrainParameters For(TerrainType terrain)
     {
         var index = (int)terrain;
-        if ((uint)index < (uint)Parameters.Length) return ref Parameters.ItemRef(index);
+        if ((uint)index < (uint)Parameters.Length)
+            return ref Parameters.ItemRef(index);
         return ref DefaultParameters;
     }
 

@@ -407,18 +407,19 @@ public sealed partial class MainView
             if (type.SelectedItem is BuildingKind kind)
             {
                 cost.Text = "施工材料：" + StockLabel(WorldEngine.FacilityCost(kind,
-                                kind == BuildingKind.Bridge ? Integer(level) : 1))
-                            + (WorldEngine.IsWaterfrontBuilding(kind) ? "须建在紧邻自然陆岸的水域。" : "")
-                            + "\n" + (ProductionRules.For(kind) is { } a
-                                ? "运营需要：" + a.Research.Name + "及其前置\n"
-                                : "")
-                            + (kind is BuildingKind.Waystation or BuildingKind.MountainPass or BuildingKind.Bridge
-                                    or BuildingKind.Dock ? "建设知识：驿路运输。\n"
-                                : kind == BuildingKind.ArcaneSanctum ? "建设知识：奥术基础，且须开启魔法发展。\n" : "")
-                            + (WorldEngine.BuildingRace(kind) is { } race
-                                ? $"种族条件：本聚落须有成年{RaceName(race)}，由同族成年人运营。\n"
-                                : "")
-                            + WorldEngine.BuildingDescription(kind);
+                                        kind == BuildingKind.Bridge ? Integer(level) : 1))
+                                    + (WorldEngine.IsWaterfrontBuilding(kind) ? "须建在紧邻自然陆岸的水域。" : "")
+                                    + "\n" + (ProductionRules.For(kind) is { } a
+                                        ? "运营需要：" + a.Research.Name + "及其前置\n"
+                                        : "")
+                                    + (kind is BuildingKind.Waystation or BuildingKind.MountainPass
+                                            or BuildingKind.Bridge
+                                            or BuildingKind.Dock ? "建设知识：驿路运输。\n"
+                                        : kind == BuildingKind.ArcaneSanctum ? "建设知识：奥术基础，且须开启魔法发展。\n" : "")
+                                    + (WorldEngine.BuildingRace(kind) is { } race
+                                        ? $"种族条件：本聚落须有成年{RaceName(race)}，由同族成年人运营。\n"
+                                        : "")
+                                    + WorldEngine.BuildingDescription(kind);
             }
         }
 
@@ -569,7 +570,7 @@ public sealed partial class MainView
         {
             var blocker = Blocker();
             requirements.Text = $"基础魔力：{WorldEngine.SpellManaCost((SpellKind)spell.SelectedItem!):0}\n"
-                + (blocker is null ? "训练、当地知识与目标距离满足；施放时检查魔力和实际目标" : "暂不能施放：" + blocker);
+                                + (blocker is null ? "训练、当地知识与目标距离满足；施放时检查魔力和实际目标" : "暂不能施放：" + blocker);
             apply.IsEnabled = blocker is null;
         }
 

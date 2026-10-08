@@ -13,26 +13,32 @@ public sealed partial class WorldEngine
         var width = Current.Width;
         var origin = Index(person.X, person.Y);
         var revision = _territoryCounts.VisibleWildlifeRevision(person.X, person.Y, width);
-        var cache = _visibleWildlifeCache ??= new();
+        var cache = _visibleWildlifeCache ??= new VisibleWildlifeCache();
         var slot = cache.Slot(origin, width);
-        if (cache.TryGet(slot, origin, revision, out var sites)) return sites;
+        if (cache.TryGet(slot, origin, revision, out var sites))
+            return sites;
         Span<int> candidates = stackalloc int[113];
         var count = 0;
         foreach (var offset in VisibleResourceOffsets)
         {
-            if (offset.Distance > 7) break;
+            if (offset.Distance > 7)
+                break;
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
-            if (!InBounds(x, y)) continue;
+            if (!InBounds(x, y))
+                continue;
             var index = Index(x, y);
             var tile = Current.Tiles[index];
-            if (tile.FireTicks > 0) continue;
+            if (tile.FireTicks > 0)
+                continue;
             var aquatic = IsWaterTerrain(tile.Terrain);
-            if (!aquatic && offset.Distance > 6) continue;
+            if (!aquatic && offset.Distance > 6)
+                continue;
             var kind = EdibleAnimal(tile, aquatic);
             if (kind != WildlifeKind.None && WildlifeHarvestEfficiency(tile, kind) >= .25)
                 candidates[count++] = index;
         }
+
         return cache.Store(slot, origin, revision, candidates[..count]);
     }
 
@@ -45,7 +51,12 @@ public sealed partial class WorldEngine
 
         internal int Slot(int origin, int width)
         {
-            if (_width != width) { Array.Clear(_revisions); _width = width; }
+            if (_width != width)
+            {
+                Array.Clear(_revisions);
+                _width = width;
+            }
+
             return (int)(unchecked((uint)origin * 2654435761u) >> 21);
         }
 

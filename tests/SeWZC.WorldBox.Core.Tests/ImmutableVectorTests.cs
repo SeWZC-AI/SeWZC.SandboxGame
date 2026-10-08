@@ -1,12 +1,8 @@
-using SeWZC.WorldBox.Core;
-
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>持久化序列的分支边界、路径更新和输入隔离。</summary>
 public sealed class ImmutableVectorTests
 {
-    private sealed record Item(int Id);
-
     /// <summary>局部可变更新读取原序列的差异，跨分支冻结后不能改写任何已返回的版本。</summary>
     [Theory]
     [InlineData(9)]
@@ -84,7 +80,7 @@ public sealed class ImmutableVectorTests
         Assert.Throws<InvalidOperationException>(() => before.Map(item =>
             item.Id == 8 ? throw new InvalidOperationException() : new Item(100)));
 
-        Assert.Equal<int>([-1, .. Enumerable.Range(1, 8)], before.Select(item => item.Id));
+        Assert.Equal([-1, .. Enumerable.Range(1, 8)], before.Select(item => item.Id));
         Assert.Empty(new ImmutableVector<Item>().Map(item => item));
     }
 
@@ -105,7 +101,8 @@ public sealed class ImmutableVectorTests
         Assert.Equal(count, before.Count);
         Assert.Equal(count + 1, after.Count);
         Assert.Equal(Enumerable.Range(0, count + 1), after.Select(item => item.Id));
-        for (var index = 0; index < count; index++) Assert.Same(input[index], after[index]);
+        for (var index = 0; index < count; index++)
+            Assert.Same(input[index], after[index]);
         Assert.Equal(count, after[count].Id);
     }
 
@@ -193,4 +190,6 @@ public sealed class ImmutableVectorTests
         Assert.Throws<ArgumentOutOfRangeException>(() => sequence.RemoveAt(index));
         Assert.Equal(1, sequence[0].Id);
     }
+
+    private sealed record Item(int Id);
 }

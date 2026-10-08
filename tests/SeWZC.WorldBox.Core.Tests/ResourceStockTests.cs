@@ -1,5 +1,4 @@
 using System.Text.Json;
-using SeWZC.WorldBox.Core;
 
 namespace SeWZC.WorldBox.Core.Tests;
 
@@ -9,33 +8,46 @@ public sealed class ResourceStockTests
     /// <summary>每种资源使用不同金额，检测字段映射错误。</summary>
     public static TheoryData<ResourceKind, double> Resources => new()
     {
-        { ResourceKind.Food, 1 }, { ResourceKind.Wood, 2 }, { ResourceKind.Stone, 3 },
-        { ResourceKind.Ore, 4 }, { ResourceKind.Alloy, 5 }, { ResourceKind.EnergyCells, 6 },
-        { ResourceKind.Crystals, 7 }, { ResourceKind.Coal, 8 }, { ResourceKind.Oil, 9 },
-        { ResourceKind.RareEarth, 10 }, { ResourceKind.Boats, 11 }, { ResourceKind.Aircraft, 12 },
-        { ResourceKind.Water, 13 }, { ResourceKind.Tools, 14 }, { ResourceKind.Medicine, 15 },
+        { ResourceKind.Food, 1 },
+        { ResourceKind.Wood, 2 },
+        { ResourceKind.Stone, 3 },
+        { ResourceKind.Ore, 4 },
+        { ResourceKind.Alloy, 5 },
+        { ResourceKind.EnergyCells, 6 },
+        { ResourceKind.Crystals, 7 },
+        { ResourceKind.Coal, 8 },
+        { ResourceKind.Oil, 9 },
+        { ResourceKind.RareEarth, 10 },
+        { ResourceKind.Boats, 11 },
+        { ResourceKind.Aircraft, 12 },
+        { ResourceKind.Water, 13 },
+        { ResourceKind.Tools, 14 },
+        { ResourceKind.Medicine, 15 },
         { ResourceKind.Ammunition, 16 },
     };
 
-    internal static ResourceStock Stock() => new()
+    internal static ResourceStock Stock()
     {
-        Food = 1,
-        Wood = 2,
-        Stone = 3,
-        Ore = 4,
-        Alloy = 5,
-        EnergyCells = 6,
-        Crystals = 7,
-        Coal = 8,
-        Oil = 9,
-        RareEarth = 10,
-        Boats = 11,
-        Aircraft = 12,
-        Water = 13,
-        Tools = 14,
-        Medicine = 15,
-        Ammunition = 16,
-    };
+        return new ResourceStock
+        {
+            Food = 1,
+            Wood = 2,
+            Stone = 3,
+            Ore = 4,
+            Alloy = 5,
+            EnergyCells = 6,
+            Crystals = 7,
+            Coal = 8,
+            Oil = 9,
+            RareEarth = 10,
+            Boats = 11,
+            Aircraft = 12,
+            Water = 13,
+            Tools = 14,
+            Medicine = 15,
+            Ammunition = 16,
+        };
+    }
 
     /// <summary>读取指定资源对应的字段。</summary>
     [Theory]

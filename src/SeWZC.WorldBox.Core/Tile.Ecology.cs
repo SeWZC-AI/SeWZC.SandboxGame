@@ -1,11 +1,10 @@
-using System.Text.Json.Serialization;
 using System.Numerics;
+using System.Text.Json.Serialization;
 
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial record Tile
 {
-
     /// <summary>单独存储的主种群物种。</summary>
     [JsonRequired]
     public WildlifeKind Wildlife { get; init; }
@@ -43,6 +42,7 @@ public sealed partial record Tile
                 largest = biomass;
             }
         }
+
         return result;
     }
 
@@ -68,7 +68,10 @@ public sealed partial record Tile
         if (kind == Wildlife)
             return this with { WildlifePopulation = population };
         if (Wildlife == WildlifeKind.None && population > 0)
-            return this with { _wildlife = _wildlife.WithPopulation(kind, 0), Wildlife = kind, WildlifePopulation = population };
+            return this with
+            {
+                _wildlife = _wildlife.WithPopulation(kind, 0), Wildlife = kind, WildlifePopulation = population,
+            };
         return this with { _wildlife = _wildlife.WithPopulation(kind, population) };
     }
 }

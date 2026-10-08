@@ -1,4 +1,5 @@
 using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -45,16 +46,18 @@ public sealed partial class WorldEngine
         foreach (var resident in _citizens[town.Id])
             if (resident.Id != person.Id && resident.Agent.Goal.Kind == AgentGoalKind.ClaimLand)
             {
-                if (++active >= 2) return -1;
+                if (++active >= 2)
+                    return -1;
                 reservedSite = Index(resident.Agent.Goal.TargetX, resident.Agent.Goal.TargetY);
             }
+
         var reachable = 0;
         foreach (var offset in VisibleResourceOffsets)
         {
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
             if (InBounds(x, y) && Index(x, y) != reservedSite && CanClaimTile(town, Index(x, y), person.Race)
-                               && VisibleSiteReachable(person, Index(x, y), ref reachable))
+                && VisibleSiteReachable(person, Index(x, y), ref reachable))
                 return Index(x, y);
         }
 
@@ -68,6 +71,7 @@ public sealed partial class WorldEngine
     {
         return TryClaimLand(RequireResident(person.Id));
     }
+
     private bool TryClaimLand(ResidentCursor person)
     {
         if (!_settlements.TryGetValue(person.SettlementId, out var town) || person.Age < 14 || person.ArmyId != 0
@@ -108,7 +112,15 @@ public sealed partial class WorldEngine
         if (town.Resources.Wood + 1e-6 < VillageFoundingCost.Wood ||
             town.Resources.Stone + 1e-6 < VillageFoundingCost.Stone)
             return;
-        town.Replace(town.Value with { Resources = town.Resources with { Wood = Math.Max(0, town.Resources.Wood - VillageFoundingCost.Wood), Stone = Math.Max(0, town.Resources.Stone - VillageFoundingCost.Stone), }, FoundationPending = false });
+        town.Replace(town.Value with
+        {
+            Resources = town.Resources with
+            {
+                Wood = Math.Max(0, town.Resources.Wood - VillageFoundingCost.Wood),
+                Stone = Math.Max(0, town.Resources.Stone - VillageFoundingCost.Stone),
+            },
+            FoundationPending = false,
+        });
         ClaimTerritory(town, 4);
         AddFoundingFacility(town, BuildingKind.Farm);
         AddFoundingFacility(town, BuildingKind.Workshop);
@@ -156,7 +168,8 @@ public sealed partial class WorldEngine
             _connectedClaims = new int[Current.Tiles.Count];
         FillConnectedClaims(Current, _connectedClaims, _claimQueue);
         foreach (var index in _territoryCounts.OwnedTiles)
-            if (_connectedClaims[index] == 0) _claimQueue.Enqueue(index);
+            if (_connectedClaims[index] == 0)
+                _claimQueue.Enqueue(index);
         while (_claimQueue.TryDequeue(out var orphan))
             Current.Tiles[orphan].Replace(Current.Tiles[orphan].Value with { ClaimedSettlementId = 0, NationId = 0 });
 

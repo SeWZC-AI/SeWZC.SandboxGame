@@ -24,7 +24,8 @@ public sealed partial class MainView
         var magic = Named(new CheckBox { Content = "允许新的魔法发展", IsChecked = _engine.State.Society.MagicEnabled },
             "rule-magic");
 
-        void Toggle(string title, string hint, string id, Func<WorldRules, bool> get, Func<WorldRules, bool, WorldRules> set)
+        void Toggle(string title, string hint, string id, Func<WorldRules, bool> get,
+            Func<WorldRules, bool, WorldRules> set)
         {
             var check = Named(new CheckBox { Content = title, IsChecked = get(draft), MinHeight = 36 }, id);
             ToolTip.SetTip(check, hint);
@@ -39,16 +40,20 @@ public sealed partial class MainView
         Toggle("饮水与缺水压力", "居民须在河湖岸边打水，随身携带并运输入仓", "rule-thirst", r => r.Thirst, (r, v) => r with { Thirst = v });
         Toggle("疾病传播与伤害", "关闭后现有疾病倒计时继续消退，不再传播或伤害", "rule-disease", r => r.Disease, (r, v) => r with { Disease = v });
         panel.Children.Add(Text("文明发展", 14, Mint));
-        Toggle("自主建设", "关闭后不自行立项；已开始施工继续", "rule-construction", r => r.Construction, (r, v) => r with { Construction = v });
+        Toggle("自主建设", "关闭后不自行立项；已开始施工继续", "rule-construction", r => r.Construction,
+            (r, v) => r with { Construction = v });
         Toggle("自主研究", "关闭后不自行启动新研究；已开始研究继续", "rule-research", r => r.Research, (r, v) => r with { Research = v });
-        Toggle("拓荒与扩张", "满足人口、资源与可见用地条件后，拓荒者带物资步行建村", "rule-expansion", r => r.Expansion, (r, v) => r with { Expansion = v });
+        Toggle("拓荒与扩张", "满足人口、资源与可见用地条件后，拓荒者带物资步行建村", "rule-expansion", r => r.Expansion,
+            (r, v) => r with { Expansion = v });
         Toggle("自主贸易", "停止新的贸易任务；在途货物继续送达", "rule-trade", r => r.Trade, (r, v) => r with { Trade = v });
         panel.Children.Add(Text("外交与兴衰", 14, Mint));
         Toggle("自主结盟", "文明依据实际收到的接触与往来消息建立关系", "rule-alliances", r => r.Alliances, (r, v) => r with { Alliances = v });
         Toggle("自主宣战", "关闭只阻止新宣战；已有战争仍需停战", "rule-wars", r => r.Wars, (r, v) => r with { Wars = v });
         Toggle("自主停战", "战事持续或补给不足时宣布停战，命令须送达前线", "rule-peace", r => r.Peace, (r, v) => r with { Peace = v });
-        Toggle("居民迁徙", "困苦居民依据获知的粮情寻找新家园，实地抵达后转属", "rule-migration", r => r.Migration, (r, v) => r with { Migration = v });
-        Toggle("聚落分裂", "长期未解决的困苦报告积累动荡，非首都聚落可能独立", "rule-secession", r => r.Secession, (r, v) => r with { Secession = v });
+        Toggle("居民迁徙", "困苦居民依据获知的粮情寻找新家园，实地抵达后转属", "rule-migration", r => r.Migration,
+            (r, v) => r with { Migration = v });
+        Toggle("聚落分裂", "长期未解决的困苦报告积累动荡，非首都聚落可能独立", "rule-secession", r => r.Secession,
+            (r, v) => r with { Secession = v });
 
         ComboBox Select(string title, string[] choices, int selected, string id)
         {
@@ -71,7 +76,8 @@ public sealed partial class MainView
         panel.Children.Add(Text("生态与劳动", 14, Mint));
         Toggle("自然资源再生", "关闭后地格资源不再自然恢复；已经伐尽的森林仍为空地", "rule-regeneration", r => r.ResourceRegeneration,
             (r, v) => r with { ResourceRegeneration = v });
-        Toggle("火势蔓延", "关闭后现有火焰继续燃烧，但不会引燃邻近森林", "rule-fire-spread", r => r.FireSpread, (r, v) => r with { FireSpread = v });
+        Toggle("火势蔓延", "关闭后现有火焰继续燃烧，但不会引燃邻近森林", "rule-fire-spread", r => r.FireSpread,
+            (r, v) => r with { FireSpread = v });
         var gathering = Field(panel, "采集速率 0.25–3", draft.GatheringRate, "rule-gathering-rate", 3);
         gathering.Minimum = .25m;
         gathering.Increment = .25m;

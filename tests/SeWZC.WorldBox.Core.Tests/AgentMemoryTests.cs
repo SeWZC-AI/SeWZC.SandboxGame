@@ -1,5 +1,3 @@
-using SeWZC.WorldBox.Core;
-
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>认知记忆的不可变替换、淘汰与引擎定位引用同步。</summary>
@@ -40,7 +38,9 @@ public sealed class AgentMemoryTests
     {
         var home = new AgentFact { Kind = AgentFactKind.SettlementLocation, SubjectId = 4 };
         var other = Enumerable.Range(10, 15).Select(id => new AgentFact
-            { Kind = AgentFactKind.Personal, SubjectId = id, LearnedTick = 1 }).ToArray();
+        {
+            Kind = AgentFactKind.Personal, SubjectId = id, LearnedTick = 1,
+        }).ToArray();
         var before = new AgentState { Memory = [home, .. other] };
         var policy = new AgentFact { Kind = AgentFactKind.Policy, LearnedTick = 1 };
 

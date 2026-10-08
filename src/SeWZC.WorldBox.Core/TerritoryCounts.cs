@@ -1,3 +1,5 @@
+using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>随地格归属变化更新的国家领土计数缓存。</summary>
@@ -5,11 +7,11 @@ internal sealed class TerritoryCounts
 {
     private readonly Dictionary<int, int> _counts = [];
     private readonly HashSet<int> _owned = [];
-    private Runtime.EntityListCursor<Tile, Runtime.TileCursor>? _tiles;
     private long _membershipRevision = -1;
+    private EntityListCursor<Tile, TileCursor>? _tiles;
+    private long _traversalFloor;
     private long[] _traversalRegions = [];
     private int _traversalWidth, _regionColumns;
-    private long _traversalFloor;
     private long[] _wildlifeRegions = [];
     private long _wildlifeRevision, _wildlifeFloor;
     public long Revision { get; private set; }
@@ -42,7 +44,8 @@ internal sealed class TerritoryCounts
 
     private void EnsureRegions(int width)
     {
-        if (_traversalWidth == width) return;
+        if (_traversalWidth == width)
+            return;
         _traversalWidth = width;
         _regionColumns = (width + 15) / 16;
         var count = _regionColumns * ((_tiles!.Count / width + 15) / 16);
@@ -66,11 +69,13 @@ internal sealed class TerritoryCounts
 
     /// <summary>将归属变化通知绑定到引擎定位索引；更换索引时重建计数。</summary>
     /// <param name="tiles">要绑定归属变更通知的地格索引。</param>
-    public void Bind(Runtime.EntityListCursor<Tile, Runtime.TileCursor> tiles)
+    public void Bind(EntityListCursor<Tile, TileCursor> tiles)
     {
-        if (ReferenceEquals(_tiles, tiles) && _membershipRevision == tiles.MembershipRevision) return;
+        if (ReferenceEquals(_tiles, tiles) && _membershipRevision == tiles.MembershipRevision)
+            return;
         if (_tiles is not null)
-            foreach (var tile in _tiles) tile.Changed = null;
+            foreach (var tile in _tiles)
+                tile.Changed = null;
         _tiles = tiles;
         _membershipRevision = tiles.MembershipRevision;
         _counts.Clear();
@@ -79,43 +84,63 @@ internal sealed class TerritoryCounts
         InvalidateTraversal();
         _wildlifeFloor = ++_wildlifeRevision;
         _traversalWidth = 0;
-        Action<Runtime.TileCursor, Tile, Tile> changed = OnTileChanged;
+        var changed = OnTileChanged;
         for (var index = 0; index < tiles.Count; index++)
         {
             var tile = tiles[index];
             tile.Changed = changed;
-            if (tile.NationId != 0) _counts[tile.NationId] = _counts.GetValueOrDefault(tile.NationId) + 1;
-            if (tile.NationId != 0 || tile.ClaimedSettlementId != 0) _owned.Add(index);
+            if (tile.NationId != 0)
+                _counts[tile.NationId] = _counts.GetValueOrDefault(tile.NationId) + 1;
+            if (tile.NationId != 0 || tile.ClaimedSettlementId != 0)
+                _owned.Add(index);
         }
     }
 
-    private void OnTileChanged(Runtime.TileCursor cursor, Tile before, Tile after)
+    private void OnTileChanged(TileCursor cursor, Tile before, Tile after)
     {
-        if (!ReferenceEquals(cursor.Collection, _tiles)) return;
+        if (!ReferenceEquals(cursor.Collection, _tiles))
+            return;
         var index = cursor.Position;
         if (before.NationId != after.NationId || before.ClaimedSettlementId != after.ClaimedSettlementId)
         {
-            if (after.NationId != 0 || after.ClaimedSettlementId != 0) _owned.Add(index);
-            else _owned.Remove(index);
+            if (after.NationId != 0 || after.ClaimedSettlementId != 0)
+                _owned.Add(index);
+            else
+                _owned.Remove(index);
         }
-        if (before.NationId != after.NationId) Change(before.NationId, after.NationId);
-        if (before.ClaimedSettlementId != after.ClaimedSettlementId || WorldEngine.IsWaterTerrain(before.Terrain) != WorldEngine.IsWaterTerrain(after.Terrain)) InvalidateClaims();
-        if (before.Terrain != after.Terrain || before.Improvement != after.Improvement || before.BridgeDirection != after.BridgeDirection || (before.FireTicks > 0) != (after.FireTicks > 0))
+
+        if (before.NationId != after.NationId)
+            Change(before.NationId, after.NationId);
+        if (before.ClaimedSettlementId != after.ClaimedSettlementId || WorldEngine.IsWaterTerrain(before.Terrain) !=
+            WorldEngine.IsWaterTerrain(after.Terrain))
+            InvalidateClaims();
+        if (before.Terrain != after.Terrain || before.Improvement != after.Improvement ||
+            before.BridgeDirection != after.BridgeDirection || before.FireTicks > 0 != after.FireTicks > 0)
         {
-            if (_traversalWidth == 0) InvalidateTraversal();
-            else _traversalRegions[index / _traversalWidth / 16 * _regionColumns + index % _traversalWidth / 16] = ++TraversalRevision;
+            if (_traversalWidth == 0)
+                InvalidateTraversal();
+            else
+                _traversalRegions[index / _traversalWidth / 16 * _regionColumns + index % _traversalWidth / 16] =
+                    ++TraversalRevision;
         }
+
         if (before.Wildlife != after.Wildlife || before.WildlifePopulation != after.WildlifePopulation
-            || !before.SameOtherWildlife(after) || before.Terrain != after.Terrain
-            || before.Fertility != after.Fertility || before.Plants != after.Plants
-            || before.NaturalWaterYield != after.NaturalWaterYield || before.Improvement != after.Improvement
-            || (before.SettlementId != 0) != (after.SettlementId != 0)
-            || (before.DroughtTicks > 0) != (after.DroughtTicks > 0) || (before.FireTicks > 0) != (after.FireTicks > 0)
-            || Math.Min(100, before.ResourceAmount) != Math.Min(100, after.ResourceAmount))
+                                              || !before.SameOtherWildlife(after) || before.Terrain != after.Terrain
+                                              || before.Fertility != after.Fertility || before.Plants != after.Plants
+                                              || before.NaturalWaterYield != after.NaturalWaterYield ||
+                                              before.Improvement != after.Improvement
+                                              || before.SettlementId != 0 != (after.SettlementId != 0)
+                                              || before.DroughtTicks > 0 != after.DroughtTicks > 0 ||
+                                              before.FireTicks > 0 != after.FireTicks > 0
+                                              || Math.Min(100, before.ResourceAmount) !=
+                                              Math.Min(100, after.ResourceAmount))
         {
             var revision = ++_wildlifeRevision;
-            if (_traversalWidth == 0) _wildlifeFloor = revision;
-            else _wildlifeRegions[index / _traversalWidth / 16 * _regionColumns + index % _traversalWidth / 16] = revision;
+            if (_traversalWidth == 0)
+                _wildlifeFloor = revision;
+            else
+                _wildlifeRegions[index / _traversalWidth / 16 * _regionColumns + index % _traversalWidth / 16] =
+                    revision;
         }
     }
 

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>世界编年史中的一条事件记录。</summary>
