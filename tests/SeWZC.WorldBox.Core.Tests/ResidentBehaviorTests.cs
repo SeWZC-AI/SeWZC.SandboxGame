@@ -5,6 +5,20 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>居民自主选路、供水、避险与休养的最小现场场景。</summary>
 public sealed class ResidentBehaviorTests
 {
+    /// <summary>初始日可直接更新社会状态，尚无经过的日数时不提前累计自然资源恢复。</summary>
+    [Fact]
+    public void Initial_society_update_does_not_index_a_negative_recovery_band()
+    {
+        var engine = WorldEngine.Create(42, 32, 32, false);
+        var source = engine.Current.Tiles[5];
+        source.Replace(source.Value with { Terrain = TerrainType.Grass, ResourceAmount = 0, Fertility = 85 });
+
+        engine.TickSociety();
+
+        Assert.Equal(0, engine.State.Tick);
+        Assert.Equal(0, source.ResourceAmount);
+    }
+
     /// <summary>实地猎物出现或被采空后，觅食安排反映最新种群，不沿用旧的空猎场或旧猎物地址。</summary>
     [Fact]
     public void Wildlife_choices_follow_the_actual_population_after_an_empty_search()

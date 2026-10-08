@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 
 namespace SeWZC.WorldBox.Core.Runtime;
 
-/// <summary>WorldState 的引擎内定位引用；每次写入提交新的不可变状态。</summary>
+/// <summary>WorldState 的引擎内定位引用；日内标量及集合更新在快照边界合并提交。</summary>
 internal sealed partial class WorldStateCursor : StateCursor<global::SeWZC.WorldBox.Core.WorldState>
 {
     public WorldStateCursor() : this(new() { Width = 0, Height = 0, Tiles = [] }) { }
