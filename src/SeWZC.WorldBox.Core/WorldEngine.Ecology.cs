@@ -404,7 +404,7 @@ public sealed partial class WorldEngine
                 continue;
             var tile = tiles[i];
             var mask = _wildlifeMasks[local] | _wildlifeIncoming[local];
-            var others = tile.OtherWildlife;
+            var populations = _wildlifePopulations.AsSpan(local * AnimalRules.SpeciesCount, AnimalRules.SpeciesCount);
             while (mask != 0)
             {
                 var species = NextWildlife(ref mask);
@@ -414,25 +414,17 @@ public sealed partial class WorldEngine
                         _wildlifePopulations[local * AnimalRules.SpeciesCount + species] +
                         _wildlifeChanges[local * AnimalRules.SpeciesCount + species], 0, 1000);
                 population = population < .000001 ? 0 : population;
-                if (kind == tile.Wildlife)
-                    tile.WildlifePopulation = population;
-                else
-                    others = others.WithPopulation(kind, population);
+                populations[species] = population;
             }
 
-            tile.OtherWildlife = others;
-            if (tile.WildlifePopulation == 0)
+            var primary = tile.Wildlife;
+            if (populations[(int)primary] == 0)
             {
-                tile.Wildlife = WildlifeKind.None;
-                var remaining = tile.OtherWildlife.ActiveMask;
-                if (remaining != 0)
-                {
-                    var kind = (WildlifeKind)NextWildlife(ref remaining);
-                    var population = tile.OtherWildlife.Get(kind);
-                    others = others.WithPopulation(kind, 0);
-                    tile.Replace(tile.Value with { OtherWildlife = others, Wildlife = kind, WildlifePopulation = population });
-                }
+                primary = WildlifeKind.None;
+                for (var species = 1; species < AnimalRules.SpeciesCount; species++)
+                    if (populations[species] > 0) { primary = (WildlifeKind)species; break; }
             }
+            tile.Replace(tile.Value.WithAnimalPopulations(primary, populations));
         }
     }
 

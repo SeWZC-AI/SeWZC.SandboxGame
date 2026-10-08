@@ -7,7 +7,11 @@ internal sealed partial class SettlementCursor : StateCursor<global::SeWZC.World
 {
     public SettlementCursor() : this(new()) { }
     public SettlementCursor(global::SeWZC.WorldBox.Core.Settlement value) : base(value) { }
-    public static implicit operator global::SeWZC.WorldBox.Core.Settlement(SettlementCursor cursor) => cursor.Value;
+    public static implicit operator global::SeWZC.WorldBox.Core.Settlement(SettlementCursor cursor)
+    {
+        cursor.FlushResources();
+        return cursor.Value;
+    }
     public static implicit operator SettlementCursor(global::SeWZC.WorldBox.Core.Settlement value) => new(value);
     public string DevelopmentGoal { get => Value.DevelopmentGoal; set { if (!EqualityComparer<string>.Default.Equals(Value.DevelopmentGoal, value)) ReplaceChanged(Value with { DevelopmentGoal = value }); } }
     public string DevelopmentBlocker { get => Value.DevelopmentBlocker; set { if (!EqualityComparer<string>.Default.Equals(Value.DevelopmentBlocker, value)) ReplaceChanged(Value with { DevelopmentBlocker = value }); } }
@@ -23,7 +27,18 @@ internal sealed partial class SettlementCursor : StateCursor<global::SeWZC.World
     public int X { get => Value.X; set { if (!EqualityComparer<int>.Default.Equals(Value.X, value)) ReplaceChanged(Value with { X = value }); } }
     public int Y { get => Value.Y; set { if (!EqualityComparer<int>.Default.Equals(Value.Y, value)) ReplaceChanged(Value with { Y = value }); } }
     public int NationId { get => Value.NationId; set { if (!EqualityComparer<int>.Default.Equals(Value.NationId, value)) ReplaceChanged(Value with { NationId = value }); } }
-    public ResourceStock Resources { get => Value.Resources; set { if (!EqualityComparer<ResourceStock>.Default.Equals(Value.Resources, value)) ReplaceChanged(Value with { Resources = value }); } }
+    public ResourceStock Resources
+    {
+        get => _resourceDepth > 0 ? _resourceDraft : Value.Resources;
+        set
+        {
+            if (_resourceDepth > 0)
+            {
+                if (_resourceDraft != value) { _resourceDraft = value; _resourcesChanged = true; }
+            }
+            else if (Value.Resources != value) ReplaceChanged(Value with { Resources = value });
+        }
+    }
     public int Population { get => Value.Population; set { if (!EqualityComparer<int>.Default.Equals(Value.Population, value)) ReplaceChanged(Value with { Population = value }); } }
     public int Housing { get => Value.Housing; set { if (!EqualityComparer<int>.Default.Equals(Value.Housing, value)) ReplaceChanged(Value with { Housing = value }); } }
     public bool FoundationPending { get => Value.FoundationPending; set { if (!EqualityComparer<bool>.Default.Equals(Value.FoundationPending, value)) ReplaceChanged(Value with { FoundationPending = value }); } }

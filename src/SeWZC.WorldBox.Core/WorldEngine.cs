@@ -21,6 +21,11 @@ public sealed partial class WorldEngine
     private readonly HashSet<int> _dryTiles = [];
     private readonly Dictionary<int, NationCursor> _nations = [];
     private readonly Dictionary<int, SettlementCursor> _settlements = [];
+    private readonly Dictionary<int, ResidentCursor> _residentLookup = [];
+    private long _residentLookupRevision = -1;
+    private object? _indexedPeople, _indexedTowns, _indexedNations;
+    private long _indexedPeopleRevision = -1, _indexedGroupsRevision = -1,
+        _indexedTownsRevision = -1, _indexedNationsRevision = -1;
     private readonly TerritoryCounts _territoryCounts = new();
 
     private bool _creatingDemo;
@@ -99,6 +104,14 @@ public sealed partial class WorldEngine
 
     private void Reindex()
     {
+        var people = Current.Residents;
+        var towns = Current.Settlements;
+        var nations = Current.Nations;
+        // 定位引用本身持续读取最新状态；只有成员或居民家园变化才重建分组。
+        if (ReferenceEquals(_indexedPeople, people) && ReferenceEquals(_indexedTowns, towns)
+            && ReferenceEquals(_indexedNations, nations) && _indexedPeopleRevision == people.MembershipRevision
+            && _indexedGroupsRevision == people.GroupRevision && _indexedTownsRevision == towns.MembershipRevision
+            && _indexedNationsRevision == nations.MembershipRevision) return;
         _settlements.Clear();
         _nations.Clear();
         foreach (var group in _citizens.Values)
@@ -121,6 +134,25 @@ public sealed partial class WorldEngine
         foreach (var person in Current.Residents)
             if (_citizens.TryGetValue(person.SettlementId, out var list))
                 list.Add(person);
+        _indexedPeople = people;
+        _indexedTowns = towns;
+        _indexedNations = nations;
+        _indexedPeopleRevision = people.MembershipRevision;
+        _indexedGroupsRevision = people.GroupRevision;
+        _indexedTownsRevision = towns.MembershipRevision;
+        _indexedNationsRevision = nations.MembershipRevision;
+    }
+
+    private ResidentCursor? FindLiveResident(int id)
+    {
+        if (_residentLookupRevision != Current.Residents.MembershipRevision)
+        {
+            _residentLookup.Clear();
+            foreach (var resident in Current.Residents)
+                _residentLookup.Add(resident.Id, resident);
+            _residentLookupRevision = Current.Residents.MembershipRevision;
+        }
+        return _residentLookup.GetValueOrDefault(id);
     }
 
     private uint RandomUInt()

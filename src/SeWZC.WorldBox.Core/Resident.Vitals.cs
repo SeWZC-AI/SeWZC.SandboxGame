@@ -7,17 +7,23 @@ public sealed partial record Resident
         double manaRecovery = 0)
     {
         var vitals = CalculateVitals(rules, tile, tick, profession, infectionDuration, manaRecovery);
-        return ApplyVitals(vitals);
+        return CalculateDailyVitals(vitals).Apply(this);
     }
 
     internal Resident AdvanceDay(WorldRules rules, Tile tile, long tick, Profession profession, int infectionDuration,
         double manaRecovery, bool consumeNeeds, double socialGrowth = .07, double deliveredWater = 0,
-        int arrivedTile = -1)
+        int arrivedTile = -1, ResourceStock? suppliedInventory = null)
+        => CalculateDay(rules, tile, tick, profession, infectionDuration, manaRecovery, consumeNeeds,
+            socialGrowth, deliveredWater, arrivedTile, suppliedInventory).Apply(this);
+
+    internal DailyState CalculateDay(WorldRules rules, Tile tile, long tick, Profession profession, int infectionDuration,
+        double manaRecovery, bool consumeNeeds, double socialGrowth = .07, double deliveredWater = 0,
+        int arrivedTile = -1, ResourceStock? suppliedInventory = null)
     {
         var vitals = CalculateVitals(rules, tile, tick, profession, infectionDuration, manaRecovery);
         var arrivedAgent = arrivedTile >= 0 ? Agent.RememberRouteTile(arrivedTile) : Agent;
-        var next = consumeNeeds && vitals.Health > 0 ? AdvanceNeeds(rules, tick, vitals, socialGrowth, deliveredWater, arrivedAgent)
-            : ApplyVitals(vitals, vitals.Health > 0 ? socialGrowth : 0, deliveredWater, arrivedAgent);
+        var next = consumeNeeds && vitals.Health > 0 ? CalculateNeeds(rules, tick, vitals, socialGrowth, deliveredWater, arrivedAgent, suppliedInventory)
+            : CalculateDailyVitals(vitals, vitals.Health > 0 ? socialGrowth : 0, deliveredWater, arrivedAgent, suppliedInventory);
         if (consumeNeeds && vitals.Health > 0 && !Agent.Goal.PlayerDirected
             && (SicknessTicks == 0 && vitals.Sickness > 0 || Health >= 40 && vitals.Health < 40))
             next = next with { Agent = next.Agent with
@@ -67,23 +73,16 @@ public sealed partial record Resident
         return new(age, profession, health, sickness, immunity, deathCause, deathTick, activity, mana);
     }
 
-    private Resident ApplyVitals(VitalState vitals, double socialGrowth = 0, double deliveredWater = 0,
-        AgentState? arrivedAgent = null)
+    private DailyState CalculateDailyVitals(VitalState vitals, double socialGrowth = 0, double deliveredWater = 0,
+        AgentState? arrivedAgent = null, ResourceStock? suppliedInventory = null)
     {
         var agent = arrivedAgent ?? Agent;
         var socialNeed = Math.Min(100, agent.SocialNeed + socialGrowth);
-        if (vitals == new VitalState(Age, Profession, Health, SicknessTicks, DiseaseImmuneUntilTick,
-                DeathCause, DeathTick, Activity, Mana) && socialNeed == Agent.SocialNeed && deliveredWater == 0
-            && ReferenceEquals(agent, Agent)) return this;
-        return this with
-        {
-            Age = vitals.Age, Profession = vitals.Profession, Health = vitals.Health,
-            SicknessTicks = vitals.Sickness, DiseaseImmuneUntilTick = vitals.Immunity,
-            DeathCause = vitals.DeathCause, DeathTick = vitals.DeathTick,
-            Activity = vitals.Activity, Mana = vitals.Mana,
-            Inventory = deliveredWater > 0 ? Inventory with { Water = Inventory.Water + deliveredWater } : Inventory,
-            Agent = socialNeed == agent.SocialNeed ? agent : agent with { SocialNeed = socialNeed },
-        };
+        var inventory = suppliedInventory ?? Inventory;
+        return new(vitals.Age, vitals.Profession, vitals.Health, vitals.Sickness, vitals.Immunity, vitals.DeathCause,
+            vitals.DeathTick, vitals.Activity, vitals.Mana, Hunger, Thirst,
+            deliveredWater > 0 ? inventory with { Water = inventory.Water + deliveredWater } : inventory,
+            socialNeed == agent.SocialNeed ? agent : agent with { SocialNeed = socialNeed });
     }
 
     /// <summary>一次身体结算的不可变结果，供需求结算合并提交。</summary>

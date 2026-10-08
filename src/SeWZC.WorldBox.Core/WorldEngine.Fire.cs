@@ -113,7 +113,8 @@ public sealed partial class WorldEngine
         person.Inventory = person.Inventory with { Water = person.Inventory.Water - .1 };
         tile.FireSuppressed += reduction;
         tile.FireTicks -= reduction;
-        person.Replace(person.Value with { Agent = person.Agent.Value with { Fatigue = Math.Min(100, person.Agent.Fatigue + .3) }, Activity = ResidentActivity.Working });
+        person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + .3);
+        person.Activity = ResidentActivity.Working;
         if (tile.FireTicks == 0)
             EndFire(index, false);
         return true;

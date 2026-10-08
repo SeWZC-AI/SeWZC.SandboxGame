@@ -5,6 +5,159 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>居民自主选路、供水、避险与休养的最小现场场景。</summary>
 public sealed class ResidentBehaviorTests
 {
+    /// <summary>实地猎物出现或被采空后，觅食安排反映最新种群，不沿用旧的空猎场或旧猎物地址。</summary>
+    [Fact]
+    public void Wildlife_choices_follow_the_actual_population_after_an_empty_search()
+    {
+        var fixture = Prepare();
+        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = true }, false, false);
+        fixture.Town.Resources = new ResourceStock();
+        foreach (var tile in fixture.Engine.Current.Tiles)
+            tile.Replace(tile.Value with { ResourceAmount = 0, Wildlife = WildlifeKind.None,
+                WildlifePopulation = 0, OtherWildlife = new WildlifePopulations() });
+        fixture.Resident.Inventory = new ResourceStock { Water = 10 };
+        fixture.Resident.Hunger = 90;
+        fixture.Resident.FrozenUntilTick = 100;
+        fixture.Engine.Step();
+        Assert.Equal(AgentGoalKind.Explore, fixture.Resident.Agent.Goal.Kind);
+        var source = fixture.Engine.Current.Tiles[16 * 32 + 19];
+        source.Replace(source.Value with { Wildlife = WildlifeKind.Rabbit, WildlifePopulation = 20 });
+        fixture.Resident.Agent.Goal = new AgentGoal();
+        fixture.Resident.Agent.NextThinkTick = 0;
+        fixture.Engine.Step(4);
+        Assert.Equal(AgentGoalKind.Hunt, fixture.Resident.Agent.Goal.Kind);
+        Assert.Equal(19, fixture.Resident.Agent.Goal.TargetX);
+        source.Replace(source.Value with { WildlifePopulation = 0 });
+        fixture.Resident.Agent.Goal = new AgentGoal();
+        fixture.Resident.Agent.NextThinkTick = 0;
+
+        fixture.Engine.Step(4);
+
+        Assert.NotEqual(AgentGoalKind.Hunt, fixture.Resident.Agent.Goal.Kind);
+    }
+
+    /// <summary>已找到的采集点被新山障或火场隔断后，下次安排不能沿旧可达性继续派工。</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Resource_work_is_reconsidered_when_its_access_is_cut_off(bool fire)
+    {
+        var fixture = Prepare();
+        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = true }, false, false);
+        fixture.Town.Resources = new ResourceStock();
+        foreach (var tile in fixture.Engine.Current.Tiles)
+            tile.Replace(tile.Value with { Terrain = TerrainType.Mountain, ResourceAmount = 0,
+                Wildlife = WildlifeKind.None, WildlifePopulation = 0, OtherWildlife = new WildlifePopulations() });
+        for (var x = 16; x <= 20; x++) fixture.Engine.Current.Tiles[16 * 32 + x].Terrain = TerrainType.Grass;
+        var source = fixture.Engine.Current.Tiles[16 * 32 + 20];
+        source.Replace(source.Value with { ResourceAmount = 100, Fertility = 100,
+            Plants = new PlantCoverage { Grass = 1 } });
+        fixture.Resident.Inventory = new ResourceStock { Water = 10 };
+        fixture.Resident.Hunger = 90;
+        fixture.Resident.FrozenUntilTick = 100;
+        fixture.Engine.Step();
+        Assert.Equal(AgentGoalKind.Gather, fixture.Resident.Agent.Goal.Kind);
+        Assert.Equal(20, fixture.Resident.Agent.Goal.TargetX);
+        var blocked = fixture.Engine.Current.Tiles[16 * 32 + 18];
+        if (fire) blocked.FireTicks = 12;
+        else blocked.Terrain = TerrainType.Mountain;
+        fixture.Resident.Agent.Goal = new AgentGoal();
+        fixture.Resident.Agent.NextThinkTick = 0;
+
+        fixture.Engine.Step(4);
+
+        Assert.NotEqual(AgentGoalKind.Gather, fixture.Resident.Agent.Goal.Kind);
+    }
+
+    /// <summary>同样的土地按同样速率恢复，地图变大不能令该地格的恢复量降低。</summary>
+    [Fact]
+    public void Natural_resource_recovery_does_not_slow_down_on_larger_maps()
+    {
+        double Recover(int size)
+        {
+            var engine = WorldEngine.Create(42, size, size, false);
+            var source = engine.Current.Tiles[5];
+            source.Replace(source.Value with { Terrain = TerrainType.Grass, ResourceAmount = 0, Fertility = 85 });
+            engine.Current.Tick = 1;
+            engine.TickSociety();
+            var recovered = source.ResourceAmount;
+            engine.Current.Tick = 2;
+            engine.TickSociety();
+            Assert.Equal(recovered, source.ResourceAmount);
+            return recovered;
+        }
+        var small = Recover(32);
+        Assert.True(small > 0);
+        Assert.Equal(small, Recover(64));
+    }
+
+    /// <summary>已亲眼看到空仓且附近无粮食时沿实际可通行土地继续觅食，不反复回空仓。</summary>
+    [Fact]
+    public void Hungry_resident_explores_when_home_and_visible_sources_are_empty()
+    {
+        var fixture = Prepare();
+        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = true }, false, false);
+        fixture.Town.Resources = new ResourceStock();
+        foreach (var tile in fixture.Engine.Current.Tiles)
+            tile.Replace(tile.Value with { ResourceAmount = 0, Wildlife = WildlifeKind.None,
+                WildlifePopulation = 0, OtherWildlife = new WildlifePopulations() });
+        fixture.Resident.Inventory = new ResourceStock { Water = 10 };
+        fixture.Resident.Hunger = 90;
+        fixture.Resident.FrozenUntilTick = 100;
+
+        fixture.Engine.Step();
+
+        Assert.Equal(AgentGoalKind.Explore, fixture.Resident.Agent.Goal.Kind);
+        var target = fixture.Resident.Agent.Goal;
+        Assert.InRange(Math.Abs(target.TargetX - 16) + Math.Abs(target.TargetY - 16), 1, 6);
+        Assert.True(RaceTerrainRules.CanWalk(fixture.Engine.State.Tiles[target.TargetY * 32 + target.TargetX], RaceKind.Human));
+        Assert.Equal(0, fixture.Resident.Inventory.Food);
+        Assert.True(fixture.Resident.Hunger > 90);
+    }
+
+    /// <summary>已查过的可采食地点变成贫瘠地、裸地或旱地后，下一次决策读取实际变化。</summary>
+    [Theory]
+    [InlineData("stock")]
+    [InlineData("plants")]
+    [InlineData("fertility")]
+    [InlineData("drought")]
+    [InlineData("terrain")]
+    public void Food_site_queries_refresh_after_the_source_changes(string change)
+    {
+        var fixture = Prepare();
+        fixture.Town.Resources = new ResourceStock();
+        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = true }, false, false);
+        foreach (var tile in fixture.Engine.Current.Tiles) tile.ResourceAmount = 0;
+        var source = fixture.Engine.Current.Tiles[16 * 32 + 17];
+        source.Replace(source.Value with
+        {
+            ResourceAmount = 100, Plants = new PlantCoverage { Grass = 1 }, Fertility = 50,
+            Improvement = LandImprovement.None,
+        });
+        fixture.Resident.Inventory = new ResourceStock { Water = 10 };
+        fixture.Resident.Hunger = 90;
+        fixture.Resident.FrozenUntilTick = 100;
+        fixture.Resident.Agent.Goal = new AgentGoal();
+        fixture.Resident.Agent.NextThinkTick = 0;
+        fixture.Engine.Step();
+        Assert.Equal(AgentGoalKind.Gather, fixture.Resident.Agent.Goal.Kind);
+        Assert.Equal(17, fixture.Resident.Agent.Goal.TargetX);
+
+        source.Replace(change switch
+        {
+            "stock" => source.Value with { ResourceAmount = 0 },
+            "plants" => source.Value with { Plants = new PlantCoverage { Trees = 1 } },
+            "fertility" => source.Value with { Fertility = 1 },
+            "drought" => source.Value with { DroughtTicks = 12 },
+            _ => source.Value with { Terrain = TerrainType.Mountain },
+        });
+        fixture.Resident.Agent.Goal = new AgentGoal();
+        fixture.Resident.Agent.NextThinkTick = 0;
+        fixture.Engine.Step(4);
+
+        Assert.NotEqual(AgentGoalKind.Gather, fixture.Resident.Agent.Goal.Kind);
+    }
+
     /// <summary>短路线来自原有视野，抵达后继续使用；存档恢复保持路线与下一步一致。</summary>
     [Fact]
     public void Navigation_keeps_a_visible_route_across_save_and_arrival()
@@ -234,6 +387,26 @@ public sealed class ResidentBehaviorTests
         Assert.Equal(0, fixture.Resident.Thirst);
         Assert.Equal(AgentGoalKind.FetchWater, fixture.Resident.Agent.Goal.Kind);
         Assert.Equal(16 * 32 + 19 + 1, fixture.Resident.Agent.Goal.TargetEntityId);
+    }
+
+    /// <summary>零散水源只补个人短期备用水，不能为了装满大水瓶滞留数月。</summary>
+    [Fact]
+    public void A_small_water_source_finishes_a_personal_backup_instead_of_a_large_delivery()
+    {
+        var fixture = Prepare(thirst: true);
+        fixture.Engine.Current.Tiles[16 * 32 + 16].NaturalWaterYield = .08;
+        fixture.Resident.Inventory = new ResourceStock { Food = 10, Water = .03 };
+        fixture.Resident.Agent.Goal = new AgentGoal
+        {
+            Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 16,
+            TargetEntityId = 16 * 32 + 16 + 1,
+        };
+
+        Assert.True(fixture.Engine.TryFetchWater(fixture.Resident.Value));
+
+        Assert.Equal(.05, fixture.Resident.Inventory.Water, 6);
+        Assert.Equal(AgentGoalKind.Idle, fixture.Resident.Agent.Goal.Kind);
+        Assert.Equal(0, fixture.Town.Resources.Water);
     }
 
     /// <summary>火场避险只使用眼前能实际走到的安全地格，不选择山墙外的远处。</summary>

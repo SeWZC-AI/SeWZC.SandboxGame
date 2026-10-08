@@ -6,6 +6,32 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>当前保存格式、必需字段和异步取消的检查。</summary>
 public sealed class WorldPersistenceTests
 {
+    /// <summary>工作范围须属于当前地图；旧岗位已拆除时可保留原地址，不能因此拒绝历史记录。</summary>
+    [Theory]
+    [InlineData(-1, 0, true)]
+    [InlineData(1023, 2_000_001, true)]
+    [InlineData(-2, 0, false)]
+    [InlineData(1024, 0, false)]
+    [InlineData(-1, -1, false)]
+    public void Work_assignment_addresses_are_validated(int area, int workplace, bool valid)
+    {
+        var fixture = new WorldFixture();
+        var before = fixture.Engine.State;
+        var document = JsonNode.Parse(fixture.Engine.ExportJson())!;
+        var agent = document["Residents"]![0]!["Agent"]!;
+        agent["WorkAreaIndex"] = area;
+        agent["WorkplaceId"] = workplace;
+
+        if (valid)
+        {
+            var restored = WorldEngine.ImportJson(document.ToJsonString()).GetResident(fixture.ResidentId)!;
+            Assert.Equal(area, restored.Agent.WorkAreaIndex);
+            Assert.Equal(workplace, restored.Agent.WorkplaceId);
+        }
+        else Assert.Throws<ArgumentException>(() => WorldEngine.ImportJson(document.ToJsonString()));
+        Assert.Equal(before, fixture.Engine.State);
+    }
+
     /// <summary>短路线不能跳格、越出原视野或带有越界的进度，拒绝导入不改变原世界。</summary>
     [Theory]
     [InlineData(10 * 32 + 12, 1)]

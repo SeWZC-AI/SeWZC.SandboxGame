@@ -56,6 +56,19 @@ public sealed partial class MainView
         panel.Children.Add(LiveText(() =>
             $"生命 {Current().Health:0} / 100   体力 {100 - Current().Agent.Fatigue:0} / 100   饥饿 {Current().Hunger:0}%   口渴 {Current().Thirst:0}%"));
         panel.Children.Add(LiveText(() => _engine.GetResidentActionSummary(id)));
+        panel.Children.Add(LiveText(() =>
+        {
+            var agent = Current().Agent;
+            if (agent.WorkplaceId != 0)
+            {
+                var workplace = _engine.State.Society.Buildings.FirstOrDefault(b => b.Id == agent.WorkplaceId);
+                return workplace is null ? "原登记工作地已移除，返乡后重新安排"
+                    : $"登记工作地：{WorldEngine.BuildingName(workplace.Kind)}（{workplace.X}, {workplace.Y}）";
+            }
+            return agent.WorkAreaIndex >= 0
+                ? $"固定采集范围：地块（{agent.WorkAreaIndex % _engine.State.Width}, {agent.WorkAreaIndex / _engine.State.Width}）及周围三格"
+                : Current().Profession == Profession.Laborer ? "暂无固定专业岗位，按眼前需求协助劳动" : "";
+        }));
         BuildResearchResidentActions(panel, resident);
         if (resident.Health > 0)
         {

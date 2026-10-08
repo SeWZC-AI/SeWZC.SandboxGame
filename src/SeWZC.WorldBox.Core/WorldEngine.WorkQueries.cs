@@ -108,6 +108,8 @@ public sealed partial class WorldEngine
 
     private void UpdateLocalWorkMembership(ResidentCursor resident, int previousSettlementId)
     {
+        resident.Agent.WorkplaceId = 0;
+        resident.Agent.WorkAreaIndex = -1;
         if (!_localWorkQueriesActive)
             return;
         if (_localWorkResidents.TryGetValue(previousSettlementId, out var previous))
@@ -174,7 +176,8 @@ public sealed partial class WorldEngine
             if (range > 1 && resident.Agent.Goal.NavigationTarget == Index(building.X, building.Y) &&
                 Current.Tick < resident.Agent.Goal.NavigationRetryTick)
                 continue;
-            var priority = WorkPriority(building, resident, preferSpecialty);
+            var priority = WorkPriority(building, resident, preferSpecialty) * 2
+                + (resident.Agent.WorkplaceId == building.Id ? 0 : 1);
             if (selected is not null && !(priority < bestPriority || (priority == bestPriority
                                                                       && ((preferNearest && distance < bestDistance)
                                                                           || ((!preferNearest ||

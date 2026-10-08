@@ -4,15 +4,16 @@ public sealed partial record Resident
 {
     // 取水与返仓仍由引擎处理实际位置和公共库存；每日需求只转换居民自身状态。
     internal Resident AdvanceNeeds(WorldRules rules, long tick)
-        => AdvanceNeeds(rules, tick, new VitalState(Age, Profession, Health, SicknessTicks, DiseaseImmuneUntilTick,
-            DeathCause, DeathTick, Activity, Mana));
+        => CalculateNeeds(rules, tick, new VitalState(Age, Profession, Health, SicknessTicks, DiseaseImmuneUntilTick,
+            DeathCause, DeathTick, Activity, Mana)).Apply(this);
 
-    private Resident AdvanceNeeds(WorldRules rules, long tick, VitalState vitals, double socialGrowth = .07,
-        double deliveredWater = 0, AgentState? arrivedAgent = null)
+    private DailyState CalculateNeeds(WorldRules rules, long tick, VitalState vitals, double socialGrowth = .07,
+        double deliveredWater = 0, AgentState? arrivedAgent = null, ResourceStock? suppliedInventory = null)
     {
         var beforeAgent = arrivedAgent ?? Agent;
-        var food = Inventory.Food;
-        var water = Inventory.Water + deliveredWater;
+        var inventory = suppliedInventory ?? Inventory;
+        var food = inventory.Food;
+        var water = inventory.Water + deliveredWater;
         var thirst = Thirst;
         var hunger = Hunger;
         var health = vitals.Health;
@@ -54,28 +55,9 @@ public sealed partial record Resident
         var crisis = health > 0 && (rules.Hunger && Hunger <= 60 && hunger > 60 && food < .05
             || rules.Thirst && Thirst <= 80 && thirst > 80 && water < .025);
 
-        if (food == Inventory.Food && water == Inventory.Water && thirst == Thirst && hunger == Hunger && health == Health &&
-            deathCause == DeathCause && deathTick == DeathTick && socialNeed == Agent.SocialNeed && vitals.Age == Age && vitals.Profession == Profession
-            && vitals.Sickness == SicknessTicks && vitals.Immunity == DiseaseImmuneUntilTick
-            && vitals.Activity == Activity && vitals.Mana == Mana && !crisis && ReferenceEquals(beforeAgent, Agent))
-            return this;
         var agent = socialNeed == beforeAgent.SocialNeed ? beforeAgent : beforeAgent with { SocialNeed = socialNeed };
         if (crisis) agent = agent with { Goal = agent.Goal with { ReviewTick = tick }, NextThinkTick = tick };
-        return this with
-        {
-            Age = vitals.Age,
-            Profession = vitals.Profession,
-            SicknessTicks = vitals.Sickness,
-            DiseaseImmuneUntilTick = vitals.Immunity,
-            Activity = vitals.Activity,
-            Mana = vitals.Mana,
-            Inventory = Inventory with { Food = food, Water = water },
-            Thirst = thirst,
-            Hunger = hunger,
-            Health = health,
-            DeathCause = deathCause,
-            DeathTick = deathTick,
-            Agent = agent,
-        };
+        return new(vitals.Age, vitals.Profession, health, vitals.Sickness, vitals.Immunity, deathCause, deathTick,
+            vitals.Activity, vitals.Mana, hunger, thirst, inventory with { Food = food, Water = water }, agent);
     }
 }

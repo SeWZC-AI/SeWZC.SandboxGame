@@ -73,48 +73,97 @@ public sealed partial class WorldEngine
         // 先保存现有病例的位置，避免新感染在同一天沿居民遍历顺序连锁传播。
         var infected = new HashSet<int>(Current.Residents.Where(r => r.SicknessTicks > 0).Select(r => Index(r.X, r.Y)));
         BeginDailyDrinking();
+        foreach (var town in Current.Settlements) town.BeginResourceUpdates();
         try
         {
-            Current.Residents.Transform(person =>
+            var count = Current.Residents.Count;
+            if (count < 2048 || Environment.ProcessorCount <= 1 || OperatingSystem.IsBrowser())
             {
-                var age = rules.Aging ? Math.Min(1000, person.Age + 1d / 120) : person.Age;
-                var profession = person.Profession == Profession.Child && age >= 14 ? AssignProfession() : person.Profession;
-                var infectionDuration = 0;
-                if (person.SicknessTicks == 0 && rules.Disease && person.DiseaseImmuneUntilTick <= tick
-                    && infected.Count > 0 && (tick + person.Id) % 6 == 0)
+                foreach (var cursor in Current.Residents) cursor.ApplyDay(Prepare(cursor).Advance(rules, tick));
+            }
+            else
+            {
+                if (_dailyResidentInputs.Length < count)
                 {
-                    var exposed = infected.Contains(Index(person.X, person.Y));
-                    foreach (var (dx, dy) in Directions)
-                        if (InBounds(person.X + dx, person.Y + dy)
-                            && infected.Contains(Index(person.X + dx, person.Y + dy)))
-                        {
-                            exposed = true;
-                            break;
-                        }
-                    if (exposed && RandomInt(100) < 6) infectionDuration = 72 + RandomInt(25);
+                    _dailyResidentInputs = new DailyResidentInput[count];
+                    _dailyResidentOutputs = new Resident.DailyState[count];
                 }
-                var tile = tiles[Index(person.X, person.Y)];
-                var manaRecovery = person.Mana >= 100 || rules.MagicRate == 0 ? 0
-                    : .025 * rules.MagicRate * TerrainRules.For(tile.Terrain).ManaRate
-                    * (.5 + person.MagicTalent / 100)
-                    * (HasResearch(person.SettlementId, Advancement.ManaAttunement) ? 1.5 : 1);
-                var hasHome = _settlements.ContainsKey(person.SettlementId);
-                var waterUse = WaterUse(person);
-                var water = hasHome && person.ArmyId == 0 && person.Health > 0 && rules.Thirst
-                    && person.Inventory.Water < waterUse
-                    ? WithdrawWater(person, Index(person.X, person.Y), waterUse - person.Inventory.Water) : 0;
-                return person.AdvanceDay(rules, tile, tick, profession, infectionDuration, manaRecovery,
-                    person.ArmyId == 0 && hasHome, hasHome && (tick + person.Id) % 4 == 0 ? .28 : 0, water,
-                    hasHome && person.ArmyId == 0 && person.Health > 0
-                        && tick - person.MoveStartedTick == person.MoveDurationTicks ? Index(person.X, person.Y) : -1);
-            });
+                for (var index = 0; index < count; index++)
+                    _dailyResidentInputs[index] = Prepare(Current.Residents[index]);
+                // 随机感染、公共补给与取水按原顺序准备；工作线程只读取不可变输入。
+                var workers = Math.Min(4, Environment.ProcessorCount);
+                Parallel.For(0, workers, _bodyParallelism, worker =>
+                {
+                    var first = worker * count / workers;
+                    var last = (worker + 1) * count / workers;
+                    for (var index = first; index < last; index++)
+                        _dailyResidentOutputs[index] = _dailyResidentInputs[index].Advance(rules, tick);
+                });
+                foreach (var cursor in Current.Residents) cursor.ApplyDay(_dailyResidentOutputs[cursor.Position]);
+                Array.Clear(_dailyResidentInputs, 0, count);
+                Array.Clear(_dailyResidentOutputs, 0, count);
+            }
         }
         finally
         {
             EndDailyDrinking();
+            foreach (var town in Current.Settlements) town.EndResourceUpdates();
         }
 
         ArchiveDeadResidents();
+
+        DailyResidentInput Prepare(ResidentCursor cursor)
+        {
+            InitializeAgent(cursor);
+            var inventory = cursor.Inventory;
+            if (cursor.Health > 0 && cursor.ArmyId == 0
+                && _settlements.TryGetValue(cursor.SettlementId, out var home)
+                && Distance(cursor.X, cursor.Y, home.X, home.Y) <= 1
+                && Walkable(cursor.X, cursor.Y, cursor.Race)
+                && tick - cursor.MoveStartedTick >= cursor.MoveDurationTicks
+                && !(cursor.TravelMode == TravelMode.Boat && cursor.Agent.Goal.Kind == AgentGoalKind.Fish))
+            {
+                TransferPersonalProduction(cursor, home);
+                inventory = ProvisionAtHome(cursor, home);
+            }
+            var person = cursor.Value;
+            var age = rules.Aging ? Math.Min(1000, person.Age + 1d / 120) : person.Age;
+            var profession = person.Profession == Profession.Child && age >= 14 ? AssignProfession() : person.Profession;
+            var infectionDuration = 0;
+            if (person.SicknessTicks == 0 && rules.Disease && person.DiseaseImmuneUntilTick <= tick
+                && infected.Count > 0 && (tick + person.Id) % 6 == 0)
+            {
+                var exposed = infected.Contains(Index(person.X, person.Y));
+                foreach (var (dx, dy) in Directions)
+                    if (InBounds(person.X + dx, person.Y + dy)
+                        && infected.Contains(Index(person.X + dx, person.Y + dy)))
+                    {
+                        exposed = true;
+                        break;
+                    }
+                if (exposed && RandomInt(100) < 6) infectionDuration = 72 + RandomInt(25);
+            }
+            var tile = tiles[Index(person.X, person.Y)];
+            var manaRecovery = person.Mana >= 100 || rules.MagicRate == 0 ? 0
+                : .025 * rules.MagicRate * TerrainRules.For(tile.Terrain).ManaRate
+                * (.5 + person.MagicTalent / 100)
+                * (HasResearch(person.SettlementId, Advancement.ManaAttunement) ? 1.5 : 1);
+            var hasHome = _settlements.ContainsKey(person.SettlementId);
+            var waterUse = WaterUse(person);
+            var water = hasHome && person.ArmyId == 0 && person.Health > 0 && rules.Thirst
+                && inventory.Water < waterUse
+                ? WithdrawWater(person, Index(person.X, person.Y), waterUse - inventory.Water) : 0;
+            return new DailyResidentInput
+            {
+                Person = person, Inventory = inventory, Tile = tile.Value, Profession = profession, InfectionDuration = infectionDuration,
+                ManaRecovery = manaRecovery, ConsumeNeeds =
+                    person.ArmyId == 0 && hasHome, SocialGrowth = hasHome && (tick + person.Id) % 4 == 0 ? .28 : 0,
+                DeliveredWater = water, ArrivedTile =
+                    hasHome && person.ArmyId == 0 && person.Health > 0
+                        && tick - person.MoveStartedTick == person.MoveDurationTicks ? Index(person.X, person.Y) : -1,
+            };
+        }
+
     }
 
     private void GrowSettlements()

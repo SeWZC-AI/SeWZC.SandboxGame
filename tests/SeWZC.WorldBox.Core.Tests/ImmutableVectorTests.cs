@@ -10,8 +10,10 @@ public sealed class ImmutableVectorTests
     /// <summary>局部可变更新读取原序列的差异，跨分支冻结后不能改写任何已返回的版本。</summary>
     [Theory]
     [InlineData(9)]
+    [InlineData(33)]
     [InlineData(65)]
     [InlineData(513)]
+    [InlineData(1025)]
     public void Builder_freezes_independent_versions_across_branch_boundaries(int count)
     {
         var before = ImmutableVector<Item>.CreateRange(Enumerable.Range(0, count).Select(id => new Item(id)))

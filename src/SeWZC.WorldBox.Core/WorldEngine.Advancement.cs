@@ -373,7 +373,8 @@ public sealed partial class WorldEngine
         if (batches <= 0) return false;
         var inventory = Spend(person.Inventory, recipe.Input.ToStock().Scale(batches));
         inventory = inventory.WithAmount(recipe.Output, inventory.Get(recipe.Output) + yield * batches);
-        person.Replace(person.Value with { Inventory = inventory, Mana = person.Mana - recipe.Mana * batches });
+        person.Inventory = inventory;
+        person.Mana -= recipe.Mana * batches;
         RecordHarvest(Current.Tiles[Index(building.X, building.Y)], yield * batches);
         var firstBatch = building.ProductionBatches == 0;
         building.ProductionBatches = Math.Min(1_000_000_000, building.ProductionBatches + batches);

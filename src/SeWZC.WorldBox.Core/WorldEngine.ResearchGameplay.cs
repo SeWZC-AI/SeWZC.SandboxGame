@@ -17,7 +17,7 @@ public sealed partial class WorldEngine
             throw new InvalidOperationException("只能分配当地未出征、未在异地递送的成年居民");
         if (job is Profession.Battlemage or Profession.Gardener && person.MagicTalent < 25)
             throw new InvalidOperationException("此岗位需要魔法天赋至少 25");
-        person.Replace(person.Value with { Profession = job, Agent = person.Agent.Value with { JobChangedTick = Current.Tick, NextThinkTick = Current.Tick } });
+        person.Replace(person.Value with { Profession = job, Agent = person.Agent.Value with { JobChangedTick = Current.Tick, WorkplaceId = 0, WorkAreaIndex = -1, NextThinkTick = Current.Tick } });
         person.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Idle, TargetX = person.X, TargetY = person.Y };
         RecordLife(person, "根据已掌握的研究，接受" + ProfessionName(job) + "岗位。");
     }
@@ -92,6 +92,7 @@ public sealed partial class WorldEngine
             Profession.Battlemage => "完成奥术训练后参与风暴尖塔、结界工作；行军时依已知军令施放战场法术。",
             Profession.Surveyor => "在勘测所形成眼前水源、城镇及危险的实地报告，带有观察时刻。",
             Profession.Gardener => "在共生林苑消耗用水与个人魔力，恢复周围树木覆盖；树木成熟后可供采伐。",
+            Profession.Laborer => "无固定专业岗位时协助眼前实际生产、建设与搬运；缺粮时仍可自行觅食。",
             _ => ProfessionName(job),
         };
     }

@@ -6,7 +6,124 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>世界快照、日内转换和异步保存的隔离边界。</summary>
 public sealed class ImmutableWorldTests
 {
+    /// <summary>日内仓库连续记账即时供后续居民读取，快照冻结合并库存并保留此前世界。</summary>
+    [Fact]
+    public void Warehouse_batches_preserve_snapshots_and_other_settlement_updates()
+    {
+        var fixture = new WorldFixture();
+        var before = fixture.Engine.State;
+        var town = fixture.Town;
+        using var updates = fixture.Engine.Current.Settlements.BeginUpdates();
+        town.BeginResourceUpdates();
+        town.Resources = town.Resources with { Food = 7, Water = 3 };
+        var middle = fixture.Engine.State;
+        town.Resources = town.Resources with { Food = 5 };
+        town.Housing = 100;
+        Assert.Equal(5, town.Resources.Food);
+        var current = fixture.Engine.Current.Settlements.Snapshot.Single();
+        town.EndResourceUpdates();
+
+        Assert.Equal(7, middle.Settlements.Single().Resources.Food);
+        Assert.Equal(5, current.Resources.Food);
+        Assert.Equal(100, current.Housing);
+        Assert.Equal(3, current.Resources.Water);
+        Assert.Equal(5, fixture.Engine.State.Settlements.Single().Resources.Food);
+        Assert.Equal(Serialize(before), Serialize(WorldEngine.ImportJson(Serialize(before)).State));
+    }
+
+    /// <summary>身份状态拆分后，日常更新、迁居与训练仍保持旧快照、值相等和原有平面存档。</summary>
+    [Fact]
+    public void Resident_identity_remains_immutable_and_roundtrips_as_flat_fields()
+    {
+        var before = new Resident
+        {
+            Id = 12, Name = "林", Race = RaceKind.Elf, NationId = 3, SettlementId = 4,
+            CultureId = 5, Trait = "好奇", Profession = Profession.Mage,
+            MagicTalent = 40, MagicTraining = 20,
+        };
+        var after = before with { Age = 30, SettlementId = 8, MagicTraining = 24 };
+        Assert.Equal(4, before.SettlementId);
+        Assert.Equal(20, before.MagicTraining);
+        var reverted = after with { Age = 0, SettlementId = 4, MagicTraining = 20 };
+        Assert.Equal(before, reverted);
+        Assert.Equal(before.GetHashCode(), reverted.GetHashCode());
+        var json = JsonSerializer.Serialize(before, WorldJsonContext.Default.Resident);
+        Assert.Equal(before, JsonSerializer.Deserialize(json, WorldJsonContext.Default.Resident));
+        using var saved = JsonDocument.Parse(json);
+        Assert.Equal(12, saved.RootElement.GetProperty("Id").GetInt32());
+        Assert.Equal(20, saved.RootElement.GetProperty("MagicTraining").GetDouble());
+        Assert.False(saved.RootElement.TryGetProperty("Identity", out _));
+        Assert.Equal(25, new Resident().MagicTalent);
+        var signedZero = before with { MagicTalent = -0d, MagicTraining = -0d };
+        Assert.Equal(long.MinValue, BitConverter.DoubleToInt64Bits(signedZero.MagicTalent));
+        Assert.Equal(long.MinValue, BitConverter.DoubleToInt64Bits(signedZero.MagicTraining));
+    }
+
     private static string Serialize(WorldState state) => JsonSerializer.Serialize(state, WorldJsonContext.Default.WorldState);
+
+    /// <summary>日内死亡、生成及位置改写合并冻结；中途读取的人口和快照仍准确。</summary>
+    [Fact]
+    public void Membership_changes_preserve_pending_body_and_agent_updates()
+    {
+        var fixture = new WorldFixture();
+        fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 2);
+        var list = fixture.Engine.Current.Residents;
+        var before = fixture.Engine.State;
+        var survivor = list[1];
+        using (list.BeginUpdates())
+        {
+            survivor.Health = 60;
+            list.RemoveAt(0);
+            survivor.Agent.Fatigue = 20;
+            Assert.Equal(2, fixture.Engine.Current.Population);
+            var middle = fixture.Engine.State;
+            Assert.Equal(60, middle.Residents[0].Health);
+            Assert.Equal(20, middle.Residents[0].Agent.Fatigue);
+            list.Add(new Resident { Id = 123, Health = 90 });
+            survivor.Hunger = 40;
+            list.RemoveAt(1);
+            Assert.Equal(2, fixture.Engine.Current.Population);
+            Assert.Equal(0, middle.Residents[0].Hunger);
+        }
+        var after = fixture.Engine.State;
+        Assert.Equal<int>([survivor.Id, 123], after.Residents.Select(p => p.Id));
+        Assert.Equal(40, after.Residents[0].Hunger);
+        Assert.Equal(90, after.Residents[1].Health);
+        Assert.Equal(3, before.Population);
+        Assert.NotEqual(60, before.Residents[1].Health);
+    }
+
+    /// <summary>连续动作立即读取草稿，读取实体及世界时冻结，后续更改不污染已返回快照。</summary>
+    [Fact]
+    public void Resident_drafts_freeze_agent_and_body_together_at_snapshot_boundaries()
+    {
+        var fixture = new WorldFixture();
+        var before = fixture.Engine.State;
+        var original = fixture.Resident.Value;
+        using (fixture.Engine.Current.Residents.BeginUpdates())
+        {
+            fixture.Resident.Health = 70;
+            fixture.Resident.X = 15;
+            fixture.Resident.Inventory = new ResourceStock { Food = 3 };
+            fixture.Resident.Agent.Fatigue = 40;
+            Assert.Equal(70, fixture.Resident.Health);
+            Assert.Equal(15, fixture.Resident.X);
+            var middle = fixture.Engine.State;
+            fixture.Resident.Health = 50;
+            fixture.Resident.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = 15, TargetY = 16 };
+            fixture.Resident.Profession = Profession.Laborer;
+            Assert.Equal(70, middle.Residents[0].Health);
+            Assert.Equal(40, middle.Residents[0].Agent.Fatigue);
+            Assert.NotEqual(AgentGoalKind.Rest, middle.Residents[0].Agent.Goal.Kind);
+            Assert.Equal(50, fixture.Resident.Value.Health);
+            Assert.Equal(AgentGoalKind.Rest, fixture.Resident.Value.Agent.Goal.Kind);
+            fixture.Resident.Health = 30;
+            fixture.Resident.Replace(original);
+            Assert.Equal(original, fixture.Resident.Value);
+        }
+        Assert.Equal(original, fixture.Engine.State.Residents[0]);
+        Assert.Equal(original, before.Residents[0]);
+    }
 
     /// <summary>共享种群存储不改变旧地格、值比较或平面存档；其他地格更新保留动物数量。</summary>
     [Fact]
@@ -32,6 +149,32 @@ public sealed class ImmutableWorldTests
         Assert.False(document.RootElement.TryGetProperty("WildlifeStorage", out _));
         var negativeZero = before with { OtherWildlife = new WildlifePopulations { Wolf = -0d } };
         Assert.Equal(long.MinValue, BitConverter.DoubleToInt64Bits(negativeZero.AnimalPopulation(WildlifeKind.Wolf)));
+    }
+
+    /// <summary>稀疏种群冻结后不持有可变生态缓冲，覆盖最高物种位和负零的值比较。</summary>
+    [Fact]
+    public void Sparse_animal_populations_own_their_buffer_and_preserve_all_species()
+    {
+        var populations = new double[32];
+        populations[(int)WildlifeKind.Deer] = 4;
+        populations[(int)WildlifeKind.SnowLeopard] = 2;
+        populations[(int)WildlifeKind.Wolf] = -0d;
+        var tile = new Tile().WithAnimalPopulations(WildlifeKind.Deer, populations);
+        Array.Clear(populations);
+
+        Assert.Equal(4, tile.AnimalPopulation(WildlifeKind.Deer));
+        Assert.Equal(2, tile.AnimalPopulation(WildlifeKind.SnowLeopard));
+        Assert.Equal((1 << (int)WildlifeKind.Deer) | (1 << (int)WildlifeKind.SnowLeopard), tile.WildlifeMask);
+        Assert.Equal(long.MinValue, BitConverter.DoubleToInt64Bits(tile.OtherWildlife.Wolf));
+        var positiveZero = tile.WithAnimalPopulation(WildlifeKind.Wolf, 0d);
+        Assert.Equal(tile, positiveZero);
+        Assert.Equal(tile.GetHashCode(), positiveZero.GetHashCode());
+        var cleared = tile.WithAnimalPopulation(WildlifeKind.SnowLeopard, 0);
+        Assert.Equal(2, tile.AnimalPopulation(WildlifeKind.SnowLeopard));
+        Assert.Equal(0, cleared.AnimalPopulation(WildlifeKind.SnowLeopard));
+        var promoted = new Tile { OtherWildlife = tile.OtherWildlife }.WithAnimalPopulation(WildlifeKind.SnowLeopard, 3);
+        Assert.Equal(WildlifeKind.SnowLeopard, promoted.Wildlife);
+        Assert.Equal(0, promoted.OtherWildlife.SnowLeopard);
     }
 
     /// <summary>日内 ID 和随机序列立即供后续行为读取，冻结时合并元数据并保留旧快照。</summary>
@@ -75,6 +218,7 @@ public sealed class ImmutableWorldTests
             Initialized = true, DestinationSettlementId = 12, MissionOriginSettlementId = 3,
             MissionStartedTick = 20, MissionRetryTick = 24, ExplorationHeading = 6,
             LastConversationTick = 18, JobChangedTick = 9, MaterialPriority = ResourceKind.Stone,
+            WorkplaceId = 2_000_001, WorkAreaIndex = 30,
         };
         var changed = before with { Fatigue = 20, DestinationSettlementId = 13 };
         var reverted = changed with { Fatigue = 0, DestinationSettlementId = 12 };
@@ -89,6 +233,8 @@ public sealed class ImmutableWorldTests
         Assert.Equal(20, saved.RootElement.GetProperty("MissionStartedTick").GetInt64());
         Assert.False(saved.RootElement.TryGetProperty("Identity", out _));
         Assert.Equal(-120, new AgentState().JobChangedTick);
+        Assert.Equal(2_000_001, saved.RootElement.GetProperty("WorkplaceId").GetInt32());
+        Assert.Equal(-1, new AgentState().WorkAreaIndex);
     }
 
     /// <summary>低频身体状态仍按值比较并保存为原有平面字段，日常更新保留此前状态。</summary>
@@ -243,9 +389,11 @@ public sealed class ImmutableWorldTests
         fixture.Engine.Current.Residents.Remove(person);
         fixture.Engine.Current.ArchivedResidents.Add(person);
         person.Name = "归档的新姓名";
+        person.Inventory = new ResourceStock { Food = 3 };
 
         Assert.Empty(fixture.Engine.State.Residents);
         Assert.Equal("归档的新姓名", fixture.Engine.State.ArchivedResidents[0].Name);
+        Assert.Equal(3, fixture.Engine.State.ArchivedResidents[0].Inventory.Food);
         Assert.NotEqual("归档的新姓名", before.Residents[0].Name);
     }
 

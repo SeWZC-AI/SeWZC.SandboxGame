@@ -6,7 +6,6 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     // 通信索引只在本阶段有效，不能替代世界中的权威居民状态。
-    private readonly Dictionary<int, ResidentCursor> _communicationPeople = [];
     private readonly List<int> _conversationTiles = [];
     private readonly List<PendingMessage> _messagesToDeliver = [];
     private readonly List<AgentFact> _missionAddresses = [];
@@ -149,10 +148,6 @@ public sealed partial class WorldEngine
 
     private void UpdateLocalCommunication()
     {
-        var people = _communicationPeople;
-        people.Clear();
-        foreach (var person in Current.Residents)
-            people.Add(person.Id, person);
         // 递送先于本日交谈处理，新获知的信息须等到后续时刻才能转述，避免同日瞬间传播。
         _messagesToDeliver.Clear();
         var remaining = 0;
@@ -168,12 +163,12 @@ public sealed partial class WorldEngine
         Current.PendingMessages.RemoveRange(remaining, Current.PendingMessages.Count - remaining);
         foreach (var message in _messagesToDeliver)
         {
-            if (!people.TryGetValue(message.RecipientId, out var recipient))
+            if (FindLiveResident(message.RecipientId) is not { } recipient)
                 continue;
             if (message.TargetSettlementId != 0
                 && (!_settlements.TryGetValue(message.TargetSettlementId, out var endpoint)
                     || Distance(recipient.X, recipient.Y, endpoint.X, endpoint.Y) > 2
-                    || !people.TryGetValue(message.SenderId, out var stationSender)
+                    || FindLiveResident(message.SenderId) is not { } stationSender
                     || !CanRelayInformation(stationSender.SettlementId, endpoint.Id, out _)))
                 continue;
             _receivedFacts.Clear();
@@ -303,7 +298,7 @@ public sealed partial class WorldEngine
                 });
             }
 
-            sender.Replace(sender.Value with { Agent = sender.Agent.Value with { LastConversationTick = Current.Tick, SocialNeed = Math.Max(0, sender.Agent.SocialNeed - 14) } });
+            sender.Agent.Replace(sender.Agent.Value with { LastConversationTick = Current.Tick, SocialNeed = Math.Max(0, sender.Agent.SocialNeed - 14) });
             recipient.Agent.SocialNeed = Math.Max(0, recipient.Agent.SocialNeed - 10);
             ExchangeCulture(sender, recipient);
             if (sender.Agent.Goal.Kind == AgentGoalKind.Socialize)
@@ -311,7 +306,6 @@ public sealed partial class WorldEngine
         }
 
         RelayKnownAgentMessages();
-        people.Clear();
         Array.Clear(_conversationResidents, 0, total);
     }
 

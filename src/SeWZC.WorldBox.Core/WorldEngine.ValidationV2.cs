@@ -130,6 +130,8 @@ public sealed partial class WorldEngine
             agent.NextThinkTick <= tick + 100_000 && agent.LastConversationTick >= 0 &&
             agent.LastConversationTick <= tick && agent.MissionStartedTick >= 0 && agent.MissionStartedTick <= tick &&
             agent.MissionRetryTick >= 0 && agent.MissionRetryTick <= tick + 100_000, "行动调度时间无效。");
+        CheckV2(agent.WorkplaceId >= 0, "固定工作设施编号无效。");
+        CheckV2(agent.WorkAreaIndex >= -1 && agent.WorkAreaIndex < width * height, "固定采集范围无效。");
         foreach (var fact in agent.Memory!)
             ValidateFactV2(fact, tick, width, height);
         foreach (var fact in agent.CarriedMessages!)

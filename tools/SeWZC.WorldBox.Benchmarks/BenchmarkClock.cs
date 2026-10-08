@@ -2,10 +2,10 @@ using System.Runtime.InteropServices;
 
 internal static class BenchmarkClock
 {
-    internal static long ReadThreadCpu()
+    internal static long ReadProcessCpu()
     {
         if (!OperatingSystem.IsLinux()) return 0;
-        if (clock_gettime(3, out var time) != 0) throw new InvalidOperationException("无法读取线程 CPU 时钟。");
+        if (clock_gettime(2, out var time) != 0) throw new InvalidOperationException("无法读取进程 CPU 时钟。");
         return time.Seconds * 1_000_000_000 + time.Nanoseconds;
     }
 

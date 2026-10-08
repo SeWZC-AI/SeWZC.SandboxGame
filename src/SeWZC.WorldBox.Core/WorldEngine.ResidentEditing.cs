@@ -125,6 +125,11 @@ public sealed partial class WorldEngine
             candidate.Inventory = stock;
         if (patch.Profession is { } profession)
             candidate.Profession = profession;
+        if (candidate.Profession != original.Profession || candidate.SettlementId != original.SettlementId)
+        {
+            candidate.Agent.WorkplaceId = 0;
+            candidate.Agent.WorkAreaIndex = -1;
+        }
         if (patch.Age is { } age)
             candidate.Age = age;
         if (patch.Health is { } health)

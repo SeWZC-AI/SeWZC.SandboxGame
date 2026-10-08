@@ -8,13 +8,25 @@ public sealed partial record Resident
 {
 
     /// <summary>居民的稳定 ID。</summary>
-    public int Id { get; init; }
+    public int Id
+    {
+        get => _identity.Id;
+        init { if (_identity.Id != value) _identity = _identity with { Id = value }; }
+    }
 
     /// <summary>居民的显示名称。</summary>
-    public string Name { get; init; } = "";
+    public string Name
+    {
+        get => _identity.Name;
+        init { if (_identity.Name != value) _identity = _identity with { Name = value }; }
+    }
 
     /// <summary>居民的种族。</summary>
-    public RaceKind Race { get; init; }
+    public RaceKind Race
+    {
+        get => _identity.Race;
+        init { if (_identity.Race != value) _identity = _identity with { Race = value }; }
+    }
 
     /// <summary>所在地点的横向地格坐标。</summary>
     public int X { get; init; }
@@ -26,13 +38,25 @@ public sealed partial record Resident
     public double Age { get; init; }
 
     /// <summary>居民所属国家的 ID。</summary>
-    public int NationId { get; init; }
+    public int NationId
+    {
+        get => _identity.NationId;
+        init { if (_identity.NationId != value) _identity = _identity with { NationId = value }; }
+    }
 
     /// <summary>居民所属聚落的 ID。</summary>
-    public int SettlementId { get; init; }
+    public int SettlementId
+    {
+        get => _identity.SettlementId;
+        init { if (_identity.SettlementId != value) _identity = _identity with { SettlementId = value }; }
+    }
 
     /// <summary>当前职业分工。</summary>
-    public Profession Profession { get; init; }
+    public Profession Profession
+    {
+        get => _identity.Profession;
+        init { if (_identity.Profession != value) _identity = _identity with { Profession = value }; }
+    }
 
     /// <summary>当前活动或身体状态。</summary>
     public ResidentActivity Activity { get; init; }
@@ -54,7 +78,11 @@ public sealed partial record Resident
     }
 
     /// <summary>供档案显示的性格特征文字。</summary>
-    public string Trait { get; init; } = "勤劳";
+    public string Trait
+    {
+        get => _identity.Trait;
+        init { if (_identity.Trait != value) _identity = _identity with { Trait = value }; }
+    }
 
     /// <summary>疫病康复后的暂时免疫截止日序。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
@@ -121,7 +149,11 @@ public sealed partial record Resident
     public double Thirst { get; init; }
 
     /// <summary>文化归属的稳定 ID。</summary>
-    public int CultureId { get; init; }
+    public int CultureId
+    {
+        get => _identity.CultureId;
+        init { if (_identity.CultureId != value) _identity = _identity with { CultureId = value }; }
+    }
 
     /// <summary>居民的认知与自主行动状态。</summary>
     public AgentState Agent { get; init; } = new();
@@ -133,10 +165,18 @@ public sealed partial record Resident
     public double Mana { get; init; } = 20;
 
     /// <summary>魔法天赋，影响学习和施法能力。</summary>
-    public double MagicTalent { get; init; } = 25;
+    public double MagicTalent
+    {
+        get => _identity.MagicTalent;
+        init { if (BitConverter.DoubleToInt64Bits(_identity.MagicTalent) != BitConverter.DoubleToInt64Bits(value)) _identity = _identity with { MagicTalent = value }; }
+    }
 
     /// <summary>累计魔法训练程度。</summary>
-    public double MagicTraining { get; init; }
+    public double MagicTraining
+    {
+        get => _identity.MagicTraining;
+        init { if (BitConverter.DoubleToInt64Bits(_identity.MagicTraining) != BitConverter.DoubleToInt64Bits(value)) _identity = _identity with { MagicTraining = value }; }
+    }
 
     /// <summary>当前移动区段起点的横向地格坐标。</summary>
     public int FromX { get; init; }
@@ -151,5 +191,9 @@ public sealed partial record Resident
     public int MoveDurationTicks { get; init; } = 1;
 
     /// <summary>容量受限的个人经历记录。</summary>
-    public ImmutableList<ResidentHistoryEntry> History { get; init; } = [];
+    public ImmutableList<ResidentHistoryEntry> History
+    {
+        get => _identity.History;
+        init { if (!ReferenceEquals(_identity.History, value)) _identity = _identity with { History = value }; }
+    }
 }

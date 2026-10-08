@@ -10,12 +10,12 @@ using SeWZC.WorldBox.Core;
     ("256x256-4096", 256, 4096, 12),
 ];
 var options = args.Skip(1).ToHashSet(StringComparer.Ordinal);
-if (args.Length < 1 || options.Any(option => option is not ("--verify" or "--default-rules" or "--large" or "--steady")
+if (args.Length < 1 || options.Any(option => option is not ("--verify" or "--default-rules" or "--large" or "--steady" or "--save-final")
         && !option.StartsWith("--seed=", StringComparison.Ordinal) && !option.StartsWith("--start-day=", StringComparison.Ordinal)
         && !option.StartsWith("--years=", StringComparison.Ordinal) && !option.StartsWith("--repetitions=", StringComparison.Ordinal)
         && !option.StartsWith("--population-floor=", StringComparison.Ordinal))
     || options.Contains("--verify") && options.Count != 1)
-    throw new ArgumentException("请指定结果 JSON 路径；--default-rules 使用默认规则，--large 只测 256² / 4096 人，--steady 测量后续 64 日；--seed=整数 指定种子，--start-day=整数 指定计时前推进日数；--years=整数 测量长期演化，--repetitions=整数 指定轮数，--population-floor=整数 在计时外补充居民维持人口负载；--verify 独立验证续演。");
+    throw new ArgumentException("请指定结果 JSON 路径；--default-rules 使用默认规则，--large 只测 256² / 4096 人，--steady 测量后续 64 日；--seed=整数 指定种子，--start-day=整数 指定计时前推进日数；--years=整数 测量长期演化，--repetitions=整数 指定轮数，--population-floor=整数 在计时外补充居民维持人口负载；--save-final 在计时外保存终态，--verify 独立验证续演。");
 var benchmarkSeed = ReadIntegerOption(options, "--seed=", 42);
 var years = ReadIntegerOption(options, "--years=", 0);
 var repetitions = ReadIntegerOption(options, "--repetitions=", years > 0 ? 3 : 7);
@@ -138,13 +138,13 @@ foreach (var scenario in cases)
             var dayGen0 = GC.CollectionCount(0);
             var dayGen1 = GC.CollectionCount(1);
             var dayGen2 = GC.CollectionCount(2);
-            var cpuBefore = BenchmarkClock.ReadThreadCpu();
-            var dayAllocated = GC.GetAllocatedBytesForCurrentThread();
+            var cpuBefore = BenchmarkClock.ReadProcessCpu();
+            var dayAllocated = GC.GetTotalAllocatedBytes(precise: true);
             var started = Stopwatch.GetTimestamp();
             engine.Step();
             days[day] = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
-            var cpuAfter = BenchmarkClock.ReadThreadCpu();
-            var allocated = GC.GetAllocatedBytesForCurrentThread() - dayAllocated;
+            var cpuAfter = BenchmarkClock.ReadProcessCpu();
+            var allocated = GC.GetTotalAllocatedBytes(precise: true) - dayAllocated;
             var g0 = GC.CollectionCount(0) - dayGen0;
             var g1 = GC.CollectionCount(1) - dayGen1;
             var g2 = GC.CollectionCount(2) - dayGen2;
@@ -177,6 +177,8 @@ foreach (var scenario in cases)
         collections.Add([GC.CollectionCount(0) - gen0, GC.CollectionCount(1) - gen1, GC.CollectionCount(2) - gen2]);
         var saved = engine.ExportJson();
         var observed = Convert.ToHexString(SHA256.HashData(CanonicalState(saved)));
+        if (options.Contains("--save-final"))
+            File.WriteAllText(args[0] + "." + repetition + ".final.json", saved);
         if (checksum is not null && checksum != observed)
             throw new InvalidOperationException("相同初态的重复模拟产生了不同结果。");
         checksum = observed;
@@ -202,6 +204,7 @@ foreach (var scenario in cases)
         TieredPGO = Environment.GetEnvironmentVariable("DOTNET_TieredPGO"),
         ServerGarbageCollection = System.Runtime.GCSettings.IsServerGC,
         GcLatencyMode = System.Runtime.GCSettings.LatencyMode.ToString(),
+        CpuClock = "Linux CLOCK_PROCESS_CPUTIME_ID", AllocationScope = "All managed threads",
         MeanMsPerDay = times.Average(), TimesMsPerDay = times, DailyTimesMs = dailyTimes,
         DailyMeasurements = dailySamples, AnnualResults = annualResults,
         P95MsPerDay = Percentile(dailyTimes.SelectMany(days => days), .95),
