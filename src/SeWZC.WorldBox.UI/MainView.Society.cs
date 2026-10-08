@@ -397,7 +397,7 @@ public sealed partial class MainView
         var direction = EnumField(bridgeOptions, "桥梁方向", BridgeDirection.Horizontal, WorldEngine.BridgeDirectionName,
             "building-bridge-direction");
         var level = ObjectField(bridgeOptions, "桥梁等级",
-            new[] { (1, "1 级：离岸 2 格"), (2, "2 级：离岸 4 格"), (3, "3 级：离岸 6 格") }, 1, "building-bridge-level");
+            [(1, "1 级：离岸 2 格"), (2, "2 级：离岸 4 格"), (3, "3 级：离岸 6 格")], 1, "building-bridge-level");
         var cost = Named(Paragraph(""), "building-requirements");
         panel.Children.Add(cost);
 

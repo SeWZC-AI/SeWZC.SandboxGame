@@ -242,7 +242,7 @@ public sealed partial class MainView
         panel.Children.Add(tabs);
         var name = Field(identity, "姓名", resident.Name, "resident-name");
         var trait = ObjectField(identity, "性格预设（选择后同步调整对应倾向）",
-            new[] { (0, "保持当前性格"), (1, "勤劳"), (2, "勇敢"), (3, "好奇"), (4, "温和") }, 0, "resident-trait");
+            [(0, "保持当前性格"), (1, "勤劳"), (2, "勇敢"), (3, "好奇"), (4, "温和")], 0, "resident-trait");
         var race = EnumField(identity, "种族", resident.Race, RaceName, "resident-race");
         var profession = EnumField(identity, "职业", resident.Profession, ProfessionName, "resident-profession");
         var culture = ObjectField(belonging, "文化", _engine.State.Society.Cultures.Select(c => (c.Id, c.Name)),
@@ -592,12 +592,12 @@ public sealed partial class MainView
                 AgentFactKind.Culture => _engine.State.Society.Cultures.Select(c => new EntityChoice(c.Id, c.Name)),
                 AgentFactKind.Research => Advancement.All.OrderBy(research => research.Id)
                     .Select(r => new EntityChoice(r.Id, r.Name)),
-                AgentFactKind.TradeExchange => new[] { new EntityChoice(1, "实际完成交易") },
-                AgentFactKind.DiplomaticNotice => new[]
-                {
+                AgentFactKind.TradeExchange => [new EntityChoice(1, "实际完成交易")],
+                AgentFactKind.DiplomaticNotice =>
+                [
                     new EntityChoice(0, "停战声明"), new EntityChoice(1, "结盟提议"), new EntityChoice(2, "宣战声明"),
-                },
-                _ => Array.Empty<EntityChoice>(),
+                ],
+                _ => [],
             };
             var values = options.ToArray();
             choice.ItemsSource = values;
@@ -745,7 +745,7 @@ public sealed partial class MainView
         var experience = EnumField(panel, "经历类型", entry.Experience, ExperienceName, "history-entry-experience");
         var impact = Field(panel, "影响强度 −1 至 1", entry.Impact, "history-entry-impact");
         var strength = ObjectField(panel, "强度预设",
-            new[] { (0, "保持当前强度"), (1, "轻微（0.25）"), (2, "明显（0.5）"), (3, "重大（1）") }, 0, "history-entry-strength");
+            [(0, "保持当前强度"), (1, "轻微（0.25）"), (2, "明显（0.5）"), (3, "重大（1）")], 0, "history-entry-strength");
         strength.SelectionChanged += (_, _) =>
         {
             var value = Integer(strength);
@@ -927,8 +927,11 @@ public sealed partial class MainView
 
     private NumericUpDown[] StockFields(StackPanel panel, ResourceStock stock, string prefix)
     {
-        return ResourceStock.Kinds.Select(kind => Field(panel, ResourceStock.Name(kind), stock.Get(kind),
-            prefix + "-" + kind.ToString().ToLowerInvariant())).ToArray();
+        return
+        [
+            .. ResourceStock.Kinds.Select(kind => Field(panel, ResourceStock.Name(kind), stock.Get(kind),
+                prefix + "-" + kind.ToString().ToLowerInvariant())),
+        ];
     }
 
     private static ResourceStock ReadStock(NumericUpDown[] fields)
