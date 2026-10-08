@@ -55,6 +55,8 @@ public sealed partial class MainView : UserControl
     private readonly Border _mapPickBar = new() { IsVisible = false };
     private readonly Border _modal = new() { IsVisible = false, Background = Brush.Parse("#BD071118"), ZIndex = 100 };
     private readonly Stack<InspectorLocation> _navigation = new();
+    private readonly Border _performancePanel;
+    private readonly TextBlock _performanceText = Named(Text("FPS 0\n0 日/秒", 10, Mint), "performance-stats");
     private readonly Border _placementBar = new();
     private readonly TextBlock _placementText = Text("", 12);
     private readonly Button _play;
@@ -63,6 +65,7 @@ public sealed partial class MainView : UserControl
     private readonly SemaphoreSlim _saveGate = new(1, 1);
     private readonly Control? _shell;
     private readonly TextBlock _simulationStatus = Text("世界正在演化", 11, Mint);
+    private readonly RecentActivityCounter _simulationDays = new();
     private readonly MapTool?[] _slotTools = new MapTool?[8];
     private readonly List<(int Speed, Button Button)> _speeds = [];
     private readonly TextBlock _status = Text("正在唤醒世界…", 11, Muted);
@@ -97,7 +100,7 @@ public sealed partial class MainView : UserControl
     private bool _modalHasPrimary;
     private bool _paused, _ready, _saving, _wasBackground, _mobilePanel;
     private Task? _prepareEditTask;
-    private double _previousTime, _accumulator, _lastUi, _lastSave;
+    private double _previousTime, _accumulator, _lastUi, _lastSave, _lastPerformanceUpdate;
     private CancellationTokenSource? _saveCapture;
     private WorldEngine? _savedSource;
     private (int X, int Y)? _selectedTile;
@@ -223,6 +226,20 @@ public sealed partial class MainView : UserControl
         _body.ColumnDefinitions = new ColumnDefinitions("0,*,0");
         var mapLayer = new Grid { ClipToBounds = true, Background = Brush.Parse("#122D3D") };
         mapLayer.Children.Add(_map);
+        _performancePanel = new Border
+        {
+            Child = _performanceText,
+            Width = 76,
+            Height = 36,
+            Padding = new Thickness(5, 3),
+            Margin = new Thickness(6),
+            Background = Panel,
+            CornerRadius = new CornerRadius(4),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            IsHitTestVisible = false,
+        };
+        mapLayer.Children.Add(_performancePanel);
         var camera = new StackPanel
         {
             Spacing = 3,
@@ -405,7 +422,7 @@ public sealed partial class MainView : UserControl
         _mapPickBar.Padding = new Thickness(8);
         _mapPickBar.VerticalAlignment = VerticalAlignment.Top;
         _mapPickBar.HorizontalAlignment = HorizontalAlignment.Left;
-        _mapPickBar.Margin = new Thickness(8);
+        _mapPickBar.Margin = new Thickness(8, 48, 8, 8);
         _mapPickBar.MaxWidth = 240;
         _mapPickBar.CornerRadius = new CornerRadius(8);
         _mapPickBar.ZIndex = 30;
@@ -540,6 +557,7 @@ public sealed partial class MainView : UserControl
             {
                 _engine = WorldEngine.ImportJson(json);
                 _map.Engine = _engine;
+                _simulationDays.Clear();
                 _savedSource = _engine;
                 _savedTick = _engine.State.Tick;
                 _savedEditRevision = _worldEditRevision;
@@ -603,6 +621,7 @@ public sealed partial class MainView : UserControl
                     break;
                 var stepStarted = Stopwatch.GetTimestamp();
                 _engine.Step();
+                _simulationDays.Record(Stopwatch.GetTimestamp());
                 _accumulator -= .2;
                 count++;
                 _lastStepMilliseconds = Stopwatch.GetElapsedTime(stepStarted).TotalMilliseconds;
@@ -620,6 +639,12 @@ public sealed partial class MainView : UserControl
             }
 
             _simulationStatus.Text = _accumulator > .4 ? "设备限速，世界继续演化" : "世界正在演化";
+        }
+
+        if (now - _lastPerformanceUpdate >= .25)
+        {
+            _lastPerformanceUpdate = now;
+            RefreshPerformanceStats();
         }
 
         if (now - _lastUi > .7)
@@ -670,6 +695,7 @@ public sealed partial class MainView : UserControl
         _saveCapture?.Cancel();
         CloseModal();
         _engine = WorldEngine.FromSnapshot(_checkpoint.Value);
+        _simulationDays.Clear();
         _checkpoint = null;
         _paused = true;
         ClearMapSelection();
@@ -755,8 +781,19 @@ public sealed partial class MainView : UserControl
         _toolTitle.FontSize = compact ? 11 : 13;
     }
 
+    private void RefreshPerformanceStats()
+    {
+        if (!_performancePanel.IsVisible)
+            return;
+        var timestamp = Stopwatch.GetTimestamp();
+        var text = $"FPS {_map.GetRecentFrameCount(timestamp)}\n{_simulationDays.Count(timestamp)} 日/秒";
+        if (_performanceText.Text != text)
+            _performanceText.Text = text;
+    }
+
     private void RefreshUi(bool force = false)
     {
+        RefreshPerformanceStats();
         var state = _engine.State;
         _date.Text = $"第 {state.Year} 年 {state.Day} 日";
         _population.Text = $"居民 {state.Population:N0}    国家 {state.Nations.Count}";
@@ -1094,6 +1131,7 @@ public sealed partial class MainView : UserControl
         ResetInfrastructureFilters();
         _checkpoint ??= _engine.State;
         _engine = engine;
+        _simulationDays.Clear();
         _paused = true;
         _accumulator = 0;
         _selectedTile = null;
