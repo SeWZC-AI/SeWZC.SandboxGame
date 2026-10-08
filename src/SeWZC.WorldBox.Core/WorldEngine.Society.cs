@@ -3,6 +3,7 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    private readonly HashSet<int> _societyResidentIds = [];
     /// <summary>世界设施记录数量的上限。</summary>
     public const int MaxBuildings = 1_536;
 
@@ -1468,7 +1469,9 @@ public sealed partial class WorldEngine
         Current.Society.Institutions.RemoveAll(i => !nationIds.Contains(i.NationId));
         Current.Society.Reports.RemoveAll(r =>
             !townIds.Contains(r.RecipientSettlementId) || Current.Tick - r.ReceivedTick > 1_440);
-        var liveResidents = Current.Residents.Select(r => r.Id).ToHashSet();
+        var liveResidents = _societyResidentIds;
+        liveResidents.Clear();
+        foreach (var resident in Current.Residents) liveResidents.Add(resident.Id);
         Current.Society.CulturalContacts.RemoveAll(c => !liveResidents.Contains(c.ResidentId));
         foreach (var building in Current.Society.Buildings)
         {
@@ -1545,6 +1548,7 @@ public sealed partial class WorldEngine
             if (tile.ResourceAmount < capacity)
                 tile.ResourceAmount = Math.Min(capacity, tile.ResourceAmount + renewal * 2);
         }
+        liveResidents.Clear();
     }
 
     private void TryAutomaticMagic(ResidentCursor person)

@@ -41,19 +41,19 @@ public sealed partial class WorldEngine
             || person.Profession != Profession.Builder)
             return -1;
         var active = 0;
+        var reservedSite = -1;
         foreach (var resident in _citizens[town.Id])
-            if (resident.Id != person.Id && resident.Agent.Goal.Kind == AgentGoalKind.ClaimLand && ++active >= 2)
-                return -1;
+            if (resident.Id != person.Id && resident.Agent.Goal.Kind == AgentGoalKind.ClaimLand)
+            {
+                if (++active >= 2) return -1;
+                reservedSite = Index(resident.Agent.Goal.TargetX, resident.Agent.Goal.TargetY);
+            }
         var reachable = 0;
         foreach (var offset in VisibleResourceOffsets)
         {
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
-            if (InBounds(x, y) && CanClaimTile(town, Index(x, y), person.Race)
-                               && !_citizens[town.Id].Any(r => r.Id != person.Id &&
-                                                               r.Agent.Goal.Kind == AgentGoalKind.ClaimLand
-                                                               && r.Agent.Goal.TargetX == x &&
-                                                               r.Agent.Goal.TargetY == y)
+            if (InBounds(x, y) && Index(x, y) != reservedSite && CanClaimTile(town, Index(x, y), person.Race)
                                && VisibleSiteReachable(person, Index(x, y), ref reachable))
                 return Index(x, y);
         }

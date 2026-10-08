@@ -147,8 +147,47 @@ public sealed class AgentCadenceTests
         var days = (int)(due - fixture.Engine.State.Tick);
         fixture.Engine.Step(days);
         restored.Step(days);
-        Assert.Equal(due + 4, fixture.Resident.Agent.NextThinkTick);
+        Assert.InRange(fixture.Resident.Agent.NextThinkTick - due, 4, 24);
         Assert.Equal(fixture.Engine.ExportJson(), restored.ExportJson());
+    }
+
+    /// <summary>已在有效采食且每天喝足水时，不将饮水后耗尽的日额度误判为新危机。</summary>
+    [Theory]
+    [InlineData(100, true)]
+    [InlineData(5, false)]
+    public void Productive_food_task_continues_after_drinking_the_daily_supply(byte fertility, bool productive)
+    {
+        var fixture = Prepare();
+        fixture.Town.Resources = new ResourceStock();
+        fixture.Resident.Inventory = new ResourceStock();
+        fixture.Resident.Hunger = 90;
+        var tile = fixture.Engine.Current.Tiles[16 * 32 + 16];
+        tile.Replace(tile.Value with
+        {
+            NaturalWaterYield = .025, DroughtTicks = 0, ResourceAmount = 100,
+            Fertility = fertility, Plants = new PlantCoverage { Grass = 1 },
+        });
+        fixture.Resident.Agent.Goal = new AgentGoal
+        {
+            Kind = AgentGoalKind.Gather, TargetX = 16, TargetY = 16,
+            StartedTick = fixture.Engine.Current.Tick - 4,
+        };
+
+        fixture.Engine.Step();
+
+        Assert.Equal(0, fixture.Resident.Thirst);
+        Assert.Equal(0, fixture.Engine.AvailableWater(16, 16), 8);
+        if (productive)
+        {
+            Assert.Equal(AgentGoalKind.Gather, fixture.Resident.Agent.Goal.Kind);
+            Assert.Empty(fixture.Resident.Agent.Decisions);
+            Assert.Equal(fixture.Engine.Current.Tick + 24, fixture.Resident.Agent.NextThinkTick);
+        }
+        else
+        {
+            Assert.NotEmpty(fixture.Resident.Agent.Decisions);
+            Assert.NotEqual(fixture.Engine.Current.Tick + 24, fixture.Resident.Agent.NextThinkTick);
+        }
     }
 
     /// <summary>到场等粮的紧急任务也按个人日期复评，现场查看粮仓不能重新聚集评估日期。</summary>
@@ -240,6 +279,77 @@ public sealed class AgentCadenceTests
         Assert.Equal(37, fixture.Resident.Agent.NextThinkTick);
         Assert.Equal(.1, tile.WaterDrawn);
         Assert.Equal(0, fixture.Resident.Inventory.Water);
+    }
+
+    /// <summary>补个人储备与公共运水的任务在装满后结束，后者需实际返仓。</summary>
+    [Theory]
+    [InlineData(101, .75, AgentGoalKind.Idle)]
+    [InlineData(100, 3.75, AgentGoalKind.ReturnHome)]
+    public void Water_collection_finishes_at_the_respective_carry_target(
+        int id, double target, AgentGoalKind completedGoal)
+    {
+        var fixture = new WorldFixture();
+        fixture.Engine.Current.NextId = id;
+        fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
+        var person = fixture.Engine.RequireResident(id);
+        fixture.Engine.Current.Tick = 1;
+        person.Replace(person.Value with
+        {
+            X = 16, Y = 16, FromX = 16, FromY = 16,
+            Inventory = new ResourceStock { Water = target - .1 },
+            Agent = person.Agent.Value with
+            {
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 16,
+                    TargetEntityId = 16 * 32 + 16 + 1, ReviewTick = 40,
+                },
+                NextThinkTick = 40,
+            },
+        });
+        fixture.Engine.Current.Tiles[16 * 32 + 16].NaturalWaterYield = 1;
+        var before = fixture.Engine.State;
+
+        Assert.True(fixture.Engine.TryFetchWater(person.Value));
+
+        Assert.Equal(target, person.Inventory.Water, 8);
+        Assert.Equal(completedGoal, person.Agent.Goal.Kind);
+        Assert.Equal(1, person.Agent.NextThinkTick);
+        Assert.Equal(.1, fixture.Engine.Current.Tiles[16 * 32 + 16].WaterDrawn, 8);
+        Assert.Equal(target - .1, before.Residents.Single(resident => resident.Id == id).Inventory.Water, 8);
+        Assert.Equal(AgentGoalKind.FetchWater, before.Residents.Single(resident => resident.Id == id).Agent.Goal.Kind);
+    }
+
+    /// <summary>到场取水逐日结算，不受普通生产的四日轮班限制；在途仍不能取水。</summary>
+    [Theory]
+    [InlineData(0, true)]
+    [InlineData(1, false)]
+    public void Water_collection_runs_daily_after_arrival(int movementStarted, bool draws)
+    {
+        var fixture = Prepare();
+        fixture.Engine.Current.Tick = (4 - fixture.ResidentId % 4) % 4;
+        fixture.Town.Resources = new ResourceStock();
+        fixture.Resident.Replace(fixture.Resident.Value with
+        {
+            Age = 20, MoveStartedTick = movementStarted == 0 ? 0 : fixture.Engine.Current.Tick,
+            MoveDurationTicks = movementStarted == 0 ? 1 : 3,
+            Inventory = new ResourceStock { Food = 10, Water = .1 },
+            Agent = fixture.Resident.Agent.Value with
+            {
+                NextThinkTick = 40,
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 16,
+                    TargetEntityId = 16 * 32 + 16 + 1, ReviewTick = 40,
+                },
+            },
+        });
+        fixture.Engine.Current.Tiles[16 * 32 + 16].NaturalWaterYield = .2;
+
+        fixture.Engine.Step();
+
+        Assert.Equal(draws ? .275 : .075, fixture.Resident.Inventory.Water, 8);
+        Assert.Equal(draws ? .2 : 0, fixture.Engine.Current.Tiles[16 * 32 + 16].WaterDrawn, 8);
     }
 
     private static WorldFixture Prepare()

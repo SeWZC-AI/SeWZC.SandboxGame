@@ -10,7 +10,11 @@ public sealed partial record AgentState
     public const int MaximumFamiliarTiles = 48;
 
     /// <summary>认知与行动状态是否已初始化。</summary>
-    public bool Initialized { get; init; }
+    public bool Initialized
+    {
+        get => _identity.Initialized;
+        init { if (!(_identity.Initialized == value)) _identity = _identity with { Initialized = value }; }
+    }
 
     /// <summary>疲劳程度，越高表示越需要休息。</summary>
     public double Fatigue { get; init; }
@@ -32,36 +36,76 @@ public sealed partial record AgentState
     public ImmutableArray<int> FamiliarTiles { get; init; } = [];
 
     /// <summary>近期行动决策的记录。</summary>
-    public ImmutableList<AgentDecision> Decisions { get; init; } = [];
+    public ImmutableList<AgentDecision> Decisions
+    {
+        get => _identity.Decisions;
+        init { if (!(ReferenceEquals(_identity.Decisions, value))) _identity = _identity with { Decisions = value }; }
+    }
 
     /// <summary>下一次自主评估目标的模拟日序。</summary>
     public long NextThinkTick { get; init; }
 
     /// <summary>最近一次与其他居民交谈的模拟日序。</summary>
-    public long LastConversationTick { get; init; }
+    public long LastConversationTick
+    {
+        get => _identity.LastConversationTick;
+        init { if (!(_identity.LastConversationTick == value)) _identity = _identity with { LastConversationTick = value }; }
+    }
 
     /// <summary>当前贸易或递送任务的目的聚落 ID。</summary>
-    public int DestinationSettlementId { get; init; }
+    public int DestinationSettlementId
+    {
+        get => _identity.DestinationSettlementId;
+        init { if (!(_identity.DestinationSettlementId == value)) _identity = _identity with { DestinationSettlementId = value }; }
+    }
 
     /// <summary>居民正在实际携带的信息副本。</summary>
-    public ImmutableList<AgentFact> CarriedMessages { get; init; } = [];
+    public ImmutableList<AgentFact> CarriedMessages
+    {
+        get => _identity.CarriedMessages;
+        init { if (!(ReferenceEquals(_identity.CarriedMessages, value))) _identity = _identity with { CarriedMessages = value }; }
+    }
 
     /// <summary>当前贸易或递送任务的出发聚落 ID。</summary>
-    public int MissionOriginSettlementId { get; init; }
+    public int MissionOriginSettlementId
+    {
+        get => _identity.MissionOriginSettlementId;
+        init { if (!(_identity.MissionOriginSettlementId == value)) _identity = _identity with { MissionOriginSettlementId = value }; }
+    }
 
     /// <summary>当前任务开始的模拟日序。</summary>
-    public long MissionStartedTick { get; init; }
+    public long MissionStartedTick
+    {
+        get => _identity.MissionStartedTick;
+        init { if (!(_identity.MissionStartedTick == value)) _identity = _identity with { MissionStartedTick = value }; }
+    }
 
     /// <summary>当前任务受阻后允许再次尝试的模拟日序。</summary>
-    public long MissionRetryTick { get; init; }
+    public long MissionRetryTick
+    {
+        get => _identity.MissionRetryTick;
+        init { if (!(_identity.MissionRetryTick == value)) _identity = _identity with { MissionRetryTick = value }; }
+    }
 
     /// <summary>当前探索朝向，按八个方向编号。</summary>
     [JsonRequired]
-    public int ExplorationHeading { get; init; }
+    public int ExplorationHeading
+    {
+        get => _identity.ExplorationHeading;
+        init { if (!(_identity.ExplorationHeading == value)) _identity = _identity with { ExplorationHeading = value }; }
+    }
 
     /// <summary>当前优先补充的材料种类，空值表示无指定优先材料。</summary>
-    public ResourceKind? MaterialPriority { get; init; }
+    public ResourceKind? MaterialPriority
+    {
+        get => _identity.MaterialPriority;
+        init { if (!EqualityComparer<ResourceKind?>.Default.Equals(_identity.MaterialPriority, value)) _identity = _identity with { MaterialPriority = value }; }
+    }
 
     /// <summary>最近一次职业分工变化的模拟日序。</summary>
-    public long JobChangedTick { get; init; } = -120;
+    public long JobChangedTick
+    {
+        get => _identity.JobChangedTick;
+        init { if (!(_identity.JobChangedTick == value)) _identity = _identity with { JobChangedTick = value }; }
+    }
 }

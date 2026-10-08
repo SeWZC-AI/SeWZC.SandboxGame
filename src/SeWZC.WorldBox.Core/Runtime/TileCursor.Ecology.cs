@@ -9,7 +9,7 @@ internal sealed partial class TileCursor
 
     protected override void OnReplace(in global::SeWZC.WorldBox.Core.Tile before, in global::SeWZC.WorldBox.Core.Tile after)
     {
-        if (before.Wildlife != after.Wildlife || before.WildlifePopulation != after.WildlifePopulation || before.OtherWildlife != after.OtherWildlife)
+        if (before.Wildlife != after.Wildlife || before.WildlifePopulation != after.WildlifePopulation || !before.SameOtherWildlife(after))
             _edibleLand = _edibleWater = byte.MaxValue;
         if (before.Terrain != after.Terrain || before.Fertility != after.Fertility || before.Plants != after.Plants
             || before.NaturalWaterYield != after.NaturalWaterYield || before.Improvement != after.Improvement

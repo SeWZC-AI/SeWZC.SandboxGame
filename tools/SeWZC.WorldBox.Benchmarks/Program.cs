@@ -11,14 +11,24 @@ using SeWZC.WorldBox.Core;
 ];
 var options = args.Skip(1).ToHashSet(StringComparer.Ordinal);
 if (args.Length < 1 || options.Any(option => option is not ("--verify" or "--default-rules" or "--large" or "--steady")
-        && !option.StartsWith("--seed=", StringComparison.Ordinal) && !option.StartsWith("--start-day=", StringComparison.Ordinal))
+        && !option.StartsWith("--seed=", StringComparison.Ordinal) && !option.StartsWith("--start-day=", StringComparison.Ordinal)
+        && !option.StartsWith("--years=", StringComparison.Ordinal) && !option.StartsWith("--repetitions=", StringComparison.Ordinal)
+        && !option.StartsWith("--population-floor=", StringComparison.Ordinal))
     || options.Contains("--verify") && options.Count != 1)
-    throw new ArgumentException("请指定结果 JSON 路径；--default-rules 使用默认规则，--large 只测 256² / 4096 人，--steady 测量后续 64 日；--seed=整数 指定种子，--start-day=整数 指定计时前推进日数；--verify 独立验证续演。原生入口启用分层编译和动态 PGO，可用 DOTNET_TieredCompilation=0 对照。");
+    throw new ArgumentException("请指定结果 JSON 路径；--default-rules 使用默认规则，--large 只测 256² / 4096 人，--steady 测量后续 64 日；--seed=整数 指定种子，--start-day=整数 指定计时前推进日数；--years=整数 测量长期演化，--repetitions=整数 指定轮数，--population-floor=整数 在计时外补充居民维持人口负载；--verify 独立验证续演。");
 var benchmarkSeed = ReadIntegerOption(options, "--seed=", 42);
+var years = ReadIntegerOption(options, "--years=", 0);
+var repetitions = ReadIntegerOption(options, "--repetitions=", years > 0 ? 3 : 7);
+var populationFloor = ReadIntegerOption(options, "--population-floor=", 0);
+if (years is < 0 or > 500 || repetitions is < 1 or > 9 || populationFloor is < 0 or > WorldEngine.MaxPopulation)
+    throw new ArgumentOutOfRangeException(nameof(options));
+if (populationFloor > 0 && (!options.Contains("--large") || !options.Contains("--default-rules") || years == 0))
+    throw new ArgumentException("维持人口负载须搭配 --large --default-rules --years=整数。");
 var startDay = ReadIntegerOption(options, "--start-day=", options.Contains("--steady") ? 12 : 0);
 if (startDay is < 0 or > 10_000) throw new ArgumentOutOfRangeException(nameof(startDay));
 if (options.Contains("--large")) cases = cases.Where(scenario => scenario.Size == 256).ToArray();
 if (options.Contains("--steady")) cases = cases.Select(scenario => (scenario.Name, scenario.Size, scenario.Population, 64)).ToArray();
+if (years > 0) cases = cases.Select(scenario => (scenario.Name, scenario.Size, scenario.Population, years * 120)).ToArray();
 var core = typeof(WorldEngine).Assembly;
 var coreSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(core.Location)));
 var results = new List<object>();
@@ -77,47 +87,93 @@ foreach (var scenario in cases)
             Wars = false, Secession = false,
         }, false, true);
     }
-    engine.Step(startDay);
+    var preAdvanceReplenished = 0;
+    for (var day = 0; day < startDay; day++)
+    {
+        preAdvanceReplenished += MaintainPopulation(engine, populationFloor);
+        engine.Step();
+    }
     var measureStartTick = engine.State.Tick;
     var measuredInitialPopulation = engine.State.Population;
     var initial = engine.ExportJson();
     // 动态 PGO 在后台优化热点，短窗口也至少预热 128 日，避免首轮混入编译开销。
-    var warmupRepetitions = Math.Max(2, (128 + scenario.Days - 1) / scenario.Days);
-    var warmupDays = warmupRepetitions * scenario.Days;
+    var warmupWindow = years > 0 ? 256 : scenario.Days;
+    var warmupRepetitions = years > 0 ? 1 : Math.Max(2, (128 + scenario.Days - 1) / scenario.Days);
+    var warmupDays = warmupRepetitions * warmupWindow;
     for (var warmup = 0; warmup < warmupRepetitions; warmup++)
     {
         engine = WorldEngine.ImportJson(initial);
-        engine.Step(scenario.Days);
+        for (var day = 0; day < warmupWindow; day++)
+        {
+            MaintainPopulation(engine, populationFloor);
+            engine.Step();
+        }
     }
     Console.WriteLine($"Warmup {scenario.Name}: {warmupDays} days, initial population {scenario.Population}");
     var times = new List<double>();
     var dailyTimes = new List<double[]>();
+    var dailySamples = new List<DailyMeasurement[]>();
+    var annualResults = new List<object>();
+    var replenishedResidents = new List<int>();
     var allocations = new List<long>();
     var collections = new List<int[]>();
     string? checksum = null;
     var finalPopulation = 0;
-    for (var repetition = 0; repetition < 7; repetition++)
+    for (var repetition = 0; repetition < repetitions; repetition++)
     {
         engine = WorldEngine.ImportJson(initial);
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
         var days = new double[scenario.Days];
-        var before = GC.GetAllocatedBytesForCurrentThread();
+        var samples = new DailyMeasurement[scenario.Days];
+        var replenished = 0;
         var gen0 = GC.CollectionCount(0);
         var gen1 = GC.CollectionCount(1);
         var gen2 = GC.CollectionCount(2);
-        var watch = Stopwatch.StartNew();
         for (var day = 0; day < scenario.Days; day++)
         {
+            replenished += MaintainPopulation(engine, populationFloor);
+            var population = engine.State.Population;
+            var dayGen0 = GC.CollectionCount(0);
+            var dayGen1 = GC.CollectionCount(1);
+            var dayGen2 = GC.CollectionCount(2);
+            var cpuBefore = BenchmarkClock.ReadThreadCpu();
+            var dayAllocated = GC.GetAllocatedBytesForCurrentThread();
             var started = Stopwatch.GetTimestamp();
             engine.Step();
             days[day] = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            var cpuAfter = BenchmarkClock.ReadThreadCpu();
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - dayAllocated;
+            var g0 = GC.CollectionCount(0) - dayGen0;
+            var g1 = GC.CollectionCount(1) - dayGen1;
+            var g2 = GC.CollectionCount(2) - dayGen2;
+            var pause = g0 + g1 + g2 > 0 ? GC.GetGCMemoryInfo().PauseDurations.ToArray().Sum(duration => duration.TotalMilliseconds) : 0;
+            samples[day] = new(engine.State.Tick, population, engine.State.Population, days[day],
+                (cpuAfter - cpuBefore) / 1_000_000d, allocated, g0, g1, g2, pause);
+            if (years > 0 && (day + 1) % 120 == 0)
+            {
+                var yearDays = days.AsSpan(day - 119, 120).ToArray();
+                var yearSamples = samples.AsSpan(day - 119, 120).ToArray();
+                annualResults.Add(new
+                {
+                    Repetition = repetition, Year = (day + 1) / 120, EndTick = engine.State.Tick,
+                    MeanMsPerDay = yearDays.Average(), P95MsPerDay = Percentile(yearDays, .95), MaxMsPerDay = yearDays.Max(),
+                    MinPopulation = yearSamples.Min(sample => sample.StartPopulation),
+                    MaxPopulation = yearSamples.Max(sample => sample.StartPopulation), EndPopulation = engine.State.Population,
+                });
+                if ((day + 1) % 1200 == 0)
+                {
+                    Console.WriteLine($"{scenario.Name} {repetition}: year {(day + 1) / 120}, P95 {Percentile(yearDays, .95):F3}, population {engine.State.Population}, replenished {replenished}");
+                    File.WriteAllText(args[0] + ".progress.json", JsonSerializer.Serialize(annualResults));
+                }
+            }
         }
-        watch.Stop();
-        times.Add(watch.Elapsed.TotalMilliseconds / scenario.Days);
+        times.Add(days.Average());
         dailyTimes.Add(days);
-        allocations.Add((GC.GetAllocatedBytesForCurrentThread() - before) / scenario.Days);
+        dailySamples.Add(samples);
+        replenishedResidents.Add(replenished);
+        allocations.Add(samples.Sum(sample => sample.AllocatedBytes) / scenario.Days);
         collections.Add([GC.CollectionCount(0) - gen0, GC.CollectionCount(1) - gen1, GC.CollectionCount(2) - gen2]);
         var saved = engine.ExportJson();
         var observed = Convert.ToHexString(SHA256.HashData(CanonicalState(saved)));
@@ -137,7 +193,9 @@ foreach (var scenario in cases)
     {
         scenario.Name, scenario.Size, InitialPopulation = measuredInitialPopulation, RequestedPopulation = scenario.Population, Seed = benchmarkSeed, scenario.Days,
         MeasureStartTick = measureStartTick,
-        WarmupDays = warmupDays, Repetitions = 7,
+        WarmupDays = warmupDays, Repetitions = repetitions, PopulationFloor = populationFloor,
+        PreAdvanceReplenished = preAdvanceReplenished,
+        ReplenishmentOutsideStepTiming = true, ReplenishedResidents = replenishedResidents,
         Rules = engine.State.Rules, engine.State.NaturalDisasters, engine.State.Society.MagicEnabled,
         CoreAssemblySha256 = coreSha256, CoreModuleVersionId = core.ManifestModule.ModuleVersionId,
         TieredCompilation = Environment.GetEnvironmentVariable("DOTNET_TieredCompilation"),
@@ -145,6 +203,7 @@ foreach (var scenario in cases)
         ServerGarbageCollection = System.Runtime.GCSettings.IsServerGC,
         GcLatencyMode = System.Runtime.GCSettings.LatencyMode.ToString(),
         MeanMsPerDay = times.Average(), TimesMsPerDay = times, DailyTimesMs = dailyTimes,
+        DailyMeasurements = dailySamples, AnnualResults = annualResults,
         P95MsPerDay = Percentile(dailyTimes.SelectMany(days => days), .95),
         MaxMsPerDay = dailyTimes.SelectMany(days => days).Max(),
         BytesPerDay = allocations, GcCollections = collections,
@@ -173,6 +232,31 @@ static double Percentile(IEnumerable<double> values, double fraction)
 {
     var sorted = values.Order().ToArray();
     return sorted[(int)Math.Ceiling(sorted.Length * fraction) - 1];
+}
+
+// 压力场景只通过正常居民生成入口补充成年居民，不修改存活者、库存、需求或世界规则。
+static int MaintainPopulation(WorldEngine engine, int floor)
+{
+    var added = 0;
+    while (engine.State.Population < floor)
+    {
+        var state = engine.State;
+        var town = state.Settlements.OrderBy(town => town.Population).FirstOrDefault();
+        var x = town?.X ?? -1;
+        var y = town?.Y ?? -1;
+        var race = town is null ? RaceKind.Human : state.Nations.First(nation => nation.Id == town.NationId).FoundingRace;
+        if (town is null)
+        {
+            var site = Enumerable.Range(0, state.Tiles.Count).First(index => state.Tiles[index].IsWalkable && state.Tiles[index].FireTicks == 0);
+            x = site % state.Width;
+            y = site / state.Width;
+        }
+        engine.SpawnResidents(x, y, race, Math.Min(200, floor - state.Population));
+        var increase = engine.State.Population - state.Population;
+        if (increase <= 0) throw new InvalidOperationException("无法在实际可通行区域补足压力场景的人口。");
+        added += increase;
+    }
+    return added;
 }
 
 // 属性顺序不影响存档语义；数组顺序属于模拟状态，原样保留。

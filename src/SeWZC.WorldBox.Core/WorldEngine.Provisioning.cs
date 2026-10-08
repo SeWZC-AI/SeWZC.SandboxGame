@@ -3,6 +3,39 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    private bool _dailyDrinking;
+    private double[] _dailyWaterDraws = [];
+    private int[] _dailyWaterVisits = [];
+    private int _dailyWaterVisit;
+    private readonly List<int> _dailyWaterSources = [];
+
+    private void BeginDailyDrinking()
+    {
+        if (_dailyWaterDraws.Length != Current.Tiles.Count)
+        {
+            _dailyWaterDraws = new double[Current.Tiles.Count];
+            _dailyWaterVisits = new int[Current.Tiles.Count];
+        }
+        if (_dailyWaterVisit == int.MaxValue)
+        {
+            Array.Clear(_dailyWaterVisits);
+            _dailyWaterVisit = 0;
+        }
+        _dailyWaterVisit++;
+        _dailyWaterSources.Clear();
+        _dailyDrinking = true;
+    }
+
+    private void EndDailyDrinking()
+    {
+        _dailyDrinking = false;
+        foreach (var source in _dailyWaterSources)
+        {
+            var tile = Current.Tiles[source];
+            tile.Replace(tile.Value with { WaterDrawTick = Current.Tick, WaterDrawn = _dailyWaterDraws[source] });
+        }
+        _dailyWaterSources.Clear();
+    }
     /// <summary>计算居民每日所需粮食资源量。</summary>
     /// <param name="person">居民。</param>
     public static double FoodUse(Resident person)
@@ -22,6 +55,10 @@ public sealed partial class WorldEngine
         return Math.Clamp(.75 + Distance(person.X, person.Y,
             person.Agent.Goal.TargetX, person.Agent.Goal.TargetY) * WaterUse(person) * 6, .75, 6);
     }
+
+    // 普通居民补足随身储备，承担公共运水的居民再多装三份；不是每个人都需承担整趟公共运输。
+    private double WaterCollectionTarget(ResidentCursor person) =>
+        WaterReserve(person) + (person.Id % 5 == 0 ? 3 : 0);
 
     private void ProvisionAtHome(ResidentCursor person, SettlementCursor home)
     {
@@ -176,11 +213,24 @@ public sealed partial class WorldEngine
         if (Distance(person.X, person.Y, source % Current.Width, source / Current.Width) > (fresh ? 1 : 0)
             || before.FireTicks > 0) return 0;
         var supply = IsWaterTerrain(before.Terrain) ? DailyWaterYield(before) : WaterSupplyAt(source, before).Supply;
-        var drawn = before.WaterDrawTick == Current.Tick ? before.WaterDrawn : 0;
+        var drawn = _dailyDrinking && _dailyWaterVisits[source] == _dailyWaterVisit
+            ? _dailyWaterDraws[source]
+            : before.WaterDrawTick == Current.Tick ? before.WaterDrawn : 0;
         var available = Math.Max(0, supply - drawn);
         var amount = Math.Min(Math.Max(0, wanted), available);
         amount = Math.Min(amount, 1_000_000 - person.Inventory.Water);
         if (amount <= 0) return 0;
+        // 身体结算只领取不足一天的饮水，同一水源按居民顺序扣额，最后统一提交地格。
+        if (_dailyDrinking && !fresh)
+        {
+            if (_dailyWaterVisits[source] != _dailyWaterVisit)
+            {
+                _dailyWaterVisits[source] = _dailyWaterVisit;
+                _dailyWaterSources.Add(source);
+            }
+            _dailyWaterDraws[source] = drawn + amount;
+            return amount;
+        }
         // 取水额度和采集记录属于同一次现场操作，合并为一个不可变地格更新。
         if (!fresh || amount > .05)
         {
@@ -296,10 +346,13 @@ public sealed partial class WorldEngine
 
     private bool AddProvisionChoices(ResidentCursor person, SettlementCursor home, List<GoalChoice> choices)
     {
+        // 已严重缺粮而每日仍喝得到水时，先找食物；不能为尚不需要的装瓶储备反复搜索。
+        var prioritizeFood = Current.Rules.Hunger && person.Hunger >= 60
+            && person.Inventory.Food < .05 && person.Thirst < 10;
         var needsWater = person.Inventory.Water < .3
                          && (person.Thirst >= 10 || person.Inventory.Water < WaterUse(person) * 4
-                             || AvailableWater(person.X, person.Y) < WaterUse(person));
-        if (Current.Rules.Thirst &&
+                             || GetWaterSupply(person.X, person.Y) < WaterUse(person));
+        if (Current.Rules.Thirst && !prioritizeFood &&
             (needsWater || (person.Id % 5 == 0 && person.Inventory.Water < WaterReserve(person) + 3)))
         {
             var atHome = Distance(person.X, person.Y, home.X, home.Y) <= 1;
@@ -428,15 +481,38 @@ public sealed partial class WorldEngine
         if (person.Agent.Goal.Kind != AgentGoalKind.FetchWater || person.Health <= 0)
             return false;
         var source = person.Agent.Goal.TargetEntityId - 1;
+        var target = WaterCollectionTarget(person);
         var amount = DrawWater(person, source,
             Math.Min(
                 source >= 0 && source < Current.Tiles.Count
                     ? GatheringTerritoryMultiplier(person, Current.Tiles[source])
-                    : 0, WaterReserve(person) + 3 - person.Inventory.Water));
+                    : 0, target - person.Inventory.Water));
+        if (source >= 0 && person.Inventory.Water >= target - .000001)
+        {
+            // 当场完成后结束取水目标，避免下一日喝掉少量水又被当成尚未完成。
+            var home = _settlements.GetValueOrDefault(person.SettlementId);
+            var deliver = person.Id % 5 == 0 && home is not null;
+            person.Agent.Replace(person.Agent.Value with
+            {
+                Goal = new AgentGoal
+                {
+                    Kind = deliver ? AgentGoalKind.ReturnHome : AgentGoalKind.Idle,
+                    TargetX = deliver ? home!.X : person.X,
+                    TargetY = deliver ? home!.Y : person.Y,
+                    TargetSettlementId = deliver ? home!.Id : 0,
+                    StartedTick = Current.Tick,
+                    ReviewTick = Current.Tick,
+                    Reason = deliver ? "装好公共补给后实地运回家园" : "已补足随身饮水，重新安排其他事务",
+                },
+                NextThinkTick = Current.Tick,
+            });
+            person.Activity = ResidentActivity.Working;
+            return amount > 0;
+        }
         if (source < 0 || amount <= 0)
         {
             // 供水仍会每日恢复时，额度已用完只是当日受阻；保留水源并等待，避免每天转向和重新搜索。
-            if (source >= 0 && person.Inventory.Water < WaterReserve(person) + 3
+            if (source >= 0 && person.Inventory.Water < target
                 && GetWaterSupply(source % Current.Width, source / Current.Width) > 0)
             {
                 person.Activity = ResidentActivity.Resting;

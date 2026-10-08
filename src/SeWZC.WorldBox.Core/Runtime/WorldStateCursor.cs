@@ -14,6 +14,7 @@ internal sealed partial class WorldStateCursor : StateCursor<global::SeWZC.World
             _Tiles?.FlushUpdates();
             _Residents?.FlushUpdates();
             _Settlements?.FlushUpdates();
+            FlushScalars();
             return Value;
         }
     }
@@ -23,9 +24,9 @@ internal sealed partial class WorldStateCursor : StateCursor<global::SeWZC.World
     public int Seed { get => Value.Seed; set { if (!EqualityComparer<int>.Default.Equals(Value.Seed, value)) ReplaceChanged(Value with { Seed = value }); } }
     public int Width { get => Value.Width; set { if (!EqualityComparer<int>.Default.Equals(Value.Width, value)) ReplaceChanged(Value with { Width = value }); } }
     public int Height { get => Value.Height; set { if (!EqualityComparer<int>.Default.Equals(Value.Height, value)) ReplaceChanged(Value with { Height = value }); } }
-    public long Tick { get => Value.Tick; set { if (!EqualityComparer<long>.Default.Equals(Value.Tick, value)) ReplaceChanged(Value with { Tick = value }); } }
-    public uint RandomState { get => Value.RandomState; set { if (!EqualityComparer<uint>.Default.Equals(Value.RandomState, value)) ReplaceChanged(Value with { RandomState = value }); } }
-    public int NextId { get => Value.NextId; set { if (!EqualityComparer<int>.Default.Equals(Value.NextId, value)) ReplaceChanged(Value with { NextId = value }); } }
+    public long Tick { get => _scalarDepth > 0 ? _tick : Value.Tick; set { if (_scalarDepth > 0) { _tick = value; _scalarsChanged = true; } else if (Value.Tick != value) ReplaceChanged(Value with { Tick = value }); } }
+    public uint RandomState { get => _scalarDepth > 0 ? _randomState : Value.RandomState; set { if (_scalarDepth > 0) { _randomState = value; _scalarsChanged = true; } else if (Value.RandomState != value) ReplaceChanged(Value with { RandomState = value }); } }
+    public int NextId { get => _scalarDepth > 0 ? _nextId : Value.NextId; set { if (_scalarDepth > 0) { _nextId = value; _scalarsChanged = true; } else if (Value.NextId != value) ReplaceChanged(Value with { NextId = value }); } }
     private EntityListCursor<global::SeWZC.WorldBox.Core.Tile, TileCursor>? _Tiles;
     public EntityListCursor<global::SeWZC.WorldBox.Core.Tile, TileCursor> Tiles
     {
@@ -69,8 +70,8 @@ internal sealed partial class WorldStateCursor : StateCursor<global::SeWZC.World
         set { _Events = null; Replace(Value with { Events = value.Snapshot }); }
     }
     public bool NaturalDisasters { get => Value.NaturalDisasters; set { if (!EqualityComparer<bool>.Default.Equals(Value.NaturalDisasters, value)) ReplaceChanged(Value with { NaturalDisasters = value }); } }
-    public int Year => Value.Year;
-    public int Day => Value.Day;
+    public int Year => 1 + (int)(Tick / 120);
+    public int Day => 1 + (int)(Tick % 120);
     public int Population => Value.Population;
     public WorldRules Rules { get => Value.Rules; set { if (!EqualityComparer<WorldRules>.Default.Equals(Value.Rules, value)) ReplaceChanged(Value with { Rules = value }); } }
     private EntityListCursor<global::SeWZC.WorldBox.Core.LocalConflict, LocalConflictCursor>? _Conflicts;
