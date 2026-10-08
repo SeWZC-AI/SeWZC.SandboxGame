@@ -134,7 +134,7 @@ public sealed partial class MainView
             "land-bridge-direction");
         direction.IsVisible = kind == BuildingKind.Bridge;
         var level = ObjectField(bridgeOptions, "桥梁等级",
-            new[] { (1, "1 级：离岸 2 格"), (2, "2 级：离岸 4 格"), (3, "3 级：离岸 6 格") }, 1, "land-bridge-level");
+            [(1, "1 级：离岸 2 格"), (2, "2 级：离岸 4 格"), (3, "3 级：离岸 6 格")], 1, "land-bridge-level");
         level.IsVisible = kind == BuildingKind.Bridge;
         panel.Children.Add(LiveText(() =>
             "材料：" + StockLabel(WorldEngine.FacilityCost(kind, kind == BuildingKind.Bridge ? Integer(level) : 1))));

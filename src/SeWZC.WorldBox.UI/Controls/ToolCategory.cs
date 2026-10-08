@@ -5,7 +5,7 @@ namespace SeWZC.WorldBox.UI.Controls;
 /// <summary>工具面板中按用途划分的一组地图工具。</summary>
 public abstract class ToolCategory
 {
-    private static readonly IReadOnlyList<string> BrushSizes = Array.AsReadOnly(new[] { "小笔刷", "中笔刷", "大笔刷" });
+    private static readonly IReadOnlyList<string> BrushSizes = Array.AsReadOnly(["小笔刷", "中笔刷", "大笔刷"]);
     private protected ToolCategory() { }
 
     /// <summary>工具分类的稳定标识。</summary>
@@ -62,8 +62,8 @@ public abstract class ToolCategory
 
     private static MapToolChoice[] BuildToolChoices()
     {
-        return new MapToolChoice[]
-        {
+        return
+        [
             new(MapTool.ForBuilding(BuildingKind.Farm), "农场", "#ADBB75"),
             new(MapTool.ForBuilding(BuildingKind.Workshop), "工坊", "#CEB294"),
             new(MapTool.ForBuilding(BuildingKind.Academy), "学舍", "#91B0C8"),
@@ -72,12 +72,13 @@ public abstract class ToolCategory
             new(MapTool.ForBuilding(BuildingKind.MountainPass), "山路", "#B598D1"),
             new(MapTool.ForBuilding(BuildingKind.Dock), "码头", "#91C7B1"), new(MapTool.Road, "道路", "#B0A28B"),
             new(MapTool.Rail, "铁路", "#ADC1D3"),
-        }.Concat(Enum.GetValues<BuildingKind>()
-            .Where(k => k is not (BuildingKind.Farm or BuildingKind.Workshop or BuildingKind.Academy
-                or BuildingKind.Waystation or BuildingKind.MountainPass or BuildingKind.Bridge or BuildingKind.Dock
-                or BuildingKind.TownCenter)).Select(k => new MapToolChoice(MapTool.ForBuilding(k),
-                WorldEngine.BuildingName(k),
-                ProductionRules.For(k)?.Research.Magic == true ? "#B598D1" : "#91B0C8"))).ToArray();
+            .. Enum.GetValues<BuildingKind>()
+                .Where(k => k is not (BuildingKind.Farm or BuildingKind.Workshop or BuildingKind.Academy
+                    or BuildingKind.Waystation or BuildingKind.MountainPass or BuildingKind.Bridge or BuildingKind.Dock
+                    or BuildingKind.TownCenter)).Select(k => new MapToolChoice(MapTool.ForBuilding(k),
+                    WorldEngine.BuildingName(k),
+                    ProductionRules.For(k)?.Research.Magic == true ? "#B598D1" : "#91B0C8")),
+        ];
     }
 
     private sealed class TerrainCategory : ToolCategory
@@ -129,7 +130,7 @@ public abstract class ToolCategory
         });
 
         public override IReadOnlyList<string> BrushLabels { get; } =
-            Array.AsReadOnly(new[] { "1 位居民", "12 位居民", "36 位居民" });
+            Array.AsReadOnly(["1 位居民", "12 位居民", "36 位居民"]);
 
         public override int DefaultBrushIndex => 1;
 
@@ -159,7 +160,7 @@ public abstract class ToolCategory
         });
 
         public override IReadOnlyList<string> BrushLabels { get; } =
-            Array.AsReadOnly(new[] { "范围 2 格", "范围 5 格", "范围 10 格" });
+            Array.AsReadOnly(["范围 2 格", "范围 5 格", "范围 10 格"]);
 
         public override void SetBrush(WorldMapControl map, int index)
         {
