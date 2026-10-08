@@ -122,18 +122,27 @@ public sealed partial class WorldEngine
     private void AddFirefightingChoice(ResidentCursor person, List<GoalChoice> choices)
     {
         if (_burningTiles.Count == 0 || person.Age < 14 || person.Inventory.Water < .1
+            || person.SicknessTicks > 0 || person.Health < 40
             || person.Hunger >= 60 || person.Thirst >= 60 ||
             Current.Tiles[Index(person.X, person.Y)].FireTicks > 0)
             return;
+        var reachable = 0;
         foreach (var offset in VisibleResourceOffsets)
         {
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
             if (!InBounds(x, y) || Current.Tiles[Index(x, y)].FireTicks <= 0)
                 continue;
-            if (!Directions.Any(d =>
-                    Walkable(x + d.X, y + d.Y) && Current.Tiles[Index(x + d.X, y + d.Y)].FireTicks == 0))
-                continue;
+            var safeEdge = false;
+            foreach (var (dx, dy) in Directions)
+                if (Walkable(x + dx, y + dy, person.Race)
+                    && Current.Tiles[Index(x + dx, y + dy)].FireTicks == 0
+                    && VisibleSiteReachable(person, Index(x + dx, y + dy), ref reachable))
+                {
+                    safeEdge = true;
+                    break;
+                }
+            if (!safeEdge) continue;
             choices.Add(new GoalChoice(AgentGoalKind.ExtinguishFire, x, y, 190 - offset.Distance,
                 "携带饮水赶到火场边缘，持续用水扑救；同一火场每日扑救量有限"));
             return;

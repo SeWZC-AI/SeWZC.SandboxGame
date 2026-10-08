@@ -6,6 +6,8 @@ namespace SeWZC.WorldBox.Core;
 /// <summary>居民的认知与自主行动状态。</summary>
 public sealed partial record AgentState
 {
+    /// <summary>个人熟路记忆最多保留的不同地格数。</summary>
+    public const int MaximumFamiliarTiles = 48;
 
     /// <summary>认知与行动状态是否已初始化。</summary>
     public bool Initialized { get; init; }
@@ -24,6 +26,10 @@ public sealed partial record AgentState
 
     /// <summary>居民自己观察或收到的信息，可能已经过时。</summary>
     public ImmutableArray<AgentFact> Memory { get; init; } = [];
+
+    /// <summary>按最近到访顺序保留的实际走过地格；不共享给其他居民。</summary>
+    [JsonRequired]
+    public ImmutableArray<int> FamiliarTiles { get; init; } = [];
 
     /// <summary>近期行动决策的记录。</summary>
     public ImmutableList<AgentDecision> Decisions { get; init; } = [];

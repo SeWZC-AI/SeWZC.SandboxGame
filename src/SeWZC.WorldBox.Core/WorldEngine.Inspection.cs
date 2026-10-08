@@ -353,7 +353,7 @@ public sealed partial class WorldEngine
                 AgentGoalKind.Migrate => "正在步行迁往新家园",
                 AgentGoalKind.Explore => exploringRoutes ? "正在实地寻找其他聚落与可通行路线" : "正在实地勘察可采材料",
                 AgentGoalKind.ClaimLand => "正在实地登记城镇地盘",
-                AgentGoalKind.FetchWater => "正在河湖或湿地打水或实地勘察水源",
+                AgentGoalKind.FetchWater => "正在河湖、水井或有供水的陆地打水，或实地勘察水源",
                 AgentGoalKind.Hunt => "正在狩猎，实际消耗当地动物数量",
                 AgentGoalKind.Fish => "正在岸边捕鱼，实际消耗鱼群数量",
                 AgentGoalKind.ExtinguishFire => "正在火场边缘持续用水扑救",
