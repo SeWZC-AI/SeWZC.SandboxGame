@@ -25,7 +25,7 @@ public sealed partial record Tile
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double WaterDrawn { get; init; }
 
-    /// <summary>此格每日基础自然供水量，包含降水及邻近河湖影响。</summary>
+    /// <summary>此格基础环境供水量，包含降水及邻近河湖影响；用于口渴抵扣、生态与水井产量。</summary>
     [JsonPropertyName("w")]
     [JsonRequired]
     public double NaturalWaterYield { get; init; }

@@ -72,7 +72,7 @@ public sealed partial class WorldEngine
             BuildingKind.Shipyard => "在近岸水中建造舟船。居民从相邻自然陆岸施工，实地取木材、加工，再携带舟船返仓；需要驿路运输知识。",
             BuildingKind.LumberCamp => "设在森林边缘，伐木工到场开采相邻实际木材，随身运回家园；资源耗尽时停工。",
             BuildingKind.Quarry => "设在山地或丘陵矿区旁，矿工到场开采相邻石材和矿石，随身运回家园；资源耗尽时停工。",
-            BuildingKind.Well => "设在湿地或供水充足的陆地。工人到井边取用当地当日供水，携带返仓；与野外取水共享地块额度，干旱会减水。",
+            BuildingKind.Well => "设在供水充足的陆地。地块供水量决定每日可打水量，居民与工人到井边取水，共享水井日额度并携带返仓；干旱会减少井水。",
             BuildingKind.Granary => "居民返乡休息恢复每级提高 10%；多个粮仓取最高倍率。",
             BuildingKind.Housing => "每级增加 20 人住房容量。",
             BuildingKind.Market => "人员到场值守后，在集市 3 格内的居民可与最多相距 3 格的人交换已有消息；消耗少量当地粮食。",
@@ -161,7 +161,7 @@ public sealed partial class WorldEngine
         if (b.Kind == BuildingKind.SacredGrove && !IsForestTerrain(tile.Terrain))
             return "暂停训练：圣林须位于森林、疏林或雨林";
         if (b.Kind == BuildingKind.Well && AvailableWater(b.X, b.Y) <= 0)
-            return "今日供水已用完，次日恢复额度";
+            return "今日可打水量已用完，次日恢复额度";
         if (b.Kind == BuildingKind.LumberCamp && FindWorkshopResource(b, Profession.Lumberjack) < 0)
             return "附近木材已采尽";
         if (b.Kind == BuildingKind.Workshop && FindWorkshopResource(b, Profession.Lumberjack) < 0 &&
@@ -354,7 +354,7 @@ public sealed partial class WorldEngine
                 AgentGoalKind.Migrate => "正在步行迁往新家园",
                 AgentGoalKind.Explore => exploringRoutes ? "正在实地寻找其他聚落与可通行路线" : "正在实地勘察可采材料",
                 AgentGoalKind.ClaimLand => "正在实地登记城镇地盘",
-                AgentGoalKind.FetchWater => "正在河湖、水井或有供水的陆地打水，或实地勘察水源",
+                AgentGoalKind.FetchWater => "正在河湖或运营水井打水，或实地勘察水源",
                 AgentGoalKind.Hunt => "正在狩猎，实际消耗当地动物数量",
                 AgentGoalKind.Fish => "正在岸边捕鱼，实际消耗鱼群数量",
                 AgentGoalKind.ExtinguishFire => "正在火场边缘持续用水扑救",

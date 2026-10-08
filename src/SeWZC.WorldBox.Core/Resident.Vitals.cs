@@ -22,7 +22,7 @@ public sealed partial record Resident
     {
         var vitals = CalculateVitals(rules, tile, tick, profession, infectionDuration, manaRecovery);
         var arrivedAgent = arrivedTile >= 0 ? Agent.RememberRouteTile(arrivedTile) : Agent;
-        var next = consumeNeeds && vitals.Health > 0 ? CalculateNeeds(rules, tick, vitals, socialGrowth, deliveredWater, arrivedAgent, suppliedInventory)
+        var next = consumeNeeds && vitals.Health > 0 ? CalculateNeeds(rules, tick, vitals, socialGrowth, deliveredWater, arrivedAgent, suppliedInventory, tile)
             : CalculateDailyVitals(vitals, vitals.Health > 0 ? socialGrowth : 0, deliveredWater, arrivedAgent, suppliedInventory);
         if (consumeNeeds && vitals.Health > 0 && !Agent.Goal.PlayerDirected
             && (SicknessTicks == 0 && vitals.Sickness > 0 || Health >= 40 && vitals.Health < 40))

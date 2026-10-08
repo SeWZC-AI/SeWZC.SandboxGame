@@ -365,7 +365,7 @@ public sealed partial class MainView
                         var index = yy * _engine.State.Width + xx;
                         var tile = _engine.State.Tiles[index];
                         if (kind == AgentGoalKind.FetchWater
-                                ? WorldEngine.IsWaterSource(tile)
+                                ? _engine.GetDailyWaterCapacity(xx, yy) > 0
                                 : kind == AgentGoalKind.Fish
                                     ? WorldEngine.IsWaterTerrain(tile.Terrain) && AnimalRules.Species.Any(s =>
                                         AnimalRules.For(s).Aquatic && AnimalRules.For(s).Diet == AnimalDiet.Herbivore &&

@@ -18,8 +18,8 @@ public sealed partial class WorldEngine
         return tile.Terrain is TerrainType.River or TerrainType.Lake or TerrainType.Stream or TerrainType.LargeRiver;
     }
 
-    /// <summary>判断地格是否可提供自然淡水。</summary>
-    /// <param name="tile">要判断自然供水能力的地格。</param>
+    /// <summary>判断地格是否有自然环境供水，不表示此处可打水。</summary>
+    /// <param name="tile">要判断环境供水能力的地格。</param>
     public static bool IsWaterSource(Tile tile)
     {
         return IsFreshWater(tile) || tile.NaturalWaterYield > 0;

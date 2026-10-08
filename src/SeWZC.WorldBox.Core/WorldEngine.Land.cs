@@ -430,10 +430,15 @@ public sealed partial class WorldEngine
         var lines = new List<string> { "资源：" + GetTileResourceSummary(x, y, visibility) };
         if (products.Count > 0)
             lines.Add("采集产物：" + string.Join("、", products));
-        lines.Add(IsFreshWater(tile)
-            ? "供水量 无限\n需到岸边打水并携带返仓"
-            : $"供水量 {GetWaterSupply(x, y):0.###} / 日"
-              + (GetWaterSupply(x, y) < .025 ? "\n供水不足一名成年居民每日所需的 0.025，建议到河湖岸边打水" : ""));
+        if (IsFreshWater(tile))
+            lines.Add("每日可打水量 无限\n需到岸边打水并携带返仓");
+        else if (!IsWaterTerrain(tile.Terrain))
+        {
+            var natural = DailyWaterYield(tile);
+            lines.Add($"地块供水量 {natural:0.###}\n自然口渴消耗抵扣 {Math.Min(.5, natural / .025):0%}（成人）");
+            if (FindWaterWell(Index(x, y)) is not null)
+                lines.Add($"每日可打水量 {GetDailyWaterCapacity(x, y):0.###}\n今日剩余可打水量 {AvailableWater(x, y):0.###}");
+        }
         if (IsWaterTerrain(tile.Terrain))
             lines.Add(tile.Terrain == TerrainType.Stream ? "通行：可涉水，速度较慢" : "通行：需要桥梁或舟船");
         if (tile.IsWalkable)

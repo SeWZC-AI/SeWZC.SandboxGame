@@ -20,4 +20,17 @@ internal sealed class WorldFixture
     internal SettlementCursor Town { get; }
     internal int ResidentId { get; }
     internal ResidentCursor Resident => Engine.RequireResident(ResidentId)!;
+
+    internal int AddWell(int x, int y, double naturalWater)
+    {
+        Engine.Current.Society.Buildings.RemoveAll(building =>
+            building.X == x && building.Y == y && building.Kind != BuildingKind.TownCenter);
+        var tile = Engine.Current.Tiles[y * Engine.Current.Width + x];
+        tile.Replace(tile.Value with
+        {
+            Terrain = TerrainType.Grass, NaturalWaterYield = naturalWater, DroughtTicks = 0,
+            NationId = Town.NationId, ClaimedSettlementId = Town.Id,
+        });
+        return Engine.GrantFacility(Town.Id, BuildingKind.Well, x, y);
+    }
 }

@@ -110,6 +110,7 @@ public sealed partial class WorldEngine
         }
 
         Require(state.FormatVersion == 20, "不支持该存档版本，请为本版新建世界。");
+        Require(state.SimulationVersion == 23, "不支持该模拟版本，请为本版新建世界。");
         Require(state.Width is >= 32 and <= 256 && state.Height is >= 32 and <= 256, "地图尺寸超出范围。");
         Require(
             state.Tick is >= 0 and <= 120_000_000 && state.RandomState != 0 && state.NextId is > 0 and < 2_000_000_000,
@@ -123,7 +124,7 @@ public sealed partial class WorldEngine
             state.Diplomacies.Count <= 2016 &&
             state.Events is not null && state.Events.Count <= 400, "世界记录数量超出范围。");
         Require(
-            state.SimulationVersion == 22 && state.PendingMessages is not null &&
+            state.PendingMessages is not null &&
             state.PendingMessages.Count <= MaxPopulation * 2 && state.ArchivedResidents is not null &&
             state.ArchivedResidents.Count <= 256 && state.Society is not null, "认知或社会记录无效。");
         var ids = new HashSet<int>();

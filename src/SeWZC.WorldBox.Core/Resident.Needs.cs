@@ -8,7 +8,7 @@ public sealed partial record Resident
             DeathCause, DeathTick, Activity, Mana)).Apply(this);
 
     private DailyState CalculateNeeds(WorldRules rules, long tick, VitalState vitals, double socialGrowth = .07,
-        double deliveredWater = 0, AgentState? arrivedAgent = null, ResourceStock? suppliedInventory = null)
+        double deliveredWater = 0, AgentState? arrivedAgent = null, ResourceStock? suppliedInventory = null, Tile? tile = null)
     {
         var beforeAgent = arrivedAgent ?? Agent;
         var inventory = suppliedInventory ?? Inventory;
@@ -34,10 +34,11 @@ public sealed partial record Resident
 
         if (rules.Thirst)
         {
-            var use = vitals.Age < 14 ? .015 : .025;
+            var use = WorldEngine.WaterUse(vitals.Age, tile);
             var drink = Math.Min(use, water);
             water -= drink;
-            thirst = Math.Clamp(thirst + (drink >= use - .000001 ? -3 : .6 * (1 - drink / use)), 0, 100);
+            thirst = Math.Clamp(thirst + (drink >= use - .000001 ? -3
+                : .6 * (use - drink) / WorldEngine.WaterUse(vitals.Age)), 0, 100);
             if (thirst > 95) Damage(.25, DeathCause.Dehydration);
         }
         else thirst = 0;

@@ -88,7 +88,7 @@ public sealed partial class WorldEngine
         }
 
         if (kind == BuildingKind.Well && WellWaterYield(Current.Tiles[Index(x, y)]) <= 0)
-            return "水井需要地块供水量高于 0.02 / 日，请选择供水更充足的地块";
+            return "水井需要地块供水量高于 0.02，请选择供水更充足的地块";
         if (!CanBuildRacialFacility(settlementId, kind))
             return "需要当地有该种族的成年居民";
         if (kind == BuildingKind.SacredGrove &&
@@ -140,7 +140,7 @@ public sealed partial class WorldEngine
         if (kind == BuildingKind.Aquaculture && !gift && !HasResearch(settlementId, Advancement.Logistics))
             return "需要先掌握驿路运输";
         if (kind == BuildingKind.Well && DailyWaterYield(tile) < .025)
-            return "水井需要湿地或每日供水至少 0.025 的地块";
+            return "水井需要地块供水量至少 0.025";
         if (kind is BuildingKind.LumberCamp or BuildingKind.Quarry && !Circle(x, y, 1).Any(i => i != Index(x, y)
                 && Current.Tiles[i].ResourceAmount > 0 && (kind == BuildingKind.LumberCamp
                     ? IsForestTerrain(Current.Tiles[i].Terrain)

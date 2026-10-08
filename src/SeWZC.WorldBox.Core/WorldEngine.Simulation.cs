@@ -149,7 +149,7 @@ public sealed partial class WorldEngine
                 * (.5 + person.MagicTalent / 100)
                 * (HasResearch(person.SettlementId, Advancement.ManaAttunement) ? 1.5 : 1);
             var hasHome = _settlements.ContainsKey(person.SettlementId);
-            var waterUse = WaterUse(person);
+            var waterUse = WaterUse(age, tile);
             var water = hasHome && person.ArmyId == 0 && person.Health > 0 && rules.Thirst
                 && inventory.Water < waterUse
                 ? WithdrawWater(person, Index(person.X, person.Y), waterUse - inventory.Water) : 0;
