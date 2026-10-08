@@ -164,10 +164,12 @@ public sealed class WorkReservationTests
             _ => TerrainType.Grass,
         };
         site.ResourceAmount = 100;
-        site.NaturalWaterYield = 20;
         site.SetAnimalPopulation(WildlifeKind.Deer, 10);
         if (kind == BuildingKind.Reservoir)
+        {
+            fixture.Engine.Current.Tiles[17 * 32 + 14].Terrain = TerrainType.River;
             GrantResearch(fixture, Advancement.CivilEngineering);
+        }
         var buildingId = fixture.Engine.GrantFacility(fixture.Town.Id, kind, 14, 16);
         var building = fixture.Engine.Current.Society.Buildings.Single(candidate => candidate.Id == buildingId);
         building.WorkSlots = 1;

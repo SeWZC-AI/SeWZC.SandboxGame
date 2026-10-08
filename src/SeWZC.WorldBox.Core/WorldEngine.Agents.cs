@@ -189,8 +189,8 @@ public sealed partial class WorldEngine
             return false;
         if (person.Hunger >= 60 || person.Thirst >= 60 || person.Agent.Fatigue >= 60
             || person.Inventory.Food >= Math.Max(4, TravelReserve(person) + 1)
-            || (Current.Rules.Thirst && person.Inventory.Water < WaterUse(person) &&
-                GetWaterSupply(person.X, person.Y) < WaterUse(person))
+            || (Current.Rules.Thirst && person.Inventory.Water < LocalWaterUse(person) &&
+                GetDailyWaterCapacity(person.X, person.Y) < LocalWaterUse(person))
             || person.Inventory.Wood + person.Inventory.Stone + person.Inventory.Ore >= 3)
             return false;
         if (goal.NavigationTarget >= 0 && Current.Tick < goal.NavigationRetryTick)
@@ -365,10 +365,10 @@ public sealed partial class WorldEngine
             && (agent.Goal.Kind is not (AgentGoalKind.Hunt or AgentGoalKind.Fish) || WildlifeGoalProductive(person))
             && (agent.Goal.Kind != AgentGoalKind.ClaimLand ||
                 CanClaimTile(home, Index(agent.Goal.TargetX, agent.Goal.TargetY), person.Race))
-            && (agent.Goal.Kind != AgentGoalKind.FetchWater || person.Thirst >= 10
-                                                            || (agent.Goal.TargetEntityId > 0 &&
-                                                                DailyWaterYield(
-                                                                    Current.Tiles[agent.Goal.TargetEntityId - 1]) >= .1))
+            && (agent.Goal.Kind != AgentGoalKind.FetchWater ||
+                agent.Goal.TargetEntityId > 0 && agent.Goal.TargetEntityId <= Current.Tiles.Count &&
+                GetDailyWaterCapacity((agent.Goal.TargetEntityId - 1) % Current.Width,
+                    (agent.Goal.TargetEntityId - 1) / Current.Width) >= .1)
             && person.Inventory.Food < TravelReserve(person) + 2
             && (agent.Goal.Kind != AgentGoalKind.FetchWater || person.Inventory.Water < WaterCollectionTarget(person)))
         {
@@ -614,11 +614,11 @@ public sealed partial class WorldEngine
             var source = goal.TargetEntityId - 1;
             return source >= 0 && source < Current.Tiles.Count && person.Hunger < 60
                 && person.Inventory.Water < WaterCollectionTarget(person)
-                && GetWaterSupply(source % Current.Width, source / Current.Width) >= .1;
+                && GetDailyWaterCapacity(source % Current.Width, source / Current.Width) >= .1;
         }
         if (person.Hunger < 60 || person.Inventory.Food >= TravelReserve(person) + 2
-            || Current.Rules.Thirst && person.Inventory.Water < WaterUse(person)
-                && GetWaterSupply(person.X, person.Y) < WaterUse(person))
+            || Current.Rules.Thirst && person.Inventory.Water < LocalWaterUse(person)
+                && GetDailyWaterCapacity(person.X, person.Y) < LocalWaterUse(person))
             return false;
         if (goal.Kind == AgentGoalKind.Gather)
         {

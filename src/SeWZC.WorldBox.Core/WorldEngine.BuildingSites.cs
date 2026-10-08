@@ -47,6 +47,9 @@ public sealed partial class WorldEngine
 
         if (kind == BuildingKind.Well && WellWaterYield(tile) < .1)
             return false;
+        if (kind == BuildingKind.Reservoir && !Circle(index % Current.Width, index / Current.Width, 1)
+            .Any(source => IsFreshWater(Current.Tiles[source]) && Current.Tiles[source].FireTicks == 0))
+            return false;
         if (kind == BuildingKind.HuntingCamp)
             return EdibleAnimal(tile) != WildlifeKind.None;
         return true;
@@ -62,7 +65,7 @@ public sealed partial class WorldEngine
                 "利用已观察到的木石矿来源，为当地建设与研究采集材料",
             BuildingKind.Academy => "提供推进当地发展路线所需的研究岗位",
             BuildingKind.Dock or BuildingKind.Shipyard => "利用已观察到的近岸水域，支持舟船运输与捕鱼",
-            BuildingKind.Well => $"当地存水 {town.Resources.Water:0.#}，集中收集地块实际供水",
+            BuildingKind.Well => $"当地存水 {town.Resources.Water:0.#}，根据地块供水量打水返仓",
             BuildingKind.Housing => $"人口 {town.Population}，住房容量 {GetHousingCapacity(town.Id)}，补充居住空间",
             BuildingKind.HuntingCamp => "利用眼前可食动物补充食物",
             _ => ProductionRules.For(kind) is { } recipe
@@ -145,7 +148,7 @@ public sealed partial class WorldEngine
         if (kind == BuildingKind.Reservoir)
         {
             score += Circle(x, y, 1).Where(i => i == Index(x, y) || IsFreshWater(Current.Tiles[i]))
-                .Select(i => Math.Min(3, DailyWaterYield(Current.Tiles[i])) * 20).DefaultIfEmpty().Max();
+                .Select(i => Math.Min(3, GetDailyWaterCapacity(i % Current.Width, i / Current.Width)) * 20).DefaultIfEmpty().Max();
         }
 
         if (kind is BuildingKind.SignalTower or BuildingKind.Watchtower)

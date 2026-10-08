@@ -79,7 +79,7 @@ Core 不引用 Avalonia、平台 API 或文件系统。UI 协调模拟、编辑�
 
 ### 当前格式
 
-存档格式 **20**、模拟版本 **22**，权威定义见 [WorldState](../src/SeWZC.WorldBox.Core/WorldState.cs)，接受条件见 [持久化校验](../src/SeWZC.WorldBox.Core/WorldEngine.Persistence.cs)。alpha 明确拒绝旧版及未知格式，不迁移、不猜测缺失状态。已删除的帝国项目不保留空研究编号；旧贸易路线、请愿与聚落等级状态不再保存，现行贸易、报告及 `Tier` 使用各自实际路径。
+存档格式 **20**、模拟版本 **23**，权威定义见 [WorldState](../src/SeWZC.WorldBox.Core/WorldState.cs)，接受条件见 [持久化校验](../src/SeWZC.WorldBox.Core/WorldEngine.Persistence.cs)。alpha 明确拒绝旧版及未知格式，不迁移、不猜测缺失状态。已删除的帝国项目不保留空研究编号；旧贸易路线、请愿与聚落等级状态不再保存，现行贸易、报告及 `Tier` 使用各自实际路径。
 
 JSON 使用源生成上下文，保存种子、随机状态、时间、稳定 ID、关系及所有影响未来的途中状态。研究保存为 `Advancement.Id`，读取时恢复目录中的共享对象，不保存整份规则图。库存缺失金额及指定地格计数明确为零；带非零初始化器或必需语义的字段仍显式存在，不全局忽略默认值。附加动物按物种编号／精确数量交替保存，拒绝重复、未知、缺配对或非法数量。
 

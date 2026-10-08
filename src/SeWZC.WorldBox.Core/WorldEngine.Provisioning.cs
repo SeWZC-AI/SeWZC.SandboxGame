@@ -50,7 +50,18 @@ public sealed partial class WorldEngine
         => WaterUse(person.Age);
 
     private static double WaterUse(ResidentCursor person) => WaterUse(person.Age);
-    private static double WaterUse(double age) => age < 14 ? .015 : .025;
+    internal static double WaterUse(double age, Tile? tile = null)
+    {
+        var use = age < 14 ? .015 : .025;
+        return tile is null ? use : use - Math.Min(use * .5, DailyWaterYield(tile));
+    }
+
+    /// <summary>计算居民在指定环境中抵扣部分自然口渴后，每日仍需饮用的水量。</summary>
+    /// <param name="person">居民。</param>
+    /// <param name="tile">居民当前所在环境；最多抵扣一半基础需求。</param>
+    public static double WaterUse(Resident person, Tile tile) => WaterUse(person.Age, tile);
+
+    private double LocalWaterUse(ResidentCursor person) => WaterUse(person.Age, Current.Tiles[Index(person.X, person.Y)]);
 
     private double WaterReserve(ResidentCursor person)
     {
@@ -62,9 +73,9 @@ public sealed partial class WorldEngine
     private double WaterCollectionTarget(ResidentCursor person)
     {
         var source = person.Agent.Goal.TargetEntityId - 1;
-        // 低产地面水先保住两日个人备用，不让居民为装满大瓶在同一点停留数月。
+        // 低产水井先保住两日个人备用，避免为装满大瓶长期停留。
         if (person.Agent.Goal.Kind == AgentGoalKind.FetchWater && source >= 0 && source < Current.Tiles.Count
-            && GetWaterSupply(source % Current.Width, source / Current.Width) < .1)
+            && GetDailyWaterCapacity(source % Current.Width, source / Current.Width) < .1)
             return WaterUse(person) * 2;
         return WaterReserve(person) + (person.Id % 5 == 0 ? 3 : 0);
     }
@@ -112,7 +123,7 @@ public sealed partial class WorldEngine
 
     private void RefillDailyWater(ResidentCursor person)
     {
-        var use = WaterUse(person);
+        var use = LocalWaterUse(person);
         if (Current.Rules.Thirst && person.Inventory.Water < use &&
             Current.Tick - person.MoveStartedTick >= person.MoveDurationTicks)
             DrawWater(person, Index(person.X, person.Y), use - person.Inventory.Water);
@@ -127,15 +138,15 @@ public sealed partial class WorldEngine
         }
 
         RefillDailyWater(person);
-        var use = WaterUse(person);
+        var use = LocalWaterUse(person);
         var drink = Math.Min(use, person.Inventory.Water);
         person.Inventory = person.Inventory with { Water = person.Inventory.Water - drink };
-        person.Thirst = Math.Clamp(person.Thirst + (drink >= use - .000001 ? -3 : .6 * (1 - drink / use)), 0, 100);
+        person.Thirst = Math.Clamp(person.Thirst + (drink >= use - .000001 ? -3 : .6 * (use - drink) / WaterUse(person)), 0, 100);
         if (person.Thirst > 95)
             DamageResident(person, .25, DeathCause.Dehydration);
     }
 
-    /// <summary>计算此格当日扣除已取水量后的可用供水；淡水水域可为正无穷。</summary>
+    /// <summary>计算此格当日扣除已取水量后的可打水量；淡水水域可为正无穷，普通陆地为零。</summary>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
     public double AvailableWater(int x, int y)
@@ -146,13 +157,13 @@ public sealed partial class WorldEngine
         var tile = Current.Tiles[index].Value;
         if (tile.FireTicks > 0)
             return 0;
-        var supply = IsWaterTerrain(tile.Terrain) ? DailyWaterYield(tile) : WaterSupplyAt(index, tile).Supply;
+        var supply = WaterSupplyAt(index, tile).Supply;
         return Math.Max(0, supply - (tile.WaterDrawTick == Current.Tick ? tile.WaterDrawn : 0));
     }
 
     // 无限供水只由查询推导，避免把无穷值写入存档资源。
-    /// <summary>计算受干旱影响后的每日自然供水量；河湖等淡水水域返回正无穷。</summary>
-    /// <param name="tile">要计算自然供水量的地格。</param>
+    /// <summary>计算受干旱影响后的环境供水量，供口渴、生态和水井计算；淡水水域返回正无穷。</summary>
+    /// <param name="tile">要计算环境供水量的地格。</param>
     public static double DailyWaterYield(Tile tile)
     {
         return IsFreshWater(tile)
@@ -160,7 +171,7 @@ public sealed partial class WorldEngine
             : tile.NaturalWaterYield * (tile.DroughtTicks > 0 ? .2 : 1);
     }
 
-    /// <summary>计算此格水井的每日增量供水，水域返回零。</summary>
+    /// <summary>根据环境供水计算此格水井的每日可打水量，水域返回零。</summary>
     /// <param name="tile">水井所在的地格。</param>
     public static double WellWaterYield(Tile tile)
     {
@@ -169,10 +180,10 @@ public sealed partial class WorldEngine
             : Math.Max(0, 30 * DailyWaterYield(tile) - .6);
     }
 
-    /// <summary>计算此格自然水源及本地运营供水设施提供的每日总量。</summary>
+    /// <summary>计算此格淡水水域或运营水井的每日可打水量，普通陆地为零。</summary>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
-    public double GetWaterSupply(int x, int y)
+    public double GetDailyWaterCapacity(int x, int y)
     {
         if (!InBounds(x, y))
             return 0;
@@ -180,19 +191,19 @@ public sealed partial class WorldEngine
         var tile = Current.Tiles[index].Value;
         if (tile.FireTicks > 0)
             return 0;
-        return IsWaterTerrain(tile.Terrain) ? DailyWaterYield(tile) : WaterSupplyAt(index, tile).Supply;
+        return WaterSupplyAt(index, tile).Supply;
     }
 
     // 已知地格只查询一次供水和水井状态；调用方处理边界和火场。
     private (double Supply, bool Reliable) WaterSupplyAt(int index, Tile tile)
     {
-        var natural = DailyWaterYield(tile);
-        if (IsFreshWater(tile)) return (natural, true);
+        if (IsFreshWater(tile)) return (double.PositiveInfinity, true);
+        if (IsWaterTerrain(tile.Terrain)) return (0, false);
         var well = _localWorkQueriesActive
             ? _localWaterWells.GetValueOrDefault(index)
             : FindWaterWell(index);
         var operating = well is not null && IsBuildingOperational(well);
-        return (IsWaterTerrain(tile.Terrain) ? natural : natural + (operating ? WellWaterYield(tile) : 0), operating);
+        return (operating ? WellWaterYield(tile) : 0, operating);
     }
 
     private BuildingCursor? FindWaterWell(int index)
@@ -226,7 +237,7 @@ public sealed partial class WorldEngine
         var fresh = IsFreshWater(before);
         if (Distance(x, y, source % Current.Width, source / Current.Width) > (fresh ? 1 : 0)
             || before.FireTicks > 0) return 0;
-        var supply = IsWaterTerrain(before.Terrain) ? DailyWaterYield(before) : WaterSupplyAt(source, before).Supply;
+        var supply = WaterSupplyAt(source, before).Supply;
         var drawn = _dailyDrinking && _dailyWaterVisits[source] == _dailyWaterVisit
             ? _dailyWaterDraws[source]
             : before.WaterDrawTick == Current.Tick ? before.WaterDrawn : 0;
@@ -307,8 +318,10 @@ public sealed partial class WorldEngine
             if (source < 0 || source >= Current.Tiles.Count)
                 return;
             var tile = Current.Tiles[source].Value;
-            if (!IsWaterSource(tile) || tile.FireTicks > 0) return;
+            if (tile.FireTicks > 0) return;
             var water = WaterSupplyAt(source, tile);
+            // 产量须能保障个人饮水并补出储备，避免在低产水井长期等水。
+            if (water.Supply <= WaterUse(person)) return;
             if (collectionOnly && water.Supply < .1) return;
             var available = Math.Max(0, water.Supply - (tile.WaterDrawTick == Current.Tick ? tile.WaterDrawn : 0));
             if (available <= 0)
@@ -359,7 +372,7 @@ public sealed partial class WorldEngine
             if (existing is null || Current.Tick - existing.ObservedTick >= 120)
             {
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.WaterSource, bestSource + 1,
-                    bestSource % Current.Width, bestSource / Current.Width, 1, "实地发现可取水的河湖、水井或有供水的陆地"));
+                    bestSource % Current.Width, bestSource / Current.Width, 1, "实地发现可取水的河湖或运营水井"));
             }
         }
 
@@ -372,8 +385,8 @@ public sealed partial class WorldEngine
         var prioritizeFood = Current.Rules.Hunger && person.Hunger >= 60
             && person.Inventory.Food < .05 && person.Thirst < 10;
         var needsWater = person.Inventory.Water < .3
-                         && (person.Thirst >= 10 || person.Inventory.Water < WaterUse(person) * 4
-                             && GetWaterSupply(person.X, person.Y) < WaterUse(person));
+                         && (person.Thirst >= 10 || person.Inventory.Water < LocalWaterUse(person) * 4
+                             && GetDailyWaterCapacity(person.X, person.Y) < LocalWaterUse(person));
         var refillReserve = person.Inventory.Water < WaterUse(person) * 4;
         if (Current.Rules.Thirst && !prioritizeFood &&
             (needsWater || refillReserve || (person.Id % 5 == 0 && person.Inventory.Water < WaterReserve(person) + 3)))
@@ -388,14 +401,14 @@ public sealed partial class WorldEngine
             {
                 var water = FindWaterSite(person, !needsWater);
                 if (water.Bank >= 0 && (needsWater ||
-                                        GetWaterSupply(water.Source % Current.Width, water.Source / Current.Width) >= .1))
+                                        GetDailyWaterCapacity(water.Source % Current.Width, water.Source / Current.Width) >= .1))
                 {
                     choices.Add(new GoalChoice(AgentGoalKind.FetchWater, water.Bank % Current.Width,
                         water.Bank / Current.Width,
                         needsWater || refillReserve ? 65 + person.Thirst :
                         atHome && home.Resources.Water < home.Population * .5 ? 72 : 18,
                         person.Thirst >= 80 ? "严重缺水，优先就近补充饮水"
-                            : "比较眼前可达水源的供水量与距离，优先到河湖、水井或熟悉水源装水，再随身携带并运回家园",
+                            : "比较眼前可达水源的可打水量与距离，到河湖或运营水井装水，再随身携带并运回家园",
                         EntityId: water.Source + 1));
                 }
                 else if (needsWater && water.Bank < 0)
@@ -430,7 +443,7 @@ public sealed partial class WorldEngine
                     if (best >= 0)
                     {
                         choices.Add(new GoalChoice(AgentGoalKind.FetchWater, best % Current.Width, best / Current.Width,
-                            50 + person.Thirst, "沿眼前可通行土地勘察水源；尚未发现河湖或有供水的陆地"));
+                            50 + person.Thirst, "沿眼前可通行土地勘察水源；尚未发现河湖或运营水井"));
                     }
                 }
             }
@@ -504,6 +517,18 @@ public sealed partial class WorldEngine
         if (person.Agent.Goal.Kind != AgentGoalKind.FetchWater || person.Health <= 0)
             return false;
         var source = person.Agent.Goal.TargetEntityId - 1;
+        if (source >= 0 && (source >= Current.Tiles.Count
+            || GetDailyWaterCapacity(source % Current.Width, source / Current.Width)
+                <= WaterUse(person)))
+        {
+            person.Agent.Goal = new AgentGoal
+            {
+                TargetX = person.X, TargetY = person.Y, ReviewTick = Current.Tick,
+                Reason = "此处无法持续补充饮水，重新寻找河湖或运营水井",
+            };
+            person.Agent.NextThinkTick = Current.Tick;
+            return false;
+        }
         var target = WaterCollectionTarget(person);
         var amount = DrawWater(person, source,
             Math.Min(
@@ -537,7 +562,7 @@ public sealed partial class WorldEngine
         {
             // 供水仍会每日恢复时，额度已用完只是当日受阻；保留水源并等待，避免每天转向和重新搜索。
             if (source >= 0 && person.Inventory.Water < target
-                && GetWaterSupply(source % Current.Width, source / Current.Width) > 0)
+                && GetDailyWaterCapacity(source % Current.Width, source / Current.Width) > 0)
             {
                 person.Activity = ResidentActivity.Resting;
                 return false;

@@ -124,7 +124,7 @@ public sealed partial record Advancement
     /// <summary>土木水利。</summary>
     public static Advancement CivilEngineering { get; } = new(22, nameof(CivilEngineering), "土木水利",
         ResearchBranch.PublicHealth, "城建", false, [Irrigation, Logistics],
-        new ResourceAmounts { Food = 30, Wood = 15, Stone = 15 }, 100, "解锁蓄水站。水务工人到实际水源取水，仍与野外取水共享每日额度。",
+        new ResourceAmounts { Food = 30, Wood = 15, Stone = 15 }, 100, "解锁蓄水站。水务工人到河湖岸边取水，装入背包后实际返仓。",
         [BuildingKind.Reservoir]);
 
     /// <summary>公共教育。</summary>

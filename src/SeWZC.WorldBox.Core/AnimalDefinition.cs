@@ -6,7 +6,7 @@ namespace SeWZC.WorldBox.Core;
 /// <param name="Diet">物种食性。</param>
 /// <param name="Habitats">可组合的适宜栖息地类别。</param>
 /// <param name="MinimumFertility">允许该物种生存的最低地格肥力。</param>
-/// <param name="MinimumWater">允许该物种生存的最低每日自然供水量。</param>
+/// <param name="MinimumWater">允许该物种生存的最低环境供水量。</param>
 public readonly record struct AnimalDefinition(
     string Name,
     AnimalSize Size,

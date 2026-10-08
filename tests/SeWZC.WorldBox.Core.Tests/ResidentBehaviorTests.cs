@@ -327,7 +327,7 @@ public sealed class ResidentBehaviorTests
         Assert.Equal(16 * 32 + 21 + 1, fixture.Resident.Agent.Goal.TargetEntityId);
     }
 
-    /// <summary>严重脱水时先去最近的足量水源，不能为惯常河岸延误补水。</summary>
+    /// <summary>严重脱水时先去最近的运营水井，不能为惯常河岸延误补水。</summary>
     [Fact]
     public void Critical_thirst_prefers_nearby_sufficient_water()
     {
@@ -335,7 +335,7 @@ public sealed class ResidentBehaviorTests
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 90;
         fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
-        fixture.Engine.Current.Tiles[16 * 32 + 17].NaturalWaterYield = .1;
+        fixture.AddWell(17, 16, .1);
         fixture.Engine.Current.Tiles[16 * 32 + 21].Terrain = TerrainType.River;
 
         fixture.Engine.Step();
@@ -343,10 +343,10 @@ public sealed class ResidentBehaviorTests
         Assert.Equal(16 * 32 + 17 + 1, fixture.Resident.Agent.Goal.TargetEntityId);
     }
 
-    /// <summary>日常取水选择实际运营水井，并在停用后按真实自然供水重选。</summary>
+    /// <summary>日常取水选择实际运营水井，停用后只能转向河湖，不能打取普通地块供水。</summary>
     [Theory]
     [InlineData(true, 18)]
-    [InlineData(false, 17)]
+    [InlineData(false, 20)]
     public void Water_collection_accounts_for_well_operation(bool enabled, int expectedX)
     {
         var fixture = Prepare(thirst: true);
@@ -361,6 +361,7 @@ public sealed class ResidentBehaviorTests
         }
         fixture.Engine.Current.Tiles[16 * 32 + 17].NaturalWaterYield = .08;
         fixture.Engine.Current.Tiles[16 * 32 + 18].NaturalWaterYield = .06;
+        fixture.Engine.Current.Tiles[16 * 32 + 20].Terrain = TerrainType.River;
         var wellId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Well, 18, 16);
         fixture.Engine.Current.Society.Buildings.Single(building => building.Id == wellId).Enabled = enabled;
 
@@ -378,7 +379,7 @@ public sealed class ResidentBehaviorTests
         fixture.Resident.Thirst = 20;
         fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
         for (var y = 0; y < 32; y++) fixture.Engine.Current.Tiles[y * 32 + 18].Terrain = TerrainType.Mountain;
-        fixture.Engine.Current.Tiles[16 * 32 + 17].NaturalWaterYield = .08;
+        fixture.AddWell(17, 16, .08);
         fixture.Engine.Current.Tiles[16 * 32 + 20].Terrain = TerrainType.River;
 
         fixture.Engine.Step();
@@ -403,9 +404,9 @@ public sealed class ResidentBehaviorTests
         Assert.Equal(16 * 32 + 19 + 1, fixture.Resident.Agent.Goal.TargetEntityId);
     }
 
-    /// <summary>零散水源只补个人短期备用水，不能为了装满大水瓶滞留数月。</summary>
+    /// <summary>普通陆地的环境供水不能装进背包，失效的取水任务立即请求重选。</summary>
     [Fact]
-    public void A_small_water_source_finishes_a_personal_backup_instead_of_a_large_delivery()
+    public void Ordinary_ground_does_not_supply_collectable_water()
     {
         var fixture = Prepare(thirst: true);
         fixture.Engine.Current.Tiles[16 * 32 + 16].NaturalWaterYield = .08;
@@ -416,11 +417,85 @@ public sealed class ResidentBehaviorTests
             TargetEntityId = 16 * 32 + 16 + 1,
         };
 
-        Assert.True(fixture.Engine.TryFetchWater(fixture.Resident.Value));
+        Assert.False(fixture.Engine.TryFetchWater(fixture.Resident.Value));
 
-        Assert.Equal(.05, fixture.Resident.Inventory.Water, 6);
+        Assert.Equal(.03, fixture.Resident.Inventory.Water, 6);
         Assert.Equal(AgentGoalKind.Idle, fixture.Resident.Agent.Goal.Kind);
+        Assert.Equal(fixture.Engine.Current.Tick, fixture.Resident.Agent.NextThinkTick);
+        Assert.Equal(0, fixture.Engine.AvailableWater(16, 16));
+        Assert.Equal(0, fixture.Engine.GetDailyWaterCapacity(16, 16));
         Assert.Equal(0, fixture.Town.Resources.Water);
+    }
+
+    /// <summary>水井停用或干旱导致产量过低时，取水任务立即结束，环境供水仍保留。</summary>
+    [Theory]
+    [InlineData(false, 0)]
+    [InlineData(true, 10)]
+    public void Water_collection_abandons_a_well_that_cannot_build_reserves(bool enabled, int drought)
+    {
+        var fixture = Prepare(thirst: true);
+        var wellId = fixture.AddWell(16, 17, .101);
+        fixture.Engine.Current.Society.Buildings.Single(building => building.Id == wellId).Enabled = enabled;
+        fixture.Engine.Current.Tiles[17 * 32 + 16].DroughtTicks = drought;
+        fixture.Resident.X = fixture.Resident.FromX = 16;
+        fixture.Resident.Y = fixture.Resident.FromY = 17;
+        fixture.Resident.Inventory = new ResourceStock();
+        fixture.Resident.Agent.NextThinkTick = fixture.Engine.Current.Tick + 100;
+        fixture.Resident.Agent.Goal = new AgentGoal
+        {
+            Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 17,
+            TargetEntityId = 17 * 32 + 16 + 1,
+        };
+
+        Assert.False(fixture.Engine.TryFetchWater(fixture.Resident.Value));
+
+        Assert.Equal(AgentGoalKind.Idle, fixture.Resident.Agent.Goal.Kind);
+        Assert.Equal(fixture.Engine.Current.Tick, fixture.Resident.Agent.NextThinkTick);
+        Assert.Equal(0, fixture.Resident.Inventory.Water);
+        Assert.True(WorldEngine.DailyWaterYield(fixture.Engine.State.Tiles[17 * 32 + 16]) > 0);
+    }
+
+    /// <summary>地块环境供水独立展示，只有实际水井才显示每日可打水量，且不叠加环境值。</summary>
+    [Theory]
+    [InlineData(false, false, 0)]
+    [InlineData(true, false, 2.4)]
+    [InlineData(true, true, .6)]
+    public void Tile_water_summary_separates_environment_from_collectable_water(bool well, bool drought, double capacity)
+    {
+        var fixture = new WorldFixture();
+        if (well) fixture.AddWell(16, 17, .1);
+        var ground = fixture.Engine.Current.Tiles[17 * 32 + 16];
+        ground.NaturalWaterYield = .1;
+        ground.DroughtTicks = drought ? 10 : 0;
+        if (drought) ground.NaturalWaterYield = .2;
+
+        var summary = fixture.Engine.GetTileProductionSummary(16, 17);
+
+        Assert.Contains("地块供水量", summary);
+        Assert.Equal(well, summary.Contains("每日可打水量"));
+        Assert.Equal(capacity, fixture.Engine.GetDailyWaterCapacity(16, 17), 8);
+        Assert.DoesNotContain("/ 日", summary);
+    }
+
+    /// <summary>淡水河湖保持无限可打水量，海水即使有环境供水值也不能打取饮水。</summary>
+    [Theory]
+    [InlineData(TerrainType.River, true)]
+    [InlineData(TerrainType.Lake, true)]
+    [InlineData(TerrainType.Stream, true)]
+    [InlineData(TerrainType.LargeRiver, true)]
+    [InlineData(TerrainType.Water, false)]
+    [InlineData(TerrainType.DeepWater, false)]
+    public void Only_freshwater_terrain_provides_unlimited_collectable_water(TerrainType terrain, bool fresh)
+    {
+        var fixture = new WorldFixture();
+        var tile = fixture.Engine.Current.Tiles[17 * 32 + 16];
+        tile.Terrain = terrain;
+        tile.NaturalWaterYield = .1;
+
+        var available = fixture.Engine.AvailableWater(16, 17);
+
+        Assert.Equal(fresh ? double.PositiveInfinity : 0, available);
+        Assert.Equal(available, fixture.Engine.GetDailyWaterCapacity(16, 17));
     }
 
     /// <summary>火场避险只使用眼前能实际走到的安全地格，不选择山墙外的远处。</summary>

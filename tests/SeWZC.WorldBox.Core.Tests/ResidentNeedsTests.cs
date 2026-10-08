@@ -5,9 +5,9 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>每日需求的不可变转换与粮水消费次序。</summary>
 public sealed class ResidentNeedsTests
 {
-    /// <summary>共享水源按原居民顺序分配当日额度，合并地格更新不超额也不修改旧快照。</summary>
+    /// <summary>环境供水减缓每位居民口渴，不共享打水额度、不产出库存，也不修改旧快照。</summary>
     [Fact]
-    public void Daily_drinking_shares_the_finite_source_in_resident_order()
+    public void Natural_water_reduces_thirst_without_drawing_a_shared_quota()
     {
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = false }, false, true);
@@ -26,12 +26,64 @@ public sealed class ResidentNeedsTests
         fixture.Engine.Step();
 
         var after = fixture.Engine.State;
-        Assert.Equal(7, after.Residents[0].Thirst, 8);
-        Assert.Equal(10.24, after.Residents[1].Thirst, 8);
-        Assert.Equal(.04, after.Tiles[16 * 32 + 16].WaterDrawn, 8);
-        Assert.Equal(1, after.Tiles[16 * 32 + 16].WaterDrawTick);
+        Assert.Equal(10.3, after.Residents[0].Thirst, 8);
+        Assert.Equal(10.3, after.Residents[1].Thirst, 8);
+        Assert.All(after.Residents, person => Assert.Equal(0, person.Inventory.Water));
+        Assert.Equal(before.Tiles[16 * 32 + 16].WaterDrawn, after.Tiles[16 * 32 + 16].WaterDrawn);
+        Assert.Equal(before.Tiles[16 * 32 + 16].WaterDrawTick, after.Tiles[16 * 32 + 16].WaterDrawTick);
         Assert.Equal(10, before.Residents[0].Thirst);
         Assert.NotEqual(1, before.Tiles[16 * 32 + 16].WaterDrawTick);
+    }
+
+    /// <summary>环境最多抵扣一半饮水需求，干旱降低抵扣；儿童和成人均仍须饮水。</summary>
+    [Theory]
+    [InlineData(20, 0, 0, .975)]
+    [InlineData(20, .01, 0, .985)]
+    [InlineData(20, .04, 0, .9875)]
+    [InlineData(20, .04, 10, .983)]
+    [InlineData(10, .04, 0, .9925)]
+    public void Environmental_water_offsets_only_part_of_carried_water_consumption(
+        int age, double naturalWater, int drought, double remainingWater)
+    {
+        var before = new Resident { Age = age, Thirst = 10, Inventory = new ResourceStock { Water = 1 } };
+        var tile = new Tile { Terrain = TerrainType.Grass, NaturalWaterYield = naturalWater, DroughtTicks = drought };
+
+        var after = before.AdvanceDay(new WorldRules { Aging = false, Hunger = false }, tile, 1,
+            before.Profession, 0, 0, true);
+
+        Assert.Equal(remainingWater, after.Inventory.Water, 8);
+        Assert.Equal(7, after.Thirst);
+        Assert.Equal(1, before.Inventory.Water);
+    }
+
+    /// <summary>水井日额度只含实际井水，日常饮用按居民顺序共享剩余额度，旧快照保持原值。</summary>
+    [Fact]
+    public void Daily_drinking_shares_only_the_well_quota_in_resident_order()
+    {
+        var fixture = new WorldFixture();
+        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = false }, false, true);
+        fixture.Town.Resources = new ResourceStock();
+        fixture.AddWell(16, 17, .025);
+        fixture.Resident.Replace(fixture.Resident.Value with
+        {
+            Age = 20, X = 16, Y = 17, FromX = 16, FromY = 17,
+            Inventory = new ResourceStock(), Thirst = 10, FrozenUntilTick = 10,
+        });
+        fixture.Engine.Current.Residents.Add(fixture.Resident.Value with { Id = 900, Name = "第二位居民" });
+        var source = fixture.Engine.Current.Tiles[17 * 32 + 16];
+        source.WaterDrawTick = 1;
+        source.WaterDrawn = .13;
+        var before = fixture.Engine.State;
+
+        fixture.Engine.Step();
+
+        var after = fixture.Engine.State;
+        Assert.Equal(7, after.Residents[0].Thirst, 8);
+        Assert.Equal(10.12, after.Residents[1].Thirst, 8);
+        Assert.Equal(.15, after.Tiles[17 * 32 + 16].WaterDrawn, 8);
+        Assert.Equal(0, fixture.Engine.AvailableWater(16, 17), 8);
+        Assert.Equal(.13, before.Tiles[17 * 32 + 16].WaterDrawn);
+        Assert.Equal(10, before.Residents[0].Thirst);
     }
 
     /// <summary>首次跨过严重饥饿阈值时立即请求复评，不能被原有远期安排延后。</summary>

@@ -128,8 +128,8 @@ public sealed partial class WorldEngine
                                        (factor > 1 ? $"；同聚落居民在 1 格内返乡休息恢复 ×{factor:0.00}" : ""),
             BuildingKind.LumberCamp => "伐木工采收邻格木材，携带返仓" + (factor > 1 ? $"；等级产量倍率 ×{factor:0.00}" : ""),
             BuildingKind.Quarry => "矿工采收邻格石材与矿石，携带返仓" + (factor > 1 ? $"；等级产量倍率 ×{factor:0.00}" : ""),
-            BuildingKind.Well => $"供水量 {WellWaterYield(ground):0.###} / 日"
-                                 + "\n每次取水至多 1，与本格野外取水共享额度，装入随身库存后运回",
+            BuildingKind.Well => $"每日可打水量 {WellWaterYield(ground):0.###}"
+                                 + "\n每次取水至多 1，所有取水者共享水井日额度，装入随身库存后运回",
             BuildingKind.Granary => $"本聚落居民在中心 1 格内返乡休息恢复 ×{1 + .1 * building.Level:0.00}；多个粮仓取最高倍率",
             BuildingKind.Housing => $"提供 {20 * building.Level} 人住房",
             BuildingKind.Market => "值守时，集市 3 格内居民可与相距 3 格的人交换已有消息；每次值守消耗仓库粮食 0.01",
@@ -194,7 +194,7 @@ public sealed partial class WorldEngine
                     $"离岸上限 {BridgeShoreLimit(building.Level)} 至 {BridgeShoreLimit(next)} 格，步行耗时系数 {1.2 / (1 + building.Level * .25):0.00}",
                 BuildingKind.Dock => $"附近水上舟船速度 ×{1 + .15 * next:0.00}，岗位增加 1",
                 BuildingKind.TownCenter => $"返乡休息恢复 ×{1 + building.Level * .25:0.00}",
-                BuildingKind.Well => "岗位增加 1；仍共享当地每日供水额度",
+                BuildingKind.Well => "岗位增加 1；仍共享水井每日可打水额度",
                 BuildingKind.Granary => $"家园休息恢复 ×{1 + .1 * next:0.00}",
                 BuildingKind.Housing => $"住房容量 {20 * next} 人",
                 BuildingKind.Market => "岗位增加 1；交谈范围仍为 3 格",

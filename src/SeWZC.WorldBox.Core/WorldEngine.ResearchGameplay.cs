@@ -223,7 +223,7 @@ public sealed partial class WorldEngine
                + (ExpansionSupply(b.Kind) is { } supply
                    ? $"\n随身补给目标：{ResourceStock.Name(supply.Kind)} {supply.Amount:0.##}，不足时本人返仓取料"
                    : "")
-               + (b.Kind == BuildingKind.Reservoir ? "\n共享本格自然供水，邻接河湖可取淡水；水装入背包后返仓" : "");
+               + (b.Kind == BuildingKind.Reservoir ? "\n从相邻河湖取水；水装入背包后返仓" : "");
     }
 
     /// <summary>检查居民经折跃门到达指定目标门的条件；可旅行时返回空值，否则返回原因。</summary>
@@ -374,7 +374,7 @@ public sealed partial class WorldEngine
     {
         return Circle(b.X, b.Y, 1).Where(i => AvailableWater(i % Current.Width, i / Current.Width) > .05
                                               && (i == Index(b.X, b.Y) || IsFreshWater(Current.Tiles[i])))
-            .OrderByDescending(i => DailyWaterYield(Current.Tiles[i])).FirstOrDefault(-1);
+            .OrderByDescending(i => GetDailyWaterCapacity(i % Current.Width, i / Current.Width)).FirstOrDefault(-1);
     }
 
     private ResidentCursor? LocalWardPatient(BuildingCursor b)
@@ -554,7 +554,7 @@ public sealed partial class WorldEngine
 
         var water = Circle(b.X, b.Y, range).FirstOrDefault(i =>
             Distance(b.X, b.Y, i % Current.Width, i / Current.Width) <= range
-            && IsWaterSource(Current.Tiles[i]) && AvailableWater(i % Current.Width, i / Current.Width) > .05
+            && AvailableWater(i % Current.Width, i / Current.Width) > .05
             && ClearSignalLine(b.X, b.Y, i % Current.Width, i / Current.Width), -1);
         if (water >= 0)
         {

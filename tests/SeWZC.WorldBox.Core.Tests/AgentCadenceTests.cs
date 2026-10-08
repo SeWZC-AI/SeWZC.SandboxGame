@@ -151,15 +151,15 @@ public sealed class AgentCadenceTests
         Assert.Equal(fixture.Engine.ExportJson(), restored.ExportJson());
     }
 
-    /// <summary>已在有效采食且每天喝足水时，不将饮水后耗尽的日额度误判为新危机。</summary>
+    /// <summary>已在有效采食且携水够用时，不将普通地块不能打水误判为新危机。</summary>
     [Theory]
     [InlineData(100, true)]
     [InlineData(5, false)]
-    public void Productive_food_task_continues_after_drinking_the_daily_supply(byte fertility, bool productive)
+    public void Productive_food_task_continues_with_carried_water(byte fertility, bool productive)
     {
         var fixture = Prepare();
         fixture.Town.Resources = new ResourceStock();
-        fixture.Resident.Inventory = new ResourceStock();
+        fixture.Resident.Inventory = new ResourceStock { Water = 1 };
         fixture.Resident.Hunger = 90;
         var tile = fixture.Engine.Current.Tiles[16 * 32 + 16];
         tile.Replace(tile.Value with
@@ -243,7 +243,7 @@ public sealed class AgentCadenceTests
         fixture.Resident.Agent.NextThinkTick = 100;
         fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
         var source = 17 * 32 + 16;
-        fixture.Engine.Current.Tiles[source].NaturalWaterYield = 1;
+        fixture.AddWell(16, 17, .1);
 
         fixture.Engine.Step();
 
@@ -260,24 +260,25 @@ public sealed class AgentCadenceTests
         var fixture = new WorldFixture();
         fixture.Engine.Current.Tick = 1;
         fixture.Resident.X = 16;
-        fixture.Resident.Y = 16;
+        fixture.Resident.Y = 17;
         fixture.Resident.Inventory = new ResourceStock();
         fixture.Resident.Agent.ExplorationHeading = 2;
         fixture.Resident.Agent.NextThinkTick = 37;
-        var source = 16 * 32 + 16;
+        var source = 17 * 32 + 16;
         fixture.Resident.Agent.Goal = new AgentGoal
         {
-            Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 16,
+            Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 17,
             TargetEntityId = source + 1, WorkTicks = 3,
         };
         var tile = fixture.Engine.Current.Tiles[source];
-        tile.Replace(tile.Value with { NaturalWaterYield = .1, WaterDrawTick = 1, WaterDrawn = .1 });
+        fixture.AddWell(16, 17, .025);
+        tile.Replace(tile.Value with { WaterDrawTick = 1, WaterDrawn = fixture.Engine.GetDailyWaterCapacity(16, 17) });
 
         Assert.False(fixture.Engine.TryFetchWater(fixture.Resident.Value));
 
         Assert.Equal(2, fixture.Resident.Agent.ExplorationHeading);
         Assert.Equal(37, fixture.Resident.Agent.NextThinkTick);
-        Assert.Equal(.1, tile.WaterDrawn);
+        Assert.Equal(.15, tile.WaterDrawn, 8);
         Assert.Equal(0, fixture.Resident.Inventory.Water);
     }
 
@@ -295,19 +296,19 @@ public sealed class AgentCadenceTests
         fixture.Engine.Current.Tick = 1;
         person.Replace(person.Value with
         {
-            X = 16, Y = 16, FromX = 16, FromY = 16,
+            X = 16, Y = 17, FromX = 16, FromY = 17,
             Inventory = new ResourceStock { Water = target - .1 },
             Agent = person.Agent.Value with
             {
                 Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 16,
-                    TargetEntityId = 16 * 32 + 16 + 1, ReviewTick = 40,
+                    Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 17,
+                    TargetEntityId = 17 * 32 + 16 + 1, ReviewTick = 40,
                 },
                 NextThinkTick = 40,
             },
         });
-        fixture.Engine.Current.Tiles[16 * 32 + 16].NaturalWaterYield = 1;
+        fixture.AddWell(16, 17, .1);
         var before = fixture.Engine.State;
 
         Assert.True(fixture.Engine.TryFetchWater(person.Value));
@@ -315,7 +316,7 @@ public sealed class AgentCadenceTests
         Assert.Equal(target, person.Inventory.Water, 8);
         Assert.Equal(completedGoal, person.Agent.Goal.Kind);
         Assert.Equal(1, person.Agent.NextThinkTick);
-        Assert.Equal(.1, fixture.Engine.Current.Tiles[16 * 32 + 16].WaterDrawn, 8);
+        Assert.Equal(.1, fixture.Engine.Current.Tiles[17 * 32 + 16].WaterDrawn, 8);
         Assert.Equal(target - .1, before.Residents.Single(resident => resident.Id == id).Inventory.Water, 8);
         Assert.Equal(AgentGoalKind.FetchWater, before.Residents.Single(resident => resident.Id == id).Agent.Goal.Kind);
     }
@@ -331,6 +332,7 @@ public sealed class AgentCadenceTests
         fixture.Town.Resources = new ResourceStock();
         fixture.Resident.Replace(fixture.Resident.Value with
         {
+            X = 16, Y = 17, FromX = 16, FromY = 17,
             Age = 20, MoveStartedTick = movementStarted == 0 ? 0 : fixture.Engine.Current.Tick,
             MoveDurationTicks = movementStarted == 0 ? 1 : 3,
             Inventory = new ResourceStock { Food = 10, Water = .1 },
@@ -339,17 +341,17 @@ public sealed class AgentCadenceTests
                 NextThinkTick = 40,
                 Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 16,
-                    TargetEntityId = 16 * 32 + 16 + 1, ReviewTick = 40,
+                    Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 17,
+                    TargetEntityId = 17 * 32 + 16 + 1, ReviewTick = 40,
                 },
             },
         });
-        fixture.Engine.Current.Tiles[16 * 32 + 16].NaturalWaterYield = .2;
+        fixture.AddWell(16, 17, .03);
 
         fixture.Engine.Step();
 
-        Assert.Equal(draws ? .275 : .075, fixture.Resident.Inventory.Water, 8);
-        Assert.Equal(draws ? .2 : 0, fixture.Engine.Current.Tiles[16 * 32 + 16].WaterDrawn, 8);
+        Assert.Equal(draws ? .3875 : .0875, fixture.Resident.Inventory.Water, 8);
+        Assert.Equal(draws ? .3 : 0, fixture.Engine.Current.Tiles[17 * 32 + 16].WaterDrawn, 8);
     }
 
     private static WorldFixture Prepare()
