@@ -5,13 +5,15 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>居民自主选路、供水、避险与休养的最小现场场景。</summary>
 public sealed class ResidentBehaviorTests
 {
-    /// <summary>可见道路总耗时更少时，允许先偏离目标方向再沿路抵达。</summary>
-    [Fact]
-    public void Navigation_prefers_a_faster_road_detour()
+    /// <summary>目标在视野内外时均比较可见道路，允许先偏离目标方向再沿更快的路前进。</summary>
+    [Theory]
+    [InlineData(14)]
+    [InlineData(22)]
+    public void Navigation_prefers_a_faster_road_detour(int targetX)
     {
         var fixture = Prepare();
-        SetJourney(fixture, 10, 10, 14, 10);
-        for (var x = 10; x <= 14; x++) fixture.Engine.Current.Tiles[11 * 32 + x].RoadLevel = 1;
+        SetJourney(fixture, 10, 10, targetX, 10);
+        for (var x = 10; x <= 15; x++) fixture.Engine.Current.Tiles[11 * 32 + x].RoadLevel = 1;
 
         fixture.Engine.Step();
 
@@ -20,12 +22,14 @@ public sealed class ResidentBehaviorTests
         Assert.Equal(1, fixture.Resident.MoveDurationTicks);
     }
 
-    /// <summary>耗时相近时更愿意走本人记得的路线。</summary>
-    [Fact]
-    public void Navigation_prefers_familiar_places_when_costs_are_similar()
+    /// <summary>目标在视野内外时，耗时相近均更愿意走本人记得的路线。</summary>
+    [Theory]
+    [InlineData(12)]
+    [InlineData(22)]
+    public void Navigation_prefers_familiar_places_when_costs_are_similar(int target)
     {
         var fixture = Prepare();
-        SetJourney(fixture, 10, 10, 12, 12);
+        SetJourney(fixture, 10, 10, target, target);
         fixture.Resident.Agent.Replace(fixture.Resident.Agent.Value with { FamiliarTiles = [11 * 32 + 10] });
 
         fixture.Engine.Step();

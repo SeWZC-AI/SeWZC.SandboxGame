@@ -788,7 +788,12 @@ public sealed partial class WorldEngine
     {
         if (!InBounds(x, y))
             return double.PositiveInfinity;
-        var tile = Current.Tiles[Index(x, y)];
+        return TerrainMoveCost(Current.Tiles[Index(x, y)].Value, race);
+    }
+
+    // 已取得不可变地格的局部搜索直接计算成本，不重复查询坐标和定位引用。
+    private static double TerrainMoveCost(Tile tile, RaceKind race)
+    {
         if (tile.Improvement == LandImprovement.MountainPass && tile.Terrain == TerrainType.Mountain)
         {
             return race == RaceKind.Dwarf

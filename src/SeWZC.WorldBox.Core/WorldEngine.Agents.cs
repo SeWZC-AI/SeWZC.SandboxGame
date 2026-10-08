@@ -12,7 +12,8 @@ public sealed partial class WorldEngine
     private int _localMoveSearch;
     private int[] _localMoveVisited = [];
     private double[] _localMoveCosts = [];
-    private readonly PriorityQueue<(int Index, int First), (double Cost, int Index)> _localRoutes = new();
+    private readonly PriorityQueue<(int Index, int First), (double Cost, int Index)> _localRoutes =
+        new(LocalRoutePriorityComparer.Instance);
     private VisibleAccessCache? _visibleAccessCache;
     private TravelMode _visibleAccessMode;
     private int _visibleAccessOrigin, _visibleAccessSearch, _visibleAccessWidth;
@@ -1177,17 +1178,22 @@ public sealed partial class WorldEngine
     // 选路与实际移动共用耗时，舟船、信使和种族设施的修正不能只影响其中一端。
     private int AgentMoveDuration(ResidentCursor person, int index)
     {
+        var terrain = Current.Tiles[index].Value;
+        if (person.TravelMode == TravelMode.Foot && person.Agent.DestinationSettlementId == 0
+            && person.Profession != Profession.Trader)
+            return MoveDurationForSpeed(1 / TerrainMoveCost(terrain, person.Race));
         var x = index % Current.Width;
         var y = index / Current.Width;
-        var terrain = Current.Tiles[index];
         var speed = person.TravelMode == TravelMode.Aircraft ? 2
             : person.TravelMode == TravelMode.Boat && !terrain.IsWalkable
                 ? 1.5 * BoatTravelMultiplier(x, y, person.NationId)
-                : person.Agent.DestinationSettlementId == 0 ? 1 / GetTerrainMoveCost(x, y, person.Race)
+                : person.Agent.DestinationSettlementId == 0 ? 1 / TerrainMoveCost(terrain, person.Race)
                     : MessageTravelMultiplier(x, y, person.NationId, person.Race);
         speed *= RacialTravelBonus(person, x, y);
-        return Math.Clamp((int)Math.Round(2 / Math.Max(.1, speed)), 1, 8);
+        return MoveDurationForSpeed(speed);
     }
+
+    private static int MoveDurationForSpeed(double speed) => Math.Clamp((int)Math.Round(2 / Math.Max(.1, speed)), 1, 8);
 
     private int SelectAgentStep(ResidentCursor person, int targetX, int targetY, out AgentGoal goal)
     {
@@ -1261,6 +1267,7 @@ public sealed partial class WorldEngine
         // 可见目标先试两条实际可走的折线路径，取得成本上界；只剪去不可能优于它们的分支。
         // 仍按原来的成本和索引出队，等价最短路的选择顺序不变。
         var targetVisible = Distance(originX, originY, targetX, targetY) <= 6;
+        var minimumTargetDistance = Math.Max(0, Distance(originX, originY, targetX, targetY) - 6);
         var upperCost = targetVisible
             ? Math.Min(DirectCost(true, flags, entryCosts), DirectCost(false, flags, entryCosts))
             : double.PositiveInfinity;
@@ -1339,7 +1346,12 @@ public sealed partial class WorldEngine
                     flags[localIndex] |= 8;
                 }
                 var cost = priority.Cost + entryCosts[localIndex];
-                if (targetVisible && cost + Distance(x, y, targetX, targetY) * .92 > upperCost + .000000001)
+                var targetDistance = Distance(x, y, targetX, targetY);
+                if (targetVisible && cost + targetDistance * .92 > upperCost + .000000001)
+                    continue;
+                // 视野外目标仍比较原有的「已走成本 + 剩余距离 × 2」；后续每步至少花费 .92。
+                // 三角不等式给出下界：cost + .92 × 当前剩余距离 + 1.08 × 视野内最小剩余距离。
+                if (!targetVisible && cost + targetDistance * .92 + minimumTargetDistance * 1.08 > bestScore + .000000001)
                     continue;
                 if (_localMoveVisited[index] == search && _localMoveCosts[index] <= cost)
                     continue;
@@ -1374,6 +1386,15 @@ public sealed partial class WorldEngine
                                   && (latest is null || fact.ObservedTick > latest.ObservedTick))
                 latest = fact;
         return latest;
+    }
+
+    /// <summary>有限导航成本按耗时、地格索引排序，直接比较两个字段。</summary>
+    private sealed class LocalRoutePriorityComparer : IComparer<(double Cost, int Index)>
+    {
+        public static readonly LocalRoutePriorityComparer Instance = new();
+
+        public int Compare((double Cost, int Index) left, (double Cost, int Index) right) =>
+            left.Cost < right.Cost ? -1 : left.Cost > right.Cost ? 1 : left.Index.CompareTo(right.Index);
     }
 
     /// <summary>参与居民行动决策评分的候选目标。</summary>

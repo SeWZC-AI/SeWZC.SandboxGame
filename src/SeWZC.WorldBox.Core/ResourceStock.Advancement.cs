@@ -59,47 +59,58 @@ public readonly partial record struct ResourceStock
 
     /// <summary>返回所有资源同时按倍率缩放后的库存。</summary>
     /// <param name="factor">各类资源共同使用的数量倍率。</param>
-    public ResourceStock Scale(double factor) => new()
+    public ResourceStock Scale(double factor)
     {
-        Food = Food * factor,
-        Wood = Wood * factor,
-        Stone = Stone * factor,
-        Ore = Ore * factor,
-        Alloy = Alloy * factor,
-        EnergyCells = EnergyCells * factor,
-        Crystals = Crystals * factor,
-        Coal = Coal * factor,
-        Oil = Oil * factor,
-        RareEarth = RareEarth * factor,
-        Boats = Boats * factor,
-        Aircraft = Aircraft * factor,
-        Water = Water * factor,
-        Tools = Tools * factor,
-        Medicine = Medicine * factor,
-        Ammunition = Ammunition * factor,
-    };
+        // 全零材料乘以有限正数仍为正零，无需为日用粮水创建其他资源记录。
+        var materials = _materials is null && double.IsFinite(factor) && BitConverter.DoubleToInt64Bits(factor) >= 0
+            ? null
+            : NormalizeMaterials(new Materials
+            {
+                Wood = Wood * factor,
+                Stone = Stone * factor,
+                Ore = Ore * factor,
+                Alloy = Alloy * factor,
+                EnergyCells = EnergyCells * factor,
+                Crystals = Crystals * factor,
+                Coal = Coal * factor,
+                Oil = Oil * factor,
+                RareEarth = RareEarth * factor,
+                Boats = Boats * factor,
+                Aircraft = Aircraft * factor,
+                Tools = Tools * factor,
+                Medicine = Medicine * factor,
+                Ammunition = Ammunition * factor,
+            });
+        return new ResourceStock(Food * factor, Water * factor, materials);
+    }
 
     /// <summary>返回所有资源数量限制在零至指定上限内的库存。</summary>
     /// <param name="maximum">每类资源的数量上限。</param>
-    public ResourceStock Clamp(double maximum) => new()
+    public ResourceStock Clamp(double maximum)
     {
-        Food = Math.Clamp(Food, 0, maximum),
-        Wood = Math.Clamp(Wood, 0, maximum),
-        Stone = Math.Clamp(Stone, 0, maximum),
-        Ore = Math.Clamp(Ore, 0, maximum),
-        Alloy = Math.Clamp(Alloy, 0, maximum),
-        EnergyCells = Math.Clamp(EnergyCells, 0, maximum),
-        Crystals = Math.Clamp(Crystals, 0, maximum),
-        Coal = Math.Clamp(Coal, 0, maximum),
-        Oil = Math.Clamp(Oil, 0, maximum),
-        RareEarth = Math.Clamp(RareEarth, 0, maximum),
-        Boats = Math.Clamp(Boats, 0, maximum),
-        Aircraft = Math.Clamp(Aircraft, 0, maximum),
-        Water = Math.Clamp(Water, 0, maximum),
-        Tools = Math.Clamp(Tools, 0, maximum),
-        Medicine = Math.Clamp(Medicine, 0, maximum),
-        Ammunition = Math.Clamp(Ammunition, 0, maximum),
-    };
+        var food = Math.Clamp(Food, 0, maximum);
+        var water = Math.Clamp(Water, 0, maximum);
+        var materials = _materials;
+        if (materials is not null && !materials.Within(maximum))
+            materials = NormalizeMaterials(new Materials
+            {
+                Wood = Math.Clamp(Wood, 0, maximum),
+                Stone = Math.Clamp(Stone, 0, maximum),
+                Ore = Math.Clamp(Ore, 0, maximum),
+                Alloy = Math.Clamp(Alloy, 0, maximum),
+                EnergyCells = Math.Clamp(EnergyCells, 0, maximum),
+                Crystals = Math.Clamp(Crystals, 0, maximum),
+                Coal = Math.Clamp(Coal, 0, maximum),
+                Oil = Math.Clamp(Oil, 0, maximum),
+                RareEarth = Math.Clamp(RareEarth, 0, maximum),
+                Boats = Math.Clamp(Boats, 0, maximum),
+                Aircraft = Math.Clamp(Aircraft, 0, maximum),
+                Tools = Math.Clamp(Tools, 0, maximum),
+                Medicine = Math.Clamp(Medicine, 0, maximum),
+                Ammunition = Math.Clamp(Ammunition, 0, maximum),
+            });
+        return new ResourceStock(food, water, materials);
+    }
 
     /// <summary>返回资源种类的中文名称。</summary>
     /// <param name="kind">资源种类。</param>
