@@ -61,11 +61,11 @@ public sealed class AgentMemoryTests
         var observed = new AgentFact { SubjectId = 4 };
         var received = new AgentFact { SubjectId = 5 };
 
-        var next = agent.Remember(observed, fixture.Town.Id);
+        var next = agent.Remember(observed, fixture.Town.Value.Id);
         Assert.Same(agent, fixture.Resident.Agent);
         fixture.Resident.Agent = next;
         var before = fixture.Engine.State;
-        fixture.Resident.Agent = next.Remember(received, fixture.Town.Id);
+        fixture.Resident.Agent = next.Remember(received, fixture.Town.Value.Id);
 
         Assert.Equal<AgentFact>([.. initial, observed], before.Residents[0].Agent.Memory);
         Assert.Equal<AgentFact>([.. initial, observed, received], fixture.Engine.State.Residents[0].Agent.Memory);

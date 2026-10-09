@@ -36,6 +36,8 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
         }
     }
 
+    internal Action<int, T, T>? Changed { get; set; }
+
     public int Length => Count;
     internal long MembershipRevision { get; private set; }
     internal long GroupRevision { get; private set; }
@@ -82,6 +84,7 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
             GroupRevision++;
         }
 
+        Changed?.Invoke(cursor.Position, cursor.Value, value);
         cursor.Synchronize(value);
         if (_membershipChanged)
             return;
@@ -113,12 +116,6 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
             {
                 foreach (var person in _items)
                     person.FlushPending();
-            }
-
-            if (typeof(TCursor) == typeof(SettlementCursor))
-            {
-                foreach (var town in _items)
-                    ((SettlementCursor)(object)town).FlushResources();
             }
         }
         finally
@@ -161,6 +158,7 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
                 if (typeof(T) == typeof(Resident)
                     && ((Resident)(object)cursor.Value).SettlementId != ((Resident)(object)value).SettlementId)
                     GroupRevision++;
+                Changed?.Invoke(cursor.Position, cursor.Value, value);
                 cursor.Synchronize(value);
             }
         }

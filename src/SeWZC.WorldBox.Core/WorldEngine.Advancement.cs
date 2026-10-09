@@ -68,7 +68,7 @@ public sealed partial class WorldEngine
             return "正在升级或改向，暂停生产";
         if (building.Health < 50)
             return "设施受损，需要修复后运营";
-        if (Current.Tiles[Index(building.X, building.Y)].FireTicks > 0)
+        if (Current.Tiles[Index(building.X, building.Y)].Value.FireTicks > 0)
             return "设施所在地正在燃烧，暂停生产";
         if (!HasResearch(building.SettlementId, recipe.Research)
             || !HasResearchPrerequisites(building.SettlementId, recipe.Research.Prerequisites))
@@ -97,8 +97,8 @@ public sealed partial class WorldEngine
         if (recipe.Output != ResourceKind.Food)
             return recipe.Yield * building.Efficiency * multiplier;
         var tile = Current.Tiles[Index(building.X, building.Y)];
-        return recipe.Yield * building.Efficiency * multiplier * tile.Fertility / 100d *
-               (tile.DroughtTicks > 0 ? .18 : 1);
+        return recipe.Yield * building.Efficiency * multiplier * tile.Value.Fertility / 100d *
+               (tile.Value.DroughtTicks > 0 ? .18 : 1);
     }
 
     /// <summary>返回设施当前的生产状态说明。</summary>
@@ -115,7 +115,7 @@ public sealed partial class WorldEngine
             return "建筑已损毁，等待重建";
         if (building.Value.Health < 50)
             return "建筑受损，需要修复后工作";
-        if (Current.Tiles[Index(building.Value.X, building.Value.Y)].FireTicks > 0)
+        if (Current.Tiles[Index(building.Value.X, building.Value.Y)].Value.FireTicks > 0)
             return "正在燃烧，暂停工作";
         var workers = Current.Tick - building.Value.LastWorkedTick <= 1 ? building.Value.Workers.Count : 0;
         if (!building.Value.IsCompleted)
@@ -144,16 +144,16 @@ public sealed partial class WorldEngine
         if (recipe is null)
         {
             var town = RequireTown(building.Value.SettlementId);
-            if (building.Value.Kind == BuildingKind.TownCenter && town.IsExpanding)
+            if (building.Value.Kind == BuildingKind.TownCenter && town.Value.IsExpanding)
             {
                 return
-                    $"组织城镇扩充：{town.ExpansionProgress:0.#} / {town.ExpansionRequired:0}\n到场工人 {workers}/{building.Value.WorkSlots}";
+                    $"组织城镇扩充：{town.Value.ExpansionProgress:0.#} / {town.Value.ExpansionRequired:0}\n到场工人 {workers}/{building.Value.WorkSlots}";
             }
 
-            var research = Current.Society.Research.First(r => r.SettlementId == town.Id);
+            var research = Current.Society.Research.First(r => r.SettlementId == town.Value.Id);
             var activity = building.Value.Kind switch
             {
-                BuildingKind.Farm => $"产出：粮食   累计采收 {Current.Tiles[Index(building.Value.X, building.Value.Y)].Harvested:0.#}",
+                BuildingKind.Farm => $"产出：粮食   累计采收 {Current.Tiles[Index(building.Value.X, building.Value.Y)].Value.Harvested:0.#}",
                 BuildingKind.Workshop => "产出：附近实际可采的木材、石材与矿石",
                 BuildingKind.Academy => research.ActiveProject is { } kind
                     ? $"正在研究：{kind.Name}   {research.Progress / research.RequiredProgress:P0}"
@@ -162,7 +162,7 @@ public sealed partial class WorldEngine
                 BuildingKind.SignalTower => "功能：值守无线通信，传递实际收到的消息",
                 BuildingKind.ArcaneSanctum => "功能：训练法术，提升到场居民的魔法熟练度",
                 BuildingKind.Infirmary => "功能：治疗附近受伤与患病居民",
-                BuildingKind.TownCenter => $"家园粮仓：粮食 {town.Resources.Food:0.#}   木材 {town.Resources.Wood:0.#}",
+                BuildingKind.TownCenter => $"家园粮仓：粮食 {town.Value.Resources.Food:0.#}   木材 {town.Value.Resources.Wood:0.#}",
                 _ => BuildingDescription(building.Value.Kind),
             };
             return activity +
@@ -182,12 +182,12 @@ public sealed partial class WorldEngine
         var townStock = RequireTown(building.Value.SettlementId);
         var reserve = LocalDevelopmentReserve(townStock);
         var reserved = ResourceStock.Kinds.Where(k => recipe.Input.Get(k) > 0 && reserve.Get(k) > 0
-                                                                              && townStock.Resources.Get(k) <
+                                                                              && townStock.Value.Resources.Get(k) <
                                                                               recipe.Input.Get(k) + reserve.Get(k))
             .Select(k => ResourceStock.Name(k) + " " + reserve.Get(k).ToString("0.#")).ToArray();
-        var missing = MissingResources(townStock.Resources, recipe.Input);
+        var missing = MissingResources(townStock.Value.Resources, recipe.Input);
         if (building.Value.ProductionBatches > 0 &&
-            townStock.Resources.Get(recipe.Output) >= ProductionStockTarget(townStock, recipe.Output))
+            townStock.Value.Resources.Get(recipe.Output) >= ProductionStockTarget(townStock, recipe.Output))
             missing = $"{ResourceStock.Name(recipe.Output)}库存已充足，暂停新的领料";
         else if (reserved.Length > 0)
             missing = "为下一发展项目预留：" + string.Join("、", reserved);
@@ -213,29 +213,29 @@ public sealed partial class WorldEngine
                    WarehouseCanSupply(town, person, recipe, building.ProductionBatches == 0));
     }
 
-    private static double ProductionStockTarget(SettlementCursor town, ResourceKind kind)
+    private static double ProductionStockTarget(StateReference<Settlement> town, ResourceKind kind)
     {
         return kind switch
         {
-            ResourceKind.Food => Math.Max(60, town.Population * 3),
+            ResourceKind.Food => Math.Max(60, town.Value.Population * 3),
             ResourceKind.Boats or ResourceKind.Aircraft => 4,
-            ResourceKind.Tools => Math.Max(12, town.Population * .1),
-            ResourceKind.Medicine => Math.Max(8, town.Population * .1),
+            ResourceKind.Tools => Math.Max(12, town.Value.Population * .1),
+            ResourceKind.Medicine => Math.Max(8, town.Value.Population * .1),
             ResourceKind.Ammunition => 32,
             _ => 80,
         };
     }
 
-    private bool WarehouseCanSupply(SettlementCursor town, ResidentCursor person, ProductionRecipe recipe,
+    private bool WarehouseCanSupply(StateReference<Settlement> town, ResidentCursor person, ProductionRecipe recipe,
         bool firstBatch)
     {
-        if (!firstBatch && town.Resources.Get(recipe.Output) >= ProductionStockTarget(town, recipe.Output))
+        if (!firstBatch && town.Value.Resources.Get(recipe.Output) >= ProductionStockTarget(town, recipe.Output))
             return false;
         var reserve = LocalDevelopmentReserve(town);
         for (var i = 0; i < recipe.InputResources.Length; i++)
         {
             var k = recipe.InputResources[i];
-            var available = town.Resources.Get(k) + .000001;
+            var available = town.Value.Resources.Get(k) + .000001;
             if (available < recipe.Input.Get(k) ||
                 available < Math.Max(0, recipe.Input.Get(k) - person.Inventory.Get(k)) + reserve.Get(k))
                 return false;
@@ -256,14 +256,14 @@ public sealed partial class WorldEngine
         return true;
     }
 
-    private bool ActOnProduction(ResidentCursor person, SettlementCursor home)
+    private bool ActOnProduction(ResidentCursor person, StateReference<Settlement> home)
     {
         var goal = person.Agent.Goal;
         if (goal.Kind != AgentGoalKind.Work)
             return false;
         var building = FindBuilding(goal.TargetEntityId);
         var recipe = building is null ? null : ProductionRules.For(building.Value.Kind);
-        if (building is null || building.Value.SettlementId != home.Id || recipe is null || !building.Value.IsCompleted ||
+        if (building is null || building.Value.SettlementId != home.Value.Id || recipe is null || !building.Value.IsCompleted ||
             building.Value.IsUpgrading)
             return false;
         if (!CanProduce(building.Value, person, recipe))
@@ -277,13 +277,13 @@ public sealed partial class WorldEngine
         {
             person.Agent = person.Agent.WithGoal(goal = goal with
             {
-                TargetX = home.X,
-                TargetY = home.Y,
+                TargetX = home.Value.X,
+                TargetY = home.Value.Y,
                 Reason = "前往家园取料，亲自运至" + BuildingName(building.Value.Kind),
             });
-            if (Distance(person.X, person.Y, home.X, home.Y) > 1)
+            if (Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1)
             {
-                MoveAgentTowards(person, home.X, home.Y);
+                MoveAgentTowards(person, home.Value.X, home.Value.Y);
                 person.Activity = ResidentActivity.Delivering;
                 return true;
             }
@@ -293,16 +293,16 @@ public sealed partial class WorldEngine
             var batches = 4d;
             foreach (var kind in recipe.InputResources)
                 batches = Math.Min(batches,
-                    Math.Floor(Math.Max(0, home.Resources.Get(kind) - reserve.Get(kind)) /
+                    Math.Floor(Math.Max(0, home.Value.Resources.Get(kind) - reserve.Get(kind)) /
                                recipe.Input.Get(kind)));
             batches = Math.Max(1, batches);
             foreach (var kind in recipe.InputResources)
             {
                 var personalReserve = kind == ResourceKind.Food ? TravelReserve(person) :
                     kind == ResourceKind.Water ? WaterReserve(person) : 0;
-                var amount = Math.Min(home.Resources.Get(kind),
+                var amount = Math.Min(home.Value.Resources.Get(kind),
                     Math.Max(0, recipe.Input.Get(kind) * batches + personalReserve - person.Inventory.Get(kind)));
-                home.UpdateResources(home.Resources.WithAmount(kind, Math.Max(0, home.Resources.Get(kind) - amount)));
+                home.Replace(home.Value.WithResources(home.Value.Resources.WithAmount(kind, Math.Max(0, home.Value.Resources.Get(kind) - amount))));
                 person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + amount);
             }
         }
@@ -335,9 +335,9 @@ public sealed partial class WorldEngine
             person.Agent = person.Agent.WithGoal(new AgentGoal
             {
                 Kind = AgentGoalKind.ReturnHome,
-                TargetX = home.X,
-                TargetY = home.Y,
-                TargetSettlementId = home.Id,
+                TargetX = home.Value.X,
+                TargetY = home.Value.Y,
+                TargetSettlementId = home.Value.Id,
                 StartedTick = Current.Tick,
                 ReviewTick = Current.Tick + 100,
                 Reason = "加工完成，亲自把产物运回家园入库",
@@ -379,7 +379,7 @@ public sealed partial class WorldEngine
         if (firstBatch)
         {
             var entry = AddEvent(WorldEventKind.Construction,
-                $"{RequireTown(building.Value.SettlementId).Name}的{BuildingName(building.Value.Kind)}完成首批加工；产物正由{person.Name}运回仓库。",
+                $"{RequireTown(building.Value.SettlementId).Value.Name}的{BuildingName(building.Value.Kind)}完成首批加工；产物正由{person.Name}运回仓库。",
                 building.Value.X, building.Value.Y, EventAction.Delivery, building.Value.SettlementId, person.Id,
                 building.Value.Observation.StartEventId);
             RecordLife(person, "完成" + BuildingName(building.Value.Kind) + "首批实际加工。", entry,

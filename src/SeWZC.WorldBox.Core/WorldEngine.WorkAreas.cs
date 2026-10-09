@@ -4,37 +4,37 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private bool NaturalWorkPlotAvailable(int index, Profession profession, SettlementCursor town)
+    private bool NaturalWorkPlotAvailable(int index, Profession profession, StateReference<Settlement> town)
     {
         var tile = Current.Tiles[index];
-        if (tile.FireTicks > 0)
+        if (tile.Value.FireTicks > 0)
             return false;
         // 矮人可进入天然山地，其他种族也可站在邻格采矿；岗位须与实际开采规则一致。
         if (profession == Profession.Miner)
         {
-            return (tile.IsWalkable || tile.Terrain == TerrainType.Mountain)
+            return (tile.Value.IsWalkable || tile.Value.Terrain == TerrainType.Mountain)
                    && (ResourceSiteYield(index, profession) > 0 || KnownDepositWorkAvailable(index, town));
         }
 
-        if (!tile.IsWalkable)
+        if (!tile.Value.IsWalkable)
             return false;
         return profession switch
         {
-            Profession.Farmer => tile.PlantHarvestEfficiency(false) >= .25 && .7 * tile.PlantSiteYield(false) >= .04,
-            Profession.Lumberjack => tile.PlantHarvestEfficiency(true) >= .25 && tile.PlantSiteYield(true) > 0,
+            Profession.Farmer => PlantHarvestEfficiency(tile, false) >= .25 && .7 * PlantSiteYield(tile, false) >= .04,
+            Profession.Lumberjack => PlantHarvestEfficiency(tile, true) >= .25 && PlantSiteYield(tile, true) > 0,
             _ => false,
         };
     }
 
-    private bool KnownDepositWorkAvailable(int index, SettlementCursor town)
+    private bool KnownDepositWorkAvailable(int index, StateReference<Settlement> town)
     {
         foreach (var nearby in Circle(index % Current.Width, index / Current.Width, 1))
         {
             var tile = Current.Tiles[nearby];
-            if (Distance(nearby % Current.Width, nearby / Current.Width, town.X, town.Y) > 6
-                || !tile.DepositDiscovered || tile.DepositAmount <= 0 || tile.FireTicks > 0
-                || tile.Deposit is not { } kind || town.Resources.Get(kind) >= 16
-                || DepositResearch(kind) is not { } research || !HasResearch(town.Id, research))
+            if (Distance(nearby % Current.Width, nearby / Current.Width, town.Value.X, town.Value.Y) > 6
+                || !tile.Value.DepositDiscovered || tile.Value.DepositAmount <= 0 || tile.Value.FireTicks > 0
+                || tile.Value.Deposit is not { } kind || town.Value.Resources.Get(kind) >= 16
+                || DepositResearch(kind) is not { } research || !HasResearch(town.Value.Id, research))
                 continue;
             return true;
         }
@@ -42,17 +42,17 @@ public sealed partial class WorldEngine
         return false;
     }
 
-    private double LocalMineralDeficit(SettlementCursor town)
+    private double LocalMineralDeficit(StateReference<Settlement> town)
     {
         var reserve = LocalDevelopmentReserve(town);
-        return Math.Max(0, Math.Max(80, reserve.Stone) - town.Resources.Stone)
-               + Math.Max(0, Math.Max(80, reserve.Ore) - town.Resources.Ore)
-               + (HasResearch(town.Id, Advancement.Industry) ? Math.Max(0, 16 - town.Resources.Coal) : 0)
-               + (HasResearch(town.Id, Advancement.Electrification) ? Math.Max(0, 16 - town.Resources.Oil) : 0)
-               + (HasResearch(town.Id, Advancement.AdvancedComputing) ? Math.Max(0, 16 - town.Resources.RareEarth) : 0);
+        return Math.Max(0, Math.Max(80, reserve.Stone) - town.Value.Resources.Stone)
+               + Math.Max(0, Math.Max(80, reserve.Ore) - town.Value.Resources.Ore)
+               + (HasResearch(town.Value.Id, Advancement.Industry) ? Math.Max(0, 16 - town.Value.Resources.Coal) : 0)
+               + (HasResearch(town.Value.Id, Advancement.Electrification) ? Math.Max(0, 16 - town.Value.Resources.Oil) : 0)
+               + (HasResearch(town.Value.Id, Advancement.AdvancedComputing) ? Math.Max(0, 16 - town.Value.Resources.RareEarth) : 0);
     }
 
-    private void AssignNaturalWorkAreas(SettlementCursor town, List<ResidentCursor> adults, List<NaturalWorkPlot> plots)
+    private void AssignNaturalWorkAreas(StateReference<Settlement> town, List<ResidentCursor> adults, List<NaturalWorkPlot> plots)
     {
         var occupied = new Dictionary<NaturalWorkPlot, int>();
         foreach (var person in adults)
@@ -65,7 +65,7 @@ public sealed partial class WorldEngine
         foreach (var person in adults)
         {
             if (person.Health < 60 || person.SicknessTicks > 0 || person.Agent.Goal.PlayerDirected
-                || person.Agent.DestinationSettlementId != 0 || Distance(person.X, person.Y, town.X, town.Y) > 3
+                || person.Agent.DestinationSettlementId != 0 || Distance(person.X, person.Y, town.Value.X, town.Value.Y) > 3
                 || person.TravelMode != TravelMode.Foot ||
                 Current.Tick - person.MoveStartedTick < person.MoveDurationTicks)
                 continue;

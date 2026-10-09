@@ -75,9 +75,9 @@ public sealed class StateTransformationTests
         var fixture = new WorldFixture();
         var original = fixture.Engine.Current.Society;
 
-        fixture.Engine.SetPolicy(fixture.Town.NationId, PolicyKind.Defense);
+        fixture.Engine.SetPolicy(fixture.Town.Value.NationId, PolicyKind.Defense);
         var directed = fixture.Engine.Current.Society;
-        fixture.Engine.SetPolicyAutonomy(fixture.Town.NationId);
+        fixture.Engine.SetPolicyAutonomy(fixture.Town.Value.NationId);
         var autonomous = fixture.Engine.Current.Society;
 
         Assert.Null(original.Institutions.Single().PlayerPolicy);

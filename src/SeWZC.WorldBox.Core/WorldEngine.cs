@@ -19,7 +19,7 @@ public sealed partial class WorldEngine
     private readonly HashSet<int> _dryTiles = [];
     private readonly Dictionary<int, StateReference<Nation>> _nations = [];
     private readonly Dictionary<int, ResidentCursor> _residentLookup = [];
-    private readonly Dictionary<int, SettlementCursor> _settlements = [];
+    private readonly Dictionary<int, StateReference<Settlement>> _settlements = [];
     private readonly TerritoryCounts _territoryCounts = new();
 
     private bool _creatingDemo;
@@ -40,13 +40,14 @@ public sealed partial class WorldEngine
         Reindex();
         for (var i = 0; i < Current.Tiles.Count; i++)
         {
-            if (Current.Tiles[i]?.FireTicks > 0)
+            if (Current.Tiles[i]?.Value.FireTicks > 0)
                 _burningTiles.Add(i);
-            if (Current.Tiles[i]?.DroughtTicks > 0)
+            if (Current.Tiles[i]?.Value.DroughtTicks > 0)
                 _dryTiles.Add(i);
         }
 
         _territoryCounts.Bind(Current.Tiles);
+        Current.Tiles.Changed = OnTileChanged;
     }
 
     /// <summary>引擎持有的当前不可变世界快照；继续模拟或编辑不会修改已取得的快照。</summary>
@@ -83,7 +84,7 @@ public sealed partial class WorldEngine
         engine.GenerateLakesAndWater();
         var demoSites = demo ? engine.PrepareDemoSites() : [];
         foreach (var tile in state.Tiles)
-            engine.SeedPlants(tile);
+            tile.Replace(tile.Value.WithSeededPlants());
         engine.SeedWildlife();
         if (demo)
         {
@@ -92,11 +93,13 @@ public sealed partial class WorldEngine
             {
                 var location = demoSites[race];
                 engine.SpawnResidents(location % width, location / width, (RaceKind)race, 36);
-                var town = state.Settlements.Single(t => t.X == location % width && t.Y == location / width);
-                foreach (var i in engine.Circle(town.X, town.Y, 3))
+                var town = state.Settlements.Single(t => t.Value.X == location % width && t.Value.Y == location / width);
+                foreach (var i in engine.Circle(town.Value.X, town.Value.Y, 3))
                 {
-                    state.Tiles[i].NationId = town.NationId;
-                    state.Tiles[i].ClaimedSettlementId = town.Id;
+                    state.Tiles[i].Replace(state.Tiles[i].Value with
+                    {
+                        NationId = town.Value.NationId, ClaimedSettlementId = town.Value.Id,
+                    });
                 }
             }
 
@@ -129,9 +132,9 @@ public sealed partial class WorldEngine
             group.Clear();
         foreach (var settlement in Current.Settlements)
         {
-            _settlements[settlement.Id] = settlement;
-            if (!_citizens.ContainsKey(settlement.Id))
-                _citizens[settlement.Id] = [];
+            _settlements[settlement.Value.Id] = settlement;
+            if (!_citizens.ContainsKey(settlement.Value.Id))
+                _citizens[settlement.Value.Id] = [];
         }
 
         if (_citizens.Count != _settlements.Count)
@@ -246,7 +249,7 @@ public sealed partial class WorldEngine
             EvidenceFactId = evidenceFactId,
         };
         if (InBounds(x, y))
-            entry = entry with { NationId = Current.Tiles[Index(x, y)]?.NationId ?? 0 };
+            entry = entry with { NationId = Current.Tiles[Index(x, y)]?.Value.NationId ?? 0 };
         Current.Events = Current.Events.Add(entry);
         while (Current.Events.Count > 400)
         {
@@ -328,7 +331,7 @@ public sealed partial class WorldEngine
             var broad = Noise(x / (Current.Width * 0.16), y / (Current.Height * 0.16), 0);
             var fine = Noise(x / 7.0, y / 7.0, 71);
             var elevation = 0.75 - radial * 0.58 + (broad - 0.5) * 0.48 + (fine - 0.5) * 0.10;
-            Current.Tiles[Index(x, y)] = new TileCursor(new Tile
+            Current.Tiles[Index(x, y)] = new StateReference<Tile>(new Tile
             {
                 Terrain = elevation < .20 ? TerrainType.DeepWater :
                     elevation < .27 ? TerrainType.Water : TerrainType.Grass,
@@ -364,8 +367,8 @@ public sealed partial class WorldEngine
         _territoryCounts.Bind(Current.Tiles);
         foreach (var settlement in Current.Settlements)
         {
-            var population = _citizens.GetValueOrDefault(settlement.Id)?.Count ?? 0;
-            if (settlement.Population != population)
+            var population = _citizens.GetValueOrDefault(settlement.Value.Id)?.Count ?? 0;
+            if (settlement.Value.Population != population)
                 settlement.Replace(settlement.Value with { Population = population });
             RefreshSettlementName(settlement);
         }

@@ -51,7 +51,7 @@ public sealed partial class WorldEngine
             !CanBuildRacialFacility(building.SettlementId, building.Kind))
             return false;
         if (building.Kind == BuildingKind.SacredGrove &&
-            (!IsForestTerrain(Current.Tiles[Index(building.X, building.Y)].Terrain)
+            (!IsForestTerrain(Current.Tiles[Index(building.X, building.Y)].Value.Terrain)
              || !Current.Society.MagicEnabled || person.MagicTalent < 25 || person.MagicTraining >= 100))
             return false;
         if (building.Kind == BuildingKind.HerbGarden && FindLocalWorkPatient(building, true) is null)
@@ -63,17 +63,17 @@ public sealed partial class WorldEngine
             return false;
         var input = RacialWorkInput(building.Kind);
         return MissingResources(person.Inventory, input) is null ||
-               MissingResources(RequireTown(building.SettlementId).Resources, input) is null;
+               MissingResources(RequireTown(building.SettlementId).Value.Resources, input) is null;
     }
 
-    private bool ActOnRacialWork(ResidentCursor person, SettlementCursor home)
+    private bool ActOnRacialWork(ResidentCursor person, StateReference<Settlement> home)
     {
         var goal = person.Agent.Goal;
         if (goal.Kind is not (AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic))
             return false;
         var building = FindBuilding(goal.TargetEntityId);
         if (building is null || BuildingRace(building.Value.Kind) is null || ProductionRules.For(building.Value.Kind) is not null
-            || !building.Value.IsCompleted || building.Value.IsUpgrading || building.Value.SettlementId != home.Id)
+            || !building.Value.IsCompleted || building.Value.IsUpgrading || building.Value.SettlementId != home.Value.Id)
             return false;
         if (!building.Value.Enabled || building.Value.Health < 50 || !RacialBuildingHasWork(building.Value, person))
         {
@@ -87,13 +87,13 @@ public sealed partial class WorldEngine
         {
             person.Agent = person.Agent.WithGoal(goal = goal with
             {
-                TargetX = home.X,
-                TargetY = home.Y,
+                TargetX = home.Value.X,
+                TargetY = home.Value.Y,
                 Reason = "实地返仓领取" + BuildingName(building.Value.Kind) + "的劳动物资",
             });
-            if (Distance(person.X, person.Y, home.X, home.Y) > 1)
+            if (Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1)
             {
-                MoveAgentTowards(person, home.X, home.Y);
+                MoveAgentTowards(person, home.Value.X, home.Value.Y);
                 person.Activity = ResidentActivity.Delivering;
                 return true;
             }
@@ -101,8 +101,8 @@ public sealed partial class WorldEngine
             foreach (var kind in ResourceStock.Kinds)
             {
                 var amount = Math.Max(0, input.Get(kind) * 8 - person.Inventory.Get(kind));
-                amount = Math.Min(amount, home.Resources.Get(kind));
-                home.UpdateResources(home.Resources.WithAmount(kind, home.Resources.Get(kind) - amount));
+                amount = Math.Min(amount, home.Value.Resources.Get(kind));
+                home.Replace(home.Value.WithResources(home.Value.Resources.WithAmount(kind, home.Value.Resources.Get(kind) - amount)));
                 person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + amount);
             }
         }
@@ -123,9 +123,9 @@ public sealed partial class WorldEngine
             var returning = new AgentGoal
             {
                 Kind = AgentGoalKind.ReturnHome,
-                TargetX = home.X,
-                TargetY = home.Y,
-                TargetSettlementId = home.Id,
+                TargetX = home.Value.X,
+                TargetY = home.Value.Y,
+                TargetSettlementId = home.Value.Id,
                 StartedTick = Current.Tick,
                 Reason = "亲自运回特殊设施的劳动产出",
             };
@@ -172,10 +172,10 @@ public sealed partial class WorldEngine
                 if (source < 0)
                     return false;
                 var tile = Current.Tiles[source];
-                var yields = TerrainRules.For(tile.Terrain);
-                var amount = Math.Min(tile.ResourceAmount,
+                var yields = TerrainRules.For(tile.Value.Terrain);
+                var amount = Math.Min(tile.Value.ResourceAmount,
                     .3 * effort * Current.Rules.GatheringRate * GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value));
-                tile.ResourceAmount -= amount;
+                tile.Replace(tile.Value.WithResourceAmount(tile.Value.ResourceAmount - (amount)));
                 person.Inventory = person.Inventory with
                 {
                     Stone = person.Inventory.Stone + amount * yields.StoneYield,
@@ -191,7 +191,7 @@ public sealed partial class WorldEngine
                     return false;
                 var caught = WildlifeHarvestAmount(ground, prey,
                     .25 * effort * Current.Rules.GatheringRate * GatheringTerritoryMultiplier(person.SettlementId, person.NationId, ground.Value));
-                ground.SetAnimalPopulation(prey, ground.AnimalPopulation(prey) - caught);
+                ground.Replace(ground.Value.WithAnimalPopulation(prey, ground.Value.AnimalPopulation(prey) - caught));
                 var food = caught * AnimalRules.For(prey).BodyMass;
                 person.Inventory = person.Inventory with { Food = Math.Min(1_000_000, person.Inventory.Food + food) };
                 RecordHarvest(ground, food);

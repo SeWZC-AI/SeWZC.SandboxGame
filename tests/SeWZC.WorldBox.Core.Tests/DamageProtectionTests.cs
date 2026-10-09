@@ -31,7 +31,7 @@ public sealed class DamageProtectionTests
 
         if (publicHealth)
         {
-            fixture.Engine.SetPolicy(fixture.Town.NationId, PolicyKind.PublicHealth);
+            fixture.Engine.SetPolicy(fixture.Town.Value.NationId, PolicyKind.PublicHealth);
             fixture.Engine.TickSociety();
         }
         else
@@ -160,7 +160,7 @@ public sealed class DamageProtectionTests
         var fixture = new WorldFixture();
         fixture.Town.Replace(fixture.Town.Value with { ShieldTicks = 10 });
         fixture.Resident.X = x;
-        fixture.Resident.Y = fixture.Town.Y;
+        fixture.Resident.Y = fixture.Town.Value.Y;
         fixture.Resident.Replace(fixture.Resident.Value with { PersonalWard = 0 });
         fixture.Resident.Replace(fixture.Resident.Value with { Armor = 0 });
 

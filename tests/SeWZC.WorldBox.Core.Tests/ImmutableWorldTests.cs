@@ -6,6 +6,28 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>世界快照、日内转换和异步保存的隔离边界。</summary>
 public sealed class ImmutableWorldTests
 {
+    /// <summary>显式替换与整批地格转换都立即使聚落登记面积查询失效。</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Tile_replacement_and_transform_invalidate_claim_queries(bool transform)
+    {
+        var fixture = new WorldFixture();
+        var tiles = fixture.Engine.Current.Tiles;
+        var town = fixture.Town.Value;
+        var index = town.Y * fixture.Engine.Current.Width + town.X;
+        var area = fixture.Engine.GetSettlementArea(town.Id);
+        Assert.True(area > 0);
+        using var updates = tiles.BeginUpdates();
+
+        if (transform)
+            tiles.Transform(tile => tile.SettlementId == town.Id ? tile with { ClaimedSettlementId = 0 } : tile);
+        else
+            tiles[index].Replace(tiles[index].Value with { ClaimedSettlementId = 0 });
+
+        Assert.Equal(area - 1, fixture.Engine.GetSettlementArea(town.Id));
+    }
+
     /// <summary>读取世界快照时，国家、建筑及军队的批次更新完整提交，后续更新不修改已取得的快照。</summary>
     [Fact]
     public void Snapshot_includes_batched_nations_buildings_and_armies()
@@ -55,14 +77,12 @@ public sealed class ImmutableWorldTests
         var before = fixture.Engine.State;
         var town = fixture.Town;
         using var updates = fixture.Engine.Current.Settlements.BeginUpdates();
-        town.BeginResourceUpdates();
-        town.UpdateResources(town.Resources with { Food = 7, Water = 3 });
+        town.Replace(town.Value.WithResources(town.Value.Resources with { Food = 7, Water = 3 }));
         var middle = fixture.Engine.State;
-        town.UpdateResources(town.Resources with { Food = 5 });
+        town.Replace(town.Value.WithResources(town.Value.Resources with { Food = 5 }));
         town.Replace(town.Value with { Housing = 100 });
-        Assert.Equal(5, town.Resources.Food);
+        Assert.Equal(5, town.Value.Resources.Food);
         var current = fixture.Engine.Current.Settlements.Snapshot.Single();
-        town.EndResourceUpdates();
 
         Assert.Equal(7, middle.Settlements.Single().Resources.Food);
         Assert.Equal(5, current.Resources.Food);
@@ -388,13 +408,13 @@ public sealed class ImmutableWorldTests
         using (fixture.Engine.Current.Settlements.BeginUpdates())
         {
             fixture.Resident.Inventory = new ResourceStock { Food = 3 };
-            fixture.Town.UpdateResources(new ResourceStock { Food = 9 });
-            tile.Fertility = 42;
+            fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock { Food = 9 }));
+            tile.Replace(tile.Value.WithFertility(42));
             Assert.Equal(3, fixture.Resident.Inventory.Food);
             middle = fixture.Engine.State;
             fixture.Resident.Inventory = new ResourceStock { Food = 5 };
-            fixture.Town.UpdateResources(new ResourceStock { Food = 7 });
-            tile.Fertility = 60;
+            fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock { Food = 7 }));
+            tile.Replace(tile.Value.WithFertility(60));
         }
 
         Assert.Equal(3, middle.Residents[0].Inventory.Food);
@@ -471,7 +491,7 @@ public sealed class ImmutableWorldTests
         {
             Health = 80, Agent = person.Agent with { Fatigue = 25 },
         });
-        fixture.Resident.Agent = fixture.Resident.Agent.Remember(new AgentFact { SubjectId = 99 }, fixture.Town.Id);
+        fixture.Resident.Agent = fixture.Resident.Agent.Remember(new AgentFact { SubjectId = 99 }, fixture.Town.Value.Id);
 
         Assert.Equal(80, fixture.Engine.State.Residents[0].Health);
         Assert.Equal(25, fixture.Engine.State.Residents[0].Agent.Fatigue);
@@ -556,7 +576,7 @@ public sealed class ImmutableWorldTests
         var actor = fixture.Engine.GetResident(fixture.ResidentId)!;
 
         fixture.Engine.EditResident(actor.Id, new ResidentEdit { Name = "新姓名", Health = 80 });
-        fixture.Engine.SetNationResources(fixture.Town.NationId, 10);
+        fixture.Engine.SetNationResources(fixture.Town.Value.NationId, 10);
 
         Assert.Equal(saved, Serialize(before));
         Assert.NotEqual("新姓名", actor.Name);

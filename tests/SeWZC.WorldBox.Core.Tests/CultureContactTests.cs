@@ -77,7 +77,7 @@ public sealed class CultureContactTests
             {
                 Id = engine.Current.NextId++,
                 Kind = AgentFactKind.Culture,
-                SubjectId = fixture.Town.Id,
+                SubjectId = fixture.Town.Value.Id,
                 X = 16,
                 Y = 16,
                 Value = cultureId,

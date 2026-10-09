@@ -7,8 +7,8 @@ internal sealed partial class WorldStateCursor : StateReference<WorldState>
 {
     private EntityListCursor<Resident, ResidentCursor>? _archivedResidents;
     private EntityListCursor<Resident, ResidentCursor>? _residents;
-    private EntityListCursor<Settlement, SettlementCursor>? _settlements;
-    private EntityListCursor<Tile, TileCursor>? _tiles;
+    private EntityListCursor<Settlement, StateReference<Settlement>>? _settlements;
+    private EntityListCursor<Tile, StateReference<Tile>>? _tiles;
     private EntityListCursor<Nation, StateReference<Nation>>? _nations;
     private EntityListCursor<Army, StateReference<Army>>? _armies;
     private EntityListCursor<Building, StateReference<Building>>? _buildings;
@@ -81,12 +81,12 @@ internal sealed partial class WorldStateCursor : StateReference<WorldState>
         }
     }
 
-    public EntityListCursor<Tile, TileCursor> Tiles =>
-        _tiles ??= new EntityListCursor<Tile, TileCursor>(Value.Tiles, value =>
+    public EntityListCursor<Tile, StateReference<Tile>> Tiles =>
+        _tiles ??= new EntityListCursor<Tile, StateReference<Tile>>(Value.Tiles, value =>
         {
             if (!ReferenceEquals(Value.Tiles, value))
                 ReplaceChanged(Value with { Tiles = value });
-        }, value => new TileCursor(value));
+        }, value => new StateReference<Tile>(value));
 
     public EntityListCursor<Resident, ResidentCursor> Residents =>
         _residents ??= new EntityListCursor<Resident, ResidentCursor>(Value.Residents, value =>
@@ -95,12 +95,12 @@ internal sealed partial class WorldStateCursor : StateReference<WorldState>
                 ReplaceChanged(Value with { Residents = value });
         }, value => new ResidentCursor(value));
 
-    public EntityListCursor<Settlement, SettlementCursor> Settlements =>
-        _settlements ??= new EntityListCursor<Settlement, SettlementCursor>(Value.Settlements, value =>
+    public EntityListCursor<Settlement, StateReference<Settlement>> Settlements =>
+        _settlements ??= new EntityListCursor<Settlement, StateReference<Settlement>>(Value.Settlements, value =>
         {
             if (!ReferenceEquals(Value.Settlements, value))
                 ReplaceChanged(Value with { Settlements = value });
-        }, value => new SettlementCursor(value));
+        }, value => new StateReference<Settlement>(value));
 
     public EntityListCursor<Nation, StateReference<Nation>> Nations =>
         _nations ??= new EntityListCursor<Nation, StateReference<Nation>>(Value.Nations, value =>

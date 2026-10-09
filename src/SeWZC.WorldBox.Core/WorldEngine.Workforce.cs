@@ -19,7 +19,7 @@ public sealed partial class WorldEngine
         Span<int> facilityTargets = stackalloc int[counts.Length];
         foreach (var town in Current.Settlements)
         {
-            if (town.FoundationPending || !_citizens.TryGetValue(town.Id, out var citizens))
+            if (town.Value.FoundationPending || !_citizens.TryGetValue(town.Value.Id, out var citizens))
                 continue;
             counts.Clear();
             targets.Clear();
@@ -33,7 +33,7 @@ public sealed partial class WorldEngine
                 if (person.Health <= 0)
                     continue;
                 dailyFood += FoodUse(person);
-                if (Distance(person.X, person.Y, town.X, town.Y) <= 6
+                if (Distance(person.X, person.Y, town.Value.X, town.Value.Y) <= 6
                     && (person.Health < 90 || person.SicknessTicks > 0))
                     patients++;
                 if (person.Age < 16 || person.ArmyId != 0)
@@ -52,10 +52,10 @@ public sealed partial class WorldEngine
             var fishingYield = 0d;
             var plots = new List<NaturalWorkPlot>();
             var mountainWorkers = adults.Any(person => person.Race == RaceKind.Dwarf);
-            foreach (var index in Circle(town.X, town.Y, 6))
+            foreach (var index in Circle(town.Value.X, town.Value.Y, 6))
             {
                 var tile = Current.Tiles[index];
-                var yield = tile.PlantSiteYield(false);
+                var yield = PlantSiteYield(tile, false);
                 if (NaturalWorkPlotAvailable(index, Profession.Farmer, town))
                 {
                     fieldYield += .7 * yield;
@@ -70,7 +70,7 @@ public sealed partial class WorldEngine
                 }
 
                 if (NaturalWorkPlotAvailable(index, Profession.Miner, town)
-                    && (tile.IsWalkable || mountainWorkers))
+                    && (tile.Value.IsWalkable || mountainWorkers))
                 {
                     stone++;
                     plots.Add(new NaturalWorkPlot(index, Profession.Miner));
@@ -84,7 +84,7 @@ public sealed partial class WorldEngine
                 }
             }
 
-            var foodDeficit = Math.Max(0, dailyFood * 30 - town.Resources.Food);
+            var foodDeficit = Math.Max(0, dailyFood * 30 - town.Value.Resources.Food);
             var foodWorkers = fields == 0
                 ? 0
                 : Math.Min(fields,
@@ -97,27 +97,27 @@ public sealed partial class WorldEngine
             }
 
             targets[(int)Profession.Lumberjack] = Math.Min(timber,
-                (int)Math.Ceiling(Math.Max(0, 60 - town.Resources.Wood) / 12));
+                (int)Math.Ceiling(Math.Max(0, 60 - town.Value.Resources.Wood) / 12));
             targets[(int)Profession.Miner] = Math.Min(stone,
                 (int)Math.Ceiling(LocalMineralDeficit(town) / 12));
-            targets[(int)Profession.Representative] = town.RepresentativeId == 0 ? 0 : 1;
+            targets[(int)Profession.Representative] = town.Value.RepresentativeId == 0 ? 0 : 1;
             if (Current.Rules.Expansion && SettlementNeedsClaimArea(town))
             {
-                targets[(int)Profession.Builder] = Math.Max(1, (GetSettlementExpansionArea(town.Id)
-                    - GetSettlementArea(town.Id) + 9) / 10);
+                targets[(int)Profession.Builder] = Math.Max(1, (GetSettlementExpansionArea(town.Value.Id)
+                    - GetSettlementArea(town.Value.Id) + 9) / 10);
             }
 
-            var contacts = town.PublicKnowledge.Count(f => f.Kind == AgentFactKind.SettlementLocation
-                                                           && f.SubjectId != town.Id &&
+            var contacts = town.Value.PublicKnowledge.Count(f => f.Kind == AgentFactKind.SettlementLocation
+                                                           && f.SubjectId != town.Value.Id &&
                                                            f.ReliabilityAt(Current.Tick) >= .5);
             targets[(int)Profession.Messenger] = Math.Min(contacts, (adults.Count + 79) / 80);
-            targets[(int)Profession.Trader] = town.Resources.Food > dailyFood * 30 ? Math.Min(contacts, 3) : 0;
+            targets[(int)Profession.Trader] = town.Value.Resources.Food > dailyFood * 30 ? Math.Min(contacts, 3) : 0;
             var researching =
-                Current.Society.Research.Any(r => r.SettlementId == town.Id && r.ActiveProject is not null);
+                Current.Society.Research.Any(r => r.SettlementId == town.Value.Id && r.ActiveProject is not null);
             foreach (var building in Current.Buildings)
             {
-                if (building.Value.SettlementId != town.Id || building.Value.Health <= 0 || !building.Value.Enabled
-                    || Distance(building.Value.X, building.Value.Y, town.X, town.Y) > 8)
+                if (building.Value.SettlementId != town.Value.Id || building.Value.Health <= 0 || !building.Value.Enabled
+                    || Distance(building.Value.X, building.Value.Y, town.Value.X, town.Value.Y) > 8)
                     continue;
                 buildings.Add(building);
                 if (!building.Value.IsCompleted || building.Value.IsUpgrading || building.Value.Health < 50)
@@ -132,7 +132,7 @@ public sealed partial class WorldEngine
                                 || (job == Profession.Physician && patients == 0))
                     continue;
                 var unlock = ResearchRules.Unlocking(job.Value);
-                if (unlock is not null && !HasResearch(town.Id, unlock))
+                if (unlock is not null && !HasResearch(town.Value.Id, unlock))
                     continue;
                 facilityTargets[(int)job.Value] += job == Profession.Physician
                     ? Math.Min(building.Value.WorkSlots, (patients + 2) / 3)
@@ -173,7 +173,7 @@ public sealed partial class WorldEngine
             {
                 var job = person.Profession;
                 if (job is Profession.Child or Profession.Laborer or Profession.Soldier
-                    || person.Id == town.RepresentativeId || counts[(int)job] <= targets[(int)job]
+                    || person.Id == town.Value.RepresentativeId || counts[(int)job] <= targets[(int)job]
                     || !AvailableForLocalAssignment(person, town))
                     continue;
                 counts[(int)job]--;
@@ -186,11 +186,11 @@ public sealed partial class WorldEngine
         }
     }
 
-    private bool AvailableForLocalAssignment(ResidentCursor person, SettlementCursor town)
+    private bool AvailableForLocalAssignment(ResidentCursor person, StateReference<Settlement> town)
     {
         return person.Health >= 60 && person.SicknessTicks == 0 && person.ArmyId == 0
                && !person.Agent.Goal.PlayerDirected && person.Agent.DestinationSettlementId == 0
-               && person.TravelMode == TravelMode.Foot && Distance(person.X, person.Y, town.X, town.Y) <= 3
+               && person.TravelMode == TravelMode.Foot && Distance(person.X, person.Y, town.Value.X, town.Value.Y) <= 3
                && Current.Tick - person.MoveStartedTick >= person.MoveDurationTicks
                && (person.Profession == Profession.Laborer || Current.Tick == 0 ||
                    Current.Tick - person.Agent.JobChangedTick >= SimulationTime.TicksPerYear);
@@ -260,7 +260,7 @@ public sealed partial class WorldEngine
         };
     }
 
-    private void AssignLocalWorkplaces(SettlementCursor town, List<ResidentCursor> adults,
+    private void AssignLocalWorkplaces(StateReference<Settlement> town, List<ResidentCursor> adults,
         List<StateReference<Building>> buildings)
     {
         var occupied = new Dictionary<int, int>();
@@ -271,7 +271,7 @@ public sealed partial class WorldEngine
         {
             // 工作地点稳定；旧岗位失效时只有本人回到家园，才重新接受当地安排。
             if (person.Health < 60 || person.SicknessTicks > 0 || person.Agent.Goal.PlayerDirected
-                || person.Agent.DestinationSettlementId != 0 || Distance(person.X, person.Y, town.X, town.Y) > 3
+                || person.Agent.DestinationSettlementId != 0 || Distance(person.X, person.Y, town.Value.X, town.Value.Y) > 3
                 || person.TravelMode != TravelMode.Foot ||
                 Current.Tick - person.MoveStartedTick < person.MoveDurationTicks)
                 continue;

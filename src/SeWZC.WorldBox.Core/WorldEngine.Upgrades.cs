@@ -75,9 +75,9 @@ public sealed partial class WorldEngine
             if (!InBounds(xx, yy))
                 break;
             var tile = Current.Tiles[Index(xx, yy)];
-            if (IsWaterTerrain(tile.Terrain))
+            if (IsWaterTerrain(tile.Value.Terrain))
                 continue;
-            if (tile.IsWalkable && tile.Improvement != LandImprovement.Bridge)
+            if (tile.Value.IsWalkable && tile.Value.Improvement != LandImprovement.Bridge)
                 best = Math.Min(best, distance);
             break;
         }
@@ -94,7 +94,7 @@ public sealed partial class WorldEngine
     {
         if (!Enum.IsDefined(direction) || level is < 1 or > 3)
             return "桥梁方向或等级无效";
-        if (!InBounds(x, y) || Current.Tiles[Index(x, y)].Terrain is not (TerrainType.Water or TerrainType.River
+        if (!InBounds(x, y) || Current.Tiles[Index(x, y)].Value.Terrain is not (TerrainType.Water or TerrainType.River
                 or TerrainType.Lake or TerrainType.Stream or TerrainType.LargeRiver))
             return "桥梁需要河流、湖泊或浅水";
         if (BridgeShoreDistance(x, y, direction) > BridgeShoreLimit(level))
@@ -108,8 +108,8 @@ public sealed partial class WorldEngine
             if (!InBounds(xx, yy))
                 continue;
             var tile = Current.Tiles[Index(xx, yy)];
-            if (tile.IsWalkable &&
-                (tile.Improvement != LandImprovement.Bridge || tile.BridgeDirection == direction))
+            if (tile.Value.IsWalkable &&
+                (tile.Value.Improvement != LandImprovement.Bridge || tile.Value.BridgeDirection == direction))
                 return null;
         }
 
@@ -146,9 +146,9 @@ public sealed partial class WorldEngine
             return "需先完工并修复建筑";
         if (building.Value.IsUpgrading)
             return "已有升级或改向项目";
-        if (building.Value.Kind == BuildingKind.TownCenter && RequireTown(building.Value.SettlementId).IsExpanding)
+        if (building.Value.Kind == BuildingKind.TownCenter && RequireTown(building.Value.SettlementId).Value.IsExpanding)
             return "中心正在组织城镇扩充，完成后可单独升级建筑";
-        if (Current.Tiles[Index(building.Value.X, building.Value.Y)].FireTicks > 0)
+        if (Current.Tiles[Index(building.Value.X, building.Value.Y)].Value.FireTicks > 0)
             return "所在地正在燃烧";
         if (direction.HasValue && (building.Value.Kind != BuildingKind.Bridge || direction == building.Value.Direction))
             return "只能将桥梁改为另一方向";
@@ -163,7 +163,7 @@ public sealed partial class WorldEngine
             return "需要先掌握驿路运输";
         return gift
             ? null
-            : MissingResources(RequireTown(building.Value.SettlementId).Resources,
+            : MissingResources(RequireTown(building.Value.SettlementId).Value.Resources,
                 GetUpgradeCost(building.Value, direction.HasValue));
     }
 
@@ -178,8 +178,8 @@ public sealed partial class WorldEngine
         var building = Current.Buildings.First(b => b.Value.Id == id);
         if (!gift)
         {
-            RequireTown(building.Value.SettlementId).UpdateResources(Spend(RequireTown(building.Value.SettlementId).Resources,
-                GetUpgradeCost(building.Value, direction.HasValue)));
+            RequireTown(building.Value.SettlementId).Replace(RequireTown(building.Value.SettlementId).Value.WithResources(Spend(RequireTown(building.Value.SettlementId).Value.Resources,
+                GetUpgradeCost(building.Value, direction.HasValue))));
         }
 
         building.Replace(building.Value with
@@ -217,7 +217,7 @@ public sealed partial class WorldEngine
             causeEventId: building.Value.Observation.StartEventId);
     }
 
-    private bool PlanBuildingUpgrade(SettlementCursor town, StateReference<Building>[] buildings)
+    private bool PlanBuildingUpgrade(StateReference<Settlement> town, StateReference<Building>[] buildings)
     {
         if (!Current.Rules.Construction || buildings.Any(b => !b.Value.IsCompleted || b.Value.IsUpgrading))
             return false;
@@ -233,10 +233,10 @@ public sealed partial class WorldEngine
                 BuildingUpgradeError(building.Value.Id) is not null)
                 continue;
             var cost = GetUpgradeCost(building.Value);
-            if (ResourceStock.Kinds.Any(k => town.Resources.Get(k) < cost.Get(k) + reserve.Get(k) +
+            if (ResourceStock.Kinds.Any(k => town.Value.Resources.Get(k) < cost.Get(k) + reserve.Get(k) +
                     (k == ResourceKind.Food && building.Value.Kind is not (BuildingKind.Farm or BuildingKind.AutomatedFarm
                         or BuildingKind.RunicGarden or BuildingKind.Pasture or BuildingKind.Aquaculture)
-                        ? town.Population * 2
+                        ? town.Value.Population * 2
                         : 0)))
                 continue;
             UpgradeBuilding(building.Value.Id);

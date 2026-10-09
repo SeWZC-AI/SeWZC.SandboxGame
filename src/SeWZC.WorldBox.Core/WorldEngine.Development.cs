@@ -7,10 +7,10 @@ public sealed partial class WorldEngine
     public DevelopmentFocus GetDevelopmentFocus(int settlementId)
     {
         var town = RequireTown(settlementId);
-        var nation = Current.Nations.FirstOrDefault(n => n.Value.Id == town.NationId);
+        var nation = Current.Nations.FirstOrDefault(n => n.Value.Id == town.Value.NationId);
         if (nation?.Value is { DevelopmentFocus: not DevelopmentFocus.Automatic })
             return nation.Value.DevelopmentFocus;
-        var culture = GetCulture(town.CultureId);
+        var culture = GetCulture(town.Value.CultureId);
         return !Current.Society.MagicEnabled || culture.Innovation >= culture.NatureAffinity
             ? DevelopmentFocus.Technology
             : DevelopmentFocus.MagicPractice;
