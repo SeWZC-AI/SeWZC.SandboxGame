@@ -9,8 +9,8 @@ public sealed partial class WorldEngine
     // 只缓存视野内有可持续种群的地址；个人需求、领地效率和可达性仍在调用时判断。
     private ReadOnlySpan<int> VisibleWildlifeSites(ResidentCursor person)
     {
-        _territoryCounts.Bind(Current.Tiles);
-        var width = Current.Width;
+        _territoryCounts.Bind(Tiles);
+        var width = Width;
         var origin = Index(person.X, person.Y);
         var revision = _territoryCounts.VisibleWildlifeRevision(person.X, person.Y, width);
         var cache = _visibleWildlifeCache ??= new VisibleWildlifeCache();
@@ -28,7 +28,7 @@ public sealed partial class WorldEngine
             if (!InBounds(x, y))
                 continue;
             var index = Index(x, y);
-            var tile = Current.Tiles[index];
+            var tile = Tiles[index];
             if (tile.Value.FireTicks > 0)
                 continue;
             var aquatic = IsWaterTerrain(tile.Value.Terrain);

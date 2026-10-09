@@ -10,7 +10,7 @@ public sealed partial class WorldEngine
     {
         var history = person.History.Add(new ResidentHistoryEntry
         {
-            Tick = Current.Tick,
+            Tick = SimulationTick,
             Text = text,
             Importance = importance,
             EventId = entry?.Id ?? 0,
@@ -26,21 +26,21 @@ public sealed partial class WorldEngine
 
     private void ObserveProjects()
     {
-        foreach (var building in Current.Buildings)
+        foreach (var building in Buildings)
             if (!building.Value.IsCompleted)
             {
                 building.Replace(building.Value with
                 {
-                    Observation = building.Value.Observation.Observe(Current.Tick, Current.Rules.DevelopmentRate,
+                    Observation = building.Value.Observation.Observe(SimulationTick, Rules.DevelopmentRate,
                     building.Value.ConstructionProgress)
                 });
             }
 
-        var tick = Current.Tick;
-        var rate = Current.Rules.DevelopmentRate;
-        var research = Current.Society.Research.Map(project => project.Observe(tick, rate));
-        if (!ReferenceEquals(research, Current.Society.Research))
-            Current.Society = Current.Society with { Research = research };
+        var tick = SimulationTick;
+        var rate = Rules.DevelopmentRate;
+        var research = Society.Research.Map(project => project.Observe(tick, rate));
+        if (!ReferenceEquals(research, Society.Research))
+            Society = Society with { Research = research };
     }
 
     /// <summary>依据近期稳定的实际工作速率估算项目剩余日数；依据不足时给出原因。</summary>
@@ -52,10 +52,10 @@ public sealed partial class WorldEngine
         if (progress >= required)
             return new CompletionEstimate(0, "已完成");
         var samples = observation.Samples;
-        if (observation.DevelopmentRate != Current.Rules.DevelopmentRate || samples.Length < 4)
+        if (observation.DevelopmentRate != Rules.DevelopmentRate || samples.Length < 4)
             return new CompletionEstimate(null, "暂无法估算：等待足够的实际工作记录");
         var last = samples[^1];
-        if (Current.Tick - last.Tick > 8 || samples[^1].Progress <= samples[^2].Progress)
+        if (SimulationTick - last.Tick > 8 || samples[^1].Progress <= samples[^2].Progress)
             return new CompletionEstimate(null, "暂停估算：近期未取得实际进度");
         var rates = samples.Zip(samples.Skip(1), (a, b) => (b.Progress - a.Progress) / (b.Tick - a.Tick)).ToArray();
         var mean = rates.Average();
@@ -74,14 +74,14 @@ public sealed partial class WorldEngine
     public CompletionEstimate GetDevelopmentEstimate(int settlementId)
     {
         _ = RequireTown(settlementId);
-        var building = Current.Buildings.FirstOrDefault(b => b.Value.SettlementId == settlementId && !b.Value.IsCompleted);
+        var building = Buildings.FirstOrDefault(b => b.Value.SettlementId == settlementId && !b.Value.IsCompleted);
         if (building is not null)
         {
             return GetCompletionEstimate(building.Value.Observation, building.Value.ConstructionProgress,
                 building.Value.ConstructionRequired);
         }
 
-        var research = Current.Society.Research.First(r => r.SettlementId == settlementId);
+        var research = Society.Research.First(r => r.SettlementId == settlementId);
         return research.ActiveProject is not null
             ? GetCompletionEstimate(research.Observation, research.Progress, research.RequiredProgress)
             : new CompletionEstimate(null, "尚无进行中的建设或研究");

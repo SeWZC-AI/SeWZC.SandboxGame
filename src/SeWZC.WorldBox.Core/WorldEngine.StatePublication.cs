@@ -7,24 +7,24 @@ public sealed partial class WorldEngine
     {
         var index = _localWorkQueriesActive && _localResearch.TryGetValue(research.SettlementId, out var cached)
             ? cached
-            : Current.Society.Research.FindIndex(r => r.SettlementId == research.SettlementId);
-        Current.Society = Current.Society with { Research = Current.Society.Research.SetItem(index, research) };
+            : Society.Research.FindIndex(r => r.SettlementId == research.SettlementId);
+        Society = Society with { Research = Society.Research.SetItem(index, research) };
         return research;
     }
 
     private LocalPolicy PublishPolicy(LocalPolicy policy)
     {
-        var index = Current.Society.Policies.FindIndex(p => p.SettlementId == policy.SettlementId);
-        Current.Society = Current.Society with { Policies = Current.Society.Policies.SetItem(index, policy) };
+        var index = Society.Policies.FindIndex(p => p.SettlementId == policy.SettlementId);
+        Society = Society with { Policies = Society.Policies.SetItem(index, policy) };
         return policy;
     }
 
     private NationInstitution PublishInstitution(NationInstitution institution)
     {
-        var index = Current.Society.Institutions.FindIndex(i => i.NationId == institution.NationId);
-        Current.Society = Current.Society with
+        var index = Society.Institutions.FindIndex(i => i.NationId == institution.NationId);
+        Society = Society with
         {
-            Institutions = Current.Society.Institutions.SetItem(index, institution),
+            Institutions = Society.Institutions.SetItem(index, institution),
         };
         return institution;
     }
@@ -32,34 +32,34 @@ public sealed partial class WorldEngine
     private CulturalContact PublishContact(CulturalContact contact)
     {
         var index = FindCultureContactIndex(contact.ResidentId, contact.CultureId);
-        Current.Society = Current.Society with
+        Society = Society with
         {
-            CulturalContacts = Current.Society.CulturalContacts.SetItem(index, contact),
+            CulturalContacts = Society.CulturalContacts.SetItem(index, contact),
         };
         return contact;
     }
 
     private DiplomaticRelation PublishRelation(DiplomaticRelation relation)
     {
-        var index = Current.Diplomacies.FindIndex(r =>
+        var index = Diplomacies.FindIndex(r =>
             r.FirstNationId == relation.FirstNationId && r.SecondNationId == relation.SecondNationId);
-        Current.Diplomacies = Current.Diplomacies.SetItem(index, relation);
+        Diplomacies = Diplomacies.SetItem(index, relation);
         return relation;
     }
 
     private LocalConflict PublishConflict(LocalConflict conflict)
     {
-        var index = Current.Conflicts.FindIndex(c => c.Id == conflict.Id);
-        Current.Conflicts = Current.Conflicts.SetItem(index, conflict);
+        var index = Conflicts.FindIndex(c => c.Id == conflict.Id);
+        Conflicts = Conflicts.SetItem(index, conflict);
         return conflict;
     }
 
     private WorldEvent PublishEvent(WorldEvent entry)
     {
-        var index = Current.Events.FindIndex(e => e.Id == entry.Id);
+        var index = Events.FindIndex(e => e.Id == entry.Id);
         // 容量规则可能已淘汰刚创建的事件，人物经历仍可引用返回的完整值。
         if (index >= 0)
-            Current.Events = Current.Events.SetItem(index, entry);
+            Events = Events.SetItem(index, entry);
         return entry;
     }
 }

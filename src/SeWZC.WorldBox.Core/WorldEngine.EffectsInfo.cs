@@ -27,7 +27,7 @@ public sealed partial class WorldEngine
             return 1;
         IEnumerable<StateReference<Building>>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(home.Value.Id)
-            : Current.Buildings;
+            : Buildings;
         var bonus = (1 + EffectiveSettlementRank(home) * .1) * GranaryRestBonus(home.Value.Id);
         if (buildings is null)
             return bonus;
@@ -56,7 +56,7 @@ public sealed partial class WorldEngine
             effects.Add(new EffectInfo("精灵采伐", "野外伐木产出 ×1.20", ""));
         if (person.Race == RaceKind.Dwarf)
             effects.Add(new EffectInfo("矮人采矿", "野外石矿产出 ×1.30", ""));
-        var adaptation = RaceTerrainRules.For(person.Race, Current.Tiles[Index(person.X, person.Y)].Value.Terrain);
+        var adaptation = RaceTerrainRules.For(person.Race, Tiles[Index(person.X, person.Y)].Value.Terrain);
         effects.Add(new EffectInfo("地形适应",
             $"{(adaptation.Habitable ? "宜居" : "不宜居")}   地形移动耗时 ×{adaptation.Movement:0.00}   现场生产 ×{adaptation.Productivity:0.00}",
             "种族与当前地形"));
@@ -67,13 +67,13 @@ public sealed partial class WorldEngine
                 "本人的实际到访记录"));
         }
 
-        if (GatheringTerritoryMultiplier(person.SettlementId, person.NationId, Current.Tiles[Index(person.X, person.Y)].Value) < 1)
+        if (GatheringTerritoryMultiplier(person.SettlementId, person.NationId, Tiles[Index(person.X, person.Y)].Value) < 1)
         {
             effects.Add(new EffectInfo("领地外采集", $"食物、木材、石矿、矿藏、狩猎、捕鱼与取水速度 ×{OutsideTerritoryGatheringMultiplier:0.00}",
                 "资源来源未登记给本城镇"));
         }
 
-        foreach (var town in Current.Settlements)
+        foreach (var town in Settlements)
         {
             if (town.Value.NationId != person.NationId || Distance(town.Value.X, town.Value.Y, person.X, person.Y) > 5)
                 continue;
@@ -103,11 +103,11 @@ public sealed partial class WorldEngine
     /// <param name="id">建筑的稳定 ID。</param>
     public IReadOnlyList<EffectInfo> GetBuildingEffects(int id)
     {
-        var building = Current.Buildings.FirstOrDefault(b => b.Value.Id == id);
+        var building = Buildings.FirstOrDefault(b => b.Value.Id == id);
         var effects = new List<EffectInfo>();
         if (building is null)
             return effects;
-        var ground = Current.Tiles[Index(building.Value.X, building.Value.Y)];
+        var ground = Tiles[Index(building.Value.X, building.Value.Y)];
         var active = building.Value.Kind == BuildingKind.Bridge ? ground.Value.Improvement == LandImprovement.Bridge
             : building.Value.Kind == BuildingKind.MountainPass ? ground.Value.Improvement == LandImprovement.MountainPass
             : IsBuildingOperational(building.Value);
@@ -277,7 +277,7 @@ public sealed partial class WorldEngine
         var effects = new List<EffectInfo>();
         if (!InBounds(x, y))
             return effects;
-        var tile = Current.Tiles[Index(x, y)];
+        var tile = Tiles[Index(x, y)];
         effects.Add(new EffectInfo("地形可燃性", $"{TerrainFlammability(tile.Value):0.00} / 1；受植被、剩余资源、供水与干旱影响", "当地地形；建筑可燃性另计"));
         if (tile.Value.FireTicks > 0)
             effects.Add(new EffectInfo("燃烧", "停止生产与取水，居民每 tick 灼伤 4", "", tile.Value.FireTicks));
@@ -299,7 +299,7 @@ public sealed partial class WorldEngine
                     : ""), ImprovementName(tile.Value.Improvement)));
         }
 
-        foreach (var building in Current.Buildings)
+        foreach (var building in Buildings)
             if (building.Value.X == x && building.Value.Y == y)
             {
                 var status = GetBuildingDetailStatus(building.Value.Id);

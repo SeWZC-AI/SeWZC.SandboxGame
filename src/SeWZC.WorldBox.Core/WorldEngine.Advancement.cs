@@ -10,7 +10,7 @@ public sealed partial class WorldEngine
     /// <param name="research">研究项目。</param>
     public string? ResearchPrerequisiteError(int settlementId, Advancement research)
     {
-        if (research.Magic && !Current.Society.MagicEnabled)
+        if (research.Magic && !Society.MagicEnabled)
             return "世界规则已关闭新的魔法发展";
         List<string>? missing = null;
         foreach (var prerequisite in research.Prerequisites.AsSpan())
@@ -68,7 +68,7 @@ public sealed partial class WorldEngine
             return "正在升级或改向，暂停生产";
         if (building.Health < 50)
             return "设施受损，需要修复后运营";
-        if (Current.Tiles[Index(building.X, building.Y)].Value.FireTicks > 0)
+        if (Tiles[Index(building.X, building.Y)].Value.FireTicks > 0)
             return "设施所在地正在燃烧，暂停生产";
         if (!HasResearch(building.SettlementId, recipe.Research)
             || !HasResearchPrerequisites(building.SettlementId, recipe.Research.Prerequisites))
@@ -96,7 +96,7 @@ public sealed partial class WorldEngine
                              : 1);
         if (recipe.Output != ResourceKind.Food)
             return recipe.Yield * building.Efficiency * multiplier;
-        var tile = Current.Tiles[Index(building.X, building.Y)];
+        var tile = Tiles[Index(building.X, building.Y)];
         return recipe.Yield * building.Efficiency * multiplier * tile.Value.Fertility / 100d *
                (tile.Value.DroughtTicks > 0 ? .18 : 1);
     }
@@ -105,7 +105,7 @@ public sealed partial class WorldEngine
     /// <param name="buildingId">待操作建筑的稳定 ID。</param>
     public string GetProductionStatus(int buildingId)
     {
-        var building = Current.Buildings.FirstOrDefault(b => b.Value.Id == buildingId);
+        var building = Buildings.FirstOrDefault(b => b.Value.Id == buildingId);
         var recipe = building is null ? null : ProductionRules.For(building.Value.Kind);
         if (building is null)
             return "建筑已不存在";
@@ -115,9 +115,9 @@ public sealed partial class WorldEngine
             return "建筑已损毁，等待重建";
         if (building.Value.Health < 50)
             return "建筑受损，需要修复后工作";
-        if (Current.Tiles[Index(building.Value.X, building.Value.Y)].Value.FireTicks > 0)
+        if (Tiles[Index(building.Value.X, building.Value.Y)].Value.FireTicks > 0)
             return "正在燃烧，暂停工作";
-        var workers = Current.Tick - building.Value.LastWorkedTick <= 1 ? building.Value.Workers.Count : 0;
+        var workers = SimulationTick - building.Value.LastWorkedTick <= 1 ? building.Value.Workers.Count : 0;
         if (!building.Value.IsCompleted)
         {
             return
@@ -150,10 +150,10 @@ public sealed partial class WorldEngine
                     $"组织城镇扩充：{town.Value.ExpansionProgress:0.#} / {town.Value.ExpansionRequired:0}\n到场工人 {workers}/{building.Value.WorkSlots}";
             }
 
-            var research = Current.Society.Research.First(r => r.SettlementId == town.Value.Id);
+            var research = Society.Research.First(r => r.SettlementId == town.Value.Id);
             var activity = building.Value.Kind switch
             {
-                BuildingKind.Farm => $"产出：粮食   累计采收 {Current.Tiles[Index(building.Value.X, building.Value.Y)].Value.Harvested:0.#}",
+                BuildingKind.Farm => $"产出：粮食   累计采收 {Tiles[Index(building.Value.X, building.Value.Y)].Value.Harvested:0.#}",
                 BuildingKind.Workshop => "产出：附近实际可采的木材、石材与矿石",
                 BuildingKind.Academy => research.ActiveProject is { } kind
                     ? $"正在研究：{kind.Name}   {research.Progress / research.RequiredProgress:P0}"
@@ -269,7 +269,7 @@ public sealed partial class WorldEngine
         if (!CanProduce(building.Value, person, recipe))
         {
             person.Agent = person.Agent.WithGoal(goal = goal with { Reason = GetProductionStatus(building.Value.Id) });
-            person.Agent = person.Agent with { NextThinkTick = Current.Tick + 1 };
+            person.Agent = person.Agent with { NextThinkTick = SimulationTick + 1 };
             return true;
         }
 
@@ -327,7 +327,7 @@ public sealed partial class WorldEngine
                                                               ProductionYield(building.Value, recipe) * 4
                                                               && (!recipe.Research.Magic || person.Mana >= recipe.Mana))
             {
-                person.Agent = person.Agent with { NextThinkTick = Current.Tick + 4 };
+                person.Agent = person.Agent with { NextThinkTick = SimulationTick + 4 };
                 return true;
             }
 
@@ -338,12 +338,12 @@ public sealed partial class WorldEngine
                 TargetX = home.Value.X,
                 TargetY = home.Value.Y,
                 TargetSettlementId = home.Value.Id,
-                StartedTick = Current.Tick,
-                ReviewTick = Current.Tick + 100,
+                StartedTick = SimulationTick,
+                ReviewTick = SimulationTick + 100,
                 Reason = "加工完成，亲自把产物运回家园入库",
             });
             ChangeWorkReservation(previous, person.Agent.Goal);
-            person.Agent = person.Agent with { NextThinkTick = Current.Tick + 100 };
+            person.Agent = person.Agent with { NextThinkTick = SimulationTick + 100 };
         }
 
         return true;
@@ -373,7 +373,7 @@ public sealed partial class WorldEngine
         inventory = inventory.WithAmount(recipe.Output, inventory.Get(recipe.Output) + yield * batches);
         person.Inventory = inventory;
         person.Mana -= recipe.Mana * batches;
-        RecordHarvest(Current.Tiles[Index(building.Value.X, building.Value.Y)], yield * batches);
+        RecordHarvest(Tiles[Index(building.Value.X, building.Value.Y)], yield * batches);
         var firstBatch = building.Value.ProductionBatches == 0;
         building.Replace(building.Value with { ProductionBatches = Math.Min(1_000_000_000, building.Value.ProductionBatches + batches) });
         if (firstBatch)

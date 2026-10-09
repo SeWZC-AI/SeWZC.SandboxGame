@@ -24,11 +24,11 @@ public sealed class CultureContactTests
             Wars = false,
         }, false, false);
         var ownCulture = fixture.Resident.CultureId;
-        var foreign = engine.Current.Society.Cultures.First() with { Id = engine.Current.NextId++, Name = "邻村文化" };
+        var foreign = engine.Society.Cultures.First() with { Id = engine.NextId++, Name = "邻村文化" };
         var initialExposure = convert ? 9d : 1;
-        engine.Current.Society = engine.Current.Society with
+        engine.Society = engine.Society with
         {
-            Cultures = engine.Current.Society.Cultures.Add(foreign),
+            Cultures = engine.Society.Cultures.Add(foreign),
             CulturalContacts =
             [
                 new CulturalContact
@@ -44,14 +44,14 @@ public sealed class CultureContactTests
                 },
             ],
         };
-        engine.Current.Tick = SimulationTime.WakeTick;
+        engine.SimulationTick = SimulationTime.WakeTick;
         fixture.Resident.X = fixture.Resident.Y = 16;
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = 10 });
         fixture.Resident.Agent = fixture.Resident.Agent with
         {
             NextThinkTick = 100, Personality = fixture.Resident.Agent.Personality with { Sociability = .75 },
         };
-        engine.Current.PendingMessages = engine.Current.PendingMessages.Add(new PendingMessage
+        engine.PendingMessages = engine.PendingMessages.Add(new PendingMessage
         {
             SenderId = fixture.ResidentId,
             RecipientId = fixture.ResidentId,
@@ -75,7 +75,7 @@ public sealed class CultureContactTests
         {
             return new AgentFact
             {
-                Id = engine.Current.NextId++,
+                Id = engine.NextId++,
                 Kind = AgentFactKind.Culture,
                 SubjectId = fixture.Town.Value.Id,
                 X = 16,

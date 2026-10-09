@@ -9,12 +9,12 @@ public sealed class WorkReservationTests
     {
         var fixture = new WorldFixture();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
-        fixture.Engine.Current.Tick = 1;
+        fixture.Engine.SimulationTick = 1;
         var building =
-            fixture.Engine.Current.Buildings.Single(candidate => candidate.Value.Kind == BuildingKind.TownCenter);
+            fixture.Engine.Buildings.Single(candidate => candidate.Value.Kind == BuildingKind.TownCenter);
         building.Replace(building.Value with { Health = 10 });
         building.Replace(building.Value with { WorkSlots = 1 });
-        foreach (var person in fixture.Engine.Current.Residents)
+        foreach (var person in fixture.Engine.Residents)
             person.Replace(person.Value with
             {
                 Age = 25,
@@ -34,7 +34,7 @@ public sealed class WorkReservationTests
                     },
                 },
             });
-        var other = fixture.Engine.Current.Residents.Single(person => person.Id != fixture.ResidentId);
+        var other = fixture.Engine.Residents.Single(person => person.Id != fixture.ResidentId);
 
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
         var repairedHealth = building.Value.Health;
@@ -65,18 +65,18 @@ public sealed class WorkReservationTests
             Secession = false,
             Wars = false,
         }, false, true);
-        var otherTown = fixture.Engine.Current.Settlements.Single(town => town.Value.Id != fixture.Town.Value.Id);
+        var otherTown = fixture.Engine.Settlements.Single(town => town.Value.Id != fixture.Town.Value.Id);
         fixture.Town.Replace(fixture.Town.Value with { MaxClaimRadius = 8 });
         for (var x = 8; x <= 16; x++)
         {
-            var ground = fixture.Engine.Current.Tiles[16 * 32 + x];
+            var ground = fixture.Engine.Tiles[16 * 32 + x];
             ground.Replace(ground.Value.WithNationId(fixture.Town.Value.NationId));
             ground.Replace(ground.Value.WithClaimedSettlementId(fixture.Town.Value.Id));
         }
 
         for (var x = 0; x <= 5; x++)
         {
-            var ground = fixture.Engine.Current.Tiles[16 * 32 + x];
+            var ground = fixture.Engine.Tiles[16 * 32 + x];
             ground.Replace(ground.Value.WithNationId(otherTown.Value.NationId));
             ground.Replace(ground.Value.WithClaimedSettlementId(otherTown.Value.Id));
         }
@@ -84,13 +84,13 @@ public sealed class WorkReservationTests
         GrantResearch(fixture, Advancement.BattleMagic);
         var towerId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.StormSpire, 8, 16);
         var clinicId = fixture.Engine.GrantFacility(otherTown.Value.Id, BuildingKind.Infirmary, 5, 16);
-        var clinic = fixture.Engine.Current.Buildings.Single(building => building.Value.Id == clinicId);
+        var clinic = fixture.Engine.Buildings.Single(building => building.Value.Id == clinicId);
         clinic.Replace(clinic.Value with { WorkSlots = 1 });
-        foreach (var building in fixture.Engine.Current.Buildings)
+        foreach (var building in fixture.Engine.Buildings)
             building.Replace(building.Value with { Enabled = building.Value.Id == towerId || building.Value.Id == clinicId });
         otherTown.Replace(otherTown.Value.WithResources(new ResourceStock { Food = 100 }));
         fixture.Town.Replace(fixture.Town.Value.WithResources(otherTown.Value.Resources));
-        foreach (var person in fixture.Engine.Current.Residents)
+        foreach (var person in fixture.Engine.Residents)
             person.Replace(person.Value with
             {
                 Age = 25,
@@ -143,7 +143,7 @@ public sealed class WorkReservationTests
                 Confidence = 1,
             }),
         };
-        var otherResidents = fixture.Engine.Current.Residents.Where(person => person.SettlementId == otherTown.Value.Id)
+        var otherResidents = fixture.Engine.Residents.Where(person => person.SettlementId == otherTown.Value.Id)
             .ToArray();
         var victim = otherResidents[0];
         victim.Replace(victim.Value with
@@ -167,7 +167,7 @@ public sealed class WorkReservationTests
         var replacement = otherResidents[1];
         replacement.Health = 50;
         replacement.Agent = replacement.Agent with { NextThinkTick = 0 };
-        fixture.Engine.Current.Tick = 8 + (3 - replacement.Id % 4 + 4) % 4;
+        fixture.Engine.SimulationTick = 8 + (3 - replacement.Id % 4 + 4) % 4;
 
         fixture.Engine.Step();
 
@@ -202,7 +202,7 @@ public sealed class WorkReservationTests
             Secession = false,
             Wars = false,
         }, false, false);
-        foreach (var person in fixture.Engine.Current.Residents)
+        foreach (var person in fixture.Engine.Residents)
             person.Replace(person.Value with
             {
                 Race = race,
@@ -219,12 +219,12 @@ public sealed class WorkReservationTests
             });
         for (var x = 14; x <= 15; x++)
         {
-            var ground = fixture.Engine.Current.Tiles[16 * 32 + x];
+            var ground = fixture.Engine.Tiles[16 * 32 + x];
             ground.Replace(ground.Value.WithNationId(fixture.Town.Value.NationId));
             ground.Replace(ground.Value.WithClaimedSettlementId(fixture.Town.Value.Id));
         }
 
-        var site = fixture.Engine.Current.Tiles[16 * 32 + 14];
+        var site = fixture.Engine.Tiles[16 * 32 + 14];
         site.Replace(site.Value.WithTerrain(kind switch
         {
             BuildingKind.MiningHall => TerrainType.Hills,
@@ -235,14 +235,14 @@ public sealed class WorkReservationTests
         site.Replace(site.Value.WithAnimalPopulation(WildlifeKind.Deer, 10));
         if (kind == BuildingKind.Reservoir)
         {
-            fixture.Engine.Current.Tiles[17 * 32 + 14].Replace(fixture.Engine.Current.Tiles[17 * 32 + 14].Value.WithTerrain(TerrainType.River));
+            fixture.Engine.Tiles[17 * 32 + 14].Replace(fixture.Engine.Tiles[17 * 32 + 14].Value.WithTerrain(TerrainType.River));
             GrantResearch(fixture, Advancement.CivilEngineering);
         }
 
         var buildingId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, kind, 14, 16);
-        var building = fixture.Engine.Current.Buildings.Single(candidate => candidate.Value.Id == buildingId);
+        var building = fixture.Engine.Buildings.Single(candidate => candidate.Value.Id == buildingId);
         building.Replace(building.Value with { WorkSlots = 1 });
-        foreach (var other in fixture.Engine.Current.Buildings.Where(candidate => candidate.Value.Id != buildingId))
+        foreach (var other in fixture.Engine.Buildings.Where(candidate => candidate.Value.Id != buildingId))
             other.Replace(other.Value with { Enabled = false });
         fixture.Resident.Inventory = kind == BuildingKind.Reservoir
             ? new ResourceStock { Food = 1, Water = 3 }
@@ -258,9 +258,9 @@ public sealed class WorkReservationTests
                 ReviewTick = 100,
             },
         };
-        var replacement = fixture.Engine.Current.Residents.Single(person => person.Id != fixture.ResidentId);
+        var replacement = fixture.Engine.Residents.Single(person => person.Id != fixture.ResidentId);
         replacement.Agent = replacement.Agent with { NextThinkTick = 0 };
-        fixture.Engine.Current.Tick = 8 + (3 - replacement.Id % 4 + 4) % 4;
+        fixture.Engine.SimulationTick = 8 + (3 - replacement.Id % 4 + 4) % 4;
 
         fixture.Engine.Step();
 

@@ -70,7 +70,7 @@ public sealed partial class WorldEngine
     {
         if (!_settlements.TryGetValue(id, out var town))
             return 0;
-        _territoryCounts.Bind(Current.Tiles);
+        _territoryCounts.Bind(Tiles);
         // 面积取决于归属与陆水转换；其他地方的起火及桥梁轴向变化不改变登记面积。
         if (_settlementAreas.TryGetValue(id, out var cached) && cached.Claims == _territoryCounts.Revision &&
             cached.X == town.Value.X && cached.Y == town.Value.Y &&
@@ -78,14 +78,14 @@ public sealed partial class WorldEngine
             return cached.Area;
         // 城镇加成须按本地独占登记陆地计算，避免借用国家总领土满足条件。
         var area = Circle(town.Value.X, town.Value.Y, 17).Count(i =>
-            Distance(town.Value.X, town.Value.Y, i % Current.Width, i / Current.Width) <= 17 &&
-            Current.Tiles[i].Value.ClaimedSettlementId == id
-            && Current.Tiles[i].Value.NationId ==
+            Distance(town.Value.X, town.Value.Y, i % Width, i / Width) <= 17 &&
+            Tiles[i].Value.ClaimedSettlementId == id
+            && Tiles[i].Value.NationId ==
             town.Value.NationId &&
-            (Current.Tiles[i].Value.IsWalkable ||
-             Current.Tiles[i].Value.Terrain ==
+            (Tiles[i].Value.IsWalkable ||
+             Tiles[i].Value.Terrain ==
              TerrainType.Mountain) &&
-            !IsWaterTerrain(Current.Tiles[i].Value.Terrain));
+            !IsWaterTerrain(Tiles[i].Value.Terrain));
         _settlementAreas[id] = (_territoryCounts.Revision, town.Value.X, town.Value.Y,
             town.Value.NationId, area);
         return area;
@@ -106,7 +106,7 @@ public sealed partial class WorldEngine
 
     private bool SettlementNeedsClaimArea(StateReference<Settlement> town)
     {
-        return Current.Rules.Expansion && !town.Value.FoundationPending
+        return Rules.Expansion && !town.Value.FoundationPending
                                        && (!IsSettlementActive(town.Value.Id) || (town.Value.Tier < SettlementTier.City &&
                                                                             town.Value.Population >=
                                                                             ExpansionPopulation(town.Value.Tier)
@@ -123,7 +123,7 @@ public sealed partial class WorldEngine
         var person = GetResident(residentId);
         return person is null || !InBounds(x, y)
             ? OutsideTerritoryGatheringMultiplier
-            : GatheringTerritoryMultiplier(person.SettlementId, person.NationId, Current.Tiles[Index(x, y)].Value);
+            : GatheringTerritoryMultiplier(person.SettlementId, person.NationId, Tiles[Index(x, y)].Value);
     }
 
     private static double GatheringTerritoryMultiplier(int settlementId, int nationId, Tile source)
@@ -152,9 +152,9 @@ public sealed partial class WorldEngine
         if (area < GetSettlementExpansionArea(id))
             return $"独占陆地 {area} / {GetSettlementExpansionArea(id)} 格，需占领最大半径一半的等价面积并实地登记";
         var center =
-            Current.Buildings.FirstOrDefault(b => b.Value.SettlementId == id && b.Value.Kind == BuildingKind.TownCenter);
+            Buildings.FirstOrDefault(b => b.Value.SettlementId == id && b.Value.Kind == BuildingKind.TownCenter);
         if (center is null || !center.Value.IsCompleted || center.Value.IsUpgrading || center.Value.Health < 50
-            || Current.Tiles[Index(town.Value.X, town.Value.Y)].Value.FireTicks > 0)
+            || Tiles[Index(town.Value.X, town.Value.Y)].Value.FireTicks > 0)
             return "需要可工作的城镇中心组织扩充";
         return MissingResources(town.Value.Resources, SettlementExpansionCost(town.Value.Tier));
     }
@@ -183,7 +183,7 @@ public sealed partial class WorldEngine
         if (GetSettlementArea(town.Value.Id) < GetSettlementExpansionArea(town.Value.Id))
             return false;
         var before = town.Value;
-        var after = before.AdvanceExpansion(effort, Current.Rules.DevelopmentRate);
+        var after = before.AdvanceExpansion(effort, Rules.DevelopmentRate);
         town.Replace(after);
         if (after.Tier == before.Tier)
             return true;

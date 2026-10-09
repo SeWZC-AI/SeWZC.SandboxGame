@@ -10,7 +10,7 @@ public sealed class MedicalWorkTests
     public void Medical_work_treats_the_living_patient_after_daily_death()
     {
         var (fixture, clinic, worker) = PrepareClinic(3);
-        var patient = fixture.Engine.Current.Residents.Single(person =>
+        var patient = fixture.Engine.Residents.Single(person =>
             person.Id != fixture.ResidentId && person.Id != worker.Id);
         patient.Replace(patient.Value with { Health = 50, SicknessTicks = 1 });
 
@@ -44,12 +44,12 @@ public sealed class MedicalWorkTests
         var (fixture, clinic, worker) = PrepareClinic(3);
         clinic.Replace(clinic.Value with { WorkSlots = 1 });
         fixture.Resident.Agent = fixture.Resident.Agent with { Goal = worker.Agent.Goal };
-        var patient = fixture.Engine.Current.Residents.Single(person =>
+        var patient = fixture.Engine.Residents.Single(person =>
             person.Id != fixture.ResidentId && person.Id != worker.Id);
         patient.Health = 50;
-        foreach (var building in fixture.Engine.Current.Buildings.Where(building => building.Value.Id != clinic.Value.Id))
+        foreach (var building in fixture.Engine.Buildings.Where(building => building.Value.Id != clinic.Value.Id))
             building.Replace(building.Value with { Enabled = false });
-        fixture.Engine.Current.Tick = 8 + (3 - worker.Id % 4 + 4) % 4;
+        fixture.Engine.SimulationTick = 8 + (3 - worker.Id % 4 + 4) % 4;
         worker.Replace(worker.Value with
         {
             Inventory = new ResourceStock { Food = 1, Water = 1 },
@@ -83,15 +83,15 @@ public sealed class MedicalWorkTests
         }, false, false);
         for (var x = 14; x <= 15; x++)
         {
-            var ground = fixture.Engine.Current.Tiles[16 * 32 + x];
+            var ground = fixture.Engine.Tiles[16 * 32 + x];
             ground.Replace(ground.Value.WithNationId(fixture.Town.Value.NationId));
             ground.Replace(ground.Value.WithClaimedSettlementId(fixture.Town.Value.Id));
         }
 
         var clinicId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Infirmary, 14, 16);
-        var clinic = fixture.Engine.Current.Buildings.Single(building => building.Value.Id == clinicId);
+        var clinic = fixture.Engine.Buildings.Single(building => building.Value.Id == clinicId);
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock { Food = 100 }));
-        foreach (var person in fixture.Engine.Current.Residents)
+        foreach (var person in fixture.Engine.Residents)
             person.Replace(person.Value with
             {
                 Age = 25,
@@ -110,7 +110,7 @@ public sealed class MedicalWorkTests
                 },
             });
         fixture.Resident.Replace(fixture.Resident.Value with { Health = .001, SicknessTicks = 1 });
-        var worker = fixture.Engine.Current.Residents.First(person => person.Id != fixture.ResidentId);
+        var worker = fixture.Engine.Residents.First(person => person.Id != fixture.ResidentId);
         worker.Replace(worker.Value with
         {
             Profession = Profession.Builder,

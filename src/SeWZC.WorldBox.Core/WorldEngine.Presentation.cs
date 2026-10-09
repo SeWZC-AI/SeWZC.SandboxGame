@@ -39,7 +39,7 @@ public sealed partial class WorldEngine
     /// <param name="steps">最多预览的步数，计算时限制在 0 至 64。</param>
     public IReadOnlyList<RoutePoint> PreviewResidentRoute(int residentId, int steps = 24)
     {
-        var person = Current.Residents.FirstOrDefault(r => r.Id == residentId);
+        var person = Residents.FirstOrDefault(r => r.Id == residentId);
         if (person is null || person.ArmyId != 0 || person.Agent.Goal.Kind == AgentGoalKind.Idle)
             return [];
         var goal = person.Agent.Goal;
@@ -48,7 +48,7 @@ public sealed partial class WorldEngine
         var targetX = goal.TargetX;
         var targetY = goal.TargetY;
         var factory = goal.Kind == AgentGoalKind.Work
-            ? Current.Buildings.FirstOrDefault(b =>
+            ? Buildings.FirstOrDefault(b =>
                 b.Value.Id == goal.TargetEntityId && b.Value.SettlementId == person.SettlementId && b.Value.IsCompleted)
             : null;
         var production = factory is null ? null : ProductionRules.For(factory.Value.Kind);
@@ -68,7 +68,7 @@ public sealed partial class WorldEngine
                                                               or AgentGoalKind.Socialize or AgentGoalKind.ReturnHome
                                                               or AgentGoalKind.Sleep
                                                           || (goal.TargetEntityId != 0 &&
-                                                              Current.Buildings.Any(b =>
+                                                              Buildings.Any(b =>
                                                                   b.Value.Id == goal.TargetEntityId &&
                                                                   (!b.Value.IsCompleted || b.Value.IsUpgrading ||
                                                                    IsWaterfrontBuilding(b.Value.Kind))))
@@ -83,7 +83,7 @@ public sealed partial class WorldEngine
                 break;
             cursor.Replace(cursor.Value with
             {
-                FromX = cursor.X, FromY = cursor.Y, X = next % Current.Width, Y = next / Current.Width,
+                FromX = cursor.X, FromY = cursor.Y, X = next % Width, Y = next / Width,
             });
             route.Add(new RoutePoint(cursor.X, cursor.Y));
         }
@@ -104,7 +104,7 @@ public sealed partial class WorldEngine
         if (!double.IsFinite(resources) || resources is < 0 or > 1_000_000 || fertility is < 0 or > 100 ||
             roadLevel is < 0 or > 3)
             throw new ArgumentException("地格资源、肥力或道路等级超出范围。");
-        var tile = Current.Tiles[Index(x, y)];
+        var tile = Tiles[Index(x, y)];
         if (!tile.Value.IsWalkable && roadLevel > 0)
             throw new ArgumentException("道路需要可通行的陆地。");
         tile.Replace(tile.Value with

@@ -49,11 +49,11 @@ public sealed partial class WorldEngine
     // 将大片不可通行高地分解为丘陵和小山峰，保留地貌同时避免阻断整个地区。
     private void LimitMountainRanges()
     {
-        var visited = new bool[Current.Tiles.Count];
+        var visited = new bool[Tiles.Count];
         var queue = new Queue<int>();
-        for (var start = 0; start < Current.Tiles.Count; start++)
+        for (var start = 0; start < Tiles.Count; start++)
         {
-            if (visited[start] || Current.Tiles[start].Value.Terrain != TerrainType.Mountain)
+            if (visited[start] || Tiles[start].Value.Terrain != TerrainType.Mountain)
                 continue;
             queue.Enqueue(start);
             visited[start] = true;
@@ -61,15 +61,15 @@ public sealed partial class WorldEngine
             while (queue.TryDequeue(out var index))
             {
                 if (++count > 32)
-                    Current.Tiles[index].Replace(Current.Tiles[index].Value.WithTerrain(TerrainType.Hills));
+                    Tiles[index].Replace(Tiles[index].Value.WithTerrain(TerrainType.Hills));
                 foreach (var (dx, dy) in Directions)
                 {
-                    var x = index % Current.Width + dx;
-                    var y = index / Current.Width + dy;
+                    var x = index % Width + dx;
+                    var y = index / Width + dy;
                     if (!InBounds(x, y))
                         continue;
                     var next = Index(x, y);
-                    if (!visited[next] && Current.Tiles[next].Value.Terrain == TerrainType.Mountain)
+                    if (!visited[next] && Tiles[next].Value.Terrain == TerrainType.Mountain)
                     {
                         visited[next] = true;
                         queue.Enqueue(next);
@@ -95,7 +95,7 @@ public sealed partial class WorldEngine
 
     private void CompleteLandImprovement(Building building)
     {
-        var tile = Current.Tiles[Index(building.X, building.Y)];
+        var tile = Tiles[Index(building.X, building.Y)];
         if (building.Kind is BuildingKind.Farm or BuildingKind.AutomatedFarm or BuildingKind.RunicGarden)
         {
             tile.Replace(tile.Value.WithImprovement(LandImprovement.Farmland));
@@ -125,12 +125,12 @@ public sealed partial class WorldEngine
 
     private void PlanVisibleCrossing(ResidentCursor person, int targetX, int targetY)
     {
-        if (!Current.Rules.Construction || person.TravelMode != TravelMode.Foot || person.ArmyId != 0 || person.Age < 14
+        if (!Rules.Construction || person.TravelMode != TravelMode.Foot || person.ArmyId != 0 || person.Age < 14
             || !HasResearch(person.SettlementId, Advancement.Logistics)
             || person.Agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Explore or AgentGoalKind.FetchWater
             || (person.Agent.Goal.TargetSettlementId == 0 && person.Agent.Goal.TargetEntityId == 0))
             return;
-        if (Current.Buildings.Any(b =>
+        if (Buildings.Any(b =>
                 b.Value.SettlementId == person.SettlementId && (!b.Value.IsCompleted || b.Value.IsUpgrading)))
             return;
         // 任务确有需求仍须核对可见陆路，已有通路时不应无故建桥。
@@ -145,7 +145,7 @@ public sealed partial class WorldEngine
                 Distance(x, y, targetX, targetY) >= Distance(person.X, person.Y, targetX, targetY))
                 continue;
             var direction = dx != 0 ? BridgeDirection.Horizontal : BridgeDirection.Vertical;
-            var first = Current.Tiles[Index(x, y)];
+            var first = Tiles[Index(x, y)];
             if (first.Value.Terrain is not (TerrainType.Water or TerrainType.River or TerrainType.Lake
                     or TerrainType.Stream or TerrainType.LargeRiver) ||
                 first.Value.Improvement == LandImprovement.Bridge)
@@ -160,7 +160,7 @@ public sealed partial class WorldEngine
                 var yy = person.Y + dy * length;
                 if (!InBounds(xx, yy))
                     break;
-                var tile = Current.Tiles[Index(xx, yy)];
+                var tile = Tiles[Index(xx, yy)];
                 if (!IsWaterTerrain(tile.Value.Terrain))
                 {
                     farBank = tile.Value.IsWalkable && tile.Value.FireTicks == 0;
@@ -206,8 +206,8 @@ public sealed partial class WorldEngine
     private bool VisibleLandPathConnects(ResidentCursor observer, int originX, int originY, int targetX, int targetY,
         int range)
     {
-        if (_localMoveVisited.Length != Current.Tiles.Count)
-            _localMoveVisited = new int[Current.Tiles.Count];
+        if (_localMoveVisited.Length != Tiles.Count)
+            _localMoveVisited = new int[Tiles.Count];
         if (_localMoveSearch == int.MaxValue)
         {
             Array.Clear(_localMoveVisited);
@@ -223,8 +223,8 @@ public sealed partial class WorldEngine
         while (head < tail)
         {
             var current = _localMoveQueue[head++];
-            var x = current.Index % Current.Width;
-            var y = current.Index / Current.Width;
+            var x = current.Index % Width;
+            var y = current.Index / Width;
             if (Distance(x, y, targetX, targetY) <= range)
                 return true;
             foreach (var (dx, dy) in Directions)
@@ -233,7 +233,7 @@ public sealed partial class WorldEngine
                 var yy = y + dy;
                 if (!CanTraverseStep(x, y, xx, yy, TravelMode.Foot, observer.Race)
                     || Distance(xx, yy, observer.X, observer.Y) > 6 ||
-                    Current.Tiles[Index(xx, yy)].Value.FireTicks > 0)
+                    Tiles[Index(xx, yy)].Value.FireTicks > 0)
                     continue;
                 var index = Index(xx, yy);
                 if (_localMoveVisited[index] == search)
@@ -249,12 +249,12 @@ public sealed partial class WorldEngine
     private bool RemoveFailedCrossings()
     {
         var changed = false;
-        foreach (var building in Current.Buildings)
+        foreach (var building in Buildings)
         {
             if (building.Value.Kind != BuildingKind.Bridge || building.Value.Health > 0 ||
                 !InBounds(building.Value.X, building.Value.Y))
                 continue;
-            var tile = Current.Tiles[Index(building.Value.X, building.Value.Y)];
+            var tile = Tiles[Index(building.Value.X, building.Value.Y)];
             if (tile.Value.Improvement != LandImprovement.Bridge)
                 continue;
             tile.Replace(tile.Value with { Improvement = LandImprovement.None, RoadLevel = 0, BridgeLevel = 0 });
@@ -270,7 +270,7 @@ public sealed partial class WorldEngine
             return;
         tile.Replace(tile.Value with
         {
-            LastHarvestTick = Current.Tick, Harvested = Math.Min(1_000_000_000, tile.Value.Harvested + amount),
+            LastHarvestTick = SimulationTick, Harvested = Math.Min(1_000_000_000, tile.Value.Harvested + amount),
         });
     }
 
@@ -292,7 +292,7 @@ public sealed partial class WorldEngine
             var y = person.Y + offset.Y;
             if (!InBounds(x, y))
                 continue;
-            var tile = Current.Tiles[Index(x, y)];
+            var tile = Tiles[Index(x, y)];
             if (tile.Value.Deposit is not { } resource || tile.Value.DepositAmount <= 0 || tile.Value.FireTicks > 0
                 || !(resource == ResourceKind.Coal ? coal : resource == ResourceKind.Oil ? oil : rare))
                 continue;
@@ -309,12 +309,12 @@ public sealed partial class WorldEngine
             var site = tile.Value.IsWalkable
                 ? Index(x, y)
                 : Directions.Select(d => (X: x + d.X, Y: y + d.Y))
-                    .Where(p => Walkable(p.X, p.Y) && Current.Tiles[Index(p.X, p.Y)].Value.FireTicks == 0)
+                    .Where(p => Walkable(p.X, p.Y) && Tiles[Index(p.X, p.Y)].Value.FireTicks == 0)
                     .OrderBy(p => Distance(person.X, person.Y, p.X, p.Y)).Select(p => Index(p.X, p.Y))
                     .FirstOrDefault(-1);
             if (site < 0)
                 continue;
-            var distance = Distance(person.X, person.Y, site % Current.Width, site / Current.Width);
+            var distance = Distance(person.X, person.Y, site % Width, site / Width);
             if (distance < bestDistance)
             {
                 best = site;
@@ -331,7 +331,7 @@ public sealed partial class WorldEngine
             return false;
         foreach (var index in Circle(person.X, person.Y, 1))
         {
-            var tile = Current.Tiles[index];
+            var tile = Tiles[index];
             if (tile.Value.Deposit is not { } kind || tile.Value.DepositAmount <= 0 || tile.Value.FireTicks > 0
                 || DepositResearch(kind) is not { } research || !HasResearch(home.Value.Id, research) ||
                 home.Value.Resources.Get(kind) >= 80
@@ -339,7 +339,7 @@ public sealed partial class WorldEngine
                 continue;
             tile.Replace(tile.Value.WithDepositDiscovered(true));
             var amount = Math.Min(tile.Value.DepositAmount,
-                WorkInterval(person) / (double)SimulationTime.TicksPerDay * .4 * Current.Rules.GatheringRate *
+                WorkInterval(person) / (double)SimulationTime.TicksPerDay * .4 * Rules.GatheringRate *
                 GatheringCondition(person.SicknessTicks, person.Hunger, person.Thirst) *
                 GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value) *
                 (HasResearch(person.SettlementId, Advancement.Forestry) ? 1.25 : 1));
@@ -366,7 +366,7 @@ public sealed partial class WorldEngine
     {
         if (!InBounds(x, y))
             return "地格不存在";
-        var tile = Current.Tiles[Index(x, y)];
+        var tile = Tiles[Index(x, y)];
         return "动物种群\n" + string.Join("\n", AnimalRules.Species.Where(k => tile.Value.AnimalPopulation(k) >= .001)
                    .Select(k => $"{WildlifeName(k)}  {tile.Value.AnimalPopulation(k):0.###}")) + "\n植物存量\n"
                + string.Join("\n",
@@ -382,7 +382,7 @@ public sealed partial class WorldEngine
     {
         if (!InBounds(x, y))
             return "地格不存在";
-        var tile = Current.Tiles[Index(x, y)];
+        var tile = Tiles[Index(x, y)];
         var resources = PlantResources.At(tile.Value).OrderByDescending(p => p.Quantity)
             .Select(p => $"{PlantResources.Name(p.Kind)} {p.Quantity:0.###} 份").ToList();
         var minerals = TerrainRules.For(tile.Value.Terrain);
@@ -408,7 +408,7 @@ public sealed partial class WorldEngine
     {
         if (!InBounds(x, y))
             return "地格不存在";
-        var tile = Current.Tiles[Index(x, y)];
+        var tile = Tiles[Index(x, y)];
         var plants = PlantResources.At(tile.Value).ToArray();
         var products = new List<string>();
         if (tile.Value.Improvement is LandImprovement.MountainPass or LandImprovement.Bridge)

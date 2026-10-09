@@ -8,7 +8,7 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
 {
     private readonly List<TCursor> _items = [];
     private readonly List<StateReference<T>> _pending = [];
-    private readonly Action<ImmutableVector<T>> _publish;
+    private readonly Action<ImmutableVector<T>>? _publish;
     private readonly Func<T, T, bool>? _groupChanged;
     private bool _membershipChanged;
     private T[] _membershipValues = [];
@@ -18,10 +18,10 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
 
     /// <summary>从不可变集合建立定位索引，提交时维护调用方指定的分组修订。</summary>
     /// <param name="snapshot">初始实体集合。</param>
-    /// <param name="publish">发布冻结后的集合。</param>
+    /// <param name="publish">发布冻结后的集合；由调用方捕获时为空。</param>
     /// <param name="create">为初始实体建立定位引用。</param>
     /// <param name="groupChanged">判断一次替换是否改变分组；不需要分组时为空。</param>
-    public EntityListCursor(ImmutableVector<T> snapshot, Action<ImmutableVector<T>> publish, Func<T, TCursor> create,
+    public EntityListCursor(ImmutableVector<T> snapshot, Action<ImmutableVector<T>>? publish, Func<T, TCursor> create,
         Func<T, T, bool>? groupChanged = null)
     {
         _snapshot = snapshot;
@@ -110,7 +110,7 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
     private void Commit(ImmutableVector<T> snapshot)
     {
         _snapshot = snapshot;
-        _publish(snapshot);
+        _publish?.Invoke(snapshot);
     }
 
     internal UpdateScope BeginUpdates()

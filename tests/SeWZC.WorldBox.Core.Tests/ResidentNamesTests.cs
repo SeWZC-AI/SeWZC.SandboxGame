@@ -16,7 +16,7 @@ public sealed class ResidentNamesTests
         if (archived)
         {
             fixture.Resident.Replace(original with { Name = "在世居民" });
-            fixture.Engine.Current.ArchivedResidents.Add(new ResidentCursor(original with
+            fixture.Engine.ArchivedResidents.Add(new ResidentCursor(original with
             {
                 Id = original.Id + 1000,
                 Health = 0,
@@ -27,7 +27,7 @@ public sealed class ResidentNamesTests
 
         // 同一种族的命名候选每 32768 个稳定编号循环一次，强制遇到原名。
         var firstId = original.Id + 32768;
-        fixture.Engine.Current.NextId = firstId;
+        fixture.Engine.NextId = firstId;
         fixture.Engine.SpawnResidents(16, 16, original.Race, 4);
 
         var spawned = fixture.Engine.State.Residents.Where(person => person.Id >= firstId).ToArray();

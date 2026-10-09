@@ -15,22 +15,22 @@ public sealed partial class WorldEngine
         town.Replace(town.Value with { MaxClaimRadius = Math.Max(town.Value.MaxClaimRadius, Math.Clamp(radius, 1, 17)) });
         if (town.Value.FoundationPending)
             return;
-        var tile = Current.Tiles[Index(town.Value.X, town.Value.Y)];
+        var tile = Tiles[Index(town.Value.X, town.Value.Y)];
         tile.Replace(tile.Value with { NationId = town.Value.NationId, ClaimedSettlementId = town.Value.Id });
     }
 
     private bool CanClaimTile(StateReference<Settlement> town, int index, RaceKind race)
     {
-        var tile = Current.Tiles[index];
-        var x = index % Current.Width;
-        var y = index / Current.Width;
+        var tile = Tiles[index];
+        var x = index % Width;
+        var y = index / Width;
         if (!RaceTerrainRules.CanWalk(tile.Value, race) || IsWaterTerrain(tile.Value.Terrain) || tile.Value.FireTicks > 0 ||
             tile.Value.ClaimedSettlementId != 0
             || (tile.Value.NationId != 0 && tile.Value.NationId != town.Value.NationId)
             || Distance(town.Value.X, town.Value.Y, x, y) > town.Value.MaxClaimRadius)
             return false;
         foreach (var (dx, dy) in Directions)
-            if (InBounds(x + dx, y + dy) && Current.Tiles[Index(x + dx, y + dy)].Value.ClaimedSettlementId == town.Value.Id
+            if (InBounds(x + dx, y + dy) && Tiles[Index(x + dx, y + dy)].Value.ClaimedSettlementId == town.Value.Id
                                          && CanTraverseStep(x + dx, y + dy, x, y, TravelMode.Foot, race))
                 return true;
         return false;
@@ -38,7 +38,7 @@ public sealed partial class WorldEngine
 
     private int VisibleClaimSite(ResidentCursor person, StateReference<Settlement> town)
     {
-        if (town.Value.FoundationPending || !Current.Rules.Expansion || person.Age < 14 || person.ArmyId != 0
+        if (town.Value.FoundationPending || !Rules.Expansion || person.Age < 14 || person.ArmyId != 0
             || person.Profession != Profession.Builder)
             return -1;
         var active = 0;
@@ -76,25 +76,25 @@ public sealed partial class WorldEngine
     {
         if (!_settlements.TryGetValue(person.SettlementId, out var town) || person.Age < 14 || person.ArmyId != 0
             || person.Health <= 0 || person.Agent.Goal.Kind != AgentGoalKind.ClaimLand
-            || Current.Tick - person.MoveStartedTick < person.MoveDurationTicks
+            || SimulationTick - person.MoveStartedTick < person.MoveDurationTicks
             || person.X != person.Agent.Goal.TargetX || person.Y != person.Agent.Goal.TargetY)
             return false;
         var index = Index(person.X, person.Y);
-        if (Current.Residents.Any(r =>
+        if (Residents.Any(r =>
                 r.Id != person.Id && r.Health > 0 && r.SettlementId != town.Value.Id && r.X == person.X && r.Y == person.Y))
             return false;
         if (!CanClaimTile(town, index, person.Race))
         {
-            person.Agent = person.Agent with { NextThinkTick = Current.Tick };
+            person.Agent = person.Agent with { NextThinkTick = SimulationTick };
             return false;
         }
 
         if (person.Agent.Goal.WorkTicks < 3)
             return true;
-        var tile = Current.Tiles[index];
+        var tile = Tiles[index];
         tile.Replace(tile.Value with { NationId = town.Value.NationId, ClaimedSettlementId = town.Value.Id });
-        person.Agent = person.Agent with { NextThinkTick = Current.Tick };
-        if (Current.Tick % 12 == 0)
+        person.Agent = person.Agent with { NextThinkTick = SimulationTick };
+        if (SimulationTick % 12 == 0)
         {
             AddEvent(WorldEventKind.Growth, $"{person.Name}实地为{town.Value.Name}登记新地盘。", person.X, person.Y,
                 EventAction.General, town.Value.Id, person.Id);
@@ -134,13 +134,13 @@ public sealed partial class WorldEngine
             return;
         if (!_settlements.TryGetValue(building.SettlementId, out var town) || town.Value.FoundationPending)
             return;
-        var tile = Current.Tiles[Index(building.X, building.Y)];
+        var tile = Tiles[Index(building.X, building.Y)];
         if (tile.Value.NationId != 0 && tile.Value.NationId != town.Value.NationId)
             return;
         if (tile.Value.ClaimedSettlementId != 0 && tile.Value.ClaimedSettlementId != town.Value.Id)
             return;
         if (tile.Value.ClaimedSettlementId == 0 && !Directions.Any(d => InBounds(building.X + d.X, building.Y + d.Y)
-                                                                  && Current.Tiles[
+                                                                  && Tiles[
                                                                           Index(building.X + d.X, building.Y + d.Y)].Value
                                                                       .ClaimedSettlementId == town.Value.Id))
             return;
@@ -152,26 +152,26 @@ public sealed partial class WorldEngine
     // 归属和占领变化后才重建连通区域，避免每个居民都重复扫描。
     private void ReconcileConnectedClaims()
     {
-        _territoryCounts.Bind(Current.Tiles);
-        foreach (var town in Current.Settlements)
+        _territoryCounts.Bind(Tiles);
+        foreach (var town in Settlements)
         {
             if (town.Value.FoundationPending)
                 continue;
             var root = Index(town.Value.X, town.Value.Y);
-            Current.Tiles[root].Replace(Current.Tiles[root].Value.WithNationId(town.Value.NationId));
-            Current.Tiles[root].Replace(Current.Tiles[root].Value.WithClaimedSettlementId(town.Value.Id));
+            Tiles[root].Replace(Tiles[root].Value.WithNationId(town.Value.NationId));
+            Tiles[root].Replace(Tiles[root].Value.WithClaimedSettlementId(town.Value.Id));
         }
 
         if (_connectedClaimsRevision == _territoryCounts.Revision)
             return;
-        if (_connectedClaims.Length != Current.Tiles.Count)
-            _connectedClaims = new int[Current.Tiles.Count];
-        FillConnectedClaims(Current.CaptureSnapshot(), _connectedClaims, _claimQueue);
+        if (_connectedClaims.Length != Tiles.Count)
+            _connectedClaims = new int[Tiles.Count];
+        FillConnectedClaims(CaptureSnapshot(), _connectedClaims, _claimQueue);
         foreach (var index in _territoryCounts.OwnedTiles)
             if (_connectedClaims[index] == 0)
                 _claimQueue.Enqueue(index);
         while (_claimQueue.TryDequeue(out var orphan))
-            Current.Tiles[orphan].Replace(Current.Tiles[orphan].Value with { ClaimedSettlementId = 0, NationId = 0 });
+            Tiles[orphan].Replace(Tiles[orphan].Value with { ClaimedSettlementId = 0, NationId = 0 });
 
         _connectedClaimsRevision = _territoryCounts.Revision;
     }

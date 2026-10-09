@@ -51,15 +51,15 @@ public sealed partial class WorldEngine
             !CanBuildRacialFacility(building.SettlementId, building.Kind))
             return false;
         if (building.Kind == BuildingKind.SacredGrove &&
-            (!IsForestTerrain(Current.Tiles[Index(building.X, building.Y)].Value.Terrain)
-             || !Current.Society.MagicEnabled || person.MagicTalent < 25 || person.MagicTraining >= 100))
+            (!IsForestTerrain(Tiles[Index(building.X, building.Y)].Value.Terrain)
+             || !Society.MagicEnabled || person.MagicTalent < 25 || person.MagicTraining >= 100))
             return false;
         if (building.Kind == BuildingKind.HerbGarden && FindLocalWorkPatient(building, true) is null)
             return false;
         if (building.Kind == BuildingKind.MiningHall && FindWorkshopResource(building, Profession.Miner) < 0)
             return false;
         if (building.Kind == BuildingKind.HuntingCamp &&
-            !WildlifeSiteProductive(Current.Tiles[Index(building.X, building.Y)], false))
+            !WildlifeSiteProductive(Tiles[Index(building.X, building.Y)], false))
             return false;
         var input = RacialWorkInput(building.Kind);
         return MissingResources(person.Inventory, input) is null ||
@@ -78,7 +78,7 @@ public sealed partial class WorldEngine
         if (!building.Value.Enabled || building.Value.Health < 50 || !RacialBuildingHasWork(building.Value, person))
         {
             person.Agent = person.Agent.WithGoal(goal = goal with { Reason = "种族、物资或现场工作条件未满足" });
-            person.Agent = person.Agent with { NextThinkTick = Current.Tick + 1 };
+            person.Agent = person.Agent with { NextThinkTick = SimulationTick + 1 };
             return true;
         }
 
@@ -126,13 +126,13 @@ public sealed partial class WorldEngine
                 TargetX = home.Value.X,
                 TargetY = home.Value.Y,
                 TargetSettlementId = home.Value.Id,
-                StartedTick = Current.Tick,
+                StartedTick = SimulationTick,
                 Reason = "亲自运回特殊设施的劳动产出",
             };
             ChangeWorkReservation(person.Agent.Goal, returning);
             person.Replace(person.Value with
             {
-                Agent = person.Agent with { Goal = returning, NextThinkTick = Current.Tick + 24 },
+                Agent = person.Agent with { Goal = returning, NextThinkTick = SimulationTick + 24 },
             });
         }
 
@@ -157,7 +157,7 @@ public sealed partial class WorldEngine
             case BuildingKind.TradeGuild:
                 return true; // 运营效果由实际到岗人员提供，不能仅凭建筑建成启用。
             case BuildingKind.SacredGrove:
-                person.Replace(person.Value with { MagicTraining = Math.Min(100, person.MagicTraining + .1 * effort * Current.Rules.MagicRate) });
+                person.Replace(person.Value with { MagicTraining = Math.Min(100, person.MagicTraining + .1 * effort * Rules.MagicRate) });
                 person.Mana = Math.Min(100, person.Mana + .3 * effort);
                 return true;
             case BuildingKind.HerbGarden:
@@ -171,10 +171,10 @@ public sealed partial class WorldEngine
                 var source = FindWorkshopResource(building.Value, Profession.Miner);
                 if (source < 0)
                     return false;
-                var tile = Current.Tiles[source];
+                var tile = Tiles[source];
                 var yields = TerrainRules.For(tile.Value.Terrain);
                 var amount = Math.Min(tile.Value.ResourceAmount,
-                    .3 * effort * Current.Rules.GatheringRate * GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value));
+                    .3 * effort * Rules.GatheringRate * GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value));
                 tile.Replace(tile.Value.WithResourceAmount(tile.Value.ResourceAmount - (amount)));
                 person.Inventory = person.Inventory with
                 {
@@ -185,12 +185,12 @@ public sealed partial class WorldEngine
                 RecordHarvest(tile, amount * (yields.StoneYield + yields.OreYield));
                 return true;
             case BuildingKind.HuntingCamp:
-                var ground = Current.Tiles[Index(person.X, person.Y)];
+                var ground = Tiles[Index(person.X, person.Y)];
                 var prey = EdibleAnimal(ground);
                 if (prey == WildlifeKind.None)
                     return false;
                 var caught = WildlifeHarvestAmount(ground, prey,
-                    .25 * effort * Current.Rules.GatheringRate * GatheringTerritoryMultiplier(person.SettlementId, person.NationId, ground.Value));
+                    .25 * effort * Rules.GatheringRate * GatheringTerritoryMultiplier(person.SettlementId, person.NationId, ground.Value));
                 ground.Replace(ground.Value.WithAnimalPopulation(prey, ground.Value.AnimalPopulation(prey) - caught));
                 var food = caught * AnimalRules.For(prey).BodyMass;
                 person.Inventory = person.Inventory with { Food = Math.Min(1_000_000, person.Inventory.Food + food) };
@@ -200,7 +200,7 @@ public sealed partial class WorldEngine
                 foreach (var other in _citizens[building.Value.SettlementId])
                     if (other.Health > 0 && Distance(other.X, other.Y, building.Value.X, building.Value.Y) <= 2)
                         other.Agent = other.Agent with { Fatigue = Math.Max(0, other.Agent.Fatigue - effort) };
-                foreach (var army in Current.Armies)
+                foreach (var army in Armies)
                     if (army.Value.NationId == person.NationId && Distance(army.Value.X, army.Value.Y, building.Value.X, building.Value.Y) <= 2)
                         army.Replace(army.Value with { Morale = Math.Min(100, army.Value.Morale + .3 * effort) });
                 return true;
@@ -214,7 +214,7 @@ public sealed partial class WorldEngine
         if (person.Profession != Profession.Trader)
             return 1;
         var bonus = 1d;
-        foreach (var building in Current.Buildings)
+        foreach (var building in Buildings)
             if (building.Value.SettlementId == person.SettlementId && building.Value.Kind == BuildingKind.TradeGuild
                                                              && Distance(x, y, building.Value.X, building.Value.Y) <= 3 &&
                                                              IsFacilityOperating(building.Value))

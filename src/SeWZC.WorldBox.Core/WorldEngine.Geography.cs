@@ -8,7 +8,7 @@ public sealed partial class WorldEngine
 
     private void GenerateHydrology()
     {
-        var tiles = Current.Tiles;
+        var tiles = Tiles;
         var parents = new int[tiles.Length];
         Array.Fill(parents, -1);
         var visited = new bool[tiles.Length];
@@ -19,8 +19,8 @@ public sealed partial class WorldEngine
         {
             var tile = tiles[i];
             var before = tile.Value;
-            var x = i % Current.Width;
-            var y = i / Current.Width;
+            var x = i % Width;
+            var y = i / Width;
             tile.Replace(before with
             {
                 RiverWidth = 0,
@@ -41,8 +41,8 @@ public sealed partial class WorldEngine
             order.Add(current);
             foreach (var (dx, dy) in Directions)
             {
-                var x = current % Current.Width + dx;
-                var y = current / Current.Width + dy;
+                var x = current % Width + dx;
+                var y = current / Width + dy;
                 if (!InBounds(x, y))
                     continue;
                 var next = Index(x, y);
@@ -58,8 +58,8 @@ public sealed partial class WorldEngine
             if (parents[order[p]] >= 0)
                 flow[parents[order[p]]] += flow[order[p]];
 
-        for (var y = 7; y < Current.Height - 7; y += 12)
-        for (var x = 7; x < Current.Width - 7; x += 12)
+        for (var y = 7; y < Height - 7; y += 12)
+        for (var x = 7; x < Width - 7; x += 12)
         {
             if (Noise(x, y, 977) < .64)
                 continue;
@@ -76,7 +76,7 @@ public sealed partial class WorldEngine
             .Where(i => parents[i] >= 0 && !IsWaterTerrain(tiles[i].Value.Terrain) && tiles[i].Value.Elevation >= 120 &&
                         flow[i] < 12)
             .OrderByDescending(i =>
-                tiles[i].Value.Elevation + Noise(i % Current.Width / 7d, i / Current.Width / 7d, 1879) * 65)
+                tiles[i].Value.Elevation + Noise(i % Width / 7d, i / Width / 7d, 1879) * 65)
             .ThenBy(i => i);
         var selected = new List<int>();
         var desired = Math.Clamp(tiles.Length / 4096 + 2, 2, 12);
@@ -84,8 +84,8 @@ public sealed partial class WorldEngine
         foreach (var source in sources)
         {
             if (selected.Any(i =>
-                    Distance(i % Current.Width, i / Current.Width, source % Current.Width, source / Current.Width) <
-                    Math.Max(8, Current.Width / 10)))
+                    Distance(i % Width, i / Width, source % Width, source / Width) <
+                    Math.Max(8, Width / 10)))
                 continue;
             var path = new List<int>();
             var current = source;
@@ -119,11 +119,11 @@ public sealed partial class WorldEngine
                 continue;
             var width = centers[i];
             var parent = parents[i];
-            var vertical = parent >= 0 && parent % Current.Width == i % Current.Width;
+            var vertical = parent >= 0 && parent % Width == i % Width;
             for (var offset = -(width - 1) / 2; offset <= width / 2; offset++)
             {
-                var x = i % Current.Width + (vertical ? offset : 0);
-                var y = i / Current.Width + (vertical ? 0 : offset);
+                var x = i % Width + (vertical ? offset : 0);
+                var y = i / Width + (vertical ? 0 : offset);
                 if (!InBounds(x, y))
                     continue;
                 var next = Index(x, y);
@@ -152,8 +152,8 @@ public sealed partial class WorldEngine
         while (queue.TryDequeue(out var current))
             foreach (var (dx, dy) in Directions)
             {
-                var x = current % Current.Width + dx;
-                var y = current / Current.Width + dy;
+                var x = current % Width + dx;
+                var y = current / Width + dy;
                 if (!InBounds(x, y))
                     continue;
                 var next = Index(x, y);
@@ -172,13 +172,13 @@ public sealed partial class WorldEngine
             if (!IsWaterTerrain(generated.Terrain))
             {
                 RaceKind? demoRace = _demoHabitat is not null && _demoHabitat[i] >= 0 ? (RaceKind)_demoHabitat[i] : null;
-                var variation = demoRace is null ? 0 : Noise(i % Current.Width / 2d, i / Current.Width / 2d, 1901);
-                generated = generated.WithGeneratedBiome((i / Current.Width + .5) / Current.Height * 2 - 1,
+                var variation = demoRace is null ? 0 : Noise(i % Width / 2d, i / Width / 2d, 1901);
+                generated = generated.WithGeneratedBiome((i / Width + .5) / Height * 2 - 1,
                     distances[i], demoRace, variation);
             }
 
             tile.Replace(generated.WithResourceAmount(IsWaterTerrain(generated.Terrain) ? 0 : 50 + generated.Fertility));
-            tile.Replace(tile.Value.WithGeneratedDeposit(Current.Seed, i % Current.Width, i / Current.Width));
+            tile.Replace(tile.Value.WithGeneratedDeposit(Seed, i % Width, i / Width));
         }
 
         LimitMountainRanges();
@@ -190,19 +190,19 @@ public sealed partial class WorldEngine
         var sites = new List<int>();
         for (var race = 0; race < 4; race++)
         {
-            var targetX = Current.Width / 2 + (race % 2 == 0 ? -1 : 1) * Math.Clamp(Current.Width / 8, 10, 20);
-            var targetY = Current.Height / 2 + (race < 2 ? -1 : 1) * Math.Clamp(Current.Height / 8, 10, 20);
+            var targetX = Width / 2 + (race % 2 == 0 ? -1 : 1) * Math.Clamp(Width / 8, 10, 20);
+            var targetY = Height / 2 + (race < 2 ? -1 : 1) * Math.Clamp(Height / 8, 10, 20);
             var best = -1;
             var bestDistance = int.MaxValue;
-            for (var y = 6; y < Current.Height - 6; y++)
-            for (var x = 6; x < Current.Width - 6; x++)
+            for (var y = 6; y < Height - 6; y++)
+            for (var x = 6; x < Width - 6; x++)
             {
                 var distance = Distance(x, y, targetX, targetY);
                 if (distance >= bestDistance || sites.Any(i =>
-                        Distance(x, y, i % Current.Width, i / Current.Width) < MinimumSettlementDistance))
+                        Distance(x, y, i % Width, i / Width) < MinimumSettlementDistance))
                     continue;
-                if (Current.Tiles[Index(x, y)].Value.Fertility < 40 || !Circle(x, y, 6).All(i =>
-                        RaceTerrainRules.For((RaceKind)race, Current.Tiles[i].Value.Terrain).Habitable))
+                if (Tiles[Index(x, y)].Value.Fertility < 40 || !Circle(x, y, 6).All(i =>
+                        RaceTerrainRules.For((RaceKind)race, Tiles[i].Value.Terrain).Habitable))
                     continue;
                 best = Index(x, y);
                 bestDistance = distance;
@@ -216,20 +216,20 @@ public sealed partial class WorldEngine
         if (sites.Count == 4)
             return sites.ToArray();
         // 使用有界且确定的兜底布局，保证小地图和极端种子仍有四处独立宜居的开局区域。
-        _demoHabitat = new int[Current.Tiles.Count];
+        _demoHabitat = new int[Tiles.Count];
         Array.Fill(_demoHabitat, -1);
         sites.Clear();
-        var left = Math.Max(7, Current.Width / 4 - 1);
-        var top = Math.Max(7, Current.Height / 4 - 1);
+        var left = Math.Max(7, Width / 4 - 1);
+        var top = Math.Max(7, Height / 4 - 1);
         for (var race = 0; race < 4; race++)
         {
-            var x = race % 2 == 0 ? left : Current.Width - left - 1;
-            var y = race < 2 ? top : Current.Height - top - 1;
+            var x = race % 2 == 0 ? left : Width - left - 1;
+            var y = race < 2 ? top : Height - top - 1;
             sites.Add(Index(x, y));
             foreach (var i in Circle(x, y, 6))
             {
                 _demoHabitat[i] = race;
-                Current.Tiles[i].Replace(Current.Tiles[i].Value.WithElevation(race == (int)RaceKind.Dwarf ? (byte)160 : (byte)120));
+                Tiles[i].Replace(Tiles[i].Value.WithElevation(race == (int)RaceKind.Dwarf ? (byte)160 : (byte)120));
             }
         }
 

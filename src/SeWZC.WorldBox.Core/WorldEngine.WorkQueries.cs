@@ -26,7 +26,7 @@ public sealed partial class WorldEngine
 
     private bool IsWorkDay(ResidentCursor person)
     {
-        return (Current.Tick + person.Id) % WorkInterval(person) == 0;
+        return (SimulationTick + person.Id) % WorkInterval(person) == 0;
     }
 
     // 自主劳动的日产量按白天班次折算，避免加入夜间睡眠后把原有日供给再减半。
@@ -44,7 +44,7 @@ public sealed partial class WorldEngine
             return null;
         if (_localWorkQueriesActive)
             return _workBuildingsById.GetValueOrDefault(id);
-        foreach (var building in Current.Buildings)
+        foreach (var building in Buildings)
             if (building.Value.Id == id)
                 return building;
         return null;
@@ -85,9 +85,9 @@ public sealed partial class WorldEngine
 
     private void BeginLocalWorkQueries()
     {
-        for (var index = 0; index < Current.Society.Research.Count; index++)
-            _localResearch[Current.Society.Research[index].SettlementId] = index;
-        foreach (var building in Current.Buildings)
+        for (var index = 0; index < Society.Research.Count; index++)
+            _localResearch[Society.Research[index].SettlementId] = index;
+        foreach (var building in Buildings)
         {
             _workBuildingsById[building.Value.Id] = building;
             if (building.Value.Kind == BuildingKind.Well)
@@ -95,7 +95,7 @@ public sealed partial class WorldEngine
             LocalWorkGroup(_localWorkBuildings, _localWorkBuildingBuffers, building.Value.SettlementId).Add(building);
         }
 
-        foreach (var resident in Current.Residents)
+        foreach (var resident in Residents)
         {
             if (resident.Health <= 0)
                 continue;
@@ -149,7 +149,7 @@ public sealed partial class WorldEngine
     {
         return _localWorkQueriesActive
             ? _localWorkResidents.GetValueOrDefault(settlementId)
-            : Current.Residents;
+            : Residents;
     }
 
     private static bool HasActiveResearchProject(ImmutableVector<SettlementResearch> research, int settlementId)
@@ -165,7 +165,7 @@ public sealed partial class WorldEngine
     {
         IReadOnlyList<StateReference<Building>>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(resident.SettlementId)
-            : Current.Buildings;
+            : Buildings;
         if (buildings is null)
             return null;
         StateReference<Building>? selected = null;
@@ -188,10 +188,9 @@ public sealed partial class WorldEngine
                 continue;
             var distance = Distance(resident.X, resident.Y, building.Value.X, building.Value.Y);
             if (range == 1 && IsWaterfrontBuilding(building.Value.Kind) && (distance != 1
-                                                                      || !Current.Tiles[Index(resident.X, resident.Y)].Value
+                                                                      || !Tiles[Index(resident.X, resident.Y)].Value
                                                                           .IsWalkable
-                                                                      || IsWaterTerrain(Current
-                                                                          .Tiles[Index(resident.X, resident.Y)].Value
+                                                                      || IsWaterTerrain(Tiles[Index(resident.X, resident.Y)].Value
                                                                           .Terrain)))
                 continue;
             var workRange = range > 1 && building.Value.Kind is BuildingKind.MountainPass or BuildingKind.Bridge ? 24 : range;
@@ -202,7 +201,7 @@ public sealed partial class WorldEngine
                     building.Value.Kind == BuildingKind.TownCenter))
                 continue;
             if (range > 1 && resident.Agent.Goal.NavigationTarget == Index(building.Value.X, building.Value.Y) &&
-                Current.Tick < resident.Agent.Goal.NavigationRetryTick)
+                SimulationTick < resident.Agent.Goal.NavigationRetryTick)
                 continue;
             var priority = WorkPriority(building.Value, resident, preferSpecialty) * 2
                            + (resident.Agent.WorkplaceId == building.Value.Id ? 0 : 1);

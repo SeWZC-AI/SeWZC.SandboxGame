@@ -12,10 +12,10 @@ public sealed partial class WorldEngine
 
     private void BeginDailyDrinking()
     {
-        if (_dailyWaterDraws.Length != Current.Tiles.Count)
+        if (_dailyWaterDraws.Length != Tiles.Count)
         {
-            _dailyWaterDraws = new double[Current.Tiles.Count];
-            _dailyWaterVisits = new int[Current.Tiles.Count];
+            _dailyWaterDraws = new double[Tiles.Count];
+            _dailyWaterVisits = new int[Tiles.Count];
         }
 
         if (_dailyWaterVisit == int.MaxValue)
@@ -34,8 +34,8 @@ public sealed partial class WorldEngine
         _dailyDrinking = false;
         foreach (var source in _dailyWaterSources)
         {
-            var tile = Current.Tiles[source];
-            tile.Replace(tile.Value with { WaterDrawTick = Current.Tick, WaterDrawn = _dailyWaterDraws[source] });
+            var tile = Tiles[source];
+            tile.Replace(tile.Value with { WaterDrawTick = SimulationTick, WaterDrawn = _dailyWaterDraws[source] });
         }
 
         _dailyWaterSources.Clear();
@@ -86,7 +86,7 @@ public sealed partial class WorldEngine
 
     private double LocalWaterUse(ResidentCursor person)
     {
-        return WaterUse(person.Age, Current.Tiles[Index(person.X, person.Y)].Value);
+        return WaterUse(person.Age, Tiles[Index(person.X, person.Y)].Value);
     }
 
     private double WaterReserve(ResidentCursor person)
@@ -102,15 +102,15 @@ public sealed partial class WorldEngine
     {
         var source = person.Agent.Goal.TargetEntityId - 1;
         // 低产水井先保住两日个人备用，避免为装满大瓶长期停留。
-        if (person.Agent.Goal.Kind == AgentGoalKind.FetchWater && source >= 0 && source < Current.Tiles.Count
-            && GetDailyWaterCapacity(source % Current.Width, source / Current.Width) < .1)
+        if (person.Agent.Goal.Kind == AgentGoalKind.FetchWater && source >= 0 && source < Tiles.Count
+            && GetDailyWaterCapacity(source % Width, source / Width) < .1)
             return WaterUse(person) * 2;
         return WaterReserve(person) + (person.Id % 5 == 0 ? 3 : 0);
     }
 
     private InventoryTransfer ProvisionAtHome(ResidentCursor person, Settlement home, in ResourceStock warehouse)
     {
-        var rules = Current.Rules;
+        var rules = Rules;
         if (!InventoryTransfer.HasSupplies(warehouse, person.Profession, rules.Hunger, rules.Thirst))
             return new InventoryTransfer(person.Inventory, warehouse);
         return InventoryTransfer.Provision(person.Inventory, warehouse, home.Population, person.Profession,
@@ -120,14 +120,14 @@ public sealed partial class WorldEngine
     private void RefillDailyWater(ResidentCursor person)
     {
         var use = LocalWaterUse(person) / SimulationTime.TicksPerDay;
-        if (Current.Rules.Thirst && person.Inventory.Water < use &&
-            Current.Tick - person.MoveStartedTick >= person.MoveDurationTicks)
+        if (Rules.Thirst && person.Inventory.Water < use &&
+            SimulationTick - person.MoveStartedTick >= person.MoveDurationTicks)
             DrawWater(person, Index(person.X, person.Y), use - person.Inventory.Water);
     }
 
     private void DrinkCarriedWater(ResidentCursor person)
     {
-        if (!Current.Rules.Thirst)
+        if (!Rules.Thirst)
         {
             person.Thirst = 0;
             return;
@@ -154,12 +154,12 @@ public sealed partial class WorldEngine
         if (!InBounds(x, y))
             return 0;
         var index = Index(x, y);
-        var tile = Current.Tiles[index].Value;
+        var tile = Tiles[index].Value;
         if (tile.FireTicks > 0)
             return 0;
         var supply = WaterSupplyAt(index, tile).Supply;
         return Math.Max(0,
-            supply - (SimulationTime.DayIndex(tile.WaterDrawTick) == SimulationTime.DayIndex(Current.Tick)
+            supply - (SimulationTime.DayIndex(tile.WaterDrawTick) == SimulationTime.DayIndex(SimulationTick)
                 ? tile.WaterDrawn
                 : 0));
     }
@@ -191,7 +191,7 @@ public sealed partial class WorldEngine
         if (!InBounds(x, y))
             return 0;
         var index = Index(x, y);
-        var tile = Current.Tiles[index].Value;
+        var tile = Tiles[index].Value;
         if (tile.FireTicks > 0)
             return 0;
         return WaterSupplyAt(index, tile).Supply;
@@ -213,9 +213,9 @@ public sealed partial class WorldEngine
 
     private StateReference<Building>? FindWaterWell(int index)
     {
-        var x = index % Current.Width;
-        var y = index / Current.Width;
-        foreach (var building in Current.Buildings)
+        var x = index % Width;
+        var y = index / Width;
+        foreach (var building in Buildings)
             if (building.Value.Kind == BuildingKind.Well && building.Value.X == x && building.Value.Y == y)
                 return building;
         return null;
@@ -233,19 +233,19 @@ public sealed partial class WorldEngine
     private double WithdrawWater(int x, int y, long moveStarted, int moveDuration, double carriedWater, int source,
         double wanted)
     {
-        if ((uint)source >= (uint)Current.Tiles.Count
-            || Current.Tick - moveStarted < moveDuration)
+        if ((uint)source >= (uint)Tiles.Count
+            || SimulationTick - moveStarted < moveDuration)
             return 0;
-        var tile = Current.Tiles[source];
+        var tile = Tiles[source];
         var before = tile.Value;
         var fresh = IsFreshWater(before);
-        if (Distance(x, y, source % Current.Width, source / Current.Width) > (fresh ? 1 : 0)
+        if (Distance(x, y, source % Width, source / Width) > (fresh ? 1 : 0)
             || before.FireTicks > 0)
             return 0;
         var supply = WaterSupplyAt(source, before).Supply;
         var drawn = _dailyDrinking && _dailyWaterVisits[source] == _dailyWaterVisit
             ? _dailyWaterDraws[source]
-            : SimulationTime.DayIndex(before.WaterDrawTick) == SimulationTime.DayIndex(Current.Tick)
+            : SimulationTime.DayIndex(before.WaterDrawTick) == SimulationTime.DayIndex(SimulationTick)
                 ? before.WaterDrawn
                 : 0;
         var available = Math.Max(0, supply - drawn);
@@ -271,9 +271,9 @@ public sealed partial class WorldEngine
         {
             tile.Replace(before with
             {
-                WaterDrawTick = fresh ? before.WaterDrawTick : Current.Tick,
+                WaterDrawTick = fresh ? before.WaterDrawTick : SimulationTick,
                 WaterDrawn = fresh ? before.WaterDrawn : drawn + amount,
-                LastHarvestTick = amount > .05 ? Current.Tick : before.LastHarvestTick,
+                LastHarvestTick = amount > .05 ? SimulationTick : before.LastHarvestTick,
                 Harvested = amount > .05 ? Math.Min(1_000_000_000, before.Harvested + amount) : before.Harvested,
             });
         }
@@ -297,12 +297,12 @@ public sealed partial class WorldEngine
         foreach (var fact in person.Agent.Memory)
         {
             if (fact.Kind != AgentFactKind.WaterSource || fact.OriginResidentId != person.Id
-                                                       || fact.ReliabilityAt(Current.Tick) < .5)
+                                                       || fact.ReliabilityAt(SimulationTick) < .5)
                 continue;
             var source = fact.SubjectId - 1;
-            var localX = source % Current.Width - person.X + 6;
-            var localY = source / Current.Width - person.Y + 6;
-            if ((uint)source < Current.Tiles.Count && (uint)localX < 13 && (uint)localY < 13)
+            var localX = source % Width - person.X + 6;
+            var localY = source / Width - person.Y + 6;
+            if ((uint)source < Tiles.Count && (uint)localX < 13 && (uint)localY < 13)
                 familiarSources[localY * 13 + localX] = 1;
         }
 
@@ -311,7 +311,7 @@ public sealed partial class WorldEngine
             var fullDay = available >= required;
             if (sufficient && !fullDay)
                 return;
-            var distance = Distance(person.X, person.Y, bank % Current.Width, bank / Current.Width);
+            var distance = Distance(person.X, person.Y, bank % Width, bank / Width);
             var bankUpperScore = urgent
                 ? -distance + Math.Min(1, available / required) * .01
                 : Math.Min(1, available) * (reliable ? 2 : 1) * 1.1 / (1 + distance * .4);
@@ -332,9 +332,9 @@ public sealed partial class WorldEngine
 
         void Consider(int source, ReadOnlySpan<byte> familiarSites)
         {
-            if (source < 0 || source >= Current.Tiles.Count)
+            if (source < 0 || source >= Tiles.Count)
                 return;
-            var tile = Current.Tiles[source].Value;
+            var tile = Tiles[source].Value;
             if (tile.FireTicks > 0)
                 return;
             var water = WaterSupplyAt(source, tile);
@@ -344,12 +344,12 @@ public sealed partial class WorldEngine
             if (collectionOnly && water.Supply < .1)
                 return;
             var available = Math.Max(0,
-                water.Supply - (SimulationTime.DayIndex(tile.WaterDrawTick) == SimulationTime.DayIndex(Current.Tick)
+                water.Supply - (SimulationTime.DayIndex(tile.WaterDrawTick) == SimulationTime.DayIndex(SimulationTick)
                     ? tile.WaterDrawn
                     : 0));
             if (available <= 0)
                 return;
-            var local = (source / Current.Width - person.Y + 6) * 13 + source % Current.Width - person.X + 6;
+            var local = (source / Width - person.Y + 6) * 13 + source % Width - person.X + 6;
             var familiar = familiarSites[local] != 0;
             if (RaceTerrainRules.CanWalk(tile, person.Race))
             {
@@ -357,13 +357,13 @@ public sealed partial class WorldEngine
                 return;
             }
 
-            var x = source % Current.Width;
-            var y = source / Current.Width;
+            var x = source % Width;
+            var y = source / Width;
             foreach (var (dx, dy) in Directions)
             {
                 var xx = x + dx;
                 var yy = y + dy;
-                if (!Walkable(xx, yy, person.Race) || Current.Tiles[Index(xx, yy)].Value.FireTicks > 0)
+                if (!Walkable(xx, yy, person.Race) || Tiles[Index(xx, yy)].Value.FireTicks > 0)
                     continue;
                 ConsiderBank(Index(xx, yy), source, available, water.Reliable, familiar);
             }
@@ -386,7 +386,7 @@ public sealed partial class WorldEngine
 
         // 远方已知水源可引导探索，但当日补水须使用当前可见且可达的岸边。
         if (bestSource >= 0 &&
-            Distance(person.X, person.Y, bestSource % Current.Width, bestSource / Current.Width) <= 6)
+            Distance(person.X, person.Y, bestSource % Width, bestSource / Width) <= 6)
         {
             AgentFact? existing = null;
             foreach (var fact in person.Agent.Memory)
@@ -396,10 +396,10 @@ public sealed partial class WorldEngine
                     break;
                 }
 
-            if (existing is null || Current.Tick - existing.ObservedTick >= SimulationTime.TicksPerYear)
+            if (existing is null || SimulationTick - existing.ObservedTick >= SimulationTime.TicksPerYear)
             {
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.WaterSource, bestSource + 1,
-                    bestSource % Current.Width, bestSource / Current.Width, 1, "实地发现可取水的河湖或运营水井"));
+                    bestSource % Width, bestSource / Width, 1, "实地发现可取水的河湖或运营水井"));
             }
         }
 
@@ -409,14 +409,14 @@ public sealed partial class WorldEngine
     private bool AddProvisionChoices(ResidentCursor person, StateReference<Settlement> home, List<GoalChoice> choices)
     {
         // 已严重缺粮而每日仍喝得到水时，先找食物；不能为尚不需要的装瓶储备反复搜索。
-        var prioritizeFood = Current.Rules.Hunger && person.Hunger >= 60
+        var prioritizeFood = Rules.Hunger && person.Hunger >= 60
                                                   && person.Inventory.Food < .05 && person.Thirst < 10;
         var needsWater = person.Inventory.Water < .3
                          && (person.Thirst >= 10 || (person.Inventory.Water < LocalWaterUse(person) * 4
                                                      && GetDailyWaterCapacity(person.X, person.Y) <
                                                      LocalWaterUse(person)));
         var refillReserve = person.Inventory.Water < WaterUse(person) * 4;
-        if (Current.Rules.Thirst && !prioritizeFood &&
+        if (Rules.Thirst && !prioritizeFood &&
             (needsWater || refillReserve || (person.Id % 5 == 0 && person.Inventory.Water < WaterReserve(person) + 3)))
         {
             var atHome = Distance(person.X, person.Y, home.Value.X, home.Value.Y) <= 1;
@@ -429,11 +429,11 @@ public sealed partial class WorldEngine
             {
                 var water = FindWaterSite(person, !needsWater);
                 if (water.Bank >= 0 && (needsWater ||
-                                        GetDailyWaterCapacity(water.Source % Current.Width,
-                                            water.Source / Current.Width) >= .1))
+                                        GetDailyWaterCapacity(water.Source % Width,
+                                            water.Source / Width) >= .1))
                 {
-                    choices.Add(new GoalChoice(AgentGoalKind.FetchWater, water.Bank % Current.Width,
-                        water.Bank / Current.Width,
+                    choices.Add(new GoalChoice(AgentGoalKind.FetchWater, water.Bank % Width,
+                        water.Bank / Width,
                         needsWater || refillReserve ? 65 + person.Thirst :
                         atHome && home.Value.Resources.Water < home.Value.Population * .5 ? 72 : 18,
                         person.Thirst >= 80
@@ -445,7 +445,7 @@ public sealed partial class WorldEngine
                 {
                     if (person.Thirst < 40 && Distance(person.X, person.Y, home.Value.X, home.Value.Y) >= 12
                                            && !(person.Agent.Goal.Kind == AgentGoalKind.ReturnHome &&
-                                                Current.Tick - person.Agent.Goal.StartedTick >
+                                                SimulationTick - person.Agent.Goal.StartedTick >
                                                 2 * SimulationTime.TicksPerDay))
                     {
                         choices.Add(new GoalChoice(AgentGoalKind.ReturnHome, home.Value.X, home.Value.Y, 180 + person.Thirst,
@@ -461,7 +461,7 @@ public sealed partial class WorldEngine
                     {
                         var x = person.X + offset.X;
                         var y = person.Y + offset.Y;
-                        if (!Walkable(x, y, person.Race) || Current.Tiles[Index(x, y)].Value.FireTicks > 0)
+                        if (!Walkable(x, y, person.Race) || Tiles[Index(x, y)].Value.FireTicks > 0)
                             continue;
                         var distance = Distance(x, y, person.X + heading.X * 6, person.Y + heading.Y * 6);
                         if (distance < bestDistance && VisibleSiteReachable(person, Index(x, y), ref reachable))
@@ -473,7 +473,7 @@ public sealed partial class WorldEngine
 
                     if (best >= 0)
                     {
-                        choices.Add(new GoalChoice(AgentGoalKind.FetchWater, best % Current.Width, best / Current.Width,
+                        choices.Add(new GoalChoice(AgentGoalKind.FetchWater, best % Width, best / Width,
                             50 + person.Thirst, "沿眼前可通行土地勘察水源；尚未发现河湖或运营水井"));
                     }
                 }
@@ -486,7 +486,7 @@ public sealed partial class WorldEngine
                 return true;
         }
 
-        if (Current.Rules.Thirst && person.Inventory.Water >= WaterReserve(person) + 2)
+        if (Rules.Thirst && person.Inventory.Water >= WaterReserve(person) + 2)
         {
             choices.Add(new GoalChoice(AgentGoalKind.ReturnHome, home.Value.X, home.Value.Y, 110, "携带打来的饮水返仓，为家园补给",
                 SettlementId: home.Value.Id));
@@ -494,7 +494,7 @@ public sealed partial class WorldEngine
 
         var homeDistance = Distance(person.X, person.Y, home.Value.X, home.Value.Y);
         var daysHome = (homeDistance * 4 + 12) / (double)SimulationTime.TicksPerDay;
-        if (Current.Rules.Hunger && homeDistance > 1 && person.Hunger < 20
+        if (Rules.Hunger && homeDistance > 1 && person.Hunger < 20
             && person.Inventory.Food < FoodUse(person) * daysHome)
         {
             choices.Add(new GoalChoice(AgentGoalKind.ReturnHome, home.Value.X, home.Value.Y, 85, "口粮接近保守返程需求，先实地返仓补给",
@@ -514,7 +514,7 @@ public sealed partial class WorldEngine
         if (wildlife.Item1 >= 0)
         {
             choices.Add(new GoalChoice(wildlife.Item3 ? AgentGoalKind.Fish : AgentGoalKind.Hunt,
-                wildlife.Item1 % Current.Width, wildlife.Item1 / Current.Width,
+                wildlife.Item1 % Width, wildlife.Item1 / Width,
                 (person.Inventory.Food < .3 && person.Hunger > 20 ? 100 :
                     person.Profession is Profession.Farmer or Profession.Fisher ? 43 : 14)
                 + (person.Inventory.Food < .3 ? person.Hunger : 0),
@@ -525,7 +525,7 @@ public sealed partial class WorldEngine
         var claim = VisibleClaimSite(person, home);
         if (claim >= 0)
         {
-            choices.Add(new GoalChoice(AgentGoalKind.ClaimLand, claim % Current.Width, claim / Current.Width,
+            choices.Add(new GoalChoice(AgentGoalKind.ClaimLand, claim % Width, claim / Width,
                 (IsSettlementActive(home.Value.Id) ? SettlementNeedsClaimArea(home) ? 58 : home.Value.IsExpanding ? 52 : 25 : 70) +
                 person.Agent.Personality.Ambition * 8,
                 !IsSettlementActive(home.Value.Id)
@@ -551,23 +551,23 @@ public sealed partial class WorldEngine
         if (person.Agent.Goal.Kind != AgentGoalKind.FetchWater || person.Health <= 0)
             return false;
         var source = person.Agent.Goal.TargetEntityId - 1;
-        if (source >= 0 && (source >= Current.Tiles.Count
-                            || GetDailyWaterCapacity(source % Current.Width, source / Current.Width)
+        if (source >= 0 && (source >= Tiles.Count
+                            || GetDailyWaterCapacity(source % Width, source / Width)
                             <= WaterUse(person)))
         {
             person.Agent = person.Agent.WithGoal(new AgentGoal
             {
-                TargetX = person.X, TargetY = person.Y, ReviewTick = Current.Tick, Reason = "此处无法持续补充饮水，重新寻找河湖或运营水井",
+                TargetX = person.X, TargetY = person.Y, ReviewTick = SimulationTick, Reason = "此处无法持续补充饮水，重新寻找河湖或运营水井",
             });
-            person.Agent = person.Agent with { NextThinkTick = Current.Tick };
+            person.Agent = person.Agent with { NextThinkTick = SimulationTick };
             return false;
         }
 
         var target = WaterCollectionTarget(person);
         var amount = DrawWater(person, source,
             Math.Min(
-                source >= 0 && source < Current.Tiles.Count
-                    ? GatheringTerritoryMultiplier(person.SettlementId, person.NationId, Current.Tiles[source].Value)
+                source >= 0 && source < Tiles.Count
+                    ? GatheringTerritoryMultiplier(person.SettlementId, person.NationId, Tiles[source].Value)
                     : 0, target - person.Inventory.Water));
         if (source >= 0 && person.Inventory.Water >= target - .000001)
         {
@@ -583,11 +583,11 @@ public sealed partial class WorldEngine
                     TargetX = deliver ? home!.Value.X : person.X,
                     TargetY = deliver ? home!.Value.Y : person.Y,
                     TargetSettlementId = deliver ? home!.Value.Id : 0,
-                    StartedTick = Current.Tick,
-                    ReviewTick = Current.Tick,
+                    StartedTick = SimulationTick,
+                    ReviewTick = SimulationTick,
                     Reason = deliver ? "装好公共补给后实地运回家园" : "已补足随身饮水，重新安排其他事务",
                 },
-                NextThinkTick = Current.Tick,
+                NextThinkTick = SimulationTick,
             };
             person.Activity = ResidentActivity.Working;
             return amount > 0;
@@ -597,7 +597,7 @@ public sealed partial class WorldEngine
         {
             // 供水仍会每日恢复时，额度已用完只是当日受阻；保留水源并等待，避免每天转向和重新搜索。
             if (source >= 0 && person.Inventory.Water < target
-                            && GetDailyWaterCapacity(source % Current.Width, source / Current.Width) > 0)
+                            && GetDailyWaterCapacity(source % Width, source / Width) > 0)
             {
                 person.Activity = ResidentActivity.Resting;
                 return false;
@@ -606,7 +606,7 @@ public sealed partial class WorldEngine
             // 完成探索段后继续向外，边界受阻才转向，避免每次到达都转向而绕同一小圈。
             if (source >= 0 || person.Agent.Goal.WorkTicks > 1)
                 person.Agent = person.Agent with { ExplorationHeading = (person.Agent.ExplorationHeading + 1) % 8 };
-            person.Agent = person.Agent with { NextThinkTick = Current.Tick };
+            person.Agent = person.Agent with { NextThinkTick = SimulationTick };
         }
 
         person.Activity = ResidentActivity.Working;
@@ -619,9 +619,9 @@ public sealed partial class WorldEngine
         // 先寻找距离最近且种群仍可持续的猎场，不穷举比较整个视野的最大产量。
         foreach (var index in VisibleWildlifeSites(person))
         {
-            var x = index % Current.Width;
-            var y = index / Current.Width;
-            var tile = Current.Tiles[index];
+            var x = index % Width;
+            var y = index / Width;
+            var tile = Tiles[index];
             if (tile.Value.FireTicks > 0)
                 continue;
             var aquatic = IsWaterTerrain(tile.Value.Terrain);
@@ -629,10 +629,10 @@ public sealed partial class WorldEngine
             var efficiency = WildlifeHarvestEfficiency(tile, kind);
             if (kind == WildlifeKind.None || efficiency < .25)
                 continue;
-            if (Current.Rules.Hunger && person.Hunger > 20 && person.Inventory.Food < .3)
+            if (Rules.Hunger && person.Hunger > 20 && person.Inventory.Food < .3)
             {
                 var interval = WorkInterval(person);
-                var food = WildlifeHarvestAmount(tile, kind, interval * .15 * Current.Rules.GatheringRate
+                var food = WildlifeHarvestAmount(tile, kind, interval * .15 * Rules.GatheringRate
                                                              * GatheringCondition(person.SicknessTicks, person.Hunger, person.Thirst) *
                                                              GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value))
                     * AnimalRules.For(kind).BodyMass / interval;
@@ -647,7 +647,7 @@ public sealed partial class WorldEngine
             if (!aquatic)
                 continue;
             foreach (var (dx, dy) in Directions)
-                if (Walkable(x + dx, y + dy, person.Race) && Current.Tiles[Index(x + dx, y + dy)].Value.FireTicks == 0
+                if (Walkable(x + dx, y + dy, person.Race) && Tiles[Index(x + dx, y + dy)].Value.FireTicks == 0
                                                           && VisibleSiteReachable(person, Index(x + dx, y + dy),
                                                               ref reachable))
                     return (Index(x + dx, y + dy), index, true);
@@ -676,7 +676,7 @@ public sealed partial class WorldEngine
             if (!InBounds(x, y))
                 continue;
             var index = Index(x, y);
-            var tile = Current.Tiles[index];
+            var tile = Tiles[index];
             var animal = EdibleAnimal(tile, true);
             var efficiency = WildlifeHarvestEfficiency(tile, animal);
             if (animal == WildlifeKind.None || efficiency < .25 || tile.Value.FireTicks > 0)
@@ -692,7 +692,7 @@ public sealed partial class WorldEngine
 
         if (best >= 0)
         {
-            choices.Add(new GoalChoice(AgentGoalKind.Fish, best % Current.Width, best / Current.Width, 60,
+            choices.Add(new GoalChoice(AgentGoalKind.Fish, best % Width, best / Width, 60,
                 "领取家园舟船，前往眼前鱼群捕鱼，装满后返岸交付鱼获与舟船", EntityId: best + 1));
         }
         else if (person.TravelMode == TravelMode.Boat)
@@ -715,23 +715,23 @@ public sealed partial class WorldEngine
     {
         var goal = person.Agent.Goal;
         var source = goal.TargetEntityId - 1;
-        if (person.Health <= 0 || person.Age < 14 || source < 0 || source >= Current.Tiles.Count
+        if (person.Health <= 0 || person.Age < 14 || source < 0 || source >= Tiles.Count
             || goal.Kind is not (AgentGoalKind.Hunt or AgentGoalKind.Fish)
-            || Current.Tick - person.MoveStartedTick < person.MoveDurationTicks
-            || Distance(person.X, person.Y, source % Current.Width, source / Current.Width) >
+            || SimulationTick - person.MoveStartedTick < person.MoveDurationTicks
+            || Distance(person.X, person.Y, source % Width, source / Width) >
             (goal.Kind == AgentGoalKind.Fish ? 1 : 0))
             return false;
-        var tile = Current.Tiles[source];
+        var tile = Tiles[source];
         var kind = EdibleAnimal(tile, goal.Kind == AgentGoalKind.Fish);
         if (kind == WildlifeKind.None || tile.Value.FireTicks > 0)
         {
-            person.Agent = person.Agent with { NextThinkTick = Current.Tick };
+            person.Agent = person.Agent with { NextThinkTick = SimulationTick };
             return false;
         }
 
         var yield = AnimalRules.For(kind).BodyMass;
         var amount = WildlifeHarvestAmount(tile, kind,
-            WorkDays(person) * .15 * Current.Rules.GatheringRate * GatheringCondition(person.SicknessTicks, person.Hunger, person.Thirst) *
+            WorkDays(person) * .15 * Rules.GatheringRate * GatheringCondition(person.SicknessTicks, person.Hunger, person.Thirst) *
             GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value));
         amount = Math.Min(amount, (1_000_000 - person.Inventory.Food) / yield);
         tile.Replace(tile.Value.WithAnimalPopulation(kind, tile.Value.AnimalPopulation(kind) - amount));
@@ -743,7 +743,7 @@ public sealed partial class WorldEngine
         };
         person.Activity = ResidentActivity.Working;
         if (!goal.PlayerDirected && !WildlifeSiteProductive(tile, goal.Kind == AgentGoalKind.Fish))
-            person.Agent = person.Agent with { NextThinkTick = Current.Tick + 1 };
+            person.Agent = person.Agent with { NextThinkTick = SimulationTick + 1 };
         return amount > 0;
     }
 }

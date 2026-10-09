@@ -40,19 +40,19 @@ public sealed partial class WorldEngine
             return;
         radius = Math.Clamp(radius, 0, 32);
         var indexes = Circle(x, y, radius).ToHashSet();
-        foreach (var town in Current.Settlements.Where(s => s.Value.NationId != nationId && indexes.Contains(Index(s.Value.X, s.Value.Y)))
+        foreach (var town in Settlements.Where(s => s.Value.NationId != nationId && indexes.Contains(Index(s.Value.X, s.Value.Y)))
                      .ToArray())
             TransferSettlementOwnership(town, nationId);
         foreach (var index in indexes)
-            if (Current.Tiles[index].Value.NationId != nationId && Current.Tiles[index].Value.SettlementId == 0)
+            if (Tiles[index].Value.NationId != nationId && Tiles[index].Value.SettlementId == 0)
             {
-                Current.Tiles[index].Replace(Current.Tiles[index].Value.WithNationId(0));
-                Current.Tiles[index].Replace(Current.Tiles[index].Value.WithClaimedSettlementId(0));
+                Tiles[index].Replace(Tiles[index].Value.WithNationId(0));
+                Tiles[index].Replace(Tiles[index].Value.WithClaimedSettlementId(0));
             }
 
         ReconcileConnectedClaims();
         // 领土笔刷可延伸已有连通地盘，但不能为城镇创建远处悬空飞地。
-        foreach (var town in Current.Settlements.Where(t => t.Value.NationId == nationId && !t.Value.FoundationPending)
+        foreach (var town in Settlements.Where(t => t.Value.NationId == nationId && !t.Value.FoundationPending)
                      .OrderBy(t => t.Value.Id))
         {
             var queue = new Queue<int>();
@@ -63,12 +63,12 @@ public sealed partial class WorldEngine
             while (queue.TryDequeue(out var current))
                 foreach (var (dx, dy) in Directions)
                 {
-                    var xx = current % Current.Width + dx;
-                    var yy = current / Current.Width + dy;
+                    var xx = current % Width + dx;
+                    var yy = current / Width + dy;
                     if (!InBounds(xx, yy))
                         continue;
                     var next = Index(xx, yy);
-                    var tile = Current.Tiles[next];
+                    var tile = Tiles[next];
                     if (seen.Contains(next) || !tile.Value.IsWalkable || IsWaterTerrain(tile.Value.Terrain)
                         || (tile.Value.ClaimedSettlementId != 0 && tile.Value.ClaimedSettlementId != town.Value.Id))
                         continue;
@@ -97,10 +97,10 @@ public sealed partial class WorldEngine
         name = (name ?? "").Trim();
         if (name.Length is < 1 or > 40 || name.Any(char.IsControl))
             throw new ArgumentException("国名须为 1–40 个可见字符。", nameof(name));
-        if (Current.Nations.Count >= 64)
+        if (Nations.Count >= 64)
             throw new InvalidOperationException("国家数量已达上限。");
         var parent = _nations[town.Value.NationId];
-        if (Current.Settlements.Count(s => s.Value.NationId == parent.Value.Id) < 2)
+        if (Settlements.Count(s => s.Value.NationId == parent.Value.Id) < 2)
             throw new InvalidOperationException("拆分需要原国家至少拥有两个聚落。");
         var nation = new StateReference<Nation>(new Nation
         {
@@ -109,21 +109,21 @@ public sealed partial class WorldEngine
             CapitalId = town.Value.Id,
             Technology = parent.Value.Technology,
             DevelopmentFocus = parent.Value.DevelopmentFocus,
-            ColorArgb = NationColors[Current.Nations.Count % NationColors.Length],
+            ColorArgb = NationColors[Nations.Count % NationColors.Length],
             FoundingRace = parent.Value.FoundingRace,
             Decision = "独立建国：储备资源，建立外交关系",
         });
-        foreach (var other in Current.Nations)
-            Current.Diplomacies =
-                Current.Diplomacies.Add(new DiplomaticRelation
+        foreach (var other in Nations)
+            Diplomacies =
+                Diplomacies.Add(new DiplomaticRelation
                 {
                     FirstNationId = other.Value.Id,
                     SecondNationId = nation.Value.Id,
                 });
-        Current.Nations.Add(nation);
+        Nations.Add(nation);
         _nations[nation.Value.Id] = nation;
         TransferSettlementOwnership(town, nation.Value.Id);
-        Current.Tiles[Index(town.Value.X, town.Value.Y)].Replace(Current.Tiles[Index(town.Value.X, town.Value.Y)].Value.WithNationId(nation.Value.Id));
+        Tiles[Index(town.Value.X, town.Value.Y)].Replace(Tiles[Index(town.Value.X, town.Value.Y)].Value.WithNationId(nation.Value.Id));
         Reindex();
         InitializeSociety();
         RefreshTotals();
@@ -138,16 +138,16 @@ public sealed partial class WorldEngine
             return;
         var previousNation = _nations[previousId];
         town.Replace(town.Value with { NationId = targetNationId });
-        foreach (var ground in Current.Tiles)
+        foreach (var ground in Tiles)
             if (ground.Value.ClaimedSettlementId == town.Value.Id)
                 ground.Replace(ground.Value.WithNationId(targetNationId));
-        Current.Tiles[Index(town.Value.X, town.Value.Y)].Replace(Current.Tiles[Index(town.Value.X, town.Value.Y)].Value.WithNationId(targetNationId));
-        var remainingHome = Current.Settlements.FirstOrDefault(s => s.Value.NationId == previousId);
+        Tiles[Index(town.Value.X, town.Value.Y)].Replace(Tiles[Index(town.Value.X, town.Value.Y)].Value.WithNationId(targetNationId));
+        var remainingHome = Settlements.FirstOrDefault(s => s.Value.NationId == previousId);
         if (previousNation.Value.CapitalId == town.Value.Id)
             previousNation.Replace(previousNation.Value with { CapitalId = remainingHome?.Value.Id ?? 0 });
         if (remainingHome is not null)
         {
-            foreach (var resident in Current.Residents.Where(r => r.SettlementId == town.Value.Id))
+            foreach (var resident in Residents.Where(r => r.SettlementId == town.Value.Id))
                 if (resident.ArmyId != 0)
                     resident.Replace(resident.Value with { SettlementId = remainingHome.Value.Id });
                 else
@@ -155,9 +155,9 @@ public sealed partial class WorldEngine
         }
         else
         {
-            foreach (var army in Current.Armies.Where(a => a.Value.NationId == previousId).ToArray())
+            foreach (var army in Armies.Where(a => a.Value.NationId == previousId).ToArray())
                 DisbandArmy(army);
-            foreach (var resident in Current.Residents.Where(r => r.SettlementId == town.Value.Id))
+            foreach (var resident in Residents.Where(r => r.SettlementId == town.Value.Id))
                 resident.Replace(resident.Value with { NationId = targetNationId });
         }
     }

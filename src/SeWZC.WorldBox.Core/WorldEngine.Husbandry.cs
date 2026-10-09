@@ -34,12 +34,12 @@ public sealed partial class WorldEngine
         var largest = .02;
         foreach (var i in Circle(x, y, aquatic ? 1 : 0))
         {
-            if (aquatic && !IsFreshWater(Current.Tiles[i].Value))
+            if (aquatic && !IsFreshWater(Tiles[i].Value))
                 continue;
             foreach (var kind in AnimalRules.Species)
-                if (CanDomesticate(kind, aquatic) && Current.Tiles[i].Value.AnimalPopulation(kind) > largest)
+                if (CanDomesticate(kind, aquatic) && Tiles[i].Value.AnimalPopulation(kind) > largest)
                 {
-                    largest = Current.Tiles[i].Value.AnimalPopulation(kind);
+                    largest = Tiles[i].Value.AnimalPopulation(kind);
                     source = i;
                     species = kind;
                 }
@@ -66,7 +66,7 @@ public sealed partial class WorldEngine
             return false;
         if (person.Profession != (b.Kind == BuildingKind.Pasture ? Profession.Farmer : Profession.Fisher))
             return false;
-        var tile = Current.Tiles[Index(b.X, b.Y)];
+        var tile = Tiles[Index(b.X, b.Y)];
         if (tile.Value.DroughtTicks > 0 || tile.Value.FireTicks > 0)
             return false;
         if (b.LivestockPopulation < .01)
@@ -86,7 +86,7 @@ public sealed partial class WorldEngine
             return false;
         if (!HusbandryHasWork(b.Value, person))
         {
-            person.Agent = person.Agent with { NextThinkTick = Current.Tick };
+            person.Agent = person.Agent with { NextThinkTick = SimulationTick };
             return true;
         }
 
@@ -129,10 +129,10 @@ public sealed partial class WorldEngine
             var previous = person.Agent.Goal;
             person.Agent = person.Agent.WithGoal(new AgentGoal
             {
-                Kind = AgentGoalKind.ReturnHome, TargetX = home.Value.X, TargetY = home.Value.Y, StartedTick = Current.Tick,
+                Kind = AgentGoalKind.ReturnHome, TargetX = home.Value.X, TargetY = home.Value.Y, StartedTick = SimulationTick,
             });
             ChangeWorkReservation(previous, person.Agent.Goal);
-            person.Agent = person.Agent with { NextThinkTick = Current.Tick };
+            person.Agent = person.Agent with { NextThinkTick = SimulationTick };
         }
 
         return true;
@@ -147,7 +147,7 @@ public sealed partial class WorldEngine
             var stock = HusbandryStockAt(b.Value.X, b.Value.Y, b.Value.Kind == BuildingKind.Aquaculture);
             if (stock.Source < 0)
                 return false;
-            var tile = Current.Tiles[stock.Source];
+            var tile = Tiles[stock.Source];
             var take = Math.Min(1, tile.Value.AnimalPopulation(stock.Kind) * .5);
             tile.Replace(tile.Value.WithAnimalPopulation(stock.Kind, tile.Value.AnimalPopulation(stock.Kind) - take));
             b.Replace(b.Value with { LivestockKind = stock.Kind, LivestockPopulation = take });
@@ -161,7 +161,7 @@ public sealed partial class WorldEngine
                 Food = person.Inventory.Food - LivestockFeed(b.Value),
                 Water = person.Inventory.Water - LivestockWater(b.Value),
             };
-            var tile = Current.Tiles[Index(b.Value.X, b.Value.Y)];
+            var tile = Tiles[Index(b.Value.X, b.Value.Y)];
             if (b.Value.Kind == BuildingKind.Pasture)
                 HarvestPlants(tile, .04 * Math.Min(6, b.Value.LivestockPopulation) * NaturalPlantHarvestEfficiency(tile));
             // 种群恢复需要饲料和到场劳动，采收不能消耗保留的繁殖种群。
@@ -186,7 +186,7 @@ public sealed partial class WorldEngine
         b.Replace(b.Value with
         {
             ServiceActions = Math.Min(1_000_000_000, b.Value.ServiceActions + 1),
-            LastServiceTick = Current.Tick,
+            LastServiceTick = SimulationTick,
         });
         return true;
     }

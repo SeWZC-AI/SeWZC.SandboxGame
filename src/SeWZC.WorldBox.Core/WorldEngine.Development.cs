@@ -7,11 +7,11 @@ public sealed partial class WorldEngine
     public DevelopmentFocus GetDevelopmentFocus(int settlementId)
     {
         var town = RequireTown(settlementId);
-        var nation = Current.Nations.FirstOrDefault(n => n.Value.Id == town.Value.NationId);
+        var nation = Nations.FirstOrDefault(n => n.Value.Id == town.Value.NationId);
         if (nation?.Value is { DevelopmentFocus: not DevelopmentFocus.Automatic })
             return nation.Value.DevelopmentFocus;
         var culture = GetCulture(town.Value.CultureId);
-        return !Current.Society.MagicEnabled || culture.Innovation >= culture.NatureAffinity
+        return !Society.MagicEnabled || culture.Innovation >= culture.NatureAffinity
             ? DevelopmentFocus.Technology
             : DevelopmentFocus.MagicPractice;
     }
@@ -37,7 +37,7 @@ public sealed partial class WorldEngine
     {
         if (!Enum.IsDefined(focus))
             throw new ArgumentOutOfRangeException(nameof(focus));
-        var nation = Current.Nations.FirstOrDefault(n => n.Value.Id == nationId) ?? throw new ArgumentException("国家不存在");
+        var nation = Nations.FirstOrDefault(n => n.Value.Id == nationId) ?? throw new ArgumentException("国家不存在");
         if (nation.Value.DevelopmentFocus == focus)
             return;
         nation.Replace(nation.Value with { DevelopmentFocus = focus });

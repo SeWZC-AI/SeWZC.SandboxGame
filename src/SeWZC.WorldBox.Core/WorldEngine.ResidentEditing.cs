@@ -10,8 +10,8 @@ public sealed partial class WorldEngine
     /// <param name="id">居民的稳定 ID。</param>
     public Resident? GetResident(int id)
     {
-        return (Current.Residents.FirstOrDefault(r => r.Id == id) ??
-                Current.ArchivedResidents.FirstOrDefault(r => r.Id == id))?.Value;
+        return (Residents.FirstOrDefault(r => r.Id == id) ??
+                ArchivedResidents.FirstOrDefault(r => r.Id == id))?.Value;
     }
 
     /// <summary>将指定居民的认知与行动状态序列化为 JSON。</summary>
@@ -75,8 +75,8 @@ public sealed partial class WorldEngine
 
     internal ResidentCursor RequireResident(int id)
     {
-        return Current.Residents.FirstOrDefault(r => r.Id == id) ??
-               Current.ArchivedResidents.FirstOrDefault(r => r.Id == id) ??
+        return Residents.FirstOrDefault(r => r.Id == id) ??
+               ArchivedResidents.FirstOrDefault(r => r.Id == id) ??
                throw new ArgumentException("居民不存在。", nameof(id));
     }
 
@@ -85,8 +85,8 @@ public sealed partial class WorldEngine
     /// <param name="magicEnabled">是否允许新的魔法发展和施法。</param>
     public void SetWorldRules(bool naturalDisasters, bool magicEnabled)
     {
-        Current.NaturalDisasters = naturalDisasters;
-        Current.Society = Current.Society with { MagicEnabled = magicEnabled };
+        NaturalDisasters = naturalDisasters;
+        Society = Society with { MagicEnabled = magicEnabled };
         AddEvent(WorldEventKind.Editor, "世界规则已更新；居民通过当地观察了解变化。");
     }
 
@@ -97,15 +97,15 @@ public sealed partial class WorldEngine
     {
         ArgumentNullException.ThrowIfNull(patch);
         var original = RequireResident(id);
-        var liveIndex = Current.Residents.IndexOf(original);
+        var liveIndex = Residents.IndexOf(original);
         var isLive = liveIndex >= 0;
         var (candidate, startMission, nextId) = PrepareResidentEdit(original.Value, patch, isLive, State);
-        Current.NextId = nextId;
+        NextId = nextId;
         var edited = new ResidentCursor(candidate);
         if (isLive)
-            Current.Residents[liveIndex] = edited;
+            Residents[liveIndex] = edited;
         else
-            Current.ArchivedResidents[Current.ArchivedResidents.IndexOf(original)] = edited;
+            ArchivedResidents[ArchivedResidents.IndexOf(original)] = edited;
         if (isLive)
         {
             if (startMission && _settlements.TryGetValue(candidate.SettlementId, out var missionHome))
