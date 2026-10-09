@@ -7,27 +7,47 @@ internal sealed partial class ResidentCursor
     private AgentState _agent = value.Agent;
     private ResourceStock _inventory = value.Inventory;
     private bool _draftChanged;
+    private Resident _snapshot = value;
+    private bool _snapshotCurrent = true;
 
-    // 日常字段以不可变值暂存，完整实体及世界快照在边界冻结。
+    // 读取只推导不可变实体，缓存不提交到集合；统一提交由集合冻结边界完成。
     public new ref readonly Resident Value
     {
         get
         {
-            FlushPending();
-            return ref base.Value;
+            if (!_draftChanged)
+                return ref base.Value;
+            if (!_snapshotCurrent)
+            {
+                _snapshot = _body.Apply(base.Value, _motion, _agent, _inventory);
+                _snapshotCurrent = true;
+            }
+
+            return ref _snapshot;
         }
     }
 
     internal override void FlushPending()
     {
         if (_draftChanged)
-            ReplaceChanged(_body.Apply(base.Value, _motion, _agent, _inventory));
+            ReplaceChanged(Value);
     }
 
     public override void Replace(in Resident value)
     {
-        FlushPending();
-        base.Replace(value);
+        // 完整替换直接覆盖草稿；无需先发布将被覆盖的中间状态。
+        if (ReferenceEquals(base.Value, value))
+            OnReplace(base.Value, value);
+        else
+            ReplaceChanged(value);
+    }
+
+    private void MarkDraftChanged()
+    {
+        if (!_draftChanged)
+            Collection?.RegisterPending(this);
+        _draftChanged = true;
+        _snapshotCurrent = false;
     }
 
     internal void BeginMove(int x, int y, long tick, int duration, ResidentActivity activity, AgentState agent)
@@ -45,7 +65,7 @@ internal sealed partial class ResidentCursor
         if (_body.Activity != activity)
             _body = _body with { Activity = activity };
         _agent = agent;
-        _draftChanged = true;
+        MarkDraftChanged();
     }
 
     internal void ApplyDay(in Resident.DailyState value)
@@ -56,8 +76,7 @@ internal sealed partial class ResidentCursor
                                                   || before.DeathCause != value.DeathCause ||
                                                   before.DeathTick != value.DeathTick)
         {
-            FlushPending();
-            ReplaceChanged(base.Value with
+            ReplaceChanged(Value with
             {
                 Profession = value.Profession,
                 DiseaseImmuneUntilTick = value.Immunity,
@@ -67,11 +86,13 @@ internal sealed partial class ResidentCursor
         }
 
         // 老化等常见变化一次标记草稿，避免每个输出字段再走独立设置器。
-        _draftChanged |= !_body.Age.Equals(value.Age) || !_body.Health.Equals(value.Health)
+        var changed = !_body.Age.Equals(value.Age) || !_body.Health.Equals(value.Health)
                          || !_body.Hunger.Equals(value.Hunger) || !_body.Thirst.Equals(value.Thirst)
                          || _body.SicknessTicks != value.Sickness || _body.Activity != value.Activity
                          || !_body.Mana.Equals(value.Mana) || _inventory != value.Inventory;
-        _draftChanged |= !ReferenceEquals(_agent, value.Agent);
+        changed |= !ReferenceEquals(_agent, value.Agent);
+        if (changed)
+            MarkDraftChanged();
         _body = new BodyFields
         {
             Age = value.Age,

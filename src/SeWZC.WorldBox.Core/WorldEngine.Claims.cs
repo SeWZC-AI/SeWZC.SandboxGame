@@ -166,7 +166,7 @@ public sealed partial class WorldEngine
             return;
         if (_connectedClaims.Length != Current.Tiles.Count)
             _connectedClaims = new int[Current.Tiles.Count];
-        FillConnectedClaims(Current.Snapshot, _connectedClaims, _claimQueue);
+        FillConnectedClaims(Current.CaptureSnapshot(), _connectedClaims, _claimQueue);
         foreach (var index in _territoryCounts.OwnedTiles)
             if (_connectedClaims[index] == 0)
                 _claimQueue.Enqueue(index);

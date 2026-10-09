@@ -14,20 +14,17 @@ internal sealed partial class WorldStateCursor : StateReference<WorldState>
     private EntityListCursor<Building, StateReference<Building>>? _buildings;
     public WorldStateCursor(WorldState value) : base(value) { }
 
-    internal WorldState Snapshot
+    internal WorldState CaptureSnapshot()
     {
-        get
-        {
-            _tiles?.FlushUpdates();
-            _residents?.FlushUpdates();
-            _archivedResidents?.FlushUpdates();
-            _settlements?.FlushUpdates();
-            _nations?.FlushUpdates();
-            _armies?.FlushUpdates();
-            _buildings?.FlushUpdates();
-            FlushScalars();
-            return Value;
-        }
+        _tiles?.FlushUpdates();
+        _residents?.FlushUpdates();
+        _archivedResidents?.FlushUpdates();
+        _settlements?.FlushUpdates();
+        _nations?.FlushUpdates();
+        _armies?.FlushUpdates();
+        _buildings?.FlushUpdates();
+        FlushScalars();
+        return Value;
     }
 
     public int Seed => Value.Seed;
@@ -93,7 +90,7 @@ internal sealed partial class WorldStateCursor : StateReference<WorldState>
         {
             if (!ReferenceEquals(Value.Residents, value))
                 ReplaceChanged(Value with { Residents = value });
-        }, value => new ResidentCursor(value));
+        }, value => new ResidentCursor(value), static (before, after) => before.SettlementId != after.SettlementId);
 
     public EntityListCursor<Settlement, StateReference<Settlement>> Settlements =>
         _settlements ??= new EntityListCursor<Settlement, StateReference<Settlement>>(Value.Settlements, value =>
@@ -191,5 +188,5 @@ internal sealed partial class WorldStateCursor : StateReference<WorldState>
         {
             if (!ReferenceEquals(Value.ArchivedResidents, value))
                 ReplaceChanged(Value with { ArchivedResidents = value });
-        }, value => new ResidentCursor(value));
+        }, value => new ResidentCursor(value), static (before, after) => before.SettlementId != after.SettlementId);
 }

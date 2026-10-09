@@ -44,7 +44,7 @@ public sealed class ImmutableWorldTests
                 Buildings = ImmutableVector<Building>.Create([new Building { Id = 4, Health = 100 }]),
             },
         });
-        var before = current.Snapshot;
+        var before = current.CaptureSnapshot();
         using var nations = current.Nations.BeginUpdates();
         using var buildings = current.Buildings.BeginUpdates();
         using var armies = current.Armies.BeginUpdates();
@@ -52,11 +52,11 @@ public sealed class ImmutableWorldTests
         current.Nations[0].Replace(current.Nations[0].Value with { Name = "更新" });
         current.Buildings[0].Replace(current.Buildings[0].Value with { Health = 80 });
         current.Armies[0].Replace(current.Armies[0].Value with { Supplies = 2 });
-        var middle = current.Snapshot;
+        var middle = current.CaptureSnapshot();
         current.Nations[0].Replace(current.Nations[0].Value with { Name = "继续更新" });
         current.Buildings[0].Replace(current.Buildings[0].Value with { Health = 60 });
         current.Armies[0].Replace(current.Armies[0].Value with { Supplies = 1 });
-        var after = current.Snapshot;
+        var after = current.CaptureSnapshot();
 
         Assert.Equal("初始", before.Nations[0].Name);
         Assert.Equal(100, before.Society.Buildings[0].Health);
@@ -82,7 +82,7 @@ public sealed class ImmutableWorldTests
         town.Replace(town.Value.WithResources(town.Value.Resources with { Food = 5 }));
         town.Replace(town.Value with { Housing = 100 });
         Assert.Equal(5, town.Value.Resources.Food);
-        var current = fixture.Engine.Current.Settlements.Snapshot.Single();
+        var current = fixture.Engine.Current.Settlements.CaptureSnapshot().Single();
 
         Assert.Equal(7, middle.Settlements.Single().Resources.Food);
         Assert.Equal(5, current.Resources.Food);
@@ -187,7 +187,7 @@ public sealed class ImmutableWorldTests
         Assert.NotEqual(60, before.Residents[1].Health);
     }
 
-    /// <summary>连续动作立即读取草稿，读取实体及世界时冻结，后续更改不污染已返回快照。</summary>
+    /// <summary>连续动作立即读取草稿，取得的实体及世界快照不受后续更改影响。</summary>
     [Fact]
     public void Resident_drafts_freeze_agent_and_body_together_at_snapshot_boundaries()
     {
