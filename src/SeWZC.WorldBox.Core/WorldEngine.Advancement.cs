@@ -105,7 +105,7 @@ public sealed partial class WorldEngine
     /// <param name="buildingId">待操作建筑的稳定 ID。</param>
     public string GetProductionStatus(int buildingId)
     {
-        var building = Current.Society.Buildings.FirstOrDefault(b => b.Id == buildingId);
+        var building = Current.Buildings.FirstOrDefault(b => b.Id == buildingId);
         var recipe = building is null ? null : ProductionRules.For(building.Kind);
         if (building is null)
             return "建筑已不存在";
@@ -272,17 +272,19 @@ public sealed partial class WorldEngine
             return false;
         if (!CanProduce(building, person, recipe))
         {
-            person.Agent.Goal = goal = goal with { Reason = GetProductionStatus(building.Id) };
-            person.Agent.NextThinkTick = Current.Tick + 1;
+            person.Agent = person.Agent.WithGoal(goal = goal with { Reason = GetProductionStatus(building.Id) });
+            person.Agent = person.Agent with { NextThinkTick = Current.Tick + 1 };
             return true;
         }
 
         if (!HasProductionInputs(person.Inventory, recipe))
         {
-            person.Agent.Goal = goal = goal with
+            person.Agent = person.Agent.WithGoal(goal = goal with
             {
-                TargetX = home.X, TargetY = home.Y, Reason = "前往家园取料，亲自运至" + BuildingName(building.Kind),
-            };
+                TargetX = home.X,
+                TargetY = home.Y,
+                Reason = "前往家园取料，亲自运至" + BuildingName(building.Kind),
+            });
             if (Distance(person.X, person.Y, home.X, home.Y) > 1)
             {
                 MoveAgentTowards(person, home.X, home.Y);
@@ -309,10 +311,12 @@ public sealed partial class WorldEngine
             }
         }
 
-        person.Agent.Goal = goal = goal with
+        person.Agent = person.Agent.WithGoal(goal = goal with
         {
-            TargetX = building.X, TargetY = building.Y, Reason = "携带实际原料，前往" + BuildingName(building.Kind) + "加工",
-        };
+            TargetX = building.X,
+            TargetY = building.Y,
+            Reason = "携带实际原料，前往" + BuildingName(building.Kind) + "加工",
+        });
         if (Distance(person.X, person.Y, building.X, building.Y) > 1)
         {
             MoveAgentTowards(person, building.X, building.Y);
@@ -327,12 +331,12 @@ public sealed partial class WorldEngine
                                                               ProductionYield(building, recipe) * 4
                                                               && (!recipe.Research.Magic || person.Mana >= recipe.Mana))
             {
-                person.Agent.NextThinkTick = Current.Tick + 4;
+                person.Agent = person.Agent with { NextThinkTick = Current.Tick + 4 };
                 return true;
             }
 
             var previous = person.Agent.Goal;
-            person.Agent.Goal = new AgentGoal
+            person.Agent = person.Agent.WithGoal(new AgentGoal
             {
                 Kind = AgentGoalKind.ReturnHome,
                 TargetX = home.X,
@@ -341,9 +345,9 @@ public sealed partial class WorldEngine
                 StartedTick = Current.Tick,
                 ReviewTick = Current.Tick + 100,
                 Reason = "加工完成，亲自把产物运回家园入库",
-            };
+            });
             ChangeWorkReservation(previous, person.Agent.Goal);
-            person.Agent.NextThinkTick = Current.Tick + 100;
+            person.Agent = person.Agent with { NextThinkTick = Current.Tick + 100 };
         }
 
         return true;

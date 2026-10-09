@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core.Tests;
 
-/// <summary>认知记忆的不可变替换、淘汰与引擎定位引用同步。</summary>
+/// <summary>认知记忆的不可变替换、淘汰与显式提交。</summary>
 public sealed class AgentMemoryTests
 {
     /// <summary>新观察替换同一主体的旧观察，并在新记忆末尾保留来源。</summary>
@@ -39,7 +39,9 @@ public sealed class AgentMemoryTests
         var home = new AgentFact { Kind = AgentFactKind.SettlementLocation, SubjectId = 4 };
         var other = Enumerable.Range(10, 15).Select(id => new AgentFact
         {
-            Kind = AgentFactKind.Personal, SubjectId = id, LearnedTick = 1,
+            Kind = AgentFactKind.Personal,
+            SubjectId = id,
+            LearnedTick = 1,
         }).ToArray();
         var before = new AgentState { Memory = [home, .. other] };
         var policy = new AgentFact { Kind = AgentFactKind.Policy, LearnedTick = 1 };
@@ -51,22 +53,24 @@ public sealed class AgentMemoryTests
         Assert.Same(other[0], before.Memory[1]);
     }
 
-    /// <summary>整体转换认知后继续添加记忆使用最新集合，保留此前的世界快照。</summary>
+    /// <summary>记忆转换在提交前不修改居民，后续转换保留此前的世界快照。</summary>
     [Fact]
-    public void Bulk_transition_refreshes_an_existing_memory_cursor()
+    public void Memory_transition_is_local_until_explicitly_committed()
     {
         var fixture = new WorldFixture();
         var agent = fixture.Resident.Agent;
-        _ = agent.Memory;
-        var initial = agent.Value.Memory;
+        var initial = agent.Memory;
         var observed = new AgentFact { SubjectId = 4 };
         var received = new AgentFact { SubjectId = 5 };
 
-        agent.Replace(agent.Value.Remember(observed, fixture.Town.Id));
+        var next = agent.Remember(observed, fixture.Town.Id);
+        Assert.Same(agent, fixture.Resident.Agent);
+        fixture.Resident.Agent = next;
         var before = fixture.Engine.State;
-        agent.Memory.Add(received);
+        fixture.Resident.Agent = next.Remember(received, fixture.Town.Id);
 
         Assert.Equal<AgentFact>([.. initial, observed], before.Residents[0].Agent.Memory);
         Assert.Equal<AgentFact>([.. initial, observed, received], fixture.Engine.State.Residents[0].Agent.Memory);
+        Assert.Equal(initial, agent.Memory);
     }
 }

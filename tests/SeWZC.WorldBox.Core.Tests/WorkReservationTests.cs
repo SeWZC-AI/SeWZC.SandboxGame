@@ -11,7 +11,7 @@ public sealed class WorkReservationTests
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         fixture.Engine.Current.Tick = 1;
         var building =
-            fixture.Engine.Current.Society.Buildings.Single(candidate => candidate.Kind == BuildingKind.TownCenter);
+            fixture.Engine.Current.Buildings.Single(candidate => candidate.Kind == BuildingKind.TownCenter);
         building.Health = 10;
         building.WorkSlots = 1;
         foreach (var person in fixture.Engine.Current.Residents)
@@ -24,11 +24,13 @@ public sealed class WorkReservationTests
                 FromX = 16,
                 FromY = 16,
                 Inventory = new ResourceStock { Stone = 1 },
-                Agent = person.Agent.Value with
+                Agent = person.Agent with
                 {
                     Goal = new AgentGoal
                     {
-                        Kind = AgentGoalKind.Work, TargetEntityId = building.Id, PlayerDirected = true,
+                        Kind = AgentGoalKind.Work,
+                        TargetEntityId = building.Id,
+                        PlayerDirected = true,
                     },
                 },
             });
@@ -82,9 +84,9 @@ public sealed class WorkReservationTests
         GrantResearch(fixture, Advancement.BattleMagic);
         var towerId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.StormSpire, 8, 16);
         var clinicId = fixture.Engine.GrantFacility(otherTown.Id, BuildingKind.Infirmary, 5, 16);
-        var clinic = fixture.Engine.Current.Society.Buildings.Single(building => building.Id == clinicId);
+        var clinic = fixture.Engine.Current.Buildings.Single(building => building.Id == clinicId);
         clinic.WorkSlots = 1;
-        foreach (var building in fixture.Engine.Current.Society.Buildings)
+        foreach (var building in fixture.Engine.Current.Buildings)
             building.Enabled = building.Id == towerId || building.Id == clinicId;
         fixture.Town.Resources = otherTown.Resources = new ResourceStock { Food = 100 };
         foreach (var person in fixture.Engine.Current.Residents)
@@ -101,7 +103,12 @@ public sealed class WorkReservationTests
                 MoveStartedTick = 0,
                 MoveDurationTicks = 1,
                 Inventory = new ResourceStock { Food = 1, Water = 1 },
-                Agent = person.Agent.Value with { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal() },
+                Agent = person.Agent with
+                {
+                    Initialized = true,
+                    NextThinkTick = 100,
+                    Goal = new AgentGoal()
+                },
             });
         var caster = fixture.Resident;
         caster.Replace(caster.Value with
@@ -113,7 +120,7 @@ public sealed class WorkReservationTests
             MagicTraining = 8,
             Mana = 100,
             Inventory = new ResourceStock { Food = 1, Water = 1, Crystals = 2 },
-            Agent = caster.Agent.Value with
+            Agent = caster.Agent with
             {
                 Goal = new AgentGoal
                 {
@@ -126,17 +133,20 @@ public sealed class WorkReservationTests
                 },
             },
         });
-        caster.Agent.Memory.Add(new AgentFact
+        caster.Agent = caster.Agent with
         {
-            Id = 90_001,
-            Kind = AgentFactKind.WarOrder,
-            SubjectId = otherTown.NationId,
-            TargetNationId = caster.NationId,
-            OriginResidentId = caster.Id,
-            SourceResidentId = caster.Id,
-            Value = 1,
-            Confidence = 1,
-        });
+            Memory = caster.Agent.Memory.Add(new AgentFact
+            {
+                Id = 90_001,
+                Kind = AgentFactKind.WarOrder,
+                SubjectId = otherTown.NationId,
+                TargetNationId = caster.NationId,
+                OriginResidentId = caster.Id,
+                SourceResidentId = caster.Id,
+                Value = 1,
+                Confidence = 1,
+            })
+        };
         var otherResidents = fixture.Engine.Current.Residents.Where(person => person.SettlementId == otherTown.Id)
             .ToArray();
         var victim = otherResidents[0];
@@ -145,7 +155,7 @@ public sealed class WorkReservationTests
             Health = 1,
             Armor = 0,
             PersonalWard = 0,
-            Agent = victim.Agent.Value with
+            Agent = victim.Agent with
             {
                 Goal = new AgentGoal
                 {
@@ -160,7 +170,7 @@ public sealed class WorkReservationTests
         });
         var replacement = otherResidents[1];
         replacement.Health = 50;
-        replacement.Agent.NextThinkTick = 0;
+        replacement.Agent = replacement.Agent with { NextThinkTick = 0 };
         fixture.Engine.Current.Tick = (3 - replacement.Id % 4 + 4) % 4;
 
         fixture.Engine.Step();
@@ -209,7 +219,12 @@ public sealed class WorkReservationTests
                 MoveStartedTick = 0,
                 MoveDurationTicks = 1,
                 Inventory = new ResourceStock { Food = 1, Water = 1 },
-                Agent = person.Agent.Value with { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal() },
+                Agent = person.Agent with
+                {
+                    Initialized = true,
+                    NextThinkTick = 100,
+                    Goal = new AgentGoal()
+                },
             });
         for (var x = 14; x <= 15; x++)
         {
@@ -234,23 +249,26 @@ public sealed class WorkReservationTests
         }
 
         var buildingId = fixture.Engine.GrantFacility(fixture.Town.Id, kind, 14, 16);
-        var building = fixture.Engine.Current.Society.Buildings.Single(candidate => candidate.Id == buildingId);
+        var building = fixture.Engine.Current.Buildings.Single(candidate => candidate.Id == buildingId);
         building.WorkSlots = 1;
-        foreach (var other in fixture.Engine.Current.Society.Buildings.Where(candidate => candidate.Id != buildingId))
+        foreach (var other in fixture.Engine.Current.Buildings.Where(candidate => candidate.Id != buildingId))
             other.Enabled = false;
         fixture.Resident.Inventory = kind == BuildingKind.Reservoir
             ? new ResourceStock { Food = 1, Water = 3 }
             : new ResourceStock { Food = 3, Water = 1 };
-        fixture.Resident.Agent.Goal = new AgentGoal
+        fixture.Resident.Agent = fixture.Resident.Agent with
         {
-            Kind = AgentGoalKind.Work,
-            TargetEntityId = buildingId,
-            TargetX = 14,
-            TargetY = 16,
-            ReviewTick = 100,
+            Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.Work,
+                TargetEntityId = buildingId,
+                TargetX = 14,
+                TargetY = 16,
+                ReviewTick = 100,
+            }
         };
         var replacement = fixture.Engine.Current.Residents.Single(person => person.Id != fixture.ResidentId);
-        replacement.Agent.NextThinkTick = 0;
+        replacement.Agent = replacement.Agent with { NextThinkTick = 0 };
         fixture.Engine.Current.Tick = (3 - replacement.Id % 4 + 4) % 4;
 
         fixture.Engine.Step();

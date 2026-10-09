@@ -114,7 +114,7 @@ public sealed partial class WorldEngine
             targets[(int)Profession.Trader] = town.Resources.Food > dailyFood * 30 ? Math.Min(contacts, 3) : 0;
             var researching =
                 Current.Society.Research.Any(r => r.SettlementId == town.Id && r.ActiveProject is not null);
-            foreach (var building in Current.Society.Buildings)
+            foreach (var building in Current.Buildings)
             {
                 if (building.SettlementId != town.Id || building.Health <= 0 || !building.Enabled
                     || Distance(building.X, building.Y, town.X, town.Y) > 8)
@@ -226,7 +226,7 @@ public sealed partial class WorldEngine
         person.Replace(person.Value with
         {
             Profession = job,
-            Agent = person.Agent.Value with
+            Agent = person.Agent with
             {
                 JobChangedTick = Current.Tick,
                 WorkplaceId = 0,
@@ -299,7 +299,8 @@ public sealed partial class WorldEngine
                 continue;
             if (next != 0)
                 occupied[next] = occupied.GetValueOrDefault(next) + 1;
-            person.Agent.WorkplaceId = next;
+            if (person.Agent.WorkplaceId != next)
+                person.Agent = person.Agent with { WorkplaceId = next };
         }
     }
 

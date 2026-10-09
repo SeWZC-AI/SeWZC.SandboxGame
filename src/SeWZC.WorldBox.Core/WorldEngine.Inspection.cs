@@ -92,7 +92,7 @@ public sealed partial class WorldEngine
     /// <param name="id">建筑的稳定 ID。</param>
     public string GetBuildingDetailStatus(int id)
     {
-        var b = Current.Society.Buildings.FirstOrDefault(building => building.Id == id);
+        var b = Current.Buildings.FirstOrDefault(building => building.Id == id);
         if (b is null)
             return "建筑已被移除";
         var tile = Current.Tiles[Index(b.X, b.Y)];
@@ -187,12 +187,12 @@ public sealed partial class WorldEngine
     /// <param name="enabled">是否允许运营该建筑。</param>
     public void SetBuildingEnabled(int id, bool enabled)
     {
-        var building = Current.Society.Buildings.FirstOrDefault(b => b.Id == id) ??
+        var building = Current.Buildings.FirstOrDefault(b => b.Id == id) ??
                        throw new ArgumentException("建筑已不存在。");
         if (building.Kind == BuildingKind.TownCenter)
             throw new InvalidOperationException("城镇中心是公共家园，不能停用。");
         building.Enabled = enabled;
-        building.Workers.Clear();
+        building.Workers = building.Workers.Clear();
         AddEvent(WorldEventKind.Editor, $"玩家{(enabled ? "启用" : "停用")}{BuildingName(building.Kind)}。", building.X,
             building.Y);
     }
@@ -202,7 +202,7 @@ public sealed partial class WorldEngine
     /// <param name="finish">是否同时将建造进度设为完工；升级项目仍按原状态保留。</param>
     public void RestoreBuilding(int id, bool finish = false)
     {
-        var building = Current.Society.Buildings.FirstOrDefault(b => b.Id == id) ??
+        var building = Current.Buildings.FirstOrDefault(b => b.Id == id) ??
                        throw new ArgumentException("建筑已不存在。");
         building.Health = 100;
         if (finish)
@@ -306,7 +306,7 @@ public sealed partial class WorldEngine
                               person.Profession is Profession.Trader or Profession.Messenger
                                   or Profession.Representative;
         var facility = goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic
-            ? Current.Society.Buildings.FirstOrDefault(b => b.Id == goal.TargetEntityId)
+            ? Current.Buildings.FirstOrDefault(b => b.Id == goal.TargetEntityId)
             : null;
         if (goal.Kind == AgentGoalKind.Work && facility is { IsCompleted: true } &&
             facility.SettlementId == person.SettlementId

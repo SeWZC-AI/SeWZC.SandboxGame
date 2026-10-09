@@ -9,7 +9,7 @@ public sealed class ResearchCommandsTests
     {
         var fixture = new WorldFixture();
         fixture.Town.Resources = new ResourceStock { Food = 100, Wood = 100, Stone = 100, Ore = 100 };
-        fixture.Engine.Current.Society.Buildings.Add(new BuildingCursor
+        fixture.Engine.Current.Buildings.Add(new BuildingCursor
         {
             Id = fixture.Engine.Current.NextId++,
             SettlementId = fixture.Town.Id,
@@ -45,7 +45,7 @@ public sealed class ResearchCommandsTests
     public void Start_requires_a_completed_academy()
     {
         var fixture = ReadyWorld();
-        fixture.Engine.Current.Society.Buildings.RemoveAll(building => building.Kind == BuildingKind.Academy);
+        fixture.Engine.Current.Buildings.RemoveAll(building => building.Kind == BuildingKind.Academy);
         var before = fixture.Engine.ExportJson();
 
         Assert.Throws<InvalidOperationException>(() => fixture.Engine.StartResearch(fixture.Town.Id,

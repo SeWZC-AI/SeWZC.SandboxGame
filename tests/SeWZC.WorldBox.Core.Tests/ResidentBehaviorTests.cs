@@ -38,15 +38,19 @@ public sealed class ResidentBehaviorTests
         fixture.Engine.Step();
         Assert.Equal(AgentGoalKind.Explore, fixture.Resident.Agent.Goal.Kind);
         var source = fixture.Engine.Current.Tiles[16 * 32 + 19];
-        source.Replace(source.Value with { Wildlife = WildlifeKind.Rabbit, WildlifePopulation = 20 });
-        fixture.Resident.Agent.Goal = new AgentGoal();
-        fixture.Resident.Agent.NextThinkTick = 0;
+        source.Replace(source.Value with
+        {
+            Wildlife = WildlifeKind.Rabbit,
+            WildlifePopulation = 20
+        });
+        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = new AgentGoal() };
+        fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = 0 };
         fixture.Engine.Step(4);
         Assert.Equal(AgentGoalKind.Hunt, fixture.Resident.Agent.Goal.Kind);
         Assert.Equal(19, fixture.Resident.Agent.Goal.TargetX);
         source.Replace(source.Value with { WildlifePopulation = 0 });
-        fixture.Resident.Agent.Goal = new AgentGoal();
-        fixture.Resident.Agent.NextThinkTick = 0;
+        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = new AgentGoal() };
+        fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = 0 };
 
         fixture.Engine.Step(4);
 
@@ -76,7 +80,9 @@ public sealed class ResidentBehaviorTests
         var source = fixture.Engine.Current.Tiles[16 * 32 + 20];
         source.Replace(source.Value with
         {
-            ResourceAmount = 100, Fertility = 100, Plants = new PlantCoverage { Grass = 1 },
+            ResourceAmount = 100,
+            Fertility = 100,
+            Plants = new PlantCoverage { Grass = 1 },
         });
         fixture.Resident.Inventory = new ResourceStock { Water = 10 };
         fixture.Resident.Hunger = 90;
@@ -89,8 +95,8 @@ public sealed class ResidentBehaviorTests
             blocked.FireTicks = 12;
         else
             blocked.Terrain = TerrainType.Mountain;
-        fixture.Resident.Agent.Goal = new AgentGoal();
-        fixture.Resident.Agent.NextThinkTick = 0;
+        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = new AgentGoal() };
+        fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = 0 };
 
         fixture.Engine.Step(4);
 
@@ -175,8 +181,8 @@ public sealed class ResidentBehaviorTests
         fixture.Resident.Inventory = new ResourceStock { Water = 10 };
         fixture.Resident.Hunger = 90;
         fixture.Resident.FrozenUntilTick = 100;
-        fixture.Resident.Agent.Goal = new AgentGoal();
-        fixture.Resident.Agent.NextThinkTick = 0;
+        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = new AgentGoal() };
+        fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = 0 };
         fixture.Engine.Step();
         Assert.Equal(AgentGoalKind.Gather, fixture.Resident.Agent.Goal.Kind);
         Assert.Equal(17, fixture.Resident.Agent.Goal.TargetX);
@@ -189,8 +195,8 @@ public sealed class ResidentBehaviorTests
             "drought" => source.Value with { DroughtTicks = 12 },
             _ => source.Value with { Terrain = TerrainType.Mountain },
         });
-        fixture.Resident.Agent.Goal = new AgentGoal();
-        fixture.Resident.Agent.NextThinkTick = 0;
+        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = new AgentGoal() };
+        fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = 0 };
         fixture.Engine.Step(4);
 
         Assert.NotEqual(AgentGoalKind.Gather, fixture.Resident.Agent.Goal.Kind);
@@ -262,7 +268,7 @@ public sealed class ResidentBehaviorTests
     {
         var fixture = Prepare();
         SetJourney(fixture, 10, 10, target, target);
-        fixture.Resident.Agent.Replace(fixture.Resident.Agent.Value with { FamiliarTiles = [11 * 32 + 10] });
+        fixture.Resident.Agent = fixture.Resident.Agent with { FamiliarTiles = [11 * 32 + 10] };
 
         fixture.Engine.Step();
 
@@ -276,7 +282,7 @@ public sealed class ResidentBehaviorTests
     {
         var fixture = Prepare();
         SetJourney(fixture, 10, 10, 12, 12);
-        fixture.Resident.Agent.Replace(fixture.Resident.Agent.Value with { FamiliarTiles = [11 * 32 + 10] });
+        fixture.Resident.Agent = fixture.Resident.Agent with { FamiliarTiles = [11 * 32 + 10] };
         fixture.Engine.Current.Tiles[11 * 32 + 10].Terrain = TerrainType.Mountain;
 
         fixture.Engine.Step();
@@ -294,10 +300,10 @@ public sealed class ResidentBehaviorTests
 
         fixture.Engine.Step();
 
-        Assert.Contains(10 * 32 + 10, fixture.Resident.Agent.Value.FamiliarTiles);
-        Assert.DoesNotContain(10 * 32 + 11, fixture.Resident.Agent.Value.FamiliarTiles);
+        Assert.Contains(10 * 32 + 10, fixture.Resident.Agent.FamiliarTiles);
+        Assert.DoesNotContain(10 * 32 + 11, fixture.Resident.Agent.FamiliarTiles);
         fixture.Engine.Step(fixture.Resident.MoveDurationTicks);
-        Assert.Contains(10 * 32 + 11, fixture.Resident.Agent.Value.FamiliarTiles);
+        Assert.Contains(10 * 32 + 11, fixture.Resident.Agent.FamiliarTiles);
     }
 
     /// <summary>日常补水优先选择可达河岸，不依赖最近的零散陆地供水。</summary>
@@ -389,7 +395,7 @@ public sealed class ResidentBehaviorTests
         fixture.Engine.Current.Tiles[16 * 32 + 18].NaturalWaterYield = .06;
         fixture.Engine.Current.Tiles[16 * 32 + 20].Terrain = TerrainType.River;
         var wellId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Well, 18, 16);
-        fixture.Engine.Current.Society.Buildings.Single(building => building.Id == wellId).Enabled = enabled;
+        fixture.Engine.Current.Buildings.Single(building => building.Id == wellId).Enabled = enabled;
 
         fixture.Engine.Step();
 
@@ -438,9 +444,15 @@ public sealed class ResidentBehaviorTests
         var fixture = Prepare(true);
         fixture.Engine.Current.Tiles[16 * 32 + 16].NaturalWaterYield = .08;
         fixture.Resident.Inventory = new ResourceStock { Food = 10, Water = .03 };
-        fixture.Resident.Agent.Goal = new AgentGoal
+        fixture.Resident.Agent = fixture.Resident.Agent with
         {
-            Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 16, TargetEntityId = 16 * 32 + 16 + 1,
+            Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.FetchWater,
+                TargetX = 16,
+                TargetY = 16,
+                TargetEntityId = 16 * 32 + 16 + 1,
+            }
         };
 
         Assert.False(fixture.Engine.TryFetchWater(fixture.Resident.Value));
@@ -461,15 +473,21 @@ public sealed class ResidentBehaviorTests
     {
         var fixture = Prepare(true);
         var wellId = fixture.AddWell(16, 17, .101);
-        fixture.Engine.Current.Society.Buildings.Single(building => building.Id == wellId).Enabled = enabled;
+        fixture.Engine.Current.Buildings.Single(building => building.Id == wellId).Enabled = enabled;
         fixture.Engine.Current.Tiles[17 * 32 + 16].DroughtTicks = drought;
         fixture.Resident.X = fixture.Resident.FromX = 16;
         fixture.Resident.Y = fixture.Resident.FromY = 17;
         fixture.Resident.Inventory = new ResourceStock();
-        fixture.Resident.Agent.NextThinkTick = fixture.Engine.Current.Tick + 100;
-        fixture.Resident.Agent.Goal = new AgentGoal
+        fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = fixture.Engine.Current.Tick + 100 };
+        fixture.Resident.Agent = fixture.Resident.Agent with
         {
-            Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 17, TargetEntityId = 17 * 32 + 16 + 1,
+            Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.FetchWater,
+                TargetX = 16,
+                TargetY = 17,
+                TargetEntityId = 17 * 32 + 16 + 1,
+            }
         };
 
         Assert.False(fixture.Engine.TryFetchWater(fixture.Resident.Value));
@@ -584,9 +602,15 @@ public sealed class ResidentBehaviorTests
         var fixture = Prepare();
         fixture.Resident.Health = health;
         fixture.Resident.SicknessTicks = sickness;
-        fixture.Resident.Agent.Goal = new AgentGoal
+        fixture.Resident.Agent = fixture.Resident.Agent with
         {
-            Kind = AgentGoalKind.Gather, TargetX = 16, TargetY = 16, ReviewTick = 0,
+            Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.Gather,
+                TargetX = 16,
+                TargetY = 16,
+                ReviewTick = 0,
+            }
         };
 
         fixture.Engine.Step();
@@ -611,7 +635,7 @@ public sealed class ResidentBehaviorTests
         }
 
         var clinicId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Infirmary, 14, 16);
-        var clinic = fixture.Engine.Current.Society.Buildings.Single(building => building.Id == clinicId);
+        var clinic = fixture.Engine.Current.Buildings.Single(building => building.Id == clinicId);
         var worker = fixture.Engine.Current.Residents.Single(person => person.Id != fixture.ResidentId);
         worker.Replace(worker.Value with
         {
@@ -621,7 +645,7 @@ public sealed class ResidentBehaviorTests
             Y = 16,
             FromX = 14,
             FromY = 16,
-            Agent = worker.Agent.Value with
+            Agent = worker.Agent with
             {
                 Initialized = true,
                 NextThinkTick = 100,
@@ -630,7 +654,7 @@ public sealed class ResidentBehaviorTests
         });
         clinic.Enabled = enabled;
         clinic.LastWorkedTick = fixture.Engine.Current.Tick;
-        clinic.Workers.Add(worker.Id);
+        clinic.Workers = clinic.Workers.Add(worker.Id);
         fixture.Resident.Health = 30;
 
         fixture.Engine.Step();
@@ -648,7 +672,10 @@ public sealed class ResidentBehaviorTests
     {
         var fixture = Prepare();
         fixture.Resident.Health = health;
-        fixture.Resident.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = 16, TargetY = 16 };
+        fixture.Resident.Agent = fixture.Resident.Agent with
+        {
+            Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = 16, TargetY = 16 }
+        };
 
         fixture.Engine.Step();
 
@@ -688,7 +715,12 @@ public sealed class ResidentBehaviorTests
             FromX = 16,
             FromY = 16,
             Inventory = new ResourceStock { Food = 10, Water = 10 },
-            Agent = fixture.Resident.Agent.Value with { Initialized = true, NextThinkTick = 0, Goal = new AgentGoal() },
+            Agent = fixture.Resident.Agent with
+            {
+                Initialized = true,
+                NextThinkTick = 0,
+                Goal = new AgentGoal()
+            },
         });
         fixture.Town.Resources = new ResourceStock { Food = 40 };
         return fixture;
@@ -702,7 +734,7 @@ public sealed class ResidentBehaviorTests
             Y = y,
             FromX = x,
             FromY = y,
-            Agent = fixture.Resident.Agent.Value with
+            Agent = fixture.Resident.Agent with
             {
                 NextThinkTick = 100,
                 Goal = new AgentGoal

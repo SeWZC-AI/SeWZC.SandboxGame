@@ -27,7 +27,7 @@ public sealed partial class WorldEngine
             return 1;
         IEnumerable<BuildingCursor>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(home.Id)
-            : Current.Society.Buildings;
+            : Current.Buildings;
         var bonus = (1 + EffectiveSettlementRank(home) * .1) * GranaryRestBonus(home.Id);
         if (buildings is null)
             return bonus;
@@ -103,7 +103,7 @@ public sealed partial class WorldEngine
     /// <param name="id">建筑的稳定 ID。</param>
     public IReadOnlyList<EffectInfo> GetBuildingEffects(int id)
     {
-        var building = Current.Society.Buildings.FirstOrDefault(b => b.Id == id);
+        var building = Current.Buildings.FirstOrDefault(b => b.Id == id);
         var effects = new List<EffectInfo>();
         if (building is null)
             return effects;
@@ -299,7 +299,7 @@ public sealed partial class WorldEngine
                     : ""), ImprovementName(tile.Improvement)));
         }
 
-        foreach (var building in Current.Society.Buildings)
+        foreach (var building in Current.Buildings)
             if (building.X == x && building.Y == y)
             {
                 var status = GetBuildingDetailStatus(building.Id);

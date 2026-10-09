@@ -36,7 +36,7 @@ public sealed partial class WorldEngine
                 var peopleRevision = Current.Residents.MembershipRevision;
                 var townsRevision = Current.Settlements.MembershipRevision;
                 var nationsRevision = Current.Nations.MembershipRevision;
-                var buildingsAfterSociety = Current.Society.Buildings.Snapshot;
+                var buildingsAfterSociety = Current.Buildings.Snapshot;
                 TickDiplomacy();
                 TickLocalConflicts();
                 TickMigrationAndSecession();
@@ -54,7 +54,7 @@ public sealed partial class WorldEngine
                 if (Current.Residents.MembershipRevision != peopleRevision
                     || Current.Settlements.MembershipRevision != townsRevision
                     || Current.Nations.MembershipRevision != nationsRevision
-                    || !ReferenceEquals(Current.Society.Buildings.Snapshot, buildingsAfterSociety))
+                    || !ReferenceEquals(Current.Buildings.Snapshot, buildingsAfterSociety))
                     ReconcileSocietyTopology();
                 RefreshTotals();
                 ObserveProjects();
@@ -199,7 +199,7 @@ public sealed partial class WorldEngine
                     town.Resources.Get(k) >= SettlementExpansionCost(town.Tier).Get(k) + developmentReserve.Get(k)))
                 ExpandTown(town.Id);
             if (Current.Rules.Construction && town.Resources.Food >= citizens.Count * 2 + developmentReserve.Food
-                                           && GetHousingCapacity(town.Id) < 60 + Current.Society.Buildings.Where(b =>
+                                           && GetHousingCapacity(town.Id) < 60 + Current.Buildings.Where(b =>
                                                    b.SettlementId == town.Id && IsFacilityOperating(b))
                                                .Sum(b => b.Kind == BuildingKind.Farm
                                                    ? 30 * b.Efficiency
@@ -207,7 +207,7 @@ public sealed partial class WorldEngine
                                                        ? 120 * b.Efficiency
                                                        : 0)
                                            && citizens.Count > GetHousingCapacity(town.Id) * 0.75
-                                           && !Current.Society.Buildings.Any(b =>
+                                           && !Current.Buildings.Any(b =>
                                                b.SettlementId == town.Id && (!b.IsCompleted || b.IsUpgrading))
                                            && town.Resources.Wood >= 25 + developmentReserve.Wood &&
                                            town.Resources.Stone >= 8 + developmentReserve.Stone)
@@ -266,7 +266,7 @@ public sealed partial class WorldEngine
                                                      && pioneers.All(p =>
                                                          RaceTerrainRules.CanWalk(Current.Tiles[i], p.Race)) &&
                                                      Current.Tiles[i].FireTicks == 0
-                                                     && !Current.Society.Buildings.Any(b =>
+                                                     && !Current.Buildings.Any(b =>
                                                          b.X == i % Current.Width && b.Y == i / Current.Width)
                                                      && Current.Tiles[i].Fertility >= 25 &&
                                                      (Current.Tiles[i].NationId == 0 ||
@@ -321,7 +321,7 @@ public sealed partial class WorldEngine
                 Text = "拓荒队商定的新家园，物资必须亲自带到",
             };
             RememberAgentFact(pioneer, address);
-            pioneer.Agent.Goal = new AgentGoal
+            pioneer.Agent = pioneer.Agent.WithGoal(new AgentGoal
             {
                 Kind = AgentGoalKind.ReturnHome,
                 TargetX = x,
@@ -332,7 +332,7 @@ public sealed partial class WorldEngine
                     $"原聚落人口 {citizens.Count}，为拓荒扩展家园；已收到建村勘察报告，选址 {x}, {y} 肥力 {Current.Tiles[location].Fertility}/100，周围有可登记陆地，背负粮木石步行建立新家园",
                 PlayerDirected = true,
                 ReviewTick = Current.Tick + 150,
-            };
+            });
             citizens.Remove(pioneer);
             _citizens[town.Id].Add(pioneer);
         }
@@ -351,24 +351,24 @@ public sealed partial class WorldEngine
         // 建村地点须能连通取得最小占地范围，避免定居在四周无法利用的单个肥沃地格。
         var available = 0;
         for (var nearbyY = Math.Max(0, y - 3); nearbyY <= Math.Min(Current.Height - 1, y + 3); nearbyY++)
-        for (var nearbyX = Math.Max(0, x - 3); nearbyX <= Math.Min(Current.Width - 1, x + 3); nearbyX++)
-        {
-            if ((nearbyX - x) * (nearbyX - x) + (nearbyY - y) * (nearbyY - y) > 9)
-                continue;
-            var tile = Current.Tiles[Index(nearbyX, nearbyY)].Value;
-            if (IsWaterTerrain(tile.Terrain) || tile.FireTicks > 0 || tile.ClaimedSettlementId != 0)
-                continue;
-            var usable = true;
-            foreach (var race in races)
-                if (!RaceTerrainRules.CanWalk(tile, race))
-                {
-                    usable = false;
-                    break;
-                }
+            for (var nearbyX = Math.Max(0, x - 3); nearbyX <= Math.Min(Current.Width - 1, x + 3); nearbyX++)
+            {
+                if ((nearbyX - x) * (nearbyX - x) + (nearbyY - y) * (nearbyY - y) > 9)
+                    continue;
+                var tile = Current.Tiles[Index(nearbyX, nearbyY)].Value;
+                if (IsWaterTerrain(tile.Terrain) || tile.FireTicks > 0 || tile.ClaimedSettlementId != 0)
+                    continue;
+                var usable = true;
+                foreach (var race in races)
+                    if (!RaceTerrainRules.CanWalk(tile, race))
+                    {
+                        usable = false;
+                        break;
+                    }
 
-            if (usable && ++available >= SettlementActivationArea)
-                return true;
-        }
+                if (usable && ++available >= SettlementActivationArea)
+                    return true;
+            }
 
         return false;
     }

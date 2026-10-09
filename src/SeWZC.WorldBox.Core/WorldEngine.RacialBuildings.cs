@@ -67,18 +67,20 @@ public sealed partial class WorldEngine
             return false;
         if (!building.Enabled || building.Health < 50 || !RacialBuildingHasWork(building, person))
         {
-            person.Agent.Goal = goal = goal with { Reason = "种族、物资或现场工作条件未满足" };
-            person.Agent.NextThinkTick = Current.Tick + 1;
+            person.Agent = person.Agent.WithGoal(goal = goal with { Reason = "种族、物资或现场工作条件未满足" });
+            person.Agent = person.Agent with { NextThinkTick = Current.Tick + 1 };
             return true;
         }
 
         var input = RacialWorkInput(building.Kind);
         if (MissingResources(person.Inventory, input) is not null)
         {
-            person.Agent.Goal = goal = goal with
+            person.Agent = person.Agent.WithGoal(goal = goal with
             {
-                TargetX = home.X, TargetY = home.Y, Reason = "实地返仓领取" + BuildingName(building.Kind) + "的劳动物资",
-            };
+                TargetX = home.X,
+                TargetY = home.Y,
+                Reason = "实地返仓领取" + BuildingName(building.Kind) + "的劳动物资",
+            });
             if (Distance(person.X, person.Y, home.X, home.Y) > 1)
             {
                 MoveAgentTowards(person, home.X, home.Y);
@@ -95,7 +97,7 @@ public sealed partial class WorldEngine
             }
         }
 
-        person.Agent.Goal = goal = goal with { TargetX = building.X, TargetY = building.Y };
+        person.Agent = person.Agent.WithGoal(goal = goal with { TargetX = building.X, TargetY = building.Y });
         if (Distance(person.X, person.Y, building.X, building.Y) > 0)
         {
             MoveAgentTowards(person, building.X, building.Y);
@@ -120,7 +122,11 @@ public sealed partial class WorldEngine
             ChangeWorkReservation(person.Agent.Goal, returning);
             person.Replace(person.Value with
             {
-                Agent = person.Agent.Value with { Goal = returning, NextThinkTick = Current.Tick + 24 },
+                Agent = person.Agent with
+                {
+                    Goal = returning,
+                    NextThinkTick = Current.Tick + 24
+                },
             });
         }
 
@@ -140,7 +146,7 @@ public sealed partial class WorldEngine
             case BuildingKind.AssemblyHall:
                 foreach (var other in _citizens[building.SettlementId])
                     if (other.Health > 0 && Distance(other.X, other.Y, building.X, building.Y) <= 2)
-                        other.Agent.SocialNeed = Math.Max(0, other.Agent.SocialNeed - effort);
+                        other.Agent = other.Agent with { SocialNeed = Math.Max(0, other.Agent.SocialNeed - effort) };
                 return true;
             case BuildingKind.TradeGuild:
                 return true; // 运营效果由实际到岗人员提供，不能仅凭建筑建成启用。
@@ -187,7 +193,7 @@ public sealed partial class WorldEngine
             case BuildingKind.WarDrum:
                 foreach (var other in _citizens[building.SettlementId])
                     if (other.Health > 0 && Distance(other.X, other.Y, building.X, building.Y) <= 2)
-                        other.Agent.Fatigue = Math.Max(0, other.Agent.Fatigue - effort);
+                        other.Agent = other.Agent with { Fatigue = Math.Max(0, other.Agent.Fatigue - effort) };
                 foreach (var army in Current.Armies)
                     if (army.NationId == person.NationId && Distance(army.X, army.Y, building.X, building.Y) <= 2)
                         army.Morale = Math.Min(100, army.Morale + .3 * effort);
@@ -202,7 +208,7 @@ public sealed partial class WorldEngine
         if (person.Profession != Profession.Trader)
             return 1;
         var bonus = 1d;
-        foreach (var building in Current.Society.Buildings)
+        foreach (var building in Current.Buildings)
             if (building.SettlementId == person.SettlementId && building.Kind == BuildingKind.TradeGuild
                                                              && Distance(x, y, building.X, building.Y) <= 3 &&
                                                              IsFacilityOperating(building))

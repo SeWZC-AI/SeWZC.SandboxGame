@@ -27,9 +27,9 @@ public sealed partial class WorldEngine
     {
         var offsets = new List<(int X, int Y, int Distance)>();
         for (var y = -6; y <= 6; y++)
-        for (var x = -6; x <= 6; x++)
-            if (x * x + y * y <= 36)
-                offsets.Add((x, y, Math.Abs(x) + Math.Abs(y)));
+            for (var x = -6; x <= 6; x++)
+                if (x * x + y * y <= 36)
+                    offsets.Add((x, y, Math.Abs(x) + Math.Abs(y)));
         return offsets.OrderBy(offset => offset.Distance).ThenBy(offset => offset.Y).ThenBy(offset => offset.X)
             .ToArray();
     }
@@ -47,7 +47,7 @@ public sealed partial class WorldEngine
             return 0.2 + value % 601 / 1000d;
         }
 
-        var agent = person.Agent.Value with
+        var agent = person.Agent with
         {
             Initialized = true,
             NextThinkTick = Current.Tick,
@@ -140,7 +140,7 @@ public sealed partial class WorldEngine
         if (person.Profession is Profession.Trader or Profession.Messenger)
         {
             var knowsForeignTown = false;
-            foreach (var fact in person.Agent.Value.Memory)
+            foreach (var fact in person.Agent.Memory)
                 if (fact.Kind == AgentFactKind.SettlementLocation && fact.Value != person.NationId
                                                                   && Current.Tick - fact.ObservedTick < 1200)
                 {
@@ -177,16 +177,16 @@ public sealed partial class WorldEngine
             return;
         var unloaded = InventoryTransfer.Unload(person.Inventory, home.Resources,
             WaterReserve(person), TravelReserve(person), person.Profession);
-        var agent = person.Agent.Value;
+        var agent = person.Agent;
         if (agent.Goal.Kind == AgentGoalKind.ReturnHome && agent.DestinationSettlementId == 0 &&
             agent.MissionOriginSettlementId != 0)
             agent = agent with { MissionOriginSettlementId = 0 };
         if (unloaded.Inventory != person.Inventory || person.TravelMode != TravelMode.Foot ||
-            !ReferenceEquals(agent, person.Agent.Value))
+            !ReferenceEquals(agent, person.Agent))
         {
             person.Inventory = unloaded.Inventory;
             person.TravelMode = TravelMode.Foot;
-            person.Agent.Replace(agent);
+            person.Agent = agent;
         }
 
         home.Resources = unloaded.Warehouse;
@@ -301,18 +301,20 @@ public sealed partial class WorldEngine
     private void DeferGoalReview(ResidentCursor person, int? interval = null)
     {
         var next = Current.Tick + (interval ?? GoalReviewInterval(person));
-        person.Agent.Replace(person.Agent.Value with
+        person.Agent = person.Agent with
         {
-            Goal = person.Agent.Goal with { ReviewTick = next }, NextThinkTick = next,
-        });
+            Goal = person.Agent.Goal with { ReviewTick = next },
+            NextThinkTick = next,
+        };
     }
 
     private void ChooseAgentGoal(ResidentCursor person, SettlementCursor home, bool interrupted)
     {
-        var agent = person.Agent;
         if (person.Profession == Profession.Miner && Distance(person.X, person.Y, home.X, home.Y) <= 1)
         {
-            agent.MaterialPriority = home.Resources.Ore < LocalDevelopmentReserve(home).Ore
+            person.Agent = person.Agent with
+            {
+                MaterialPriority = home.Resources.Ore < LocalDevelopmentReserve(home).Ore
                 ? ResourceKind.Ore
                 : HasResearch(home.Id, Advancement.Industry) && home.Resources.Coal < 8
                     ? ResourceKind.Coal
@@ -324,15 +326,16 @@ public sealed partial class WorldEngine
                                 ? ResourceKind.Ore
                                 : home.Resources.Stone < 30
                                     ? ResourceKind.Stone
-                                    : null;
+                                    : null
+            };
         }
 
-        var personality = agent.Personality;
+        var personality = person.Agent.Personality;
         var choices = _goalChoices;
         choices.Clear();
-        var foodFact = LatestAgentFact(agent.Memory, AgentFactKind.FoodSupply, home.Id);
+        var foodFact = LatestAgentFact(person.Agent.Memory, AgentFactKind.FoodSupply, home.Id);
         AgentFact? dangerFact = null;
-        foreach (var fact in agent.Memory)
+        foreach (var fact in person.Agent.Memory)
             if (fact.Kind == AgentFactKind.Danger && fact.Value > 0 && fact.ReliabilityAt(Current.Tick) > 0.25
                 && Current.Tick - fact.ObservedTick < 24 && Distance(person.X, person.Y, fact.X, fact.Y) <= 5
                 && (dangerFact is null || fact.ObservedTick > dangerFact.ObservedTick))
@@ -350,7 +353,7 @@ public sealed partial class WorldEngine
             }
         }
 
-        if (choices.Count == 0 && !interrupted && agent.Goal.Kind == AgentGoalKind.Rest
+        if (choices.Count == 0 && !interrupted && person.Agent.Goal.Kind == AgentGoalKind.Rest
             && RecoveryGoalContinues(person) && person.Hunger < 60 && person.Thirst < 60)
         {
             DeferGoalReview(person);
@@ -368,47 +371,47 @@ public sealed partial class WorldEngine
 
         if (choices.Count == 0 && !interrupted && (
                 ProductiveGoalContinues(person, home)
-                || (agent.Goal.Kind == AgentGoalKind.Rest && RecoveryGoalContinues(person)
+                || (person.Agent.Goal.Kind == AgentGoalKind.Rest && RecoveryGoalContinues(person)
                                                           && person.Hunger < 60 && person.Thirst < 60)
-                || (agent.Goal.Kind == AgentGoalKind.ReturnHome && Distance(person.X, person.Y, home.X, home.Y) > 1
-                                                                && Current.Tick < agent.Goal.StartedTick + 240 &&
-                                                                Current.Tick >= agent.Goal.NavigationRetryTick
+                || (person.Agent.Goal.Kind == AgentGoalKind.ReturnHome && Distance(person.X, person.Y, home.X, home.Y) > 1
+                                                                && Current.Tick < person.Agent.Goal.StartedTick + 240 &&
+                                                                Current.Tick >= person.Agent.Goal.NavigationRetryTick
                                                                 && person.Hunger < 60 && person.Thirst < 60)))
         {
             DeferGoalReview(person);
             return;
         }
 
-        if (agent.Goal.Kind is AgentGoalKind.ClaimLand or AgentGoalKind.FetchWater or AgentGoalKind.Hunt
+        if (person.Agent.Goal.Kind is AgentGoalKind.ClaimLand or AgentGoalKind.FetchWater or AgentGoalKind.Hunt
                 or AgentGoalKind.Fish
-            && choices.Count == 0 && Current.Tick - agent.Goal.StartedTick < 48 && person.Hunger < 20 &&
+            && choices.Count == 0 && Current.Tick - person.Agent.Goal.StartedTick < 48 && person.Hunger < 20 &&
             person.Thirst < 60
-            && agent.Fatigue < 60 && Current.Tick >= agent.Goal.NavigationRetryTick
-            && (agent.Goal.Kind is not (AgentGoalKind.Hunt or AgentGoalKind.Fish) || WildlifeGoalProductive(person))
-            && (agent.Goal.Kind != AgentGoalKind.ClaimLand ||
-                CanClaimTile(home, Index(agent.Goal.TargetX, agent.Goal.TargetY), person.Race))
-            && (agent.Goal.Kind != AgentGoalKind.FetchWater ||
-                (agent.Goal.TargetEntityId > 0 && agent.Goal.TargetEntityId <= Current.Tiles.Count &&
-                 GetDailyWaterCapacity((agent.Goal.TargetEntityId - 1) % Current.Width,
-                     (agent.Goal.TargetEntityId - 1) / Current.Width) >= .1))
+            && person.Agent.Fatigue < 60 && Current.Tick >= person.Agent.Goal.NavigationRetryTick
+            && (person.Agent.Goal.Kind is not (AgentGoalKind.Hunt or AgentGoalKind.Fish) || WildlifeGoalProductive(person))
+            && (person.Agent.Goal.Kind != AgentGoalKind.ClaimLand ||
+                CanClaimTile(home, Index(person.Agent.Goal.TargetX, person.Agent.Goal.TargetY), person.Race))
+            && (person.Agent.Goal.Kind != AgentGoalKind.FetchWater ||
+                (person.Agent.Goal.TargetEntityId > 0 && person.Agent.Goal.TargetEntityId <= Current.Tiles.Count &&
+                 GetDailyWaterCapacity((person.Agent.Goal.TargetEntityId - 1) % Current.Width,
+                     (person.Agent.Goal.TargetEntityId - 1) / Current.Width) >= .1))
             && person.Inventory.Food < TravelReserve(person) + 2
-            && (agent.Goal.Kind != AgentGoalKind.FetchWater || person.Inventory.Water < WaterCollectionTarget(person)))
+            && (person.Agent.Goal.Kind != AgentGoalKind.FetchWater || person.Inventory.Water < WaterCollectionTarget(person)))
         {
             DeferGoalReview(person);
             return;
         }
 
-        if (agent.Goal.Kind == AgentGoalKind.Migrate && choices.Count == 0 &&
-            Current.Tick - agent.Goal.StartedTick < 360
+        if (person.Agent.Goal.Kind == AgentGoalKind.Migrate && choices.Count == 0 &&
+            Current.Tick - person.Agent.Goal.StartedTick < 360
             && person.Hunger < 20 && person.Thirst < 60)
         {
             DeferGoalReview(person);
             return;
         }
 
-        if (agent.Goal.Kind == AgentGoalKind.Work && choices.Count == 0 && person.Hunger < 65 && agent.Fatigue < 60
+        if (person.Agent.Goal.Kind == AgentGoalKind.Work && choices.Count == 0 && person.Hunger < 65 && person.Agent.Fatigue < 60
             && (person.Thirst < 40 || person.Inventory.Water >= .3)
-            && FindBuilding(agent.Goal.TargetEntityId) is { } factory && factory.SettlementId == home.Id
+            && FindBuilding(person.Agent.Goal.TargetEntityId) is { } factory && factory.SettlementId == home.Id
             && ProductionRules.For(factory.Kind) is { } recipe && CanProduce(factory, person, recipe)
             && HasProductionInputs(person.Inventory, recipe))
         {
@@ -416,17 +419,17 @@ public sealed partial class WorldEngine
             return;
         }
 
-        if (agent.Goal.Kind == AgentGoalKind.Explore && choices.Count == 0 && person.Hunger < 65 && agent.Fatigue < 60
+        if (person.Agent.Goal.Kind == AgentGoalKind.Explore && choices.Count == 0 && person.Hunger < 65 && person.Agent.Fatigue < 60
             && (person.Thirst < 40 || person.Inventory.Water >= .3)
-            && Distance(person.X, person.Y, agent.Goal.TargetX, agent.Goal.TargetY) > 1 &&
-            Current.Tick - agent.Goal.StartedTick < 48)
+            && Distance(person.X, person.Y, person.Agent.Goal.TargetX, person.Agent.Goal.TargetY) > 1 &&
+            Current.Tick - person.Agent.Goal.StartedTick < 48)
         {
             DeferGoalReview(person);
             return;
         }
 
-        var activeMission = agent.DestinationSettlementId != 0 && Current.Tick - agent.MissionStartedTick < 360
-                                                               && agent.Goal.Kind is AgentGoalKind.DeliverMessage
+        var activeMission = person.Agent.DestinationSettlementId != 0 && Current.Tick - person.Agent.MissionStartedTick < 360
+                                                               && person.Agent.Goal.Kind is AgentGoalKind.DeliverMessage
                                                                    or AgentGoalKind.Trade
                                                                    or AgentGoalKind.Petition;
         if (activeMission && choices.Count == 0 && !(person.Hunger > 60 && person.Inventory.Food < 0.05)
@@ -437,7 +440,7 @@ public sealed partial class WorldEngine
             return;
         }
 
-        if (agent.Goal.Kind == AgentGoalKind.ReturnHome && agent.MissionOriginSettlementId != 0
+        if (person.Agent.Goal.Kind == AgentGoalKind.ReturnHome && person.Agent.MissionOriginSettlementId != 0
                                                         && Distance(person.X, person.Y, home.X, home.Y) > 1 &&
                                                         choices.Count == 0)
         {
@@ -479,17 +482,17 @@ public sealed partial class WorldEngine
                 "背包已有产物，亲自运回家园入库", null, home.Id));
         }
 
-        if (agent.MissionOriginSettlementId != 0 && agent.DestinationSettlementId == 0
+        if (person.Agent.MissionOriginSettlementId != 0 && person.Agent.DestinationSettlementId == 0
                                                  && Distance(person.X, person.Y, home.X, home.Y) > 1)
         {
             choices.Add(new GoalChoice(AgentGoalKind.ReturnHome, home.X, home.Y, 70,
                 "递送已结束或中止，带着剩余物资亲自返乡", null, home.Id));
         }
 
-        if (agent.Fatigue > 35)
+        if (person.Agent.Fatigue > 35)
         {
-            choices.Add(new GoalChoice(AgentGoalKind.Rest, home.X, home.Y, agent.Fatigue * 1.15,
-                $"疲劳达到 {agent.Fatigue:0}，回家休息", null, home.Id));
+            choices.Add(new GoalChoice(AgentGoalKind.Rest, home.X, home.Y, person.Agent.Fatigue * 1.15,
+                $"疲劳达到 {person.Agent.Fatigue:0}，回家休息", null, home.Id));
         }
 
         var depositSite = LocalMaterialsNeeded(person, home) ? VisibleDepositSite(person) : -1;
@@ -577,15 +580,15 @@ public sealed partial class WorldEngine
                              && ((Distance(person.X, person.Y, home.X, home.Y) <= 1 &&
                                   (person.Profession == Profession.Lumberjack
                                       ? home.Resources.Wood < 60
-                                      : agent.MaterialPriority is not null ||
+                                      : person.Agent.MaterialPriority is not null ||
                                         (HasResearch(home.Id, Advancement.Industry) && home.Resources.Coal < 8) ||
                                         (HasResearch(home.Id, Advancement.Electrification) && home.Resources.Oil < 8)
                                         || (HasResearch(home.Id, Advancement.AdvancedComputing) &&
                                             home.Resources.RareEarth < 8))) ||
-                                 agent.Goal.Kind == AgentGoalKind.Explore))
+                                 person.Agent.Goal.Kind == AgentGoalKind.Explore))
         {
             var offsets = new (int X, int Y)[] { (6, 0), (4, 4), (0, 6), (-4, 4), (-6, 0), (-4, -4), (0, -6), (4, -4) };
-            var heading = offsets[agent.ExplorationHeading % offsets.Length];
+            var heading = offsets[person.Agent.ExplorationHeading % offsets.Length];
             var site = Circle(person.X, person.Y, 6)
                 .Where(i => Current.Tiles[i].IsWalkable && Current.Tiles[i].FireTicks == 0)
                 .OrderBy(i =>
@@ -600,16 +603,16 @@ public sealed partial class WorldEngine
             }
             else
             {
-                agent.ExplorationHeading = (agent.ExplorationHeading + 3) % 8;
+                person.Agent = person.Agent with { ExplorationHeading = (person.Agent.ExplorationHeading + 3) % 8 };
                 choices.Add(new GoalChoice(AgentGoalKind.ReturnHome, home.X, home.Y, 70, "勘察距离已达口粮范围，先返回家园补给", null,
                     home.Id));
             }
         }
 
-        if (agent.SocialNeed > 35 && _citizens[home.Id].Count > 1)
+        if (person.Agent.SocialNeed > 35 && _citizens[home.Id].Count > 1)
         {
             choices.Add(new GoalChoice(AgentGoalKind.Socialize, home.X, home.Y,
-                agent.SocialNeed * (0.6 + personality.Sociability * 0.5), "社交需求较高，去聚落与人交流", null, home.Id));
+                person.Agent.SocialNeed * (0.6 + personality.Sociability * 0.5), "社交需求较高，去聚落与人交流", null, home.Id));
         }
 
         if (person.Age >= 14 && person.ArmyId == 0 && workTarget is { } useful
@@ -708,9 +711,8 @@ public sealed partial class WorldEngine
     private void CommitAgentChoice(ResidentCursor person, SettlementCursor home, List<GoalChoice> choices,
         bool interrupted, bool activeMission)
     {
-        var agent = person.Agent;
-        if (Current.Tick < agent.Goal.NavigationRetryTick)
-            choices.RemoveAll(c => Index(c.X, c.Y) == agent.Goal.NavigationTarget);
+        if (Current.Tick < person.Agent.Goal.NavigationRetryTick)
+            choices.RemoveAll(c => Index(c.X, c.Y) == person.Agent.Goal.NavigationTarget);
         choices.Add(new GoalChoice(AgentGoalKind.ReturnHome, home.X, home.Y, 5, "当前看不到合适资源，回到已知家园", null, home.Id));
         var selected = choices[0];
         for (var i = 1; i < choices.Count; i++)
@@ -721,24 +723,24 @@ public sealed partial class WorldEngine
                 selected = candidate;
         }
 
-        var previous = agent.Goal;
+        var previous = person.Agent.Goal;
         var continuingMission = previous.Kind == selected.Kind && previous.TargetSettlementId == selected.SettlementId
                                                                && previous.TargetEntityId == selected.EntityId &&
                                                                previous.TargetX == selected.X &&
                                                                previous.TargetY == selected.Y;
         if (continuingMission)
         {
-            agent.Replace(agent.Value with
+            person.Agent = person.Agent with
             {
                 Goal = (previous.NavigationRetryTick > 0 && Current.Tick >= previous.NavigationRetryTick
                         ? previous.ResetNavigation()
                         : previous) with
-                    {
-                        ReviewTick = Current.Tick + GoalReviewInterval(person),
-                        PlayerDirected = previous.PlayerDirected && !interrupted,
-                    },
+                {
+                    ReviewTick = Current.Tick + GoalReviewInterval(person),
+                    PlayerDirected = previous.PlayerDirected && !interrupted,
+                },
                 NextThinkTick = Current.Tick + GoalReviewInterval(person),
-            });
+            };
             return;
         }
 
@@ -759,7 +761,7 @@ public sealed partial class WorldEngine
             ReviewTick = Current.Tick + GoalReviewInterval(person),
             Reason = reason,
         };
-        var decisions = agent.Value.Decisions.Add(new AgentDecision
+        var decisions = person.Agent.Decisions.Add(new AgentDecision
         {
             Tick = Current.Tick,
             Goal = selected.Kind,
@@ -772,17 +774,22 @@ public sealed partial class WorldEngine
         if (decisions.Count > 6)
             decisions = decisions.RemoveAt(0);
         ChangeWorkReservation(previous, nextGoal);
-        agent.Replace(agent.Value with
+        person.Agent = person.Agent with
         {
-            Goal = nextGoal, NextThinkTick = Current.Tick + GoalReviewInterval(person), Decisions = decisions,
-        });
+            Goal = nextGoal,
+            NextThinkTick = Current.Tick + GoalReviewInterval(person),
+            Decisions = decisions,
+        };
         if (selected.Kind is AgentGoalKind.DeliverMessage or AgentGoalKind.Trade or AgentGoalKind.Petition)
             BeginAgentMission(person, home);
-        else if (agent.DestinationSettlementId != 0)
+        else if (person.Agent.DestinationSettlementId != 0)
         {
-            agent.DestinationSettlementId = 0;
-            agent.CarriedMessages.Clear();
-            agent.MissionRetryTick = Current.Tick + 120;
+            person.Agent = person.Agent with
+            {
+                DestinationSettlementId = 0,
+                CarriedMessages = [],
+                MissionRetryTick = Current.Tick + 120,
+            };
         }
     }
 
@@ -869,7 +876,7 @@ public sealed partial class WorldEngine
             var y = index / Current.Width;
             foreach (var (dx, dy) in Directions)
                 if (InBounds(x + dx, y + dy) && Current.Tiles[Index(x + dx, y + dy)] is
-                        { Terrain: TerrainType.Mountain, ResourceAmount: > 0 } mountain)
+                    { Terrain: TerrainType.Mountain, ResourceAmount: > 0 } mountain)
                 {
                     oreAvailable = true;
                     best = Math.Max(best,
@@ -1020,21 +1027,22 @@ public sealed partial class WorldEngine
                     var reviewInterval = GoalReviewInterval(person);
                     var next = Math.Min(person.Agent.NextThinkTick,
                         Current.Tick + (reviewInterval < 24 ? reviewInterval : 4));
-                    var observed = person.Agent.Value.Remember(MakeAgentFact(person, AgentFactKind.FoodSupply, home.Id,
+                    var observed = person.Agent.Remember(MakeAgentFact(person, AgentFactKind.FoodSupply, home.Id,
                         home.X, home.Y, home.Resources.Food, $"实地查看粮仓：{home.Resources.Food:0.0} 份粮食"), home.Id);
-                    person.Agent.Replace(observed with
+                    person.Agent = observed with
                     {
-                        Goal = goal with { ReviewTick = next }, NextThinkTick = next,
-                    });
+                        Goal = goal with { ReviewTick = next },
+                        NextThinkTick = next,
+                    };
                 }
 
                 break;
             case AgentGoalKind.Gather:
-                person.Agent.Goal = goal;
+                person.Agent = person.Agent.WithGoal(goal);
                 GatherActualResources(person, Profession.Farmer);
                 break;
             case AgentGoalKind.Work:
-                person.Agent.Goal = goal;
+                person.Agent = person.Agent.WithGoal(goal);
                 if (goal.TargetEntityId == 0 &&
                     person.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner)
                     GatherActualResources(person, person.Profession);
@@ -1043,40 +1051,46 @@ public sealed partial class WorldEngine
                 else if (person.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner)
                     GatherActualResources(person, person.Profession);
                 else
-                    person.Agent.NextThinkTick = Current.Tick + 1;
+                    person.Agent = person.Agent with { NextThinkTick = Current.Tick + 1 };
                 break;
             case AgentGoalKind.Rest:
                 if (person.Agent.Fatigue == 0 && person.Activity == ResidentActivity.Resting)
                     break;
-                person.Agent.Replace(person.Agent.Value with
+                person.Agent = person.Agent with
                 {
-                    Goal = goal, Fatigue = Math.Max(0, person.Agent.Fatigue - 2.2 * HomeRestMultiplier(person)),
-                });
+                    Goal = goal,
+                    Fatigue = Math.Max(0, person.Agent.Fatigue - 2.2 * HomeRestMultiplier(person)),
+                };
                 person.Activity = ResidentActivity.Resting;
                 break;
             case AgentGoalKind.Flee:
-                person.Agent.Replace(person.Agent.Value with { Goal = goal, NextThinkTick = Current.Tick + 1 });
+                person.Agent = person.Agent with
+                {
+                    Goal = goal,
+                    NextThinkTick = Current.Tick + 1
+                };
                 person.Activity = ResidentActivity.Fleeing;
                 break;
             case AgentGoalKind.Socialize:
                 if (person.Agent.Fatigue == 0 && person.Activity == ResidentActivity.Talking)
                     break;
-                person.Agent.Replace(person.Agent.Value with
+                person.Agent = person.Agent with
                 {
-                    Goal = goal, Fatigue = Math.Max(0, person.Agent.Fatigue - .4),
-                });
+                    Goal = goal,
+                    Fatigue = Math.Max(0, person.Agent.Fatigue - .4),
+                };
                 person.Activity = ResidentActivity.Talking;
                 break;
             case AgentGoalKind.Study:
             case AgentGoalKind.TrainMagic:
-                person.Agent.Goal = goal;
+                person.Agent = person.Agent.WithGoal(goal);
                 if (TryWorkAtBuilding(person))
                     person.Activity = ResidentActivity.Studying;
                 else
-                    person.Agent.NextThinkTick = Current.Tick + 1;
+                    person.Agent = person.Agent with { NextThinkTick = Current.Tick + 1 };
                 break;
             case AgentGoalKind.ReturnHome:
-                person.Agent.Goal = goal;
+                person.Agent = person.Agent.WithGoal(goal);
                 TransferPersonalProduction(person, home);
                 FinishFoundation(person, home);
                 var fatigue = Math.Max(0, person.Agent.Fatigue - .8 * HomeRestMultiplier(person));
@@ -1086,7 +1100,11 @@ public sealed partial class WorldEngine
                 if (person.Activity != ResidentActivity.Resting || fatigue != person.Agent.Fatigue
                                                                 || nextReview != person.Agent.NextThinkTick)
                 {
-                    person.Agent.Replace(person.Agent.Value with { Fatigue = fatigue, NextThinkTick = nextReview });
+                    person.Agent = person.Agent with
+                    {
+                        Fatigue = fatigue,
+                        NextThinkTick = nextReview
+                    };
                     person.Activity = ResidentActivity.Resting;
                 }
 
@@ -1095,37 +1113,37 @@ public sealed partial class WorldEngine
                 // 完成一段探索后保持向外前进，补给或受阻时才转向，避免反复绕同一小圈。
                 var turn = Distance(person.X, person.Y, goal.TargetX, goal.TargetY) == 0 &&
                            goal.TargetX == person.FromX && goal.TargetY == person.FromY;
-                person.Agent.Replace(person.Agent.Value with
+                person.Agent = person.Agent with
                 {
                     Goal = goal,
                     ExplorationHeading =
                     turn ? (person.Agent.ExplorationHeading + 1) % 8 : person.Agent.ExplorationHeading,
                     NextThinkTick = Current.Tick + 1,
-                });
+                };
                 person.Activity = ResidentActivity.Working;
                 break;
             case AgentGoalKind.ClaimLand:
-                person.Agent.Goal = goal;
+                person.Agent = person.Agent.WithGoal(goal);
                 person.Activity = ResidentActivity.Working;
                 TryClaimLand(person);
                 break;
             case AgentGoalKind.FetchWater:
-                person.Agent.Goal = goal;
+                person.Agent = person.Agent.WithGoal(goal);
                 TryFetchWater(person);
                 break;
             case AgentGoalKind.Hunt:
             case AgentGoalKind.Fish:
-                person.Agent.Goal = goal;
+                person.Agent = person.Agent.WithGoal(goal);
                 if (!IsWorkDay(person))
                     break;
                 TryHarvestWildlife(person);
                 break;
             case AgentGoalKind.ExtinguishFire:
-                person.Agent.Goal = goal;
+                person.Agent = person.Agent.WithGoal(goal);
                 TryExtinguishFire(person);
                 break;
             default:
-                person.Agent.Goal = goal;
+                person.Agent = person.Agent.WithGoal(goal);
                 break;
         }
     }
@@ -1162,7 +1180,7 @@ public sealed partial class WorldEngine
         var siteYield = tile.FireTicks > 0 ? 0 : ResourceSiteYield(index, profession);
         if (siteYield <= 0)
         {
-            person.Agent.NextThinkTick = Current.Tick + 1;
+            person.Agent = person.Agent with { NextThinkTick = Current.Tick + 1 };
             return;
         }
 
@@ -1199,7 +1217,7 @@ public sealed partial class WorldEngine
                 foreach (var (dx, dy) in Directions)
                     if (InBounds(person.X + dx, person.Y + dy)
                         && Current.Tiles[Index(person.X + dx, person.Y + dy)] is
-                            { Terrain: TerrainType.Mountain, ResourceAmount: > 0 } mountain)
+                        { Terrain: TerrainType.Mountain, ResourceAmount: > 0 } mountain)
                     {
                         tile = mountain;
                         break;
@@ -1216,21 +1234,23 @@ public sealed partial class WorldEngine
             var oreRatio = minerals.OreYield / Math.Max(.001, minerals.StoneYield + minerals.OreYield);
             inventory = inventory with
             {
-                Stone = inventory.Stone + amount * (1 - oreRatio), Ore = inventory.Ore + amount * oreRatio,
+                Stone = inventory.Stone + amount * (1 - oreRatio),
+                Ore = inventory.Ore + amount * oreRatio,
             };
         }
 
-        var agent = person.Agent.Value;
+        var agent = person.Agent;
         var nextThink = profession != Profession.Miner && !agent.Goal.PlayerDirected
                                                        && NaturalPlantHarvestEfficiency(tile,
                                                            profession == Profession.Lumberjack) < .25
             ? Current.Tick + 1
             : agent.NextThinkTick;
         person.Inventory = inventory;
-        person.Agent.Replace(agent with
+        person.Agent = agent with
         {
-            Fatigue = Math.Min(100, agent.Fatigue + 0.30 * WorkInterval(person)), NextThinkTick = nextThink,
-        });
+            Fatigue = Math.Min(100, agent.Fatigue + 0.30 * WorkInterval(person)),
+            NextThinkTick = nextThink,
+        };
         person.Activity = ResidentActivity.Working;
     }
 
@@ -1266,14 +1286,16 @@ public sealed partial class WorldEngine
             PlanVisibleCrossing(person, targetX, targetY);
             var blocked = navigation with
             {
-                NavigationRetryTick = Current.Tick + 24, Reason = "可见范围内没有可用路线，等待通道或重新选择任务",
+                NavigationRetryTick = Current.Tick + 24,
+                Reason = "可见范围内没有可用路线，等待通道或重新选择任务",
             };
             if (!blocked.PlayerDirected)
                 blocked = blocked with { ReviewTick = Current.Tick };
-            person.Agent.Replace(person.Agent.Value with
+            person.Agent = person.Agent with
             {
-                Goal = blocked, NextThinkTick = blocked.PlayerDirected ? person.Agent.NextThinkTick : Current.Tick,
-            });
+                Goal = blocked,
+                NextThinkTick = blocked.PlayerDirected ? person.Agent.NextThinkTick : Current.Tick,
+            };
 
             return false;
         }
@@ -1285,7 +1307,9 @@ public sealed partial class WorldEngine
         var goal = remaining < navigation.NavigationBestDistance
             ? navigation with
             {
-                NavigationBestDistance = remaining, NavigationWithoutProgress = 0, NavigationVisited = [],
+                NavigationBestDistance = remaining,
+                NavigationWithoutProgress = 0,
+                NavigationVisited = [],
             }
             : navigation with
             {
@@ -1294,7 +1318,7 @@ public sealed partial class WorldEngine
                     ? navigation.NavigationVisited
                     : navigation.NavigationVisited.Add(Index(person.X, person.Y)),
             };
-        var agent = person.Agent.Value.RememberRouteTile(Index(person.X, person.Y)) with
+        var agent = person.Agent.RememberRouteTile(Index(person.X, person.Y)) with
         {
             Goal = goal,
             Fatigue = walkingActivity.HasValue ? Math.Min(100, person.Agent.Fatigue + .15) : person.Agent.Fatigue,
@@ -1307,7 +1331,7 @@ public sealed partial class WorldEngine
         person.MoveDurationTicks = duration;
         if (walkingActivity.HasValue)
             person.Activity = walkingActivity.Value;
-        person.Agent.Replace(agent);
+        person.Agent = agent;
 
         return true;
     }
@@ -1401,7 +1425,7 @@ public sealed partial class WorldEngine
         Span<double> entryCosts = stackalloc double[diameter * diameter];
         Span<double> pathCosts = stackalloc double[diameter * diameter];
         Span<int> routeParents = stackalloc int[diameter * diameter];
-        foreach (var index in person.Agent.Value.FamiliarTiles)
+        foreach (var index in person.Agent.FamiliarTiles)
         {
             var localX = index % width - originX + 6;
             var localY = index / width - originY + 6;

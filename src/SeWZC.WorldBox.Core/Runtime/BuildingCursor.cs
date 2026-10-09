@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace SeWZC.WorldBox.Core.Runtime;
 
 /// <summary>Building 的引擎内定位引用；每次写入提交新的不可变状态。</summary>
@@ -208,13 +210,14 @@ internal sealed class BuildingCursor(Building value) : StateCursor<Building>(val
         }
     }
 
-    public SnapshotListCursor<int> Workers
+    public ImmutableList<int> Workers
     {
-        get => field ??= new SnapshotListCursor<int>(Value.Workers, value =>
+        get => Value.Workers;
+        set
         {
             if (!ReferenceEquals(Value.Workers, value))
                 ReplaceChanged(Value with { Workers = value });
-        });
+        }
     }
 
     public long LastWorkedTick

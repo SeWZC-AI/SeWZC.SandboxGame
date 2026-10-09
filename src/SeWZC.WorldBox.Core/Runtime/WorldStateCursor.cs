@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace SeWZC.WorldBox.Core.Runtime;
 
 /// <summary>WorldState 的引擎内定位引用；日内标量及集合更新在快照边界合并提交。</summary>
@@ -6,7 +8,6 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
     private EntityListCursor<Resident, ResidentCursor>? _archivedResidents;
     private EntityListCursor<Resident, ResidentCursor>? _residents;
     private EntityListCursor<Settlement, SettlementCursor>? _settlements;
-    private SocietyStateCursor? _society;
     private EntityListCursor<Tile, TileCursor>? _tiles;
     public WorldStateCursor(WorldState value) : base(value) { }
 
@@ -128,23 +129,24 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
         }, value => new ArmyCursor(value));
     }
 
-    public EntityListCursor<DiplomaticRelation, DiplomaticRelationCursor> Diplomacies
+    public ImmutableVector<DiplomaticRelation> Diplomacies
     {
-        get => field ??= new EntityListCursor<DiplomaticRelation, DiplomaticRelationCursor>(Value.Diplomacies,
-            value =>
-            {
-                if (!ReferenceEquals(Value.Diplomacies, value))
-                    ReplaceChanged(Value with { Diplomacies = value });
-            }, value => new DiplomaticRelationCursor(value));
+        get => Value.Diplomacies;
+        set
+        {
+            if (!ReferenceEquals(Value.Diplomacies, value))
+                ReplaceChanged(Value with { Diplomacies = value });
+        }
     }
 
-    public EntityListCursor<WorldEvent, WorldEventCursor> Events
+    public ImmutableVector<WorldEvent> Events
     {
-        get => field ??= new EntityListCursor<WorldEvent, WorldEventCursor>(Value.Events, value =>
+        get => Value.Events;
+        set
         {
             if (!ReferenceEquals(Value.Events, value))
                 ReplaceChanged(Value with { Events = value });
-        }, value => new WorldEventCursor(value));
+        }
     }
 
     public bool NaturalDisasters
@@ -166,40 +168,40 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
         get => Value.Rules;
     }
 
-    public EntityListCursor<LocalConflict, LocalConflictCursor> Conflicts
+    public ImmutableVector<LocalConflict> Conflicts
     {
-        get => field ??= new EntityListCursor<LocalConflict, LocalConflictCursor>(Value.Conflicts, value =>
+        get => Value.Conflicts;
+        set
         {
             if (!ReferenceEquals(Value.Conflicts, value))
                 ReplaceChanged(Value with { Conflicts = value });
-        }, value => new LocalConflictCursor(value));
-    }
-
-    public SocietyStateCursor Society
-    {
-        get
-        {
-            if (_society is null)
-            {
-                _society = new SocietyStateCursor(Value.Society);
-                _society.Bind(value =>
-                {
-                    if (!ReferenceEquals(Value.Society, value))
-                        ReplaceChanged(Value with { Society = value });
-                });
-            }
-
-            return _society;
         }
     }
 
-    public SnapshotListCursor<PendingMessage> PendingMessages
+    public SocietyState Society
     {
-        get => field ??= new SnapshotListCursor<PendingMessage>(Value.PendingMessages, value =>
+        get => Value.Society;
+        set
+        {
+            if (!ReferenceEquals(Value.Society, value))
+                ReplaceChanged(Value with { Society = value });
+        }
+    }
+
+    public EntityListCursor<Building, BuildingCursor> Buildings
+    {
+        get => field ??= new EntityListCursor<Building, BuildingCursor>(Society.Buildings,
+            value => Society = Society with { Buildings = value }, value => new BuildingCursor(value));
+    }
+
+    public ImmutableList<PendingMessage> PendingMessages
+    {
+        get => Value.PendingMessages;
+        set
         {
             if (!ReferenceEquals(Value.PendingMessages, value))
                 ReplaceChanged(Value with { PendingMessages = value });
-        });
+        }
     }
 
     public EntityListCursor<Resident, ResidentCursor> ArchivedResidents
@@ -221,9 +223,4 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
         return new WorldStateCursor(value);
     }
 
-    protected override void OnReplace(in WorldState before, in WorldState after)
-    {
-        if (_society is not null && !ReferenceEquals(_society.Value, after.Society))
-            _society.Synchronize(after.Society);
-    }
 }

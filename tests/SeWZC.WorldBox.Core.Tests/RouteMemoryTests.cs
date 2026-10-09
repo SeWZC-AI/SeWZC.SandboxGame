@@ -41,7 +41,7 @@ public sealed class RouteMemoryTests
     public void Saving_and_observing_preserve_familiar_places()
     {
         var fixture = new WorldFixture();
-        fixture.Resident.Agent.Replace(fixture.Resident.Agent.Value with { FamiliarTiles = [528, 529] });
+        fixture.Resident.Agent = fixture.Resident.Agent with { FamiliarTiles = [528, 529] };
         var before = fixture.Engine.State;
 
         Assert.Contains(fixture.Engine.GetResidentEffects(fixture.ResidentId), effect => effect.Name == "路线习惯");

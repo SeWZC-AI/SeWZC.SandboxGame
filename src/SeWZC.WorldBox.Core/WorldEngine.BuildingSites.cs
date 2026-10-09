@@ -157,7 +157,7 @@ public sealed partial class WorldEngine
             score += tile.Terrain is TerrainType.Mountain or TerrainType.Hills ? 5 : 0;
         if (kind == BuildingKind.ArcaneSanctum)
             score += TerrainRules.For(tile.Terrain).ManaRate * 4;
-        foreach (var building in Current.Society.Buildings)
+        foreach (var building in Current.Buildings)
         {
             var distance = Distance(x, y, building.X, building.Y);
             if (distance <= 2)
@@ -202,7 +202,7 @@ public sealed partial class WorldEngine
     public int GetHousingCapacity(int settlementId)
     {
         var town = RequireTown(settlementId);
-        return Math.Min(20_000, town.Housing + Current.Society.Buildings
+        return Math.Min(20_000, town.Housing + Current.Buildings
             .Where(b => b.SettlementId == settlementId && b.Kind == BuildingKind.Housing && IsFacilityOperating(b))
             .Sum(b => b.Level * 20));
     }
@@ -211,7 +211,7 @@ public sealed partial class WorldEngine
     {
         IEnumerable<BuildingCursor>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(settlementId)
-            : Current.Society.Buildings;
+            : Current.Buildings;
         var bonus = 1d;
         if (buildings is null)
             return bonus;
@@ -229,7 +229,7 @@ public sealed partial class WorldEngine
     public double BoatTravelMultiplier(int x, int y, int nationId)
     {
         var bonus = 1d;
-        foreach (var dock in Current.Society.Buildings)
+        foreach (var dock in Current.Buildings)
             if (dock.Kind == BuildingKind.Dock && IsFacilityOperating(dock) &&
                 RequireTown(dock.SettlementId).NationId == nationId
                 && Distance(x, y, dock.X, dock.Y) <= 3)

@@ -218,7 +218,7 @@ public sealed partial class WorldEngine
     /// <param name="residentId">居民 ID。</param>
     /// <param name="causeEventId">关联的前因事件 ID，0 表示未指定前因。</param>
     /// <param name="evidenceFactId">关联的信息依据 ID，0 表示未指定依据。</param>
-    private WorldEventCursor AddEvent(WorldEventKind kind, string message, int x = -1, int y = -1,
+    private WorldEvent AddEvent(WorldEventKind kind, string message, int x = -1, int y = -1,
         EventAction action = EventAction.General, int settlementId = 0, int residentId = 0, int causeEventId = 0,
         int evidenceFactId = 0)
     {
@@ -230,7 +230,7 @@ public sealed partial class WorldEngine
                 EventImportance.Major,
             _ => EventImportance.Notable,
         };
-        var entry = new WorldEventCursor(new WorldEvent
+        var entry = new WorldEvent
         {
             Id = NewId(),
             Tick = Current.Tick,
@@ -244,16 +244,16 @@ public sealed partial class WorldEngine
             ResidentId = residentId,
             CauseEventId = causeEventId,
             EvidenceFactId = evidenceFactId,
-        });
+        };
         if (InBounds(x, y))
-            entry.NationId = Current.Tiles[Index(x, y)]?.NationId ?? 0;
-        Current.Events.Add(entry);
+            entry = entry with { NationId = Current.Tiles[Index(x, y)]?.NationId ?? 0 };
+        Current.Events = Current.Events.Add(entry);
         while (Current.Events.Count > 400)
         {
             var expendable = Current.Events.FindIndex(e => e.Importance == EventImportance.Routine);
             if (expendable < 0)
                 expendable = Current.Events.FindIndex(e => e.Importance == EventImportance.Notable);
-            Current.Events.RemoveAt(Math.Max(0, expendable));
+            Current.Events = Current.Events.RemoveAt(Math.Max(0, expendable));
         }
 
         return entry;
@@ -273,11 +273,11 @@ public sealed partial class WorldEngine
             var death = AddEvent(WorldEventKind.Death,
                 $"{resident.Name}逝世：{DeathCauseName(resident.DeathCause)}，终年 {resident.Age:0.0} 岁。", resident.X,
                 resident.Y, residentId: resident.Id);
-            death.Replace(death.Value with { NationId = resident.NationId, SettlementId = resident.SettlementId });
+            death = PublishEvent(death with { NationId = resident.NationId, SettlementId = resident.SettlementId });
             RecordLife(resident, $"逝世原因：{DeathCauseName(resident.DeathCause)}，终年 {resident.Age:0.0} 岁。", death,
                 importance: EventImportance.Major);
             if (resident.History.Count > 24)
-                resident.History.RemoveAt(0);
+                resident.History = resident.History.RemoveAt(0);
             RemoveLocalWorkResident(resident);
             Current.Residents.Remove(resident);
             Current.ArchivedResidents.Add(resident);

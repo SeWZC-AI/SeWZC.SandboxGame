@@ -243,6 +243,37 @@ public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : clas
         return Create(items);
     }
 
+    /// <summary>查找第一个符合条件的对象索引；未找到时返回负一。</summary>
+    /// <param name="predicate">对象的筛选条件。</param>
+    public int FindIndex(Predicate<T> predicate)
+    {
+        ArgumentNullException.ThrowIfNull(predicate);
+        for (var index = 0; index < Count; index++)
+            if (predicate(this[index]))
+                return index;
+        return -1;
+    }
+
+    /// <summary>返回移除所有符合条件对象后的序列，保留输入及剩余对象顺序。</summary>
+    /// <param name="predicate">要移除对象的筛选条件。</param>
+    public ImmutableVector<T> RemoveAll(Predicate<T> predicate)
+    {
+        var first = FindIndex(predicate);
+        if (first < 0)
+            return this;
+        var items = new T[Count - 1];
+        for (var index = 0; index < first; index++)
+            items[index] = this[index];
+        var count = first;
+        for (var index = first + 1; index < Count; index++)
+        {
+            var item = this[index];
+            if (!predicate(item))
+                items[count++] = item;
+        }
+        return Create(items.AsSpan(0, count));
+    }
+
     /// <summary>返回空序列。</summary>
     public ImmutableVector<T> Clear()
     {

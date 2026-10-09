@@ -98,7 +98,8 @@ public sealed partial class WorldEngine
 
             if (selected >= 0)
                 occupied[new NaturalWorkPlot(selected, person.Profession)] = 1;
-            person.Agent.WorkAreaIndex = selected;
+            if (person.Agent.WorkAreaIndex != selected)
+                person.Agent = person.Agent with { WorkAreaIndex = selected };
         }
     }
 

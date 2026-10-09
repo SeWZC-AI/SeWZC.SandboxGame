@@ -22,7 +22,7 @@ internal sealed class WorldFixture
 
     internal int AddWell(int x, int y, double naturalWater)
     {
-        Engine.Current.Society.Buildings.RemoveAll(building =>
+        Engine.Current.Buildings.RemoveAll(building =>
             building.X == x && building.Y == y && building.Kind != BuildingKind.TownCenter);
         var tile = Engine.Current.Tiles[y * Engine.Current.Width + x];
         tile.Replace(tile.Value with

@@ -14,4 +14,11 @@ public sealed record CulturalContact
 
     /// <summary>最近接触该文化的模拟日序。</summary>
     public long LastContactTick { get; init; }
+
+    internal CulturalContact Observe(long tick, double sociability)
+    {
+        return tick - LastContactTick < 12
+            ? this
+            : this with { LastContactTick = tick, Exposure = Exposure + (0.5 + sociability) };
+    }
 }

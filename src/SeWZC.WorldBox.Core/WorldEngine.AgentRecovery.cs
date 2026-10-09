@@ -47,7 +47,7 @@ public sealed partial class WorldEngine
             return;
         IReadOnlyList<BuildingCursor>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(home.Id)
-            : Current.Society.Buildings;
+            : Current.Buildings;
         BuildingCursor? selected = null;
         var bestDistance = int.MaxValue;
         var reachable = 0;

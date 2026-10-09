@@ -30,8 +30,12 @@ public sealed class ResidentVitalsTests
         fixture.Resident.ApplyDay(fields);
         Assert.Equal(immutable, fixture.Resident.Value);
         fixture.Resident.X = 15;
-        fixture.Resident.Agent.Fatigue = 30;
-        Assert.Equal(immutable with { X = 15, Agent = immutable.Agent with { Fatigue = 30 } },
+        fixture.Resident.Agent = fixture.Resident.Agent with { Fatigue = 30 };
+        Assert.Equal(immutable with
+        {
+            X = 15,
+            Agent = immutable.Agent with { Fatigue = 30 }
+        },
             fixture.Engine.State.Residents[0]);
         Assert.Equal(16, original.X);
         Assert.NotEqual(30, original.Agent.Fatigue);
@@ -96,7 +100,10 @@ public sealed class ResidentVitalsTests
     {
         var before = new Resident
         {
-            Age = 20, Health = 60, SicknessTicks = 2, Inventory = new ResourceStock { Food = 1, Water = 1 },
+            Age = 20,
+            Health = 60,
+            SicknessTicks = 2,
+            Inventory = new ResourceStock { Food = 1, Water = 1 },
         };
         var rules = new WorldRules();
         var tile = new Tile();

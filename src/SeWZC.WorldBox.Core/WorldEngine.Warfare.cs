@@ -52,9 +52,8 @@ public sealed partial class WorldEngine
             SourceResidentId = witness?.Id ?? 0,
             Text = status == DiplomaticStatus.War ? "首都宣布开战，征召当地志愿者" : "首都宣布停止敌对，前线须等待消息送达",
         };
-        var military = _nations[nationId].Military;
         if (status == DiplomaticStatus.War)
-            military.Replace(military.Value with
+            _nations[nationId].Military = _nations[nationId].Military with
             {
                 CampaignEventId = eventId,
                 EnemyNationId = enemyId,
@@ -68,15 +67,15 @@ public sealed partial class WorldEngine
                 LastReportObservedTick = 0,
                 LastReportReceivedTick = 0,
                 Report = "尚未收到前线战报",
-            });
+            };
         else
-            military.RecoveryUntilTick = Math.Max(military.RecoveryUntilTick, Current.Tick + 360);
+            _nations[nationId].Military = _nations[nationId].Military with { RecoveryUntilTick = Math.Max(_nations[nationId].Military.RecoveryUntilTick, Current.Tick + 360) };
 
-        capital.PublicKnowledge.RemoveAll(f =>
+        capital.PublicKnowledge = capital.PublicKnowledge.RemoveAll(f =>
             f.SubjectId == enemyId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder);
         AddPublicFact(capital, fact);
         if (capital.PublicKnowledge.Count > 24)
-            capital.PublicKnowledge.RemoveAt(0);
+            capital.PublicKnowledge = capital.PublicKnowledge.RemoveAt(0);
         foreach (var person in Current.Residents.Where(r =>
                      r.NationId == nationId && Distance(r.X, r.Y, capital.X, capital.Y) <= 4))
             RememberAgentFact(person, fact);
@@ -118,7 +117,7 @@ public sealed partial class WorldEngine
                 capital.Resources = capital.Resources with { Food = capital.Resources.Food - provisions };
                 var waterProvisions = Math.Min(capital.Resources.Water, count * 3);
                 capital.Resources = capital.Resources with { Water = capital.Resources.Water - waterProvisions };
-                nation.Military.LastMobilizedOrderId = order.Id;
+                nation.Military = nation.Military with { LastMobilizedOrderId = order.Id };
                 var army = new ArmyCursor(new Army
                 {
                     Id = NewId(),
@@ -148,14 +147,14 @@ public sealed partial class WorldEngine
                     resident.ArmyId = army.Id;
                     if (resident.Profession is not (Profession.Ranger or Profession.Battlemage))
                         resident.Profession = Profession.Soldier;
-                    resident.Agent.Goal = new AgentGoal
+                    resident.Agent = resident.Agent.WithGoal(new AgentGoal
                     {
                         Kind = AgentGoalKind.March,
                         TargetX = capital.X,
                         TargetY = capital.Y,
                         StartedTick = Current.Tick,
                         Reason = "听到当地征召，步行前往集结点",
-                    };
+                    });
                     RememberAgentFact(resident, order);
                 }
 
@@ -165,7 +164,7 @@ public sealed partial class WorldEngine
                 army.LastEventId = recruitmentEvent.Id;
                 foreach (var recruit in recruits.Take(count))
                     RecordLife(recruit, "响应当地征召，开始" + ObjectiveName(army.Objective) + "任务。", recruitmentEvent);
-                recruitmentEvent.SecondNationId = army.TargetNationId;
+                recruitmentEvent = PublishEvent(recruitmentEvent with { SecondNationId = army.TargetNationId });
             }
         }
 
@@ -373,7 +372,8 @@ public sealed partial class WorldEngine
 
                 army.Replace(army.Value with
                 {
-                    TargetSettlementId = visibleTarget.Id, Status = "围攻既定目标 " + visibleTarget.Name,
+                    TargetSettlementId = visibleTarget.Id,
+                    Status = "围攻既定目标 " + visibleTarget.Name,
                 });
                 if (Current.Tick % 3 == 0)
                     Siege(army, visibleTarget, soldiers.Where(r => Distance(r.X, r.Y, army.X, army.Y) <= 2).ToArray());
@@ -407,13 +407,13 @@ public sealed partial class WorldEngine
             soldier.Replace(soldier.Value with
             {
                 Activity = ResidentActivity.Marching,
-                Agent = soldier.Agent.Value with
+                Agent = soldier.Agent.WithGoal(soldier.Agent.Goal with
                 {
-                    Goal = soldier.Agent.Goal with
-                    {
-                        Kind = AgentGoalKind.March, TargetX = x, TargetY = y, Reason = army.Status,
-                    },
-                },
+                    Kind = AgentGoalKind.March,
+                    TargetX = x,
+                    TargetY = y,
+                    Reason = army.Status,
+                }),
             });
         }
     }
@@ -468,7 +468,7 @@ public sealed partial class WorldEngine
         var occupationEvent = AddEvent(WorldEventKind.War,
             $"{_nations[army.NationId].Name}占领了{previousNation.Name}的{town.Name}。", town.X, town.Y, EventAction.Capture,
             town.Id, causeEventId: army.LastEventId);
-        occupationEvent.SecondNationId = previous;
+        occupationEvent = PublishEvent(occupationEvent with { SecondNationId = previous });
         EndCampaign(army, WarOutcome.ObjectiveReached,
             Current.Residents.Where(r => r.ArmyId == army.Id && r.Health > 0).ToArray(), occupationEvent.Id);
         Reindex();
@@ -489,8 +489,8 @@ public sealed partial class WorldEngine
                 Water = localDepot.Resources.Water + army.WaterSupplies,
             };
             foreach (var veteran in veterans.Where(r => Distance(r.X, r.Y, localDepot.X, localDepot.Y) <= 2))
-            foreach (var report in veteran.Agent.Memory.Where(f => f.Kind == AgentFactKind.WarReport).ToArray())
-                ReceiveWarReport(localDepot, report);
+                foreach (var report in veteran.Agent.Memory.Where(f => f.Kind == AgentFactKind.WarReport).ToArray())
+                    ReceiveWarReport(localDepot, report);
         }
         else
         {
@@ -504,15 +504,12 @@ public sealed partial class WorldEngine
         }
 
         army.Replace(army.Value with { Supplies = 0, WaterSupplies = 0 });
-        WorldEventCursor? homecoming = null;
+        WorldEvent? homecoming = null;
         if (veterans.Length > 0)
         {
             homecoming = AddEvent(WorldEventKind.War, "军队解散，幸存居民恢复生活；未抵家者继续步行返乡。", army.X, army.Y,
                 EventAction.Homecoming, localDepot?.Id ?? 0, causeEventId: army.LastEventId);
-            homecoming.Replace(homecoming.Value with
-            {
-                NationId = army.NationId, SecondNationId = army.TargetNationId,
-            });
+            homecoming = PublishEvent(homecoming with { NationId = army.NationId, SecondNationId = army.TargetNationId });
         }
 
         foreach (var soldier in veterans)
@@ -523,7 +520,7 @@ public sealed partial class WorldEngine
                 soldier.Profession = AssignProfession();
             if (_settlements.TryGetValue(soldier.SettlementId, out var home))
             {
-                soldier.Agent.Goal = new AgentGoal
+                soldier.Agent = soldier.Agent.WithGoal(new AgentGoal
                 {
                     Kind = AgentGoalKind.ReturnHome,
                     TargetX = home.X,
@@ -533,7 +530,7 @@ public sealed partial class WorldEngine
                     ReviewTick = Current.Tick + 200,
                     PlayerDirected = true,
                     Reason = "退伍后步行返回家园",
-                };
+                });
             }
         }
 
@@ -560,7 +557,7 @@ public sealed partial class WorldEngine
         var tile = Current.Tiles[Index(settlement.X, settlement.Y)];
         if (tile.SettlementId == settlement.Id)
             tile.SettlementId = 0;
-        Current.Conflicts.RemoveAll(c => c.SettlementId == settlement.Id);
+        Current.Conflicts = Current.Conflicts.RemoveAll(c => c.SettlementId == settlement.Id);
         foreach (var ground in Current.Tiles)
             if (ground.ClaimedSettlementId == settlement.Id)
                 ground.Replace(ground.Value with { ClaimedSettlementId = 0, NationId = 0 });
@@ -579,7 +576,7 @@ public sealed partial class WorldEngine
             AddEvent(WorldEventKind.War, $"{nation.Name}失去了最后的聚落，退出历史舞台。");
             Current.Nations.Remove(nation);
             _nations.Remove(nation.Id);
-            Current.Diplomacies.RemoveAll(r => r.FirstNationId == nation.Id || r.SecondNationId == nation.Id);
+            Current.Diplomacies = Current.Diplomacies.RemoveAll(r => r.FirstNationId == nation.Id || r.SecondNationId == nation.Id);
             foreach (var tile in Current.Tiles)
                 if (tile.NationId == nation.Id)
                     tile.NationId = 0;

@@ -20,7 +20,7 @@ public sealed class ProductionTests
             Y = 16,
             ConstructionProgress = 30,
         };
-        fixture.Engine.Current.Society.Buildings.Add(foundry);
+        fixture.Engine.Current.Buildings.Add(foundry);
         var ground = fixture.Engine.Current.Tiles[16 * 32 + 17];
         ground.NationId = fixture.Town.NationId;
         ground.ClaimedSettlementId = fixture.Town.Id;
@@ -30,9 +30,15 @@ public sealed class ProductionTests
         worker.X = worker.FromX = 17;
         worker.Y = worker.FromY = 16;
         worker.Inventory = new ResourceStock { Coal = 1, Ore = 2 };
-        worker.Agent.Goal = new AgentGoal
+        worker.Agent = worker.Agent with
         {
-            Kind = AgentGoalKind.Work, TargetEntityId = foundry.Id, TargetX = 17, TargetY = 16,
+            Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.Work,
+                TargetEntityId = foundry.Id,
+                TargetX = 17,
+                TargetY = 16,
+            }
         };
         return (fixture, foundry);
     }
@@ -87,7 +93,15 @@ public sealed class ProductionTests
     public void Missing_operating_prerequisite_prevents_production()
     {
         var (fixture, foundry) = FoundryWorld();
-        fixture.Engine.Current.Society.Research.Single().Completed.Remove(Advancement.Industry.Prerequisites[0]);
+        var society = fixture.Engine.Current.Society;
+        var research = society.Research.Single();
+        fixture.Engine.Current.Society = society with
+        {
+            Research = society.Research.SetItem(0, research with
+            {
+                Completed = research.Completed.Remove(Advancement.Industry.Prerequisites[0]),
+            }),
+        };
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
 

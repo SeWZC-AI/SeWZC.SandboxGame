@@ -160,7 +160,7 @@ public sealed class ResidentEditingTests
     {
         var fixture = new WorldFixture();
         var courage = fixture.Resident.Agent.Personality.Courage;
-        var events = fixture.Engine.Current.Events.Select(entry => JsonSerializer.Serialize(entry.Value)).ToArray();
+        var events = fixture.Engine.Current.Events.Select(entry => JsonSerializer.Serialize(entry)).ToArray();
         var resources = JsonSerializer.Serialize(fixture.Town.Resources);
         var history = new List<ResidentHistoryEntry>
         {
@@ -171,7 +171,7 @@ public sealed class ResidentEditingTests
 
         Assert.True(fixture.Resident.Agent.Personality.Courage < courage);
         Assert.Equal(events, fixture.Engine.Current.Events.Take(events.Length)
-            .Select(entry => JsonSerializer.Serialize(entry.Value)));
+            .Select(entry => JsonSerializer.Serialize(entry)));
         Assert.Equal(resources, JsonSerializer.Serialize(fixture.Town.Resources));
     }
 
@@ -195,8 +195,11 @@ public sealed class ResidentEditingTests
     {
         var fixture = new WorldFixture();
         var prior = fixture.Resident.Agent.Memory.First();
-        fixture.Town.PublicKnowledge.Add(prior);
-        fixture.Resident.Agent.Decisions.Add(new AgentDecision { EvidenceFactId = prior.Id });
+        fixture.Town.PublicKnowledge = fixture.Town.PublicKnowledge.Add(prior);
+        fixture.Resident.Agent = fixture.Resident.Agent with
+        {
+            Decisions = fixture.Resident.Agent.Decisions.Add(new AgentDecision { EvidenceFactId = prior.Id })
+        };
         var mind = JsonNode.Parse(fixture.Engine.ExportResidentMind(fixture.ResidentId))!;
         var memory = mind["Memory"]!.AsArray();
         memory.First(node => node!["Id"]!.GetValue<int>() == prior.Id)!["Text"] = "新的观察描述";

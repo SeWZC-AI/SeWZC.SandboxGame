@@ -466,7 +466,7 @@ public sealed partial class WorldEngine
         foreach (var town in Current.Settlements)
         {
             var center =
-                Current.Society.Buildings.FirstOrDefault(b =>
+                Current.Buildings.FirstOrDefault(b =>
                     b.SettlementId == town.Id && b.Kind == BuildingKind.TownCenter);
             if (center is null)
             {
@@ -481,7 +481,7 @@ public sealed partial class WorldEngine
                     ConstructionRequired = 30,
                     WorkSlots = 3,
                 });
-                Current.Society.Buildings.Add(center);
+                Current.Buildings.Add(center);
             }
 
             center.Replace(center.Value with { X = town.X, Y = town.Y });
@@ -490,7 +490,7 @@ public sealed partial class WorldEngine
             {
                 town.Resources = Spend(town.Resources, GetBuildingCost(BuildingKind.TownCenter));
                 center.Replace(center.Value with { Health = 100, ConstructionProgress = 0 });
-                center.Workers.Clear();
+                center.Workers = center.Workers.Clear();
                 center.Replace(center.Value with { LastWorkedTick = -100, Observation = new ProjectObservation() });
                 var rebuilding = AddEvent(WorldEventKind.Construction, $"{town.Name}投入材料重建受损的城镇中心。", town.X, town.Y,
                     EventAction.Started, town.Id);

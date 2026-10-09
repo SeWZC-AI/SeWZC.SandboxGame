@@ -152,7 +152,7 @@ public sealed partial class WorldEngine
         if (area < GetSettlementExpansionArea(id))
             return $"独占陆地 {area} / {GetSettlementExpansionArea(id)} 格，需占领最大半径一半的等价面积并实地登记";
         var center =
-            Current.Society.Buildings.FirstOrDefault(b => b.SettlementId == id && b.Kind == BuildingKind.TownCenter);
+            Current.Buildings.FirstOrDefault(b => b.SettlementId == id && b.Kind == BuildingKind.TownCenter);
         if (center is null || !center.IsCompleted || center.IsUpgrading || center.Health < 50
             || Current.Tiles[Index(town.X, town.Y)].FireTicks > 0)
             return "需要可工作的城镇中心组织扩充";
