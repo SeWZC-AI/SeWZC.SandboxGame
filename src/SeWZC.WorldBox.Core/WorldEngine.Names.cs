@@ -43,13 +43,22 @@ public sealed partial class WorldEngine
     private static readonly string[] PlaceEnds =
         ["河", "原", "湖", "谷", "湾", "岭", "林", "港", "桥", "丘", "泉", "台", "岸", "渡", "堡", "坡"];
 
-    private string NewResidentName(int id, RaceKind race)
+    private HashSet<string> CollectResidentNames()
+    {
+        var names = new HashSet<string>(Current.Residents.Count + Current.ArchivedResidents.Count,
+            StringComparer.Ordinal);
+        foreach (var resident in Current.Residents)
+            names.Add(resident.Name);
+        foreach (var resident in Current.ArchivedResidents)
+            names.Add(resident.Name);
+        return names;
+    }
+
+    private static string NewResidentName(int id, RaceKind race, int seed, IReadOnlySet<string> used)
     {
         // 按种子生成名称，避开现有及归档居民的重名。
         var names = GivenNames[(int)race];
-        var code = unchecked((uint)id * 4051u + (uint)Current.Seed * 7919u) % 32768;
-        var used = Current.Residents.Concat(Current.ArchivedResidents).Select(r => r.Name)
-            .ToHashSet(StringComparer.Ordinal);
+        var code = unchecked((uint)id * 4051u + (uint)seed * 7919u) % 32768;
         for (var attempt = 0; attempt < 32768; attempt++)
         {
             var n = (code + (uint)attempt) % 32768;

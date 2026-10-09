@@ -152,6 +152,14 @@ public sealed partial class WorldEngine
             : Current.Residents;
     }
 
+    private static bool HasActiveResearchProject(ImmutableVector<SettlementResearch> research, int settlementId)
+    {
+        for (var index = 0; index < research.Count; index++)
+            if (research[index].SettlementId == settlementId && research[index].ActiveProject is not null)
+                return true;
+        return false;
+    }
+
     private StateReference<Building>? FindLocalWorkBuilding(ResidentCursor resident, int range, bool preferNearest,
         bool followTarget = false)
     {
@@ -167,8 +175,9 @@ public sealed partial class WorldEngine
                                   or Profession.Archivist
                                   or Profession.Surveyor or Profession.Gardener
                               && ExpansionJobHasNearbyWork(resident);
-        foreach (var building in buildings)
+        for (var index = 0; index < buildings.Count; index++)
         {
+            var building = buildings[index];
             if (followTarget && resident.Agent.Goal.TargetEntityId != 0 &&
                 resident.Agent.Goal.TargetEntityId != building.Value.Id)
                 continue;
@@ -217,16 +226,17 @@ public sealed partial class WorldEngine
         if (residents is null)
             return null;
         ResidentCursor? selected = null;
-        foreach (var patient in residents)
+        for (var index = 0; index < residents.Count; index++)
         {
-            if (patient.Health <= 0 || patient.SettlementId != building.SettlementId || Distance(patient.X, patient.Y,
-                    building.X,
-                    building.Y) > 3
-                || !(patient.Health < 99 || patient.SicknessTicks > 0))
+            var patient = residents[index];
+            var health = patient.Health;
+            if (health <= 0 || !(health < 99 || patient.SicknessTicks > 0)
+                || patient.SettlementId != building.SettlementId
+                || Distance(patient.X, patient.Y, building.X, building.Y) > 3)
                 continue;
             if (firstOnly)
                 return patient;
-            var comparison = selected is null ? -1 : patient.Health.CompareTo(selected.Health);
+            var comparison = selected is null ? -1 : health.CompareTo(selected.Health);
             if (comparison < 0 || (comparison == 0 && patient.Id < selected!.Id))
                 selected = patient;
         }
@@ -240,9 +250,12 @@ public sealed partial class WorldEngine
         if (residents is null)
             return false;
         var count = 0;
-        foreach (var resident in residents)
+        for (var index = 0; index < residents.Count; index++)
+        {
+            var resident = residents[index];
             if (resident.SettlementId == settlementId && resident.Profession == profession && ++count == 2)
                 return true;
+        }
         return false;
     }
 }

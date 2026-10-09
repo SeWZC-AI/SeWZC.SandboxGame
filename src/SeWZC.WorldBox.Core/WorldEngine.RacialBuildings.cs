@@ -23,9 +23,19 @@ public sealed partial class WorldEngine
     /// <param name="kind">设施类别。</param>
     public bool CanBuildRacialFacility(int settlementId, BuildingKind kind)
     {
-        return BuildingRace(kind) is not { } race
-               || ResidentsForLocalWork(settlementId)?.Any(p =>
-                   p.SettlementId == settlementId && p.Race == race && p.Health > 0 && p.Age >= 14) == true;
+        if (BuildingRace(kind) is not { } race)
+            return true;
+        var residents = ResidentsForLocalWork(settlementId);
+        if (residents is null)
+            return false;
+        for (var index = 0; index < residents.Count; index++)
+        {
+            var resident = residents[index];
+            if (resident.SettlementId == settlementId && resident.Race == race && resident.Health > 0 && resident.Age >= 14)
+                return true;
+        }
+
+        return false;
     }
 
     private static ResourceStock RacialWorkInput(BuildingKind kind)

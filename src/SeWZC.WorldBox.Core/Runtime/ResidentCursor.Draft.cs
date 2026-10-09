@@ -32,7 +32,7 @@ internal sealed partial class ResidentCursor
 
     internal void BeginMove(int x, int y, long tick, int duration, ResidentActivity activity, AgentState agent)
     {
-        _motion = _motion with
+        _motion = new MotionFields
         {
             FromX = _motion.X,
             FromY = _motion.Y,
@@ -40,6 +40,7 @@ internal sealed partial class ResidentCursor
             Y = y,
             MoveStartedTick = tick,
             MoveDurationTicks = duration,
+            TravelMode = _motion.TravelMode,
         };
         if (_body.Activity != activity)
             _body = _body with { Activity = activity };
@@ -71,7 +72,7 @@ internal sealed partial class ResidentCursor
                          || _body.SicknessTicks != value.Sickness || _body.Activity != value.Activity
                          || !_body.Mana.Equals(value.Mana) || _inventory != value.Inventory;
         _draftChanged |= !ReferenceEquals(_agent, value.Agent);
-        _body = _body with
+        _body = new BodyFields
         {
             Age = value.Age,
             Health = value.Health,

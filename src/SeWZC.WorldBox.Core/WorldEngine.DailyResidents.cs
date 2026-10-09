@@ -3,7 +3,6 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     private DailyResidentInput[] _dailyResidentInputs = [];
-    private Resident.DailyState[] _dailyResidentOutputs = [];
 
     // 公共库存及随机性在主线程结算，个人身体转换只有下列已确定的输入。
     private readonly struct DailyResidentInput
