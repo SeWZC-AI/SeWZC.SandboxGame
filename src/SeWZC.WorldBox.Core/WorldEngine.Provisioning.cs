@@ -764,7 +764,7 @@ public sealed partial class WorldEngine
 
         var yield = AnimalRules.For(kind).BodyMass;
         var amount = WildlifeHarvestAmount(tile, kind,
-            WorkInterval(person) / (double)SimulationTime.TicksPerDay * .15 * Current.Rules.GatheringRate * GatheringCondition(person) *
+            WorkDays(person) * .15 * Current.Rules.GatheringRate * GatheringCondition(person) *
             GatheringTerritoryMultiplier(person, tile));
         amount = Math.Min(amount, (1_000_000 - person.Inventory.Food) / yield);
         tile.SetAnimalPopulation(kind, tile.AnimalPopulation(kind) - amount);

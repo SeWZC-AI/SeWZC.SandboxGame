@@ -79,7 +79,7 @@ public sealed partial class WorldEngine
             // 补给先按实际位置交付，再用一次纯转换结算身体状态和日常需求。
             UpdateResidents();
             // 普通观察按居民序号错峰；非军队居民所在格起火时立即观察，实际取水和劳动自行核实目标。
-            var observationInterval = Math.Max(32, (Current.Residents.Count + 63) / 64);
+            var observationInterval = Math.Max(32, (Current.Residents.Count + 31) / 32);
             var observerIndex = 0;
             foreach (var person in Current.Residents)
             {
@@ -267,9 +267,7 @@ public sealed partial class WorldEngine
         // 远处居民须完成返乡后再依据实际仓库供给决策，避免获得远程库存知识。
         if (Distance(person.X, person.Y, home.X, home.Y) > 1)
             return true;
-        var reserve = _localWorkQueriesActive
-            ? _productionReserves.GetValueOrDefault(home.Id)
-            : LocalDevelopmentReserve(home);
+        var reserve = LocalDevelopmentReserve(home);
         if (person.Profession == Profession.Lumberjack)
             return home.Resources.Wood < Math.Max(80, reserve.Wood);
         if (person.Profession != Profession.Miner)
@@ -317,9 +315,7 @@ public sealed partial class WorldEngine
     {
         if (person.Profession == Profession.Miner && Distance(person.X, person.Y, home.X, home.Y) <= 1)
         {
-            var reserve = _localWorkQueriesActive
-                ? _productionReserves.GetValueOrDefault(home.Id)
-                : LocalDevelopmentReserve(home);
+            var reserve = LocalDevelopmentReserve(home);
             var stoneDeficit = Math.Max(0, Math.Max(80, reserve.Stone) - home.Resources.Stone);
             var oreDeficit = Math.Max(0, Math.Max(30, reserve.Ore) - home.Resources.Ore);
             person.Agent = person.Agent with
@@ -1217,7 +1213,7 @@ public sealed partial class WorldEngine
             return;
         }
 
-        var productivity = WorkInterval(person) / (double)SimulationTime.TicksPerDay * RaceTerrainRules.For(person.Race, tile.Terrain).Productivity *
+        var productivity = WorkDays(person) * RaceTerrainRules.For(person.Race, tile.Terrain).Productivity *
                            GatheringCondition(person)
                            * (0.75 + person.Agent.Personality.Diligence * 0.5) * Current.Rules.GatheringRate
                            * (profession is Profession.Lumberjack or Profession.Miner &&
@@ -1356,8 +1352,7 @@ public sealed partial class WorldEngine
         person.Y = yNext;
         person.MoveStartedTick = Current.Tick;
         person.MoveDurationTicks = duration;
-        if (walkingActivity.HasValue)
-            person.Activity = walkingActivity.Value;
+        person.Activity = walkingActivity ?? (person.ArmyId != 0 ? ResidentActivity.Marching : ResidentActivity.Wandering);
         person.Agent = agent;
 
         return true;

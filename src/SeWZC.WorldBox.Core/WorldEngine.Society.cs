@@ -579,7 +579,7 @@ public sealed partial class WorldEngine
             return true;
         }
 
-        var effort = WorkInterval(resident) / (double)SimulationTime.TicksPerDay * Math.Clamp(
+        var effort = WorkDays(resident) * Math.Clamp(
             (0.6 + resident.Agent.Personality.Diligence * 0.6) * LaborCondition(resident), 0.1,
             1.2);
         if ((!building.IsCompleted || building.IsUpgrading) && resident.Profession == Profession.Engineer
@@ -1283,13 +1283,18 @@ public sealed partial class WorldEngine
     {
         if (resident.CultureId == cultureId || !Current.Society.Cultures.Any(c => c.Id == cultureId))
             return;
-        var contact =
-            Current.Society.CulturalContacts.FirstOrDefault(c =>
-                c.ResidentId == resident.Id && c.CultureId == cultureId);
+        var index = FindCultureContactIndex(resident.Id, cultureId);
+        var contact = index < 0 ? null : Current.Society.CulturalContacts[index];
         if (contact is null)
         {
             contact = new CulturalContact { ResidentId = resident.Id, CultureId = cultureId, LastContactTick = -12 };
+            index = Current.Society.CulturalContacts.Count;
             Current.Society = Current.Society with { CulturalContacts = Current.Society.CulturalContacts.Add(contact) };
+            if (_knowledgeQueriesActive)
+            {
+                _cultureContactIndices.TryAdd((resident.Id, cultureId), index);
+                _indexedCultureContactCount = index + 1;
+            }
         }
 
         if (Current.Tick - contact.LastContactTick < 12)
@@ -1323,6 +1328,16 @@ public sealed partial class WorldEngine
     /// <param name="y">纵向地格坐标。</param>
     public bool TryCastSpell(int casterId, SpellKind spell, int x, int y)
     {
+        // 自主施法频繁探测；缺魔力或尚未解锁属于普通不可用条件，不用异常完成判断。
+        var caster = FindLiveResident(casterId);
+        if (!Enum.IsDefined(spell) || caster is null || !InBounds(x, y)
+            || Distance(caster.X, caster.Y, x, y) > 4 || caster.Health <= 0 || caster.Age < 14
+            || caster.MagicTalent < 25 || caster.MagicTraining < 8 || caster.Mana < PersonalSpellCost(caster.Race, spell))
+            return false;
+        if (ResearchRules.Unlocking(spell) is { } research
+            && (!HasResearch(caster.SettlementId, research)
+                || !HasResearchPrerequisites(caster.SettlementId, research.Prerequisites)))
+            return false;
         try
         {
             CastSpell(casterId, spell, x, y);
@@ -1343,19 +1358,14 @@ public sealed partial class WorldEngine
     {
         if (!Enum.IsDefined(spell))
             throw new ArgumentOutOfRangeException(nameof(spell));
-        var caster = Current.Residents.FirstOrDefault(r => r.Id == casterId) ?? throw new ArgumentException("施法居民不存在。");
+        var caster = FindLiveResident(casterId) ?? throw new ArgumentException("施法居民不存在。");
         if (!InBounds(x, y) || Distance(caster.X, caster.Y, x, y) > 4)
             throw new InvalidOperationException("目标须位于施法者 4 格以内。");
         if (caster.Health <= 0 || caster.Age < 14 || caster.MagicTalent < 25 || caster.MagicTraining < 8)
             throw new InvalidOperationException("需要成年、魔法天赋至少 25 且完成至少 8 点奥术训练。");
         if (SpellUnlockError(casterId, spell) is { } unlockError)
             throw new InvalidOperationException(unlockError);
-        var cost = SpellManaCost(spell);
-        cost *= (caster.Race == RaceKind.Elf && spell == SpellKind.Heal) ||
-                (caster.Race == RaceKind.Dwarf && spell == SpellKind.Shield) ||
-                (caster.Race == RaceKind.Orc && spell == SpellKind.Ember)
-            ? 0.85
-            : 1;
+        var cost = PersonalSpellCost(caster.Race, spell);
         if (caster.Mana < cost)
             throw new InvalidOperationException($"法力不足：需要 {cost:0.#}，当前 {caster.Mana:0.#}。");
         ResidentCursor? recipient = null;
@@ -1363,8 +1373,8 @@ public sealed partial class WorldEngine
         switch (spell)
         {
             case SpellKind.Heal:
-                recipient = Current.Residents
-                    .Where(r => r.NationId == caster.NationId && Distance(r.X, r.Y, x, y) <= 1 &&
+                recipient = NearbyResidents(x, y, 1)
+                    .Where(r => r.NationId == caster.NationId && r.Health > 0 &&
                                 (r.Health < 100 || r.SicknessTicks > 0)).OrderBy(r => r.Health).ThenBy(r => r.Id)
                     .FirstOrDefault();
                 if (recipient is null)
@@ -1380,8 +1390,8 @@ public sealed partial class WorldEngine
             case SpellKind.Ember:
             case SpellKind.FrostBolt:
             case SpellKind.ChainLightning:
-                recipient = Current.Residents
-                    .Where(r => r.NationId != caster.NationId && Distance(r.X, r.Y, x, y) <= 1 &&
+                recipient = NearbyResidents(x, y, 1)
+                    .Where(r => r.NationId != caster.NationId && r.Health > 0 &&
                                 IsKnownHostile(caster, r.NationId)).OrderBy(r => r.Id).FirstOrDefault();
                 if (recipient is null)
                     throw new InvalidOperationException("目标附近没有正在交战的敌方居民。");
@@ -1393,9 +1403,9 @@ public sealed partial class WorldEngine
                     throw new InvalidOperationException("目标附近没有干旱或火灾");
                 break;
             case SpellKind.RuneWard:
-                recipient = Current.Residents.Where(r =>
-                    r.NationId == caster.NationId && r.Health > 0 && r.PersonalWard < 30
-                    && Distance(r.X, r.Y, x, y) <= 1).OrderBy(r => r.PersonalWard).ThenBy(r => r.Id).FirstOrDefault();
+                recipient = NearbyResidents(x, y, 1).Where(r =>
+                    r.NationId == caster.NationId && r.Health > 0 && r.PersonalWard < 30)
+                    .OrderBy(r => r.PersonalWard).ThenBy(r => r.Id).FirstOrDefault();
                 if (recipient is null)
                     throw new InvalidOperationException("目标附近没有需要个人结界的本国居民");
                 break;
@@ -1425,13 +1435,9 @@ public sealed partial class WorldEngine
 
         if (spell == SpellKind.ChainLightning)
         {
-            foreach (var enemy in Current.Residents.Where(r => r.Health > 0 && r.NationId != caster.NationId
-                                                                            && Distance(r.X, r.Y, recipient!.X,
-                                                                                recipient.Y) <= 2 &&
-                                                                            Distance(caster.X, caster.Y, r.X, r.Y) <= 4
-                                                                            && IsKnownHostile(caster, r.NationId) &&
-                                                                            ClearSignalLine(caster.X, caster.Y, r.X,
-                                                                                r.Y))
+            foreach (var enemy in NearbyResidents(recipient!.X, recipient.Y, 2).Where(r => r.Health > 0
+                         && r.NationId != caster.NationId && Distance(caster.X, caster.Y, r.X, r.Y) <= 4
+                         && IsKnownHostile(caster, r.NationId) && ClearSignalLine(caster.X, caster.Y, r.X, r.Y))
                          .OrderBy(r => r.Id).Take(3))
                 DamageResident(enemy, TryAbsorbShieldDamage(enemy, 14 * power * Current.Rules.CombatDamageRate),
                     DeathCause.Magic);
@@ -1578,7 +1584,10 @@ public sealed partial class WorldEngine
         var crossingCollapsed = RemoveFailedCrossings();
         Current.Buildings.RemoveAll(b => b.Health <= 0 && b.Kind != BuildingKind.TownCenter);
         if (crossingCollapsed)
+        {
             RelocateInvalidEntities();
+            _nearbyResidentTick = -1;
+        }
         EnsureTownCenters();
         foreach (var town in Current.Settlements)
         {
@@ -1593,7 +1602,7 @@ public sealed partial class WorldEngine
             if (GetLocalPolicy(town.Id) == PolicyKind.PublicHealth && town.Resources.Food >= 0.02)
             {
                 var patient = _citizens.GetValueOrDefault(town.Id)
-                    ?.Where(r => Distance(r.X, r.Y, town.X, town.Y) <= 2 && r.Health < 99).OrderBy(r => r.Health)
+                    ?.Where(r => Distance(r.X, r.Y, town.X, town.Y) <= 2 && r.Health is > 0 and < 99).OrderBy(r => r.Health)
                     .FirstOrDefault();
                 if (patient is not null)
                 {
@@ -1603,12 +1612,20 @@ public sealed partial class WorldEngine
             }
         }
 
-        foreach (var person in Current.Residents)
+        _nearbyResidentsActive = true;
+        try
         {
-            if (!InBounds(person.X, person.Y) || person.Health <= 0 || person.Activity == ResidentActivity.Sleeping)
-                continue;
-            if (person.MagicTalent >= 25 && person.MagicTraining >= 8 && (Current.Tick + person.Id) % 12 == 0)
-                TryAutomaticMagic(person);
+            foreach (var person in Current.Residents)
+            {
+                if (!InBounds(person.X, person.Y) || person.Health <= 0 || person.Activity == ResidentActivity.Sleeping)
+                    continue;
+                if (person.MagicTalent >= 25 && person.MagicTraining >= 8 && (Current.Tick + person.Id) % 12 == 0)
+                    TryAutomaticMagic(person);
+            }
+        }
+        finally
+        {
+            _nearbyResidentsActive = false;
         }
 
         RegenerateNaturalResources();
@@ -1618,19 +1635,24 @@ public sealed partial class WorldEngine
     private void TryAutomaticMagic(ResidentCursor person)
     {
         if (person.Agent.Goal.Kind is AgentGoalKind.DeliverMessage or AgentGoalKind.Trade ||
-            person.Agent.Goal.PlayerDirected)
+            person.Agent.Goal.PlayerDirected || person.Mana < SpellManaCost(SpellKind.Heal) * .85)
             return;
-        var patient = Current.Residents
-            .Where(r => r.NationId == person.NationId && r.Health < 60 && Distance(person.X, person.Y, r.X, r.Y) <= 3)
-            .OrderBy(r => r.Health).ThenBy(r => r.Id).FirstOrDefault();
+        ResidentCursor? patient = null;
+        foreach (var candidate in NearbyResidents(person.X, person.Y, 3))
+            if (candidate.NationId == person.NationId && candidate.Health is > 0 and < 60
+                && (patient is null || candidate.Health < patient.Health
+                    || (candidate.Health == patient.Health && candidate.Id < patient.Id)))
+                patient = candidate;
         if (patient is not null && (person.Agent.Personality.Sociability >= 0.3 || patient.Id == person.Id) &&
             TryCastSpell(person.Id, SpellKind.Heal, patient.X, patient.Y))
             return;
         if (person.ArmyId != 0 && person.Agent.Personality.Courage >= 0.35)
         {
-            var enemy = Current.Residents.FirstOrDefault(r =>
-                r.NationId != person.NationId && r.Health > 0 && Distance(person.X, person.Y, r.X, r.Y) <= 3 &&
-                IsKnownHostile(person, r.NationId));
+            ResidentCursor? enemy = null;
+            foreach (var candidate in NearbyResidents(person.X, person.Y, 3))
+                if (candidate.NationId != person.NationId && candidate.Health > 0
+                    && (enemy is null || candidate.Id < enemy.Id) && IsKnownHostile(person, candidate.NationId))
+                    enemy = candidate;
             if (enemy is not null)
             {
                 if (person.Profession == Profession.Battlemage &&
@@ -1970,8 +1992,8 @@ public sealed partial class WorldEngine
                     GetResearchCost(definition.Research));
         }
 
-        var facilities = new[]
-        {
+        (BuildingKind Kind, bool Needed)[] facilities =
+        [
             (BuildingKind.Infirmary, GetLocalPolicy(town.Id) == PolicyKind.PublicHealth),
             (BuildingKind.ArcaneSanctum, magic && HasResearch(town.Id, Advancement.ArcaneArts)),
             (BuildingKind.Waystation, HasResearch(town.Id, Advancement.Logistics)), (BuildingKind.SignalTower,
@@ -1984,20 +2006,31 @@ public sealed partial class WorldEngine
             (BuildingKind.Granary, town.Population >= 40), (BuildingKind.Housing, town.Population >= 30),
             (BuildingKind.Market, town.Tier >= SettlementTier.Town),
             (BuildingKind.Watchtower, town.Tier >= SettlementTier.Town),
-        };
+        ];
         foreach (var (kind, needed) in facilities)
             if (needed && FacilityNeeded(demand, kind) &&
                 !buildings.Any(b => b.Kind == kind && (b.Health > 0 || !b.Enabled)))
                 yield return new LocalDevelopmentPlan(kind, null, GetBuildingCost(kind));
         foreach (var kind in Enum.GetValues<BuildingKind>())
-            if (FacilityNeeded(demand, kind) && BuildingRace(kind) is not null &&
-                CanBuildRacialFacility(town.Id, kind) && !buildings.Any(b => b.Kind == kind)
+            if (BuildingRace(kind) is not null && !buildings.Any(b => b.Kind == kind)
+                && CanBuildRacialFacility(town.Id, kind) && FacilityNeeded(demand, kind)
                 && (kind != BuildingKind.DwarvenForge || HasResearch(town.Id, Advancement.Industry))
                 && (kind != BuildingKind.SacredGrove || (magic && HasResearch(town.Id, Advancement.ArcaneArts))))
                 yield return new LocalDevelopmentPlan(kind, null, GetBuildingCost(kind));
     }
 
     private ResourceStock LocalDevelopmentReserve(SettlementCursor town)
+    {
+        if (_localWorkQueriesActive && _productionReserves.TryGetValue(town.Id, out var cached))
+            return cached;
+        // 当本阶段第一次实际查询需求时评估；库存仍在各次取料时读取，阶段结束即清除计划费用。
+        var reserve = CalculateLocalDevelopmentReserve(town);
+        if (_localWorkQueriesActive)
+            _productionReserves[town.Id] = reserve;
+        return reserve;
+    }
+
+    private ResourceStock CalculateLocalDevelopmentReserve(SettlementCursor town)
     {
         IReadOnlyList<BuildingCursor> buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(town.Id) ?? []

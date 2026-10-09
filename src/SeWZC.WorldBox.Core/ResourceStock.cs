@@ -8,6 +8,8 @@ public readonly partial record struct ResourceStock
     // 粮水每天变化；其他资源共享不可变记录，居民快照无需反复复制全部库存金额。
     private readonly Materials? _materials;
 
+    internal bool HasMaterials => _materials is not null;
+
     /// <summary>饮水数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Water { get; init; }

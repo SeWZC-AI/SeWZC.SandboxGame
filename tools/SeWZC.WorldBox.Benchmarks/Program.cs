@@ -21,10 +21,11 @@ if (args.Length < 1 || options.Any(option => option is not ("--audit" or "--veri
         && !option.StartsWith("--size=", StringComparison.Ordinal) && !option.StartsWith("--population=", StringComparison.Ordinal)
         && !option.StartsWith("--seed=", StringComparison.Ordinal))
     || options.Contains("--audit") && options.Any(option => option != "--audit"
-        && !option.StartsWith("--seed=", StringComparison.Ordinal) && !option.StartsWith("--years=", StringComparison.Ordinal))
+        && !option.StartsWith("--seed=", StringComparison.Ordinal) && !option.StartsWith("--years=", StringComparison.Ordinal)
+        && !option.StartsWith("--size=", StringComparison.Ordinal) && !option.StartsWith("--population=", StringComparison.Ordinal))
     || options.Contains("--initialization") && options.Any(option => option is not ("--initialization" or "--large")
         && !option.StartsWith("--seed=", StringComparison.Ordinal) && !option.StartsWith("--repetitions=", StringComparison.Ordinal)))
-    throw new ArgumentException("请指定结果 JSON 路径；--audit 使用游戏默认开局检查指定年数（默认 100 年），仅可搭配 --seed 和 --years；--initialization 测量创建地图并补足人口，--default-rules 使用默认规则，--large 只测 256² / 4096 人，--size=整数 --population=整数 选择自定义场景，--steady 测量后续 64 日；--seed=整数 指定种子，--start-day=整数 指定计时前推进日数；--years=整数 测量长期演化，--repetitions=整数 指定轮数，--population-floor=整数 在计时外补充居民维持人口负载；--save-final 在计时外保存终态，--verify 独立验证续演，可搭配自定义场景和种子。");
+    throw new ArgumentException("请指定结果 JSON 路径；--audit 检查指定年数（默认 100 年），可搭配 --seed、--years 及自定义场景；--initialization 测量创建地图并补足人口，--default-rules 使用默认规则，--large 只测 256² / 4096 人，--size=整数 --population=整数 选择自定义场景，--steady 测量后续 64 日；--seed=整数 指定种子，--start-day=整数 指定计时前推进日数；--years=整数 测量长期演化，--repetitions=整数 指定轮数，--population-floor=整数 在计时外补充居民维持人口负载；--save-final 在计时外保存终态，--verify 独立验证续演，可搭配自定义场景和种子。");
 var benchmarkSeed = ReadIntegerOption(options, "--seed=", options.Contains("--audit") ? 73921 : 42);
 var years = ReadIntegerOption(options, "--years=", 0);
 var repetitions = ReadIntegerOption(options, "--repetitions=", years > 0 ? 3 : 7);
@@ -54,7 +55,8 @@ var benchmarkSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(type
 var results = new List<object>();
 if (options.Contains("--audit"))
 {
-    SimulationAudit.Run(args[0], benchmarkSeed, years == 0 ? 100 : years);
+    SimulationAudit.Run(args[0], customSize > 0 ? CreateScenario(customSize, customPopulation, benchmarkSeed)
+        : WorldEngine.Create(benchmarkSeed), years == 0 ? 100 : years);
     return;
 }
 

@@ -148,12 +148,16 @@ public sealed partial class WorldEngine
         };
     }
 
+    private static double PersonalSpellCost(RaceKind race, SpellKind spell) => SpellManaCost(spell) * (
+        (race == RaceKind.Elf && spell == SpellKind.Heal) || (race == RaceKind.Dwarf && spell == SpellKind.Shield)
+        || (race == RaceKind.Orc && spell == SpellKind.Ember) ? .85 : 1);
+
     /// <summary>检查施法者是否掌握法术及前置研究；已解锁时返回空值，否则返回原因。</summary>
     /// <param name="casterId">施法居民的稳定 ID。</param>
     /// <param name="spell">法术类别。</param>
     public string? SpellUnlockError(int casterId, SpellKind spell)
     {
-        var caster = Current.Residents.FirstOrDefault(r => r.Id == casterId);
+        var caster = FindLiveResident(casterId);
         if (caster is null)
             return "施法居民不存在";
         var research = ResearchRules.Unlocking(spell);

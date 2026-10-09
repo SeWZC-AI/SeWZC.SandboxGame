@@ -28,8 +28,7 @@ public sealed partial class WorldEngine
 
     private CulturalContact PublishContact(CulturalContact contact)
     {
-        var index = Current.Society.CulturalContacts.FindIndex(c =>
-            c.ResidentId == contact.ResidentId && c.CultureId == contact.CultureId);
+        var index = FindCultureContactIndex(contact.ResidentId, contact.CultureId);
         Current.Society = Current.Society with { CulturalContacts = Current.Society.CulturalContacts.SetItem(index, contact) };
         return contact;
     }

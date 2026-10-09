@@ -6,7 +6,7 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     // 每 tick 限制生态复评地格数，避免大地图出现整图更新峰值；完整周期随地图规模增长。
-    private const int WildlifeTilesPerTick = 256;
+    private const int WildlifeTilesPerTick = 128;
     private double[]? _wildlifeBiomass;
     private double[]? _wildlifeCapacities;
     private double[]? _wildlifeChanges;

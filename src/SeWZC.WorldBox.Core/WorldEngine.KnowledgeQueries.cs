@@ -4,6 +4,8 @@ public sealed partial class WorldEngine
 {
     private readonly HashSet<(int Town, int Fact)> _institutionReports = [];
     private readonly Dictionary<int, ulong> _knowledgeByTown = [];
+    private readonly Dictionary<(int Resident, int Culture), int> _cultureContactIndices = [];
+    private int _indexedCultureContactCount;
 
     // 研究索引只在当前模拟阶段有效；编辑后直接读取权威列表，阶段内收到知识时同步更新掩码。
     private bool _knowledgeQueriesActive;
@@ -12,6 +14,7 @@ public sealed partial class WorldEngine
     {
         _knowledgeByTown.Clear();
         _institutionReports.Clear();
+        IndexCultureContacts();
         foreach (var report in Current.Society.Reports)
             _institutionReports.Add((report.RecipientSettlementId, report.FactId));
         foreach (var research in Current.Society.Research)
@@ -28,8 +31,30 @@ public sealed partial class WorldEngine
 
     private void EndKnowledgeQueries()
     {
+        Array.Clear(_conversationResidents, 0, _nearbyResidentCount);
+        _nearbyResidentCount = 0;
         _knowledgeQueriesActive = false;
         _knowledgeByTown.Clear();
         _institutionReports.Clear();
+        _cultureContactIndices.Clear();
+    }
+
+    private void IndexCultureContacts()
+    {
+        _cultureContactIndices.Clear();
+        var contacts = Current.Society.CulturalContacts;
+        for (var index = 0; index < contacts.Count; index++)
+            _cultureContactIndices.TryAdd((contacts[index].ResidentId, contacts[index].CultureId), index);
+        _indexedCultureContactCount = contacts.Count;
+    }
+
+    private int FindCultureContactIndex(int residentId, int cultureId)
+    {
+        if (!_knowledgeQueriesActive)
+            return Current.Society.CulturalContacts.FindIndex(c => c.ResidentId == residentId && c.CultureId == cultureId);
+        // 新增接触同步登记；删除接触后重建位置，接触程度的改写仍从权威记录即时读取。
+        if (_indexedCultureContactCount != Current.Society.CulturalContacts.Count)
+            IndexCultureContacts();
+        return _cultureContactIndices.GetValueOrDefault((residentId, cultureId), -1);
     }
 }

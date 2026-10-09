@@ -27,7 +27,7 @@ public sealed class ImmutableWorldTests
         Assert.Equal(100, current.Housing);
         Assert.Equal(3, current.Resources.Water);
         Assert.Equal(5, fixture.Engine.State.Settlements.Single().Resources.Food);
-        Assert.Equal(Serialize(before), Serialize(WorldEngine.ImportJson(Serialize(before)).State));
+        Assert.Equal(Serialize(before), Serialize(WorldEngine.FromSnapshot(before).State));
     }
 
     /// <summary>身份状态拆分后，日常更新、迁居与训练仍保持旧快照、值相等和原有平面存档。</summary>

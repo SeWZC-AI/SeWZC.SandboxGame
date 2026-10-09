@@ -11,7 +11,7 @@ public readonly record struct WorldState
 
     /// <summary>存档数据结构版本，用于拒绝不兼容的格式。</summary>
     [JsonRequired]
-    public int FormatVersion { get; init; } = 21;
+    public int FormatVersion { get; init; } = 22;
 
     /// <summary>生成世界时使用的整数种子。</summary>
     public int Seed { get; init; }
@@ -92,7 +92,7 @@ public readonly record struct WorldState
 
     /// <summary>模拟规则版本，用于校验存档的续演兼容性。</summary>
     [JsonRequired]
-    public int SimulationVersion { get; init; } = 25;
+    public int SimulationVersion { get; init; } = 26;
 
     /// <summary>世界的社会发展状态。</summary>
     public SocietyState Society { get; init; } = new();

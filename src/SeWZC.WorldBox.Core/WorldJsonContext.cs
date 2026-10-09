@@ -19,5 +19,6 @@ namespace SeWZC.WorldBox.Core;
 [JsonSerializable(typeof(WorldState))]
 [JsonSerializable(typeof(Resident))]
 [JsonSerializable(typeof(AgentState))]
+[JsonSerializable(typeof(AgentFact))]
 [JsonSerializable(typeof(List<ResidentHistoryEntry>))]
 internal partial class WorldJsonContext : JsonSerializerContext;

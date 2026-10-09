@@ -16,6 +16,8 @@ public readonly record struct InventoryTransfer(ResourceStock Inventory, Resourc
     {
         var water = Math.Max(0, inventory.Water - waterReserve);
         var food = Math.Max(0, inventory.Food - foodReserve);
+        if (water == 0 && food == 0 && !inventory.HasMaterials)
+            return new InventoryTransfer(inventory, warehouse);
         var tools = Math.Max(0, inventory.Tools - (profession == Profession.Engineer ? .5 : 0));
         var medicine = Math.Max(0, inventory.Medicine - (profession == Profession.Physician ? 2 : 0));
         var ammunition = Math.Max(0, inventory.Ammunition - (profession == Profession.Ranger ? 8 : 0));
