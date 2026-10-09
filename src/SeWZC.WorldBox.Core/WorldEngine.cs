@@ -51,7 +51,7 @@ public sealed partial class WorldEngine
     }
 
     /// <summary>引擎持有的当前不可变世界快照；继续模拟或编辑不会修改已取得的快照。</summary>
-    public WorldState State => Current.Snapshot;
+    public WorldState State => Current.CaptureSnapshot();
 
     internal WorldStateCursor Current { get; }
 
@@ -373,7 +373,7 @@ public sealed partial class WorldEngine
             RefreshSettlementName(settlement);
         }
 
-        var settlements = Current.Settlements.Snapshot;
+        var settlements = Current.Settlements.CaptureSnapshot();
         foreach (var nation in Current.Nations)
             nation.Replace(AggregateNation(nation.Value, settlements, _territoryCounts.Get(nation.Value.Id)));
     }

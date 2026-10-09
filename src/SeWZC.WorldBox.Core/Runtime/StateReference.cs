@@ -4,8 +4,18 @@ namespace SeWZC.WorldBox.Core.Runtime;
 internal class StateReference<T>(T value)
 {
     private T _value = value;
-    internal ICollectionOwner? Collection { get; set; }
+    private ICollectionOwner? _collection;
+    internal ICollectionOwner? Collection
+    {
+        get => _collection;
+        set
+        {
+            _collection = value;
+            PendingCommit = false;
+        }
+    }
     internal int Position { get; set; }
+    internal bool PendingCommit { get; set; }
     public ref readonly T Value => ref _value;
 
     internal virtual void FlushPending() { }
@@ -36,5 +46,6 @@ internal class StateReference<T>(T value)
     internal interface ICollectionOwner
     {
         void Replace(StateReference<T> reference, in T value);
+        void RegisterPending(StateReference<T> reference);
     }
 }

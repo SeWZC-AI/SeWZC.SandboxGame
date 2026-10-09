@@ -19,7 +19,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<int>.Default.Equals(_motion.X, value))
             {
                 _motion = _motion with { X = value };
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -32,7 +32,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<int>.Default.Equals(_motion.Y, value))
             {
                 _motion = _motion with { Y = value };
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -45,7 +45,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<double>.Default.Equals(_body.Age, value))
             {
                 _body = _body with { Age = value };
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -64,7 +64,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<ResidentActivity>.Default.Equals(_body.Activity, value))
             {
                 _body = _body with { Activity = value };
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -77,7 +77,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<double>.Default.Equals(_body.Health, value))
             {
                 _body = _body with { Health = value };
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -90,7 +90,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<double>.Default.Equals(_body.Hunger, value))
             {
                 _body = _body with { Hunger = value };
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -103,7 +103,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<int>.Default.Equals(_body.SicknessTicks, value))
             {
                 _body = _body with { SicknessTicks = value };
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -134,7 +134,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<TravelMode>.Default.Equals(_motion.TravelMode, value))
             {
                 _motion = _motion with { TravelMode = value };
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -147,7 +147,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<double>.Default.Equals(_body.Thirst, value))
             {
                 _body = _body with { Thirst = value };
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -162,7 +162,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!ReferenceEquals(_agent, value))
             {
                 _agent = value;
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -175,7 +175,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<ResourceStock>.Default.Equals(_inventory, value))
             {
                 _inventory = value;
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -188,7 +188,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<double>.Default.Equals(_body.Mana, value))
             {
                 _body = _body with { Mana = value };
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -205,7 +205,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<int>.Default.Equals(_motion.FromX, value))
             {
                 _motion = _motion with { FromX = value };
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -218,7 +218,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<int>.Default.Equals(_motion.FromY, value))
             {
                 _motion = _motion with { FromY = value };
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -231,7 +231,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<long>.Default.Equals(_motion.MoveStartedTick, value))
             {
                 _motion = _motion with { MoveStartedTick = value };
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
@@ -244,12 +244,12 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
             if (!EqualityComparer<int>.Default.Equals(_motion.MoveDurationTicks, value))
             {
                 _motion = _motion with { MoveDurationTicks = value };
-                _draftChanged = true;
+                MarkDraftChanged();
             }
         }
     }
 
-    public ImmutableList<ResidentHistoryEntry> History => Value.History;
+    public ImmutableList<ResidentHistoryEntry> History => base.Value.History;
 
     protected override void OnReplace(in Resident before, in Resident after)
     {
@@ -258,5 +258,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
         _agent = after.Agent;
         _inventory = after.Inventory;
         _draftChanged = false;
+        _snapshot = after;
+        _snapshotCurrent = true;
     }
 }

@@ -7,17 +7,26 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
     where T : class where TCursor : StateReference<T>
 {
     private readonly List<TCursor> _items = [];
+    private readonly List<StateReference<T>> _pending = [];
     private readonly Action<ImmutableVector<T>> _publish;
+    private readonly Func<T, T, bool>? _groupChanged;
     private bool _membershipChanged;
     private T[] _membershipValues = [];
     private ImmutableVector<T> _snapshot;
     private int _updateDepth;
     private ImmutableVector<T>.Builder? _updates;
 
-    public EntityListCursor(ImmutableVector<T> snapshot, Action<ImmutableVector<T>> publish, Func<T, TCursor> create)
+    /// <summary>从不可变集合建立定位索引，提交时维护调用方指定的分组修订。</summary>
+    /// <param name="snapshot">初始实体集合。</param>
+    /// <param name="publish">发布冻结后的集合。</param>
+    /// <param name="create">为初始实体建立定位引用。</param>
+    /// <param name="groupChanged">判断一次替换是否改变分组；不需要分组时为空。</param>
+    public EntityListCursor(ImmutableVector<T> snapshot, Action<ImmutableVector<T>> publish, Func<T, TCursor> create,
+        Func<T, T, bool>? groupChanged = null)
     {
         _snapshot = snapshot;
         _publish = publish;
+        _groupChanged = groupChanged;
         foreach (var value in snapshot)
         {
             var cursor = create(value);
@@ -27,13 +36,10 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
         }
     }
 
-    public ImmutableVector<T> Snapshot
+    internal ImmutableVector<T> CaptureSnapshot()
     {
-        get
-        {
-            FlushUpdates();
-            return _snapshot;
-        }
+        FlushUpdates();
+        return _snapshot;
     }
 
     internal Action<int, T, T>? Changed { get; set; }
@@ -57,7 +63,7 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
             if (_updateDepth > 0)
                 MarkMembershipChanged();
             else
-                Commit(Snapshot.SetItem(index, value.Value));
+                Commit(CaptureSnapshot().SetItem(index, value.Value));
         }
     }
 
@@ -78,8 +84,7 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
 
     void StateReference<T>.ICollectionOwner.Replace(StateReference<T> cursor, in T value)
     {
-        if (typeof(T) == typeof(Resident)
-            && ((Resident)(object)cursor.Value).SettlementId != ((Resident)(object)value).SettlementId)
+        if (_groupChanged?.Invoke(cursor.Value, value) == true)
         {
             GroupRevision++;
         }
@@ -92,6 +97,14 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
             (_updates ??= new ImmutableVector<T>.Builder(_snapshot)).SetItem(cursor.Position, value);
         else
             Commit(_snapshot.SetItem(cursor.Position, value));
+    }
+
+    void StateReference<T>.ICollectionOwner.RegisterPending(StateReference<T> cursor)
+    {
+        if (cursor.PendingCommit)
+            return;
+        cursor.PendingCommit = true;
+        _pending.Add(cursor);
     }
 
     private void Commit(ImmutableVector<T> snapshot)
@@ -112,11 +125,16 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
         _updateDepth++;
         try
         {
-            if (typeof(TCursor) == typeof(ResidentCursor))
+            for (var index = 0; index < _pending.Count; index++)
             {
-                foreach (var person in _items)
-                    person.FlushPending();
+                var cursor = _pending[index];
+                if (!ReferenceEquals(cursor.Collection, this))
+                    continue;
+                cursor.PendingCommit = false;
+                cursor.FlushPending();
             }
+
+            _pending.Clear();
         }
         finally
         {
@@ -146,8 +164,9 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
 
     internal void Transform(Func<T, T> transform)
     {
-        var next = Snapshot.Map(transform);
-        if (ReferenceEquals(next, Snapshot))
+        var before = CaptureSnapshot();
+        var next = before.Map(transform);
+        if (ReferenceEquals(next, before))
             return;
         var index = 0;
         foreach (var value in next)
@@ -155,8 +174,7 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
             var cursor = _items[index++];
             if (!ReferenceEquals(cursor.Value, value))
             {
-                if (typeof(T) == typeof(Resident)
-                    && ((Resident)(object)cursor.Value).SettlementId != ((Resident)(object)value).SettlementId)
+                if (_groupChanged?.Invoke(cursor.Value, value) == true)
                     GroupRevision++;
                 Changed?.Invoke(cursor.Position, cursor.Value, value);
                 cursor.Synchronize(value);
@@ -176,7 +194,7 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
         if (_updateDepth > 0)
             MarkMembershipChanged();
         else
-            Commit(Snapshot.Add(cursor.Value));
+            Commit(CaptureSnapshot().Add(cursor.Value));
     }
 
     public bool Remove(TCursor cursor)
@@ -201,7 +219,7 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
         if (_updateDepth > 0)
             MarkMembershipChanged();
         else
-            Commit(Snapshot.RemoveAt(index));
+            Commit(CaptureSnapshot().RemoveAt(index));
     }
 
     private void MarkMembershipChanged()
@@ -234,7 +252,7 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, Sta
         if (_updateDepth > 0)
             MarkMembershipChanged();
         else
-            Commit(Snapshot.Clear());
+            Commit(CaptureSnapshot().Clear());
     }
 
     public int IndexOf(TCursor cursor)

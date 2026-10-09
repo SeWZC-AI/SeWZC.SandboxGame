@@ -39,7 +39,7 @@ public sealed partial class WorldEngine
                 var peopleRevision = Current.Residents.MembershipRevision;
                 var townsRevision = Current.Settlements.MembershipRevision;
                 var nationsRevision = Current.Nations.MembershipRevision;
-                var buildingsAfterSociety = Current.Buildings.Snapshot;
+                var buildingsAfterSociety = Current.Buildings.CaptureSnapshot();
                 TickDiplomacy();
                 TickLocalConflicts();
                 TickMigrationAndSecession();
@@ -57,7 +57,7 @@ public sealed partial class WorldEngine
                 if (Current.Residents.MembershipRevision != peopleRevision
                     || Current.Settlements.MembershipRevision != townsRevision
                     || Current.Nations.MembershipRevision != nationsRevision
-                    || !ReferenceEquals(Current.Buildings.Snapshot, buildingsAfterSociety))
+                    || !ReferenceEquals(Current.Buildings.CaptureSnapshot(), buildingsAfterSociety))
                     ReconcileSocietyTopology();
                 RefreshTotals();
                 ObserveProjects();
