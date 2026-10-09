@@ -180,9 +180,7 @@ public sealed partial class WorldEngine
         if (ProductionYield(building, recipe) <= 0)
             return "土地无法产粮，需要恢复肥力";
         var townStock = RequireTown(building.SettlementId);
-        var reserve = _localWorkQueriesActive
-            ? _productionReserves.GetValueOrDefault(townStock.Id)
-            : LocalDevelopmentReserve(townStock);
+        var reserve = LocalDevelopmentReserve(townStock);
         var reserved = ResourceStock.Kinds.Where(k => recipe.Input.Get(k) > 0 && reserve.Get(k) > 0
                                                                               && townStock.Resources.Get(k) <
                                                                               recipe.Input.Get(k) + reserve.Get(k))
@@ -233,9 +231,7 @@ public sealed partial class WorldEngine
     {
         if (!firstBatch && town.Resources.Get(recipe.Output) >= ProductionStockTarget(town, recipe.Output))
             return false;
-        var reserve = _localWorkQueriesActive
-            ? _productionReserves.GetValueOrDefault(town.Id)
-            : LocalDevelopmentReserve(town);
+        var reserve = LocalDevelopmentReserve(town);
         for (var i = 0; i < recipe.InputResources.Length; i++)
         {
             var k = recipe.InputResources[i];
@@ -293,7 +289,7 @@ public sealed partial class WorldEngine
             }
 
             // 每趟只携带有限批次原料，并为下一项本地计划保留库存；每次结算仍须实际到场并持有原料。
-            var reserve = _productionReserves.GetValueOrDefault(home.Id);
+            var reserve = LocalDevelopmentReserve(home);
             var batches = 4d;
             foreach (var kind in recipe.InputResources)
                 batches = Math.Min(batches,

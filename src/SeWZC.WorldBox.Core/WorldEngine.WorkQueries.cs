@@ -18,7 +18,7 @@ public sealed partial class WorldEngine
     private readonly Dictionary<int, int> _workReservations = [];
     private bool _localWorkQueriesActive;
 
-    // 自主常规采集及常规设施劳动四日错峰；扑火、消防站现场维修、驻留、日常需求及交通仍逐日处理。
+    // 自主常规采集及常规设施劳动每四 tick 错峰；扑火、消防站现场维修、驻留、需求及交通仍逐 tick 处理。
     private int WorkInterval(ResidentCursor person)
     {
         return _localWorkQueriesActive && !person.Agent.Goal.PlayerDirected ? 4 : 1;
@@ -28,6 +28,11 @@ public sealed partial class WorldEngine
     {
         return (Current.Tick + person.Id) % WorkInterval(person) == 0;
     }
+
+    // 自主劳动的日产量按白天班次折算，避免加入夜间睡眠后把原有日供给再减半。
+    private double WorkDays(ResidentCursor person) => WorkInterval(person) / (double)(
+        person.Agent.Goal.PlayerDirected ? SimulationTime.TicksPerDay
+            : SimulationTime.ReturnHomeTick - SimulationTime.WakeTick);
 
     private BuildingCursor? FindBuilding(int id)
     {
@@ -97,8 +102,6 @@ public sealed partial class WorldEngine
         }
 
         _localWorkQueriesActive = true;
-        foreach (var town in Current.Settlements)
-            _productionReserves[town.Id] = LocalDevelopmentReserve(town);
     }
 
     private void EndLocalWorkQueries()

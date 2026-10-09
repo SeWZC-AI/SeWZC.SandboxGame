@@ -95,15 +95,9 @@ public sealed partial class WorldEngine
 
                 for (var index = 0; index < count; index++)
                     _dailyResidentInputs[index] = Prepare(Current.Residents[index]);
-                // 随机感染、公共补给与取水按原顺序准备；工作线程只读取不可变输入。
-                var workers = Math.Min(4, Environment.ProcessorCount);
-                Parallel.For(0, workers, _bodyParallelism, worker =>
-                {
-                    var first = worker * count / workers;
-                    var last = (worker + 1) * count / workers;
-                    for (var index = first; index < last; index++)
-                        _dailyResidentOutputs[index] = _dailyResidentInputs[index].Advance(rules, tick);
-                });
+                // 保留整批输入的同时刻语义；短小身体转换顺序计算，避免每 tick 调度工作线程。
+                for (var index = 0; index < count; index++)
+                    _dailyResidentOutputs[index] = _dailyResidentInputs[index].Advance(rules, tick);
                 foreach (var cursor in Current.Residents)
                     cursor.ApplyDay(_dailyResidentOutputs[cursor.Position]);
                 Array.Clear(_dailyResidentInputs, 0, count);
@@ -182,7 +176,7 @@ public sealed partial class WorldEngine
                 ManaRecovery = manaRecovery / SimulationTime.TicksPerDay,
                 ConsumeNeeds =
                     person.ArmyId == 0 && hasHome,
-                SocialGrowth = hasHome && (tick + person.Id) % 4 == 0 ? .28 / SimulationTime.TicksPerDay : 0,
+                SocialGrowth = hasHome && (tick + person.Id) % SimulationTime.TicksPerDay == 0 ? .07 : 0,
                 DeliveredWater = water,
                 ArrivedTile =
                     hasHome && person.ArmyId == 0 && person.Health > 0
@@ -228,10 +222,16 @@ public sealed partial class WorldEngine
 
             var adults = citizens.Where(p =>
                     p.Age >= 18 && p.Age < (p.Race == RaceKind.Elf ? 100 : 55) && p.Health >= 60
-                    && p.Hunger < 30 && (!Current.Rules.Thirst || p.Thirst < 30) && p.SicknessTicks == 0)
+                    && p.Hunger < 30 && (!Current.Rules.Thirst || p.Thirst < 30) && p.SicknessTicks == 0
+                    && p.ArmyId == 0 && p.Agent.DestinationSettlementId == 0
+                    && Distance(p.X, p.Y, town.X, town.Y) <= 1 && Walkable(p.X, p.Y, p.Race)
+                    && Current.Tick - p.MoveStartedTick >= p.MoveDurationTicks)
                 .ToArray();
+            // 已返家的家庭可用随身口粮抚育下一代；不要求所有食物先积存在公共仓库，也不读取远处背包。
+            var familyFood = town.Resources.Food + adults.Sum(p => Math.Max(0, p.Inventory.Food - FoodUse(p) * 2));
+            var dailyFood = citizens.Sum(p => FoodUse(p));
             if (Current.Rules.Births && adults.Length >= 6 &&
-                town.Resources.Food > citizens.Count * 0.8 && Current.Residents.Count < MaxPopulation)
+                familyFood > dailyFood * 4 + .6 && Current.Residents.Count < MaxPopulation)
             {
                 var births = Math.Max(1, adults.Length / 28);
                 var housing = GetHousingCapacity(town.Id);
@@ -243,10 +243,21 @@ public sealed partial class WorldEngine
                 births = Math.Min(births, MaxPopulation - Current.Residents.Count);
                 for (var b = 0; b < births; b++)
                 {
+                    var remaining = .6;
+                    var stored = Math.Min(town.Resources.Food, remaining);
+                    town.Resources = town.Resources with { Food = town.Resources.Food - stored };
+                    remaining -= stored;
+                    foreach (var parent in adults)
+                    {
+                        if (remaining <= .000001) break;
+                        var supplied = Math.Min(remaining, Math.Max(0, parent.Inventory.Food - FoodUse(parent) * 2));
+                        parent.Inventory = parent.Inventory with { Food = parent.Inventory.Food - supplied };
+                        remaining -= supplied;
+                    }
                     var child = NewResident(town, adults[RandomInt(adults.Length)].Race, 0);
+                    child.Inventory = new ResourceStock { Food = .6 - remaining };
                     Current.Residents.Add(child);
                     citizens.Add(child);
-                    town.Resources = town.Resources with { Food = Math.Max(0, town.Resources.Food - 0.6) };
                 }
 
                 if (Current.Tick % SimulationTime.TicksPerYear == 0)

@@ -2,9 +2,6 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private readonly ParallelOptions _bodyParallelism =
-        new() { MaxDegreeOfParallelism = Math.Min(2, Environment.ProcessorCount) };
-
     private DailyResidentInput[] _dailyResidentInputs = [];
     private Resident.DailyState[] _dailyResidentOutputs = [];
 

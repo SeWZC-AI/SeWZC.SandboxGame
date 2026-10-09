@@ -399,6 +399,51 @@ public sealed class WorkforceTests
         Assert.Single(fixture.Engine.State.Residents, person => person.Age == 0 && person.Profession == Profession.Child);
     }
 
+    /// <summary>已返家的家庭有实物口粮时，空公共仓库不能阻止下一代；新生儿口粮由家庭支付。</summary>
+    [Fact]
+    public void Fed_households_can_support_a_child_without_a_full_public_warehouse()
+    {
+        var fixture = Prepare();
+        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Births = true, Hunger = false, Aging = false }, false, false);
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerYear / 10 - 1;
+        fixture.Town.Resources = new ResourceStock();
+        foreach (var person in fixture.Engine.Current.Residents)
+        {
+            person.Inventory = new ResourceStock { Food = .8, Water = 1 };
+            person.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
+        }
+        var before = fixture.Engine.State;
+
+        fixture.Engine.Step();
+
+        var after = fixture.Engine.State;
+        Assert.Equal(before.Population + 1, after.Population);
+        Assert.Equal(.6, Assert.Single(after.Residents, person => person.Age == 0).Inventory.Food, 8);
+        Assert.Equal(before.Residents.Sum(person => person.Inventory.Food) + before.Settlements[0].Resources.Food,
+            after.Residents.Sum(person => person.Inventory.Food) + after.Settlements[0].Resources.Food, 8);
+    }
+
+    /// <summary>尚未返家的家庭携带粮食不能隔空支付家园新生儿的补给。</summary>
+    [Fact]
+    public void Food_away_from_home_cannot_support_a_local_birth()
+    {
+        var fixture = Prepare();
+        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Births = true }, false, false);
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerYear / 10 - 1;
+        fixture.Town.Resources = new ResourceStock();
+        foreach (var person in fixture.Engine.Current.Residents)
+        {
+            person.X = person.FromX = 24;
+            person.Inventory = new ResourceStock { Food = .8, Water = 1 };
+            person.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
+        }
+        var before = fixture.Engine.State.Population;
+
+        fixture.Engine.Step();
+
+        Assert.Equal(before, fixture.Engine.State.Population);
+    }
+
     private static void GrantResearch(WorldFixture fixture, Advancement research)
     {
         foreach (var prerequisite in research.Prerequisites)

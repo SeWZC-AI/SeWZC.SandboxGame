@@ -3,6 +3,47 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>日历换算、日内作息和按日结算的边界。</summary>
 public sealed class SimulationTimeTests
 {
+    /// <summary>离开工位走向维修目标后，活动立即表示移动，不沿用上一刻的劳动状态。</summary>
+    [Fact]
+    public void Worker_in_transit_does_not_keep_the_previous_working_activity()
+    {
+        var fixture = Prepare(12);
+        var ground = fixture.Engine.Current.Tiles[16 * 32 + 22];
+        ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Id, NationId = fixture.Town.NationId });
+        var buildingId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Farm, 22, 16);
+        fixture.Engine.Current.Buildings.Single(b => b.Id == buildingId).Health = 10;
+        fixture.Resident.Profession = Profession.Builder;
+        fixture.Resident.Inventory = fixture.Resident.Inventory with { Stone = 1 };
+        fixture.Resident.Activity = ResidentActivity.Working;
+        fixture.Resident.Agent = fixture.Resident.Agent with
+        {
+            Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.Work, TargetEntityId = buildingId, TargetX = 22, TargetY = 16,
+                ReviewTick = SimulationTime.TicksPerYear,
+            },
+        };
+
+        fixture.Engine.Step();
+
+        Assert.Equal(fixture.Engine.State.Tick, fixture.Resident.MoveStartedTick);
+        Assert.Equal(ResidentActivity.Wandering, fixture.Resident.Activity);
+        Assert.Equal(10, fixture.Engine.Current.Buildings.Single(b => b.Id == buildingId).Health);
+    }
+
+    /// <summary>夜间冰冻不能保留此前的劳动标记，也不能产生劳动量。</summary>
+    [Fact]
+    public void Frozen_worker_rests_instead_of_showing_night_work()
+    {
+        var fixture = Prepare(SimulationTime.SleepTick - 1);
+        fixture.Resident.FrozenUntilTick = SimulationTime.SleepTick + 1;
+        fixture.Resident.Activity = ResidentActivity.Working;
+
+        fixture.Engine.Step();
+
+        Assert.Equal(ResidentActivity.Resting, fixture.Resident.Activity);
+    }
+
     /// <summary>月份、日期和日内步序在各单位边界同时进位。</summary>
     [Theory]
     [InlineData(0, 1, 1, 1, 0)]
@@ -90,6 +131,25 @@ public sealed class SimulationTimeTests
             TargetSettlementId = fixture.Town.Id, ReviewTick = SimulationTime.TicksPerYear,
         };
         fixture.Resident.X = fixture.Resident.FromX = 22;
+        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = goal };
+
+        fixture.Engine.Step();
+
+        Assert.Equal(ResidentActivity.Sleeping, fixture.Resident.Activity);
+        Assert.Equal(goal, fixture.Resident.Agent.Goal);
+        Assert.Equal(22, fixture.Resident.X);
+        Assert.Null(fixture.Resident.Agent.DaytimeGoal);
+    }
+
+    /// <summary>远处劳动点的居民夜间宿营，次日继续劳动，避免每天往返占满整个白天。</summary>
+    [Theory]
+    [InlineData(AgentGoalKind.Gather)]
+    [InlineData(AgentGoalKind.Work)]
+    public void Distant_workers_camp_without_repeating_the_daily_commute(AgentGoalKind kind)
+    {
+        var fixture = Prepare(SimulationTime.SleepTick - 1);
+        fixture.Resident.X = fixture.Resident.FromX = 22;
+        var goal = new AgentGoal { Kind = kind, TargetX = 22, TargetY = 16, ReviewTick = SimulationTime.TicksPerYear };
         fixture.Resident.Agent = fixture.Resident.Agent with { Goal = goal };
 
         fixture.Engine.Step();

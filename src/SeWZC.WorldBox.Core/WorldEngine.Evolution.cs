@@ -256,9 +256,10 @@ public sealed partial class WorldEngine
 
     private void DeliverLocalDiscoveries(ResidentCursor person, SettlementCursor home)
     {
-        foreach (var site in person.Agent.Memory.Where(f =>
-                     f.Kind == AgentFactKind.FoundingSite && f.LearnedTick < Current.Tick))
+        foreach (var site in person.Agent.Memory)
         {
+            if (site.Kind != AgentFactKind.FoundingSite || site.LearnedTick >= Current.Tick)
+                continue;
             var prior = home.PublicKnowledge.FirstOrDefault(f =>
                 f.Kind == AgentFactKind.FoundingSite && f.SubjectId == site.SubjectId);
             if (prior is not null && prior.ObservedTick >= site.ObservedTick)
@@ -267,15 +268,16 @@ public sealed partial class WorldEngine
             AddPublicFact(home, delivered);
         }
 
-        foreach (var report in person.Agent.Memory
-                     .Where(f => f.Kind == AgentFactKind.WarReport && f.LearnedTick < Current.Tick).ToArray())
-            ReceiveWarReport(home, report);
+        foreach (var report in person.Agent.Memory)
+            if (report.Kind == AgentFactKind.WarReport && report.LearnedTick < Current.Tick)
+                ReceiveWarReport(home, report);
         if (person.Profession is not (Profession.Trader or Profession.Messenger or Profession.Representative))
             return;
-        foreach (var fact in person.Agent.Memory.Where(f =>
-                     f.LearnedTick < Current.Tick && f.Kind is AgentFactKind.SettlementLocation
-                         or AgentFactKind.TradeExchange or AgentFactKind.DiplomaticNotice).ToArray())
+        foreach (var fact in person.Agent.Memory)
         {
+            if (fact.LearnedTick >= Current.Tick || fact.Kind is not (AgentFactKind.SettlementLocation
+                    or AgentFactKind.TradeExchange or AgentFactKind.DiplomaticNotice))
+                continue;
             var old = home.PublicKnowledge.FirstOrDefault(f =>
                 f.Kind == fact.Kind && f.SubjectId == fact.SubjectId && f.TargetNationId == fact.TargetNationId);
             if (old is not null && old.ObservedTick >= fact.ObservedTick)

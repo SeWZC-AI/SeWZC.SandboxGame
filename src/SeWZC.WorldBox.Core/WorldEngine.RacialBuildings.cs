@@ -24,8 +24,8 @@ public sealed partial class WorldEngine
     public bool CanBuildRacialFacility(int settlementId, BuildingKind kind)
     {
         return BuildingRace(kind) is not { } race
-               || Current.Residents.Any(p =>
-                   p.SettlementId == settlementId && p.Race == race && p.Health > 0 && p.Age >= 14);
+               || ResidentsForLocalWork(settlementId)?.Any(p =>
+                   p.SettlementId == settlementId && p.Race == race && p.Health > 0 && p.Age >= 14) == true;
     }
 
     private static ResourceStock RacialWorkInput(BuildingKind kind)

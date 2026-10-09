@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace SeWZC.WorldBox.Core.Tests;
@@ -5,6 +6,53 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>当前保存格式、必需字段和异步取消的检查。</summary>
 public sealed class WorldPersistenceTests
 {
+    /// <summary>紧凑信息保留所有字段，包括转述来源、精确时间和军事关联。</summary>
+    [Fact]
+    public void Compact_fact_preserves_every_field()
+    {
+        var fact = new AgentFact
+        {
+            Id = 123, Kind = AgentFactKind.WarOrder, SubjectId = 456, X = 12, Y = 34,
+            Value = 1.23456789012345, ObservedTick = 98_765_432_100, LearnedTick = 98_765_432_111,
+            OriginResidentId = 789, OriginProfession = Profession.Soldier, SourceResidentId = 890,
+            Confidence = .123456789012345, Hops = 7, Text = "转述的防御命令",
+            EventId = 91, CampaignEventId = 92, WarObjective = WarObjective.DefendHomeland, TargetNationId = 93,
+        };
+        var context = new WorldJsonContext(new JsonSerializerOptions(WorldJsonContext.Default.Options)
+        {
+            Converters = { new AgentFactJsonConverter() },
+        });
+
+        var json = JsonSerializer.Serialize(fact, context.AgentFact);
+
+        Assert.Equal(fact, JsonSerializer.Deserialize(json, context.AgentFact));
+    }
+
+    /// <summary>紧凑信息拒绝字段缺失、多余、错误类型及未知枚举。</summary>
+    [Theory]
+    [InlineData("short")]
+    [InlineData("extra")]
+    [InlineData("text")]
+    [InlineData("enum")]
+    [InlineData("object")]
+    public void Import_rejects_malformed_compact_fact(string corruption)
+    {
+        var fixture = new WorldFixture();
+        var document = JsonNode.Parse(fixture.Engine.ExportJson())!;
+        var memory = document["Residents"]![0]!["Agent"]!["Memory"]!.AsArray();
+        var fact = memory[0]!.AsArray();
+        switch (corruption)
+        {
+            case "short": fact.RemoveAt(fact.Count - 1); break;
+            case "extra": fact.Add(0); break;
+            case "text": fact[13] = null; break;
+            case "enum": fact[1] = 999; break;
+            case "object": memory[0] = new JsonObject(); break;
+        }
+
+        Assert.Throws<ArgumentException>(() => WorldEngine.ImportJson(document.ToJsonString()));
+    }
+
     /// <summary>紧凑存档保留零可信度和非零默认值，中文直接写入 UTF-8，HTML 敏感字符仍转义。</summary>
     [Fact]
     public void Compact_save_preserves_zero_confidence_and_navigation_defaults()
@@ -18,8 +66,8 @@ public sealed class WorldPersistenceTests
 
         Assert.Contains("中文", json);
         Assert.Contains("\\u003Chtml\\u003E", json);
-        var savedFact = JsonNode.Parse(json)!["Residents"]![0]!["Agent"]!["Memory"]![0]!.AsObject();
-        Assert.False(savedFact.ContainsKey("CampaignEventId"));
+        var savedFact = JsonNode.Parse(json)!["Residents"]![0]!["Agent"]!["Memory"]![0]!.AsArray();
+        Assert.Equal(18, savedFact.Count);
         Assert.Equal(fact, Assert.Single(restored.Agent.Memory));
         Assert.Equal(0, restored.Agent.Memory[0].Confidence);
         Assert.Equal(-1, restored.Agent.Goal.NavigationTarget);

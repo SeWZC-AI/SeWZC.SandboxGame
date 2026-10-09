@@ -248,8 +248,8 @@ public sealed partial class WorldEngine
         }
 
         Span<int> nearby = stackalloc int[29];
-        // 小世界保留十二 tick 交谈周期；大群体错峰，每 tick 最多启动约六十四次普通交谈。
-        var conversationInterval = Math.Max(12, (Current.Residents.Count + 63) / 64);
+        // 小世界保留十二 tick 交谈周期；大群体错峰，每 tick 最多启动约三十二次普通交谈。
+        var conversationInterval = Math.Max(12, (Current.Residents.Count + 31) / 32);
         for (var senderIndex = 0; senderIndex < Current.Residents.Count; senderIndex++)
         {
             var sender = Current.Residents[senderIndex];
@@ -326,7 +326,15 @@ public sealed partial class WorldEngine
         }
 
         RelayKnownAgentMessages();
-        Array.Clear(_conversationResidents, 0, total);
+        // 日内位置在社会阶段保持不变，复用同一分区处理附近医疗和法术，退出模拟步时清除引用。
+        if (_knowledgeQueriesActive)
+        {
+            _nearbyResidentCount = total;
+            _nearbyResidentTick = Current.Tick;
+            _nearbyResidentRevision = Current.Residents.MembershipRevision;
+        }
+        else
+            Array.Clear(_conversationResidents, 0, total);
     }
 
     private void RelayKnownAgentMessages()
