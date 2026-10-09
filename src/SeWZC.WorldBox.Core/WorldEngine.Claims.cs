@@ -24,7 +24,7 @@ public sealed partial class WorldEngine
         var tile = Current.Tiles[index];
         var x = index % Current.Width;
         var y = index / Current.Width;
-        if (!RaceTerrainRules.CanWalk(tile, race) || IsWaterTerrain(tile.Terrain) || tile.FireTicks > 0 ||
+        if (!RaceTerrainRules.CanWalk(tile.Value, race) || IsWaterTerrain(tile.Terrain) || tile.FireTicks > 0 ||
             tile.ClaimedSettlementId != 0
             || (tile.NationId != 0 && tile.NationId != town.NationId)
             || Distance(town.X, town.Y, x, y) > town.MaxClaimRadius)
@@ -128,7 +128,7 @@ public sealed partial class WorldEngine
             EventAction.Completed, town.Id, person.Id);
     }
 
-    private void RegisterBuildingGround(BuildingCursor building)
+    private void RegisterBuildingGround(Building building)
     {
         if (IsPublicInfrastructure(building.Kind))
             return;
@@ -166,7 +166,7 @@ public sealed partial class WorldEngine
             return;
         if (_connectedClaims.Length != Current.Tiles.Count)
             _connectedClaims = new int[Current.Tiles.Count];
-        FillConnectedClaims(Current, _connectedClaims, _claimQueue);
+        FillConnectedClaims(Current.Snapshot, _connectedClaims, _claimQueue);
         foreach (var index in _territoryCounts.OwnedTiles)
             if (_connectedClaims[index] == 0)
                 _claimQueue.Enqueue(index);

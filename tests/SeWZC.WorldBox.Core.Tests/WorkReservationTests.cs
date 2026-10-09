@@ -11,9 +11,9 @@ public sealed class WorkReservationTests
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         fixture.Engine.Current.Tick = 1;
         var building =
-            fixture.Engine.Current.Buildings.Single(candidate => candidate.Kind == BuildingKind.TownCenter);
-        building.Health = 10;
-        building.WorkSlots = 1;
+            fixture.Engine.Current.Buildings.Single(candidate => candidate.Value.Kind == BuildingKind.TownCenter);
+        building.Replace(building.Value with { Health = 10 });
+        building.Replace(building.Value with { WorkSlots = 1 });
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with
             {
@@ -28,19 +28,21 @@ public sealed class WorkReservationTests
                 {
                     Goal = new AgentGoal
                     {
-                        Kind = AgentGoalKind.Work, TargetEntityId = building.Id, PlayerDirected = true,
+                        Kind = AgentGoalKind.Work,
+                        TargetEntityId = building.Value.Id,
+                        PlayerDirected = true,
                     },
                 },
             });
         var other = fixture.Engine.Current.Residents.Single(person => person.Id != fixture.ResidentId);
 
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
-        var repairedHealth = building.Health;
+        var repairedHealth = building.Value.Health;
         Assert.False(fixture.Engine.TryWorkAtBuilding(other.Value));
 
-        Assert.Equal(repairedHealth, building.Health);
+        Assert.Equal(repairedHealth, building.Value.Health);
         Assert.Equal(1, other.Inventory.Stone);
-        Assert.Equal(fixture.ResidentId, Assert.Single(building.Workers));
+        Assert.Equal(fixture.ResidentId, Assert.Single(building.Value.Workers));
     }
 
     /// <summary>现场致死伤害立即释放死者预约，后续居民无需等到日末归档才能接手医疗。</summary>
@@ -82,10 +84,10 @@ public sealed class WorkReservationTests
         GrantResearch(fixture, Advancement.BattleMagic);
         var towerId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.StormSpire, 8, 16);
         var clinicId = fixture.Engine.GrantFacility(otherTown.Id, BuildingKind.Infirmary, 5, 16);
-        var clinic = fixture.Engine.Current.Buildings.Single(building => building.Id == clinicId);
-        clinic.WorkSlots = 1;
+        var clinic = fixture.Engine.Current.Buildings.Single(building => building.Value.Id == clinicId);
+        clinic.Replace(clinic.Value with { WorkSlots = 1 });
         foreach (var building in fixture.Engine.Current.Buildings)
-            building.Enabled = building.Id == towerId || building.Id == clinicId;
+            building.Replace(building.Value with { Enabled = building.Value.Id == towerId || building.Value.Id == clinicId });
         fixture.Town.Resources = otherTown.Resources = new ResourceStock { Food = 100 };
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with
@@ -172,7 +174,7 @@ public sealed class WorkReservationTests
         Assert.Equal(victim.Id, deceased.Id);
         Assert.Equal(DeathCause.Magic, deceased.DeathCause);
         Assert.Equal(0, deceased.Health);
-        Assert.Contains(replacement.Id, clinic.Workers);
+        Assert.Contains(replacement.Id, clinic.Value.Workers);
         Assert.True(replacement.Health > 50 + .15 / SimulationTime.TicksPerDay);
     }
 
@@ -237,10 +239,10 @@ public sealed class WorkReservationTests
         }
 
         var buildingId = fixture.Engine.GrantFacility(fixture.Town.Id, kind, 14, 16);
-        var building = fixture.Engine.Current.Buildings.Single(candidate => candidate.Id == buildingId);
-        building.WorkSlots = 1;
-        foreach (var other in fixture.Engine.Current.Buildings.Where(candidate => candidate.Id != buildingId))
-            other.Enabled = false;
+        var building = fixture.Engine.Current.Buildings.Single(candidate => candidate.Value.Id == buildingId);
+        building.Replace(building.Value with { WorkSlots = 1 });
+        foreach (var other in fixture.Engine.Current.Buildings.Where(candidate => candidate.Value.Id != buildingId))
+            other.Replace(other.Value with { Enabled = false });
         fixture.Resident.Inventory = kind == BuildingKind.Reservoir
             ? new ResourceStock { Food = 1, Water = 3 }
             : new ResourceStock { Food = 3, Water = 1 };
@@ -262,8 +264,8 @@ public sealed class WorkReservationTests
         fixture.Engine.Step();
 
         Assert.Equal(AgentGoalKind.ReturnHome, fixture.Resident.Agent.Goal.Kind);
-        Assert.Contains(replacement.Id, building.Workers);
-        Assert.DoesNotContain(fixture.ResidentId, building.Workers);
+        Assert.Contains(replacement.Id, building.Value.Workers);
+        Assert.DoesNotContain(fixture.ResidentId, building.Value.Workers);
         Assert.Equal(AgentGoalKind.Work, Assert.Single(replacement.Agent.Decisions).Goal);
     }
 

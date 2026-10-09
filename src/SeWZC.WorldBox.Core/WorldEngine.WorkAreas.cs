@@ -73,7 +73,7 @@ public sealed partial class WorldEngine
             var previousPlot = new NaturalWorkPlot(previous, person.Profession);
             if (person.Agent.WorkplaceId == 0 && plots.Contains(previousPlot)
                                               && occupied.GetValueOrDefault(previousPlot) == 1
-                                              && RaceTerrainRules.CanWalk(Current.Tiles[previous], person.Race))
+                                              && RaceTerrainRules.CanWalk(Current.Tiles[previous].Value, person.Race))
                 continue;
             if (previous >= 0)
                 occupied[previousPlot]--;
@@ -84,7 +84,7 @@ public sealed partial class WorldEngine
                 foreach (var plot in plots)
                 {
                     if (plot.Profession != person.Profession || occupied.GetValueOrDefault(plot) > 0
-                                                             || !RaceTerrainRules.CanWalk(Current.Tiles[plot.Index],
+                                                             || !RaceTerrainRules.CanWalk(Current.Tiles[plot.Index].Value,
                                                                  person.Race))
                         continue;
                     var distance = Distance(person.X, person.Y, plot.Index % Current.Width, plot.Index / Current.Width);

@@ -1,7 +1,7 @@
 namespace SeWZC.WorldBox.Core.Runtime;
 
 /// <summary>Tile 的引擎内定位引用；每次写入提交新的不可变状态。</summary>
-internal sealed partial class TileCursor : StateCursor<Tile>
+internal sealed partial class TileCursor : StateReference<Tile>
 {
     public TileCursor(Tile value) : base(value) { }
 
@@ -221,15 +221,5 @@ internal sealed partial class TileCursor : StateCursor<Tile>
             if (!EqualityComparer<double>.Default.Equals(Value.ResourceAmount, value))
                 ReplaceChanged(Value with { ResourceAmount = value });
         }
-    }
-
-    public static implicit operator Tile(TileCursor cursor)
-    {
-        return cursor.Value;
-    }
-
-    public static implicit operator TileCursor(Tile value)
-    {
-        return new TileCursor(value);
     }
 }

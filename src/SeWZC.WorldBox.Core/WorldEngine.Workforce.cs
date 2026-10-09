@@ -25,7 +25,7 @@ public sealed partial class WorldEngine
             targets.Clear();
             facilityTargets.Clear();
             var adults = new List<ResidentCursor>();
-            var buildings = new List<BuildingCursor>();
+            var buildings = new List<StateReference<Building>>();
             var patients = 0;
             var dailyFood = 0d;
             foreach (var person in citizens)
@@ -76,7 +76,7 @@ public sealed partial class WorldEngine
                     plots.Add(new NaturalWorkPlot(index, Profession.Miner));
                 }
 
-                if (IsFreshWater(tile) && EdibleAnimal(tile, true) is var fish && fish != WildlifeKind.None
+                if (IsFreshWater(tile.Value) && EdibleAnimal(tile, true) is var fish && fish != WildlifeKind.None
                     && WildlifeHarvestEfficiency(tile, fish) >= .25)
                 {
                     fishingSites++;
@@ -116,17 +116,17 @@ public sealed partial class WorldEngine
                 Current.Society.Research.Any(r => r.SettlementId == town.Id && r.ActiveProject is not null);
             foreach (var building in Current.Buildings)
             {
-                if (building.SettlementId != town.Id || building.Health <= 0 || !building.Enabled
-                    || Distance(building.X, building.Y, town.X, town.Y) > 8)
+                if (building.Value.SettlementId != town.Id || building.Value.Health <= 0 || !building.Value.Enabled
+                    || Distance(building.Value.X, building.Value.Y, town.X, town.Y) > 8)
                     continue;
                 buildings.Add(building);
-                if (!building.IsCompleted || building.IsUpgrading || building.Health < 50)
+                if (!building.Value.IsCompleted || building.Value.IsUpgrading || building.Value.Health < 50)
                 {
-                    targets[(int)Profession.Builder] += building.WorkSlots;
+                    targets[(int)Profession.Builder] += building.Value.WorkSlots;
                     continue;
                 }
 
-                var job = WorkplaceProfession(building.Kind);
+                var job = WorkplaceProfession(building.Value.Kind);
                 if (job is null || (job == Profession.Scholar && !researching)
                                 || (job == Profession.Fisher && foodDeficit <= 0)
                                 || (job == Profession.Physician && patients == 0))
@@ -135,8 +135,8 @@ public sealed partial class WorldEngine
                 if (unlock is not null && !HasResearch(town.Id, unlock))
                     continue;
                 facilityTargets[(int)job.Value] += job == Profession.Physician
-                    ? Math.Min(building.WorkSlots, (patients + 2) / 3)
-                    : building.WorkSlots;
+                    ? Math.Min(building.Value.WorkSlots, (patients + 2) / 3)
+                    : building.Value.WorkSlots;
             }
 
             for (var job = 0; job < targets.Length; job++)
@@ -261,7 +261,7 @@ public sealed partial class WorldEngine
     }
 
     private void AssignLocalWorkplaces(SettlementCursor town, List<ResidentCursor> adults,
-        List<BuildingCursor> buildings)
+        List<StateReference<Building>> buildings)
     {
         var occupied = new Dictionary<int, int>();
         foreach (var person in adults)
@@ -276,26 +276,26 @@ public sealed partial class WorldEngine
                 Current.Tick - person.MoveStartedTick < person.MoveDurationTicks)
                 continue;
             var previous = person.Agent.WorkplaceId;
-            if (buildings.Any(b => b.Id == previous && WorkplaceFits(b, person)
-                                                    && occupied.GetValueOrDefault(previous) <= b.WorkSlots))
+            if (buildings.Any(b => b.Value.Id == previous && WorkplaceFits(b.Value, person)
+                                                    && occupied.GetValueOrDefault(previous) <= b.Value.WorkSlots))
                 continue;
             if (previous != 0)
                 occupied[previous]--;
-            BuildingCursor? selected = null;
+            StateReference<Building>? selected = null;
             var bestDistance = int.MaxValue;
             foreach (var building in buildings)
             {
-                if (!WorkplaceFits(building, person) || occupied.GetValueOrDefault(building.Id) >= building.WorkSlots)
+                if (!WorkplaceFits(building.Value, person) || occupied.GetValueOrDefault(building.Value.Id) >= building.Value.WorkSlots)
                     continue;
-                var distance = Distance(person.X, person.Y, building.X, building.Y);
-                if (distance < bestDistance || (distance == bestDistance && building.Id < selected!.Id))
+                var distance = Distance(person.X, person.Y, building.Value.X, building.Value.Y);
+                if (distance < bestDistance || (distance == bestDistance && building.Value.Id < selected!.Value.Id))
                 {
                     selected = building;
                     bestDistance = distance;
                 }
             }
 
-            var next = selected?.Id ?? 0;
+            var next = selected?.Value.Id ?? 0;
             if (next == previous)
                 continue;
             if (next != 0)
@@ -305,7 +305,7 @@ public sealed partial class WorldEngine
         }
     }
 
-    private static bool WorkplaceFits(BuildingCursor building, ResidentCursor person)
+    private static bool WorkplaceFits(Building building, ResidentCursor person)
     {
         return building.Enabled && building.Health > 0 &&
                (BuildingRace(building.Kind) is not { } race || race == person.Race)

@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 namespace SeWZC.WorldBox.Core.Runtime;
 
 /// <summary>Settlement 的引擎内定位引用；连续仓库补给在阶段结束或读取快照时合并提交。</summary>
-internal sealed partial class SettlementCursor : StateCursor<Settlement>
+internal sealed partial class SettlementCursor : StateReference<Settlement>
 {
     public SettlementCursor(Settlement value) : base(value) { }
 
@@ -205,16 +205,5 @@ internal sealed partial class SettlementCursor : StateCursor<Settlement>
             if (!EqualityComparer<int>.Default.Equals(Value.ShieldTicks, value))
                 ReplaceChanged(Value with { ShieldTicks = value });
         }
-    }
-
-    public static implicit operator Settlement(SettlementCursor cursor)
-    {
-        cursor.FlushResources();
-        return cursor.Value;
-    }
-
-    public static implicit operator SettlementCursor(Settlement value)
-    {
-        return new SettlementCursor(value);
     }
 }

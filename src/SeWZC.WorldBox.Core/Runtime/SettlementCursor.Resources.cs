@@ -6,6 +6,15 @@ internal sealed partial class SettlementCursor
     private ResourceStock _resourceDraft;
     private bool _resourcesChanged;
 
+    internal Settlement Snapshot
+    {
+        get
+        {
+            FlushResources();
+            return Value;
+        }
+    }
+
     internal void BeginResourceUpdates()
     {
         if (_resourceDepth++ == 0)

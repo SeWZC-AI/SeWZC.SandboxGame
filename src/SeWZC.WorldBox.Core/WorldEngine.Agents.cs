@@ -176,10 +176,10 @@ public sealed partial class WorldEngine
         var assigned = person.Agent.Goal.Kind == AgentGoalKind.Work
             ? FindBuilding(person.Agent.Goal.TargetEntityId)
             : null;
-        var recipe = assigned is { IsCompleted: true, Enabled: true } ? ProductionRules.For(assigned.Kind) : null;
-        if (assigned is not null && assigned.SettlementId == home.Id
-                                 && (recipe is not null || IsHusbandry(assigned.Kind) ||
-                                     ExpansionSupply(assigned.Kind) is not null || assigned.Health < 50))
+        var recipe = assigned?.Value is { IsCompleted: true, Enabled: true } ? ProductionRules.For(assigned.Value.Kind) : null;
+        if (assigned is not null && assigned.Value.SettlementId == home.Id
+                                 && (recipe is not null || IsHusbandry(assigned.Value.Kind) ||
+                                     ExpansionSupply(assigned.Value.Kind) is not null || assigned.Value.Health < 50))
             return;
         var unloaded = InventoryTransfer.Unload(person.Inventory, home.Resources,
             WaterReserve(person), TravelReserve(person), person.Profession);
@@ -212,7 +212,7 @@ public sealed partial class WorldEngine
             return false;
         if (person.Profession == Profession.Builder && SettlementNeedsClaimArea(home)
                                                     && (FindBuilding(goal.TargetEntityId) is not { } assigned ||
-                                                        (assigned.IsCompleted && !assigned.IsUpgrading)))
+                                                        (assigned.Value.IsCompleted && !assigned.Value.IsUpgrading)))
             return false;
         if (person.Hunger >= 60 || person.Thirst >= 60 || person.Agent.Fatigue >= 60
             || person.Inventory.Food >= Math.Max(4, TravelReserve(person) + 1)
@@ -225,7 +225,7 @@ public sealed partial class WorldEngine
         if (goal.Kind == AgentGoalKind.Work && person.Profession is Profession.Physician or Profession.Firefighter
                                                 or Profession.Archivist or Profession.Surveyor or Profession.Gardener
                                             && FindBuilding(goal.TargetEntityId) is { } current &&
-                                            PreferredExpansionJob(current.Kind) != person.Profession
+                                            PreferredExpansionJob(current.Value.Kind) != person.Profession
                                             && ExpansionJobHasNearbyWork(person))
             return false;
         if (Current.Rules.Hunger && Distance(person.X, person.Y, home.X, home.Y) > 1 && person.Hunger < 20
@@ -247,8 +247,8 @@ public sealed partial class WorldEngine
 
         if (goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic)
         {
-            return FindBuilding(goal.TargetEntityId) is { } building && building.SettlementId == home.Id &&
-                   BuildingHasWork(building, person);
+            return FindBuilding(goal.TargetEntityId) is { } building && building.Value.SettlementId == home.Id &&
+                   BuildingHasWork(building.Value, person);
         }
 
         return false;
@@ -424,8 +424,8 @@ public sealed partial class WorldEngine
         if (person.Agent.Goal.Kind == AgentGoalKind.Work && choices.Count == 0 && person.Hunger < 65 &&
             person.Agent.Fatigue < 60
             && (person.Thirst < 40 || person.Inventory.Water >= .3)
-            && FindBuilding(person.Agent.Goal.TargetEntityId) is { } factory && factory.SettlementId == home.Id
-            && ProductionRules.For(factory.Kind) is { } recipe && CanProduce(factory, person, recipe)
+            && FindBuilding(person.Agent.Goal.TargetEntityId) is { } factory && factory.Value.SettlementId == home.Id
+            && ProductionRules.For(factory.Value.Kind) is { } recipe && CanProduce(factory.Value, person, recipe)
             && HasProductionInputs(person.Inventory, recipe))
         {
             DeferGoalReview(person);
@@ -573,19 +573,19 @@ public sealed partial class WorldEngine
                                  person.Profession >= Profession.Engineer)
                              && workTarget is { } work)
         {
-            var kind = work.Kind == BuildingKind.Academy && person.Profession == Profession.Scholar
+            var kind = work.Value.Kind == BuildingKind.Academy && person.Profession == Profession.Scholar
                 ? AgentGoalKind.Study
-                : work.Kind is BuildingKind.ArcaneSanctum or BuildingKind.SacredGrove &&
+                : work.Value.Kind is BuildingKind.ArcaneSanctum or BuildingKind.SacredGrove &&
                   person.Profession is Profession.Mage or Profession.Battlemage
                     ? AgentGoalKind.TrainMagic
                     : AgentGoalKind.Work;
-            choices.Add(new GoalChoice(kind, work.X, work.Y, 42 + personality.Diligence * 12
+            choices.Add(new GoalChoice(kind, work.Value.X, work.Value.Y, 42 + personality.Diligence * 12
                                                                 + (person.Profession == Profession.Farmer &&
                                                                    foodFact is { Value: < 12 }
                                                                     ? 18 * foodFact.ReliabilityAt(Current.Tick)
                                                                     : 0),
                 kind == AgentGoalKind.Study ? "附近有可参与的研究设施，前往学习" :
-                kind == AgentGoalKind.TrainMagic ? "附近有可训练的魔法设施" : "附近有实际施工或生产工作", EntityId: work.Id));
+                kind == AgentGoalKind.TrainMagic ? "附近有可训练的魔法设施" : "附近有实际施工或生产工作", EntityId: work.Value.Id));
         }
 
         if (person.Age >= 14 && person.Profession is Profession.Lumberjack or Profession.Miner
@@ -632,10 +632,10 @@ public sealed partial class WorldEngine
         }
 
         if (person.Age >= 14 && person.ArmyId == 0 && workTarget is { } useful
-            && !choices.Any(c => c.EntityId == useful.Id))
+            && !choices.Any(c => c.EntityId == useful.Value.Id))
         {
-            choices.Add(new GoalChoice(AgentGoalKind.Work, useful.X, useful.Y, 25 + personality.Diligence * 8,
-                "本职暂无任务，协助附近实际施工或生产", EntityId: useful.Id));
+            choices.Add(new GoalChoice(AgentGoalKind.Work, useful.Value.X, useful.Value.Y, 25 + personality.Diligence * 8,
+                "本职暂无任务，协助附近实际施工或生产", EntityId: useful.Value.Id));
         }
 
         if (Distance(person.X, person.Y, home.X, home.Y) <= 1 && choices.Count == 0)
@@ -847,7 +847,7 @@ public sealed partial class WorldEngine
         bool SuitableSite(int index)
         {
             var tile = Current.Tiles[index];
-            if (!RaceTerrainRules.CanWalk(tile, person.Race) || tile.FireTicks > 0)
+            if (!RaceTerrainRules.CanWalk(tile.Value, person.Race) || tile.FireTicks > 0)
                 return false;
             if (profession != Profession.Miner
                 && NaturalPlantHarvestEfficiency(tile, profession == Profession.Lumberjack) < .25)
@@ -982,7 +982,7 @@ public sealed partial class WorldEngine
                     continue;
                 var to = Current.Tiles[index];
                 var horizontal = dy == 0;
-                if (to.FireTicks > 0 || !CanTraverse(to, mode, person.Race)
+                if (to.FireTicks > 0 || !CanTraverse(to.Value, mode, person.Race)
                                      || (mode == TravelMode.Foot &&
                                          ((from.Improvement == LandImprovement.Bridge && horizontal !=
                                               (from.BridgeDirection == BridgeDirection.Horizontal))
@@ -1037,9 +1037,9 @@ public sealed partial class WorldEngine
             return;
         if (goal.Kind == AgentGoalKind.Fish)
             PrepareJourneyTransport(person, home);
-        var interactionRange = AgentInteractionRange(person, home);
+        var interactionRange = AgentInteractionRange(person.Agent.Goal, home.FoundationPending);
         if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > interactionRange ||
-            !CanTraverse(Current.Tiles[Index(person.X, person.Y)], person.TravelMode, person.Race))
+            !CanTraverse(Current.Tiles[Index(person.X, person.Y)].Value, person.TravelMode, person.Race))
         {
             var activity = goal.Kind == AgentGoalKind.Flee ? ResidentActivity.Fleeing : ResidentActivity.Wandering;
             if (!MoveAgentTowards(person, goal.TargetX, goal.TargetY, activity))
@@ -1171,10 +1171,9 @@ public sealed partial class WorldEngine
         }
     }
 
-    private int AgentInteractionRange(ResidentCursor person, SettlementCursor? home)
+    private int AgentInteractionRange(AgentGoal goal, bool foundationPending)
     {
-        var goal = person.Agent.Goal;
-        if (home?.FoundationPending == true && goal.Kind == AgentGoalKind.ReturnHome)
+        if (foundationPending && goal.Kind == AgentGoalKind.ReturnHome)
             return 0;
         if (goal.Kind == AgentGoalKind.ExtinguishFire)
             return 1;
@@ -1186,8 +1185,8 @@ public sealed partial class WorldEngine
             return 1;
         return goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic
                && FindBuilding(goal.TargetEntityId) is { } building
-               && (!building.IsCompleted || building.IsUpgrading || IsWaterfrontBuilding(building.Kind) ||
-                   building.Kind == BuildingKind.TownCenter)
+               && (!building.Value.IsCompleted || building.Value.IsUpgrading || IsWaterfrontBuilding(building.Value.Kind) ||
+                   building.Value.Kind == BuildingKind.TownCenter)
             ? 1
             : 0;
     }
@@ -1290,7 +1289,7 @@ public sealed partial class WorldEngine
         if (Current.Rules.Construction && person.TravelMode == TravelMode.Foot &&
             HasResearch(person.SettlementId, Advancement.Logistics)
             && Distance(person.X, person.Y, targetX, targetY) <= 6 &&
-            !IsWaterfrontBuilding(FindBuilding(person.Agent.Goal.TargetEntityId)?.Kind ?? BuildingKind.Farm))
+            !IsWaterfrontBuilding(FindBuilding(person.Agent.Goal.TargetEntityId)?.Value.Kind ?? BuildingKind.Farm))
         {
             var visible = MarkVisibleReachable(person);
             if (_localMoveVisited[Index(targetX, targetY)] != visible)

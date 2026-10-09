@@ -63,7 +63,7 @@ public sealed partial class WorldEngine
 
     private string NewPlaceName(string suffix)
     {
-        var used = Current.Nations.Select(n => n.Name).Concat(Current.Settlements.Select(t => t.Name))
+        var used = Current.Nations.Select(n => n.Value.Name).Concat(Current.Settlements.Select(t => t.Name))
             .ToHashSet(StringComparer.Ordinal);
         var code = unchecked((uint)Current.NextId * 137u + (uint)Current.Seed) % 512;
         for (var i = 0; i < 512; i++)

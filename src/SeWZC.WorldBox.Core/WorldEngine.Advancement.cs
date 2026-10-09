@@ -56,7 +56,7 @@ public sealed partial class WorldEngine
         return ProductionRules.For(kind)?.Description ?? "";
     }
 
-    private string? ProductionRequirement(BuildingCursor building, ProductionRecipe recipe)
+    private string? ProductionRequirement(Building building, ProductionRecipe recipe)
     {
         if (!BuildingGroundOwned(building))
             return "所在地已脱离城镇占领区域，暂停运营";
@@ -76,7 +76,7 @@ public sealed partial class WorldEngine
         return null;
     }
 
-    private double ProductionYield(BuildingCursor building, ProductionRecipe recipe)
+    private double ProductionYield(Building building, ProductionRecipe recipe)
     {
         var multiplier = (recipe.Output == ResourceKind.Food &&
                           HasResearch(building.SettlementId, Advancement.Irrigation)
@@ -105,55 +105,55 @@ public sealed partial class WorldEngine
     /// <param name="buildingId">待操作建筑的稳定 ID。</param>
     public string GetProductionStatus(int buildingId)
     {
-        var building = Current.Buildings.FirstOrDefault(b => b.Id == buildingId);
-        var recipe = building is null ? null : ProductionRules.For(building.Kind);
+        var building = Current.Buildings.FirstOrDefault(b => b.Value.Id == buildingId);
+        var recipe = building is null ? null : ProductionRules.For(building.Value.Kind);
         if (building is null)
             return "建筑已不存在";
-        if (!BuildingGroundOwned(building))
+        if (!BuildingGroundOwned(building.Value))
             return "所在地已脱离城镇占领区域，暂停运营";
-        if (building.Health <= 0)
+        if (building.Value.Health <= 0)
             return "建筑已损毁，等待重建";
-        if (building.Health < 50)
+        if (building.Value.Health < 50)
             return "建筑受损，需要修复后工作";
-        if (Current.Tiles[Index(building.X, building.Y)].FireTicks > 0)
+        if (Current.Tiles[Index(building.Value.X, building.Value.Y)].FireTicks > 0)
             return "正在燃烧，暂停工作";
-        var workers = Current.Tick - building.LastWorkedTick <= 1 ? building.Workers.Count : 0;
-        if (!building.IsCompleted)
+        var workers = Current.Tick - building.Value.LastWorkedTick <= 1 ? building.Value.Workers.Count : 0;
+        if (!building.Value.IsCompleted)
         {
             return
-                $"施工：{building.ConstructionProgress / building.ConstructionRequired:P0}   到场工人 {workers}/{building.WorkSlots}";
+                $"施工：{building.Value.ConstructionProgress / building.Value.ConstructionRequired:P0}   到场工人 {workers}/{building.Value.WorkSlots}";
         }
 
-        if (building.IsUpgrading)
+        if (building.Value.IsUpgrading)
         {
             return
-                $"{(building.PendingDirection.HasValue ? "改向" : "升级")}：{building.UpgradeProgress:0.#} / {building.UpgradeRequired:0}\n等待居民到场施工";
+                $"{(building.Value.PendingDirection.HasValue ? "改向" : "升级")}：{building.Value.UpgradeProgress:0.#} / {building.Value.UpgradeRequired:0}\n等待居民到场施工";
         }
 
-        if (!building.Enabled)
+        if (!building.Value.Enabled)
             return "已停用";
-        if (!CanBuildRacialFacility(building.SettlementId, building.Kind))
+        if (!CanBuildRacialFacility(building.Value.SettlementId, building.Value.Kind))
             return "缺少该族成年居民，暂停运营";
-        if (IsHusbandry(building.Kind))
+        if (IsHusbandry(building.Value.Kind))
         {
             return
-                $"养殖：{(building.LivestockKind == WildlifeKind.None ? "等待取得种群" : WildlifeName(building.LivestockKind))}  {building.LivestockPopulation:0.##} / {LivestockCapacity(building):0.#}\n" +
-                BuildingDescription(building.Kind);
+                $"养殖：{(building.Value.LivestockKind == WildlifeKind.None ? "等待取得种群" : WildlifeName(building.Value.LivestockKind))}  {building.Value.LivestockPopulation:0.##} / {LivestockCapacity(building.Value):0.#}\n" +
+                BuildingDescription(building.Value.Kind);
         }
 
         if (recipe is null)
         {
-            var town = RequireTown(building.SettlementId);
-            if (building.Kind == BuildingKind.TownCenter && town.IsExpanding)
+            var town = RequireTown(building.Value.SettlementId);
+            if (building.Value.Kind == BuildingKind.TownCenter && town.IsExpanding)
             {
                 return
-                    $"组织城镇扩充：{town.ExpansionProgress:0.#} / {town.ExpansionRequired:0}\n到场工人 {workers}/{building.WorkSlots}";
+                    $"组织城镇扩充：{town.ExpansionProgress:0.#} / {town.ExpansionRequired:0}\n到场工人 {workers}/{building.Value.WorkSlots}";
             }
 
             var research = Current.Society.Research.First(r => r.SettlementId == town.Id);
-            var activity = building.Kind switch
+            var activity = building.Value.Kind switch
             {
-                BuildingKind.Farm => $"产出：粮食   累计采收 {Current.Tiles[Index(building.X, building.Y)].Harvested:0.#}",
+                BuildingKind.Farm => $"产出：粮食   累计采收 {Current.Tiles[Index(building.Value.X, building.Value.Y)].Harvested:0.#}",
                 BuildingKind.Workshop => "产出：附近实际可采的木材、石材与矿石",
                 BuildingKind.Academy => research.ActiveProject is { } kind
                     ? $"正在研究：{kind.Name}   {research.Progress / research.RequiredProgress:P0}"
@@ -163,41 +163,41 @@ public sealed partial class WorldEngine
                 BuildingKind.ArcaneSanctum => "功能：训练法术，提升到场居民的魔法熟练度",
                 BuildingKind.Infirmary => "功能：治疗附近受伤与患病居民",
                 BuildingKind.TownCenter => $"家园粮仓：粮食 {town.Resources.Food:0.#}   木材 {town.Resources.Wood:0.#}",
-                _ => BuildingDescription(building.Kind),
+                _ => BuildingDescription(building.Value.Kind),
             };
             return activity +
-                   (PassiveFacility(building) ||
-                    building.Kind is BuildingKind.MountainPass or BuildingKind.Bridge or BuildingKind.TownCenter
+                   (PassiveFacility(building.Value) ||
+                    building.Value.Kind is BuildingKind.MountainPass or BuildingKind.Bridge or BuildingKind.TownCenter
                        ? ""
-                       : $"\n到场工作 {workers}/{building.WorkSlots} 人");
+                       : $"\n到场工作 {workers}/{building.Value.WorkSlots} 人");
         }
 
-        if (!CanBuildRacialFacility(building.SettlementId, building.Kind))
+        if (!CanBuildRacialFacility(building.Value.SettlementId, building.Value.Kind))
             return "缺少该族成年居民，暂停运营";
-        var requirement = ProductionRequirement(building, recipe);
+        var requirement = ProductionRequirement(building.Value, recipe);
         if (requirement is not null)
             return requirement;
-        if (ProductionYield(building, recipe) <= 0)
+        if (ProductionYield(building.Value, recipe) <= 0)
             return "土地无法产粮，需要恢复肥力";
-        var townStock = RequireTown(building.SettlementId);
+        var townStock = RequireTown(building.Value.SettlementId);
         var reserve = LocalDevelopmentReserve(townStock);
         var reserved = ResourceStock.Kinds.Where(k => recipe.Input.Get(k) > 0 && reserve.Get(k) > 0
                                                                               && townStock.Resources.Get(k) <
                                                                               recipe.Input.Get(k) + reserve.Get(k))
             .Select(k => ResourceStock.Name(k) + " " + reserve.Get(k).ToString("0.#")).ToArray();
         var missing = MissingResources(townStock.Resources, recipe.Input);
-        if (building.ProductionBatches > 0 &&
+        if (building.Value.ProductionBatches > 0 &&
             townStock.Resources.Get(recipe.Output) >= ProductionStockTarget(townStock, recipe.Output))
             missing = $"{ResourceStock.Name(recipe.Output)}库存已充足，暂停新的领料";
         else if (reserved.Length > 0)
             missing = "为下一发展项目预留：" + string.Join("、", reserved);
         return
-            $"产出：{ResourceStock.Name(recipe.Output)} {ProductionYield(building, recipe):0.#} / 批   累计 {building.ProductionBatches} 批\n" +
+            $"产出：{ResourceStock.Name(recipe.Output)} {ProductionYield(building.Value, recipe):0.#} / 批   累计 {building.Value.ProductionBatches} 批\n" +
             (missing is not null ? missing
                 : recipe.Research.Magic ? "需要天赋 ≥25、训练 ≥8 且魔力足够的到场施作者" : "原料可用，等待工人取料并到场加工");
     }
 
-    private bool CanProduce(BuildingCursor building, ResidentCursor person, ProductionRecipe recipe)
+    private bool CanProduce(Building building, ResidentCursor person, ProductionRecipe recipe)
     {
         if (BuildingRace(building.Kind) is { } race && person.Race != race)
             return false;
@@ -262,13 +262,13 @@ public sealed partial class WorldEngine
         if (goal.Kind != AgentGoalKind.Work)
             return false;
         var building = FindBuilding(goal.TargetEntityId);
-        var recipe = building is null ? null : ProductionRules.For(building.Kind);
-        if (building is null || building.SettlementId != home.Id || recipe is null || !building.IsCompleted ||
-            building.IsUpgrading)
+        var recipe = building is null ? null : ProductionRules.For(building.Value.Kind);
+        if (building is null || building.Value.SettlementId != home.Id || recipe is null || !building.Value.IsCompleted ||
+            building.Value.IsUpgrading)
             return false;
-        if (!CanProduce(building, person, recipe))
+        if (!CanProduce(building.Value, person, recipe))
         {
-            person.Agent = person.Agent.WithGoal(goal = goal with { Reason = GetProductionStatus(building.Id) });
+            person.Agent = person.Agent.WithGoal(goal = goal with { Reason = GetProductionStatus(building.Value.Id) });
             person.Agent = person.Agent with { NextThinkTick = Current.Tick + 1 };
             return true;
         }
@@ -277,7 +277,9 @@ public sealed partial class WorldEngine
         {
             person.Agent = person.Agent.WithGoal(goal = goal with
             {
-                TargetX = home.X, TargetY = home.Y, Reason = "前往家园取料，亲自运至" + BuildingName(building.Kind),
+                TargetX = home.X,
+                TargetY = home.Y,
+                Reason = "前往家园取料，亲自运至" + BuildingName(building.Value.Kind),
             });
             if (Distance(person.X, person.Y, home.X, home.Y) > 1)
             {
@@ -307,11 +309,13 @@ public sealed partial class WorldEngine
 
         person.Agent = person.Agent.WithGoal(goal = goal with
         {
-            TargetX = building.X, TargetY = building.Y, Reason = "携带实际原料，前往" + BuildingName(building.Kind) + "加工",
+            TargetX = building.Value.X,
+            TargetY = building.Value.Y,
+            Reason = "携带实际原料，前往" + BuildingName(building.Value.Kind) + "加工",
         });
-        if (Distance(person.X, person.Y, building.X, building.Y) > 1)
+        if (Distance(person.X, person.Y, building.Value.X, building.Value.Y) > 1)
         {
-            MoveAgentTowards(person, building.X, building.Y);
+            MoveAgentTowards(person, building.Value.X, building.Value.Y);
             person.Activity = ResidentActivity.Delivering;
             return true;
         }
@@ -320,7 +324,7 @@ public sealed partial class WorldEngine
         {
             person.Activity = ResidentActivity.Working;
             if (HasProductionInputs(person.Inventory, recipe) && person.Inventory.Get(recipe.Output) <
-                                                              ProductionYield(building, recipe) * 4
+                                                              ProductionYield(building.Value, recipe) * 4
                                                               && (!recipe.Research.Magic || person.Mana >= recipe.Mana))
             {
                 person.Agent = person.Agent with { NextThinkTick = Current.Tick + 4 };
@@ -345,9 +349,9 @@ public sealed partial class WorldEngine
         return true;
     }
 
-    private bool Produce(BuildingCursor building, ResidentCursor person, ProductionRecipe recipe)
+    private bool Produce(StateReference<Building> building, ResidentCursor person, ProductionRecipe recipe)
     {
-        if (!CanProduce(building, person, recipe) || !HasProductionInputs(person.Inventory, recipe))
+        if (!CanProduce(building.Value, person, recipe) || !HasProductionInputs(person.Inventory, recipe))
             return false;
         var batches = 1;
         foreach (var kind in recipe.InputResources)
@@ -355,7 +359,7 @@ public sealed partial class WorldEngine
                 Math.Floor((person.Inventory.Get(kind) + .000001) / recipe.Input.Get(kind))));
         if (recipe.Mana > 0)
             batches = Math.Min(batches, (int)Math.Min(batches, Math.Floor(person.Mana / recipe.Mana)));
-        var yield = ProductionYield(building, recipe);
+        var yield = ProductionYield(building.Value, recipe);
         var netYield = yield - recipe.Input.Get(recipe.Output);
         if (netYield > 0)
         {
@@ -369,16 +373,16 @@ public sealed partial class WorldEngine
         inventory = inventory.WithAmount(recipe.Output, inventory.Get(recipe.Output) + yield * batches);
         person.Inventory = inventory;
         person.Mana -= recipe.Mana * batches;
-        RecordHarvest(Current.Tiles[Index(building.X, building.Y)], yield * batches);
-        var firstBatch = building.ProductionBatches == 0;
-        building.ProductionBatches = Math.Min(1_000_000_000, building.ProductionBatches + batches);
+        RecordHarvest(Current.Tiles[Index(building.Value.X, building.Value.Y)], yield * batches);
+        var firstBatch = building.Value.ProductionBatches == 0;
+        building.Replace(building.Value with { ProductionBatches = Math.Min(1_000_000_000, building.Value.ProductionBatches + batches) });
         if (firstBatch)
         {
             var entry = AddEvent(WorldEventKind.Construction,
-                $"{RequireTown(building.SettlementId).Name}的{BuildingName(building.Kind)}完成首批加工；产物正由{person.Name}运回仓库。",
-                building.X, building.Y, EventAction.Delivery, building.SettlementId, person.Id,
-                building.Observation.StartEventId);
-            RecordLife(person, "完成" + BuildingName(building.Kind) + "首批实际加工。", entry,
+                $"{RequireTown(building.Value.SettlementId).Name}的{BuildingName(building.Value.Kind)}完成首批加工；产物正由{person.Name}运回仓库。",
+                building.Value.X, building.Value.Y, EventAction.Delivery, building.Value.SettlementId, person.Id,
+                building.Value.Observation.StartEventId);
+            RecordLife(person, "完成" + BuildingName(building.Value.Kind) + "首批实际加工。", entry,
                 PersonalExperienceKind.Achievement);
         }
 

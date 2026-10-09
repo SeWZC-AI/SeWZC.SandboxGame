@@ -161,7 +161,7 @@ public sealed partial class WorldEngine
                   * (.5 + person.MagicTalent / 100)
                   * (HasResearch(person.SettlementId, Advancement.ManaAttunement) ? 1.5 : 1);
             var hasHome = _settlements.ContainsKey(person.SettlementId);
-            var waterUse = WaterUse(age, tile) / SimulationTime.TicksPerDay;
+            var waterUse = WaterUse(age, tile.Value) / SimulationTime.TicksPerDay;
             var water = hasHome && person.ArmyId == 0 && person.Health > 0 && rules.Thirst
                         && inventory.Water < waterUse
                 ? WithdrawWater(person.X, person.Y, person.MoveStartedTick, person.MoveDurationTicks,
@@ -202,15 +202,15 @@ public sealed partial class WorldEngine
                 ExpandTown(town.Id);
             if (Current.Rules.Construction && town.Resources.Food >= citizens.Count * 2 + developmentReserve.Food
                                            && GetHousingCapacity(town.Id) < 60 + Current.Buildings.Where(b =>
-                                                   b.SettlementId == town.Id && IsFacilityOperating(b))
-                                               .Sum(b => b.Kind == BuildingKind.Farm
-                                                   ? 30 * b.Efficiency
-                                                   : b.Kind is BuildingKind.AutomatedFarm or BuildingKind.RunicGarden
-                                                       ? 120 * b.Efficiency
+                                                   b.Value.SettlementId == town.Id && IsFacilityOperating(b.Value))
+                                               .Sum(b => b.Value.Kind == BuildingKind.Farm
+                                                   ? 30 * b.Value.Efficiency
+                                                   : b.Value.Kind is BuildingKind.AutomatedFarm or BuildingKind.RunicGarden
+                                                       ? 120 * b.Value.Efficiency
                                                        : 0)
                                            && citizens.Count > GetHousingCapacity(town.Id) * 0.75
                                            && !Current.Buildings.Any(b =>
-                                               b.SettlementId == town.Id && (!b.IsCompleted || b.IsUpgrading))
+                                               b.Value.SettlementId == town.Id && (!b.Value.IsCompleted || b.Value.IsUpgrading))
                                            && town.Resources.Wood >= 25 + developmentReserve.Wood &&
                                            town.Resources.Stone >= 8 + developmentReserve.Stone)
             {
@@ -294,10 +294,10 @@ public sealed partial class WorldEngine
                                                          InBounds(f.X, f.Y))
             .Select(f => Index(f.X, f.Y)).Where(i => !IsWaterTerrain(Current.Tiles[i].Terrain)
                                                      && pioneers.All(p =>
-                                                         RaceTerrainRules.CanWalk(Current.Tiles[i], p.Race)) &&
+                                                         RaceTerrainRules.CanWalk(Current.Tiles[i].Value, p.Race)) &&
                                                      Current.Tiles[i].FireTicks == 0
                                                      && !Current.Buildings.Any(b =>
-                                                         b.X == i % Current.Width && b.Y == i / Current.Width)
+                                                         b.Value.X == i % Current.Width && b.Value.Y == i / Current.Width)
                                                      && Current.Tiles[i].Fertility >= 25 &&
                                                      (Current.Tiles[i].NationId == 0 ||
                                                       Current.Tiles[i].NationId == origin.NationId)
@@ -371,7 +371,7 @@ public sealed partial class WorldEngine
         ClaimTerritory(town, 4);
         InitializeSociety();
         AddEvent(WorldEventKind.Growth,
-            $"{_nations[origin.NationId].Name}派出 {pioneers.Length} 名成年人，携物资前往{town.Name}；仓库等待实物抵达。", x, y);
+            $"{_nations[origin.NationId].Value.Name}派出 {pioneers.Length} 名成年人，携物资前往{town.Name}；仓库等待实物抵达。", x, y);
     }
 
     private bool FoundingSiteSuitable(int index, ReadOnlySpan<RaceKind> races)

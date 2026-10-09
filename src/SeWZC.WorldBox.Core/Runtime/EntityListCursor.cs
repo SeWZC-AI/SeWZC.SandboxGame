@@ -3,8 +3,8 @@ using System.Collections;
 namespace SeWZC.WorldBox.Core.Runtime;
 
 /// <summary>不可变实体集合的定位索引；索引引用不进入世界状态或存档。</summary>
-internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>
-    where T : class where TCursor : StateCursor<T>
+internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>, StateReference<T>.ICollectionOwner
+    where T : class where TCursor : StateReference<T>
 {
     private readonly List<TCursor> _items = [];
     private readonly Action<ImmutableVector<T>> _publish;
@@ -24,7 +24,6 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>
             cursor.Collection = this;
             cursor.Position = _items.Count;
             _items.Add(cursor);
-            Bind(cursor);
         }
     }
 
@@ -52,7 +51,6 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>
             _items[index] = value;
             value.Collection = this;
             value.Position = index;
-            Bind(value);
             MembershipRevision++;
             if (_updateDepth > 0)
                 MarkMembershipChanged();
@@ -76,30 +74,21 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>
         return _items.GetEnumerator();
     }
 
-    private void Bind(TCursor cursor)
+    void StateReference<T>.ICollectionOwner.Replace(StateReference<T> cursor, in T value)
     {
-        var settlement = typeof(T) == typeof(Resident) ? ((Resident)(object)cursor.Value).SettlementId : 0;
-        cursor.Bind(value =>
+        if (typeof(T) == typeof(Resident)
+            && ((Resident)(object)cursor.Value).SettlementId != ((Resident)(object)value).SettlementId)
         {
-            if (!ReferenceEquals(cursor.Collection, this))
-                return;
-            if (typeof(T) == typeof(Resident))
-            {
-                var next = ((Resident)(object)value).SettlementId;
-                if (next != settlement)
-                {
-                    GroupRevision++;
-                    settlement = next;
-                }
-            }
+            GroupRevision++;
+        }
 
-            if (_membershipChanged)
-                return;
-            if (_updateDepth > 0)
-                (_updates ??= new ImmutableVector<T>.Builder(_snapshot)).SetItem(cursor.Position, value);
-            else
-                Commit(_snapshot.SetItem(cursor.Position, value));
-        });
+        cursor.Synchronize(value);
+        if (_membershipChanged)
+            return;
+        if (_updateDepth > 0)
+            (_updates ??= new ImmutableVector<T>.Builder(_snapshot)).SetItem(cursor.Position, value);
+        else
+            Commit(_snapshot.SetItem(cursor.Position, value));
     }
 
     private void Commit(ImmutableVector<T> snapshot)
@@ -185,7 +174,6 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>
         cursor.Collection = this;
         cursor.Position = Count;
         _items.Add(cursor);
-        Bind(cursor);
         MembershipRevision++;
         if (_updateDepth > 0)
             MarkMembershipChanged();

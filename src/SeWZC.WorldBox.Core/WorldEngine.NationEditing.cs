@@ -11,7 +11,7 @@ public sealed partial class WorldEngine
     {
         if (!_nations.TryGetValue(nationId, out var nation))
             throw new ArgumentException("国家不存在。", nameof(nationId));
-        nation.ColorArgb = colorArgb | 0xFF000000;
+        nation.Replace(nation.Value with { ColorArgb = colorArgb | 0xFF000000 });
     }
 
     /// <summary>将国家的古代工具等级设为 1 至 5，独立于聚落研究的完成情况。</summary>
@@ -23,8 +23,8 @@ public sealed partial class WorldEngine
             throw new ArgumentException("国家不存在。", nameof(nationId));
         if (level is < 1 or > 5)
             throw new ArgumentOutOfRangeException(nameof(level), "古代工具技术等级须在 1 到 5 之间。");
-        nation.Technology = level;
-        AddEvent(WorldEventKind.Editor, $"{nation.Name}的工具技术调整至 {level} 级。");
+        nation.Replace(nation.Value with { Technology = level });
+        AddEvent(WorldEventKind.Editor, $"{nation.Value.Name}的工具技术调整至 {level} 级。");
     }
 
     /// <summary>绘制陆地归属；聚落中心被覆盖时，一并转移整处聚落及相关实体。</summary>
@@ -84,7 +84,7 @@ public sealed partial class WorldEngine
         RemoveEmptyNations();
         InitializeSociety();
         RefreshTotals();
-        AddEvent(WorldEventKind.Editor, $"{nation.Name}的领土边界已调整，圈内聚落随领土转属。", x, y);
+        AddEvent(WorldEventKind.Editor, $"{nation.Value.Name}的领土边界已调整，圈内聚落随领土转属。", x, y);
     }
 
     /// <summary>将至少拥有两处聚落的国家中的一处聚落独立为新国家，并返回国家 ID。</summary>
@@ -100,34 +100,35 @@ public sealed partial class WorldEngine
         if (Current.Nations.Count >= 64)
             throw new InvalidOperationException("国家数量已达上限。");
         var parent = _nations[town.NationId];
-        if (Current.Settlements.Count(s => s.NationId == parent.Id) < 2)
+        if (Current.Settlements.Count(s => s.NationId == parent.Value.Id) < 2)
             throw new InvalidOperationException("拆分需要原国家至少拥有两个聚落。");
-        var nation = new NationCursor(new Nation
+        var nation = new StateReference<Nation>(new Nation
         {
             Id = NewId(),
             Name = name,
             CapitalId = town.Id,
-            Technology = parent.Technology,
-            DevelopmentFocus = parent.DevelopmentFocus,
+            Technology = parent.Value.Technology,
+            DevelopmentFocus = parent.Value.DevelopmentFocus,
             ColorArgb = NationColors[Current.Nations.Count % NationColors.Length],
-            FoundingRace = parent.FoundingRace,
+            FoundingRace = parent.Value.FoundingRace,
             Decision = "独立建国：储备资源，建立外交关系",
         });
         foreach (var other in Current.Nations)
             Current.Diplomacies =
                 Current.Diplomacies.Add(new DiplomaticRelation
                 {
-                    FirstNationId = other.Id, SecondNationId = nation.Id,
+                    FirstNationId = other.Value.Id,
+                    SecondNationId = nation.Value.Id,
                 });
         Current.Nations.Add(nation);
-        _nations[nation.Id] = nation;
-        TransferSettlementOwnership(town, nation.Id);
-        Current.Tiles[Index(town.X, town.Y)].NationId = nation.Id;
+        _nations[nation.Value.Id] = nation;
+        TransferSettlementOwnership(town, nation.Value.Id);
+        Current.Tiles[Index(town.X, town.Y)].NationId = nation.Value.Id;
         Reindex();
         InitializeSociety();
         RefreshTotals();
-        AddEvent(WorldEventKind.Editor, $"{town.Name}从{parent.Name}独立，成立{nation.Name}。", town.X, town.Y);
-        return nation.Id;
+        AddEvent(WorldEventKind.Editor, $"{town.Name}从{parent.Value.Name}独立，成立{nation.Value.Name}。", town.X, town.Y);
+        return nation.Value.Id;
     }
 
     private void TransferSettlementOwnership(SettlementCursor town, int targetNationId)
@@ -142,8 +143,8 @@ public sealed partial class WorldEngine
                 ground.NationId = targetNationId;
         Current.Tiles[Index(town.X, town.Y)].NationId = targetNationId;
         var remainingHome = Current.Settlements.FirstOrDefault(s => s.NationId == previousId);
-        if (previousNation.CapitalId == town.Id)
-            previousNation.CapitalId = remainingHome?.Id ?? 0;
+        if (previousNation.Value.CapitalId == town.Id)
+            previousNation.Replace(previousNation.Value with { CapitalId = remainingHome?.Id ?? 0 });
         if (remainingHome is not null)
         {
             foreach (var resident in Current.Residents.Where(r => r.SettlementId == town.Id))
@@ -154,7 +155,7 @@ public sealed partial class WorldEngine
         }
         else
         {
-            foreach (var army in Current.Armies.Where(a => a.NationId == previousId).ToArray())
+            foreach (var army in Current.Armies.Where(a => a.Value.NationId == previousId).ToArray())
                 DisbandArmy(army);
             foreach (var resident in Current.Residents.Where(r => r.SettlementId == town.Id))
                 resident.NationId = targetNationId;

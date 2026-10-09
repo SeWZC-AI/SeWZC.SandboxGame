@@ -26,10 +26,13 @@ public sealed partial class WorldEngine
     private void ObserveProjects()
     {
         foreach (var building in Current.Buildings)
-            if (!building.IsCompleted)
+            if (!building.Value.IsCompleted)
             {
-                building.Observation = building.Observation.Observe(Current.Tick, Current.Rules.DevelopmentRate,
-                    building.ConstructionProgress);
+                building.Replace(building.Value with
+                {
+                    Observation = building.Value.Observation.Observe(Current.Tick, Current.Rules.DevelopmentRate,
+                    building.Value.ConstructionProgress)
+                });
             }
 
         var tick = Current.Tick;
@@ -70,11 +73,11 @@ public sealed partial class WorldEngine
     public CompletionEstimate GetDevelopmentEstimate(int settlementId)
     {
         _ = RequireTown(settlementId);
-        var building = Current.Buildings.FirstOrDefault(b => b.SettlementId == settlementId && !b.IsCompleted);
+        var building = Current.Buildings.FirstOrDefault(b => b.Value.SettlementId == settlementId && !b.Value.IsCompleted);
         if (building is not null)
         {
-            return GetCompletionEstimate(building.Observation, building.ConstructionProgress,
-                building.ConstructionRequired);
+            return GetCompletionEstimate(building.Value.Observation, building.Value.ConstructionProgress,
+                building.Value.ConstructionRequired);
         }
 
         var research = Current.Society.Research.First(r => r.SettlementId == settlementId);

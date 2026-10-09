@@ -7,9 +7,9 @@ public sealed partial class WorldEngine
     public DevelopmentFocus GetDevelopmentFocus(int settlementId)
     {
         var town = RequireTown(settlementId);
-        var nation = Current.Nations.FirstOrDefault(n => n.Id == town.NationId);
-        if (nation is { DevelopmentFocus: not DevelopmentFocus.Automatic })
-            return nation.DevelopmentFocus;
+        var nation = Current.Nations.FirstOrDefault(n => n.Value.Id == town.NationId);
+        if (nation?.Value is { DevelopmentFocus: not DevelopmentFocus.Automatic })
+            return nation.Value.DevelopmentFocus;
         var culture = GetCulture(town.CultureId);
         return !Current.Society.MagicEnabled || culture.Innovation >= culture.NatureAffinity
             ? DevelopmentFocus.Technology
@@ -37,10 +37,10 @@ public sealed partial class WorldEngine
     {
         if (!Enum.IsDefined(focus))
             throw new ArgumentOutOfRangeException(nameof(focus));
-        var nation = Current.Nations.FirstOrDefault(n => n.Id == nationId) ?? throw new ArgumentException("国家不存在");
-        if (nation.DevelopmentFocus == focus)
+        var nation = Current.Nations.FirstOrDefault(n => n.Value.Id == nationId) ?? throw new ArgumentException("国家不存在");
+        if (nation.Value.DevelopmentFocus == focus)
             return;
-        nation.DevelopmentFocus = focus;
-        AddEvent(WorldEventKind.Editor, $"{nation.Name}的发展方向调整为{DevelopmentFocusName(focus)}。");
+        nation.Replace(nation.Value with { DevelopmentFocus = focus });
+        AddEvent(WorldEventKind.Editor, $"{nation.Value.Name}的发展方向调整为{DevelopmentFocusName(focus)}。");
     }
 }

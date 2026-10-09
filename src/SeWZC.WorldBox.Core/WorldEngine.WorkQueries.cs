@@ -5,16 +5,16 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     private readonly Dictionary<int, int> _localResearch = [];
-    private readonly Dictionary<int, BuildingCursor> _localWaterWells = [];
+    private readonly Dictionary<int, StateReference<Building>> _localWaterWells = [];
 
-    private readonly List<List<BuildingCursor>> _localWorkBuildingBuffers = [];
+    private readonly List<List<StateReference<Building>>> _localWorkBuildingBuffers = [];
 
     // 劳动索引在补给前建立，死亡、迁居及目标变化同步维护，行动阶段后清除；阶段外命令读取权威集合。
-    private readonly Dictionary<int, List<BuildingCursor>> _localWorkBuildings = [];
+    private readonly Dictionary<int, List<StateReference<Building>>> _localWorkBuildings = [];
     private readonly List<List<ResidentCursor>> _localWorkResidentBuffers = [];
     private readonly Dictionary<int, List<ResidentCursor>> _localWorkResidents = [];
     private readonly Dictionary<int, ResourceStock> _productionReserves = [];
-    private readonly Dictionary<int, BuildingCursor> _workBuildingsById = [];
+    private readonly Dictionary<int, StateReference<Building>> _workBuildingsById = [];
     private readonly Dictionary<int, int> _workReservations = [];
     private bool _localWorkQueriesActive;
 
@@ -38,14 +38,14 @@ public sealed partial class WorldEngine
                 : SimulationTime.ReturnHomeTick - SimulationTime.WakeTick);
     }
 
-    private BuildingCursor? FindBuilding(int id)
+    private StateReference<Building>? FindBuilding(int id)
     {
         if (id == 0)
             return null;
         if (_localWorkQueriesActive)
             return _workBuildingsById.GetValueOrDefault(id);
         foreach (var building in Current.Buildings)
-            if (building.Id == id)
+            if (building.Value.Id == id)
                 return building;
         return null;
     }
@@ -89,10 +89,10 @@ public sealed partial class WorldEngine
             _localResearch[Current.Society.Research[index].SettlementId] = index;
         foreach (var building in Current.Buildings)
         {
-            _workBuildingsById[building.Id] = building;
-            if (building.Kind == BuildingKind.Well)
-                _localWaterWells[Index(building.X, building.Y)] = building;
-            LocalWorkGroup(_localWorkBuildings, _localWorkBuildingBuffers, building.SettlementId).Add(building);
+            _workBuildingsById[building.Value.Id] = building;
+            if (building.Value.Kind == BuildingKind.Well)
+                _localWaterWells[Index(building.Value.X, building.Value.Y)] = building;
+            LocalWorkGroup(_localWorkBuildings, _localWorkBuildingBuffers, building.Value.SettlementId).Add(building);
         }
 
         foreach (var resident in Current.Residents)
@@ -152,15 +152,15 @@ public sealed partial class WorldEngine
             : Current.Residents;
     }
 
-    private BuildingCursor? FindLocalWorkBuilding(ResidentCursor resident, int range, bool preferNearest,
+    private StateReference<Building>? FindLocalWorkBuilding(ResidentCursor resident, int range, bool preferNearest,
         bool followTarget = false)
     {
-        IReadOnlyList<BuildingCursor>? buildings = _localWorkQueriesActive
+        IReadOnlyList<StateReference<Building>>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(resident.SettlementId)
             : Current.Buildings;
         if (buildings is null)
             return null;
-        BuildingCursor? selected = null;
+        StateReference<Building>? selected = null;
         var bestPriority = 0;
         var bestDistance = 0;
         var preferSpecialty = resident.Profession is Profession.Physician or Profession.Firefighter
@@ -170,38 +170,38 @@ public sealed partial class WorldEngine
         foreach (var building in buildings)
         {
             if (followTarget && resident.Agent.Goal.TargetEntityId != 0 &&
-                resident.Agent.Goal.TargetEntityId != building.Id)
+                resident.Agent.Goal.TargetEntityId != building.Value.Id)
                 continue;
-            if (building.SettlementId != resident.SettlementId || building.Health <= 0)
+            if (building.Value.SettlementId != resident.SettlementId || building.Value.Health <= 0)
                 continue;
-            if (!followTarget && ReservedWork(resident.Agent.Goal) != building.Id && _localWorkQueriesActive
-                && _workReservations.GetValueOrDefault(building.Id) >= building.WorkSlots)
+            if (!followTarget && ReservedWork(resident.Agent.Goal) != building.Value.Id && _localWorkQueriesActive
+                && _workReservations.GetValueOrDefault(building.Value.Id) >= building.Value.WorkSlots)
                 continue;
-            var distance = Distance(resident.X, resident.Y, building.X, building.Y);
-            if (range == 1 && IsWaterfrontBuilding(building.Kind) && (distance != 1
+            var distance = Distance(resident.X, resident.Y, building.Value.X, building.Value.Y);
+            if (range == 1 && IsWaterfrontBuilding(building.Value.Kind) && (distance != 1
                                                                       || !Current.Tiles[Index(resident.X, resident.Y)]
                                                                           .IsWalkable
                                                                       || IsWaterTerrain(Current
                                                                           .Tiles[Index(resident.X, resident.Y)]
                                                                           .Terrain)))
                 continue;
-            var workRange = range > 1 && building.Kind is BuildingKind.MountainPass or BuildingKind.Bridge ? 24 : range;
-            if (distance > workRange || !BuildingHasWork(building, resident))
+            var workRange = range > 1 && building.Value.Kind is BuildingKind.MountainPass or BuildingKind.Bridge ? 24 : range;
+            if (distance > workRange || !BuildingHasWork(building.Value, resident))
                 continue;
-            if (range > 1 && distance <= 6 && !VisibleWorkSiteReachable(resident, building.X, building.Y,
-                    !building.IsCompleted || building.IsUpgrading || IsWaterfrontBuilding(building.Kind) ||
-                    building.Kind == BuildingKind.TownCenter))
+            if (range > 1 && distance <= 6 && !VisibleWorkSiteReachable(resident, building.Value.X, building.Value.Y,
+                    !building.Value.IsCompleted || building.Value.IsUpgrading || IsWaterfrontBuilding(building.Value.Kind) ||
+                    building.Value.Kind == BuildingKind.TownCenter))
                 continue;
-            if (range > 1 && resident.Agent.Goal.NavigationTarget == Index(building.X, building.Y) &&
+            if (range > 1 && resident.Agent.Goal.NavigationTarget == Index(building.Value.X, building.Value.Y) &&
                 Current.Tick < resident.Agent.Goal.NavigationRetryTick)
                 continue;
-            var priority = WorkPriority(building, resident, preferSpecialty) * 2
-                           + (resident.Agent.WorkplaceId == building.Id ? 0 : 1);
+            var priority = WorkPriority(building.Value, resident, preferSpecialty) * 2
+                           + (resident.Agent.WorkplaceId == building.Value.Id ? 0 : 1);
             if (selected is not null && !(priority < bestPriority || (priority == bestPriority
                                                                       && ((preferNearest && distance < bestDistance)
                                                                           || ((!preferNearest ||
                                                                                distance == bestDistance) &&
-                                                                              building.Id < selected.Id)))))
+                                                                              building.Value.Id < selected.Value.Id)))))
                 continue;
             selected = building;
             bestPriority = priority;
@@ -211,7 +211,7 @@ public sealed partial class WorldEngine
         return selected;
     }
 
-    private ResidentCursor? FindLocalWorkPatient(BuildingCursor building, bool firstOnly = false)
+    private ResidentCursor? FindLocalWorkPatient(Building building, bool firstOnly = false)
     {
         var residents = ResidentsForLocalWork(building.SettlementId);
         if (residents is null)

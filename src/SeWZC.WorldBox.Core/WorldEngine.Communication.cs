@@ -54,7 +54,7 @@ public sealed partial class WorldEngine
                                         f.Kind == AgentFactKind.FoundingSite && Current.Tick - f.ObservedTick <
                                         SimulationTime.TicksPerYear))
         {
-            var site = Circle(person.X, person.Y, 3).Where(i => RaceTerrainRules.CanWalk(Current.Tiles[i], person.Race)
+            var site = Circle(person.X, person.Y, 3).Where(i => RaceTerrainRules.CanWalk(Current.Tiles[i].Value, person.Race)
                                                                 && !IsWaterTerrain(Current.Tiles[i].Terrain) &&
                                                                 Current.Tiles[i].Fertility >= 40
                                                                 && Current.Tiles[i].ClaimedSettlementId == 0 &&
@@ -129,10 +129,10 @@ public sealed partial class WorldEngine
 
         var observationRadius = 3;
         foreach (var tower in Current.Buildings)
-            if (tower.SettlementId == person.SettlementId && tower.Kind == BuildingKind.Watchtower &&
-                IsFacilityOperating(tower)
-                && Distance(person.X, person.Y, tower.X, tower.Y) <= 2)
-                observationRadius = Math.Max(observationRadius, 3 + tower.Level);
+            if (tower.Value.SettlementId == person.SettlementId && tower.Value.Kind == BuildingKind.Watchtower &&
+                IsFacilityOperating(tower.Value)
+                && Distance(person.X, person.Y, tower.Value.X, tower.Value.Y) <= 2)
+                observationRadius = Math.Max(observationRadius, 3 + tower.Value.Level);
         var dangerIndex = Circle(person.X, person.Y, observationRadius).Where(i => Current.Tiles[i].FireTicks > 0)
             .OrderBy(i => Distance(person.X, person.Y, i % Current.Width, i / Current.Width)).FirstOrDefault(-1);
         if (dangerIndex >= 0)
@@ -143,10 +143,10 @@ public sealed partial class WorldEngine
         }
 
         foreach (var army in Current.Armies)
-            if (army.NationId != person.NationId && Distance(person.X, person.Y, army.X, army.Y) <= 4)
+            if (army.Value.NationId != person.NationId && Distance(person.X, person.Y, army.Value.X, army.Value.Y) <= 4)
             {
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.Danger,
-                    army.Id, army.X, army.Y, army.Soldiers, "亲眼看见附近有外来军队"));
+                    army.Value.Id, army.Value.X, army.Value.Y, army.Value.Soldiers, "亲眼看见附近有外来军队"));
             }
     }
 
@@ -261,9 +261,9 @@ public sealed partial class WorldEngine
                 continue;
             var conversationRadius = 2;
             foreach (var building in Current.Buildings)
-                if (building.Kind is BuildingKind.Market or BuildingKind.AssemblyHall or BuildingKind.TradeGuild
-                    && IsFacilityOperating(building)
-                    && Distance(sender.X, sender.Y, building.X, building.Y) <= 3)
+                if (building.Value.Kind is BuildingKind.Market or BuildingKind.AssemblyHall or BuildingKind.TradeGuild
+                    && IsFacilityOperating(building.Value)
+                    && Distance(sender.X, sender.Y, building.Value.X, building.Value.Y) <= 3)
                 {
                     conversationRadius = 3;
                     break;
@@ -446,8 +446,8 @@ public sealed partial class WorldEngine
         {
             var destination = home.Id;
             if (_nations.TryGetValue(person.NationId, out var nation)
-                && agent.Memory.Any(f => f.Kind == AgentFactKind.SettlementLocation && f.SubjectId == nation.CapitalId))
-                destination = nation.CapitalId;
+                && agent.Memory.Any(f => f.Kind == AgentFactKind.SettlementLocation && f.SubjectId == nation.Value.CapitalId))
+                destination = nation.Value.CapitalId;
             var address = agent.Memory.FirstOrDefault(f =>
                 f.Kind == AgentFactKind.SettlementLocation && f.SubjectId == destination);
             if (address is not null)

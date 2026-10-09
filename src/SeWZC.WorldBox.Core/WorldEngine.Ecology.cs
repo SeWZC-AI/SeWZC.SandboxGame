@@ -135,7 +135,7 @@ public sealed partial class WorldEngine
             var tile = Current.Tiles[i];
             populations.Clear();
             var primary = WildlifeKind.None;
-            AnimalRules.FillCapacities(tile, capacities, competitors);
+            AnimalRules.FillCapacities(tile.Value, capacities, competitors);
             for (var diet = 0; diet < 2; diet++)
                 foreach (var kind in AnimalRules.Species)
                 {
@@ -225,7 +225,7 @@ public sealed partial class WorldEngine
                 _wildlifeHabitats[habitatSlot] = habitat;
                 Array.Clear(_wildlifeReplacement, capacityOffset, AnimalRules.SpeciesCount);
                 Array.Clear(_wildlifePredatorLimits, capacityOffset, AnimalRules.SpeciesCount);
-                var eligible = AnimalRules.FillCapacities(tile,
+                var eligible = AnimalRules.FillCapacities(tile.Value,
                     _wildlifeCapacities.AsSpan(capacityOffset, AnimalRules.SpeciesCount),
                     _wildlifePreyCompetitors.AsSpan(capacityOffset, AnimalRules.SpeciesCount));
                 _wildlifeHerbivoreKinds[habitatSlot] =
@@ -470,10 +470,10 @@ public sealed partial class WorldEngine
         {
             var center =
                 Current.Buildings.FirstOrDefault(b =>
-                    b.SettlementId == town.Id && b.Kind == BuildingKind.TownCenter);
+                    b.Value.SettlementId == town.Id && b.Value.Kind == BuildingKind.TownCenter);
             if (center is null)
             {
-                center = new BuildingCursor(new Building
+                center = new StateReference<Building>(new Building
                 {
                     Id = NewId(),
                     Kind = BuildingKind.TownCenter,
@@ -488,16 +488,16 @@ public sealed partial class WorldEngine
             }
 
             center.Replace(center.Value with { X = town.X, Y = town.Y });
-            if (center.Health <= 0 && Current.Tiles[Index(town.X, town.Y)].FireTicks == 0 && Current.Rules.Construction
+            if (center.Value.Health <= 0 && Current.Tiles[Index(town.X, town.Y)].FireTicks == 0 && Current.Rules.Construction
                 && MissingResources(town.Resources, GetBuildingCost(BuildingKind.TownCenter)) is null)
             {
                 town.Resources = Spend(town.Resources, GetBuildingCost(BuildingKind.TownCenter));
                 center.Replace(center.Value with { Health = 100, ConstructionProgress = 0 });
-                center.Workers = center.Workers.Clear();
+                center.Replace(center.Value with { Workers = center.Value.Workers.Clear() });
                 center.Replace(center.Value with { LastWorkedTick = -100, Observation = new ProjectObservation() });
                 var rebuilding = AddEvent(WorldEventKind.Construction, $"{town.Name}投入材料重建受损的城镇中心。", town.X, town.Y,
                     EventAction.Started, town.Id);
-                center.Observation = center.Observation with { StartEventId = rebuilding.Id };
+                center.Replace(center.Value with { Observation = center.Value.Observation with { StartEventId = rebuilding.Id } });
             }
         }
     }

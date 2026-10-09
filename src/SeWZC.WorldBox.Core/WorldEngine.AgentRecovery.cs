@@ -37,7 +37,7 @@ public sealed partial class WorldEngine
     {
         return (person.Agent.Fatigue > 8 || person.SicknessTicks > 0 || person.Health < 70)
                && (person.Agent.Goal.TargetEntityId == 0
-                   || (FindBuilding(person.Agent.Goal.TargetEntityId) is { } clinic && IsBuildingOperational(clinic)));
+                   || (FindBuilding(person.Agent.Goal.TargetEntityId) is { } clinic && IsBuildingOperational(clinic.Value)));
     }
 
     private void AddRecoveryChoice(ResidentCursor person, SettlementCursor home, List<GoalChoice> choices)
@@ -45,34 +45,34 @@ public sealed partial class WorldEngine
         if (person.SicknessTicks == 0 && person.Health >= 40
                                       && !(person.Agent.Goal.Kind == AgentGoalKind.Rest && person.Health < 70))
             return;
-        IReadOnlyList<BuildingCursor>? buildings = _localWorkQueriesActive
+        IReadOnlyList<StateReference<Building>>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(home.Id)
             : Current.Buildings;
-        BuildingCursor? selected = null;
+        StateReference<Building>? selected = null;
         var bestDistance = int.MaxValue;
         var reachable = 0;
         if (buildings is not null)
         {
             foreach (var building in buildings)
             {
-                if (building.SettlementId != home.Id || building.Kind is not (BuildingKind.Infirmary
+                if (building.Value.SettlementId != home.Id || building.Value.Kind is not (BuildingKind.Infirmary
                                                          or BuildingKind.Hospital)
-                                                     || !IsBuildingOperational(building))
+                                                     || !IsBuildingOperational(building.Value))
                     continue;
-                var distance = Distance(person.X, person.Y, building.X, building.Y);
+                var distance = Distance(person.X, person.Y, building.Value.X, building.Value.Y);
                 if (distance > 6 || distance >= bestDistance
-                                 || !VisibleSiteReachable(person, Index(building.X, building.Y), ref reachable))
+                                 || !VisibleSiteReachable(person, Index(building.Value.X, building.Value.Y), ref reachable))
                     continue;
                 selected = building;
                 bestDistance = distance;
             }
         }
 
-        choices.Add(new GoalChoice(AgentGoalKind.Rest, selected?.X ?? home.X, selected?.Y ?? home.Y,
+        choices.Add(new GoalChoice(AgentGoalKind.Rest, selected?.Value.X ?? home.X, selected?.Value.Y ?? home.Y,
             105 + (100 - person.Health) * .4,
             selected is null
                 ? "患病或伤势尚未恢复，回家休养，暂缓普通劳动"
                 : "患病或伤势尚未恢复，前往眼前可达的医疗设施休养并等待现场治疗",
-            SettlementId: home.Id, EntityId: selected?.Id ?? 0));
+            SettlementId: home.Id, EntityId: selected?.Value.Id ?? 0));
     }
 }

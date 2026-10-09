@@ -111,7 +111,7 @@ public sealed partial class WorldEngine
         };
     }
 
-    private void CompleteLandImprovement(BuildingCursor building)
+    private void CompleteLandImprovement(Building building)
     {
         var tile = Current.Tiles[Index(building.X, building.Y)];
         if (building.Kind is BuildingKind.Farm or BuildingKind.AutomatedFarm or BuildingKind.RunicGarden)
@@ -149,11 +149,11 @@ public sealed partial class WorldEngine
             || (person.Agent.Goal.TargetSettlementId == 0 && person.Agent.Goal.TargetEntityId == 0))
             return;
         if (Current.Buildings.Any(b =>
-                b.SettlementId == person.SettlementId && (!b.IsCompleted || b.IsUpgrading)))
+                b.Value.SettlementId == person.SettlementId && (!b.Value.IsCompleted || b.Value.IsUpgrading)))
             return;
         // 任务确有需求仍须核对可见陆路，已有通路时不应无故建桥。
         if (Distance(person.X, person.Y, targetX, targetY) <= 6 && VisibleWorkSiteReachable(person, targetX, targetY,
-                AgentInteractionRange(person, _settlements.GetValueOrDefault(person.SettlementId)) > 0))
+                AgentInteractionRange(person.Agent.Goal, _settlements.GetValueOrDefault(person.SettlementId)?.FoundationPending == true) > 0))
             return;
         foreach (var (dx, dy) in Directions)
         {
@@ -203,7 +203,7 @@ public sealed partial class WorldEngine
                 continue;
             if (Distance(person.X, person.Y, targetX, targetY) <= 6 && !VisibleLandPathConnects(person, bankX, bankY,
                     targetX, targetY,
-                    AgentInteractionRange(person, _settlements.GetValueOrDefault(person.SettlementId))))
+                    AgentInteractionRange(person.Agent.Goal, _settlements.GetValueOrDefault(person.SettlementId)?.FoundationPending == true)))
                 continue;
             var level = Math.Clamp(Math.Max((span + 3) / 4, (BridgeShoreDistance(x, y, direction) + 1) / 2), 1, 3);
             var home = _settlements[person.SettlementId];
@@ -269,10 +269,10 @@ public sealed partial class WorldEngine
         var changed = false;
         foreach (var building in Current.Buildings)
         {
-            if (building.Kind != BuildingKind.Bridge || building.Health > 0 ||
-                !InBounds(building.X, building.Y))
+            if (building.Value.Kind != BuildingKind.Bridge || building.Value.Health > 0 ||
+                !InBounds(building.Value.X, building.Value.Y))
                 continue;
-            var tile = Current.Tiles[Index(building.X, building.Y)];
+            var tile = Current.Tiles[Index(building.Value.X, building.Value.Y)];
             if (tile.Improvement != LandImprovement.Bridge)
                 continue;
             tile.Replace(tile.Value with { Improvement = LandImprovement.None, RoadLevel = 0, BridgeLevel = 0 });
@@ -388,7 +388,7 @@ public sealed partial class WorldEngine
         return "动物种群\n" + string.Join("\n", AnimalRules.Species.Where(k => tile.AnimalPopulation(k) >= .001)
                    .Select(k => $"{WildlifeName(k)}  {tile.AnimalPopulation(k):0.###}")) + "\n植物存量\n"
                + string.Join("\n",
-                   PlantResources.At(tile).Select(p =>
+                   PlantResources.At(tile.Value).Select(p =>
                        $"{PlantResources.Name(p.Kind)}  {p.Quantity:0.###} 份   覆盖 {p.Cover:P0}"));
     }
 
@@ -401,7 +401,7 @@ public sealed partial class WorldEngine
         if (!InBounds(x, y))
             return "地格不存在";
         var tile = Current.Tiles[Index(x, y)];
-        var resources = PlantResources.At(tile).OrderByDescending(p => p.Quantity)
+        var resources = PlantResources.At(tile.Value).OrderByDescending(p => p.Quantity)
             .Select(p => $"{PlantResources.Name(p.Kind)} {p.Quantity:0.###} 份").ToList();
         var minerals = TerrainRules.For(tile.Terrain);
         var total = minerals.StoneYield + minerals.OreYield;
@@ -413,7 +413,7 @@ public sealed partial class WorldEngine
                 resources.Add($"矿石 {tile.ResourceAmount * minerals.OreYield / total:0.###} 份");
         }
 
-        if (IsDepositVisible(tile, visibility) && tile.Deposit is { } kind)
+        if (IsDepositVisible(tile.Value, visibility) && tile.Deposit is { } kind)
             resources.Add($"{ResourceStock.Name(kind)} {tile.DepositAmount:0.###} 份");
         return resources.Count > 0 ? string.Join("，", resources) : "暂无植物或矿物";
     }
@@ -427,7 +427,7 @@ public sealed partial class WorldEngine
         if (!InBounds(x, y))
             return "地格不存在";
         var tile = Current.Tiles[Index(x, y)];
-        var plants = PlantResources.At(tile).ToArray();
+        var plants = PlantResources.At(tile.Value).ToArray();
         var products = new List<string>();
         if (tile.Improvement is LandImprovement.MountainPass or LandImprovement.Bridge)
             products.Add("通行设施");
@@ -448,11 +448,11 @@ public sealed partial class WorldEngine
         var lines = new List<string> { "资源：" + GetTileResourceSummary(x, y, visibility) };
         if (products.Count > 0)
             lines.Add("采集产物：" + string.Join("、", products));
-        if (IsFreshWater(tile))
+        if (IsFreshWater(tile.Value))
             lines.Add("每日可打水量 无限\n需到岸边打水并携带返仓");
         else if (!IsWaterTerrain(tile.Terrain))
         {
-            var natural = DailyWaterYield(tile);
+            var natural = DailyWaterYield(tile.Value);
             lines.Add($"地块供水量 {natural:0.###}\n自然口渴消耗抵扣 {Math.Min(.5, natural / .025):0%}（成人）");
             if (FindWaterWell(Index(x, y)) is not null)
                 lines.Add($"每日可打水量 {GetDailyWaterCapacity(x, y):0.###}\n今日剩余可打水量 {AvailableWater(x, y):0.###}");
@@ -470,7 +470,7 @@ public sealed partial class WorldEngine
             lines.Add($"干旱：剩余 {tile.DroughtTicks / (double)SimulationTime.TicksPerDay:0.##} 日，粮食减产");
         else if (tile.ResourceAmount >= 1 && tile.IsWalkable)
             lines.Add("状态：可以采收");
-        if (IsDepositVisible(tile, visibility) && tile.Deposit is { } kind)
+        if (IsDepositVisible(tile.Value, visibility) && tile.Deposit is { } kind)
             lines.Add($"{ResourceStock.Name(kind)}矿藏：{tile.DepositAmount:0.#}（不可再生）");
         var animals = AnimalRules.Species.Where(k => tile.AnimalPopulation(k) >= .001)
             .Select(k => $"{WildlifeName(k)} {tile.AnimalPopulation(k):0.###}").ToArray();

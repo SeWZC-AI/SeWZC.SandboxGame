@@ -35,7 +35,7 @@ public sealed partial class WorldEngine
             : new ResourceStock { Food = .03, Water = .01 };
     }
 
-    private bool RacialBuildingHasWork(BuildingCursor building, ResidentCursor person)
+    private bool RacialBuildingHasWork(Building building, ResidentCursor person)
     {
         if (person.Age < 14 || BuildingRace(building.Kind) != person.Race ||
             !CanBuildRacialFacility(building.SettlementId, building.Kind))
@@ -62,22 +62,24 @@ public sealed partial class WorldEngine
         if (goal.Kind is not (AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic))
             return false;
         var building = FindBuilding(goal.TargetEntityId);
-        if (building is null || BuildingRace(building.Kind) is null || ProductionRules.For(building.Kind) is not null
-            || !building.IsCompleted || building.IsUpgrading || building.SettlementId != home.Id)
+        if (building is null || BuildingRace(building.Value.Kind) is null || ProductionRules.For(building.Value.Kind) is not null
+            || !building.Value.IsCompleted || building.Value.IsUpgrading || building.Value.SettlementId != home.Id)
             return false;
-        if (!building.Enabled || building.Health < 50 || !RacialBuildingHasWork(building, person))
+        if (!building.Value.Enabled || building.Value.Health < 50 || !RacialBuildingHasWork(building.Value, person))
         {
             person.Agent = person.Agent.WithGoal(goal = goal with { Reason = "种族、物资或现场工作条件未满足" });
             person.Agent = person.Agent with { NextThinkTick = Current.Tick + 1 };
             return true;
         }
 
-        var input = RacialWorkInput(building.Kind);
+        var input = RacialWorkInput(building.Value.Kind);
         if (MissingResources(person.Inventory, input) is not null)
         {
             person.Agent = person.Agent.WithGoal(goal = goal with
             {
-                TargetX = home.X, TargetY = home.Y, Reason = "实地返仓领取" + BuildingName(building.Kind) + "的劳动物资",
+                TargetX = home.X,
+                TargetY = home.Y,
+                Reason = "实地返仓领取" + BuildingName(building.Value.Kind) + "的劳动物资",
             });
             if (Distance(person.X, person.Y, home.X, home.Y) > 1)
             {
@@ -95,17 +97,17 @@ public sealed partial class WorldEngine
             }
         }
 
-        person.Agent = person.Agent.WithGoal(goal = goal with { TargetX = building.X, TargetY = building.Y });
-        if (Distance(person.X, person.Y, building.X, building.Y) > 0)
+        person.Agent = person.Agent.WithGoal(goal = goal with { TargetX = building.Value.X, TargetY = building.Value.Y });
+        if (Distance(person.X, person.Y, building.Value.X, building.Value.Y) > 0)
         {
-            MoveAgentTowards(person, building.X, building.Y);
+            MoveAgentTowards(person, building.Value.X, building.Value.Y);
             person.Activity = ResidentActivity.Delivering;
             return true;
         }
 
         if (TryWorkAtBuilding(person))
             person.Activity = ResidentActivity.Working;
-        if (building.Kind is BuildingKind.MiningHall or BuildingKind.HuntingCamp &&
+        if (building.Value.Kind is BuildingKind.MiningHall or BuildingKind.HuntingCamp &&
             person.Inventory.Food + person.Inventory.Stone + person.Inventory.Ore > 2)
         {
             var returning = new AgentGoal
@@ -127,19 +129,19 @@ public sealed partial class WorldEngine
         return true;
     }
 
-    private bool WorkRacialBuilding(BuildingCursor building, ResidentCursor person, double effort)
+    private bool WorkRacialBuilding(StateReference<Building> building, ResidentCursor person, double effort)
     {
-        if (!RacialBuildingHasWork(building, person) || person.X != building.X || person.Y != building.Y)
+        if (!RacialBuildingHasWork(building.Value, person) || person.X != building.Value.X || person.Y != building.Value.Y)
             return false;
-        var input = RacialWorkInput(building.Kind);
+        var input = RacialWorkInput(building.Value.Kind);
         if (MissingResources(person.Inventory, input) is not null)
             return false;
         person.Inventory = Spend(person.Inventory, input);
-        switch (building.Kind)
+        switch (building.Value.Kind)
         {
             case BuildingKind.AssemblyHall:
-                foreach (var other in _citizens[building.SettlementId])
-                    if (other.Health > 0 && Distance(other.X, other.Y, building.X, building.Y) <= 2)
+                foreach (var other in _citizens[building.Value.SettlementId])
+                    if (other.Health > 0 && Distance(other.X, other.Y, building.Value.X, building.Value.Y) <= 2)
                         other.Agent = other.Agent with { SocialNeed = Math.Max(0, other.Agent.SocialNeed - effort) };
                 return true;
             case BuildingKind.TradeGuild:
@@ -149,14 +151,14 @@ public sealed partial class WorldEngine
                 person.Mana = Math.Min(100, person.Mana + .3 * effort);
                 return true;
             case BuildingKind.HerbGarden:
-                var patient = FindLocalWorkPatient(building);
+                var patient = FindLocalWorkPatient(building.Value);
                 if (patient is null)
                     return false;
                 patient.Health = Math.Min(100, patient.Health + .6 * effort);
                 patient.SicknessTicks = Math.Max(0, patient.SicknessTicks - SimulationTime.TicksPerDay);
                 return true;
             case BuildingKind.MiningHall:
-                var source = FindWorkshopResource(building, Profession.Miner);
+                var source = FindWorkshopResource(building.Value, Profession.Miner);
                 if (source < 0)
                     return false;
                 var tile = Current.Tiles[source];
@@ -185,12 +187,12 @@ public sealed partial class WorldEngine
                 RecordHarvest(ground, food);
                 return true;
             case BuildingKind.WarDrum:
-                foreach (var other in _citizens[building.SettlementId])
-                    if (other.Health > 0 && Distance(other.X, other.Y, building.X, building.Y) <= 2)
+                foreach (var other in _citizens[building.Value.SettlementId])
+                    if (other.Health > 0 && Distance(other.X, other.Y, building.Value.X, building.Value.Y) <= 2)
                         other.Agent = other.Agent with { Fatigue = Math.Max(0, other.Agent.Fatigue - effort) };
                 foreach (var army in Current.Armies)
-                    if (army.NationId == person.NationId && Distance(army.X, army.Y, building.X, building.Y) <= 2)
-                        army.Morale = Math.Min(100, army.Morale + .3 * effort);
+                    if (army.Value.NationId == person.NationId && Distance(army.Value.X, army.Value.Y, building.Value.X, building.Value.Y) <= 2)
+                        army.Replace(army.Value with { Morale = Math.Min(100, army.Value.Morale + .3 * effort) });
                 return true;
             default:
                 return false;
@@ -203,10 +205,10 @@ public sealed partial class WorldEngine
             return 1;
         var bonus = 1d;
         foreach (var building in Current.Buildings)
-            if (building.SettlementId == person.SettlementId && building.Kind == BuildingKind.TradeGuild
-                                                             && Distance(x, y, building.X, building.Y) <= 3 &&
-                                                             IsFacilityOperating(building))
-                bonus = Math.Max(bonus, 1.15 * building.Efficiency);
+            if (building.Value.SettlementId == person.SettlementId && building.Value.Kind == BuildingKind.TradeGuild
+                                                             && Distance(x, y, building.Value.X, building.Value.Y) <= 3 &&
+                                                             IsFacilityOperating(building.Value))
+                bonus = Math.Max(bonus, 1.15 * building.Value.Efficiency);
         return bonus;
     }
 

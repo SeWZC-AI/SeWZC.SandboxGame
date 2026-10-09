@@ -49,10 +49,10 @@ public sealed partial class WorldEngine
                 .Source >= 0;
         }
 
-        if (kind == BuildingKind.Well && WellWaterYield(tile) < .1)
+        if (kind == BuildingKind.Well && WellWaterYield(tile.Value) < .1)
             return false;
         if (kind == BuildingKind.Reservoir && !Circle(index % Current.Width, index / Current.Width, 1)
-                .Any(source => IsFreshWater(Current.Tiles[source]) && Current.Tiles[source].FireTicks == 0))
+                .Any(source => IsFreshWater(Current.Tiles[source].Value) && Current.Tiles[source].FireTicks == 0))
             return false;
         if (kind == BuildingKind.HuntingCamp)
             return EdibleAnimal(tile) != WildlifeKind.None;
@@ -148,10 +148,10 @@ public sealed partial class WorldEngine
         }
 
         if (kind == BuildingKind.Well)
-            score += Math.Min(3, WellWaterYield(tile)) * 15;
+            score += Math.Min(3, WellWaterYield(tile.Value)) * 15;
         if (kind == BuildingKind.Reservoir)
         {
-            score += Circle(x, y, 1).Where(i => i == Index(x, y) || IsFreshWater(Current.Tiles[i]))
+            score += Circle(x, y, 1).Where(i => i == Index(x, y) || IsFreshWater(Current.Tiles[i].Value))
                 .Select(i => Math.Min(3, GetDailyWaterCapacity(i % Current.Width, i / Current.Width)) * 20)
                 .DefaultIfEmpty().Max();
         }
@@ -162,7 +162,7 @@ public sealed partial class WorldEngine
             score += TerrainRules.For(tile.Terrain).ManaRate * 4;
         foreach (var building in Current.Buildings)
         {
-            var distance = Distance(x, y, building.X, building.Y);
+            var distance = Distance(x, y, building.Value.X, building.Value.Y);
             if (distance <= 2)
                 score -= distance == 1 ? 4 : 1;
             if (kind is BuildingKind.Infirmary or BuildingKind.Granary or BuildingKind.Market && distance <= 4)
@@ -187,7 +187,7 @@ public sealed partial class WorldEngine
             .FirstOrDefault(-1);
     }
 
-    private bool BuildingGroundOwned(BuildingCursor building)
+    private bool BuildingGroundOwned(Building building)
     {
         return IsPublicInfrastructure(building.Kind)
                || (Current.Tiles[Index(building.X, building.Y)].ClaimedSettlementId == building.SettlementId
@@ -195,7 +195,7 @@ public sealed partial class WorldEngine
                    && Current.Tiles[Index(building.X, building.Y)].NationId == town.NationId);
     }
 
-    private bool PassiveFacility(BuildingCursor building)
+    private bool PassiveFacility(Building building)
     {
         return building.Kind is BuildingKind.Granary or BuildingKind.Housing or BuildingKind.Watchtower;
     }
@@ -206,22 +206,22 @@ public sealed partial class WorldEngine
     {
         var town = RequireTown(settlementId);
         return Math.Min(20_000, town.Housing + Current.Buildings
-            .Where(b => b.SettlementId == settlementId && b.Kind == BuildingKind.Housing && IsFacilityOperating(b))
-            .Sum(b => b.Level * HousingCapacityPerLevel));
+            .Where(b => b.Value.SettlementId == settlementId && b.Value.Kind == BuildingKind.Housing && IsFacilityOperating(b.Value))
+            .Sum(b => b.Value.Level * HousingCapacityPerLevel));
     }
 
     private double GranaryRestBonus(int settlementId)
     {
-        IEnumerable<BuildingCursor>? buildings = _localWorkQueriesActive
+        IEnumerable<StateReference<Building>>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(settlementId)
             : Current.Buildings;
         var bonus = 1d;
         if (buildings is null)
             return bonus;
         foreach (var building in buildings)
-            if (building.SettlementId == settlementId && building.Kind == BuildingKind.Granary &&
-                IsFacilityOperating(building))
-                bonus = Math.Max(bonus, 1 + .1 * building.Level);
+            if (building.Value.SettlementId == settlementId && building.Value.Kind == BuildingKind.Granary &&
+                IsFacilityOperating(building.Value))
+                bonus = Math.Max(bonus, 1 + .1 * building.Value.Level);
         return bonus;
     }
 
@@ -233,10 +233,10 @@ public sealed partial class WorldEngine
     {
         var bonus = 1d;
         foreach (var dock in Current.Buildings)
-            if (dock.Kind == BuildingKind.Dock && IsFacilityOperating(dock) &&
-                RequireTown(dock.SettlementId).NationId == nationId
-                && Distance(x, y, dock.X, dock.Y) <= 3)
-                bonus = Math.Max(bonus, 1 + .15 * dock.Level);
+            if (dock.Value.Kind == BuildingKind.Dock && IsFacilityOperating(dock.Value) &&
+                RequireTown(dock.Value.SettlementId).NationId == nationId
+                && Distance(x, y, dock.Value.X, dock.Value.Y) <= 3)
+                bonus = Math.Max(bonus, 1 + .15 * dock.Value.Level);
         return bonus;
     }
 }
