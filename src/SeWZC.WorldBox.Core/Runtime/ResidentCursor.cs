@@ -4,16 +4,10 @@ namespace SeWZC.WorldBox.Core.Runtime;
 internal sealed partial class ResidentCursor(Resident value) : StateCursor<Resident>(value)
 {
     private AgentStateCursor? _agent;
-    public ResidentCursor() : this(new Resident()) { }
 
     public int Id
     {
         get => base.Value.Id;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.Id, value))
-                ReplaceChanged(Value with { Id = value });
-        }
     }
 
     public string Name
@@ -180,31 +174,16 @@ internal sealed partial class ResidentCursor(Resident value) : StateCursor<Resid
     public long DiseaseImmuneUntilTick
     {
         get => base.Value.DiseaseImmuneUntilTick;
-        set
-        {
-            if (!EqualityComparer<long>.Default.Equals(Value.DiseaseImmuneUntilTick, value))
-                ReplaceChanged(Value with { DiseaseImmuneUntilTick = value });
-        }
     }
 
     public DeathCause DeathCause
     {
         get => base.Value.DeathCause;
-        set
-        {
-            if (!EqualityComparer<DeathCause>.Default.Equals(Value.DeathCause, value))
-                ReplaceChanged(Value with { DeathCause = value });
-        }
     }
 
     public long DeathTick
     {
         get => base.Value.DeathTick;
-        set
-        {
-            if (!EqualityComparer<long>.Default.Equals(Value.DeathTick, value))
-                ReplaceChanged(Value with { DeathTick = value });
-        }
     }
 
     public double Armor
@@ -240,11 +219,6 @@ internal sealed partial class ResidentCursor(Resident value) : StateCursor<Resid
     public long LastRangedAttackTick
     {
         get => base.Value.LastRangedAttackTick;
-        set
-        {
-            if (!EqualityComparer<long>.Default.Equals(Value.LastRangedAttackTick, value))
-                ReplaceChanged(Value with { LastRangedAttackTick = value });
-        }
     }
 
     public TravelMode TravelMode

@@ -12,6 +12,7 @@ public sealed partial record AgentState
         internal static readonly Identity Default = new();
 
         public bool Initialized { get; init; }
+        public PersonalityProfile Personality { get; init; } = new();
         public ImmutableList<AgentDecision> Decisions { get; init; } = [];
         public long LastConversationTick { get; init; }
         public int DestinationSettlementId { get; init; }

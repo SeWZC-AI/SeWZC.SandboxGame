@@ -27,7 +27,15 @@ public sealed partial record AgentState
     public double SocialNeed { get; init; }
 
     /// <summary>当前用于行动评分的性格权重。</summary>
-    public PersonalityProfile Personality { get; init; } = new();
+    public PersonalityProfile Personality
+    {
+        get => _identity.Personality;
+        init
+        {
+            if (!ReferenceEquals(_identity.Personality, value))
+                _identity = _identity with { Personality = value };
+        }
+    }
 
     /// <summary>当前正在执行的行动目标。</summary>
     public AgentGoal Goal { get; init; } = new();

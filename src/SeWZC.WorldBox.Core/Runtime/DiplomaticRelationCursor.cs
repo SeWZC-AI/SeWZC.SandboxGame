@@ -3,17 +3,11 @@ namespace SeWZC.WorldBox.Core.Runtime;
 /// <summary>DiplomaticRelation 的引擎内定位引用；每次写入提交新的不可变状态。</summary>
 internal sealed class DiplomaticRelationCursor : StateCursor<DiplomaticRelation>
 {
-    public DiplomaticRelationCursor() : this(new DiplomaticRelation()) { }
     public DiplomaticRelationCursor(DiplomaticRelation value) : base(value) { }
 
     public long LastChangedTick
     {
         get => Value.LastChangedTick;
-        set
-        {
-            if (!EqualityComparer<long>.Default.Equals(Value.LastChangedTick, value))
-                ReplaceChanged(Value with { LastChangedTick = value });
-        }
     }
 
     public long LastContactTick
@@ -69,21 +63,11 @@ internal sealed class DiplomaticRelationCursor : StateCursor<DiplomaticRelation>
     public int AllianceOfferNationId
     {
         get => Value.AllianceOfferNationId;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.AllianceOfferNationId, value))
-                ReplaceChanged(Value with { AllianceOfferNationId = value });
-        }
     }
 
     public long AllianceOfferTick
     {
         get => Value.AllianceOfferTick;
-        set
-        {
-            if (!EqualityComparer<long>.Default.Equals(Value.AllianceOfferTick, value))
-                ReplaceChanged(Value with { AllianceOfferTick = value });
-        }
     }
 
     public string Reason
@@ -99,21 +83,11 @@ internal sealed class DiplomaticRelationCursor : StateCursor<DiplomaticRelation>
     public int FirstNationId
     {
         get => Value.FirstNationId;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.FirstNationId, value))
-                ReplaceChanged(Value with { FirstNationId = value });
-        }
     }
 
     public int SecondNationId
     {
         get => Value.SecondNationId;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.SecondNationId, value))
-                ReplaceChanged(Value with { SecondNationId = value });
-        }
     }
 
     public DiplomaticStatus Status

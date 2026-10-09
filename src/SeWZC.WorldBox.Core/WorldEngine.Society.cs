@@ -60,7 +60,7 @@ public sealed partial class WorldEngine
             }
 
             if (!Current.Society.Institutions.Any(i => i.NationId == nation.Id))
-                Current.Society.Institutions.Add(new NationInstitutionCursor { NationId = nation.Id });
+                Current.Society.Institutions.Add(new NationInstitutionCursor(new NationInstitution { NationId = nation.Id }));
         }
 
         EnsureTownCenters();
@@ -74,17 +74,18 @@ public sealed partial class WorldEngine
 
             if (!Current.Society.Policies.Any(p => p.SettlementId == town.Id))
             {
-                var manual = Current.Society.Institutions.FirstOrDefault(i => i.NationId == town.NationId)
-                    ?.PlayerPolicy;
-                Current.Society.Policies.Add(new LocalPolicyCursor
+                var manual = Current.Society.Institutions.FirstOrDefault(i => i.NationId == town.NationId)?.PlayerPolicy;
+                Current.Society.Policies.Add(new LocalPolicyCursor(new LocalPolicy
                 {
-                    SettlementId = town.Id, Kind = manual ?? PolicyKind.Balanced, PlayerOverride = manual.HasValue,
-                });
+                    SettlementId = town.Id,
+                    Kind = manual ?? PolicyKind.Balanced,
+                    PlayerOverride = manual.HasValue,
+                }));
             }
 
             if (Current.Society.Research.Any(r => r.SettlementId == town.Id))
                 continue;
-            Current.Society.Research.Add(new SettlementResearchCursor { SettlementId = town.Id });
+            Current.Society.Research.Add(new SettlementResearchCursor(new SettlementResearch { SettlementId = town.Id }));
             // 定居家庭携带初始农场和工坊，后续设施仍须实际建设。
             if (!town.FoundationPending)
             {
@@ -134,7 +135,7 @@ public sealed partial class WorldEngine
         var position = BestBuildingSite(town, kind, true);
         if (position >= 0)
         {
-            var building = new BuildingCursor
+            var building = new BuildingCursor(new Building
             {
                 Id = NewId(),
                 SettlementId = town.Id,
@@ -143,7 +144,7 @@ public sealed partial class WorldEngine
                 Y = position / Current.Width,
                 ConstructionProgress = 30,
                 ConstructionRequired = 30,
-            };
+            });
             Current.Society.Buildings.Add(building);
             CompleteLandImprovement(building);
         }
@@ -227,7 +228,7 @@ public sealed partial class WorldEngine
         var tile = Current.Tiles[Index(x, y)];
         if (!gift)
             town.Resources = Spend(town.Resources, FacilityCost(kind, bridgeLevel));
-        var building = new BuildingCursor
+        var building = new BuildingCursor(new Building
         {
             Id = NewId(),
             SettlementId = settlementId,
@@ -240,7 +241,7 @@ public sealed partial class WorldEngine
                 : BridgeDirection.Horizontal,
             ConstructionRequired = kind is BuildingKind.SignalTower or BuildingKind.ArcaneSanctum ? 60 : 30,
             WorkSlots = (kind == BuildingKind.Farm ? 5 : 3) + (kind == BuildingKind.Bridge ? bridgeLevel - 1 : 0),
-        };
+        });
         Current.Society.Buildings.Add(building);
         if (_localWorkQueriesActive)
         {
@@ -1249,10 +1250,7 @@ public sealed partial class WorldEngine
                 c.ResidentId == resident.Id && c.CultureId == cultureId);
         if (contact is null)
         {
-            contact = new CulturalContactCursor
-            {
-                ResidentId = resident.Id, CultureId = cultureId, LastContactTick = -12,
-            };
+            contact = new CulturalContactCursor(new CulturalContact { ResidentId = resident.Id, CultureId = cultureId, LastContactTick = -12 });
             Current.Society.CulturalContacts.Add(contact);
         }
 
@@ -2140,11 +2138,6 @@ public sealed partial class WorldEngine
             Aircraft = Math.Max(0, stock.Aircraft - cost.Aircraft),
             Water = Math.Max(0, stock.Water - cost.Water),
         };
-    }
-
-    private static ResourceStock Spend(in ResourceStock stock, ResourceAmounts cost)
-    {
-        return Spend(stock, cost.ToStock());
     }
 
     private SettlementCursor RequireTown(int id)

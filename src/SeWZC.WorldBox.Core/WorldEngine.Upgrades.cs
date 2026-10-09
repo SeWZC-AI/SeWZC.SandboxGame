@@ -212,7 +212,6 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Construction, $"{BuildingName(building.Kind)}施工完成，当前 {building.Level} 级。",
             building.X, building.Y, EventAction.Completed, building.SettlementId,
             causeEventId: building.Observation.StartEventId);
-        _armyPaths.Clear();
     }
 
     private bool PlanBuildingUpgrade(SettlementCursor town, BuildingCursor[] buildings)

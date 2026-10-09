@@ -38,15 +38,11 @@ internal sealed class SnapshotListCursor<T>(ImmutableList<T> snapshot, Action<Im
         Snapshot.CopyTo(array, arrayIndex);
     }
 
-    public IEnumerator<T> GetEnumerator()
-    {
-        return ((IEnumerable<T>)Snapshot).GetEnumerator();
-    }
+    public ImmutableList<T>.Enumerator GetEnumerator() => Snapshot.GetEnumerator();
 
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
-    }
+    IEnumerator<T> IEnumerable<T>.GetEnumerator() => ((IEnumerable<T>)Snapshot).GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable)Snapshot).GetEnumerator();
 
     public int IndexOf(T item)
     {

@@ -126,17 +126,14 @@ public sealed partial class WorldEngine
 
     private void SeedWildlife()
     {
-        foreach (var tile in Current.Tiles)
-            tile.Replace(tile.Value with
-            {
-                Wildlife = WildlifeKind.None, WildlifePopulation = 0, OtherWildlife = new WildlifePopulations(),
-            });
-
         Span<double> capacities = stackalloc double[AnimalRules.SpeciesCount];
+        Span<double> populations = stackalloc double[AnimalRules.SpeciesCount];
         Span<byte> competitors = stackalloc byte[AnimalRules.SpeciesCount];
         for (var i = 0; i < Current.Tiles.Count; i++)
         {
             var tile = Current.Tiles[i];
+            populations.Clear();
+            var primary = WildlifeKind.None;
             AnimalRules.FillCapacities(tile, capacities, competitors);
             for (var diet = 0; diet < 2; diet++)
                 foreach (var kind in AnimalRules.Species)
@@ -149,14 +146,19 @@ public sealed partial class WorldEngine
                     {
                         var biomass = 0d;
                         foreach (var prey in AnimalRules.PreyFor(kind))
-                            biomass += tile.AnimalPopulation(prey) * AnimalRules.For(prey).BodyMass /
+                            biomass += populations[(int)prey] * AnimalRules.For(prey).BodyMass /
                                        competitors[(int)prey];
                         capacity = Math.Min(capacity, biomass * .12 / AnimalRules.For(kind).BodyMass);
                     }
 
                     if (capacity > 0)
-                        tile.SetAnimalPopulation(kind, capacity * (.15 + hash % 30 / 100d));
+                    {
+                        if (primary == WildlifeKind.None) primary = kind;
+                        populations[(int)kind] = capacity * (.15 + hash % 30 / 100d);
+                    }
                 }
+            // 捕食仍读取本格按原顺序生成的猎物数量，全部物种完成后只提交一次地格。
+            tile.Replace(tile.Value.WithAnimalPopulations(primary, populations));
         }
     }
 
@@ -468,7 +470,7 @@ public sealed partial class WorldEngine
                     b.SettlementId == town.Id && b.Kind == BuildingKind.TownCenter);
             if (center is null)
             {
-                center = new BuildingCursor
+                center = new BuildingCursor(new Building
                 {
                     Id = NewId(),
                     Kind = BuildingKind.TownCenter,
@@ -478,7 +480,7 @@ public sealed partial class WorldEngine
                     ConstructionProgress = 30,
                     ConstructionRequired = 30,
                     WorkSlots = 3,
-                };
+                });
                 Current.Society.Buildings.Add(center);
             }
 

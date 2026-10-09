@@ -5,26 +5,6 @@ internal sealed class BuildingCursor(Building value) : StateCursor<Building>(val
 {
     public BuildingCursor() : this(new Building()) { }
 
-    public string PlanningReason
-    {
-        get => Value.PlanningReason;
-        set
-        {
-            if (!EqualityComparer<string>.Default.Equals(Value.PlanningReason, value))
-                ReplaceChanged(Value with { PlanningReason = value });
-        }
-    }
-
-    public string SiteReason
-    {
-        get => Value.SiteReason;
-        set
-        {
-            if (!EqualityComparer<string>.Default.Equals(Value.SiteReason, value))
-                ReplaceChanged(Value with { SiteReason = value });
-        }
-    }
-
     public int Level
     {
         get => Value.Level;
@@ -81,11 +61,6 @@ internal sealed class BuildingCursor(Building value) : StateCursor<Building>(val
     public WildlifeKind LivestockKind
     {
         get => Value.LivestockKind;
-        set
-        {
-            if (!EqualityComparer<WildlifeKind>.Default.Equals(Value.LivestockKind, value))
-                ReplaceChanged(Value with { LivestockKind = value });
-        }
     }
 
     public double LivestockPopulation
@@ -211,11 +186,6 @@ internal sealed class BuildingCursor(Building value) : StateCursor<Building>(val
     public double ConstructionRequired
     {
         get => Value.ConstructionRequired;
-        set
-        {
-            if (!EqualityComparer<double>.Default.Equals(Value.ConstructionRequired, value))
-                ReplaceChanged(Value with { ConstructionRequired = value });
-        }
     }
 
     public double Health
@@ -245,11 +215,6 @@ internal sealed class BuildingCursor(Building value) : StateCursor<Building>(val
             if (!ReferenceEquals(Value.Workers, value))
                 ReplaceChanged(Value with { Workers = value });
         });
-        set
-        {
-            field = null;
-            Replace(Value with { Workers = value.Snapshot });
-        }
     }
 
     public long LastWorkedTick

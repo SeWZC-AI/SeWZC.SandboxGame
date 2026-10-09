@@ -4,17 +4,11 @@ namespace SeWZC.WorldBox.Core.Runtime;
 internal sealed class NationCursor : StateCursor<Nation>
 {
     private MilitaryRecordCursor? _military;
-    public NationCursor() : this(new Nation()) { }
     public NationCursor(Nation value) : base(value) { }
 
     public int Id
     {
         get => Value.Id;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.Id, value))
-                ReplaceChanged(Value with { Id = value });
-        }
     }
 
     public string Name
@@ -40,11 +34,6 @@ internal sealed class NationCursor : StateCursor<Nation>
     public RaceKind FoundingRace
     {
         get => Value.FoundingRace;
-        set
-        {
-            if (!EqualityComparer<RaceKind>.Default.Equals(Value.FoundingRace, value))
-                ReplaceChanged(Value with { FoundingRace = value });
-        }
     }
 
     public int CapitalId
@@ -64,16 +53,6 @@ internal sealed class NationCursor : StateCursor<Nation>
         {
             if (!EqualityComparer<int>.Default.Equals(Value.Population, value))
                 ReplaceChanged(Value with { Population = value });
-        }
-    }
-
-    public int Territory
-    {
-        get => Value.Territory;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.Territory, value))
-                ReplaceChanged(Value with { Territory = value });
         }
     }
 
@@ -132,11 +111,6 @@ internal sealed class NationCursor : StateCursor<Nation>
             }
 
             return _military;
-        }
-        set
-        {
-            _military = null;
-            Replace(Value with { Military = value.Value });
         }
     }
 

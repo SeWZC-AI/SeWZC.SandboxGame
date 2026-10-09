@@ -58,7 +58,6 @@ public sealed partial class WorldEngine
             }
         }
 
-        _armyPaths.Clear();
         RelocateInvalidEntities();
         Reindex();
         InitializeSociety();
@@ -90,14 +89,14 @@ public sealed partial class WorldEngine
         {
             if (Current.Nations.Count >= 64 || Current.Settlements.Count >= 256)
                 return;
-            var nation = new NationCursor
+            var nation = new NationCursor(new Nation
             {
                 Id = NewId(),
                 FoundingRace = race,
                 Name = NewPlaceName("王国"),
                 ColorArgb = NationColors[Current.Nations.Count % NationColors.Length],
-            };
-            settlement = new SettlementCursor
+            });
+            settlement = new SettlementCursor(new Settlement
             {
                 Id = NewId(),
                 Name = NewPlaceName("村"),
@@ -112,19 +111,19 @@ public sealed partial class WorldEngine
                     Stone = 45,
                     Ore = 12,
                 },
-            };
+            });
             nation.CapitalId = settlement.Id;
             foreach (var other in Current.Nations)
             {
                 var opinion = RandomInt(41) - 10;
-                Current.Diplomacies.Add(new DiplomaticRelationCursor
+                Current.Diplomacies.Add(new DiplomaticRelationCursor(new DiplomaticRelation
                 {
                     FirstNationId = other.Id,
                     SecondNationId = nation.Id,
                     Opinion = opinion,
                     FirstOpinion = opinion,
                     SecondOpinion = opinion,
-                });
+                }));
             }
 
             Current.Nations.Add(nation);
@@ -137,6 +136,9 @@ public sealed partial class WorldEngine
             AddEvent(WorldEventKind.Founding, $"{RaceNames[(int)race]}在{settlement.Name}定居，建立了{nation.Name}。", x, y);
         }
 
+        using var scalarUpdates = Current.BeginScalarUpdates();
+        using var residentUpdates = Current.Residents.BeginUpdates();
+        using var settlementUpdates = Current.Settlements.BeginUpdates();
         // 开局居民必须与营地位于同一连通陆岸，避免隔河出生后无法返乡。
         var spawnSites = new List<int> { index };
         var spawnSeen = new HashSet<int> { index };
@@ -180,7 +182,7 @@ public sealed partial class WorldEngine
     private ResidentCursor NewResident(SettlementCursor settlement, RaceKind race, double age)
     {
         var id = NewId();
-        return new ResidentCursor
+        return new ResidentCursor(new Resident
         {
             Id = id,
             Name = NewResidentName(id, race),
@@ -197,7 +199,7 @@ public sealed partial class WorldEngine
             MagicTalent = (race == RaceKind.Elf ? 45 : race == RaceKind.Dwarf ? 23 : race == RaceKind.Orc ? 28 : 32) +
                           unchecked(((uint)id * 2654435761u) ^ (uint)Current.Seed) % 36,
             Trait = new[] { "勤劳", "勇敢", "好奇", "坚韧", "温和" }[RandomInt(5)],
-        };
+        });
     }
 
     private Profession AssignProfession()
@@ -432,10 +434,11 @@ public sealed partial class WorldEngine
             (r.FirstNationId == second && r.SecondNationId == first));
         if (relation is not null)
             return relation;
-        relation = new DiplomaticRelationCursor
+        relation = new DiplomaticRelationCursor(new DiplomaticRelation
         {
-            FirstNationId = Math.Min(first, second), SecondNationId = Math.Max(first, second),
-        };
+            FirstNationId = Math.Min(first, second),
+            SecondNationId = Math.Max(first, second),
+        });
         Current.Diplomacies.Add(relation);
         return relation;
     }

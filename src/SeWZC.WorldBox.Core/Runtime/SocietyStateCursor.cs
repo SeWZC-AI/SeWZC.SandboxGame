@@ -3,7 +3,6 @@ namespace SeWZC.WorldBox.Core.Runtime;
 /// <summary>SocietyState 的引擎内定位引用；每次写入提交新的不可变状态。</summary>
 internal sealed class SocietyStateCursor : StateCursor<SocietyState>
 {
-    public SocietyStateCursor() : this(new SocietyState()) { }
     public SocietyStateCursor(SocietyState value) : base(value) { }
 
     public bool MagicEnabled
@@ -23,11 +22,6 @@ internal sealed class SocietyStateCursor : StateCursor<SocietyState>
             if (!ReferenceEquals(Value.Cultures, value))
                 ReplaceChanged(Value with { Cultures = value });
         });
-        set
-        {
-            field = null;
-            Replace(Value with { Cultures = value.Snapshot });
-        }
     }
 
     public EntityListCursor<Building, BuildingCursor> Buildings
@@ -37,11 +31,6 @@ internal sealed class SocietyStateCursor : StateCursor<SocietyState>
             if (!ReferenceEquals(Value.Buildings, value))
                 ReplaceChanged(Value with { Buildings = value });
         }, value => new BuildingCursor(value));
-        set
-        {
-            field = null;
-            Replace(Value with { Buildings = value.Snapshot });
-        }
     }
 
     public EntityListCursor<SettlementResearch, SettlementResearchCursor> Research
@@ -51,11 +40,6 @@ internal sealed class SocietyStateCursor : StateCursor<SocietyState>
             if (!ReferenceEquals(Value.Research, value))
                 ReplaceChanged(Value with { Research = value });
         }, value => new SettlementResearchCursor(value));
-        set
-        {
-            field = null;
-            Replace(Value with { Research = value.Snapshot });
-        }
     }
 
     public EntityListCursor<LocalPolicy, LocalPolicyCursor> Policies
@@ -65,11 +49,6 @@ internal sealed class SocietyStateCursor : StateCursor<SocietyState>
             if (!ReferenceEquals(Value.Policies, value))
                 ReplaceChanged(Value with { Policies = value });
         }, value => new LocalPolicyCursor(value));
-        set
-        {
-            field = null;
-            Replace(Value with { Policies = value.Snapshot });
-        }
     }
 
     public EntityListCursor<NationInstitution, NationInstitutionCursor> Institutions
@@ -80,11 +59,6 @@ internal sealed class SocietyStateCursor : StateCursor<SocietyState>
                 if (!ReferenceEquals(Value.Institutions, value))
                     ReplaceChanged(Value with { Institutions = value });
             }, value => new NationInstitutionCursor(value));
-        set
-        {
-            field = null;
-            Replace(Value with { Institutions = value.Snapshot });
-        }
     }
 
     public SnapshotListCursor<InstitutionReport> Reports
@@ -94,11 +68,6 @@ internal sealed class SocietyStateCursor : StateCursor<SocietyState>
             if (!ReferenceEquals(Value.Reports, value))
                 ReplaceChanged(Value with { Reports = value });
         });
-        set
-        {
-            field = null;
-            Replace(Value with { Reports = value.Snapshot });
-        }
     }
 
     public EntityListCursor<CulturalContact, CulturalContactCursor> CulturalContacts
@@ -109,11 +78,6 @@ internal sealed class SocietyStateCursor : StateCursor<SocietyState>
                 if (!ReferenceEquals(Value.CulturalContacts, value))
                     ReplaceChanged(Value with { CulturalContacts = value });
             }, value => new CulturalContactCursor(value));
-        set
-        {
-            field = null;
-            Replace(Value with { CulturalContacts = value.Snapshot });
-        }
     }
 
     public static implicit operator SocietyState(SocietyStateCursor cursor)
