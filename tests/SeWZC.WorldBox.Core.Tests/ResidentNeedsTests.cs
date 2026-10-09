@@ -11,7 +11,7 @@ public sealed class ResidentNeedsTests
     {
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = false }, false, true);
-        fixture.Town.Resources = new ResourceStock();
+        fixture.Town.UpdateResources(new ResourceStock());
         fixture.Resident.Replace(fixture.Resident.Value with
         {
             Age = 20,
@@ -68,7 +68,7 @@ public sealed class ResidentNeedsTests
     {
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = false }, false, true);
-        fixture.Town.Resources = new ResourceStock();
+        fixture.Town.UpdateResources(new ResourceStock());
         fixture.AddWell(16, 17, .025);
         fixture.Resident.Replace(fixture.Resident.Value with
         {

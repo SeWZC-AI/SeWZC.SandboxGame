@@ -123,13 +123,13 @@ public sealed partial class WorldEngine
         var person = GetResident(residentId);
         return person is null || !InBounds(x, y)
             ? OutsideTerritoryGatheringMultiplier
-            : GatheringTerritoryMultiplier(new ResidentCursor(person), Current.Tiles[Index(x, y)]);
+            : GatheringTerritoryMultiplier(person.SettlementId, person.NationId, Current.Tiles[Index(x, y)].Value);
     }
 
-    private static double GatheringTerritoryMultiplier(ResidentCursor person, TileCursor source)
+    private static double GatheringTerritoryMultiplier(int settlementId, int nationId, Tile source)
     {
-        return source.ClaimedSettlementId == person.SettlementId
-               && source.NationId == person.NationId
+        return source.ClaimedSettlementId == settlementId
+               && source.NationId == nationId
             ? 1
             : OutsideTerritoryGatheringMultiplier;
     }
@@ -166,7 +166,7 @@ public sealed partial class WorldEngine
         if (SettlementExpansionError(id) is { } error)
             throw new InvalidOperationException(error);
         var town = RequireTown(id);
-        town.Resources = Spend(town.Resources, SettlementExpansionCost(town.Tier));
+        town.UpdateResources(Spend(town.Resources, SettlementExpansionCost(town.Tier)));
         town.Replace(town.Value with
         {
             ExpansionProgress = 0, ExpansionRequired = town.Tier == SettlementTier.Village ? 60 : 120,
@@ -182,12 +182,11 @@ public sealed partial class WorldEngine
         // 领地不足时暂停晋升完工，保留已经支付的材料和施工进度，避免重复收费。
         if (GetSettlementArea(town.Id) < GetSettlementExpansionArea(town.Id))
             return false;
-        town.ExpansionProgress = Math.Min(town.ExpansionRequired,
-            town.ExpansionProgress + effort * Current.Rules.DevelopmentRate);
-        if (town.ExpansionProgress < town.ExpansionRequired)
+        var before = town.Value;
+        var after = before.AdvanceExpansion(effort, Current.Rules.DevelopmentRate);
+        town.Replace(after);
+        if (after.Tier == before.Tier)
             return true;
-        town.Tier++;
-        town.ExpansionProgress = town.ExpansionRequired = 0;
         RefreshSettlementName(town);
         AddEvent(WorldEventKind.Growth, $"{town.Name}完成城镇扩充，公共组织与通信效率提高。", town.X, town.Y, EventAction.Completed,
             town.Id);

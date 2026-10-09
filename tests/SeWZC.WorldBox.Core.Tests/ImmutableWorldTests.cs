@@ -56,10 +56,10 @@ public sealed class ImmutableWorldTests
         var town = fixture.Town;
         using var updates = fixture.Engine.Current.Settlements.BeginUpdates();
         town.BeginResourceUpdates();
-        town.Resources = town.Resources with { Food = 7, Water = 3 };
+        town.UpdateResources(town.Resources with { Food = 7, Water = 3 });
         var middle = fixture.Engine.State;
-        town.Resources = town.Resources with { Food = 5 };
-        town.Housing = 100;
+        town.UpdateResources(town.Resources with { Food = 5 });
+        town.Replace(town.Value with { Housing = 100 });
         Assert.Equal(5, town.Resources.Food);
         var current = fixture.Engine.Current.Settlements.Snapshot.Single();
         town.EndResourceUpdates();
@@ -188,7 +188,7 @@ public sealed class ImmutableWorldTests
             {
                 Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = 15, TargetY = 16 },
             };
-            fixture.Resident.Profession = Profession.Laborer;
+            fixture.Resident.Replace(fixture.Resident.Value with { Profession = Profession.Laborer });
             Assert.Equal(70, middle.Residents[0].Health);
             Assert.Equal(40, middle.Residents[0].Agent.Fatigue);
             Assert.NotEqual(AgentGoalKind.Rest, middle.Residents[0].Agent.Goal.Kind);
@@ -388,12 +388,12 @@ public sealed class ImmutableWorldTests
         using (fixture.Engine.Current.Settlements.BeginUpdates())
         {
             fixture.Resident.Inventory = new ResourceStock { Food = 3 };
-            fixture.Town.Resources = new ResourceStock { Food = 9 };
+            fixture.Town.UpdateResources(new ResourceStock { Food = 9 });
             tile.Fertility = 42;
             Assert.Equal(3, fixture.Resident.Inventory.Food);
             middle = fixture.Engine.State;
             fixture.Resident.Inventory = new ResourceStock { Food = 5 };
-            fixture.Town.Resources = new ResourceStock { Food = 7 };
+            fixture.Town.UpdateResources(new ResourceStock { Food = 7 });
             tile.Fertility = 60;
         }
 
@@ -491,7 +491,7 @@ public sealed class ImmutableWorldTests
 
         fixture.Engine.Current.Residents.Remove(person);
         fixture.Engine.Current.ArchivedResidents.Add(person);
-        person.Name = "归档的新姓名";
+        person.Replace(person.Value with { Name = "归档的新姓名" });
         person.Inventory = new ResourceStock { Food = 3 };
 
         Assert.Empty(fixture.Engine.State.Residents);

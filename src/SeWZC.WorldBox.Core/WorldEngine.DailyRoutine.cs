@@ -98,7 +98,7 @@ public sealed partial class WorldEngine
         {
             person.Agent = person.Agent with
             {
-                Fatigue = Math.Max(0, person.Agent.Fatigue - (sleeping ? 2.2 : .8) * HomeRestMultiplier(person)),
+                Fatigue = Math.Max(0, person.Agent.Fatigue - (sleeping ? 2.2 : .8) * HomeRestMultiplier(person.SettlementId, person.X, person.Y)),
             };
         }
 

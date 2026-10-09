@@ -2,10 +2,13 @@ namespace SeWZC.WorldBox.Core.Runtime;
 
 internal sealed partial class ResidentCursor
 {
-    private DailyDraft _draft = new(value);
+    private BodyFields _body = new(value);
+    private MotionFields _motion = new(value);
+    private AgentState _agent = value.Agent;
+    private ResourceStock _inventory = value.Inventory;
     private bool _draftChanged;
 
-    // 内部字段立即供后续行为读取，完整实体及世界快照在边界冻结。
+    // 日常字段以不可变值暂存，完整实体及世界快照在边界冻结。
     public new ref readonly Resident Value
     {
         get
@@ -18,13 +21,30 @@ internal sealed partial class ResidentCursor
     internal override void FlushPending()
     {
         if (_draftChanged)
-            ReplaceChanged(_draft.Apply(base.Value));
+            ReplaceChanged(_body.Apply(base.Value, _motion, _agent, _inventory));
     }
 
     public override void Replace(in Resident value)
     {
         FlushPending();
         base.Replace(value);
+    }
+
+    internal void BeginMove(int x, int y, long tick, int duration, ResidentActivity activity, AgentState agent)
+    {
+        _motion = _motion with
+        {
+            FromX = _motion.X,
+            FromY = _motion.Y,
+            X = x,
+            Y = y,
+            MoveStartedTick = tick,
+            MoveDurationTicks = duration,
+        };
+        if (_body.Activity != activity)
+            _body = _body with { Activity = activity };
+        _agent = agent;
+        _draftChanged = true;
     }
 
     internal void ApplyDay(in Resident.DailyState value)
@@ -46,88 +66,89 @@ internal sealed partial class ResidentCursor
         }
 
         // 老化等常见变化一次标记草稿，避免每个输出字段再走独立设置器。
-        _draftChanged |= !_draft.Age.Equals(value.Age) || !_draft.Health.Equals(value.Health)
-                                                       || !_draft.Hunger.Equals(value.Hunger) ||
-                                                       !_draft.Thirst.Equals(value.Thirst)
-                                                       || _draft.SicknessTicks != value.Sickness ||
-                                                       _draft.Activity != value.Activity
-                                                       || !_draft.Mana.Equals(value.Mana) ||
-                                                       _draft.Inventory != value.Inventory;
-        _draft.Age = value.Age;
-        _draft.Health = value.Health;
-        _draft.Hunger = value.Hunger;
-        _draft.Thirst = value.Thirst;
-        _draft.SicknessTicks = value.Sickness;
-        _draft.Activity = value.Activity;
-        _draft.Mana = value.Mana;
-        _draft.Inventory = value.Inventory;
-        if (!ReferenceEquals(_draft.Agent, value.Agent))
+        _draftChanged |= !_body.Age.Equals(value.Age) || !_body.Health.Equals(value.Health)
+                         || !_body.Hunger.Equals(value.Hunger) || !_body.Thirst.Equals(value.Thirst)
+                         || _body.SicknessTicks != value.Sickness || _body.Activity != value.Activity
+                         || !_body.Mana.Equals(value.Mana) || _inventory != value.Inventory;
+        _draftChanged |= !ReferenceEquals(_agent, value.Agent);
+        _body = _body with
         {
-            _draft.Agent = value.Agent;
-            _draftChanged = true;
-        }
+            Age = value.Age,
+            Health = value.Health,
+            Hunger = value.Hunger,
+            Thirst = value.Thirst,
+            SicknessTicks = value.Sickness,
+            Activity = value.Activity,
+            Mana = value.Mana,
+        };
+        _agent = value.Agent;
+        _inventory = value.Inventory;
     }
 
-    private struct DailyDraft
+    private readonly record struct BodyFields
     {
-        internal int X;
-        internal int Y;
-        internal double Age;
-        internal ResidentActivity Activity;
-        internal double Health;
-        internal double Hunger;
-        internal int SicknessTicks;
-        internal TravelMode TravelMode;
-        internal double Thirst;
-        internal ResourceStock Inventory;
-        internal double Mana;
-        internal int FromX;
-        internal int FromY;
-        internal long MoveStartedTick;
-        internal int MoveDurationTicks;
-        internal AgentState Agent;
+        internal double Age { get; init; }
+        internal ResidentActivity Activity { get; init; }
+        internal int SicknessTicks { get; init; }
+        internal double Health { get; init; }
+        internal double Hunger { get; init; }
+        internal double Thirst { get; init; }
+        internal double Mana { get; init; }
 
-        internal DailyDraft(Resident value)
+        internal BodyFields(Resident value)
         {
-            X = value.X;
-            Y = value.Y;
             Age = value.Age;
             Activity = value.Activity;
             Health = value.Health;
             Hunger = value.Hunger;
             SicknessTicks = value.SicknessTicks;
-            TravelMode = value.TravelMode;
             Thirst = value.Thirst;
-            Inventory = value.Inventory;
             Mana = value.Mana;
-            FromX = value.FromX;
-            FromY = value.FromY;
-            MoveStartedTick = value.MoveStartedTick;
-            MoveDurationTicks = value.MoveDurationTicks;
-            Agent = value.Agent;
         }
 
-        internal readonly Resident Apply(Resident value)
+        internal Resident Apply(Resident value, in MotionFields motion, AgentState agent, in ResourceStock inventory)
         {
             return value with
             {
-                X = X,
-                Y = Y,
+                X = motion.X,
+                Y = motion.Y,
                 Age = Age,
                 Activity = Activity,
                 Health = Health,
                 Hunger = Hunger,
                 SicknessTicks = SicknessTicks,
-                TravelMode = TravelMode,
+                TravelMode = motion.TravelMode,
                 Thirst = Thirst,
-                Inventory = Inventory,
+                Inventory = inventory,
                 Mana = Mana,
-                FromX = FromX,
-                FromY = FromY,
-                MoveStartedTick = MoveStartedTick,
-                MoveDurationTicks = MoveDurationTicks,
-                Agent = Agent,
+                FromX = motion.FromX,
+                FromY = motion.FromY,
+                MoveStartedTick = motion.MoveStartedTick,
+                MoveDurationTicks = motion.MoveDurationTicks,
+                Agent = agent,
             };
+        }
+    }
+
+    private readonly record struct MotionFields
+    {
+        internal int X { get; init; }
+        internal int Y { get; init; }
+        internal int FromX { get; init; }
+        internal int FromY { get; init; }
+        internal long MoveStartedTick { get; init; }
+        internal int MoveDurationTicks { get; init; }
+        internal TravelMode TravelMode { get; init; }
+
+        internal MotionFields(Resident value)
+        {
+            X = value.X;
+            Y = value.Y;
+            TravelMode = value.TravelMode;
+            FromX = value.FromX;
+            FromY = value.FromY;
+            MoveStartedTick = value.MoveStartedTick;
+            MoveDurationTicks = value.MoveDurationTicks;
         }
     }
 }

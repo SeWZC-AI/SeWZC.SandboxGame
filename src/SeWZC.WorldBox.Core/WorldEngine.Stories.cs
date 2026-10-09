@@ -8,7 +8,7 @@ public sealed partial class WorldEngine
         PersonalExperienceKind experience = PersonalExperienceKind.Neutral,
         EventImportance importance = EventImportance.Notable)
     {
-        person.History = person.History.Add(new ResidentHistoryEntry
+        var history = person.History.Add(new ResidentHistoryEntry
         {
             Tick = Current.Tick,
             Text = text,
@@ -19,8 +19,9 @@ public sealed partial class WorldEngine
             NationId = person.NationId,
             Experience = experience,
         });
-        while (person.History.Count > 24)
-            person.History = person.History.RemoveAt(0);
+        while (history.Count > 24)
+            history = history.RemoveAt(0);
+        person.Replace(person.Value with { History = history });
     }
 
     private void ObserveProjects()

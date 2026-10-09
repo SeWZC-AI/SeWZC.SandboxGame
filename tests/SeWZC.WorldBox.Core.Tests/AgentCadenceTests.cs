@@ -123,7 +123,7 @@ public sealed class AgentCadenceTests
     public void Ongoing_crisis_preserves_a_recent_survival_review()
     {
         var fixture = Prepare();
-        fixture.Town.Resources = new ResourceStock();
+        fixture.Town.UpdateResources(new ResourceStock());
         fixture.Resident.Inventory = new ResourceStock { Water = 10 };
         fixture.Resident.Hunger = 90;
         fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = fixture.Engine.Current.Tick + 4 };
@@ -134,7 +134,7 @@ public sealed class AgentCadenceTests
                 Kind = AgentGoalKind.Gather, TargetX = 16, TargetY = 16, ReviewTick = fixture.Engine.Current.Tick + 4,
             },
         };
-        fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.Current.Tick + 2 });
 
         fixture.Engine.Step();
 
@@ -149,7 +149,7 @@ public sealed class AgentCadenceTests
     {
         var fixture = Prepare();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 5);
-        fixture.Town.Resources = new ResourceStock();
+        fixture.Town.UpdateResources(new ResourceStock());
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with
             {
@@ -187,7 +187,7 @@ public sealed class AgentCadenceTests
     public void Productive_food_task_continues_with_carried_water(byte fertility, bool productive)
     {
         var fixture = Prepare();
-        fixture.Town.Resources = new ResourceStock();
+        fixture.Town.UpdateResources(new ResourceStock());
         fixture.Resident.Inventory = new ResourceStock { Water = 1 };
         fixture.Resident.Hunger = 90;
         var tile = fixture.Engine.Current.Tiles[16 * 32 + 16];
@@ -234,7 +234,7 @@ public sealed class AgentCadenceTests
     {
         var fixture = Prepare();
         fixture.Engine.Current.Tick += offset;
-        fixture.Town.Resources = new ResourceStock();
+        fixture.Town.UpdateResources(new ResourceStock());
         fixture.Resident.Inventory = new ResourceStock { Water = 10 };
         fixture.Resident.Hunger = 90;
         fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = 100 };
@@ -276,11 +276,11 @@ public sealed class AgentCadenceTests
         var fixture = Prepare();
         foreach (var tile in fixture.Engine.Current.Tiles)
             tile.NaturalWaterYield = 0;
-        fixture.Town.Resources = new ResourceStock { Food = 40 };
+        fixture.Town.UpdateResources(new ResourceStock { Food = 40 });
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 90;
         fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = 100 };
-        fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.Current.Tick + 2 });
         var source = 17 * 32 + 16;
         fixture.AddWell(16, 17, .1);
 
@@ -380,7 +380,7 @@ public sealed class AgentCadenceTests
     {
         var fixture = Prepare();
         fixture.Engine.Current.Tick = 8 + (4 - fixture.ResidentId % 4) % 4;
-        fixture.Town.Resources = new ResourceStock();
+        fixture.Town.UpdateResources(new ResourceStock());
         fixture.Resident.Replace(fixture.Resident.Value with
         {
             X = 16,

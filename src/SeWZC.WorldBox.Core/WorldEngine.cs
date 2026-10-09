@@ -279,7 +279,7 @@ public sealed partial class WorldEngine
             RecordLife(resident, $"逝世原因：{DeathCauseName(resident.DeathCause)}，终年 {resident.Age:0.0} 岁。", death,
                 importance: EventImportance.Major);
             if (resident.History.Count > 24)
-                resident.History = resident.History.RemoveAt(0);
+                resident.Replace(resident.Value with { History = resident.History.RemoveAt(0) });
             RemoveLocalWorkResident(resident);
             Current.Residents.Remove(resident);
             Current.ArchivedResidents.Add(resident);
@@ -364,7 +364,9 @@ public sealed partial class WorldEngine
         _territoryCounts.Bind(Current.Tiles);
         foreach (var settlement in Current.Settlements)
         {
-            settlement.Population = _citizens.GetValueOrDefault(settlement.Id)?.Count ?? 0;
+            var population = _citizens.GetValueOrDefault(settlement.Id)?.Count ?? 0;
+            if (settlement.Population != population)
+                settlement.Replace(settlement.Value with { Population = population });
             RefreshSettlementName(settlement);
         }
 

@@ -92,7 +92,7 @@ public sealed partial class WorldEngine
             {
                 var amount = Math.Max(0, input.Get(kind) * 8 - person.Inventory.Get(kind));
                 amount = Math.Min(amount, home.Resources.Get(kind));
-                home.Resources = home.Resources.WithAmount(kind, home.Resources.Get(kind) - amount);
+                home.UpdateResources(home.Resources.WithAmount(kind, home.Resources.Get(kind) - amount));
                 person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + amount);
             }
         }
@@ -147,7 +147,7 @@ public sealed partial class WorldEngine
             case BuildingKind.TradeGuild:
                 return true; // 运营效果由实际到岗人员提供，不能仅凭建筑建成启用。
             case BuildingKind.SacredGrove:
-                person.MagicTraining = Math.Min(100, person.MagicTraining + .1 * effort * Current.Rules.MagicRate);
+                person.Replace(person.Value with { MagicTraining = Math.Min(100, person.MagicTraining + .1 * effort * Current.Rules.MagicRate) });
                 person.Mana = Math.Min(100, person.Mana + .3 * effort);
                 return true;
             case BuildingKind.HerbGarden:
@@ -164,7 +164,7 @@ public sealed partial class WorldEngine
                 var tile = Current.Tiles[source];
                 var yields = TerrainRules.For(tile.Terrain);
                 var amount = Math.Min(tile.ResourceAmount,
-                    .3 * effort * Current.Rules.GatheringRate * GatheringTerritoryMultiplier(person, tile));
+                    .3 * effort * Current.Rules.GatheringRate * GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value));
                 tile.ResourceAmount -= amount;
                 person.Inventory = person.Inventory with
                 {
@@ -180,7 +180,7 @@ public sealed partial class WorldEngine
                 if (prey == WildlifeKind.None)
                     return false;
                 var caught = WildlifeHarvestAmount(ground, prey,
-                    .25 * effort * Current.Rules.GatheringRate * GatheringTerritoryMultiplier(person, ground));
+                    .25 * effort * Current.Rules.GatheringRate * GatheringTerritoryMultiplier(person.SettlementId, person.NationId, ground.Value));
                 ground.SetAnimalPopulation(prey, ground.AnimalPopulation(prey) - caught);
                 var food = caught * AnimalRules.For(prey).BodyMass;
                 person.Inventory = person.Inventory with { Food = Math.Min(1_000_000, person.Inventory.Food + food) };

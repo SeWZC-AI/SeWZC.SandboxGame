@@ -79,7 +79,7 @@ public sealed class AgentGoalTests
         fixture.Resident.FromY = fixture.Town.Y;
         fixture.Resident.MoveDurationTicks = frozen ? 1 : 3;
         fixture.Resident.MoveStartedTick = 0;
-        fixture.Resident.FrozenUntilTick = frozen ? 3 : 0;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = frozen ? 3 : 0 });
         fixture.Resident.Agent = fixture.Resident.Agent with
         {
             Goal = new AgentGoal

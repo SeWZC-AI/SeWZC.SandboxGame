@@ -7,34 +7,18 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
 {
     public int Id => base.Value.Id;
 
-    public string Name
-    {
-        get => base.Value.Name;
-        set
-        {
-            if (!EqualityComparer<string>.Default.Equals(Value.Name, value))
-                ReplaceChanged(Value with { Name = value });
-        }
-    }
+    public string Name => base.Value.Name;
 
-    public RaceKind Race
-    {
-        get => base.Value.Race;
-        set
-        {
-            if (!EqualityComparer<RaceKind>.Default.Equals(Value.Race, value))
-                ReplaceChanged(Value with { Race = value });
-        }
-    }
+    public RaceKind Race => base.Value.Race;
 
     public int X
     {
-        get => _draft.X;
+        get => _motion.X;
         set
         {
-            if (!EqualityComparer<int>.Default.Equals(_draft.X, value))
+            if (!EqualityComparer<int>.Default.Equals(_motion.X, value))
             {
-                _draft.X = value;
+                _motion = _motion with { X = value };
                 _draftChanged = true;
             }
         }
@@ -42,12 +26,12 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
 
     public int Y
     {
-        get => _draft.Y;
+        get => _motion.Y;
         set
         {
-            if (!EqualityComparer<int>.Default.Equals(_draft.Y, value))
+            if (!EqualityComparer<int>.Default.Equals(_motion.Y, value))
             {
-                _draft.Y = value;
+                _motion = _motion with { Y = value };
                 _draftChanged = true;
             }
         }
@@ -55,55 +39,31 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
 
     public double Age
     {
-        get => _draft.Age;
+        get => _body.Age;
         set
         {
-            if (!EqualityComparer<double>.Default.Equals(_draft.Age, value))
+            if (!EqualityComparer<double>.Default.Equals(_body.Age, value))
             {
-                _draft.Age = value;
+                _body = _body with { Age = value };
                 _draftChanged = true;
             }
         }
     }
 
-    public int NationId
-    {
-        get => base.Value.NationId;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.NationId, value))
-                ReplaceChanged(Value with { NationId = value });
-        }
-    }
+    public int NationId => base.Value.NationId;
 
-    public int SettlementId
-    {
-        get => base.Value.SettlementId;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.SettlementId, value))
-                ReplaceChanged(Value with { SettlementId = value });
-        }
-    }
+    public int SettlementId => base.Value.SettlementId;
 
-    public Profession Profession
-    {
-        get => base.Value.Profession;
-        set
-        {
-            if (!EqualityComparer<Profession>.Default.Equals(Value.Profession, value))
-                ReplaceChanged(Value with { Profession = value });
-        }
-    }
+    public Profession Profession => base.Value.Profession;
 
     public ResidentActivity Activity
     {
-        get => _draft.Activity;
+        get => _body.Activity;
         set
         {
-            if (!EqualityComparer<ResidentActivity>.Default.Equals(_draft.Activity, value))
+            if (!EqualityComparer<ResidentActivity>.Default.Equals(_body.Activity, value))
             {
-                _draft.Activity = value;
+                _body = _body with { Activity = value };
                 _draftChanged = true;
             }
         }
@@ -111,12 +71,12 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
 
     public double Health
     {
-        get => _draft.Health;
+        get => _body.Health;
         set
         {
-            if (!EqualityComparer<double>.Default.Equals(_draft.Health, value))
+            if (!EqualityComparer<double>.Default.Equals(_body.Health, value))
             {
-                _draft.Health = value;
+                _body = _body with { Health = value };
                 _draftChanged = true;
             }
         }
@@ -124,12 +84,12 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
 
     public double Hunger
     {
-        get => _draft.Hunger;
+        get => _body.Hunger;
         set
         {
-            if (!EqualityComparer<double>.Default.Equals(_draft.Hunger, value))
+            if (!EqualityComparer<double>.Default.Equals(_body.Hunger, value))
             {
-                _draft.Hunger = value;
+                _body = _body with { Hunger = value };
                 _draftChanged = true;
             }
         }
@@ -137,36 +97,20 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
 
     public int SicknessTicks
     {
-        get => _draft.SicknessTicks;
+        get => _body.SicknessTicks;
         set
         {
-            if (!EqualityComparer<int>.Default.Equals(_draft.SicknessTicks, value))
+            if (!EqualityComparer<int>.Default.Equals(_body.SicknessTicks, value))
             {
-                _draft.SicknessTicks = value;
+                _body = _body with { SicknessTicks = value };
                 _draftChanged = true;
             }
         }
     }
 
-    public int ArmyId
-    {
-        get => base.Value.ArmyId;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.ArmyId, value))
-                ReplaceChanged(Value with { ArmyId = value });
-        }
-    }
+    public int ArmyId => base.Value.ArmyId;
 
-    public string Trait
-    {
-        get => base.Value.Trait;
-        set
-        {
-            if (!EqualityComparer<string>.Default.Equals(Value.Trait, value))
-                ReplaceChanged(Value with { Trait = value });
-        }
-    }
+    public string Trait => base.Value.Trait;
 
     public long DiseaseImmuneUntilTick => base.Value.DiseaseImmuneUntilTick;
 
@@ -174,46 +118,22 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
 
     public long DeathTick => base.Value.DeathTick;
 
-    public double Armor
-    {
-        get => base.Value.Armor;
-        set
-        {
-            if (!EqualityComparer<double>.Default.Equals(Value.Armor, value))
-                ReplaceChanged(Value with { Armor = value });
-        }
-    }
+    public double Armor => base.Value.Armor;
 
-    public double PersonalWard
-    {
-        get => base.Value.PersonalWard;
-        set
-        {
-            if (!EqualityComparer<double>.Default.Equals(Value.PersonalWard, value))
-                ReplaceChanged(Value with { PersonalWard = value });
-        }
-    }
+    public double PersonalWard => base.Value.PersonalWard;
 
-    public long FrozenUntilTick
-    {
-        get => base.Value.FrozenUntilTick;
-        set
-        {
-            if (!EqualityComparer<long>.Default.Equals(Value.FrozenUntilTick, value))
-                ReplaceChanged(Value with { FrozenUntilTick = value });
-        }
-    }
+    public long FrozenUntilTick => base.Value.FrozenUntilTick;
 
     public long LastRangedAttackTick => base.Value.LastRangedAttackTick;
 
     public TravelMode TravelMode
     {
-        get => _draft.TravelMode;
+        get => _motion.TravelMode;
         set
         {
-            if (!EqualityComparer<TravelMode>.Default.Equals(_draft.TravelMode, value))
+            if (!EqualityComparer<TravelMode>.Default.Equals(_motion.TravelMode, value))
             {
-                _draft.TravelMode = value;
+                _motion = _motion with { TravelMode = value };
                 _draftChanged = true;
             }
         }
@@ -221,35 +141,27 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
 
     public double Thirst
     {
-        get => _draft.Thirst;
+        get => _body.Thirst;
         set
         {
-            if (!EqualityComparer<double>.Default.Equals(_draft.Thirst, value))
+            if (!EqualityComparer<double>.Default.Equals(_body.Thirst, value))
             {
-                _draft.Thirst = value;
+                _body = _body with { Thirst = value };
                 _draftChanged = true;
             }
         }
     }
 
-    public int CultureId
-    {
-        get => base.Value.CultureId;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.CultureId, value))
-                ReplaceChanged(Value with { CultureId = value });
-        }
-    }
+    public int CultureId => base.Value.CultureId;
 
     public AgentState Agent
     {
-        get => _draft.Agent;
+        get => _agent;
         set
         {
-            if (!ReferenceEquals(_draft.Agent, value))
+            if (!ReferenceEquals(_agent, value))
             {
-                _draft.Agent = value;
+                _agent = value;
                 _draftChanged = true;
             }
         }
@@ -257,12 +169,12 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
 
     public ResourceStock Inventory
     {
-        get => _draft.Inventory;
+        get => _inventory;
         set
         {
-            if (!EqualityComparer<ResourceStock>.Default.Equals(_draft.Inventory, value))
+            if (!EqualityComparer<ResourceStock>.Default.Equals(_inventory, value))
             {
-                _draft.Inventory = value;
+                _inventory = value;
                 _draftChanged = true;
             }
         }
@@ -270,45 +182,29 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
 
     public double Mana
     {
-        get => _draft.Mana;
+        get => _body.Mana;
         set
         {
-            if (!EqualityComparer<double>.Default.Equals(_draft.Mana, value))
+            if (!EqualityComparer<double>.Default.Equals(_body.Mana, value))
             {
-                _draft.Mana = value;
+                _body = _body with { Mana = value };
                 _draftChanged = true;
             }
         }
     }
 
-    public double MagicTalent
-    {
-        get => base.Value.MagicTalent;
-        set
-        {
-            if (!EqualityComparer<double>.Default.Equals(Value.MagicTalent, value))
-                ReplaceChanged(Value with { MagicTalent = value });
-        }
-    }
+    public double MagicTalent => base.Value.MagicTalent;
 
-    public double MagicTraining
-    {
-        get => base.Value.MagicTraining;
-        set
-        {
-            if (!EqualityComparer<double>.Default.Equals(Value.MagicTraining, value))
-                ReplaceChanged(Value with { MagicTraining = value });
-        }
-    }
+    public double MagicTraining => base.Value.MagicTraining;
 
     public int FromX
     {
-        get => _draft.FromX;
+        get => _motion.FromX;
         set
         {
-            if (!EqualityComparer<int>.Default.Equals(_draft.FromX, value))
+            if (!EqualityComparer<int>.Default.Equals(_motion.FromX, value))
             {
-                _draft.FromX = value;
+                _motion = _motion with { FromX = value };
                 _draftChanged = true;
             }
         }
@@ -316,12 +212,12 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
 
     public int FromY
     {
-        get => _draft.FromY;
+        get => _motion.FromY;
         set
         {
-            if (!EqualityComparer<int>.Default.Equals(_draft.FromY, value))
+            if (!EqualityComparer<int>.Default.Equals(_motion.FromY, value))
             {
-                _draft.FromY = value;
+                _motion = _motion with { FromY = value };
                 _draftChanged = true;
             }
         }
@@ -329,12 +225,12 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
 
     public long MoveStartedTick
     {
-        get => _draft.MoveStartedTick;
+        get => _motion.MoveStartedTick;
         set
         {
-            if (!EqualityComparer<long>.Default.Equals(_draft.MoveStartedTick, value))
+            if (!EqualityComparer<long>.Default.Equals(_motion.MoveStartedTick, value))
             {
-                _draft.MoveStartedTick = value;
+                _motion = _motion with { MoveStartedTick = value };
                 _draftChanged = true;
             }
         }
@@ -342,30 +238,25 @@ internal sealed partial class ResidentCursor(Resident value) : StateReference<Re
 
     public int MoveDurationTicks
     {
-        get => _draft.MoveDurationTicks;
+        get => _motion.MoveDurationTicks;
         set
         {
-            if (!EqualityComparer<int>.Default.Equals(_draft.MoveDurationTicks, value))
+            if (!EqualityComparer<int>.Default.Equals(_motion.MoveDurationTicks, value))
             {
-                _draft.MoveDurationTicks = value;
+                _motion = _motion with { MoveDurationTicks = value };
                 _draftChanged = true;
             }
         }
     }
 
-    public ImmutableList<ResidentHistoryEntry> History
-    {
-        get => Value.History;
-        set
-        {
-            if (!ReferenceEquals(Value.History, value))
-                ReplaceChanged(Value with { History = value });
-        }
-    }
+    public ImmutableList<ResidentHistoryEntry> History => Value.History;
 
     protected override void OnReplace(in Resident before, in Resident after)
     {
-        _draft = new DailyDraft(after);
+        _body = new BodyFields(after);
+        _motion = new MotionFields(after);
+        _agent = after.Agent;
+        _inventory = after.Inventory;
         _draftChanged = false;
     }
 }

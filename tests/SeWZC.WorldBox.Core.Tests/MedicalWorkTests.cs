@@ -90,7 +90,7 @@ public sealed class MedicalWorkTests
 
         var clinicId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Infirmary, 14, 16);
         var clinic = fixture.Engine.Current.Buildings.Single(building => building.Value.Id == clinicId);
-        fixture.Town.Resources = new ResourceStock { Food = 100 };
+        fixture.Town.UpdateResources(new ResourceStock { Food = 100 });
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with
             {

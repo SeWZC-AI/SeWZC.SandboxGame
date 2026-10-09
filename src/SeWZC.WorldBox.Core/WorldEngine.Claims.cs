@@ -12,7 +12,7 @@ public sealed partial class WorldEngine
     // 建村只登记实际占据的地点；人口仅提高占地上限，不能自动取得周围领土。
     private void ClaimTerritory(SettlementCursor town, int radius)
     {
-        town.MaxClaimRadius = Math.Max(town.MaxClaimRadius, Math.Clamp(radius, 1, 17));
+        town.Replace(town.Value with { MaxClaimRadius = Math.Max(town.MaxClaimRadius, Math.Clamp(radius, 1, 17)) });
         if (town.FoundationPending)
             return;
         var tile = Current.Tiles[Index(town.X, town.Y)];

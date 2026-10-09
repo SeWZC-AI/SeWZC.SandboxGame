@@ -600,7 +600,7 @@ public sealed partial class WorldEngine
                     Current.Tick - r.ObservedTick < 2 * SimulationTime.TicksPerMonth)
                 .ToArray();
             var hardship = reports.Any(r => r.Topic == AgentFactKind.ReliefRequest && r.Value > 55);
-            town.Unrest = Math.Clamp(town.Unrest + (hardship ? 5 + Current.Rules.Conflict : -4), 0, 100);
+            town.Replace(town.Value with { Unrest = Math.Clamp(town.Unrest + (hardship ? 5 + Current.Rules.Conflict : -4), 0, 100) });
             if (Current.Rules.Secession && town.Unrest >= 80 &&
                 Current.Tick - town.LastPoliticalChangeTick >= 10 * SimulationTime.TicksPerYear
                 && Current.Nations.Count < 64 && _nations[town.NationId].Value.CapitalId != town.Id && town.Population >= 12

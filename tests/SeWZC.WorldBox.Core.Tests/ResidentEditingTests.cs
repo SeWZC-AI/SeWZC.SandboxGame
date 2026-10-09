@@ -195,7 +195,7 @@ public sealed class ResidentEditingTests
     {
         var fixture = new WorldFixture();
         var prior = fixture.Resident.Agent.Memory.First();
-        fixture.Town.PublicKnowledge = fixture.Town.PublicKnowledge.Add(prior);
+        fixture.Town.Replace(fixture.Town.Value with { PublicKnowledge = fixture.Town.PublicKnowledge.Add(prior) });
         fixture.Resident.Agent = fixture.Resident.Agent with
         {
             Decisions = fixture.Resident.Agent.Decisions.Add(new AgentDecision { EvidenceFactId = prior.Id }),

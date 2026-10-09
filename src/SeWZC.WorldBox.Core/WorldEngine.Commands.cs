@@ -167,9 +167,9 @@ public sealed partial class WorldEngine
             // 开局口粮统一分配，避免职业和居民处理顺序造成不公平的库存差异。
             var food = Current.Rules.Hunger ? Math.Min(settlement.Resources.Food, 1) : 0;
             var water = Current.Rules.Thirst ? Math.Min(settlement.Resources.Water, .75) : 0;
-            settlement.Resources = settlement.Resources with { Food = settlement.Resources.Food - food };
+            settlement.UpdateResources(settlement.Resources with { Food = settlement.Resources.Food - food });
             person.Inventory = person.Inventory with { Food = person.Inventory.Food + food };
-            settlement.Resources = settlement.Resources with { Water = settlement.Resources.Water - water };
+            settlement.UpdateResources(settlement.Resources with { Water = settlement.Resources.Water - water });
             person.Inventory = person.Inventory with { Water = person.Inventory.Water + water };
         }
 
@@ -350,32 +350,23 @@ public sealed partial class WorldEngine
             return;
         foreach (var town in towns)
         {
-            if (food is { } f)
-                town.Resources = town.Resources with { Food = f / towns.Length };
-            if (wood is { } w)
-                town.Resources = town.Resources with { Wood = w / towns.Length };
-            if (stone is { } s)
-                town.Resources = town.Resources with { Stone = s / towns.Length };
-            if (ore is { } o)
-                town.Resources = town.Resources with { Ore = o / towns.Length };
-            if (alloy is { } a)
-                town.Resources = town.Resources with { Alloy = a / towns.Length };
-            if (energyCells is { } e)
-                town.Resources = town.Resources with { EnergyCells = e / towns.Length };
-            if (crystals is { } c)
-                town.Resources = town.Resources with { Crystals = c / towns.Length };
-            if (coal is { } co)
-                town.Resources = town.Resources with { Coal = co / towns.Length };
-            if (oil is { } oi)
-                town.Resources = town.Resources with { Oil = oi / towns.Length };
-            if (rareEarth is { } re)
-                town.Resources = town.Resources with { RareEarth = re / towns.Length };
-            if (boats is { } bo)
-                town.Resources = town.Resources with { Boats = bo / towns.Length };
-            if (aircraft is { } ai)
-                town.Resources = town.Resources with { Aircraft = ai / towns.Length };
-            if (water is { } wa)
-                town.Resources = town.Resources with { Water = wa / towns.Length };
+            var stock = town.Resources;
+            town.UpdateResources(stock with
+            {
+                Food = food is { } f ? f / towns.Length : stock.Food,
+                Wood = wood is { } w ? w / towns.Length : stock.Wood,
+                Stone = stone is { } s ? s / towns.Length : stock.Stone,
+                Ore = ore is { } o ? o / towns.Length : stock.Ore,
+                Alloy = alloy is { } a ? a / towns.Length : stock.Alloy,
+                EnergyCells = energyCells is { } e ? e / towns.Length : stock.EnergyCells,
+                Crystals = crystals is { } c ? c / towns.Length : stock.Crystals,
+                Coal = coal is { } co ? co / towns.Length : stock.Coal,
+                Oil = oil is { } oi ? oi / towns.Length : stock.Oil,
+                RareEarth = rareEarth is { } re ? re / towns.Length : stock.RareEarth,
+                Boats = boats is { } bo ? bo / towns.Length : stock.Boats,
+                Aircraft = aircraft is { } ai ? ai / towns.Length : stock.Aircraft,
+                Water = water is { } wa ? wa / towns.Length : stock.Water,
+            });
         }
 
         RefreshTotals();

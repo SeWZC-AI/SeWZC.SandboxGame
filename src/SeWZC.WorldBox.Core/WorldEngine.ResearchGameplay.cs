@@ -190,7 +190,7 @@ public sealed partial class WorldEngine
                                                     Current.Tiles[i].RoadLevel == 1).ToArray();
         if (tiles.Length == 0)
             throw new InvalidOperationException("范围内没有己方可升级的陆地道路");
-        town.Resources = Spend(town.Resources, new ResourceStock { Stone = tiles.Length, Alloy = tiles.Length * .5 });
+        town.UpdateResources(Spend(town.Resources, new ResourceStock { Stone = tiles.Length, Alloy = tiles.Length * .5 }));
         foreach (var i in tiles)
             Current.Tiles[i].RoadLevel = 2;
         AddEvent(WorldEventKind.Construction, town.Name + "铺设铁路，道路须实际相连才能供居民沿线通行。", x, y, EventAction.Completed,
@@ -451,7 +451,7 @@ public sealed partial class WorldEngine
             if (Distance(person.X, person.Y, town.X, town.Y) > 1)
                 return false;
             var take = Math.Min(town.Resources.Get(kind), Math.Max(0, amount + reserve - person.Inventory.Get(kind)));
-            town.Resources = town.Resources.WithAmount(kind, town.Resources.Get(kind) - take);
+            town.UpdateResources(town.Resources.WithAmount(kind, town.Resources.Get(kind) - take));
             person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + take);
             return person.Inventory.Get(kind) + .000001 >= amount + reserve;
         }
@@ -531,7 +531,7 @@ public sealed partial class WorldEngine
                 {
                     person.Inventory = person.Inventory with { Crystals = person.Inventory.Crystals - .25 };
                     person.Mana -= 8;
-                    wardPatient.PersonalWard = Math.Max(wardPatient.PersonalWard, 24);
+                    wardPatient.Replace(wardPatient.Value with { PersonalWard = Math.Max(wardPatient.PersonalWard, 24) });
                     EmitVisual(WorldVisualKind.Shield, wardPatient.X, wardPatient.Y);
                     done = true;
                 }
@@ -681,7 +681,7 @@ public sealed partial class WorldEngine
             }
 
             var take = Math.Min(home.Resources.Stone, .5 - person.Inventory.Stone);
-            home.Resources = home.Resources with { Stone = home.Resources.Stone - take };
+            home.UpdateResources(home.Resources with { Stone = home.Resources.Stone - take });
             person.Inventory = person.Inventory with { Stone = person.Inventory.Stone + take };
         }
 
@@ -741,7 +741,7 @@ public sealed partial class WorldEngine
                 }
 
                 var take = Math.Min(home.Resources.Stone, 1 - person.Inventory.Stone);
-                home.Resources = home.Resources with { Stone = home.Resources.Stone - take };
+                home.UpdateResources(home.Resources with { Stone = home.Resources.Stone - take });
                 person.Inventory = person.Inventory with { Stone = person.Inventory.Stone + take };
             }
 
@@ -799,7 +799,7 @@ public sealed partial class WorldEngine
 
             var take = Math.Min(home.Resources.Get(supply.Kind),
                 Math.Max(0, supply.Amount - person.Inventory.Get(supply.Kind)));
-            home.Resources = home.Resources.WithAmount(supply.Kind, home.Resources.Get(supply.Kind) - take);
+            home.UpdateResources(home.Resources.WithAmount(supply.Kind, home.Resources.Get(supply.Kind) - take));
             person.Inventory = person.Inventory.WithAmount(supply.Kind, person.Inventory.Get(supply.Kind) + take);
         }
 

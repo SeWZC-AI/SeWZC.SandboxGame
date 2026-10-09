@@ -83,11 +83,11 @@ public sealed partial class WorldEngine
                 }
             });
 
-        capital.PublicKnowledge = capital.PublicKnowledge.RemoveAll(f =>
-            f.SubjectId == enemyId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder);
+        capital.Replace(capital.Value with { PublicKnowledge = capital.PublicKnowledge.RemoveAll(f =>
+            f.SubjectId == enemyId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder) });
         AddPublicFact(capital, fact);
         if (capital.PublicKnowledge.Count > 24)
-            capital.PublicKnowledge = capital.PublicKnowledge.RemoveAt(0);
+            capital.Replace(capital.Value with { PublicKnowledge = capital.PublicKnowledge.RemoveAt(0) });
         foreach (var person in Current.Residents.Where(r =>
                      r.NationId == nationId && Distance(r.X, r.Y, capital.X, capital.Y) <= 4))
             RememberAgentFact(person, fact);
@@ -126,9 +126,9 @@ public sealed partial class WorldEngine
                 }
 
                 var provisions = Math.Min(capital.Resources.Food, count * 10);
-                capital.Resources = capital.Resources with { Food = capital.Resources.Food - provisions };
+                capital.UpdateResources(capital.Resources with { Food = capital.Resources.Food - provisions });
                 var waterProvisions = Math.Min(capital.Resources.Water, count * 3);
-                capital.Resources = capital.Resources with { Water = capital.Resources.Water - waterProvisions };
+                capital.UpdateResources(capital.Resources with { Water = capital.Resources.Water - waterProvisions });
                 nation.Replace(nation.Value with { Military = nation.Value.Military with { LastMobilizedOrderId = order.Id } });
                 var army = new StateReference<Army>(new Army
                 {
@@ -156,9 +156,9 @@ public sealed partial class WorldEngine
                 Current.Armies.Add(army);
                 foreach (var resident in recruits.Take(count))
                 {
-                    resident.ArmyId = army.Value.Id;
+                    resident.Replace(resident.Value with { ArmyId = army.Value.Id });
                     if (resident.Profession is not (Profession.Ranger or Profession.Battlemage))
-                        resident.Profession = Profession.Soldier;
+                        resident.Replace(resident.Value with { Profession = Profession.Soldier });
                     resident.Agent = resident.Agent.WithGoal(new AgentGoal
                     {
                         Kind = AgentGoalKind.March,
@@ -276,14 +276,14 @@ public sealed partial class WorldEngine
             if (depot is not null && army.Value.Supplies < soldiers.Length * 5)
             {
                 var amount = Math.Min(depot.Resources.Food, soldiers.Length * 5 - army.Value.Supplies);
-                depot.Resources = depot.Resources with { Food = depot.Resources.Food - amount };
+                depot.UpdateResources(depot.Resources with { Food = depot.Resources.Food - amount });
                 army.Replace(army.Value with { Supplies = army.Value.Supplies + (amount) });
             }
 
             if (depot is not null && army.Value.WaterSupplies < soldiers.Length)
             {
                 var water = Math.Min(depot.Resources.Water, soldiers.Length * 3 - army.Value.WaterSupplies);
-                depot.Resources = depot.Resources with { Water = depot.Resources.Water - water };
+                depot.UpdateResources(depot.Resources with { Water = depot.Resources.Water - water });
                 army.Replace(army.Value with { WaterSupplies = army.Value.WaterSupplies + (water) });
             }
 
@@ -360,7 +360,7 @@ public sealed partial class WorldEngine
                 if (depot is not null && Distance(ranger.X, ranger.Y, depot.X, depot.Y) <= 1)
                 {
                     var ammo = Math.Min(depot.Resources.Ammunition, Math.Max(0, 8 - ranger.Inventory.Ammunition));
-                    depot.Resources = depot.Resources with { Ammunition = depot.Resources.Ammunition - ammo };
+                    depot.UpdateResources(depot.Resources with { Ammunition = depot.Resources.Ammunition - ammo });
                     ranger.Inventory = ranger.Inventory with { Ammunition = ranger.Inventory.Ammunition + ammo };
                 }
 
@@ -522,11 +522,11 @@ public sealed partial class WorldEngine
                 s.NationId == army.Value.NationId && Distance(s.X, s.Y, army.Value.X, army.Value.Y) <= 1);
         if (localDepot is not null)
         {
-            localDepot.Resources = localDepot.Resources with
+            localDepot.UpdateResources(localDepot.Resources with
             {
                 Food = localDepot.Resources.Food + army.Value.Supplies,
                 Water = localDepot.Resources.Water + army.Value.WaterSupplies,
-            };
+            });
             foreach (var veteran in veterans.Where(r => Distance(r.X, r.Y, localDepot.X, localDepot.Y) <= 2))
             foreach (var report in veteran.Agent.Memory.Where(f => f.Kind == AgentFactKind.WarReport).ToArray())
                 ReceiveWarReport(localDepot, report);
@@ -555,9 +555,9 @@ public sealed partial class WorldEngine
         foreach (var soldier in veterans)
         {
             RecordLife(soldier, "结束军旅任务，恢复平民生活。", homecoming);
-            soldier.ArmyId = 0;
+            soldier.Replace(soldier.Value with { ArmyId = 0 });
             if (soldier.Profession is not (Profession.Ranger or Profession.Battlemage))
-                soldier.Profession = AssignProfession();
+                soldier.Replace(soldier.Value with { Profession = AssignProfession() });
             if (_settlements.TryGetValue(soldier.SettlementId, out var home))
             {
                 soldier.Agent = soldier.Agent.WithGoal(new AgentGoal

@@ -23,7 +23,7 @@ public sealed class ResidentBehaviorTests
     {
         var fixture = Prepare();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = true }, false, false);
-        fixture.Town.Resources = new ResourceStock();
+        fixture.Town.UpdateResources(new ResourceStock());
         foreach (var tile in fixture.Engine.Current.Tiles)
             tile.Replace(tile.Value with
             {
@@ -34,7 +34,7 @@ public sealed class ResidentBehaviorTests
             });
         fixture.Resident.Inventory = new ResourceStock { Water = 10 };
         fixture.Resident.Hunger = 90;
-        fixture.Resident.FrozenUntilTick = 100;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = 100 });
         fixture.Engine.Step();
         Assert.Equal(AgentGoalKind.Explore, fixture.Resident.Agent.Goal.Kind);
         var source = fixture.Engine.Current.Tiles[16 * 32 + 19];
@@ -61,7 +61,7 @@ public sealed class ResidentBehaviorTests
     {
         var fixture = Prepare();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = true }, false, false);
-        fixture.Town.Resources = new ResourceStock();
+        fixture.Town.UpdateResources(new ResourceStock());
         foreach (var tile in fixture.Engine.Current.Tiles)
             tile.Replace(tile.Value with
             {
@@ -80,7 +80,7 @@ public sealed class ResidentBehaviorTests
         });
         fixture.Resident.Inventory = new ResourceStock { Water = 10 };
         fixture.Resident.Hunger = 90;
-        fixture.Resident.FrozenUntilTick = 100;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = 100 });
         fixture.Engine.Step();
         Assert.Equal(AgentGoalKind.Gather, fixture.Resident.Agent.Goal.Kind);
         Assert.Equal(20, fixture.Resident.Agent.Goal.TargetX);
@@ -126,7 +126,7 @@ public sealed class ResidentBehaviorTests
     {
         var fixture = Prepare();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = true }, false, false);
-        fixture.Town.Resources = new ResourceStock();
+        fixture.Town.UpdateResources(new ResourceStock());
         foreach (var tile in fixture.Engine.Current.Tiles)
             tile.Replace(tile.Value with
             {
@@ -137,7 +137,7 @@ public sealed class ResidentBehaviorTests
             });
         fixture.Resident.Inventory = new ResourceStock { Water = 10 };
         fixture.Resident.Hunger = 90;
-        fixture.Resident.FrozenUntilTick = 100;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = 100 });
 
         fixture.Engine.Step();
 
@@ -160,7 +160,7 @@ public sealed class ResidentBehaviorTests
     public void Food_site_queries_refresh_after_the_source_changes(string change)
     {
         var fixture = Prepare();
-        fixture.Town.Resources = new ResourceStock();
+        fixture.Town.UpdateResources(new ResourceStock());
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = true }, false, false);
         foreach (var tile in fixture.Engine.Current.Tiles)
             tile.ResourceAmount = 0;
@@ -174,7 +174,7 @@ public sealed class ResidentBehaviorTests
         });
         fixture.Resident.Inventory = new ResourceStock { Water = 10 };
         fixture.Resident.Hunger = 90;
-        fixture.Resident.FrozenUntilTick = 100;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = 100 });
         fixture.Resident.Agent = fixture.Resident.Agent with { Goal = new AgentGoal() };
         fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = 0 };
         fixture.Engine.Step();
@@ -307,7 +307,7 @@ public sealed class ResidentBehaviorTests
         var fixture = Prepare(true);
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 20;
-        fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.Current.Tick + 2 });
         fixture.Engine.Current.Tiles[16 * 32 + 17].NaturalWaterYield = .08;
         fixture.Engine.Current.Tiles[16 * 32 + 19].Terrain = TerrainType.River;
 
@@ -326,7 +326,7 @@ public sealed class ResidentBehaviorTests
         var fixture = Prepare(true);
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 20;
-        fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.Current.Tick + 2 });
         fixture.Engine.Current.Tiles[16 * 32 + 17].NaturalWaterYield = 1;
         fixture.Engine.Current.Tiles[16 * 32 + 20].Terrain = TerrainType.River;
 
@@ -343,7 +343,7 @@ public sealed class ResidentBehaviorTests
         var fixture = Prepare(true);
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 90;
-        fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.Current.Tick + 2 });
         fixture.Engine.Current.Tiles[16 * 32 + 17].NaturalWaterYield = .01;
         fixture.Engine.Current.Tiles[16 * 32 + 21].Terrain = TerrainType.River;
 
@@ -359,7 +359,7 @@ public sealed class ResidentBehaviorTests
         var fixture = Prepare(true);
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 90;
-        fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.Current.Tick + 2 });
         fixture.AddWell(17, 16, .1);
         fixture.Engine.Current.Tiles[16 * 32 + 21].Terrain = TerrainType.River;
 
@@ -377,7 +377,7 @@ public sealed class ResidentBehaviorTests
         var fixture = Prepare(true);
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 20;
-        fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.Current.Tick + 2 });
         for (var x = 17; x <= 18; x++)
         {
             var ground = fixture.Engine.Current.Tiles[16 * 32 + x];
@@ -403,7 +403,7 @@ public sealed class ResidentBehaviorTests
         var fixture = Prepare(true);
         fixture.Resident.Inventory = new ResourceStock { Food = 10 };
         fixture.Resident.Thirst = 20;
-        fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.Current.Tick + 2 });
         for (var y = 0; y < 32; y++)
             fixture.Engine.Current.Tiles[y * 32 + 18].Terrain = TerrainType.Mountain;
         fixture.AddWell(17, 16, .08);
@@ -420,7 +420,7 @@ public sealed class ResidentBehaviorTests
     {
         var fixture = Prepare(true);
         fixture.Resident.Inventory = new ResourceStock { Food = 10, Water = .08 };
-        fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.Current.Tick + 2 });
         fixture.Engine.Current.Tiles[16 * 32 + 16].NaturalWaterYield = .03;
         fixture.Engine.Current.Tiles[16 * 32 + 19].Terrain = TerrainType.River;
 
@@ -676,7 +676,7 @@ public sealed class ResidentBehaviorTests
         ground.Replace(ground.Value with { Terrain = TerrainType.Grass, ResourceAmount = 100 });
         var mountain = fixture.Engine.Current.Tiles[16 * 32 + 17];
         mountain.Replace(mountain.Value with { Terrain = TerrainType.Mountain, ResourceAmount = 100 });
-        fixture.Resident.Profession = Profession.Miner;
+        fixture.Resident.Replace(fixture.Resident.Value with { Profession = Profession.Miner });
         fixture.Resident.Agent = fixture.Resident.Agent with
         {
             Goal = new AgentGoal
@@ -702,8 +702,8 @@ public sealed class ResidentBehaviorTests
     {
         var fixture = Prepare();
         fixture.Engine.Current.Buildings.RemoveAll(building => building.Value.Kind != BuildingKind.TownCenter);
-        fixture.Town.Resources = new ResourceStock { Food = 40, Stone = 0, Ore = 12 };
-        fixture.Resident.Profession = Profession.Miner;
+        fixture.Town.UpdateResources(new ResourceStock { Food = 40, Stone = 0, Ore = 12 });
+        fixture.Resident.Replace(fixture.Resident.Value with { Profession = Profession.Miner });
 
         fixture.Engine.Step();
 
@@ -746,7 +746,7 @@ public sealed class ResidentBehaviorTests
             Inventory = new ResourceStock { Food = 10, Water = 10 },
             Agent = fixture.Resident.Agent with { Initialized = true, NextThinkTick = 0, Goal = new AgentGoal() },
         });
-        fixture.Town.Resources = new ResourceStock { Food = 40 };
+        fixture.Town.UpdateResources(new ResourceStock { Food = 40 });
         return fixture;
     }
 

@@ -149,7 +149,7 @@ public sealed partial class WorldEngine
             TakeJobSupply(ResourceKind.Medicine, 2);
         if (person.Profession == Profession.Ranger)
             TakeJobSupply(ResourceKind.Ammunition, 8);
-        home.Resources = warehouse;
+        home.UpdateResources(warehouse);
         return inventory;
     }
 
@@ -603,7 +603,7 @@ public sealed partial class WorldEngine
         var amount = DrawWater(person, source,
             Math.Min(
                 source >= 0 && source < Current.Tiles.Count
-                    ? GatheringTerritoryMultiplier(person, Current.Tiles[source])
+                    ? GatheringTerritoryMultiplier(person.SettlementId, person.NationId, Current.Tiles[source].Value)
                     : 0, target - person.Inventory.Water));
         if (source >= 0 && person.Inventory.Water >= target - .000001)
         {
@@ -669,8 +669,8 @@ public sealed partial class WorldEngine
             {
                 var interval = WorkInterval(person);
                 var food = WildlifeHarvestAmount(tile, kind, interval * .15 * Current.Rules.GatheringRate
-                                                             * GatheringCondition(person) *
-                                                             GatheringTerritoryMultiplier(person, tile))
+                                                             * GatheringCondition(person.SicknessTicks, person.Hunger, person.Thirst) *
+                                                             GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value))
                     * AnimalRules.For(kind).BodyMass / interval;
                 if (food < FoodUse(person))
                     continue;
@@ -773,8 +773,8 @@ public sealed partial class WorldEngine
 
         var yield = AnimalRules.For(kind).BodyMass;
         var amount = WildlifeHarvestAmount(tile, kind,
-            WorkDays(person) * .15 * Current.Rules.GatheringRate * GatheringCondition(person) *
-            GatheringTerritoryMultiplier(person, tile));
+            WorkDays(person) * .15 * Current.Rules.GatheringRate * GatheringCondition(person.SicknessTicks, person.Hunger, person.Thirst) *
+            GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value));
         amount = Math.Min(amount, (1_000_000 - person.Inventory.Food) / yield);
         tile.SetAnimalPopulation(kind, tile.AnimalPopulation(kind) - amount);
         person.Inventory = person.Inventory with { Food = person.Inventory.Food + amount * yield };
