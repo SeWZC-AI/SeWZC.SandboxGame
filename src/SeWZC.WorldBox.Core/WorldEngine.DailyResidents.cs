@@ -12,6 +12,7 @@ public sealed partial class WorldEngine
     private readonly struct DailyResidentInput
     {
         internal Resident Person { get; init; }
+        internal AgentState Agent { get; init; }
         internal ResourceStock Inventory { get; init; }
         internal Tile Tile { get; init; }
         internal Profession Profession { get; init; }
@@ -26,7 +27,7 @@ public sealed partial class WorldEngine
         {
             return Person.CalculateDay(rules, Tile, tick,
                 Profession, InfectionDuration, ManaRecovery, ConsumeNeeds, SocialGrowth, DeliveredWater, ArrivedTile,
-                Inventory);
+                Inventory, Agent);
         }
     }
 }

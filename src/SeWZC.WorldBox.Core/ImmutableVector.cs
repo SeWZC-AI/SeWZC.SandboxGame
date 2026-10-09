@@ -8,7 +8,7 @@ namespace SeWZC.WorldBox.Core;
 [CollectionBuilder(typeof(ImmutableVectorBuilder), nameof(ImmutableVectorBuilder.Create))]
 public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : class
 {
-    private const int Bits = 3;
+    private const int Bits = 5;
     private const int Width = 1 << Bits;
     private const int Mask = Width - 1;
     private readonly int _changedIndex;

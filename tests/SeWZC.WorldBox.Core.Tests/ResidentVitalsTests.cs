@@ -60,6 +60,63 @@ public sealed class ResidentVitalsTests
         Assert.Equal(0, before.Inventory.Medicine);
     }
 
+    /// <summary>返仓后的认知和补给直接进入日结算，不恢复旧任务，也不修改输入认知。</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Day_transition_preserves_the_supplied_return_state(bool consumeNeeds)
+    {
+        var before = new Resident
+        {
+            Age = 25,
+            Agent = new AgentState { MissionOriginSettlementId = 7, FamiliarTiles = [5] },
+        };
+        var returned = before.Agent with
+        {
+            MissionOriginSettlementId = 0,
+            Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome },
+        };
+        var supplies = new ResourceStock { Food = 1, Water = 1, Medicine = 2 };
+
+        var after = before.CalculateDay(new WorldRules(), new Tile(), 1, Profession.Farmer, 0, 0,
+            consumeNeeds, arrivedTile: 6, suppliedInventory: supplies, suppliedAgent: returned).Apply(before);
+
+        Assert.Equal(0, after.Agent.MissionOriginSettlementId);
+        Assert.Equal(AgentGoalKind.ReturnHome, after.Agent.Goal.Kind);
+        Assert.Equal<int>([5, 6], after.Agent.FamiliarTiles);
+        Assert.Equal(consumeNeeds ? .96 : 1, after.Inventory.Food, 10);
+        Assert.Equal(2, after.Inventory.Medicine);
+        Assert.Equal(7, before.Agent.MissionOriginSettlementId);
+        Assert.Equal<int>([5], returned.FamiliarTiles);
+        Assert.Equal(0, before.Inventory.Medicine);
+    }
+
+    /// <summary>健康危机按实际传入的任务区分玩家安排与自主安排，不读取较早的任务快照。</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Illness_review_uses_the_supplied_goal(bool playerDirected)
+    {
+        var before = new Resident
+        {
+            Age = 25,
+            Agent = new AgentState { Goal = new AgentGoal { PlayerDirected = !playerDirected } },
+        };
+        var current = before.Agent with
+        {
+            NextThinkTick = 100,
+            Goal = new AgentGoal { PlayerDirected = playerDirected, ReviewTick = 100 },
+        };
+
+        var after = before.CalculateDay(new WorldRules(), new Tile(), 7, Profession.Farmer, 80, 0,
+            true, suppliedInventory: new ResourceStock { Food = 1, Water = 1 }, suppliedAgent: current);
+
+        Assert.Equal(playerDirected ? 100 : 7, after.Agent.Goal.ReviewTick);
+        Assert.Equal(playerDirected ? 100 : 7, after.Agent.NextThinkTick);
+        Assert.Equal(100, current.Goal.ReviewTick);
+        Assert.Equal(0, before.SicknessTicks);
+    }
+
     /// <summary>新发疫病及时请求自主复评，不等远期工作安排到期。</summary>
     [Fact]
     public void New_illness_requests_a_recovery_review()

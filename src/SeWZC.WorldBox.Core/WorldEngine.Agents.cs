@@ -1366,11 +1366,8 @@ public sealed partial class WorldEngine
         var originX = person.X;
         var originY = person.Y;
         var width = Current.Width;
-        var height = Current.Height;
         var mode = person.TravelMode;
         var race = person.Race;
-        var ordinaryWalking = mode == TravelMode.Foot && person.Agent.DestinationSettlementId == 0
-                                                      && person.Profession != Profession.Trader;
         var target = Index(targetX, targetY);
         var start = Index(originX, originY);
         goal = person.Agent.Goal;
@@ -1416,6 +1413,28 @@ public sealed partial class WorldEngine
         // 取得新的最短目标距离后清除旧绕路；暂时离开目标方向时仍记住已走地点，防止反复折返。
         if (!goal.NavigationVisited.Contains(start) && goal.NavigationVisited.Length >= 256)
             return -1;
+
+        var result = SearchVisibleAgentStep(person, targetX, targetY, goal);
+        goal = result.Goal;
+        return result.Step;
+    }
+
+    // 只有需要重新寻路时才创建搜索缓冲和成本计算闭包；复用路线的步骤直接返回。
+    // 费用由标记保护，父节点随入队写入；只清空标记，数值缓冲始终先写后读。
+    [System.Runtime.CompilerServices.SkipLocalsInit]
+    private (int Step, AgentGoal Goal) SearchVisibleAgentStep(ResidentCursor person, int targetX, int targetY,
+        AgentGoal goal)
+    {
+        var originX = person.X;
+        var originY = person.Y;
+        var width = Current.Width;
+        var height = Current.Height;
+        var mode = person.TravelMode;
+        var race = person.Race;
+        var ordinaryWalking = mode == TravelMode.Foot && person.Agent.DestinationSettlementId == 0
+                                                      && person.Profession != Profession.Trader;
+        var target = Index(targetX, targetY);
+        var start = Index(originX, originY);
 
         // 导航仅使用六格可见地形，桥梁轴向与实际移动及军队寻路共用规则，避免预览可走却无法通行。
         // 单次导航内的记忆标记和进入成本固定；栈上缓冲只覆盖六格视野，不跨居民或世界步骤复用。
@@ -1507,8 +1526,8 @@ public sealed partial class WorldEngine
                 break;
             if (current.Index == target)
             {
-                goal = PlanAgentRoute(goal, start, target, originX, originY, width, mode, routeParents);
-                return current.First;
+                return (current.First,
+                    PlanAgentRoute(goal, start, target, originX, originY, width, mode, routeParents));
             }
 
             var fromTile = Current.Tiles[current.Index].Value;
@@ -1571,10 +1590,10 @@ public sealed partial class WorldEngine
         }
 
         if (goal.NavigationWithoutProgress >= 64)
-            return -1;
+            return (-1, goal);
         if (bestDestination >= 0)
             goal = PlanAgentRoute(goal, start, bestDestination, originX, originY, width, mode, routeParents);
-        return bestStep;
+        return (bestStep, goal);
     }
 
     private static AgentGoal PlanAgentRoute(AgentGoal goal, int start, int destination,
