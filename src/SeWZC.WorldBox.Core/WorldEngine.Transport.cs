@@ -26,16 +26,16 @@ public sealed partial class WorldEngine
             HasResearch(home.Id, Advancement.Electrification)
             && home.Resources.Aircraft >= 1 && home.Resources.Oil >= fuel)
         {
-            home.Resources = home.Resources with { Aircraft = home.Resources.Aircraft - 1 };
+            home.UpdateResources(home.Resources with { Aircraft = home.Resources.Aircraft - 1 });
             person.Inventory = person.Inventory with { Aircraft = person.Inventory.Aircraft + 1 };
-            home.Resources = home.Resources with { Oil = home.Resources.Oil - fuel };
+            home.UpdateResources(home.Resources with { Oil = home.Resources.Oil - fuel });
             person.TravelMode = TravelMode.Aircraft;
             AddEvent(WorldEventKind.Trade, $"{person.Name}在{home.Name}装载运输机，携带货物与消息启程；已消耗往返燃料 {fuel:0.#}。",
                 home.X, home.Y, EventAction.Started, home.Id, person.Id);
         }
         else if (HasResearch(home.Id, Advancement.Logistics) && home.Resources.Boats >= 1)
         {
-            home.Resources = home.Resources with { Boats = home.Resources.Boats - 1 };
+            home.UpdateResources(home.Resources with { Boats = home.Resources.Boats - 1 });
             person.Inventory = person.Inventory with { Boats = person.Inventory.Boats + 1 };
             person.TravelMode = TravelMode.Boat;
         }

@@ -4,26 +4,26 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private static double ThirstWorkMultiplier(ResidentCursor person)
+    private static double ThirstWorkMultiplier(double thirst)
     {
-        return person.Thirst > 80 ? .75 : 1;
+        return thirst > 80 ? .75 : 1;
     }
 
-    private static double GatheringCondition(ResidentCursor person)
+    private static double GatheringCondition(int sickness, double hunger, double thirst)
     {
-        return (person.SicknessTicks > 0 ? .4 : 1)
-               * (person.Hunger > 60 ? .55 : 1) * ThirstWorkMultiplier(person);
+        return (sickness > 0 ? .4 : 1)
+               * (hunger > 60 ? .55 : 1) * ThirstWorkMultiplier(thirst);
     }
 
-    private static double LaborCondition(ResidentCursor person)
+    private static double LaborCondition(int sickness, double thirst)
     {
-        return (person.SicknessTicks > 0 ? .45 : 1) * ThirstWorkMultiplier(person);
+        return (sickness > 0 ? .45 : 1) * ThirstWorkMultiplier(thirst);
     }
 
-    private double HomeRestMultiplier(ResidentCursor person)
+    private double HomeRestMultiplier(int settlementId, int x, int y)
     {
-        if (!_settlements.TryGetValue(person.SettlementId, out var home) ||
-            Distance(person.X, person.Y, home.X, home.Y) > 1)
+        if (!_settlements.TryGetValue(settlementId, out var home) ||
+            Distance(x, y, home.X, home.Y) > 1)
             return 1;
         IEnumerable<StateReference<Building>>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(home.Id)
@@ -67,7 +67,7 @@ public sealed partial class WorldEngine
                 "本人的实际到访记录"));
         }
 
-        if (GatheringTerritoryMultiplier(new ResidentCursor(person), Current.Tiles[Index(person.X, person.Y)]) < 1)
+        if (GatheringTerritoryMultiplier(person.SettlementId, person.NationId, Current.Tiles[Index(person.X, person.Y)].Value) < 1)
         {
             effects.Add(new EffectInfo("领地外采集", $"食物、木材、石矿、矿藏、狩猎、捕鱼与取水速度 ×{OutsideTerritoryGatheringMultiplier:0.00}",
                 "资源来源未登记给本城镇"));
@@ -88,12 +88,12 @@ public sealed partial class WorldEngine
             var instruction = LatestAgentFact(person.Agent.Memory, AgentFactKind.Policy, home.Id);
             if (instruction?.Value == (int)PolicyKind.FoodSecurity)
             {
-                effects.Add(new EffectInfo("已获知粮食政策", $"个人粮食采集倍率 ×{AgentFoodPolicyMultiplier(new ResidentCursor(person)):0.00}",
+                effects.Add(new EffectInfo("已获知粮食政策", $"个人粮食采集倍率 ×{AgentFoodPolicyMultiplier(person.Agent, person.SettlementId, person.X, person.Y):0.00}",
                     home.Name + "实际收到的政策"));
             }
         }
 
-        var resting = HomeRestMultiplier(new ResidentCursor(person));
+        var resting = HomeRestMultiplier(person.SettlementId, person.X, person.Y);
         if (resting > 1)
             effects.Add(new EffectInfo("家园休息", $"附近返乡休息恢复 ×{resting:0.00}", "家园的城镇等级、城镇中心与运作粮仓"));
         return effects;

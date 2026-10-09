@@ -302,7 +302,7 @@ public sealed partial class WorldEngine
                     kind == ResourceKind.Water ? WaterReserve(person) : 0;
                 var amount = Math.Min(home.Resources.Get(kind),
                     Math.Max(0, recipe.Input.Get(kind) * batches + personalReserve - person.Inventory.Get(kind)));
-                home.Resources = home.Resources.WithAmount(kind, Math.Max(0, home.Resources.Get(kind) - amount));
+                home.UpdateResources(home.Resources.WithAmount(kind, Math.Max(0, home.Resources.Get(kind) - amount)));
                 person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + amount);
             }
         }

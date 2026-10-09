@@ -358,8 +358,8 @@ public sealed partial class WorldEngine
             tile.DepositDiscovered = true;
             var amount = Math.Min(tile.DepositAmount,
                 WorkInterval(person) / (double)SimulationTime.TicksPerDay * .4 * Current.Rules.GatheringRate *
-                GatheringCondition(person) *
-                GatheringTerritoryMultiplier(person, tile) *
+                GatheringCondition(person.SicknessTicks, person.Hunger, person.Thirst) *
+                GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value) *
                 (HasResearch(person.SettlementId, Advancement.Forestry) ? 1.25 : 1));
             amount = Math.Min(amount, 1_000_000 - person.Inventory.Get(kind));
             tile.DepositAmount -= amount;

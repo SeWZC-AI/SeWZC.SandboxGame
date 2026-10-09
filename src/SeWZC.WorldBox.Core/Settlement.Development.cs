@@ -32,4 +32,17 @@ public sealed partial record Settlement
     /// <summary>是否有正在进行的村镇城晋升项目。</summary>
     [JsonIgnore]
     public bool IsExpanding => ExpansionRequired > 0;
+
+    /// <summary>返回投入劳动后的晋升状态；完成时同时更新等级并清除项目。</summary>
+    /// <param name="effort">已投入的现场劳动量。</param>
+    /// <param name="developmentRate">世界规则中的发展速率。</param>
+    internal Settlement AdvanceExpansion(double effort, double developmentRate)
+    {
+        if (!IsExpanding)
+            return this;
+        var progress = Math.Min(ExpansionRequired, ExpansionProgress + effort * developmentRate);
+        if (progress < ExpansionRequired)
+            return progress.Equals(ExpansionProgress) ? this : this with { ExpansionProgress = progress };
+        return this with { Tier = Tier + 1, ExpansionProgress = 0, ExpansionRequired = 0 };
+    }
 }

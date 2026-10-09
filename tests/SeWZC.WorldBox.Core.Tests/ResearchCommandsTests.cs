@@ -8,7 +8,7 @@ public sealed class ResearchCommandsTests
     private static WorldFixture ReadyWorld()
     {
         var fixture = new WorldFixture();
-        fixture.Town.Resources = new ResourceStock { Food = 100, Wood = 100, Stone = 100, Ore = 100 };
+        fixture.Town.UpdateResources(new ResourceStock { Food = 100, Wood = 100, Stone = 100, Ore = 100 });
         fixture.Engine.Current.Buildings.Add(new StateReference<Building>(new Building
         {
             Id = fixture.Engine.Current.NextId++,
@@ -72,7 +72,7 @@ public sealed class ResearchCommandsTests
     public void Start_rejects_insufficient_materials_atomically()
     {
         var fixture = ReadyWorld();
-        fixture.Town.Resources = fixture.Town.Resources with { Wood = 0 };
+        fixture.Town.UpdateResources(fixture.Town.Resources with { Wood = 0 });
         var before = fixture.Engine.ExportJson();
 
         Assert.Throws<InvalidOperationException>(() => fixture.Engine.StartResearch(fixture.Town.Id,

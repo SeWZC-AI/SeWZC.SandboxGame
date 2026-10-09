@@ -549,7 +549,7 @@ public sealed partial class WorldEngine
                 var ration = Math.Min(home.Resources.Food, Math.Max(0,
                     1.2 + Distance(home.X, home.Y, person.Agent.Goal.TargetX, person.Agent.Goal.TargetY) * 0.22 -
                     person.Inventory.Food));
-                home.Resources = home.Resources with { Food = home.Resources.Food - ration };
+                home.UpdateResources(home.Resources with { Food = home.Resources.Food - ration });
                 person.Inventory = person.Inventory with { Food = person.Inventory.Food + ration };
             }
         }
@@ -592,7 +592,7 @@ public sealed partial class WorldEngine
                 return;
             }
 
-            home.Resources = home.Resources with { Food = home.Resources.Food - cargo };
+            home.UpdateResources(home.Resources with { Food = home.Resources.Food - cargo });
             person.Inventory = person.Inventory with { Food = person.Inventory.Food + cargo };
             person.Agent = person.Agent with
             {
@@ -649,10 +649,10 @@ public sealed partial class WorldEngine
                     Math.Max(0, 1_000_000 - person.Inventory.Wood) / woodPerFood)));
             var payment = food * woodPerFood;
             person.Inventory = person.Inventory with { Food = person.Inventory.Food - food };
-            destination.Resources = destination.Resources with
+            destination.UpdateResources(destination.Resources with
             {
                 Food = destination.Resources.Food + food, Wood = Math.Max(0, destination.Resources.Wood - payment),
-            };
+            });
             person.Inventory = person.Inventory with { Wood = person.Inventory.Wood + payment };
             if (food > 0)
             {
@@ -705,8 +705,7 @@ public sealed partial class WorldEngine
 
         if (destination.PublicKnowledge.Count > 24)
         {
-            destination.PublicKnowledge =
-                destination.PublicKnowledge.OrderByDescending(f => f.LearnedTick).Take(24).ToImmutableList();
+            destination.Replace(destination.Value with { PublicKnowledge = destination.PublicKnowledge.OrderByDescending(f => f.LearnedTick).Take(24).ToImmutableList() });
         }
 
         ObserveAgentEnvironment(person);

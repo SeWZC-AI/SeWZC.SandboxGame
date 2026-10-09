@@ -247,7 +247,7 @@ public sealed partial class WorldEngine
                 {
                     var remaining = .6;
                     var stored = Math.Min(town.Resources.Food, remaining);
-                    town.Resources = town.Resources with { Food = town.Resources.Food - stored };
+                    town.UpdateResources(town.Resources with { Food = town.Resources.Food - stored });
                     remaining -= stored;
                     foreach (var parent in adults)
                     {
@@ -325,7 +325,7 @@ public sealed partial class WorldEngine
             FoundationPending = true,
             Resources = new ResourceStock(),
         });
-        origin.Resources = Spend(origin.Resources, VillageFoundingCost);
+        origin.UpdateResources(Spend(origin.Resources, VillageFoundingCost));
         Current.Settlements.Add(town);
         _settlements[town.Id] = town;
         _citizens[town.Id] = [];
@@ -334,7 +334,7 @@ public sealed partial class WorldEngine
             foreach (var resource in ResourceStock.Kinds)
                 pioneer.Inventory = pioneer.Inventory.WithAmount(resource,
                     pioneer.Inventory.Get(resource) + VillageFoundingCost.Get(resource) / pioneers.Length);
-            pioneer.SettlementId = town.Id;
+            pioneer.Replace(pioneer.Value with { SettlementId = town.Id });
             var address = new AgentFact
             {
                 Id = NewId(),
@@ -453,7 +453,7 @@ public sealed partial class WorldEngine
     private void RefreshTerritoryClaims()
     {
         foreach (var town in Current.Settlements)
-            town.MaxClaimRadius = Math.Max(town.MaxClaimRadius,
-                Math.Min(17, 6 + (_citizens.GetValueOrDefault(town.Id)?.Count ?? 0) / 15));
+            town.Replace(town.Value with { MaxClaimRadius = Math.Max(town.MaxClaimRadius,
+                Math.Min(17, 6 + (_citizens.GetValueOrDefault(town.Id)?.Count ?? 0) / 15)) });
     }
 }

@@ -26,7 +26,7 @@ public sealed class ProductionTests
         ground.ClaimedSettlementId = fixture.Town.Id;
         var worker = fixture.Resident;
         worker.Age = 25;
-        worker.Profession = Profession.Builder;
+        worker.Replace(worker.Value with { Profession = Profession.Builder });
         worker.X = worker.FromX = 17;
         worker.Y = worker.FromY = 16;
         worker.Inventory = new ResourceStock { Coal = 1, Ore = 2 };

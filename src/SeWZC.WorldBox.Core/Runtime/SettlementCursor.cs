@@ -7,203 +7,65 @@ internal sealed partial class SettlementCursor : StateReference<Settlement>
 {
     public SettlementCursor(Settlement value) : base(value) { }
 
-    public string DevelopmentGoal
-    {
-        get => Value.DevelopmentGoal;
-        set
-        {
-            if (!EqualityComparer<string>.Default.Equals(Value.DevelopmentGoal, value))
-                ReplaceChanged(Value with { DevelopmentGoal = value });
-        }
-    }
+    public string DevelopmentGoal => Value.DevelopmentGoal;
 
-    public string DevelopmentBlocker
-    {
-        get => Value.DevelopmentBlocker;
-        set
-        {
-            if (!EqualityComparer<string>.Default.Equals(Value.DevelopmentBlocker, value))
-                ReplaceChanged(Value with { DevelopmentBlocker = value });
-        }
-    }
+    public string DevelopmentBlocker => Value.DevelopmentBlocker;
 
-    public long LastDevelopmentTick
-    {
-        get => Value.LastDevelopmentTick;
-        set
-        {
-            if (!EqualityComparer<long>.Default.Equals(Value.LastDevelopmentTick, value))
-                ReplaceChanged(Value with { LastDevelopmentTick = value });
-        }
-    }
+    public long LastDevelopmentTick => Value.LastDevelopmentTick;
 
-    public double Unrest
-    {
-        get => Value.Unrest;
-        set
-        {
-            if (!EqualityComparer<double>.Default.Equals(Value.Unrest, value))
-                ReplaceChanged(Value with { Unrest = value });
-        }
-    }
+    public double Unrest => Value.Unrest;
 
     public long LastPoliticalChangeTick => Value.LastPoliticalChangeTick;
 
-    public SettlementTier Tier
-    {
-        get => Value.Tier;
-        set
-        {
-            if (!EqualityComparer<SettlementTier>.Default.Equals(Value.Tier, value))
-                ReplaceChanged(Value with { Tier = value });
-        }
-    }
+    public SettlementTier Tier => Value.Tier;
 
-    public double ExpansionProgress
-    {
-        get => Value.ExpansionProgress;
-        set
-        {
-            if (!EqualityComparer<double>.Default.Equals(Value.ExpansionProgress, value))
-                ReplaceChanged(Value with { ExpansionProgress = value });
-        }
-    }
+    public double ExpansionProgress => Value.ExpansionProgress;
 
-    public double ExpansionRequired
-    {
-        get => Value.ExpansionRequired;
-        set
-        {
-            if (!EqualityComparer<double>.Default.Equals(Value.ExpansionRequired, value))
-                ReplaceChanged(Value with { ExpansionRequired = value });
-        }
-    }
+    public double ExpansionRequired => Value.ExpansionRequired;
 
     public bool IsExpanding => Value.IsExpanding;
 
     public int Id => Value.Id;
 
-    public string Name
-    {
-        get => Value.Name;
-        set
-        {
-            if (!EqualityComparer<string>.Default.Equals(Value.Name, value))
-                ReplaceChanged(Value with { Name = value });
-        }
-    }
+    public string Name => Value.Name;
 
     public int X => Value.X;
 
     public int Y => Value.Y;
 
-    public int NationId
-    {
-        get => Value.NationId;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.NationId, value))
-                ReplaceChanged(Value with { NationId = value });
-        }
-    }
+    public int NationId => Value.NationId;
 
-    public ResourceStock Resources
+    public ResourceStock Resources => _resourceDepth > 0 ? _resourceDraft : Value.Resources;
+
+    internal void UpdateResources(in ResourceStock value)
     {
-        get => _resourceDepth > 0 ? _resourceDraft : Value.Resources;
-        set
+        if (_resourceDepth > 0)
         {
-            if (_resourceDepth > 0)
+            if (_resourceDraft != value)
             {
-                if (_resourceDraft != value)
-                {
-                    _resourceDraft = value;
-                    _resourcesChanged = true;
-                }
+                _resourceDraft = value;
+                _resourcesChanged = true;
             }
-            else if (Value.Resources != value)
-                ReplaceChanged(Value with { Resources = value });
         }
+        else if (Value.Resources != value)
+            ReplaceChanged(Value with { Resources = value });
     }
 
-    public int Population
-    {
-        get => Value.Population;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.Population, value))
-                ReplaceChanged(Value with { Population = value });
-        }
-    }
+    public int Population => Value.Population;
 
-    public int Housing
-    {
-        get => Value.Housing;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.Housing, value))
-                ReplaceChanged(Value with { Housing = value });
-        }
-    }
+    public int Housing => Value.Housing;
 
     public bool FoundationPending => Value.FoundationPending;
 
-    public int MaxClaimRadius
-    {
-        get => Value.MaxClaimRadius;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.MaxClaimRadius, value))
-                ReplaceChanged(Value with { MaxClaimRadius = value });
-        }
-    }
+    public int MaxClaimRadius => Value.MaxClaimRadius;
 
-    public int CultureId
-    {
-        get => Value.CultureId;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.CultureId, value))
-                ReplaceChanged(Value with { CultureId = value });
-        }
-    }
+    public int CultureId => Value.CultureId;
 
-    public int RepresentativeId
-    {
-        get => Value.RepresentativeId;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.RepresentativeId, value))
-                ReplaceChanged(Value with { RepresentativeId = value });
-        }
-    }
+    public int RepresentativeId => Value.RepresentativeId;
 
-    public ImmutableList<AgentFact> PublicKnowledge
-    {
-        get => Value.PublicKnowledge;
-        set
-        {
-            if (!ReferenceEquals(Value.PublicKnowledge, value))
-                ReplaceChanged(Value with { PublicKnowledge = value });
-        }
-    }
+    public ImmutableList<AgentFact> PublicKnowledge => Value.PublicKnowledge;
 
-    public int FertilityBoostTicks
-    {
-        get => Value.FertilityBoostTicks;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.FertilityBoostTicks, value))
-                ReplaceChanged(Value with { FertilityBoostTicks = value });
-        }
-    }
+    public int FertilityBoostTicks => Value.FertilityBoostTicks;
 
-    public int ShieldTicks
-    {
-        get => Value.ShieldTicks;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.ShieldTicks, value))
-                ReplaceChanged(Value with { ShieldTicks = value });
-        }
-    }
+    public int ShieldTicks => Value.ShieldTicks;
 }

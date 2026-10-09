@@ -22,8 +22,8 @@ public sealed class DamageProtectionTests
         });
         fixture.Engine.Current.Tick = 1;
         fixture.Resident.Age = 25;
-        fixture.Resident.MagicTalent = 60;
-        fixture.Resident.MagicTraining = 20;
+        fixture.Resident.Replace(fixture.Resident.Value with { MagicTalent = 60 });
+        fixture.Resident.Replace(fixture.Resident.Value with { MagicTraining = 20 });
         fixture.Resident.Health = 100;
         fixture.Resident.Mana = 100;
         fixture.Resident.X = 16;
@@ -68,12 +68,12 @@ public sealed class DamageProtectionTests
             person.Age = 25;
             person.X = 16;
             person.Y = 16;
-            person.FrozenUntilTick = 100;
+            person.Replace(person.Value with { FrozenUntilTick = 100 });
             person.Agent = person.Agent with { Initialized = true, NextThinkTick = 100 };
         }
 
-        fixture.Resident.MagicTalent = 60;
-        fixture.Resident.MagicTraining = 20;
+        fixture.Resident.Replace(fixture.Resident.Value with { MagicTalent = 60 });
+        fixture.Resident.Replace(fixture.Resident.Value with { MagicTraining = 20 });
         fixture.Resident.Mana = 100;
         var patients = fixture.Engine.Current.Residents.Where(person => person.Id != fixture.ResidentId).ToArray();
         patients[0].Health = 50;
@@ -114,8 +114,8 @@ public sealed class DamageProtectionTests
         double damage, double ward, double remaining, double remainingWard)
     {
         var fixture = new WorldFixture();
-        fixture.Resident.PersonalWard = ward;
-        fixture.Resident.Armor = 0;
+        fixture.Resident.Replace(fixture.Resident.Value with { PersonalWard = ward });
+        fixture.Resident.Replace(fixture.Resident.Value with { Armor = 0 });
 
         var result = fixture.Engine.TryAbsorbShieldDamage(fixture.Resident.Value, damage);
 
@@ -128,8 +128,8 @@ public sealed class DamageProtectionTests
     public void Armor_consumes_only_the_damage_it_absorbs()
     {
         var fixture = new WorldFixture();
-        fixture.Resident.Armor = 10;
-        fixture.Resident.PersonalWard = 0;
+        fixture.Resident.Replace(fixture.Resident.Value with { Armor = 10 });
+        fixture.Resident.Replace(fixture.Resident.Value with { PersonalWard = 0 });
 
         var remaining = fixture.Engine.TryAbsorbShieldDamage(fixture.Resident.Value, 20);
 
@@ -142,8 +142,8 @@ public sealed class DamageProtectionTests
     public void Negative_damage_does_not_change_protection()
     {
         var fixture = new WorldFixture();
-        fixture.Resident.PersonalWard = 10;
-        fixture.Resident.Armor = 10;
+        fixture.Resident.Replace(fixture.Resident.Value with { PersonalWard = 10 });
+        fixture.Resident.Replace(fixture.Resident.Value with { Armor = 10 });
 
         Assert.Equal(0, fixture.Engine.TryAbsorbShieldDamage(fixture.Resident.Value, -5));
 
@@ -158,11 +158,11 @@ public sealed class DamageProtectionTests
     public void Town_shield_applies_only_within_its_range(int x, double expectedDamage)
     {
         var fixture = new WorldFixture();
-        fixture.Town.ShieldTicks = 10;
+        fixture.Town.Replace(fixture.Town.Value with { ShieldTicks = 10 });
         fixture.Resident.X = x;
         fixture.Resident.Y = fixture.Town.Y;
-        fixture.Resident.PersonalWard = 0;
-        fixture.Resident.Armor = 0;
+        fixture.Resident.Replace(fixture.Resident.Value with { PersonalWard = 0 });
+        fixture.Resident.Replace(fixture.Resident.Value with { Armor = 0 });
 
         Assert.Equal(expectedDamage, fixture.Engine.TryAbsorbShieldDamage(fixture.Resident.Value, 20));
     }

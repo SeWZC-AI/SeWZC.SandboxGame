@@ -46,7 +46,7 @@ public sealed class CultureContactTests
         };
         engine.Current.Tick = SimulationTime.WakeTick;
         fixture.Resident.X = fixture.Resident.Y = 16;
-        fixture.Resident.FrozenUntilTick = 10;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = 10 });
         fixture.Resident.Agent = fixture.Resident.Agent with
         {
             NextThinkTick = 100, Personality = fixture.Resident.Agent.Personality with { Sociability = .75 },

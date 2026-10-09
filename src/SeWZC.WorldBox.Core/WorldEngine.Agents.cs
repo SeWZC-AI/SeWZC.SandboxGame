@@ -195,7 +195,7 @@ public sealed partial class WorldEngine
             person.Agent = agent;
         }
 
-        home.Resources = unloaded.Warehouse;
+        home.UpdateResources(unloaded.Warehouse);
     }
 
     private bool ProductiveGoalContinues(ResidentCursor person, SettlementCursor home)
@@ -523,7 +523,7 @@ public sealed partial class WorldEngine
         {
             var score = person.Profession == Profession.Farmer ? 36 + personality.Diligence * 13 : 12;
             score += person.Hunger * (person.Inventory.Food < 0.3 ? 1.1 : 0.1);
-            score *= AgentFoodPolicyMultiplier(person);
+            score *= AgentFoodPolicyMultiplier(person.Agent, person.SettlementId, person.X, person.Y);
             if (foodFact is { Value: < 12 })
                 score += 18 * foodFact.ReliabilityAt(Current.Tick);
             if (Current.Rules.Hunger && person.Inventory.Food < .3 && person.Hunger >= 20)
@@ -678,9 +678,9 @@ public sealed partial class WorldEngine
                 return false;
             var dailyYield = .7 * ResourceSiteYield(source, Profession.Farmer, out _)
                                 * RaceTerrainRules.For(person.Race, tile.Terrain).Productivity *
-                                GatheringCondition(person)
+                                GatheringCondition(person.SicknessTicks, person.Hunger, person.Thirst)
                                 * (.75 + person.Agent.Personality.Diligence * .5) * Current.Rules.GatheringRate
-                                * AgentFoodPolicyMultiplier(person) * GatheringTerritoryMultiplier(person, tile);
+                                * AgentFoodPolicyMultiplier(person.Agent, person.SettlementId, person.X, person.Y) * GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value);
             return dailyYield >= FoodUse(person);
         }
 
@@ -690,8 +690,8 @@ public sealed partial class WorldEngine
         var animal = EdibleAnimal(wildlifeSource, goal.Kind == AgentGoalKind.Fish);
         var interval = WorkInterval(person);
         var harvest = WildlifeHarvestAmount(wildlifeSource, animal,
-            interval * .15 * Current.Rules.GatheringRate * GatheringCondition(person)
-            * GatheringTerritoryMultiplier(person, wildlifeSource));
+            interval * .15 * Current.Rules.GatheringRate * GatheringCondition(person.SicknessTicks, person.Hunger, person.Thirst)
+            * GatheringTerritoryMultiplier(person.SettlementId, person.NationId, wildlifeSource.Value));
         return harvest * AnimalRules.For(animal).BodyMass / interval >= FoodUse(person);
     }
 
@@ -853,14 +853,14 @@ public sealed partial class WorldEngine
                 && NaturalPlantHarvestEfficiency(tile, profession == Profession.Lumberjack) < .25)
                 return false;
             var productivity = ResourceSiteYield(index, profession, out var oreAvailable)
-                               * GatheringTerritoryMultiplier(person, tile);
+                               * GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value);
             if (productivity <= 0 || (profession == Profession.Miner
                                       && person.Agent.MaterialPriority == ResourceKind.Ore && !oreAvailable))
                 return false;
             if (profession == Profession.Farmer && survival
                                                 && .7 * productivity * RaceTerrainRules.For(person.Race, tile.Terrain)
                                                     .Productivity
-                                                * GatheringCondition(person) *
+                                                * GatheringCondition(person.SicknessTicks, person.Hunger, person.Thirst) *
                                                 (.75 + person.Agent.Personality.Diligence * .5)
                                                 * Current.Rules.GatheringRate < FoodUse(person))
                 return false;
@@ -1090,7 +1090,7 @@ public sealed partial class WorldEngine
                     break;
                 person.Agent = person.Agent with
                 {
-                    Goal = goal, Fatigue = Math.Max(0, person.Agent.Fatigue - 2.2 * HomeRestMultiplier(person)),
+                    Goal = goal, Fatigue = Math.Max(0, person.Agent.Fatigue - 2.2 * HomeRestMultiplier(person.SettlementId, person.X, person.Y)),
                 };
                 person.Activity = ResidentActivity.Resting;
                 break;
@@ -1120,7 +1120,7 @@ public sealed partial class WorldEngine
                 person.Agent = person.Agent.WithGoal(goal);
                 TransferPersonalProduction(person, home);
                 FinishFoundation(person, home);
-                var fatigue = Math.Max(0, person.Agent.Fatigue - .8 * HomeRestMultiplier(person));
+                var fatigue = Math.Max(0, person.Agent.Fatigue - .8 * HomeRestMultiplier(person.SettlementId, person.X, person.Y));
                 var nextReview = goal.WorkTicks == 1
                     ? Current.Tick + (home.FoundationPending ? 4 : GoalReviewInterval(person))
                     : person.Agent.NextThinkTick;
@@ -1207,7 +1207,7 @@ public sealed partial class WorldEngine
         }
 
         var productivity = WorkDays(person) * RaceTerrainRules.For(person.Race, tile.Terrain).Productivity *
-                           GatheringCondition(person)
+                           GatheringCondition(person.SicknessTicks, person.Hunger, person.Thirst)
                            * (0.75 + person.Agent.Personality.Diligence * 0.5) * Current.Rules.GatheringRate
                            * (profession is Profession.Lumberjack or Profession.Miner &&
                               HasResearch(person.SettlementId, Advancement.Forestry)
@@ -1217,8 +1217,8 @@ public sealed partial class WorldEngine
         if (profession == Profession.Farmer)
         {
             var amount = HarvestPlants(tile,
-                0.7 * siteYield * productivity * AgentFoodPolicyMultiplier(person) *
-                GatheringTerritoryMultiplier(person, tile));
+                0.7 * siteYield * productivity * AgentFoodPolicyMultiplier(person.Agent, person.SettlementId, person.X, person.Y) *
+                GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value));
             inventory = inventory with { Food = inventory.Food + amount };
             RecordHarvest(tile, amount);
         }
@@ -1226,7 +1226,7 @@ public sealed partial class WorldEngine
         {
             var amount = HarvestPlants(tile,
                 0.28 * siteYield * productivity * (person.Race == RaceKind.Elf ? 1.2 : 1) *
-                GatheringTerritoryMultiplier(person, tile), true);
+                GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value), true);
             inventory = inventory with { Wood = inventory.Wood + amount };
             RecordHarvest(tile, amount);
             FinishLogging(tile, person.X, person.Y);
@@ -1243,7 +1243,7 @@ public sealed partial class WorldEngine
             var amount = Math.Min(tile.ResourceAmount,
                 0.24 *
                 Math.Min(1, TerrainRules.For(tile.Terrain).StoneYield + TerrainRules.For(tile.Terrain).OreYield) *
-                productivity * (person.Race == RaceKind.Dwarf ? 1.3 : 1) * GatheringTerritoryMultiplier(person, tile));
+                productivity * (person.Race == RaceKind.Dwarf ? 1.3 : 1) * GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value));
             tile.ResourceAmount -= amount;
             RecordHarvest(tile, amount);
             var minerals = TerrainRules.For(tile.Terrain);
@@ -1334,15 +1334,8 @@ public sealed partial class WorldEngine
             Goal = goal,
             Fatigue = walkingActivity.HasValue ? Math.Min(100, person.Agent.Fatigue + .15) : person.Agent.Fatigue,
         };
-        person.FromX = person.X;
-        person.FromY = person.Y;
-        person.X = xNext;
-        person.Y = yNext;
-        person.MoveStartedTick = Current.Tick;
-        person.MoveDurationTicks = duration;
-        person.Activity = walkingActivity ??
-                          (person.ArmyId != 0 ? ResidentActivity.Marching : ResidentActivity.Wandering);
-        person.Agent = agent;
+        person.BeginMove(xNext, yNext, Current.Tick, duration,
+            walkingActivity ?? (person.ArmyId != 0 ? ResidentActivity.Marching : ResidentActivity.Wandering), agent);
 
         return true;
     }
@@ -1631,19 +1624,13 @@ public sealed partial class WorldEngine
         };
     }
 
-    private double AgentFoodPolicyMultiplier(ResidentCursor person)
+    private double AgentFoodPolicyMultiplier(AgentState agent, int settlementId, int x, int y)
     {
-        if (!_settlements.TryGetValue(person.SettlementId, out var home))
+        if (!_settlements.TryGetValue(settlementId, out var home))
             return 1;
-        if (Distance(person.X, person.Y, home.X, home.Y) <= 3)
+        if (Distance(x, y, home.X, home.Y) <= 3)
             return GetPolicyProductionMultiplier(home.Id);
-        AgentFact? instruction = null;
-        foreach (var fact in person.Agent.Memory)
-            if (fact.Kind == AgentFactKind.Policy && fact.SubjectId == home.Id &&
-                fact.ReliabilityAt(Current.Tick) >= 0.5
-                && (instruction is null || fact.ObservedTick > instruction.ObservedTick))
-                instruction = fact;
-        return instruction?.Value == (int)PolicyKind.FoodSecurity ? 1.25 : 1;
+        return agent.FoodPolicyMultiplier(home.Id, Current.Tick);
     }
 
     private static AgentFact? LatestAgentFact(IReadOnlyList<AgentFact> memory, AgentFactKind kind, int subjectId)

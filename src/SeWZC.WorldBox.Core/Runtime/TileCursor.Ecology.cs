@@ -51,13 +51,7 @@ internal sealed partial class TileCursor
         ref var efficiency = ref wood ? ref _woodHarvestEfficiency : ref _foodHarvestEfficiency;
         if ((_plantQueries & flag) == 0)
         {
-            var tile = Value;
-            var farmland = tile.Improvement == LandImprovement.Farmland && !wood;
-            var stock = tile.ResourceAmount * (farmland ? 1
-                : wood ? tile.Plants.Trees
-                : tile.Plants.Shrubs + tile.Plants.Grass + tile.Plants.Reeds);
-            var density = Math.Clamp(stock / 20, 0, 1);
-            efficiency = farmland ? 1 : density * density;
+            efficiency = Value.PlantHarvestEfficiency(wood);
             _plantQueries |= (byte)flag;
         }
 
@@ -70,15 +64,7 @@ internal sealed partial class TileCursor
         ref var yield = ref wood ? ref _woodSiteYield : ref _foodSiteYield;
         if ((_plantQueries & flag) == 0)
         {
-            var tile = Value;
-            yield = wood
-                ? tile.ResourceAmount > 0 && WorldEngine.IsForestTerrain(tile.Terrain)
-                    ? TerrainRules.For(tile.Terrain).WoodYield * PlantHarvestEfficiency(true)
-                    : 0
-                : tile.ResourceAmount > 0 && tile.IsWalkable
-                    ? Math.Min(1, TerrainRules.For(tile.Terrain).FoodYield / .7) * tile.Fertility / 100d
-                      * (tile.DroughtTicks > 0 ? .15 : 1) * PlantHarvestEfficiency(false)
-                    : 0;
+            yield = Value.PlantSiteYield(wood, PlantHarvestEfficiency(wood));
             _plantQueries |= (byte)flag;
         }
 

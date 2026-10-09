@@ -66,7 +66,7 @@ public sealed class WorkReservationTests
             Wars = false,
         }, false, true);
         var otherTown = fixture.Engine.Current.Settlements.Single(town => town.Id != fixture.Town.Id);
-        fixture.Town.MaxClaimRadius = 8;
+        fixture.Town.Replace(fixture.Town.Value with { MaxClaimRadius = 8 });
         for (var x = 8; x <= 16; x++)
         {
             var ground = fixture.Engine.Current.Tiles[16 * 32 + x];
@@ -88,7 +88,8 @@ public sealed class WorkReservationTests
         clinic.Replace(clinic.Value with { WorkSlots = 1 });
         foreach (var building in fixture.Engine.Current.Buildings)
             building.Replace(building.Value with { Enabled = building.Value.Id == towerId || building.Value.Id == clinicId });
-        fixture.Town.Resources = otherTown.Resources = new ResourceStock { Food = 100 };
+        otherTown.UpdateResources(new ResourceStock { Food = 100 });
+        fixture.Town.UpdateResources(otherTown.Resources);
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with
             {

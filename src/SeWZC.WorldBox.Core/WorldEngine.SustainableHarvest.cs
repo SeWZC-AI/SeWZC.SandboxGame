@@ -47,12 +47,6 @@ public sealed partial class WorldEngine
         return Math.Min(tile.AnimalPopulation(kind) * .1, Math.Max(0, effort) * WildlifeHarvestEfficiency(tile, kind));
     }
 
-    private static double PlantStock(TileCursor tile, bool wood = false)
-    {
-        return tile.ResourceAmount * (tile.Improvement == LandImprovement.Farmland && !wood ? 1
-            : wood ? tile.Plants.Trees : tile.Plants.Shrubs + tile.Plants.Grass + tile.Plants.Reeds);
-    }
-
     private static double NaturalPlantHarvestEfficiency(TileCursor tile, bool wood = false)
     {
         return tile.PlantHarvestEfficiency(wood);
@@ -64,30 +58,9 @@ public sealed partial class WorldEngine
     /// <param name="wood">是否采集木材；关闭时采集食物。</param>
     private static double HarvestPlants(TileCursor tile, double desired, bool wood = false)
     {
-        var stock = PlantStock(tile, wood);
-        var amount = Math.Min(stock * (tile.Improvement == LandImprovement.Farmland && !wood ? 1 : .1),
-            Math.Max(0, desired));
-        if (amount <= 0)
-            return 0;
-        var before = tile.ResourceAmount;
-        var remaining = before - amount;
-        var plants = tile.Plants;
-        if (tile.Improvement != LandImprovement.Farmland)
-        {
-            // 覆盖比例以共享资源存量为基数；仅减少总存量会连带减少未采集物种。
-            for (var species = 0; species < 4; species++)
-            {
-                var kind = (PlantKind)species;
-                var quantity = plants.Get(kind) * before;
-                if (wood == (kind == PlantKind.Trees))
-                    quantity -= amount * quantity / stock;
-                plants = plants.WithCoverage(kind, remaining > 0 ? Math.Max(0, quantity) / remaining : 0);
-            }
-        }
-
-        tile.Replace(tile.Value with { ResourceAmount = remaining, Plants = plants });
-
-        return amount;
+        var harvest = tile.Value.HarvestPlants(desired, wood);
+        tile.Replace(harvest.Tile);
+        return harvest.Amount;
     }
 
     private static bool WildlifeSiteProductive(TileCursor tile, bool aquatic)

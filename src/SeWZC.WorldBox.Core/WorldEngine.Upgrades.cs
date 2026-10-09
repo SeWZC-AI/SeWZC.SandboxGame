@@ -178,8 +178,8 @@ public sealed partial class WorldEngine
         var building = Current.Buildings.First(b => b.Value.Id == id);
         if (!gift)
         {
-            RequireTown(building.Value.SettlementId).Resources = Spend(RequireTown(building.Value.SettlementId).Resources,
-                GetUpgradeCost(building.Value, direction.HasValue));
+            RequireTown(building.Value.SettlementId).UpdateResources(Spend(RequireTown(building.Value.SettlementId).Resources,
+                GetUpgradeCost(building.Value, direction.HasValue)));
         }
 
         building.Replace(building.Value with
@@ -240,8 +240,8 @@ public sealed partial class WorldEngine
                         : 0)))
                 continue;
             UpgradeBuilding(building.Value.Id);
-            town.DevelopmentGoal = "升级" + BuildingName(building.Value.Kind);
-            town.DevelopmentBlocker = "材料已投入，等待居民到场升级";
+            town.Replace(town.Value with { DevelopmentGoal = "升级" + BuildingName(building.Value.Kind) });
+            town.Replace(town.Value with { DevelopmentBlocker = "材料已投入，等待居民到场升级" });
             return true;
         }
 

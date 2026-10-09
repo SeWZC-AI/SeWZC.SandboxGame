@@ -107,7 +107,7 @@ public sealed partial class WorldEngine
                      })
             {
                 var take = Math.Min(home.Resources.Get(kind), Math.Max(0, target - person.Inventory.Get(kind)));
-                home.Resources = home.Resources.WithAmount(kind, home.Resources.Get(kind) - take);
+                home.UpdateResources(home.Resources.WithAmount(kind, home.Resources.Get(kind) - take));
                 person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + take);
             }
 

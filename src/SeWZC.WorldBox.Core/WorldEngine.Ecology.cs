@@ -461,7 +461,7 @@ public sealed partial class WorldEngine
         var name = stem + suffix;
         if (Current.Settlements.Any(other => other.Id != town.Id && other.Name == name))
             name = stem + town.Id + suffix;
-        town.Name = name;
+        town.Replace(town.Value with { Name = name });
     }
 
     private void EnsureTownCenters()
@@ -491,7 +491,7 @@ public sealed partial class WorldEngine
             if (center.Value.Health <= 0 && Current.Tiles[Index(town.X, town.Y)].FireTicks == 0 && Current.Rules.Construction
                 && MissingResources(town.Resources, GetBuildingCost(BuildingKind.TownCenter)) is null)
             {
-                town.Resources = Spend(town.Resources, GetBuildingCost(BuildingKind.TownCenter));
+                town.UpdateResources(Spend(town.Resources, GetBuildingCost(BuildingKind.TownCenter)));
                 center.Replace(center.Value with { Health = 100, ConstructionProgress = 0 });
                 center.Replace(center.Value with { Workers = center.Value.Workers.Clear() });
                 center.Replace(center.Value with { LastWorkedTick = -100, Observation = new ProjectObservation() });

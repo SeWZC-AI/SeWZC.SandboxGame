@@ -12,7 +12,7 @@ public sealed class SimulationTimeTests
         ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Id, NationId = fixture.Town.NationId });
         var buildingId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Farm, 22, 16);
         fixture.Engine.Current.Buildings.Single(b => b.Value.Id == buildingId).Replace(fixture.Engine.Current.Buildings.Single(b => b.Value.Id == buildingId).Value with { Health = 10 });
-        fixture.Resident.Profession = Profession.Builder;
+        fixture.Resident.Replace(fixture.Resident.Value with { Profession = Profession.Builder });
         fixture.Resident.Inventory = fixture.Resident.Inventory with { Stone = 1 };
         fixture.Resident.Activity = ResidentActivity.Working;
         fixture.Resident.Agent = fixture.Resident.Agent with
@@ -39,7 +39,7 @@ public sealed class SimulationTimeTests
     public void Frozen_worker_rests_instead_of_showing_night_work()
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
-        fixture.Resident.FrozenUntilTick = SimulationTime.SleepTick + 1;
+        fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = SimulationTime.SleepTick + 1 });
         fixture.Resident.Activity = ResidentActivity.Working;
 
         fixture.Engine.Step();
