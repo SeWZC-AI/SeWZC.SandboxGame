@@ -3,37 +3,11 @@ namespace SeWZC.WorldBox.Core.Runtime;
 /// <summary>Tile 的引擎内定位引用；每次写入提交新的不可变状态。</summary>
 internal sealed partial class TileCursor : StateCursor<Tile>
 {
-    public TileCursor() : this(new Tile()) { }
     public TileCursor(Tile value) : base(value) { }
 
     public WildlifeKind Wildlife
     {
         get => Value.Wildlife;
-        set
-        {
-            if (!EqualityComparer<WildlifeKind>.Default.Equals(Value.Wildlife, value))
-                ReplaceChanged(Value with { Wildlife = value });
-        }
-    }
-
-    public double WildlifePopulation
-    {
-        get => Value.WildlifePopulation;
-        set
-        {
-            if (!EqualityComparer<double>.Default.Equals(Value.WildlifePopulation, value))
-                ReplaceChanged(Value with { WildlifePopulation = value });
-        }
-    }
-
-    public WildlifePopulations OtherWildlife
-    {
-        get => Value.OtherWildlife;
-        set
-        {
-            if (!EqualityComparer<WildlifePopulations>.Default.Equals(Value.OtherWildlife, value))
-                ReplaceChanged(Value with { OtherWildlife = value });
-        }
     }
 
     public int WildlifeMask => Value.WildlifeMask;
@@ -78,24 +52,9 @@ internal sealed partial class TileCursor : StateCursor<Tile>
         }
     }
 
-    public long LastHarvestTick
-    {
-        get => Value.LastHarvestTick;
-        set
-        {
-            if (!EqualityComparer<long>.Default.Equals(Value.LastHarvestTick, value))
-                ReplaceChanged(Value with { LastHarvestTick = value });
-        }
-    }
-
     public double Harvested
     {
         get => Value.Harvested;
-        set
-        {
-            if (!EqualityComparer<double>.Default.Equals(Value.Harvested, value))
-                ReplaceChanged(Value with { Harvested = value });
-        }
     }
 
     public int ClaimedSettlementId
@@ -111,21 +70,6 @@ internal sealed partial class TileCursor : StateCursor<Tile>
     public BridgeDirection BridgeDirection
     {
         get => Value.BridgeDirection;
-        set
-        {
-            if (!EqualityComparer<BridgeDirection>.Default.Equals(Value.BridgeDirection, value))
-                ReplaceChanged(Value with { BridgeDirection = value });
-        }
-    }
-
-    public byte BridgeLevel
-    {
-        get => Value.BridgeLevel;
-        set
-        {
-            if (!EqualityComparer<byte>.Default.Equals(Value.BridgeLevel, value))
-                ReplaceChanged(Value with { BridgeLevel = value });
-        }
     }
 
     public long WaterDrawTick
@@ -259,11 +203,6 @@ internal sealed partial class TileCursor : StateCursor<Tile>
     public long FireSuppressionTick
     {
         get => Value.FireSuppressionTick;
-        set
-        {
-            if (!EqualityComparer<long>.Default.Equals(Value.FireSuppressionTick, value))
-                ReplaceChanged(Value with { FireSuppressionTick = value });
-        }
     }
 
     public int FireSuppressed

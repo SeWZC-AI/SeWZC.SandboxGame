@@ -12,12 +12,14 @@ const int bytesPerMegabyte = 1_000_000;
     ("256x256-4096", 256, 4096, 12),
 ];
 var options = args.Skip(1).ToHashSet(StringComparer.Ordinal);
-if (args.Length < 1 || options.Any(option => option is not ("--verify" or "--default-rules" or "--large" or "--steady" or "--save-final")
+if (args.Length < 1 || options.Any(option => option is not ("--verify" or "--initialization" or "--default-rules" or "--large" or "--steady" or "--save-final")
         && !option.StartsWith("--seed=", StringComparison.Ordinal) && !option.StartsWith("--start-day=", StringComparison.Ordinal)
         && !option.StartsWith("--years=", StringComparison.Ordinal) && !option.StartsWith("--repetitions=", StringComparison.Ordinal)
         && !option.StartsWith("--population-floor=", StringComparison.Ordinal))
-    || options.Contains("--verify") && options.Count != 1)
-    throw new ArgumentException("请指定结果 JSON 路径；--default-rules 使用默认规则，--large 只测 256² / 4096 人，--steady 测量后续 64 日；--seed=整数 指定种子，--start-day=整数 指定计时前推进日数；--years=整数 测量长期演化，--repetitions=整数 指定轮数，--population-floor=整数 在计时外补充居民维持人口负载；--save-final 在计时外保存终态，--verify 独立验证续演。");
+    || options.Contains("--verify") && options.Count != 1
+    || options.Contains("--initialization") && options.Any(option => option is not ("--initialization" or "--large")
+        && !option.StartsWith("--seed=", StringComparison.Ordinal) && !option.StartsWith("--repetitions=", StringComparison.Ordinal)))
+    throw new ArgumentException("请指定结果 JSON 路径；--initialization 测量创建地图并补足人口，--default-rules 使用默认规则，--large 只测 256² / 4096 人，--steady 测量后续 64 日；--seed=整数 指定种子，--start-day=整数 指定计时前推进日数；--years=整数 测量长期演化，--repetitions=整数 指定轮数，--population-floor=整数 在计时外补充居民维持人口负载；--save-final 在计时外保存终态，--verify 独立验证续演。");
 var benchmarkSeed = ReadIntegerOption(options, "--seed=", 42);
 var years = ReadIntegerOption(options, "--years=", 0);
 var repetitions = ReadIntegerOption(options, "--repetitions=", years > 0 ? 3 : 7);
@@ -67,22 +69,53 @@ if (options.Contains("--verify"))
 }
 foreach (var scenario in cases)
 {
-    var engine = WorldEngine.Create(benchmarkSeed, scenario.Size, scenario.Size, true);
-    var towns = engine.State.Settlements.ToArray();
-    var extra = scenario.Population - engine.State.Population;
-    for (var i = 0; i < towns.Length; i++)
+    if (options.Contains("--initialization"))
     {
-        var remaining = extra / towns.Length + (i < extra % towns.Length ? 1 : 0);
-        while (remaining > 0)
+        for (var warmup = 0; warmup < 4; warmup++) CreateScenario(scenario.Size, scenario.Population, benchmarkSeed);
+        var samples = new List<object>();
+        string? creationChecksum = null;
+        for (var repetition = 0; repetition < repetitions; repetition++)
         {
-            var batch = Math.Min(remaining, 200);
-            engine.SpawnResidents(towns[i].X, towns[i].Y,
-                engine.State.Residents.First(resident => resident.SettlementId == towns[i].Id).Race, batch);
-            remaining -= batch;
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            // 创建地图和生成居民同步执行，不将后台编译线程的分配混入初始化样本。
+            var allocatedBefore = GC.GetAllocatedBytesForCurrentThread();
+            var started = Stopwatch.GetTimestamp();
+            var created = CreateScenario(scenario.Size, scenario.Population, benchmarkSeed);
+            var elapsed = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            var allocated = GC.GetAllocatedBytesForCurrentThread() - allocatedBefore;
+            var saved = CanonicalState(created.ExportJson());
+            var observed = Convert.ToHexString(SHA256.HashData(saved));
+            if (creationChecksum is not null && creationChecksum != observed)
+                throw new InvalidOperationException("相同种子的重复初始化产生了不同结果。");
+            creationChecksum = observed;
+            if (!saved.AsSpan().SequenceEqual(CanonicalState(WorldEngine.ImportJson(created.ExportJson()).ExportJson())))
+                throw new InvalidOperationException("初始化状态保存恢复后的结果不同。");
+            samples.Add(new { ElapsedMs = elapsed, AllocatedBytes = allocated });
+            Console.WriteLine($"初始化 {scenario.Name} 第 {repetition + 1} 轮：{elapsed:F3} 毫秒，{allocated} 字节");
         }
+        results.Add(new
+        {
+            scenario.Name, scenario.Size, scenario.Population, Seed = benchmarkSeed, WarmupCreations = 4,
+            Repetitions = repetitions, Samples = samples, CoreAssemblySha256 = coreSha256,
+            BenchmarkAssemblySha256 = benchmarkSha256,
+            StateSha256 = creationChecksum, SaveRoundtripVerified = true, AllocationScope = "Current managed thread",
+            Runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
+            OperatingSystem = System.Runtime.InteropServices.RuntimeInformation.OSDescription,
+            Architecture = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString(),
+            ServerGarbageCollection = System.Runtime.GCSettings.IsServerGC,
+            GcLatencyMode = System.Runtime.GCSettings.LatencyMode.ToString(),
+            GcConfiguration = GC.GetConfigurationVariables(),
+            TieredCompilation = Environment.GetEnvironmentVariable("DOTNET_TieredCompilation"),
+            TieredPGO = Environment.GetEnvironmentVariable("DOTNET_TieredPGO"),
+            LogicalProcessors = Environment.ProcessorCount,
+            CpuQuota = File.Exists("/sys/fs/cgroup/cpu.max") ? File.ReadAllText("/sys/fs/cgroup/cpu.max").Trim() : null,
+            MemoryLimit = File.Exists("/sys/fs/cgroup/memory.max") ? File.ReadAllText("/sys/fs/cgroup/memory.max").Trim() : null,
+        });
+        continue;
     }
-    if (engine.State.Population != scenario.Population)
-        throw new InvalidOperationException("基准世界未达到要求的人口数量。");
+    var engine = CreateScenario(scenario.Size, scenario.Population, benchmarkSeed);
     if (!options.Contains("--default-rules"))
     {
         engine.ConfigureWorld(engine.State.Rules with
@@ -140,15 +173,15 @@ foreach (var scenario in cases)
             var dayGen0 = GC.CollectionCount(0);
             var dayGen1 = GC.CollectionCount(1);
             var dayGen2 = GC.CollectionCount(2);
-            var cpuBefore = BenchmarkClock.ReadProcessCpu();
             var dayAllocated = GC.GetTotalAllocatedBytes(precise: true);
+            var cpuBefore = BenchmarkClock.ReadProcessCpu();
             var started = Stopwatch.GetTimestamp();
             engine.Step();
             days[day] = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+            var cpuAfter = BenchmarkClock.ReadProcessCpu();
             var allocated = GC.GetTotalAllocatedBytes(precise: true) - dayAllocated;
             if (allocated < 0)
                 throw new InvalidOperationException($"GC allocation counter decreased at tick {engine.State.Tick}. Disable DATAS with DOTNET_GCDynamicAdaptationMode=0 on runtimes affected by dotnet/runtime#131069.");
-            var cpuAfter = BenchmarkClock.ReadProcessCpu();
             var g0 = GC.CollectionCount(0) - dayGen0;
             var g1 = GC.CollectionCount(1) - dayGen1;
             var g2 = GC.CollectionCount(2) - dayGen2;
@@ -256,6 +289,27 @@ foreach (var scenario in cases)
     Console.WriteLine($"Summary {scenario.Name}, ticks {measureStartTick}..{measureStartTick + scenario.Days}, {allSamples.Length} samples: time ms/day mean/P95/max {totalTiming.Mean:F3}/{totalTiming.P95:F3}/{totalTiming.Max:F3}, allocation MB/day mean/P95/max {totalAllocation.Mean:F3}/{totalAllocation.P95:F3}/{totalAllocation.Max:F3}");
 }
 File.WriteAllText(args[0], JsonSerializer.Serialize(results, new JsonSerializerOptions { WriteIndented = true }));
+
+static WorldEngine CreateScenario(int size, int population, int seed)
+{
+    var engine = WorldEngine.Create(seed, size, size, true);
+    var towns = engine.State.Settlements.ToArray();
+    var extra = population - engine.State.Population;
+    for (var i = 0; i < towns.Length; i++)
+    {
+        var remaining = extra / towns.Length + (i < extra % towns.Length ? 1 : 0);
+        while (remaining > 0)
+        {
+            var batch = Math.Min(remaining, 200);
+            engine.SpawnResidents(towns[i].X, towns[i].Y,
+                engine.State.Residents.First(resident => resident.SettlementId == towns[i].Id).Race, batch);
+            remaining -= batch;
+        }
+    }
+    if (engine.State.Population != population)
+        throw new InvalidOperationException("基准世界未达到要求的人口数量。");
+    return engine;
+}
 
 static int ReadIntegerOption(HashSet<string> options, string prefix, int fallback)
 {

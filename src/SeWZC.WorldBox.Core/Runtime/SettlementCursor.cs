@@ -3,7 +3,6 @@ namespace SeWZC.WorldBox.Core.Runtime;
 /// <summary>Settlement 的引擎内定位引用；连续仓库补给在阶段结束或读取快照时合并提交。</summary>
 internal sealed partial class SettlementCursor : StateCursor<Settlement>
 {
-    public SettlementCursor() : this(new Settlement()) { }
     public SettlementCursor(Settlement value) : base(value) { }
 
     public string DevelopmentGoal
@@ -49,11 +48,6 @@ internal sealed partial class SettlementCursor : StateCursor<Settlement>
     public long LastPoliticalChangeTick
     {
         get => Value.LastPoliticalChangeTick;
-        set
-        {
-            if (!EqualityComparer<long>.Default.Equals(Value.LastPoliticalChangeTick, value))
-                ReplaceChanged(Value with { LastPoliticalChangeTick = value });
-        }
     }
 
     public SettlementTier Tier
@@ -91,11 +85,6 @@ internal sealed partial class SettlementCursor : StateCursor<Settlement>
     public int Id
     {
         get => Value.Id;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.Id, value))
-                ReplaceChanged(Value with { Id = value });
-        }
     }
 
     public string Name
@@ -111,21 +100,11 @@ internal sealed partial class SettlementCursor : StateCursor<Settlement>
     public int X
     {
         get => Value.X;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.X, value))
-                ReplaceChanged(Value with { X = value });
-        }
     }
 
     public int Y
     {
         get => Value.Y;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.Y, value))
-                ReplaceChanged(Value with { Y = value });
-        }
     }
 
     public int NationId
@@ -179,11 +158,6 @@ internal sealed partial class SettlementCursor : StateCursor<Settlement>
     public bool FoundationPending
     {
         get => Value.FoundationPending;
-        set
-        {
-            if (!EqualityComparer<bool>.Default.Equals(Value.FoundationPending, value))
-                ReplaceChanged(Value with { FoundationPending = value });
-        }
     }
 
     public int MaxClaimRadius

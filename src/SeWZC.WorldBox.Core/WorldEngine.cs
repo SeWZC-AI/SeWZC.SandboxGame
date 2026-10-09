@@ -14,8 +14,6 @@ public sealed partial class WorldEngine
         [0xFFE7AD62, 0xFF63CCA7, 0xFF8C9DEB, 0xFFE27A7C, 0xFFDFC16E, 0xFFB593DB, 0xFF74BBDC, 0xFFD294C8];
 
     private static readonly string[] RaceNames = ["人类", "精灵", "矮人", "兽人"];
-    private readonly Dictionary<int, Queue<int>> _armyPaths = [];
-    private readonly Dictionary<int, int> _armyTargets = [];
     private readonly HashSet<int> _burningTiles = [];
     private readonly Dictionary<int, List<ResidentCursor>> _citizens = [];
     private readonly HashSet<int> _dryTiles = [];
@@ -65,19 +63,22 @@ public sealed partial class WorldEngine
     {
         if (width is < 32 or > 256 || height is < 32 or > 256)
             throw new ArgumentOutOfRangeException(nameof(width), "地图宽高必须在 32 到 256 之间。");
-        var state = new WorldStateCursor
+        var state = new WorldStateCursor(new WorldState
         {
             Seed = seed,
             Width = width,
             Height = height,
             RandomState = (uint)seed ^ 0xA341316Cu,
-            Tiles = new EntityListCursor<Tile, TileCursor>(
-                ImmutableVector<Tile>.CreateRange(Enumerable.Repeat(new Tile(), width * height)), _ => { },
-                value => new TileCursor(value)),
-        };
+            Tiles = ImmutableVector<Tile>.CreateRange(Enumerable.Repeat(new Tile(), width * height)),
+        });
         if (state.RandomState == 0)
             state.RandomState = 1;
         var engine = new WorldEngine(state);
+        // 初始化只发布最终集合；定位引用仍立即读取当前字段和成员。
+        using var scalarUpdates = state.BeginScalarUpdates();
+        using var tileUpdates = state.Tiles.BeginUpdates();
+        using var residentUpdates = state.Residents.BeginUpdates();
+        using var settlementUpdates = state.Settlements.BeginUpdates();
         engine.GenerateTerrain();
         engine.GenerateLakesAndWater();
         var demoSites = demo ? engine.PrepareDemoSites() : [];
@@ -182,11 +183,6 @@ public sealed partial class WorldEngine
         return (int)(RandomUInt() % (uint)maximum);
     }
 
-    private double RandomDouble()
-    {
-        return RandomUInt() / 4294967296d;
-    }
-
     private bool InBounds(int x, int y)
     {
         return x >= 0 && y >= 0 && x < Current.Width && y < Current.Height;
@@ -234,7 +230,7 @@ public sealed partial class WorldEngine
                 EventImportance.Major,
             _ => EventImportance.Notable,
         };
-        var entry = new WorldEventCursor
+        var entry = new WorldEventCursor(new WorldEvent
         {
             Id = NewId(),
             Tick = Current.Tick,
@@ -248,7 +244,7 @@ public sealed partial class WorldEngine
             ResidentId = residentId,
             CauseEventId = causeEventId,
             EvidenceFactId = evidenceFactId,
-        };
+        });
         if (InBounds(x, y))
             entry.NationId = Current.Tiles[Index(x, y)]?.NationId ?? 0;
         Current.Events.Add(entry);
@@ -330,12 +326,12 @@ public sealed partial class WorldEngine
             var broad = Noise(x / (Current.Width * 0.16), y / (Current.Height * 0.16), 0);
             var fine = Noise(x / 7.0, y / 7.0, 71);
             var elevation = 0.75 - radial * 0.58 + (broad - 0.5) * 0.48 + (fine - 0.5) * 0.10;
-            Current.Tiles[Index(x, y)] = new TileCursor
+            Current.Tiles[Index(x, y)] = new TileCursor(new Tile
             {
                 Terrain = elevation < .20 ? TerrainType.DeepWater :
                     elevation < .27 ? TerrainType.Water : TerrainType.Grass,
                 Elevation = (byte)Math.Clamp(elevation * 255, 0, 255),
-            };
+            });
         }
     }
 

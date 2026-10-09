@@ -3,7 +3,6 @@ namespace SeWZC.WorldBox.Core.Runtime;
 /// <summary>SettlementResearch 的引擎内定位引用；每次写入提交新的不可变状态。</summary>
 internal sealed class SettlementResearchCursor : StateCursor<SettlementResearch>
 {
-    public SettlementResearchCursor() : this(new SettlementResearch()) { }
     public SettlementResearchCursor(SettlementResearch value) : base(value) { }
 
     public ProjectObservation Observation
@@ -29,21 +28,11 @@ internal sealed class SettlementResearchCursor : StateCursor<SettlementResearch>
     public int SettlementId
     {
         get => Value.SettlementId;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.SettlementId, value))
-                ReplaceChanged(Value with { SettlementId = value });
-        }
     }
 
     public Advancement? ActiveProject
     {
         get => Value.ActiveProject;
-        set
-        {
-            if (!EqualityComparer<Advancement?>.Default.Equals(Value.ActiveProject, value))
-                ReplaceChanged(Value with { ActiveProject = value });
-        }
     }
 
     public double Progress
@@ -59,11 +48,6 @@ internal sealed class SettlementResearchCursor : StateCursor<SettlementResearch>
     public double RequiredProgress
     {
         get => Value.RequiredProgress;
-        set
-        {
-            if (!EqualityComparer<double>.Default.Equals(Value.RequiredProgress, value))
-                ReplaceChanged(Value with { RequiredProgress = value });
-        }
     }
 
     public SnapshotListCursor<Advancement> Completed
@@ -73,11 +57,6 @@ internal sealed class SettlementResearchCursor : StateCursor<SettlementResearch>
             if (!ReferenceEquals(Value.Completed, value))
                 ReplaceChanged(Value with { Completed = value });
         });
-        set
-        {
-            field = null;
-            Replace(Value with { Completed = value.Snapshot });
-        }
     }
 
     public static implicit operator SettlementResearch(SettlementResearchCursor cursor)

@@ -91,7 +91,7 @@ public sealed partial class WorldEngine
                 var second = candidates.Skip(i + 1).FirstOrDefault(r => Distance(r.X, r.Y, first.X, first.Y) <= 1);
                 if (second is null)
                     continue;
-                var conflict = new LocalConflictCursor
+                var conflict = new LocalConflictCursor(new LocalConflict
                 {
                     Id = NewId(),
                     FirstResidentId = first.Id,
@@ -104,7 +104,7 @@ public sealed partial class WorldEngine
                     StageStartedTick = Current.Tick,
                     LastChangedTick = Current.Tick,
                     Participants = [first.Id, second.Id],
-                };
+                });
                 Current.Conflicts.Add(conflict);
                 RecordConflictEvent(conflict, "两位缺粮居民在现场为有限的食物发生争执");
                 break;

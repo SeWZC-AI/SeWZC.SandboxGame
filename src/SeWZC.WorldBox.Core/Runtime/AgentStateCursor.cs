@@ -10,11 +10,6 @@ internal sealed class AgentStateCursor(AgentState value) : StateCursor<AgentStat
     public bool Initialized
     {
         get => Value.Initialized;
-        set
-        {
-            if (!EqualityComparer<bool>.Default.Equals(Value.Initialized, value))
-                ReplaceChanged(Value with { Initialized = value });
-        }
     }
 
     public double Fatigue
@@ -98,11 +93,6 @@ internal sealed class AgentStateCursor(AgentState value) : StateCursor<AgentStat
     public long LastConversationTick
     {
         get => Value.LastConversationTick;
-        set
-        {
-            if (!EqualityComparer<long>.Default.Equals(Value.LastConversationTick, value))
-                ReplaceChanged(Value with { LastConversationTick = value });
-        }
     }
 
     public int DestinationSettlementId
@@ -132,21 +122,11 @@ internal sealed class AgentStateCursor(AgentState value) : StateCursor<AgentStat
     public int MissionOriginSettlementId
     {
         get => Value.MissionOriginSettlementId;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.MissionOriginSettlementId, value))
-                ReplaceChanged(Value with { MissionOriginSettlementId = value });
-        }
     }
 
     public long MissionStartedTick
     {
         get => Value.MissionStartedTick;
-        set
-        {
-            if (!EqualityComparer<long>.Default.Equals(Value.MissionStartedTick, value))
-                ReplaceChanged(Value with { MissionStartedTick = value });
-        }
     }
 
     public long MissionRetryTick

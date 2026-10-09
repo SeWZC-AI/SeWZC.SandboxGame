@@ -65,6 +65,28 @@ public sealed class ImmutableWorldTests
         Assert.Equal(long.MinValue, BitConverter.DoubleToInt64Bits(signedZero.MagicTraining));
     }
 
+    /// <summary>日常认知转换共享性格，性格修改保留旧快照，存档仍使用原有字段。</summary>
+    [Fact]
+    public void Agent_personality_remains_immutable_and_roundtrips_as_flat_fields()
+    {
+        var before = new AgentState { Personality = new() { Diligence = .8 } };
+        var daily = before with { Fatigue = 12, SocialNeed = 4 };
+        var changed = daily with { Personality = daily.Personality with { Diligence = .2 } };
+
+        Assert.Same(before.Personality, daily.Personality);
+        Assert.Equal(.8, before.Personality.Diligence);
+        Assert.Equal(.2, changed.Personality.Diligence);
+        var reverted = changed with { Fatigue = 0, SocialNeed = 0, Personality = before.Personality };
+        Assert.Equal(before, reverted);
+        Assert.Equal(before.GetHashCode(), reverted.GetHashCode());
+
+        var json = JsonSerializer.Serialize(changed, WorldJsonContext.Default.AgentState);
+        Assert.Equal(changed, JsonSerializer.Deserialize(json, WorldJsonContext.Default.AgentState));
+        using var saved = JsonDocument.Parse(json);
+        Assert.Equal(.2, saved.RootElement.GetProperty("Personality").GetProperty("Diligence").GetDouble());
+        Assert.False(saved.RootElement.TryGetProperty("Identity", out _));
+    }
+
     private static string Serialize(WorldState state)
     {
         return JsonSerializer.Serialize(state, WorldJsonContext.Default.WorldState);

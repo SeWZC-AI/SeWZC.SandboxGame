@@ -80,8 +80,6 @@ public sealed partial class WorldEngine
                 }
         }
 
-        _armyPaths.Clear();
-        _armyTargets.Clear();
         Reindex();
         RemoveEmptyNations();
         InitializeSociety();
@@ -104,7 +102,7 @@ public sealed partial class WorldEngine
         var parent = _nations[town.NationId];
         if (Current.Settlements.Count(s => s.NationId == parent.Id) < 2)
             throw new InvalidOperationException("拆分需要原国家至少拥有两个聚落。");
-        var nation = new NationCursor
+        var nation = new NationCursor(new Nation
         {
             Id = NewId(),
             Name = name,
@@ -114,18 +112,13 @@ public sealed partial class WorldEngine
             ColorArgb = NationColors[Current.Nations.Count % NationColors.Length],
             FoundingRace = parent.FoundingRace,
             Decision = "独立建国：储备资源，建立外交关系",
-        };
+        });
         foreach (var other in Current.Nations)
-            Current.Diplomacies.Add(new DiplomaticRelationCursor
-            {
-                FirstNationId = other.Id, SecondNationId = nation.Id,
-            });
+            Current.Diplomacies.Add(new DiplomaticRelationCursor(new DiplomaticRelation { FirstNationId = other.Id, SecondNationId = nation.Id }));
         Current.Nations.Add(nation);
         _nations[nation.Id] = nation;
         TransferSettlementOwnership(town, nation.Id);
         Current.Tiles[Index(town.X, town.Y)].NationId = nation.Id;
-        _armyPaths.Clear();
-        _armyTargets.Clear();
         Reindex();
         InitializeSociety();
         RefreshTotals();

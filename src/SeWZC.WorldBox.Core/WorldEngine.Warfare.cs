@@ -119,7 +119,7 @@ public sealed partial class WorldEngine
                 var waterProvisions = Math.Min(capital.Resources.Water, count * 3);
                 capital.Resources = capital.Resources with { Water = capital.Resources.Water - waterProvisions };
                 nation.Military.LastMobilizedOrderId = order.Id;
-                var army = new ArmyCursor
+                var army = new ArmyCursor(new Army
                 {
                     Id = NewId(),
                     CampaignEventId = order.CampaignEventId,
@@ -141,7 +141,7 @@ public sealed partial class WorldEngine
                     CommanderId = recruits[0].Id,
                     LastOrderTick = order.ObservedTick,
                     LastOrderFactId = order.Id,
-                };
+                });
                 Current.Armies.Add(army);
                 foreach (var resident in recruits.Take(count))
                 {
@@ -471,7 +471,6 @@ public sealed partial class WorldEngine
         occupationEvent.SecondNationId = previous;
         EndCampaign(army, WarOutcome.ObjectiveReached,
             Current.Residents.Where(r => r.ArmyId == army.Id && r.Health > 0).ToArray(), occupationEvent.Id);
-        _armyPaths.Remove(army.Id);
         Reindex();
         RemoveEmptyNations();
     }
@@ -539,51 +538,6 @@ public sealed partial class WorldEngine
         }
 
         Current.Armies.Remove(army);
-        _armyPaths.Remove(army.Id);
-        _armyTargets.Remove(army.Id);
-    }
-
-    private Queue<int>? FindPath(int startX, int startY, int endX, int endY)
-    {
-        if (!Walkable(startX, startY) || !Walkable(endX, endY))
-            return null;
-        var start = Index(startX, startY);
-        var goal = Index(endX, endY);
-        if (start == goal)
-            return new Queue<int>();
-        var previous = new int[Current.Tiles.Count];
-        Array.Fill(previous, -1);
-        var queue = new Queue<int>();
-        queue.Enqueue(start);
-        previous[start] = start;
-        while (queue.TryDequeue(out var current))
-        {
-            var x = current % Current.Width;
-            var y = current / Current.Width;
-            foreach (var (dx, dy) in Directions)
-            {
-                var xx = x + dx;
-                var yy = y + dy;
-                if (!CanTraverseStep(x, y, xx, yy, TravelMode.Foot))
-                    continue;
-                var next = Index(xx, yy);
-                if (previous[next] != -1)
-                    continue;
-                previous[next] = current;
-                if (next == goal)
-                {
-                    var path = new List<int>();
-                    for (var i = goal; i != start; i = previous[i])
-                        path.Add(i);
-                    path.Reverse();
-                    return new Queue<int>(path);
-                }
-
-                queue.Enqueue(next);
-            }
-        }
-
-        return null;
     }
 
     private void RemoveSettlement(SettlementCursor settlement, string reason)

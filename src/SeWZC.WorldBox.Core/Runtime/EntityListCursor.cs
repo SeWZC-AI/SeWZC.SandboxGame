@@ -6,7 +6,6 @@ namespace SeWZC.WorldBox.Core.Runtime;
 internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>
     where T : class where TCursor : StateCursor<T>
 {
-    private readonly Func<T, TCursor> _create;
     private readonly List<TCursor> _items = [];
     private readonly Action<ImmutableVector<T>> _publish;
     private bool _membershipChanged;
@@ -19,7 +18,6 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>
     {
         _snapshot = snapshot;
         _publish = publish;
-        _create = create;
         foreach (var value in snapshot)
         {
             var cursor = create(value);
@@ -63,10 +61,12 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>
         }
     }
 
-    public IEnumerator<TCursor> GetEnumerator()
+    public List<TCursor>.Enumerator GetEnumerator()
     {
         return _items.GetEnumerator();
     }
+
+    IEnumerator<TCursor> IEnumerable<TCursor>.GetEnumerator() => _items.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator()
     {

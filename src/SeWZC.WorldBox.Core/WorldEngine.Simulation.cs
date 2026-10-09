@@ -284,7 +284,7 @@ public sealed partial class WorldEngine
             return;
         var x = location % Current.Width;
         var y = location / Current.Width;
-        var town = new SettlementCursor
+        var town = new SettlementCursor(new Settlement
         {
             Id = NewId(),
             Name = NewPlaceName("村"),
@@ -294,7 +294,7 @@ public sealed partial class WorldEngine
             CultureId = origin.CultureId,
             FoundationPending = true,
             Resources = new ResourceStock(),
-        };
+        });
         origin.Resources = Spend(origin.Resources, VillageFoundingCost);
         Current.Settlements.Add(town);
         _settlements[town.Id] = town;

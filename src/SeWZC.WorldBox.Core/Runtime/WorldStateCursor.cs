@@ -8,7 +8,6 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
     private EntityListCursor<Settlement, SettlementCursor>? _settlements;
     private SocietyStateCursor? _society;
     private EntityListCursor<Tile, TileCursor>? _tiles;
-    public WorldStateCursor() : this(new WorldState { Width = 0, Height = 0, Tiles = [] }) { }
     public WorldStateCursor(WorldState value) : base(value) { }
 
     internal WorldState Snapshot
@@ -24,44 +23,19 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
         }
     }
 
-    public int FormatVersion
-    {
-        get => Value.FormatVersion;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.FormatVersion, value))
-                ReplaceChanged(Value with { FormatVersion = value });
-        }
-    }
-
     public int Seed
     {
         get => Value.Seed;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.Seed, value))
-                ReplaceChanged(Value with { Seed = value });
-        }
     }
 
     public int Width
     {
         get => Value.Width;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.Width, value))
-                ReplaceChanged(Value with { Width = value });
-        }
     }
 
     public int Height
     {
         get => Value.Height;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.Height, value))
-                ReplaceChanged(Value with { Height = value });
-        }
     }
 
     public long Tick
@@ -116,11 +90,6 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
             if (!ReferenceEquals(Value.Tiles, value))
                 ReplaceChanged(Value with { Tiles = value });
         }, value => new TileCursor(value));
-        set
-        {
-            _tiles = null;
-            Replace(Value with { Tiles = value.Snapshot });
-        }
     }
 
     public EntityListCursor<Resident, ResidentCursor> Residents
@@ -130,11 +99,6 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
             if (!ReferenceEquals(Value.Residents, value))
                 ReplaceChanged(Value with { Residents = value });
         }, value => new ResidentCursor(value));
-        set
-        {
-            _residents = null;
-            Replace(Value with { Residents = value.Snapshot });
-        }
     }
 
     public EntityListCursor<Settlement, SettlementCursor> Settlements
@@ -144,11 +108,6 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
             if (!ReferenceEquals(Value.Settlements, value))
                 ReplaceChanged(Value with { Settlements = value });
         }, value => new SettlementCursor(value));
-        set
-        {
-            _settlements = null;
-            Replace(Value with { Settlements = value.Snapshot });
-        }
     }
 
     public EntityListCursor<Nation, NationCursor> Nations
@@ -158,11 +117,6 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
             if (!ReferenceEquals(Value.Nations, value))
                 ReplaceChanged(Value with { Nations = value });
         }, value => new NationCursor(value));
-        set
-        {
-            field = null;
-            Replace(Value with { Nations = value.Snapshot });
-        }
     }
 
     public EntityListCursor<Army, ArmyCursor> Armies
@@ -172,11 +126,6 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
             if (!ReferenceEquals(Value.Armies, value))
                 ReplaceChanged(Value with { Armies = value });
         }, value => new ArmyCursor(value));
-        set
-        {
-            field = null;
-            Replace(Value with { Armies = value.Snapshot });
-        }
     }
 
     public EntityListCursor<DiplomaticRelation, DiplomaticRelationCursor> Diplomacies
@@ -187,11 +136,6 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
                 if (!ReferenceEquals(Value.Diplomacies, value))
                     ReplaceChanged(Value with { Diplomacies = value });
             }, value => new DiplomaticRelationCursor(value));
-        set
-        {
-            field = null;
-            Replace(Value with { Diplomacies = value.Snapshot });
-        }
     }
 
     public EntityListCursor<WorldEvent, WorldEventCursor> Events
@@ -201,11 +145,6 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
             if (!ReferenceEquals(Value.Events, value))
                 ReplaceChanged(Value with { Events = value });
         }, value => new WorldEventCursor(value));
-        set
-        {
-            field = null;
-            Replace(Value with { Events = value.Snapshot });
-        }
     }
 
     public bool NaturalDisasters
@@ -225,11 +164,6 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
     public WorldRules Rules
     {
         get => Value.Rules;
-        set
-        {
-            if (!EqualityComparer<WorldRules>.Default.Equals(Value.Rules, value))
-                ReplaceChanged(Value with { Rules = value });
-        }
     }
 
     public EntityListCursor<LocalConflict, LocalConflictCursor> Conflicts
@@ -239,21 +173,6 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
             if (!ReferenceEquals(Value.Conflicts, value))
                 ReplaceChanged(Value with { Conflicts = value });
         }, value => new LocalConflictCursor(value));
-        set
-        {
-            field = null;
-            Replace(Value with { Conflicts = value.Snapshot });
-        }
-    }
-
-    public int SimulationVersion
-    {
-        get => Value.SimulationVersion;
-        set
-        {
-            if (!EqualityComparer<int>.Default.Equals(Value.SimulationVersion, value))
-                ReplaceChanged(Value with { SimulationVersion = value });
-        }
     }
 
     public SocietyStateCursor Society
@@ -272,11 +191,6 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
 
             return _society;
         }
-        set
-        {
-            _society = null;
-            Replace(Value with { Society = value.Value });
-        }
     }
 
     public SnapshotListCursor<PendingMessage> PendingMessages
@@ -286,11 +200,6 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
             if (!ReferenceEquals(Value.PendingMessages, value))
                 ReplaceChanged(Value with { PendingMessages = value });
         });
-        set
-        {
-            field = null;
-            Replace(Value with { PendingMessages = value.Snapshot });
-        }
     }
 
     public EntityListCursor<Resident, ResidentCursor> ArchivedResidents
@@ -300,11 +209,6 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
             if (!ReferenceEquals(Value.ArchivedResidents, value))
                 ReplaceChanged(Value with { ArchivedResidents = value });
         }, value => new ResidentCursor(value));
-        set
-        {
-            _archivedResidents = null;
-            Replace(Value with { ArchivedResidents = value.Snapshot });
-        }
     }
 
     public static implicit operator WorldState(WorldStateCursor cursor)
