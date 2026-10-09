@@ -47,10 +47,10 @@ public sealed partial class WorldEngine
     {
         if (!InBounds(x, y))
             return 0;
-        var fuel = TerrainFlammability(Current.Tiles[Index(x, y)]);
+        var fuel = TerrainFlammability(Current.Tiles[Index(x, y)].Value);
         foreach (var building in Current.Buildings)
-            if (building.X == x && building.Y == y && building.Health > 0)
-                fuel = Math.Max(fuel, BuildingFlammability(building));
+            if (building.Value.X == x && building.Value.Y == y && building.Value.Health > 0)
+                fuel = Math.Max(fuel, BuildingFlammability(building.Value));
         return fuel;
     }
 
@@ -70,7 +70,7 @@ public sealed partial class WorldEngine
         var tile = Current.Tiles[index];
         tile.FireTicks = 0;
         _burningTiles.Remove(index);
-        if (!exhausted || TerrainFlammability(tile) <= 0)
+        if (!exhausted || TerrainFlammability(tile.Value) <= 0)
             return;
         if (IsForestTerrain(tile.Terrain))
             tile.Terrain = TerrainType.Grass;

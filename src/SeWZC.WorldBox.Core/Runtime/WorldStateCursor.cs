@@ -3,12 +3,15 @@ using System.Collections.Immutable;
 namespace SeWZC.WorldBox.Core.Runtime;
 
 /// <summary>WorldState 的引擎内定位引用；日内标量及集合更新在快照边界合并提交。</summary>
-internal sealed partial class WorldStateCursor : StateCursor<WorldState>
+internal sealed partial class WorldStateCursor : StateReference<WorldState>
 {
     private EntityListCursor<Resident, ResidentCursor>? _archivedResidents;
     private EntityListCursor<Resident, ResidentCursor>? _residents;
     private EntityListCursor<Settlement, SettlementCursor>? _settlements;
     private EntityListCursor<Tile, TileCursor>? _tiles;
+    private EntityListCursor<Nation, StateReference<Nation>>? _nations;
+    private EntityListCursor<Army, StateReference<Army>>? _armies;
+    private EntityListCursor<Building, StateReference<Building>>? _buildings;
     public WorldStateCursor(WorldState value) : base(value) { }
 
     internal WorldState Snapshot
@@ -19,6 +22,9 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
             _residents?.FlushUpdates();
             _archivedResidents?.FlushUpdates();
             _settlements?.FlushUpdates();
+            _nations?.FlushUpdates();
+            _armies?.FlushUpdates();
+            _buildings?.FlushUpdates();
             FlushScalars();
             return Value;
         }
@@ -96,19 +102,19 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
                 ReplaceChanged(Value with { Settlements = value });
         }, value => new SettlementCursor(value));
 
-    public EntityListCursor<Nation, NationCursor> Nations =>
-        field ??= new EntityListCursor<Nation, NationCursor>(Value.Nations, value =>
+    public EntityListCursor<Nation, StateReference<Nation>> Nations =>
+        _nations ??= new EntityListCursor<Nation, StateReference<Nation>>(Value.Nations, value =>
         {
             if (!ReferenceEquals(Value.Nations, value))
                 ReplaceChanged(Value with { Nations = value });
-        }, value => new NationCursor(value));
+        }, value => new StateReference<Nation>(value));
 
-    public EntityListCursor<Army, ArmyCursor> Armies =>
-        field ??= new EntityListCursor<Army, ArmyCursor>(Value.Armies, value =>
+    public EntityListCursor<Army, StateReference<Army>> Armies =>
+        _armies ??= new EntityListCursor<Army, StateReference<Army>>(Value.Armies, value =>
         {
             if (!ReferenceEquals(Value.Armies, value))
                 ReplaceChanged(Value with { Armies = value });
-        }, value => new ArmyCursor(value));
+        }, value => new StateReference<Army>(value));
 
     public ImmutableVector<DiplomaticRelation> Diplomacies
     {
@@ -166,9 +172,9 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
         }
     }
 
-    public EntityListCursor<Building, BuildingCursor> Buildings =>
-        field ??= new EntityListCursor<Building, BuildingCursor>(Society.Buildings,
-            value => Society = Society with { Buildings = value }, value => new BuildingCursor(value));
+    public EntityListCursor<Building, StateReference<Building>> Buildings =>
+        _buildings ??= new EntityListCursor<Building, StateReference<Building>>(Society.Buildings,
+            value => Society = Society with { Buildings = value }, value => new StateReference<Building>(value));
 
     public ImmutableList<PendingMessage> PendingMessages
     {
@@ -186,14 +192,4 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
             if (!ReferenceEquals(Value.ArchivedResidents, value))
                 ReplaceChanged(Value with { ArchivedResidents = value });
         }, value => new ResidentCursor(value));
-
-    public static implicit operator WorldState(WorldStateCursor cursor)
-    {
-        return cursor.Snapshot;
-    }
-
-    public static implicit operator WorldStateCursor(WorldState value)
-    {
-        return new WorldStateCursor(value);
-    }
 }

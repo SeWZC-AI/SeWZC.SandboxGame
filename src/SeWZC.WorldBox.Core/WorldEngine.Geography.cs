@@ -139,7 +139,7 @@ public sealed partial class WorldEngine
         Array.Fill(distances, int.MaxValue);
         var queue = new Queue<int>();
         for (var i = 0; i < tiles.Length; i++)
-            if (IsFreshWater(tiles[i]))
+            if (IsFreshWater(tiles[i].Value))
             {
                 distances[i] = 0;
                 queue.Enqueue(i);

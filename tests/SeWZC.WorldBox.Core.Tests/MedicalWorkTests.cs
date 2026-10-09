@@ -20,7 +20,7 @@ public sealed class MedicalWorkTests
         Assert.Equal(DeathCause.Disease, deceased.DeathCause);
         Assert.Equal(0, deceased.Health);
         Assert.True(patient.Health > 50 - .2 / SimulationTime.TicksPerDay);
-        Assert.Contains(worker.Id, clinic.Workers);
+        Assert.Contains(worker.Id, clinic.Value.Workers);
         Assert.Equal(99.95, fixture.Town.Resources.Food, 6);
     }
 
@@ -33,7 +33,7 @@ public sealed class MedicalWorkTests
         fixture.Engine.Step();
 
         Assert.Equal(0, Assert.Single(fixture.Engine.State.ArchivedResidents).Health);
-        Assert.Empty(clinic.Workers);
+        Assert.Empty(clinic.Value.Workers);
         Assert.Equal(100, fixture.Town.Resources.Food);
     }
 
@@ -42,13 +42,13 @@ public sealed class MedicalWorkTests
     public void Daily_death_releases_the_reserved_work_slot()
     {
         var (fixture, clinic, worker) = PrepareClinic(3);
-        clinic.WorkSlots = 1;
+        clinic.Replace(clinic.Value with { WorkSlots = 1 });
         fixture.Resident.Agent = fixture.Resident.Agent with { Goal = worker.Agent.Goal };
         var patient = fixture.Engine.Current.Residents.Single(person =>
             person.Id != fixture.ResidentId && person.Id != worker.Id);
         patient.Health = 50;
-        foreach (var building in fixture.Engine.Current.Buildings.Where(building => building.Id != clinic.Id))
-            building.Enabled = false;
+        foreach (var building in fixture.Engine.Current.Buildings.Where(building => building.Value.Id != clinic.Value.Id))
+            building.Replace(building.Value with { Enabled = false });
         fixture.Engine.Current.Tick = 8 + (3 - worker.Id % 4 + 4) % 4;
         worker.Replace(worker.Value with
         {
@@ -59,12 +59,12 @@ public sealed class MedicalWorkTests
         fixture.Engine.Step();
 
         Assert.Equal(AgentGoalKind.Work, worker.Agent.Goal.Kind);
-        Assert.Equal(clinic.Id, worker.Agent.Goal.TargetEntityId);
-        Assert.Contains(worker.Id, clinic.Workers);
+        Assert.Equal(clinic.Value.Id, worker.Agent.Goal.TargetEntityId);
+        Assert.Contains(worker.Id, clinic.Value.Workers);
         Assert.True(patient.Health > 50 + .15 / SimulationTime.TicksPerDay);
     }
 
-    private static (WorldFixture Fixture, BuildingCursor Clinic, ResidentCursor Worker) PrepareClinic(int residentCount)
+    private static (WorldFixture Fixture, StateReference<Building> Clinic, ResidentCursor Worker) PrepareClinic(int residentCount)
     {
         var fixture = new WorldFixture();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, residentCount - 1);
@@ -89,7 +89,7 @@ public sealed class MedicalWorkTests
         }
 
         var clinicId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Infirmary, 14, 16);
-        var clinic = fixture.Engine.Current.Buildings.Single(building => building.Id == clinicId);
+        var clinic = fixture.Engine.Current.Buildings.Single(building => building.Value.Id == clinicId);
         fixture.Town.Resources = new ResourceStock { Food = 100 };
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with

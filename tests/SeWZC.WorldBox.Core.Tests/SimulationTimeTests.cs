@@ -11,7 +11,7 @@ public sealed class SimulationTimeTests
         var ground = fixture.Engine.Current.Tiles[16 * 32 + 22];
         ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Id, NationId = fixture.Town.NationId });
         var buildingId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Farm, 22, 16);
-        fixture.Engine.Current.Buildings.Single(b => b.Id == buildingId).Health = 10;
+        fixture.Engine.Current.Buildings.Single(b => b.Value.Id == buildingId).Replace(fixture.Engine.Current.Buildings.Single(b => b.Value.Id == buildingId).Value with { Health = 10 });
         fixture.Resident.Profession = Profession.Builder;
         fixture.Resident.Inventory = fixture.Resident.Inventory with { Stone = 1 };
         fixture.Resident.Activity = ResidentActivity.Working;
@@ -31,7 +31,7 @@ public sealed class SimulationTimeTests
 
         Assert.Equal(fixture.Engine.State.Tick, fixture.Resident.MoveStartedTick);
         Assert.Equal(ResidentActivity.Wandering, fixture.Resident.Activity);
-        Assert.Equal(10, fixture.Engine.Current.Buildings.Single(b => b.Id == buildingId).Health);
+        Assert.Equal(10, fixture.Engine.Current.Buildings.Single(b => b.Value.Id == buildingId).Value.Health);
     }
 
     /// <summary>夜间冰冻不能保留此前的劳动标记，也不能产生劳动量。</summary>
@@ -270,13 +270,13 @@ public sealed class SimulationTimeTests
                 ReviewTick = SimulationTime.TicksPerYear,
             },
         };
-        Assert.True(fixture.Engine.TryFetchWater(fixture.Resident));
+        Assert.True(fixture.Engine.TryFetchWater(fixture.Resident.Value));
         fixture.Engine.Current.Tick++;
 
-        Assert.False(fixture.Engine.TryFetchWater(fixture.Resident));
+        Assert.False(fixture.Engine.TryFetchWater(fixture.Resident.Value));
         Assert.Equal(.15, fixture.Resident.Inventory.Water, 8);
         fixture.Engine.Current.Tick = SimulationTime.TicksPerDay;
-        Assert.True(fixture.Engine.TryFetchWater(fixture.Resident));
+        Assert.True(fixture.Engine.TryFetchWater(fixture.Resident.Value));
         Assert.Equal(.3, fixture.Resident.Inventory.Water, 8);
     }
 

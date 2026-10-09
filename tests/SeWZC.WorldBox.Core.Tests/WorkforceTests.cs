@@ -141,8 +141,8 @@ public sealed class WorkforceTests
         });
         fixture.Engine.Current.Tiles[16 * 32 + 18].Replace(plot.Value);
         var id = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.LumberCamp, 17, 16);
-        var building = fixture.Engine.Current.Buildings.Single(b => b.Id == id);
-        building.WorkSlots = 1;
+        var building = fixture.Engine.Current.Buildings.Single(b => b.Value.Id == id);
+        building.Replace(building.Value with { WorkSlots = 1 });
         var people = fixture.Engine.Current.Residents.Where(p => p.Id != fixture.ResidentId).Take(2).ToArray();
         foreach (var person in people)
         {
@@ -290,7 +290,7 @@ public sealed class WorkforceTests
         });
         fixture.Engine.Current.Tiles[16 * 32 + 19].Replace(source.Value);
         var workplace = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.LumberCamp, 18, 16);
-        fixture.Engine.Current.Buildings.Single(b => b.Id == workplace).WorkSlots = 1;
+        fixture.Engine.Current.Buildings.Single(b => b.Value.Id == workplace).Replace(fixture.Engine.Current.Buildings.Single(b => b.Value.Id == workplace).Value with { WorkSlots = 1 });
         var before = fixture.Engine.State;
         fixture.Engine.Current.Tick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
@@ -469,7 +469,7 @@ public sealed class WorkforceTests
     {
         var fixture = new WorldFixture();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human);
-        fixture.Engine.Current.Buildings.RemoveAll(b => b.Kind != BuildingKind.TownCenter);
+        fixture.Engine.Current.Buildings.RemoveAll(b => b.Value.Kind != BuildingKind.TownCenter);
         fixture.Town.Resources = new ResourceStock
         {
             Food = 10_000,

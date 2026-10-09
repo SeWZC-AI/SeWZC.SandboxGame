@@ -389,7 +389,7 @@ public sealed class ResidentBehaviorTests
         fixture.Engine.Current.Tiles[16 * 32 + 18].NaturalWaterYield = .06;
         fixture.Engine.Current.Tiles[16 * 32 + 20].Terrain = TerrainType.River;
         var wellId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Well, 18, 16);
-        fixture.Engine.Current.Buildings.Single(building => building.Id == wellId).Enabled = enabled;
+        fixture.Engine.Current.Buildings.Single(building => building.Value.Id == wellId).Replace(fixture.Engine.Current.Buildings.Single(building => building.Value.Id == wellId).Value with { Enabled = enabled });
 
         fixture.Engine.Step();
 
@@ -464,7 +464,7 @@ public sealed class ResidentBehaviorTests
     {
         var fixture = Prepare(true);
         var wellId = fixture.AddWell(16, 17, .101);
-        fixture.Engine.Current.Buildings.Single(building => building.Id == wellId).Enabled = enabled;
+        fixture.Engine.Current.Buildings.Single(building => building.Value.Id == wellId).Replace(fixture.Engine.Current.Buildings.Single(building => building.Value.Id == wellId).Value with { Enabled = enabled });
         fixture.Engine.Current.Tiles[17 * 32 + 16].DroughtTicks = drought;
         fixture.Resident.X = fixture.Resident.FromX = 16;
         fixture.Resident.Y = fixture.Resident.FromY = 17;
@@ -620,7 +620,7 @@ public sealed class ResidentBehaviorTests
         }
 
         var clinicId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Infirmary, 14, 16);
-        var clinic = fixture.Engine.Current.Buildings.Single(building => building.Id == clinicId);
+        var clinic = fixture.Engine.Current.Buildings.Single(building => building.Value.Id == clinicId);
         var worker = fixture.Engine.Current.Residents.Single(person => person.Id != fixture.ResidentId);
         worker.Replace(worker.Value with
         {
@@ -637,9 +637,9 @@ public sealed class ResidentBehaviorTests
                 Goal = new AgentGoal { PlayerDirected = true, ReviewTick = 100 },
             },
         });
-        clinic.Enabled = enabled;
-        clinic.LastWorkedTick = fixture.Engine.Current.Tick;
-        clinic.Workers = clinic.Workers.Add(worker.Id);
+        clinic.Replace(clinic.Value with { Enabled = enabled });
+        clinic.Replace(clinic.Value with { LastWorkedTick = fixture.Engine.Current.Tick });
+        clinic.Replace(clinic.Value with { Workers = clinic.Value.Workers.Add(worker.Id) });
         fixture.Resident.Health = 30;
 
         fixture.Engine.Step();
@@ -701,7 +701,7 @@ public sealed class ResidentBehaviorTests
     public void A_miner_prioritizes_the_larger_stone_shortage()
     {
         var fixture = Prepare();
-        fixture.Engine.Current.Buildings.RemoveAll(building => building.Kind != BuildingKind.TownCenter);
+        fixture.Engine.Current.Buildings.RemoveAll(building => building.Value.Kind != BuildingKind.TownCenter);
         fixture.Town.Resources = new ResourceStock { Food = 40, Stone = 0, Ore = 12 };
         fixture.Resident.Profession = Profession.Miner;
 

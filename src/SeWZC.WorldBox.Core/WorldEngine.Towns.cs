@@ -123,7 +123,7 @@ public sealed partial class WorldEngine
         var person = GetResident(residentId);
         return person is null || !InBounds(x, y)
             ? OutsideTerritoryGatheringMultiplier
-            : GatheringTerritoryMultiplier(person, Current.Tiles[Index(x, y)]);
+            : GatheringTerritoryMultiplier(new ResidentCursor(person), Current.Tiles[Index(x, y)]);
     }
 
     private static double GatheringTerritoryMultiplier(ResidentCursor person, TileCursor source)
@@ -152,8 +152,8 @@ public sealed partial class WorldEngine
         if (area < GetSettlementExpansionArea(id))
             return $"独占陆地 {area} / {GetSettlementExpansionArea(id)} 格，需占领最大半径一半的等价面积并实地登记";
         var center =
-            Current.Buildings.FirstOrDefault(b => b.SettlementId == id && b.Kind == BuildingKind.TownCenter);
-        if (center is null || !center.IsCompleted || center.IsUpgrading || center.Health < 50
+            Current.Buildings.FirstOrDefault(b => b.Value.SettlementId == id && b.Value.Kind == BuildingKind.TownCenter);
+        if (center is null || !center.Value.IsCompleted || center.Value.IsUpgrading || center.Value.Health < 50
             || Current.Tiles[Index(town.X, town.Y)].FireTicks > 0)
             return "需要可工作的城镇中心组织扩充";
         return MissingResources(town.Resources, SettlementExpansionCost(town.Tier));

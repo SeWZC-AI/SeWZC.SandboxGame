@@ -49,14 +49,14 @@ public sealed partial class WorldEngine
         var targetY = goal.TargetY;
         var factory = goal.Kind == AgentGoalKind.Work
             ? Current.Buildings.FirstOrDefault(b =>
-                b.Id == goal.TargetEntityId && b.SettlementId == person.SettlementId && b.IsCompleted)
+                b.Value.Id == goal.TargetEntityId && b.Value.SettlementId == person.SettlementId && b.Value.IsCompleted)
             : null;
-        var production = factory is null ? null : ProductionRules.For(factory.Kind);
+        var production = factory is null ? null : ProductionRules.For(factory.Value.Kind);
         if (production is not null && _settlements.TryGetValue(person.SettlementId, out var home))
         {
             var needsInputs = MissingResources(person.Inventory, production.Input) is not null;
-            targetX = needsInputs ? home.X : factory!.X;
-            targetY = needsInputs ? home.Y : factory!.Y;
+            targetX = needsInputs ? home.X : factory!.Value.X;
+            targetY = needsInputs ? home.Y : factory!.Value.Y;
         }
 
         var cursor = new ResidentCursor(person.Value);
@@ -69,9 +69,9 @@ public sealed partial class WorldEngine
                                                               or AgentGoalKind.Sleep
                                                           || (goal.TargetEntityId != 0 &&
                                                               Current.Buildings.Any(b =>
-                                                                  b.Id == goal.TargetEntityId &&
-                                                                  (!b.IsCompleted || b.IsUpgrading ||
-                                                                   IsWaterfrontBuilding(b.Kind))))
+                                                                  b.Value.Id == goal.TargetEntityId &&
+                                                                  (!b.Value.IsCompleted || b.Value.IsUpgrading ||
+                                                                   IsWaterfrontBuilding(b.Value.Kind))))
                 ? 1
                 : 0;
             if (Distance(cursor.X, cursor.Y, targetX, targetY) <= interactionRange &&

@@ -5,13 +5,13 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>到场加工的材料消耗、实物产出和拒绝边界。</summary>
 public sealed class ProductionTests
 {
-    private static (WorldFixture Fixture, BuildingCursor Foundry) FoundryWorld()
+    private static (WorldFixture Fixture, StateReference<Building> Foundry) FoundryWorld()
     {
         var fixture = new WorldFixture();
         foreach (var prerequisite in Advancement.Industry.Prerequisites)
             fixture.Engine.GrantReceivedResearch(fixture.Town.Id, prerequisite);
         fixture.Engine.GrantReceivedResearch(fixture.Town.Id, Advancement.Industry);
-        var foundry = new BuildingCursor
+        var foundry = new StateReference<Building>(new Building
         {
             Id = fixture.Engine.Current.NextId++,
             SettlementId = fixture.Town.Id,
@@ -19,7 +19,7 @@ public sealed class ProductionTests
             X = 17,
             Y = 16,
             ConstructionProgress = 30,
-        };
+        });
         fixture.Engine.Current.Buildings.Add(foundry);
         var ground = fixture.Engine.Current.Tiles[16 * 32 + 17];
         ground.NationId = fixture.Town.NationId;
@@ -34,7 +34,10 @@ public sealed class ProductionTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Work, TargetEntityId = foundry.Id, TargetX = 17, TargetY = 16,
+                Kind = AgentGoalKind.Work,
+                TargetEntityId = foundry.Value.Id,
+                TargetX = 17,
+                TargetY = 16,
             },
         };
         return (fixture, foundry);
@@ -47,13 +50,13 @@ public sealed class ProductionTests
         var (fixture, foundry) = FoundryWorld();
         var warehouseAlloy = fixture.Town.Resources.Alloy;
 
-        Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
+        Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
         Assert.Equal(0, fixture.Resident.Inventory.Coal);
         Assert.Equal(0, fixture.Resident.Inventory.Ore);
         Assert.Equal(1, fixture.Resident.Inventory.Alloy);
         Assert.Equal(warehouseAlloy, fixture.Town.Resources.Alloy);
-        Assert.Equal(1, foundry.ProductionBatches);
+        Assert.Equal(1, foundry.Value.ProductionBatches);
     }
 
     /// <summary>加工缺料不会消耗已有原料。</summary>
@@ -63,12 +66,12 @@ public sealed class ProductionTests
         var (fixture, foundry) = FoundryWorld();
         fixture.Resident.Inventory = fixture.Resident.Inventory with { Ore = 1 };
 
-        Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
+        Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
         Assert.Equal(1, fixture.Resident.Inventory.Coal);
         Assert.Equal(1, fixture.Resident.Inventory.Ore);
         Assert.Equal(0, fixture.Resident.Inventory.Alloy);
-        Assert.Equal(0, foundry.ProductionBatches);
+        Assert.Equal(0, foundry.Value.ProductionBatches);
     }
 
     /// <summary>停用设施不消耗居民随身原料。</summary>
@@ -76,13 +79,13 @@ public sealed class ProductionTests
     public void Disabled_facility_does_not_produce()
     {
         var (fixture, foundry) = FoundryWorld();
-        foundry.Enabled = false;
+        foundry.Replace(foundry.Value with { Enabled = false });
 
-        Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
+        Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
         Assert.Equal(1, fixture.Resident.Inventory.Coal);
         Assert.Equal(2, fixture.Resident.Inventory.Ore);
-        Assert.Equal(0, foundry.ProductionBatches);
+        Assert.Equal(0, foundry.Value.ProductionBatches);
     }
 
     /// <summary>知道项目却缺少运行前置知识时不能加工。</summary>
@@ -98,11 +101,11 @@ public sealed class ProductionTests
                 research with { Completed = research.Completed.Remove(Advancement.Industry.Prerequisites[0]) }),
         };
 
-        Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
+        Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
         Assert.Equal(1, fixture.Resident.Inventory.Coal);
         Assert.Equal(2, fixture.Resident.Inventory.Ore);
-        Assert.Equal(0, foundry.ProductionBatches);
+        Assert.Equal(0, foundry.Value.ProductionBatches);
     }
 
     /// <summary>居民必须实际到场才能加工。</summary>
@@ -113,9 +116,9 @@ public sealed class ProductionTests
         fixture.Resident.X = fixture.Resident.FromX = 10;
         fixture.Resident.Y = fixture.Resident.FromY = 10;
 
-        Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
+        Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
-        Assert.Equal(0, foundry.ProductionBatches);
+        Assert.Equal(0, foundry.Value.ProductionBatches);
         Assert.Equal(2, fixture.Resident.Inventory.Ore);
     }
 
@@ -125,19 +128,19 @@ public sealed class ProductionTests
     {
         var (fixture, foundry) = FoundryWorld();
         fixture.Resident.Inventory = fixture.Resident.Inventory with { Coal = 2, Ore = 4 };
-        Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
+        Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
-        Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
+        Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
         fixture.Engine.Current.Tick += 4;
-        Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
+        Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
         Assert.Equal(1, fixture.Resident.Inventory.Alloy);
         Assert.Equal(1, fixture.Resident.Inventory.Coal);
         Assert.Equal(2, fixture.Resident.Inventory.Ore);
-        Assert.Equal(1, foundry.ProductionBatches);
+        Assert.Equal(1, foundry.Value.ProductionBatches);
         fixture.Engine.Current.Tick = SimulationTime.TicksPerDay;
-        Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
-        Assert.Equal(2, foundry.ProductionBatches);
+        Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
+        Assert.Equal(2, foundry.Value.ProductionBatches);
     }
 
     /// <summary>日内换班不会突破加工设施的当日批次工位上限。</summary>
@@ -145,8 +148,8 @@ public sealed class ProductionTests
     public void Production_capacity_is_shared_across_ticks_of_the_same_day()
     {
         var (fixture, foundry) = FoundryWorld();
-        foundry.WorkSlots = 1;
-        Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
+        foundry.Replace(foundry.Value with { WorkSlots = 1 });
+        Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         var other = fixture.Engine.Current.Residents.Single(p => p.Id != fixture.ResidentId);
         other.Replace(fixture.Resident.Value with
@@ -155,9 +158,9 @@ public sealed class ProductionTests
         });
         fixture.Engine.Current.Tick += 4;
 
-        Assert.False(fixture.Engine.TryWorkAtBuilding(other));
+        Assert.False(fixture.Engine.TryWorkAtBuilding(other.Value));
 
-        Assert.Single(foundry.Workers);
-        Assert.Equal(1, foundry.ProductionBatches);
+        Assert.Single(foundry.Value.Workers);
+        Assert.Equal(1, foundry.Value.ProductionBatches);
     }
 }

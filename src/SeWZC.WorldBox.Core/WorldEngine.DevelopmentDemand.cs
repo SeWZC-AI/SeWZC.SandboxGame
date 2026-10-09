@@ -7,7 +7,7 @@ public sealed partial class WorldEngine
     /// <summary>汇总附近劳动力和资源条件，以及从居民记忆中推断的需求。</summary>
     /// <param name="town">需要评估发展需求的本地聚落。</param>
     /// <param name="buildings">本地已有设施，用于核对劳动与供给缺口。</param>
-    private LocalDemand InspectLocalDemand(SettlementCursor town, IReadOnlyList<BuildingCursor> buildings)
+    private LocalDemand InspectLocalDemand(SettlementCursor town, IReadOnlyList<StateReference<Building>> buildings)
     {
         var residents = _localWorkQueriesActive
             ? _localWorkResidents.GetValueOrDefault(town.Id)
@@ -25,7 +25,7 @@ public sealed partial class WorldEngine
         foreach (var index in Circle(town.X, town.Y, 6))
         {
             var tile = Current.Tiles[index];
-            coast |= !coast && IsFreshWater(tile) &&
+            coast |= !coast && IsFreshWater(tile.Value) &&
                      tile.AnimalPopulation(WildlifeKind.Fish) + tile.AnimalPopulation(WildlifeKind.GrassCarp) >= .2;
             timber |= !timber && IsForestTerrain(tile.Terrain) && tile.ResourceAmount >= 10;
             stone |= !stone &&
@@ -53,7 +53,7 @@ public sealed partial class WorldEngine
 
         bool Has(BuildingKind k)
         {
-            return demand.Buildings.Any(b => b.Kind == k && b.Enabled && b.Health > 0);
+            return demand.Buildings.Any(b => b.Value.Kind == k && b.Value.Enabled && b.Value.Health > 0);
         }
 
         return kind switch
@@ -88,7 +88,7 @@ public sealed partial class WorldEngine
             BuildingKind.Apothecary or BuildingKind.AlchemyLab => stock.Medicine < 8 &&
                                                                   (demand.Patients || (Current.Rules.Disease &&
                                                                       town.Population >= 60)),
-            BuildingKind.FireStation => demand.Buildings.Any(b => b.Health is > 0 and < 90)
+            BuildingKind.FireStation => demand.Buildings.Any(b => b.Value.Health is > 0 and < 90)
                                         || (Current.NaturalDisasters && town.Population >= 60) || demand.Adults.Any(p =>
                                             p.Agent.Memory.Any(f =>
                                                 f.Kind == AgentFactKind.Danger && f.Value > 0 &&
@@ -139,10 +139,10 @@ public sealed partial class WorldEngine
                 demand.Adults.Any(p =>
                     p.Profession == Profession.Miner),
             _ when research == Advancement.EfficientSmelting => demand.Buildings.Any(b =>
-                b.Kind is BuildingKind.Foundry or BuildingKind.DwarvenForge),
+                b.Value.Kind is BuildingKind.Foundry or BuildingKind.DwarvenForge),
             _ when research == Advancement.EnergyRecycling => demand.Buildings.Any(b =>
-                b.Kind == BuildingKind.PowerPlant),
-            _ when research == Advancement.Leylines => demand.Buildings.Any(b => b.Kind == BuildingKind.Crystallizer),
+                b.Value.Kind == BuildingKind.PowerPlant),
+            _ when research == Advancement.Leylines => demand.Buildings.Any(b => b.Value.Kind == BuildingKind.Crystallizer),
             _ => true,
         };
         if (!useful)
@@ -157,7 +157,7 @@ public sealed partial class WorldEngine
             _ when research == Advancement.Medicine || research == Advancement.Sanitation
                                                     || research == Advancement.Pharmacology =>
                 demand.Patients ? 88 : 45,
-            _ when research == Advancement.FireEngineering => demand.Buildings.Any(b => b.Health < 90) ? 88 : 40,
+            _ when research == Advancement.FireEngineering => demand.Buildings.Any(b => b.Value.Health < 90) ? 88 : 40,
             _ => ProductionRules.For(research) is not null ? 70 : 50,
         };
     }
@@ -178,7 +178,7 @@ public sealed partial class WorldEngine
     private sealed record LocalDemand(
         SettlementCursor Town,
         ResidentCursor[] Adults,
-        IReadOnlyList<BuildingCursor> Buildings,
+        IReadOnlyList<StateReference<Building>> Buildings,
         bool Defense,
         bool Patients,
         bool Water,

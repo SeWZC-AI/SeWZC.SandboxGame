@@ -41,7 +41,7 @@ public sealed partial class WorldEngine
                 terrain == TerrainType.LargeRiver ? (byte)4 : (byte)0,
             });
             SeedPlants(tile);
-            tile.ResourceAmount = NaturalResourceCapacity(tile);
+            tile.ResourceAmount = NaturalResourceCapacity(tile.Value);
             tile.Elevation = terrain switch
             {
                 TerrainType.DeepWater => 10,
@@ -89,7 +89,7 @@ public sealed partial class WorldEngine
         {
             if (Current.Nations.Count >= 64 || Current.Settlements.Count >= 256)
                 return;
-            var nation = new NationCursor(new Nation
+            var nation = new StateReference<Nation>(new Nation
             {
                 Id = NewId(),
                 FoundingRace = race,
@@ -102,7 +102,7 @@ public sealed partial class WorldEngine
                 Name = NewPlaceName("村"),
                 X = x,
                 Y = y,
-                NationId = nation.Id,
+                NationId = nation.Value.Id,
                 Resources = new ResourceStock
                 {
                     Food = count * 8,
@@ -112,14 +112,14 @@ public sealed partial class WorldEngine
                     Ore = 12,
                 },
             });
-            nation.CapitalId = settlement.Id;
+            nation.Replace(nation.Value with { CapitalId = settlement.Id });
             foreach (var other in Current.Nations)
             {
                 var opinion = RandomInt(41) - 10;
                 Current.Diplomacies = Current.Diplomacies.Add(new DiplomaticRelation
                 {
-                    FirstNationId = other.Id,
-                    SecondNationId = nation.Id,
+                    FirstNationId = other.Value.Id,
+                    SecondNationId = nation.Value.Id,
                     Opinion = opinion,
                     FirstOpinion = opinion,
                     SecondOpinion = opinion,
@@ -128,12 +128,12 @@ public sealed partial class WorldEngine
 
             Current.Nations.Add(nation);
             Current.Settlements.Add(settlement);
-            _nations[nation.Id] = nation;
+            _nations[nation.Value.Id] = nation;
             _settlements[settlement.Id] = settlement;
             _citizens[settlement.Id] = [];
             Current.Tiles[Index(x, y)].SettlementId = settlement.Id;
             ClaimTerritory(settlement, 6);
-            AddEvent(WorldEventKind.Founding, $"{RaceNames[(int)race]}在{settlement.Name}定居，建立了{nation.Name}。", x, y);
+            AddEvent(WorldEventKind.Founding, $"{RaceNames[(int)race]}在{settlement.Name}定居，建立了{nation.Value.Name}。", x, y);
         }
 
         using var scalarUpdates = Current.BeginScalarUpdates();
@@ -274,8 +274,8 @@ public sealed partial class WorldEngine
 
             foreach (var resident in Current.Residents.Where(r => Distance(r.X, r.Y, x, y) <= radius))
                 DamageResident(resident, 65, DeathCause.Meteor);
-            foreach (var building in Current.Buildings.Where(b => Distance(b.X, b.Y, x, y) <= radius))
-                building.Health = Math.Max(0, building.Health - 80);
+            foreach (var building in Current.Buildings.Where(b => Distance(b.Value.X, b.Value.Y, x, y) <= radius))
+                building.Replace(building.Value with { Health = Math.Max(0, building.Value.Health - 80) });
         }
 
         if (kind is DisasterKind.Drought or DisasterKind.Meteor)
@@ -310,8 +310,8 @@ public sealed partial class WorldEngine
         name = (name ?? "").Trim();
         if (name.Length is < 1 or > 40 || name.Any(char.IsControl))
             throw new ArgumentException("国名须为 1–40 个可见字符。", nameof(name));
-        var previous = nation.Name;
-        nation.Name = name;
+        var previous = nation.Value.Name;
+        nation.Replace(nation.Value with { Name = name });
         AddEvent(WorldEventKind.Editor, $"{previous}更名为{name}。");
     }
 
@@ -379,7 +379,7 @@ public sealed partial class WorldEngine
         }
 
         RefreshTotals();
-        AddEvent(WorldEventKind.Editor, $"{_nations[nationId].Name}的资源储备已调整。");
+        AddEvent(WorldEventKind.Editor, $"{_nations[nationId].Value.Name}的资源储备已调整。");
     }
 
     /// <summary>直接改变两国外交关系，并发布需要居民和机构接收的命令。</summary>
@@ -405,7 +405,7 @@ public sealed partial class WorldEngine
             AllianceOfferNationId = 0,
         });
         var diplomaticEvent = AddEvent(status == DiplomaticStatus.War ? WorldEventKind.War : WorldEventKind.Diplomacy,
-            $"{_nations[first].Name}与{_nations[second].Name}{(status == DiplomaticStatus.War ? "开战" : status == DiplomaticStatus.Allied ? "结盟" : "恢复中立关系")}。");
+            $"{_nations[first].Value.Name}与{_nations[second].Value.Name}{(status == DiplomaticStatus.War ? "开战" : status == DiplomaticStatus.Allied ? "结盟" : "恢复中立关系")}。");
         diplomaticEvent = PublishEvent(diplomaticEvent with
         {
             NationId = first,
@@ -473,7 +473,7 @@ public sealed partial class WorldEngine
             var position = Circle(settlement.X, settlement.Y, 12)
                 .Where(i => Current.Tiles[i].IsWalkable && !IsWaterTerrain(Current.Tiles[i].Terrain) &&
                             Current.Tiles[i].SettlementId == 0 &&
-                            !Current.Buildings.Any(b => b.X == i % Current.Width && b.Y == i / Current.Width) &&
+                            !Current.Buildings.Any(b => b.Value.X == i % Current.Width && b.Value.Y == i / Current.Width) &&
                             (Current.Tiles[i].NationId == 0 || Current.Tiles[i].NationId == settlement.NationId))
                 .OrderBy(i => Distance(i % Current.Width, i / Current.Width, settlement.X, settlement.Y))
                 .FirstOrDefault(-1);
@@ -491,7 +491,7 @@ public sealed partial class WorldEngine
 
         foreach (var resident in Current.Residents)
         {
-            if (CanTraverse(Current.Tiles[Index(resident.X, resident.Y)], resident.TravelMode, resident.Race))
+            if (CanTraverse(Current.Tiles[Index(resident.X, resident.Y)].Value, resident.TravelMode, resident.Race))
                 continue;
             var position = FindWalkable(resident.X, resident.Y, 10, resident.Race);
             if (position >= 0)
@@ -511,9 +511,9 @@ public sealed partial class WorldEngine
         ArchiveDeadResidents();
         foreach (var army in Current.Armies.ToArray())
         {
-            if (Walkable(army.X, army.Y))
+            if (Walkable(army.Value.X, army.Value.Y))
                 continue;
-            var position = FindWalkable(army.X, army.Y, 10);
+            var position = FindWalkable(army.Value.X, army.Value.Y, 10);
             if (position >= 0)
                 army.Replace(army.Value with { X = position % Current.Width, Y = position / Current.Width });
             else

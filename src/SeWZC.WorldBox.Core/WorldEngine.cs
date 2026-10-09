@@ -17,7 +17,7 @@ public sealed partial class WorldEngine
     private readonly HashSet<int> _burningTiles = [];
     private readonly Dictionary<int, List<ResidentCursor>> _citizens = [];
     private readonly HashSet<int> _dryTiles = [];
-    private readonly Dictionary<int, NationCursor> _nations = [];
+    private readonly Dictionary<int, StateReference<Nation>> _nations = [];
     private readonly Dictionary<int, ResidentCursor> _residentLookup = [];
     private readonly Dictionary<int, SettlementCursor> _settlements = [];
     private readonly TerritoryCounts _territoryCounts = new();
@@ -141,7 +141,7 @@ public sealed partial class WorldEngine
         }
 
         foreach (var nation in Current.Nations)
-            _nations[nation.Id] = nation;
+            _nations[nation.Value.Id] = nation;
         foreach (var person in Current.Residents)
             if (_citizens.TryGetValue(person.SettlementId, out var list))
                 list.Add(person);
@@ -195,7 +195,7 @@ public sealed partial class WorldEngine
 
     private bool Walkable(int x, int y, RaceKind race = RaceKind.Human)
     {
-        return InBounds(x, y) && RaceTerrainRules.CanWalk(Current.Tiles[Index(x, y)], race);
+        return InBounds(x, y) && RaceTerrainRules.CanWalk(Current.Tiles[Index(x, y)].Value, race);
     }
 
     private static int Distance(int ax, int ay, int bx, int by)
@@ -362,22 +362,28 @@ public sealed partial class WorldEngine
     {
         ReconcileConnectedClaims();
         _territoryCounts.Bind(Current.Tiles);
-        foreach (var nation in Current.Nations)
-            nation.Replace(nation.Value with
-            {
-                Population = 0, Territory = _territoryCounts.Get(nation.Id), Resources = new ResourceStock(),
-            });
-
         foreach (var settlement in Current.Settlements)
         {
             settlement.Population = _citizens.GetValueOrDefault(settlement.Id)?.Count ?? 0;
             RefreshSettlementName(settlement);
-            if (!_nations.TryGetValue(settlement.NationId, out var nation))
+        }
+
+        var settlements = Current.Settlements.Snapshot;
+        foreach (var nation in Current.Nations)
+            nation.Replace(AggregateNation(nation.Value, settlements, _territoryCounts.Get(nation.Value.Id)));
+    }
+
+    private static Nation AggregateNation(Nation nation, ImmutableVector<Settlement> settlements, int territory)
+    {
+        var population = 0;
+        var total = new ResourceStock();
+        foreach (var settlement in settlements)
+        {
+            if (settlement.NationId != nation.Id)
                 continue;
-            nation.Population += settlement.Population;
-            var total = nation.Resources;
+            population += settlement.Population;
             var local = settlement.Resources;
-            nation.Resources = total with
+            total = total with
             {
                 Food = total.Food + local.Food,
                 Wood = total.Wood + local.Wood,
@@ -394,5 +400,9 @@ public sealed partial class WorldEngine
                 Water = total.Water + local.Water,
             };
         }
+
+        return nation.Population == population && nation.Territory == territory && nation.Resources == total
+            ? nation
+            : nation with { Population = population, Territory = territory, Resources = total };
     }
 }

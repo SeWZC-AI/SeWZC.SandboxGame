@@ -86,7 +86,7 @@ public sealed partial class WorldEngine
 
     private double LocalWaterUse(ResidentCursor person)
     {
-        return WaterUse(person.Age, Current.Tiles[Index(person.X, person.Y)]);
+        return WaterUse(person.Age, Current.Tiles[Index(person.X, person.Y)].Value);
     }
 
     private double WaterReserve(ResidentCursor person)
@@ -243,16 +243,16 @@ public sealed partial class WorldEngine
         var well = _localWorkQueriesActive
             ? _localWaterWells.GetValueOrDefault(index)
             : FindWaterWell(index);
-        var operating = well is not null && IsBuildingOperational(well);
+        var operating = well is not null && IsBuildingOperational(well.Value);
         return (operating ? WellWaterYield(tile) : 0, operating);
     }
 
-    private BuildingCursor? FindWaterWell(int index)
+    private StateReference<Building>? FindWaterWell(int index)
     {
         var x = index % Current.Width;
         var y = index / Current.Width;
         foreach (var building in Current.Buildings)
-            if (building.Kind == BuildingKind.Well && building.X == x && building.Y == y)
+            if (building.Value.Kind == BuildingKind.Well && building.Value.X == x && building.Value.Y == y)
                 return building;
         return null;
     }
@@ -676,7 +676,7 @@ public sealed partial class WorldEngine
                     continue;
             }
 
-            if (!aquatic && RaceTerrainRules.CanWalk(tile, person.Race)
+            if (!aquatic && RaceTerrainRules.CanWalk(tile.Value, person.Race)
                          && VisibleSiteReachable(person, index, ref reachable))
                 return (index, index, false);
 

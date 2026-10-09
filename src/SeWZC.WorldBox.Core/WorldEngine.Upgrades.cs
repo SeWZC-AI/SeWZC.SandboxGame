@@ -41,7 +41,7 @@ public sealed partial class WorldEngine
     {
         if (!InBounds(fromX, fromY) || !InBounds(toX, toY) || Distance(fromX, fromY, toX, toY) != 1)
             return false;
-        return CanTraverseAdjacentTiles(Current.Tiles[Index(fromX, fromY)], Current.Tiles[Index(toX, toY)],
+        return CanTraverseAdjacentTiles(Current.Tiles[Index(fromX, fromY)].Value, Current.Tiles[Index(toX, toY)].Value,
             fromY == toY, mode, race);
     }
 
@@ -139,32 +139,32 @@ public sealed partial class WorldEngine
     /// <param name="direction">桥梁改向的目标轴向，空值表示升级一级。</param>
     public string? BuildingUpgradeError(int id, bool gift = false, BridgeDirection? direction = null)
     {
-        var building = Current.Buildings.FirstOrDefault(b => b.Id == id);
+        var building = Current.Buildings.FirstOrDefault(b => b.Value.Id == id);
         if (building is null)
             return "建筑已不存在";
-        if (!building.IsCompleted || building.Health < 50)
+        if (!building.Value.IsCompleted || building.Value.Health < 50)
             return "需先完工并修复建筑";
-        if (building.IsUpgrading)
+        if (building.Value.IsUpgrading)
             return "已有升级或改向项目";
-        if (building.Kind == BuildingKind.TownCenter && RequireTown(building.SettlementId).IsExpanding)
+        if (building.Value.Kind == BuildingKind.TownCenter && RequireTown(building.Value.SettlementId).IsExpanding)
             return "中心正在组织城镇扩充，完成后可单独升级建筑";
-        if (Current.Tiles[Index(building.X, building.Y)].FireTicks > 0)
+        if (Current.Tiles[Index(building.Value.X, building.Value.Y)].FireTicks > 0)
             return "所在地正在燃烧";
-        if (direction.HasValue && (building.Kind != BuildingKind.Bridge || direction == building.Direction))
+        if (direction.HasValue && (building.Value.Kind != BuildingKind.Bridge || direction == building.Value.Direction))
             return "只能将桥梁改为另一方向";
-        if (!direction.HasValue && building.Level >= 3)
+        if (!direction.HasValue && building.Value.Level >= 3)
             return "建筑已达到 3 级";
-        if (building.Kind == BuildingKind.Bridge && BridgePlacementError(building.X, building.Y,
-                direction ?? building.Direction,
-                direction.HasValue ? building.Level : building.Level + 1) is { } crossingError)
+        if (building.Value.Kind == BuildingKind.Bridge && BridgePlacementError(building.Value.X, building.Value.Y,
+                direction ?? building.Value.Direction,
+                direction.HasValue ? building.Value.Level : building.Value.Level + 1) is { } crossingError)
             return crossingError;
-        if (!gift && building.Kind is BuildingKind.MountainPass or BuildingKind.Bridge &&
-            !HasResearch(building.SettlementId, Advancement.Logistics))
+        if (!gift && building.Value.Kind is BuildingKind.MountainPass or BuildingKind.Bridge &&
+            !HasResearch(building.Value.SettlementId, Advancement.Logistics))
             return "需要先掌握驿路运输";
         return gift
             ? null
-            : MissingResources(RequireTown(building.SettlementId).Resources,
-                GetUpgradeCost(building, direction.HasValue));
+            : MissingResources(RequireTown(building.Value.SettlementId).Resources,
+                GetUpgradeCost(building.Value, direction.HasValue));
     }
 
     /// <summary>校验后启动升级或桥梁改向施工；赐予时直接完工。</summary>
@@ -175,72 +175,72 @@ public sealed partial class WorldEngine
     {
         if (BuildingUpgradeError(id, gift, direction) is { } error)
             throw new InvalidOperationException(error);
-        var building = Current.Buildings.First(b => b.Id == id);
+        var building = Current.Buildings.First(b => b.Value.Id == id);
         if (!gift)
         {
-            RequireTown(building.SettlementId).Resources = Spend(RequireTown(building.SettlementId).Resources,
-                GetUpgradeCost(building, direction.HasValue));
+            RequireTown(building.Value.SettlementId).Resources = Spend(RequireTown(building.Value.SettlementId).Resources,
+                GetUpgradeCost(building.Value, direction.HasValue));
         }
 
         building.Replace(building.Value with
         {
             PendingDirection = direction,
             UpgradeProgress = 0,
-            UpgradeRequired = direction.HasValue ? 15 : 30 * building.Level,
+            UpgradeRequired = direction.HasValue ? 15 : 30 * building.Value.Level,
+            Workers = building.Value.Workers.Clear(),
+            LastWorkedTick = -100,
         });
-        building.Workers = building.Workers.Clear();
-        building.LastWorkedTick = -100;
         var entry = AddEvent(WorldEventKind.Construction,
-            $"{BuildingName(building.Kind)}开始{(direction.HasValue ? "改向" : "升级")}，等待实地施工。",
-            building.X, building.Y, EventAction.Started, building.SettlementId);
-        building.Observation = new ProjectObservation { StartEventId = entry.Id };
+            $"{BuildingName(building.Value.Kind)}开始{(direction.HasValue ? "改向" : "升级")}，等待实地施工。",
+            building.Value.X, building.Value.Y, EventAction.Started, building.Value.SettlementId);
+        building.Replace(building.Value with { Observation = new ProjectObservation { StartEventId = entry.Id } });
         if (gift)
             FinishBuildingUpgrade(building);
     }
 
-    private void FinishBuildingUpgrade(BuildingCursor building)
+    private void FinishBuildingUpgrade(StateReference<Building> building)
     {
-        if (building.PendingDirection is { } direction)
-            building.Direction = direction;
+        if (building.Value.PendingDirection is { } direction)
+            building.Replace(building.Value with { Direction = direction });
         else
-            building.Level++;
+            building.Replace(building.Value with { Level = building.Value.Level + 1 });
         building.Replace(building.Value with
         {
             PendingDirection = null,
             UpgradeProgress = 0,
             UpgradeRequired = 0,
-            WorkSlots = Math.Min(20, (building.Kind == BuildingKind.Farm ? 5 : 3) + building.Level - 1),
+            WorkSlots = Math.Min(20, (building.Value.Kind == BuildingKind.Farm ? 5 : 3) + building.Value.Level - 1),
         });
-        CompleteLandImprovement(building);
-        AddEvent(WorldEventKind.Construction, $"{BuildingName(building.Kind)}施工完成，当前 {building.Level} 级。",
-            building.X, building.Y, EventAction.Completed, building.SettlementId,
-            causeEventId: building.Observation.StartEventId);
+        CompleteLandImprovement(building.Value);
+        AddEvent(WorldEventKind.Construction, $"{BuildingName(building.Value.Kind)}施工完成，当前 {building.Value.Level} 级。",
+            building.Value.X, building.Value.Y, EventAction.Completed, building.Value.SettlementId,
+            causeEventId: building.Value.Observation.StartEventId);
     }
 
-    private bool PlanBuildingUpgrade(SettlementCursor town, BuildingCursor[] buildings)
+    private bool PlanBuildingUpgrade(SettlementCursor town, StateReference<Building>[] buildings)
     {
-        if (!Current.Rules.Construction || buildings.Any(b => !b.IsCompleted || b.IsUpgrading))
+        if (!Current.Rules.Construction || buildings.Any(b => !b.Value.IsCompleted || b.Value.IsUpgrading))
             return false;
         var reserve = LocalDevelopmentReserve(town);
         var demand = InspectLocalDemand(town, buildings);
-        foreach (var building in buildings.OrderBy(b => b.Level).ThenBy(b => b.Id))
+        foreach (var building in buildings.OrderBy(b => b.Value.Level).ThenBy(b => b.Value.Id))
         {
-            if (!FacilityNeeded(demand, building.Kind) || (building.Kind != BuildingKind.TownCenter
-                                                           && building.Kind != BuildingKind.Housing &&
-                                                           building.Workers.Count < building.WorkSlots))
+            if (!FacilityNeeded(demand, building.Value.Kind) || (building.Value.Kind != BuildingKind.TownCenter
+                                                           && building.Value.Kind != BuildingKind.Housing &&
+                                                           building.Value.Workers.Count < building.Value.WorkSlots))
                 continue;
-            if (building.Level >= 3 || Current.Tick - building.LastWorkedTick > 24 ||
-                BuildingUpgradeError(building.Id) is not null)
+            if (building.Value.Level >= 3 || Current.Tick - building.Value.LastWorkedTick > 24 ||
+                BuildingUpgradeError(building.Value.Id) is not null)
                 continue;
-            var cost = GetUpgradeCost(building);
+            var cost = GetUpgradeCost(building.Value);
             if (ResourceStock.Kinds.Any(k => town.Resources.Get(k) < cost.Get(k) + reserve.Get(k) +
-                    (k == ResourceKind.Food && building.Kind is not (BuildingKind.Farm or BuildingKind.AutomatedFarm
+                    (k == ResourceKind.Food && building.Value.Kind is not (BuildingKind.Farm or BuildingKind.AutomatedFarm
                         or BuildingKind.RunicGarden or BuildingKind.Pasture or BuildingKind.Aquaculture)
                         ? town.Population * 2
                         : 0)))
                 continue;
-            UpgradeBuilding(building.Id);
-            town.DevelopmentGoal = "升级" + BuildingName(building.Kind);
+            UpgradeBuilding(building.Value.Id);
+            town.DevelopmentGoal = "升级" + BuildingName(building.Value.Kind);
             town.DevelopmentBlocker = "材料已投入，等待居民到场升级";
             return true;
         }

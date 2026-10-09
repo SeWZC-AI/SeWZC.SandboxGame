@@ -13,7 +13,7 @@ public sealed class NationEditingTests
         fixture.Engine.SetNationResources(fixture.Town.NationId, 12.5);
 
         Assert.Equal(12.5, fixture.Town.Resources.Food);
-        Assert.Equal(12.5, fixture.Engine.Current.Nations.Single().Resources.Food);
+        Assert.Equal(12.5, fixture.Engine.Current.Nations.Single().Value.Resources.Food);
         Assert.Equal(wood, fixture.Town.Resources.Wood);
     }
 
@@ -26,7 +26,7 @@ public sealed class NationEditingTests
         fixture.Engine.SetNationResources(fixture.Town.NationId, 0);
 
         Assert.Equal(0, fixture.Town.Resources.Food);
-        Assert.Equal(0, fixture.Engine.Current.Nations.Single().Resources.Food);
+        Assert.Equal(0, fixture.Engine.Current.Nations.Single().Value.Resources.Food);
     }
 
     /// <summary>非法金额不会先提交其他合法资源。</summary>
@@ -54,7 +54,7 @@ public sealed class NationEditingTests
 
         fixture.Engine.RenameNation(fixture.Town.NationId, "  新国家  ");
 
-        Assert.Equal("新国家", fixture.Engine.Current.Nations.Single().Name);
+        Assert.Equal("新国家", fixture.Engine.Current.Nations.Single().Value.Name);
     }
 
     /// <summary>非法国名不会修改世界。</summary>
@@ -82,7 +82,7 @@ public sealed class NationEditingTests
 
         fixture.Engine.SetNationTechnology(fixture.Town.NationId, 5);
 
-        Assert.Equal(5, fixture.Engine.Current.Nations.Single().Technology);
+        Assert.Equal(5, fixture.Engine.Current.Nations.Single().Value.Technology);
         Assert.Equal(completed, fixture.Engine.Current.Society.Research.Single().Completed);
     }
 

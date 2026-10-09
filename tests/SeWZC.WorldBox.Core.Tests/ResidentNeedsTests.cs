@@ -1,3 +1,5 @@
+using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>每日需求的不可变转换与粮水消费次序。</summary>
@@ -21,7 +23,7 @@ public sealed class ResidentNeedsTests
             Thirst = 10,
             FrozenUntilTick = 10,
         });
-        fixture.Engine.Current.Residents.Add(fixture.Resident.Value with { Id = 900, Name = "第二位居民" });
+        fixture.Engine.Current.Residents.Add(new ResidentCursor(fixture.Resident.Value with { Id = 900, Name = "第二位居民" }));
         var source = fixture.Engine.Current.Tiles[16 * 32 + 16];
         source.NaturalWaterYield = .04;
         source.DroughtTicks = 0;
@@ -79,7 +81,7 @@ public sealed class ResidentNeedsTests
             Thirst = 10,
             FrozenUntilTick = 10,
         });
-        fixture.Engine.Current.Residents.Add(fixture.Resident.Value with { Id = 900, Name = "第二位居民" });
+        fixture.Engine.Current.Residents.Add(new ResidentCursor(fixture.Resident.Value with { Id = 900, Name = "第二位居民" }));
         var source = fixture.Engine.Current.Tiles[17 * 32 + 16];
         source.WaterDrawTick = 1;
         source.WaterDrawn = .15 - .0125 / SimulationTime.TicksPerDay;

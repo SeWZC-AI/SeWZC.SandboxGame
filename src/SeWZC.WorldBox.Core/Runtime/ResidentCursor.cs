@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 namespace SeWZC.WorldBox.Core.Runtime;
 
 /// <summary>Resident 的引擎内定位引用；连续日常字段变化在快照边界合并为不可变状态。</summary>
-internal sealed partial class ResidentCursor(Resident value) : StateCursor<Resident>(value)
+internal sealed partial class ResidentCursor(Resident value) : StateReference<Resident>(value)
 {
     public int Id => base.Value.Id;
 
@@ -361,16 +361,6 @@ internal sealed partial class ResidentCursor(Resident value) : StateCursor<Resid
             if (!ReferenceEquals(Value.History, value))
                 ReplaceChanged(Value with { History = value });
         }
-    }
-
-    public static implicit operator Resident(ResidentCursor cursor)
-    {
-        return cursor.Value;
-    }
-
-    public static implicit operator ResidentCursor(Resident value)
-    {
-        return new ResidentCursor(value);
     }
 
     protected override void OnReplace(in Resident before, in Resident after)

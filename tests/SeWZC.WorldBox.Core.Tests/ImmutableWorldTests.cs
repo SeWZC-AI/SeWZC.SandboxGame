@@ -1,10 +1,52 @@
 using System.Text.Json;
+using SeWZC.WorldBox.Core.Runtime;
 
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>世界快照、日内转换和异步保存的隔离边界。</summary>
 public sealed class ImmutableWorldTests
 {
+    /// <summary>读取世界快照时，国家、建筑及军队的批次更新完整提交，后续更新不修改已取得的快照。</summary>
+    [Fact]
+    public void Snapshot_includes_batched_nations_buildings_and_armies()
+    {
+        var current = new WorldStateCursor(new WorldState
+        {
+            Width = 1,
+            Height = 1,
+            Tiles = ImmutableVector<Tile>.Create([new Tile()]),
+            Nations = ImmutableVector<Nation>.Create([new Nation { Id = 1, Name = "初始" }]),
+            Armies = ImmutableVector<Army>.Create([new Army { Id = 2, Supplies = 3 }]),
+            Society = new SocietyState
+            {
+                Buildings = ImmutableVector<Building>.Create([new Building { Id = 4, Health = 100 }]),
+            },
+        });
+        var before = current.Snapshot;
+        using var nations = current.Nations.BeginUpdates();
+        using var buildings = current.Buildings.BeginUpdates();
+        using var armies = current.Armies.BeginUpdates();
+
+        current.Nations[0].Replace(current.Nations[0].Value with { Name = "更新" });
+        current.Buildings[0].Replace(current.Buildings[0].Value with { Health = 80 });
+        current.Armies[0].Replace(current.Armies[0].Value with { Supplies = 2 });
+        var middle = current.Snapshot;
+        current.Nations[0].Replace(current.Nations[0].Value with { Name = "继续更新" });
+        current.Buildings[0].Replace(current.Buildings[0].Value with { Health = 60 });
+        current.Armies[0].Replace(current.Armies[0].Value with { Supplies = 1 });
+        var after = current.Snapshot;
+
+        Assert.Equal("初始", before.Nations[0].Name);
+        Assert.Equal(100, before.Society.Buildings[0].Health);
+        Assert.Equal(3, before.Armies[0].Supplies);
+        Assert.Equal("更新", middle.Nations[0].Name);
+        Assert.Equal(80, middle.Society.Buildings[0].Health);
+        Assert.Equal(2, middle.Armies[0].Supplies);
+        Assert.Equal("继续更新", after.Nations[0].Name);
+        Assert.Equal(60, after.Society.Buildings[0].Health);
+        Assert.Equal(1, after.Armies[0].Supplies);
+    }
+
     /// <summary>日内仓库连续记账即时供后续居民读取，快照冻结合并库存并保留此前世界。</summary>
     [Fact]
     public void Warehouse_batches_preserve_snapshots_and_other_settlement_updates()
@@ -110,7 +152,7 @@ public sealed class ImmutableWorldTests
             var middle = fixture.Engine.State;
             Assert.Equal(60, middle.Residents[0].Health);
             Assert.Equal(20, middle.Residents[0].Agent.Fatigue);
-            list.Add(new Resident { Id = 123, Health = 90 });
+            list.Add(new ResidentCursor(new Resident { Id = 123, Health = 90 }));
             survivor.Hunger = 40;
             list.RemoveAt(1);
             Assert.Equal(2, fixture.Engine.Current.Population);
@@ -383,7 +425,7 @@ public sealed class ImmutableWorldTests
             fixture.Engine.Current.Residents.Transform(person => person with { Hunger = 20 });
             fixture.Resident.Agent = fixture.Resident.Agent with { Fatigue = 25 };
             fixture.Engine.Current.Residents.Remove(fixture.Resident);
-            fixture.Engine.Current.Residents.Add(new Resident { Id = 900, Name = "新居民" });
+            fixture.Engine.Current.Residents.Add(new ResidentCursor(new Resident { Id = 900, Name = "新居民" }));
             fixture.Engine.Current.Residents[0].Inventory = new ResourceStock { Food = 7 };
         }
 

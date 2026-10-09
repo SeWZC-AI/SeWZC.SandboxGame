@@ -117,7 +117,7 @@ public sealed class DamageProtectionTests
         fixture.Resident.PersonalWard = ward;
         fixture.Resident.Armor = 0;
 
-        var result = fixture.Engine.TryAbsorbShieldDamage(fixture.Resident, damage);
+        var result = fixture.Engine.TryAbsorbShieldDamage(fixture.Resident.Value, damage);
 
         Assert.Equal(remaining, result);
         Assert.Equal(remainingWard, fixture.Resident.PersonalWard);
@@ -131,7 +131,7 @@ public sealed class DamageProtectionTests
         fixture.Resident.Armor = 10;
         fixture.Resident.PersonalWard = 0;
 
-        var remaining = fixture.Engine.TryAbsorbShieldDamage(fixture.Resident, 20);
+        var remaining = fixture.Engine.TryAbsorbShieldDamage(fixture.Resident.Value, 20);
 
         Assert.Equal(13, remaining);
         Assert.Equal(3, fixture.Resident.Armor);
@@ -145,7 +145,7 @@ public sealed class DamageProtectionTests
         fixture.Resident.PersonalWard = 10;
         fixture.Resident.Armor = 10;
 
-        Assert.Equal(0, fixture.Engine.TryAbsorbShieldDamage(fixture.Resident, -5));
+        Assert.Equal(0, fixture.Engine.TryAbsorbShieldDamage(fixture.Resident.Value, -5));
 
         Assert.Equal(10, fixture.Resident.PersonalWard);
         Assert.Equal(10, fixture.Resident.Armor);
@@ -164,6 +164,6 @@ public sealed class DamageProtectionTests
         fixture.Resident.PersonalWard = 0;
         fixture.Resident.Armor = 0;
 
-        Assert.Equal(expectedDamage, fixture.Engine.TryAbsorbShieldDamage(fixture.Resident, 20));
+        Assert.Equal(expectedDamage, fixture.Engine.TryAbsorbShieldDamage(fixture.Resident.Value, 20));
     }
 }
