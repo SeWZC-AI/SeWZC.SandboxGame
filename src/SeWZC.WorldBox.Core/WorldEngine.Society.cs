@@ -1757,8 +1757,9 @@ public sealed partial class WorldEngine
 
         bool PlanBuilding(BuildingKind kind)
         {
-            var desired = kind == BuildingKind.Farm ? Math.Clamp((town.Population + 39) / 40, 1, 8)
-                : kind == BuildingKind.Housing ? Math.Clamp((town.Population - town.Housing + 19) / 20, 1, 30) : 1;
+            var desired = kind == BuildingKind.Farm ? Math.Clamp((town.Population + 39) / 40, 1, 32)
+                : kind == BuildingKind.Housing ? Math.Clamp(
+                    (town.Population - town.Housing + HousingCapacityPerLevel - 1) / HousingCapacityPerLevel, 1, 30) : 1;
             if (buildings.Count(b => b.Kind == kind && (b.Health > 0 || !b.Enabled)) >= desired)
                 return false;
             if (!FacilityNeeded(demand, kind))
@@ -1777,14 +1778,21 @@ public sealed partial class WorldEngine
                 return false;
             }
 
-            var missing = MissingResources(town.Resources, GetBuildingCost(kind));
+            var cost = GetBuildingCost(kind);
+            // 住宅不能反复抢走下一研究或产业项目的木石；生存设施仍可直接使用现有材料。
+            var reserve = kind == BuildingKind.Housing ? LocalDevelopmentReserve(town) : new ResourceStock();
+            var required = cost;
+            foreach (var resource in ResourceStock.Kinds)
+                if (cost.Get(resource) > 0 && reserve.Get(resource) > 0)
+                    required = required.WithAmount(resource, cost.Get(resource) + reserve.Get(resource));
+            var missing = MissingResources(town.Resources, required);
             if (missing is not null)
             {
                 RememberBlocker(missing + "；安排采集与实物运输");
-                if (town.Resources.Wood < GetBuildingCost(kind).Wood)
+                if (town.Resources.Wood < required.Wood)
                     Recruit(Profession.Lumberjack);
-                if (town.Resources.Stone < GetBuildingCost(kind).Stone ||
-                    town.Resources.Ore < GetBuildingCost(kind).Ore)
+                if (town.Resources.Stone < required.Stone ||
+                    town.Resources.Ore < required.Ore)
                     Recruit(Profession.Miner);
                 return false;
             }
@@ -1841,8 +1849,6 @@ public sealed partial class WorldEngine
                 ? BuildingKind.Hospital
                 : BuildingKind.Infirmary))
             return;
-        if (PlanBuilding(BuildingKind.Housing))
-            return;
         if (lowFood)
         {
             if (PlanBuilding(BuildingKind.Farm))
@@ -1855,6 +1861,9 @@ public sealed partial class WorldEngine
             PlanBuilding(BuildingKind.Academy);
             return;
         }
+
+        if (PlanBuilding(BuildingKind.Housing))
+            return;
 
         foreach (var plan in PendingLocalDevelopment(town, buildings, project))
         {
@@ -1986,8 +1995,6 @@ public sealed partial class WorldEngine
 
     private ResourceStock LocalDevelopmentReserve(SettlementCursor town)
     {
-        if (town.Resources.Food < Math.Max(25, town.Population * .4))
-            return new ResourceStock();
         IReadOnlyList<BuildingCursor> buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(town.Id) ?? []
             : Current.Buildings.Where(b => b.SettlementId == town.Id).ToArray();

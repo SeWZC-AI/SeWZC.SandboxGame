@@ -22,6 +22,9 @@ public sealed partial class WorldEngine
             using var tileUpdates = Current.Tiles.BeginUpdates();
             using var residentUpdates = Current.Residents.BeginUpdates();
             using var settlementUpdates = Current.Settlements.BeginUpdates();
+            using var buildingUpdates = Current.Buildings.BeginUpdates();
+            using var nationUpdates = Current.Nations.BeginUpdates();
+            using var armyUpdates = Current.Armies.BeginUpdates();
             Current.Tick++;
             Reindex();
             BeginKnowledgeQueries();
@@ -79,7 +82,7 @@ public sealed partial class WorldEngine
         try
         {
             var count = Current.Residents.Count;
-            if (count < 2048 || Environment.ProcessorCount <= 1 || OperatingSystem.IsBrowser())
+            if (count < 4096 || Environment.ProcessorCount <= 1 || OperatingSystem.IsBrowser())
                 foreach (var cursor in Current.Residents)
                     cursor.ApplyDay(Prepare(cursor).Advance(rules, tick));
             else
@@ -224,13 +227,20 @@ public sealed partial class WorldEngine
             }
 
             var adults = citizens.Where(p =>
-                    p.Age >= 18 && p.Age < (p.Race == RaceKind.Elf ? 100 : 55) && p.Hunger < 30 && p.SicknessTicks == 0)
+                    p.Age >= 18 && p.Age < (p.Race == RaceKind.Elf ? 100 : 55) && p.Health >= 60
+                    && p.Hunger < 30 && (!Current.Rules.Thirst || p.Thirst < 30) && p.SicknessTicks == 0)
                 .ToArray();
-            if (Current.Rules.Births && adults.Length >= 6 && citizens.Count < GetHousingCapacity(town.Id) &&
+            if (Current.Rules.Births && adults.Length >= 6 &&
                 town.Resources.Food > citizens.Count * 0.8 && Current.Residents.Count < MaxPopulation)
             {
-                var births = Math.Min(Math.Max(1, adults.Length / 28),
-                    Math.Min(GetHousingCapacity(town.Id) - citizens.Count, MaxPopulation - Current.Residents.Count));
+                var births = Math.Max(1, adults.Length / 28);
+                var housing = GetHousingCapacity(town.Id);
+                // 拥挤降低出生率，不能完全禁生而让整代成年人同时老去，连住房建成后也无人延续。
+                if (citizens.Count >= housing)
+                    births = Math.Max(1, births * housing / Math.Max(1, citizens.Count) / 4);
+                else
+                    births = Math.Min(births, housing - citizens.Count);
+                births = Math.Min(births, MaxPopulation - Current.Residents.Count);
                 for (var b = 0; b < births; b++)
                 {
                     var child = NewResident(town, adults[RandomInt(adults.Length)].Race, 0);

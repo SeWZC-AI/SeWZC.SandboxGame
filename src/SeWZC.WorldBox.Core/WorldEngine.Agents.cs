@@ -79,7 +79,7 @@ public sealed partial class WorldEngine
             // 补给先按实际位置交付，再用一次纯转换结算身体状态和日常需求。
             UpdateResidents();
             // 普通观察按居民序号错峰；非军队居民所在格起火时立即观察，实际取水和劳动自行核实目标。
-            var observationInterval = Math.Max(16, (Current.Residents.Count + 127) / 128);
+            var observationInterval = Math.Max(32, (Current.Residents.Count + 63) / 64);
             var observerIndex = 0;
             foreach (var person in Current.Residents)
             {
@@ -292,7 +292,7 @@ public sealed partial class WorldEngine
     {
         if (!(person.Hunger > 60 && person.Inventory.Food < .05)
             && !(Current.Rules.Thirst && person.Thirst > 80 && person.Inventory.Water < .025))
-            return 24;
+            return 48;
         var earliest = Current.Tick + 3;
         var phase = (earliest + person.Id) % 4;
         return 3 + (int)((4 - phase) % 4);
@@ -312,10 +312,17 @@ public sealed partial class WorldEngine
     {
         if (person.Profession == Profession.Miner && Distance(person.X, person.Y, home.X, home.Y) <= 1)
         {
+            var reserve = _localWorkQueriesActive
+                ? _productionReserves.GetValueOrDefault(home.Id)
+                : LocalDevelopmentReserve(home);
+            var stoneDeficit = Math.Max(0, Math.Max(80, reserve.Stone) - home.Resources.Stone);
+            var oreDeficit = Math.Max(0, Math.Max(30, reserve.Ore) - home.Resources.Ore);
             person.Agent = person.Agent with
             {
-                MaterialPriority = home.Resources.Ore < LocalDevelopmentReserve(home).Ore
+                MaterialPriority = home.Resources.Ore < reserve.Ore
                 ? ResourceKind.Ore
+                : stoneDeficit > oreDeficit
+                    ? ResourceKind.Stone
                 : HasResearch(home.Id, Advancement.Industry) && home.Resources.Coal < 8
                     ? ResourceKind.Coal
                     : HasResearch(home.Id, Advancement.Electrification) && home.Resources.Oil < 8
@@ -868,27 +875,43 @@ public sealed partial class WorldEngine
 
         if (profession == Profession.Miner)
         {
-            var best = tile.ResourceAmount > 0
-                ? Math.Min(1, TerrainRules.For(tile.Terrain).StoneYield + TerrainRules.For(tile.Terrain).OreYield)
-                : 0;
-            oreAvailable = TerrainRules.For(tile.Terrain).OreYield > 0;
-            var x = index % Current.Width;
-            var y = index / Current.Width;
-            foreach (var (dx, dy) in Directions)
-                if (InBounds(x + dx, y + dy) && Current.Tiles[Index(x + dx, y + dy)] is
-                    { Terrain: TerrainType.Mountain, ResourceAmount: > 0 } mountain)
-                {
-                    oreAvailable = true;
-                    best = Math.Max(best,
-                        Math.Min(1,
-                            TerrainRules.For(mountain.Terrain).StoneYield +
-                            TerrainRules.For(mountain.Terrain).OreYield));
-                }
-
-            return best;
+            var source = NaturalMiningSource(index, false);
+            oreAvailable = NaturalMiningSource(index, true) >= 0;
+            return source < 0 ? 0 : Math.Min(1, TerrainRules.For(Current.Tiles[source].Terrain).StoneYield
+                + TerrainRules.For(Current.Tiles[source].Terrain).OreYield);
         }
 
         return 0;
+    }
+
+    // 评分和实地开采使用同一露头；脚下少量石材不能遮住居民已看见且可在邻格开采的山体。
+    private int NaturalMiningSource(int index, bool requireOre)
+    {
+        var selected = -1;
+        var bestYield = 0d;
+        Consider(index);
+        foreach (var (dx, dy) in Directions)
+        {
+            var x = index % Current.Width + dx;
+            var y = index / Current.Width + dy;
+            if (InBounds(x, y) && Current.Tiles[Index(x, y)].Terrain == TerrainType.Mountain)
+                Consider(Index(x, y));
+        }
+        return selected;
+
+        void Consider(int candidate)
+        {
+            var source = Current.Tiles[candidate];
+            ref readonly var minerals = ref TerrainRules.For(source.Terrain);
+            if (source.FireTicks > 0 || source.ResourceAmount <= 0 || requireOre && minerals.OreYield <= 0)
+                return;
+            var yield = minerals.StoneYield + minerals.OreYield;
+            if (yield > bestYield)
+            {
+                selected = candidate;
+                bestYield = yield;
+            }
+        }
     }
 
     /// <summary>标记六格可见半径内的可达地格，并返回本次搜索的标记编号。</summary>
@@ -1211,18 +1234,12 @@ public sealed partial class WorldEngine
         }
         else
         {
-            if (tile.ResourceAmount <= 0 ||
-                TerrainRules.For(tile.Terrain).StoneYield + TerrainRules.For(tile.Terrain).OreYield <= 0)
-            {
-                foreach (var (dx, dy) in Directions)
-                    if (InBounds(person.X + dx, person.Y + dy)
-                        && Current.Tiles[Index(person.X + dx, person.Y + dy)] is
-                        { Terrain: TerrainType.Mountain, ResourceAmount: > 0 } mountain)
-                    {
-                        tile = mountain;
-                        break;
-                    }
-            }
+            var source = NaturalMiningSource(index, person.Agent.MaterialPriority == ResourceKind.Ore);
+            if (source < 0)
+                source = NaturalMiningSource(index, false);
+            if (source < 0)
+                return;
+            tile = Current.Tiles[source];
 
             var amount = Math.Min(tile.ResourceAmount,
                 0.24 *

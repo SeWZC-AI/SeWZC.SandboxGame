@@ -13,7 +13,7 @@ public sealed partial class WorldEngine
         if (profession == Profession.Miner)
         {
             return (tile.IsWalkable || tile.Terrain == TerrainType.Mountain)
-                   && (ResourceSiteYield(index, profession) >= .5 || KnownDepositWorkAvailable(index, town));
+                   && (ResourceSiteYield(index, profession) > 0 || KnownDepositWorkAvailable(index, town));
         }
 
         if (!tile.IsWalkable)

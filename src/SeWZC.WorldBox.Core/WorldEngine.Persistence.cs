@@ -1,5 +1,7 @@
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Unicode;
 
 namespace SeWZC.WorldBox.Core;
 
@@ -8,13 +10,17 @@ public sealed partial class WorldEngine
     /// <summary>未压缩存档的 UTF-8 字节数上限。</summary>
     public const int MaxSaveBytes = 64 * 1024 * 1024;
 
+    // 直接写入 UTF-8 中文，仍转义 HTML 敏感字符；无需为每个汉字写六字节的 Unicode 转义。
+    private static readonly WorldJsonContext StorageJson = new(
+        new JsonSerializerOptions(WorldJsonContext.Default.Options) { Encoder = JavaScriptEncoder.Create(UnicodeRanges.All) });
+
     private static readonly WorldJsonContext StreamingJson = new(
-        new JsonSerializerOptions(WorldJsonContext.Default.Options) { DefaultBufferSize = 16 * 1024 });
+        new JsonSerializerOptions(StorageJson.Options) { DefaultBufferSize = 16 * 1024 });
 
     /// <summary>同步把当前世界序列化为 JSON，用于存档或编辑恢复点。</summary>
     public string ExportJson()
     {
-        return JsonSerializer.Serialize(State, WorldJsonContext.Default.WorldState);
+        return JsonSerializer.Serialize(State, StorageJson.WorldState);
     }
 
     /// <summary>异步将当前世界导出为 JSON 字符串。</summary>
@@ -110,7 +116,7 @@ public sealed partial class WorldEngine
         }
 
         Require(state.FormatVersion == 20, "不支持该存档版本，请为本版新建世界。");
-        Require(state.SimulationVersion == 23, "不支持该模拟版本，请为本版新建世界。");
+        Require(state.SimulationVersion == 24, "不支持该模拟版本，请为本版新建世界。");
         Require(state.Width is >= 32 and <= 256 && state.Height is >= 32 and <= 256, "地图尺寸超出范围。");
         Require(
             state.Tick is >= 0 and <= 120_000_000 && state.RandomState != 0 && state.NextId is > 0 and < 2_000_000_000,

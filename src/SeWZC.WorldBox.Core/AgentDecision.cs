@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>居民一次行动决策的记录。</summary>
@@ -16,11 +18,14 @@ public sealed record AgentDecision
     public string Reason { get; init; } = "";
 
     /// <summary>目标评分采用的信息依据 ID。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int EvidenceFactId { get; init; }
 
     /// <summary>依据的信息最初被观察的模拟日序。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long KnowledgeObservedTick { get; init; }
 
     /// <summary>该信息副本的提供者居民 ID。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int SourceResidentId { get; init; }
 }

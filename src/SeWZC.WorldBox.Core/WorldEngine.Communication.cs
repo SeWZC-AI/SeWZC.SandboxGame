@@ -248,8 +248,8 @@ public sealed partial class WorldEngine
         }
 
         Span<int> nearby = stackalloc int[29];
-        // 小世界保留十二日交谈周期；大群体错峰，每日最多启动约一百二十八次普通交谈。
-        var conversationInterval = Math.Max(12, (Current.Residents.Count + 127) / 128);
+        // 小世界保留十二日交谈周期；大群体错峰，每日最多启动约六十四次普通交谈。
+        var conversationInterval = Math.Max(12, (Current.Residents.Count + 63) / 64);
         for (var senderIndex = 0; senderIndex < Current.Residents.Count; senderIndex++)
         {
             var sender = Current.Residents[senderIndex];

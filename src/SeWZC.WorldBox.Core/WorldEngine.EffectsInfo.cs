@@ -135,7 +135,7 @@ public sealed partial class WorldEngine
             BuildingKind.Well => $"每日可打水量 {WellWaterYield(ground):0.###}"
                                  + "\n每次取水至多 1，所有取水者共享水井日额度，装入随身库存后运回",
             BuildingKind.Granary => $"本聚落居民在中心 1 格内返乡休息恢复 ×{1 + .1 * building.Level:0.00}；多个粮仓取最高倍率",
-            BuildingKind.Housing => $"提供 {20 * building.Level} 人住房",
+            BuildingKind.Housing => $"提供 {HousingCapacityPerLevel * building.Level} 人住房",
             BuildingKind.Market => "值守时，集市 3 格内居民可与相距 3 格的人交换已有消息；每次值守消耗仓库粮食 0.01",
             BuildingKind.Watchtower => $"塔 2 格内的同聚落居民，观察火灾范围 3 至 {3 + building.Level} 格；无需工作人员",
             BuildingKind.AssemblyHall => $"人类值守，每单位劳动缓解 2 格内同聚落居民社交需求 {factor:0.00}；3 格内居民交谈距离增至 3 格",
@@ -200,7 +200,7 @@ public sealed partial class WorldEngine
                 BuildingKind.TownCenter => $"返乡休息恢复 ×{1 + building.Level * .25:0.00}",
                 BuildingKind.Well => "岗位增加 1；仍共享水井每日可打水额度",
                 BuildingKind.Granary => $"家园休息恢复 ×{1 + .1 * next:0.00}",
-                BuildingKind.Housing => $"住房容量 {20 * next} 人",
+                BuildingKind.Housing => $"住房容量 {HousingCapacityPerLevel * next} 人",
                 BuildingKind.Market => "岗位增加 1；交谈范围仍为 3 格",
                 BuildingKind.Watchtower => $"观察火灾范围 {3 + building.Level} 至 {3 + next} 格",
                 BuildingKind.AssemblyHall => $"每单位劳动缓解社交需求 {1 + building.Level * .25:0.00}，岗位增加 1",

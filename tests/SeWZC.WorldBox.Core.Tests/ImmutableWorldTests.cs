@@ -472,7 +472,7 @@ public sealed class ImmutableWorldTests
         Assert.Same(before.Tiles, restored.State.Tiles);
         Assert.Same(before.Residents, restored.State.Residents);
         fixture.Engine.Step();
-        Assert.Equal(saved, restored.ExportJson());
+        Assert.Equal(saved, Serialize(restored.State));
         restored.Step();
         Assert.Equal(fixture.Engine.ExportJson(), restored.ExportJson());
         Assert.Equal(saved, Serialize(before));
