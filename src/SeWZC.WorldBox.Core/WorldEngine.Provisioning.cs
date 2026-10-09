@@ -258,13 +258,6 @@ public sealed partial class WorldEngine
         return amount;
     }
 
-    // 日常补水可直接作为需求转换的输入；装瓶取水才另行更新背包。
-    private double WithdrawWater(Resident person, int source, double wanted)
-    {
-        return WithdrawWater(person.X, person.Y, person.MoveStartedTick, person.MoveDurationTicks,
-            person.Inventory.Water, source, wanted);
-    }
-
     private double WithdrawWater(int x, int y, long moveStarted, int moveDuration, double carriedWater, int source,
         double wanted)
     {

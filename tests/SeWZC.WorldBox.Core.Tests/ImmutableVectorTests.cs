@@ -120,9 +120,12 @@ public sealed class ImmutableVectorTests
     [Theory]
     [InlineData(0)]
     [InlineData(8)]
+    [InlineData(32)]
     [InlineData(64)]
     [InlineData(512)]
+    [InlineData(1024)]
     [InlineData(4096)]
+    [InlineData(32768)]
     public void Append_preserves_order_across_tree_boundaries(int count)
     {
         var input = Enumerable.Range(0, count).Select(id => new Item(id)).ToArray();

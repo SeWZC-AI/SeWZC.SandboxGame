@@ -119,6 +119,8 @@ public sealed partial class WorldEngine
         DailyResidentInput Prepare(ResidentCursor cursor)
         {
             InitializeAgent(cursor);
+            // 返仓只转换库存、认知及出行方式；将前两项直接交给纯结算，避免先冻结一份中间居民。
+            var person = cursor.Value;
             var inventory = cursor.Inventory;
             if (cursor.Health > 0 && cursor.ArmyId == 0
                                   && _settlements.TryGetValue(cursor.SettlementId, out var home)
@@ -132,7 +134,6 @@ public sealed partial class WorldEngine
                 inventory = ProvisionAtHome(cursor, home);
             }
 
-            var person = cursor.Value;
             var age = rules.Aging ? Math.Min(1000, person.Age + 1d / 120) : person.Age;
             var profession = person.Profession == Profession.Child && age >= 14
                 ? AssignProfession()
@@ -164,11 +165,13 @@ public sealed partial class WorldEngine
             var waterUse = WaterUse(age, tile);
             var water = hasHome && person.ArmyId == 0 && person.Health > 0 && rules.Thirst
                         && inventory.Water < waterUse
-                ? WithdrawWater(person, Index(person.X, person.Y), waterUse - inventory.Water)
+                ? WithdrawWater(person.X, person.Y, person.MoveStartedTick, person.MoveDurationTicks,
+                    cursor.Inventory.Water, Index(person.X, person.Y), waterUse - inventory.Water)
                 : 0;
             return new DailyResidentInput
             {
                 Person = person,
+                Agent = cursor.Agent,
                 Inventory = inventory,
                 Tile = tile.Value,
                 Profession = profession,
