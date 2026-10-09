@@ -92,18 +92,14 @@ public sealed partial class WorldEngine
                 if (_dailyResidentInputs.Length < count)
                 {
                     _dailyResidentInputs = new DailyResidentInput[count];
-                    _dailyResidentOutputs = new Resident.DailyState[count];
                 }
 
                 for (var index = 0; index < count; index++)
                     _dailyResidentInputs[index] = Prepare(Current.Residents[index]);
-                // 保留整批输入的同时刻语义；短小身体转换顺序计算，避免每 tick 调度工作线程。
+                // 整批输入已固定；纯身体转换直接按顺序提交，不必暂存另一份输出数组。
                 for (var index = 0; index < count; index++)
-                    _dailyResidentOutputs[index] = _dailyResidentInputs[index].Advance(rules, tick);
-                foreach (var cursor in Current.Residents)
-                    cursor.ApplyDay(_dailyResidentOutputs[cursor.Position]);
+                    Current.Residents[index].ApplyDay(_dailyResidentInputs[index].Advance(rules, tick));
                 Array.Clear(_dailyResidentInputs, 0, count);
-                Array.Clear(_dailyResidentOutputs, 0, count);
             }
         }
         finally
@@ -191,6 +187,7 @@ public sealed partial class WorldEngine
 
     private void GrowSettlements()
     {
+        HashSet<string>? usedNames = null;
         foreach (var town in Current.Settlements.ToArray())
         {
             var citizens = _citizens[town.Id];
@@ -258,9 +255,11 @@ public sealed partial class WorldEngine
                         remaining -= supplied;
                     }
 
-                    var child = NewResident(town, adults[RandomInt(adults.Length)].Race, 0);
+                    var child = NewResident(town, adults[RandomInt(adults.Length)].Race, 0,
+                        usedNames ??= CollectResidentNames());
                     child.Inventory = new ResourceStock { Food = .6 - remaining };
                     Current.Residents.Add(child);
+                    usedNames.Add(child.Name);
                     citizens.Add(child);
                 }
 

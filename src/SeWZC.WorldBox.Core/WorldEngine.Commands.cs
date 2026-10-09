@@ -156,13 +156,15 @@ public sealed partial class WorldEngine
                     spawnSites.Add(next);
             }
 
+        var usedNames = CollectResidentNames();
         for (var i = 0; i < count; i++)
         {
-            var person = NewResident(settlement, race, 16 + RandomInt(28));
+            var person = NewResident(settlement, race, 16 + RandomInt(28), usedNames);
             var position = spawnSites[RandomInt(spawnSites.Count)];
             person.X = person.FromX = position % Current.Width;
             person.Y = person.FromY = position / Current.Width;
             Current.Residents.Add(person);
+            usedNames.Add(person.Name);
             _citizens[settlement.Id].Add(person);
             // 开局口粮统一分配，避免职业和居民处理顺序造成不公平的库存差异。
             var food = Current.Rules.Hunger ? Math.Min(settlement.Resources.Food, 1) : 0;
@@ -179,13 +181,14 @@ public sealed partial class WorldEngine
         RefreshTotals();
     }
 
-    private ResidentCursor NewResident(SettlementCursor settlement, RaceKind race, double age)
+    private ResidentCursor NewResident(SettlementCursor settlement, RaceKind race, double age,
+        IReadOnlySet<string> usedNames)
     {
         var id = NewId();
         return new ResidentCursor(new Resident
         {
             Id = id,
-            Name = NewResidentName(id, race),
+            Name = NewResidentName(id, race, Current.Seed, usedNames),
             Race = race,
             X = settlement.X,
             Y = settlement.Y,

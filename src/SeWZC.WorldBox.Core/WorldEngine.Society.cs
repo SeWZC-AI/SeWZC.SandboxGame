@@ -516,8 +516,7 @@ public sealed partial class WorldEngine
             BuildingKind.Workshop => (resident.Agent.Goal.PlayerDirected ||
                                       LocalMaterialsNeeded(resident, RequireTown(building.SettlementId))) &&
                                      FindWorkshopResource(building, resident.Profession) >= 0,
-            BuildingKind.Academy => Current.Society.Research.Any(r =>
-                r.SettlementId == building.SettlementId && r.ActiveProject is not null),
+            BuildingKind.Academy => HasActiveResearchProject(Current.Society.Research, building.SettlementId),
             BuildingKind.ArcaneSanctum => Current.Society.MagicEnabled && resident.MagicTalent >= 25 &&
                                           resident.MagicTraining < 100,
             BuildingKind.Infirmary => FindLocalWorkPatient(building, true) is not null,
