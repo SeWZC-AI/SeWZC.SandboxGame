@@ -16,6 +16,7 @@ namespace SeWZC.WorldBox.UI;
 public sealed partial class MainView : UserControl
 {
     private const double SimulationTickSeconds = .2;
+    private const int UnlimitedSpeed = 0;
     private static readonly IBrush Ink = Brush.Parse("#111E29");
     private static readonly IBrush Panel = Brush.Parse("#172632");
     private static readonly IBrush Line = Brush.Parse("#2A3C46");
@@ -457,16 +458,26 @@ public sealed partial class MainView : UserControl
         _play.Foreground = Ink;
         _play.Width = 64;
         timeControls.Children.Add(_play);
-        foreach (var speed in new[] { 1, 2, 5 })
+        foreach (var speed in new[] { 1, 2, 5, UnlimitedSpeed })
         {
-            var b = Named(Button($"{speed}倍", () =>
+            var unlimited = speed == UnlimitedSpeed;
+            var width = unlimited ? 56 : 42;
+            var b = Named(Button(unlimited ? "不限制" : $"{speed}倍", () =>
                 {
+                    if (_speed == UnlimitedSpeed || unlimited)
+                    {
+                        _accumulator = 0;
+                        _previousTime = _clock.Elapsed.TotalSeconds;
+                    }
+
                     _speed = speed;
-                    _map.SimulationTickDurationSeconds = SimulationTickSeconds / speed;
+                    _map.SimulationTickDurationSeconds = unlimited ? .016 : SimulationTickSeconds / speed;
                     UpdateSpeedButtons();
-                }, minWidth: 42), $"time-speed-{speed}");
-            b.Width = 42;
+                }, unlimited ? "按设备能力尽快推进模拟" : null),
+                unlimited ? "time-speed-unlimited" : $"time-speed-{speed}");
+            b.Width = width;
             b.Padding = new Thickness(3, 3);
+            b.Margin = new Thickness(0);
             _speeds.Add((speed, b));
             timeControls.Children.Add(b);
         }
@@ -577,8 +588,9 @@ public sealed partial class MainView : UserControl
         if (!_ready)
             return;
         var hidden = App.Storage?.IsBackground == true;
+        var unlimited = _speed == UnlimitedSpeed;
         _map.IsSimulationPaused = WorldTimeStopped;
-        _map.SimulationTickDurationSeconds = SimulationTickSeconds / _speed;
+        _map.SimulationTickDurationSeconds = unlimited ? .016 : SimulationTickSeconds / _speed;
         if (hidden)
         {
             _accumulator = 0;
@@ -595,22 +607,24 @@ public sealed partial class MainView : UserControl
         _wasBackground = false;
         if (!WorldTimeStopped)
         {
-            // 五倍档最多保留八日欠账，让偶发慢帧之后仍能追回真实模拟步。
-            _accumulator = Math.Min((_speed == 5 ? 8 : 4) * SimulationTickSeconds, _accumulator + elapsed * _speed);
+            // 五倍档最多保留八 tick 欠账，让偶发慢帧之后仍能追回真实模拟步。
+            _accumulator = unlimited ? 0 : Math.Min((_speed == 5 ? 8 : 4) * SimulationTickSeconds,
+                _accumulator + elapsed * _speed);
             var work = Stopwatch.GetTimestamp();
             var count = 0;
-            // 五倍档为补算及地图预留 64 ms，仍最多推进四个完整 tick并让出界面线程。
-            var budgetMilliseconds = _speed == 1 ? 12 : _speed == 5 ? 64 : 48;
-            while (_accumulator >= SimulationTickSeconds && count < 4)
+            // 五倍档和不限速档预留 64 ms；不限速不等待 tick 截止时间，也不限制批次步数，预算后让出界面线程。
+            var budgetMilliseconds = _speed == 1 ? 12 : _speed == 5 || unlimited ? 64 : 48;
+            while ((unlimited || _accumulator >= SimulationTickSeconds) && (unlimited || count < 4))
             {
-                // 追加模拟日前先预留上一轮地图刷新耗时；首日再贵也须推进，避免世界停滞。
+                // 追加模拟步前先预留上一轮地图刷新耗时；首步再贵也须推进，避免世界停滞。
                 if (count > 0 && Stopwatch.GetElapsedTime(work).TotalMilliseconds
                     + _lastStepMilliseconds + _lastMapRefreshMilliseconds > budgetMilliseconds)
                     break;
                 var stepStarted = Stopwatch.GetTimestamp();
                 _engine.Step();
                 _simulationDays.Record(Stopwatch.GetTimestamp());
-                _accumulator -= SimulationTickSeconds;
+                if (!unlimited)
+                    _accumulator -= SimulationTickSeconds;
                 count++;
                 _lastStepMilliseconds = Stopwatch.GetElapsedTime(stepStarted).TotalMilliseconds;
                 if (Stopwatch.GetElapsedTime(work).TotalMilliseconds + _lastMapRefreshMilliseconds >
@@ -622,7 +636,7 @@ public sealed partial class MainView : UserControl
             {
                 _map.SimulationTickFraction = Math.Clamp(_accumulator / SimulationTickSeconds, 0, .999999);
                 var mapStarted = Stopwatch.GetTimestamp();
-                _map.RefreshWorld(deferAnimation: _speed == 5);
+                _map.RefreshWorld(deferAnimation: _speed == 5 || unlimited);
                 _lastMapRefreshMilliseconds = Stopwatch.GetElapsedTime(mapStarted).TotalMilliseconds;
             }
 
@@ -652,10 +666,11 @@ public sealed partial class MainView : UserControl
 
     private void ScheduleNextTick()
     {
-        var idle = !_ready || WorldTimeStopped;
+        var idle = !_ready || WorldTimeStopped || _wasBackground;
         // 计时器在回调结束后才等待，须把回调耗时计入下日截止时间，避免重步骤额外叠加固定等待。
         var workMilliseconds = (_clock.Elapsed.TotalSeconds - _previousTime) * 1000;
-        var delay = idle ? 50 : Math.Clamp((SimulationTickSeconds - _accumulator) * 1000 / _speed - workMilliseconds, 1, 50);
+        var delay = idle ? 50 : _speed == UnlimitedSpeed ? 1
+            : Math.Clamp((SimulationTickSeconds - _accumulator) * 1000 / _speed - workMilliseconds, 1, 50);
         _timer.Interval = TimeSpan.FromMilliseconds(delay);
     }
 
@@ -751,6 +766,10 @@ public sealed partial class MainView : UserControl
         _mapPickBar.IsVisible = _mapPick is not null;
         _toolHint.IsVisible = Bounds.Width > 600;
         _timeStatus.IsVisible = Bounds.Width > 760;
+        foreach (var (speed, button) in _speeds)
+            button.Width = speed == UnlimitedSpeed
+                ? Bounds.Width < 420 ? 50 : 56
+                : Bounds.Width < 420 ? 34 : 42;
         UpdateToolBarSize();
         UpdateModalBounds();
         RefreshSelectionSummary();
