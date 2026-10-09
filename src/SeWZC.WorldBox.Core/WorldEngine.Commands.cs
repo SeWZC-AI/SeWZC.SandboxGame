@@ -232,7 +232,7 @@ public sealed partial class WorldEngine
             var tile = Current.Tiles[index];
             if (kind == DisasterKind.Drought && tile.IsWalkable)
             {
-                tile.DroughtTicks = 150;
+                tile.DroughtTicks = 5 * SimulationTime.TicksPerMonth;
                 _dryTiles.Add(index);
             }
         }
@@ -289,7 +289,7 @@ public sealed partial class WorldEngine
                          .OrderBy(r => Distance(r.X, r.Y, x, y)).ThenBy(r => r.Id)
                          .Take(Math.Clamp(1 + radius / 10, 1, 3)))
             {
-                resident.SicknessTicks = 72 + RandomInt(25);
+                resident.SicknessTicks = 3 * SimulationTime.TicksPerDay + RandomInt(SimulationTime.TicksPerDay + 1);
                 EmitVisual(WorldVisualKind.Plague, resident.X, resident.Y);
             }
         }

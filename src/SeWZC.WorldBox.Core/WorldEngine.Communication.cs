@@ -51,7 +51,7 @@ public sealed partial class WorldEngine
                                     !camp.FoundationPending
                                     && Distance(person.X, person.Y, camp.X, camp.Y) >= MinimumSettlementDistance - 6
                                     && !person.Agent.Memory.Any(f =>
-                                        f.Kind == AgentFactKind.FoundingSite && Current.Tick - f.ObservedTick < 120))
+                                        f.Kind == AgentFactKind.FoundingSite && Current.Tick - f.ObservedTick < SimulationTime.TicksPerYear))
         {
             var site = Circle(person.X, person.Y, 3).Where(i => RaceTerrainRules.CanWalk(Current.Tiles[i], person.Race)
                                                                 && !IsWaterTerrain(Current.Tiles[i].Terrain) &&
@@ -248,14 +248,14 @@ public sealed partial class WorldEngine
         }
 
         Span<int> nearby = stackalloc int[29];
-        // 小世界保留十二日交谈周期；大群体错峰，每日最多启动约六十四次普通交谈。
+        // 小世界保留十二 tick 交谈周期；大群体错峰，每 tick 最多启动约六十四次普通交谈。
         var conversationInterval = Math.Max(12, (Current.Residents.Count + 63) / 64);
         for (var senderIndex = 0; senderIndex < Current.Residents.Count; senderIndex++)
         {
             var sender = Current.Residents[senderIndex];
             if ((Current.Tick + senderIndex) % conversationInterval != 0 || Current.Tick -
                                                                          sender.Agent.LastConversationTick < 6
-                                                                         || sender.Health <= 0)
+                                                                         || sender.Health <= 0 || sender.Activity == ResidentActivity.Sleeping)
                 continue;
             var conversationRadius = 2;
             foreach (var building in Current.Buildings)
@@ -300,7 +300,7 @@ public sealed partial class WorldEngine
                 break;
             }
 
-            if (recipient is null)
+            if (recipient is null || recipient.Activity == ResidentActivity.Sleeping)
                 continue;
             var facts = SelectMessageFacts(sender, false);
             if (facts.Count > 0 && Current.PendingMessages.Count < MaxPopulation * 2)
@@ -419,7 +419,7 @@ public sealed partial class WorldEngine
         var agent = person.Agent;
         if (person.Age < 16 || Current.Tick < agent.MissionRetryTick)
             return;
-        if (agent.DestinationSettlementId != 0 && Current.Tick - agent.MissionStartedTick < 360)
+        if (agent.DestinationSettlementId != 0 && Current.Tick - agent.MissionStartedTick < 3 * SimulationTime.TicksPerYear)
         {
             choices.Add(new GoalChoice(agent.Goal.Kind, agent.Goal.TargetX, agent.Goal.TargetY, 72,
                 "继续完成正在亲自递送的任务", agent.CarriedMessages.FirstOrDefault(), agent.DestinationSettlementId));
@@ -429,7 +429,7 @@ public sealed partial class WorldEngine
         AgentFact? relief = null;
         foreach (var fact in agent.Memory)
             if (fact.Kind == AgentFactKind.ReliefRequest && fact.Value >= 35 && fact.ReliabilityAt(Current.Tick) > 0.25
-                && Current.Tick - fact.ObservedTick < 180 &&
+                && Current.Tick - fact.ObservedTick < 2 * SimulationTime.TicksPerMonth &&
                 (relief is null || fact.ObservedTick > relief.ObservedTick))
                 relief = fact;
         if (relief is not null)
@@ -456,7 +456,7 @@ public sealed partial class WorldEngine
             foreach (var fact in agent.Memory)
             {
                 if (fact.Kind != AgentFactKind.SettlementLocation || fact.SubjectId == home.Id ||
-                    Current.Tick - fact.ObservedTick >= 1200)
+                    Current.Tick - fact.ObservedTick >= 10 * SimulationTime.TicksPerYear)
                     continue;
                 var distance = Distance(person.X, person.Y, fact.X, fact.Y);
                 var at = 0;
@@ -510,7 +510,7 @@ public sealed partial class WorldEngine
             if (addresses.Count == 0 && person.Inventory.Food >= 2 && agent.Fatigue < 35
                 && Distance(person.X, person.Y, home.X, home.Y) < 18)
             {
-                var heading = Directions[(person.Id + (int)(Current.Tick / 360)) % Directions.Length];
+                var heading = Directions[(person.Id + (int)(Current.Tick / (3 * SimulationTime.TicksPerYear))) % Directions.Length];
                 var frontier = Circle(person.X, person.Y, 6)
                     .Where(i => Current.Tiles[i].IsWalkable && Current.Tiles[i].FireTicks == 0)
                     .OrderByDescending(i =>
@@ -548,7 +548,7 @@ public sealed partial class WorldEngine
         var goal = person.Agent.Goal;
         var address = person.Agent.Memory.FirstOrDefault(f =>
             f.Kind == AgentFactKind.SettlementLocation && f.SubjectId == person.Agent.DestinationSettlementId);
-        if (address is null || Current.Tick - person.Agent.MissionStartedTick >= 360)
+        if (address is null || Current.Tick - person.Agent.MissionStartedTick >= 3 * SimulationTime.TicksPerYear)
         {
             FinishAgentMission(person, address is null ? "缺少可靠目的地地址，暂缓递送" : "长时间未能到达，暂缓递送并返乡补给");
             return;

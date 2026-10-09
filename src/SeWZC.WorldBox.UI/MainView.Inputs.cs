@@ -153,16 +153,16 @@ public sealed partial class MainView
         panel.Children.Add(Text(label, 12, Muted));
         var ratio = label.EndsWith("0–1") || label.Contains("0 至 1");
         var impact = label.Contains("−1");
-        var integer = label.Contains("日") || label.Contains("次数") || label.Contains("编号") || label.EndsWith(" X") ||
+        var integer = label.Contains("tick 序") || label.Contains("次数") || label.Contains("编号") || label.EndsWith(" X") ||
                       label.EndsWith(" Y");
         var maximum = maximumOverride ?? (ratio || impact ? 1
             : label.Contains("0–100") || label is "疲劳" or "社交需求" or "魔法天赋" or "魔法训练" ? 100
             : label is "年龄" or "魔力" ? 1000
-            : label.StartsWith("疫病") ? 10000
+            : label.StartsWith("疫病") ? 10000d / SimulationTime.TicksPerDay
             : label.EndsWith(" X") ? _engine.State.Width - 1
             : label.EndsWith(" Y") ? _engine.State.Height - 1
-            : label.Contains("保持日数") ? 100_000
-            : label.Contains("日序") ? _engine.State.Tick : 1_000_000);
+            : label.Contains("保持日数") ? 100_000d / SimulationTime.TicksPerDay
+            : label.Contains("tick 序") ? _engine.State.Tick : 1_000_000);
         var box = Named(new NumericUpDown
         {
             Minimum = impact ? -1 : 0,

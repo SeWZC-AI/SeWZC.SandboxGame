@@ -5,11 +5,11 @@ public sealed class AgentFactTests
 {
     /// <summary>观察时间决定衰减，转述时更新获知时间不能恢复信息时效。</summary>
     [Theory]
-    [InlineData(AgentFactKind.FoodSupply, 180)]
-    [InlineData(AgentFactKind.Danger, 24)]
-    [InlineData(AgentFactKind.SettlementLocation, 1200)]
-    [InlineData(AgentFactKind.ReliefRequest, 180)]
-    [InlineData(AgentFactKind.Research, 600)]
+    [InlineData(AgentFactKind.FoodSupply, 2 * SimulationTime.TicksPerMonth)]
+    [InlineData(AgentFactKind.Danger, SimulationTime.TicksPerDay)]
+    [InlineData(AgentFactKind.SettlementLocation, 10 * SimulationTime.TicksPerYear)]
+    [InlineData(AgentFactKind.ReliefRequest, 2 * SimulationTime.TicksPerMonth)]
+    [InlineData(AgentFactKind.Research, 5 * SimulationTime.TicksPerYear)]
     public void Relaying_does_not_reset_original_observation_lifetime(AgentFactKind kind, long lifetime)
     {
         var observed = new AgentFact { Kind = kind, ObservedTick = 12, LearnedTick = 12, Confidence = 0.8 };

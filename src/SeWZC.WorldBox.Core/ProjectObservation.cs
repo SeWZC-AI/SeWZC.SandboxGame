@@ -27,7 +27,7 @@ public sealed record ProjectObservation
     }
 
     /// <summary>按四日间隔采样；速率变化时丢弃旧样本，最多保留七条。</summary>
-    /// <param name="tick">当前模拟日序。</param>
+    /// <param name="tick">当前模拟 tick 序。</param>
     /// <param name="rate">采样采用的发展速率倍率。</param>
     /// <param name="progress">项目累计工作量。</param>
     public ProjectObservation Observe(long tick, double rate, double progress)

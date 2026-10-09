@@ -152,7 +152,7 @@ public sealed class WorkReservationTests
         var victim = otherResidents[0];
         victim.Replace(victim.Value with
         {
-            Health = 1,
+            Health = .01,
             Armor = 0,
             PersonalWard = 0,
             Agent = victim.Agent with
@@ -171,7 +171,7 @@ public sealed class WorkReservationTests
         var replacement = otherResidents[1];
         replacement.Health = 50;
         replacement.Agent = replacement.Agent with { NextThinkTick = 0 };
-        fixture.Engine.Current.Tick = (3 - replacement.Id % 4 + 4) % 4;
+        fixture.Engine.Current.Tick = 8 + (3 - replacement.Id % 4 + 4) % 4;
 
         fixture.Engine.Step();
 
@@ -180,7 +180,7 @@ public sealed class WorkReservationTests
         Assert.Equal(DeathCause.Magic, deceased.DeathCause);
         Assert.Equal(0, deceased.Health);
         Assert.Contains(replacement.Id, clinic.Workers);
-        Assert.True(replacement.Health > 50.15);
+        Assert.True(replacement.Health > 50 + .15 / SimulationTime.TicksPerDay);
     }
 
     /// <summary>运回产物时释放设施预约，后续居民可在同日接手仍空闲的工位。</summary>
@@ -269,7 +269,7 @@ public sealed class WorkReservationTests
         };
         var replacement = fixture.Engine.Current.Residents.Single(person => person.Id != fixture.ResidentId);
         replacement.Agent = replacement.Agent with { NextThinkTick = 0 };
-        fixture.Engine.Current.Tick = (3 - replacement.Id % 4 + 4) % 4;
+        fixture.Engine.Current.Tick = 8 + (3 - replacement.Id % 4 + 4) % 4;
 
         fixture.Engine.Step();
 

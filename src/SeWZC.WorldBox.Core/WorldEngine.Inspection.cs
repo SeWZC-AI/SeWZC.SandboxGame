@@ -79,7 +79,7 @@ public sealed partial class WorldEngine
             BuildingKind.AssemblyHall => "人类议事厅：当地有成年的人类可建。人类到场携带粮水值守，为两格内居民缓解社交需求，并为附近居民提供三格当面交流范围。",
             BuildingKind.TradeGuild => "人类商贸公会：人类携带粮水到场值守，为三格内本地商人提高行走速度 15%，并提供三格当面交流范围。升级提高服务效率。",
             BuildingKind.SacredGrove => "精灵圣林：保留森林，需要奥术基础和开放魔法规则。精灵携带粮水到场训练，每单位劳动提高训练 0.1、恢复魔力 0.3。",
-            BuildingKind.HerbGarden => "精灵草药园：精灵携带粮水到场，为附近实际患者治疗，每单位劳动恢复生命 0.6，并减少一日病程。",
+            BuildingKind.HerbGarden => "精灵草药园：精灵携带粮水到场，为附近实际患者治疗，每单位劳动恢复生命 0.6，每次治疗减少一日病程。",
             BuildingKind.DwarvenForge => "矮人锻炉：当地有成年矮人且掌握工业冶炼与前置知识。矮人实际从仓库领取木材 2、矿石 2，到场每批锻造合金 1.5，再亲自返仓。",
             BuildingKind.MiningHall => "矮人矿业工坊：矮人携带口粮到场，每单位劳动采收相邻真实石矿储量 0.3，携带石材和矿石返仓。",
             BuildingKind.HuntingCamp => "兽人狩猎营：兽人携带口粮到场，每单位劳动捕获本格食草动物 0.25，食物按猎物体型折算，实际减少动物并携带返仓。",
@@ -111,7 +111,7 @@ public sealed partial class WorldEngine
         if (b.IsUpgrading)
             return "升级施工中，暂停原有功能";
         if (tile.FireTicks > 0)
-            return $"暂停：所在地着火，剩余 {tile.FireTicks} 日；可安排居民灭火";
+            return $"暂停：所在地着火，剩余 {tile.FireTicks / (double)SimulationTime.TicksPerDay:0.##} 日；可安排居民灭火";
         if (!BuildingTerrainValid(b.Kind, tile))
             return "暂停：地形已改变，不再适合此设施；请恢复原地形或换址建设";
         if (b.Kind == BuildingKind.Well && WellWaterYield(tile) <= 0)

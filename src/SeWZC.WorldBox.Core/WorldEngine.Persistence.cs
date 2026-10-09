@@ -115,8 +115,8 @@ public sealed partial class WorldEngine
             return PositionValid(x, y) && state.Tiles[y * state.Width + x].IsWalkable;
         }
 
-        Require(state.FormatVersion == 20, "不支持该存档版本，请为本版新建世界。");
-        Require(state.SimulationVersion == 24, "不支持该模拟版本，请为本版新建世界。");
+        Require(state.FormatVersion == 21, "不支持该存档版本，请为本版新建世界。");
+        Require(state.SimulationVersion == 25, "不支持该模拟版本，请为本版新建世界。");
         Require(state.Width is >= 32 and <= 256 && state.Height is >= 32 and <= 256, "地图尺寸超出范围。");
         Require(
             state.Tick is >= 0 and <= 120_000_000 && state.RandomState != 0 && state.NextId is > 0 and < 2_000_000_000,
@@ -172,7 +172,7 @@ public sealed partial class WorldEngine
                 Enum.IsDefined(resident.Activity) && FiniteRange(resident.Age, 1000) &&
                 FiniteRange(resident.Health, 100) && FiniteRange(resident.Hunger, 100) &&
                 resident.SicknessTicks is >= 0 and <= 10_000 && resident.DiseaseImmuneUntilTick >= 0 &&
-                resident.DiseaseImmuneUntilTick <= state.Tick + 180, "居民数据无效。");
+                resident.DiseaseImmuneUntilTick <= state.Tick + 6 * SimulationTime.TicksPerMonth, "居民数据无效。");
         var nations = state.Nations!.ToDictionary(n => n.Id);
         var towns = state.Settlements!.ToDictionary(s => s.Id);
         var armies = state.Armies!.ToDictionary(a => a.Id);

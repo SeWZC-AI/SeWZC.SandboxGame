@@ -126,17 +126,44 @@ public sealed class ProductionTests
 
     /// <summary>同一天重复工作不能重复结算加工。</summary>
     [Fact]
-    public void Worker_can_produce_only_once_per_tick()
+    public void Worker_can_produce_only_once_per_day()
     {
         var (fixture, foundry) = FoundryWorld();
         fixture.Resident.Inventory = fixture.Resident.Inventory with { Coal = 2, Ore = 4 };
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
+        fixture.Engine.Current.Tick += 4;
+        Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
 
         Assert.Equal(1, fixture.Resident.Inventory.Alloy);
         Assert.Equal(1, fixture.Resident.Inventory.Coal);
         Assert.Equal(2, fixture.Resident.Inventory.Ore);
+        Assert.Equal(1, foundry.ProductionBatches);
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerDay;
+        Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
+        Assert.Equal(2, foundry.ProductionBatches);
+    }
+
+    /// <summary>日内换班不会突破加工设施的当日批次工位上限。</summary>
+    [Fact]
+    public void Production_capacity_is_shared_across_ticks_of_the_same_day()
+    {
+        var (fixture, foundry) = FoundryWorld();
+        foundry.WorkSlots = 1;
+        Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
+        fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
+        var other = fixture.Engine.Current.Residents.Single(p => p.Id != fixture.ResidentId);
+        other.Replace(fixture.Resident.Value with
+        {
+            Id = other.Id,
+            Inventory = new ResourceStock { Coal = 1, Ore = 2 },
+        });
+        fixture.Engine.Current.Tick += 4;
+
+        Assert.False(fixture.Engine.TryWorkAtBuilding(other));
+
+        Assert.Single(foundry.Workers);
         Assert.Equal(1, foundry.ProductionBatches);
     }
 }

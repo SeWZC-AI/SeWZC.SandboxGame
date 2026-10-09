@@ -21,7 +21,7 @@ public sealed record MilitaryRecord
     /// <summary>机构军令指定的纵向地格坐标。</summary>
     public int TargetY { get; init; }
 
-    /// <summary>本轮战役军令发布的模拟日序。</summary>
+    /// <summary>本轮战役军令发布的模拟 tick 序。</summary>
     public long StartedTick { get; init; }
 
     /// <summary>最近一次已经执行动员的军令信息 ID。</summary>

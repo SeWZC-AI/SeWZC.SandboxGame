@@ -11,7 +11,7 @@ public readonly record struct WorldState
 
     /// <summary>存档数据结构版本，用于拒绝不兼容的格式。</summary>
     [JsonRequired]
-    public int FormatVersion { get; init; } = 20;
+    public int FormatVersion { get; init; } = 21;
 
     /// <summary>生成世界时使用的整数种子。</summary>
     public int Seed { get; init; }
@@ -22,7 +22,7 @@ public readonly record struct WorldState
     /// <summary>地图高度，以地格为单位。</summary>
     public required int Height { get; init; }
 
-    /// <summary>已经推进的模拟日数；每个模拟年包含 120 日。</summary>
+    /// <summary>已经推进的模拟步数；日历单位由 SimulationTime 定义。</summary>
     public long Tick { get; init; }
 
     /// <summary>模拟随机数生成器的当前状态；载入后接续使用，不从种子重新开始。</summary>
@@ -62,13 +62,21 @@ public readonly record struct WorldState
     /// <summary>是否允许模拟自主产生自然灾害。</summary>
     public bool NaturalDisasters { get; init; } = true;
 
-    /// <summary>当前模拟年，从 1 开始，每年 120 日。</summary>
+    /// <summary>当前模拟年，从 1 开始。</summary>
     [JsonIgnore]
-    public int Year => 1 + (int)(Tick / 120);
+    public int Year => 1 + (int)(Tick / SimulationTime.TicksPerYear);
 
-    /// <summary>当前模拟年内的日序，从 1 到 120。</summary>
+    /// <summary>当前模拟月内的日序，从 1 开始。</summary>
     [JsonIgnore]
-    public int Day => 1 + (int)(Tick % 120);
+    public int Day => 1 + (int)(Tick / SimulationTime.TicksPerDay % SimulationTime.DaysPerMonth);
+
+    /// <summary>当前模拟月，从 1 开始。</summary>
+    [JsonIgnore]
+    public int Month => 1 + (int)(Tick / SimulationTime.TicksPerMonth % SimulationTime.MonthsPerYear);
+
+    /// <summary>一天内从零开始的模拟步数。</summary>
+    [JsonIgnore]
+    public int TickOfDay => SimulationTime.TimeOfDay(Tick);
 
     /// <summary>当前存活居民的总数。</summary>
     [JsonIgnore]
@@ -84,7 +92,7 @@ public readonly record struct WorldState
 
     /// <summary>模拟规则版本，用于校验存档的续演兼容性。</summary>
     [JsonRequired]
-    public int SimulationVersion { get; init; } = 24;
+    public int SimulationVersion { get; init; } = 25;
 
     /// <summary>世界的社会发展状态。</summary>
     public SocietyState Society { get; init; } = new();

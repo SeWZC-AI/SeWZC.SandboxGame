@@ -354,7 +354,7 @@ public sealed partial class MainView
             () => _engine.State.Settlements.Where(t => t.NationId == town.NationId && t.Id != town.Id)
                 .OrderBy(t => t.Id),
             t => t.Id.ToString(), t => _engine.CanRelayInformation(town.Id, t.Id, out var ticks)
-                ? $"{town.Name} 与 {t.Name}\n信号连通\n预计 {ticks} 日"
+                ? $"{town.Name} 与 {t.Name}\n信号连通\n预计 {ticks / (double)SimulationTime.TicksPerDay:0.##} 日"
                 : $"{town.Name} 与 {t.Name}\n信号未连通\n依赖居民实际携带消息",
             t => OpenSettlement(t.Id, "communication"));
         panel.Children.Add(LiveText(() =>
@@ -377,7 +377,7 @@ public sealed partial class MainView
                 .OrderByDescending(r => r.ReceivedTick).Take(20),
             r => $"{r.FactId}:{r.OriginResidentId}:{r.RepresentativeId}:{r.ReceivedTick}",
             r =>
-                $"{FactKindName(r.Topic)}\n主题 #{r.SubjectId}\n数值 {r.Value:F2}\n原始提出者：{ResidentName(r.OriginResidentId)}（{ProfessionName(r.ReportedProfession)}）\n递送代表：{ResidentName(r.RepresentativeId)}\n观察：{DateLabel(r.ObservedTick)}\n递送：{DateLabel(r.ReceivedTick)}\n可信度 {r.Confidence:P0}\n消息年龄 {Math.Max(0, _engine.State.Tick - r.ObservedTick)} 日");
+                $"{FactKindName(r.Topic)}\n主题 #{r.SubjectId}\n数值 {r.Value:F2}\n原始提出者：{ResidentName(r.OriginResidentId)}（{ProfessionName(r.ReportedProfession)}）\n递送代表：{ResidentName(r.RepresentativeId)}\n观察：{DateLabel(r.ObservedTick)}\n递送：{DateLabel(r.ReceivedTick)}\n可信度 {r.Confidence:P0}\n消息年龄 {Math.Max(0, _engine.State.Tick - r.ObservedTick) / (double)SimulationTime.TicksPerDay:0.##} 日");
     }
 
     private void ShowBuildingEditor(int townId)

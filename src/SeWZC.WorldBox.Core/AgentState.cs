@@ -40,6 +40,10 @@ public sealed partial record AgentState
     /// <summary>当前正在执行的行动目标。</summary>
     public AgentGoal Goal { get; init; } = new();
 
+    /// <summary>夜间返家时暂存的白天目标，晨起后恢复；途中任务不切换目标。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public AgentGoal? DaytimeGoal { get; init; }
+
     /// <summary>居民自己观察或收到的信息，可能已经过时。</summary>
     public ImmutableArray<AgentFact> Memory { get; init; } = [];
 
@@ -58,10 +62,10 @@ public sealed partial record AgentState
         }
     }
 
-    /// <summary>下一次自主评估目标的模拟日序。</summary>
+    /// <summary>下一次自主评估目标的模拟 tick 序。</summary>
     public long NextThinkTick { get; init; }
 
-    /// <summary>最近一次与其他居民交谈的模拟日序。</summary>
+    /// <summary>最近一次与其他居民交谈的模拟 tick 序。</summary>
     public long LastConversationTick
     {
         get => _identity.LastConversationTick;
@@ -107,7 +111,7 @@ public sealed partial record AgentState
         }
     }
 
-    /// <summary>当前任务开始的模拟日序。</summary>
+    /// <summary>当前任务开始的模拟 tick 序。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long MissionStartedTick
     {
@@ -119,7 +123,7 @@ public sealed partial record AgentState
         }
     }
 
-    /// <summary>当前任务受阻后允许再次尝试的模拟日序。</summary>
+    /// <summary>当前任务受阻后允许再次尝试的模拟 tick 序。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long MissionRetryTick
     {
@@ -155,7 +159,7 @@ public sealed partial record AgentState
         }
     }
 
-    /// <summary>最近一次职业分工变化的模拟日序。</summary>
+    /// <summary>最近一次职业分工变化的模拟 tick 序。</summary>
     public long JobChangedTick
     {
         get => _identity.JobChangedTick;

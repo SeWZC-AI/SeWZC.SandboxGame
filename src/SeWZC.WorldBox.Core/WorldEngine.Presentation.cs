@@ -65,7 +65,7 @@ public sealed partial class WorldEngine
         for (var i = 0; i < Math.Clamp(steps, 0, 64); i++)
         {
             var interactionRange = production is not null || goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest
-                                                              or AgentGoalKind.Socialize or AgentGoalKind.ReturnHome
+                                                              or AgentGoalKind.Socialize or AgentGoalKind.ReturnHome or AgentGoalKind.Sleep
                                                           || (goal.TargetEntityId != 0 &&
                                                               Current.Buildings.Any(b =>
                                                                   b.Id == goal.TargetEntityId &&

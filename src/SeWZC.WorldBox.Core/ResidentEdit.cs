@@ -24,7 +24,7 @@ public sealed class ResidentEdit
     /// <summary>要设置的军队 ID。</summary>
     public int? ArmyId { get; init; }
 
-    /// <summary>要设置的疫病剩余日数。</summary>
+    /// <summary>要设置的疫病剩余 tick 数。</summary>
     public int? SicknessTicks { get; init; }
 
     /// <summary>要设置的随身资源。</summary>

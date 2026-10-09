@@ -15,7 +15,7 @@ public sealed record ResidentHistoryEntry
     /// <summary>本次经历关联的信息依据 ID。</summary>
     public int EvidenceFactId { get; init; }
 
-    /// <summary>经历发生的模拟日序。</summary>
+    /// <summary>经历发生的模拟 tick 序。</summary>
     public long Tick { get; init; }
 
     /// <summary>经历的重要程度。</summary>

@@ -103,7 +103,7 @@ public sealed partial class WorldEngine
             Profession.Engineer => "施工时消耗工具，提升现场施工效率；也可参与机械生产。",
             Profession.Physician => "把随身药品运至医院，治疗医院 3 格内的伤病居民并建立短期免疫。",
             Profession.Firefighter => "从消防站补充实际用水；扑救眼前火灾并用石材修复附近受损设施。",
-            Profession.Ranger => "携带弹药，对 4 格内已知交战敌军射击；每次耗 1 弹药，间隔至少 3 日，山体遮挡。",
+            Profession.Ranger => "携带弹药，对 4 格内已知交战敌军射击；每次耗 1 弹药，间隔至少 3 tick，山体遮挡。",
             Profession.Archivist => "在图书馆把当地已有研究传授给现场居民，知识经正常递送继续传播。",
             Profession.Battlemage => "完成奥术训练后参与风暴尖塔、结界工作；行军时依已知军令施放战场法术。",
             Profession.Surveyor => "在勘测所形成眼前水源、城镇及危险的实地报告，带有观察时刻。",
@@ -305,6 +305,7 @@ public sealed partial class WorldEngine
         {
             Agent = person.Agent with
             {
+                DaytimeGoal = null,
                 Goal = new AgentGoal
                 {
                     Kind = AgentGoalKind.Idle,
@@ -461,8 +462,8 @@ public sealed partial class WorldEngine
                     patient.Replace(patient.Value with
                     {
                         Health = Math.Min(100, patient.Health + 3 * effort),
-                        SicknessTicks = Math.Max(0, patient.SicknessTicks - 4),
-                        DiseaseImmuneUntilTick = Math.Max(patient.DiseaseImmuneUntilTick, Current.Tick + 120),
+                        SicknessTicks = Math.Max(0, patient.SicknessTicks - SimulationTime.TicksPerDay),
+                        DiseaseImmuneUntilTick = Math.Max(patient.DiseaseImmuneUntilTick, Current.Tick + SimulationTime.TicksPerYear),
                     });
                     EmitVisual(WorldVisualKind.Heal, patient.X, patient.Y);
                     done = true;

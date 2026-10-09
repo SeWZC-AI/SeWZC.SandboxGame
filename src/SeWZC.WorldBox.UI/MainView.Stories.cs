@@ -155,7 +155,7 @@ public sealed partial class MainView
                     ? $"\n战报观察：{DateLabel(record.LastReportObservedTick)}\n战报送达：{DateLabel(record.LastReportReceivedTick)}"
                     : "")
                 + (record.RecoveryUntilTick > _engine.State.Tick
-                    ? $"\n恢复期剩余 {record.RecoveryUntilTick - _engine.State.Tick} 日，暂停自主进攻，仍可组织防御"
+                    ? $"\n恢复期剩余 {(record.RecoveryUntilTick - _engine.State.Tick) / (double)SimulationTime.TicksPerDay:0.##} 日，暂停自主进攻，仍可组织防御"
                     : "\n当前不在恢复期");
         }), "nation-military"));
         panel.Children.Add(Text("前线实际状态（上帝视角）", 12, Mint));

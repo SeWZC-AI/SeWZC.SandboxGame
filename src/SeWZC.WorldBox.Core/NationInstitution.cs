@@ -15,6 +15,6 @@ public sealed record NationInstitution
     /// <summary>最近一次制度决策的说明。</summary>
     public string LastDecision { get; init; } = "等待本地议事及代表送达的报告";
 
-    /// <summary>最近一次制度决策的模拟日序。</summary>
+    /// <summary>最近一次制度决策的模拟 tick 序。</summary>
     public long LastDecisionTick { get; init; }
 }

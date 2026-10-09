@@ -38,4 +38,7 @@ public enum ResidentActivity
 
     /// <summary>逃离危险。</summary>
     Fleeing,
+
+    /// <summary>睡眠。</summary>
+    Sleeping,
 }

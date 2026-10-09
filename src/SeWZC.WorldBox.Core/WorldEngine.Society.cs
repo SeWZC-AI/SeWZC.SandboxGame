@@ -479,7 +479,10 @@ public sealed partial class WorldEngine
         if (Current.Tiles[Index(building.X, building.Y)].FireTicks > 0
             || !BuildingTerrainValid(building.Kind, Current.Tiles[Index(building.X, building.Y)]))
             return false;
-        if (building.LastWorkedTick == Current.Tick && building.Workers.Count >= building.WorkSlots &&
+        var sameWorkPeriod = building.IsCompleted && !building.IsUpgrading && ProductionRules.For(building.Kind) is not null
+            ? SimulationTime.DayIndex(building.LastWorkedTick) == SimulationTime.DayIndex(Current.Tick)
+            : building.LastWorkedTick == Current.Tick;
+        if (sameWorkPeriod && building.Workers.Count >= building.WorkSlots &&
             !building.Workers.Contains(resident.Id))
             return false;
         if (building.Health < 50)
@@ -560,7 +563,8 @@ public sealed partial class WorldEngine
         if (building.IsCompleted && !building.IsUpgrading && production is not null &&
             !HasProductionInputs(resident.Inventory, production))
             return false;
-        if (building.LastWorkedTick != Current.Tick)
+        if (production is null || !building.IsCompleted || building.IsUpgrading ? building.LastWorkedTick != Current.Tick
+            : SimulationTime.DayIndex(building.LastWorkedTick) != SimulationTime.DayIndex(Current.Tick))
         {
             building.Workers = building.Workers.Clear();
             building.LastWorkedTick = Current.Tick;
@@ -575,7 +579,7 @@ public sealed partial class WorldEngine
             return true;
         }
 
-        var effort = WorkInterval(resident) * Math.Clamp(
+        var effort = WorkInterval(resident) / (double)SimulationTime.TicksPerDay * Math.Clamp(
             (0.6 + resident.Agent.Personality.Diligence * 0.6) * LaborCondition(resident), 0.1,
             1.2);
         if ((!building.IsCompleted || building.IsUpgrading) && resident.Profession == Profession.Engineer
@@ -763,7 +767,7 @@ public sealed partial class WorldEngine
                 town.Resources = town.Resources with { Food = town.Resources.Food - 0.05 };
                 patient.Health = Math.Min(100,
                     patient.Health + 0.45 * effort * (HasResearch(town.Id, Advancement.Medicine) ? 1.5 : 1));
-                patient.SicknessTicks = Math.Max(0, patient.SicknessTicks - 1);
+                patient.SicknessTicks = Math.Max(0, patient.SicknessTicks - SimulationTime.TicksPerDay);
                 return true;
             case BuildingKind.TownCenter:
                 return WorkOnTownExpansion(town, effort / building.Efficiency);
@@ -860,10 +864,10 @@ public sealed partial class WorldEngine
         return speed;
     }
 
-    /// <summary>检查两处同国聚落之间是否有可用信号塔路径，并给出递送日数。</summary>
+    /// <summary>检查两处同国聚落之间是否有可用信号塔路径，并给出递送 tick 数。</summary>
     /// <param name="fromSettlementId">信息递送出发聚落的 ID。</param>
     /// <param name="toSettlementId">信息递送目标聚落的 ID。</param>
-    /// <param name="travelTicks">可用路径所需的模拟日数；没有路径时为零。</param>
+    /// <param name="travelTicks">可用路径所需的模拟 tick 数；没有路径时为零。</param>
     public bool CanRelayInformation(int fromSettlementId, int toSettlementId, out int travelTicks)
     {
         travelTicks = 0;
@@ -1181,7 +1185,7 @@ public sealed partial class WorldEngine
                 _ => 1 + cooperation * 0.35,
             };
             var score = urgency * report.Confidence * relevance * authority /
-                        (1 + (tick - report.ObservedTick) / 180d);
+                        (1 + (tick - report.ObservedTick) / (2d * SimulationTime.TicksPerMonth));
             scores[(int)policy] += score;
             if (score > largest[(int)policy])
             {
@@ -1403,13 +1407,13 @@ public sealed partial class WorldEngine
         {
             recipient!.Health = Math.Min(100,
                 recipient.Health + 22 * power * (HasResearch(caster.SettlementId, Advancement.Restoration) ? 1.5 : 1));
-            recipient.SicknessTicks = Math.Max(0, recipient.SicknessTicks - 15);
+            recipient.SicknessTicks = Math.Max(0, recipient.SicknessTicks - SimulationTime.TicksPerDay);
         }
 
         if (spell == SpellKind.HarvestBlessing)
-            town!.FertilityBoostTicks = Math.Max(town.FertilityBoostTicks, (int)(50 * power));
+            town!.FertilityBoostTicks = Math.Max(town.FertilityBoostTicks, (int)(2 * SimulationTime.TicksPerMonth * power));
         if (spell == SpellKind.Shield)
-            town!.ShieldTicks = Math.Max(town.ShieldTicks, (int)(40 * power));
+            town!.ShieldTicks = Math.Max(town.ShieldTicks, (int)(2 * SimulationTime.TicksPerDay * power));
         if (spell == SpellKind.Ember)
             DamageResident(recipient!, TryAbsorbShieldDamage(recipient!, 18 * power), DeathCause.Magic);
         if (spell == SpellKind.FrostBolt)
@@ -1440,7 +1444,7 @@ public sealed partial class WorldEngine
             foreach (var index in Circle(x, y, 2))
             {
                 var tile = Current.Tiles[index];
-                tile.DroughtTicks = Math.Max(0, tile.DroughtTicks - 60);
+                tile.DroughtTicks = Math.Max(0, tile.DroughtTicks - 2 * SimulationTime.TicksPerMonth);
                 if (tile.DroughtTicks == 0)
                     _dryTiles.Remove(index);
                 if (tile.FireTicks > 0)
@@ -1523,10 +1527,10 @@ public sealed partial class WorldEngine
             building.Workers = building.Workers.RemoveAll(id => !people.Contains(id));
     }
 
-    /// <summary>推进当前模拟日的社会发展。</summary>
+    /// <summary>推进当前模拟 tick的社会发展。</summary>
     public void TickSociety()
     {
-        if (Current.Tick % 30 == 0)
+        if (Current.Tick % SimulationTime.TicksPerMonth == SimulationTime.WakeTick)
         {
             RefreshLocalRepresentatives();
             BalanceLocalWorkforce();
@@ -1540,7 +1544,7 @@ public sealed partial class WorldEngine
         Current.Society = Current.Society with
         {
             Reports = Current.Society.Reports.RemoveAll(r =>
-            !townIds.Contains(r.RecipientSettlementId) || Current.Tick - r.ReceivedTick > 1_440)
+            !townIds.Contains(r.RecipientSettlementId) || Current.Tick - r.ReceivedTick > 12 * SimulationTime.TicksPerYear)
         };
         var liveResidents = _societyResidentIds;
         liveResidents.Clear();
@@ -1560,10 +1564,10 @@ public sealed partial class WorldEngine
                 building.Health = 0;
             else if (tile.FireTicks > 0)
                 building.Health = Math.Max(0, building.Health - 1.5 * BuildingFlammability(building));
-            if (IsHusbandry(building.Kind) && Current.Tick - building.LastServiceTick > 30 &&
+            if (IsHusbandry(building.Kind) && Current.Tick - building.LastServiceTick > SimulationTime.TicksPerMonth &&
                 (Current.Tick + building.Id) % 6 == 0)
             {
-                building.LivestockPopulation *= .98;
+                building.LivestockPopulation *= Math.Pow(.98, 6d / SimulationTime.TicksPerDay);
                 if (building.LivestockPopulation < .01)
                     building.Replace(building.Value with { LivestockPopulation = 0, LivestockKind = WildlifeKind.None });
             }
@@ -1582,9 +1586,9 @@ public sealed partial class WorldEngine
                 town.FertilityBoostTicks--;
             if (town.ShieldTicks > 0)
                 town.ShieldTicks--;
-            if (Current.Tick % 30 == 0)
+            if (Current.Tick % SimulationTime.TicksPerMonth == 0)
                 DecideLocalPolicy(town);
-            if ((Current.Tick + town.Id) % 60 == 0)
+            if ((Current.Tick + town.Id) % (2 * SimulationTime.TicksPerMonth) == 0)
                 PlanLocalDevelopment(town);
             if (GetLocalPolicy(town.Id) == PolicyKind.PublicHealth && town.Resources.Food >= 0.02)
             {
@@ -1593,15 +1597,15 @@ public sealed partial class WorldEngine
                     .FirstOrDefault();
                 if (patient is not null)
                 {
-                    town.Resources = town.Resources with { Food = town.Resources.Food - 0.02 };
-                    patient.Health = Math.Min(100, patient.Health + 0.15);
+                    town.Resources = town.Resources with { Food = town.Resources.Food - 0.02 / SimulationTime.TicksPerDay };
+                    patient.Health = Math.Min(100, patient.Health + 0.15 / SimulationTime.TicksPerDay);
                 }
             }
         }
 
         foreach (var person in Current.Residents)
         {
-            if (!InBounds(person.X, person.Y) || person.Health <= 0)
+            if (!InBounds(person.X, person.Y) || person.Health <= 0 || person.Activity == ResidentActivity.Sleeping)
                 continue;
             if (person.MagicTalent >= 25 && person.MagicTraining >= 8 && (Current.Tick + person.Id) % 12 == 0)
                 TryAutomaticMagic(person);

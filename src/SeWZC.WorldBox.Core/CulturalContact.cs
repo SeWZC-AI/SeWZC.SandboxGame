@@ -12,7 +12,7 @@ public sealed record CulturalContact
     /// <summary>居民接触该文化的累计程度。</summary>
     public double Exposure { get; init; }
 
-    /// <summary>最近接触该文化的模拟日序。</summary>
+    /// <summary>最近接触该文化的模拟 tick 序。</summary>
     public long LastContactTick { get; init; }
 
     internal CulturalContact Observe(long tick, double sociability)

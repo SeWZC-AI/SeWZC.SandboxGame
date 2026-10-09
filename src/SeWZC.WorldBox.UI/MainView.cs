@@ -15,6 +15,7 @@ namespace SeWZC.WorldBox.UI;
 /// <summary>桌面与浏览器共用的游戏主界面。</summary>
 public sealed partial class MainView : UserControl
 {
+    private const double SimulationTickSeconds = .2;
     private static readonly IBrush Ink = Brush.Parse("#111E29");
     private static readonly IBrush Panel = Brush.Parse("#172632");
     private static readonly IBrush Line = Brush.Parse("#2A3C46");
@@ -461,7 +462,7 @@ public sealed partial class MainView : UserControl
             var b = Named(Button($"{speed}倍", () =>
                 {
                     _speed = speed;
-                    _map.SimulationTickDurationSeconds = .2 / speed;
+                    _map.SimulationTickDurationSeconds = SimulationTickSeconds / speed;
                     UpdateSpeedButtons();
                 }, minWidth: 42), $"time-speed-{speed}");
             b.Width = 42;
@@ -577,7 +578,7 @@ public sealed partial class MainView : UserControl
             return;
         var hidden = App.Storage?.IsBackground == true;
         _map.IsSimulationPaused = WorldTimeStopped;
-        _map.SimulationTickDurationSeconds = .2 / _speed;
+        _map.SimulationTickDurationSeconds = SimulationTickSeconds / _speed;
         if (hidden)
         {
             _accumulator = 0;
@@ -595,12 +596,12 @@ public sealed partial class MainView : UserControl
         if (!WorldTimeStopped)
         {
             // 五倍档最多保留八日欠账，让偶发慢帧之后仍能追回真实模拟步。
-            _accumulator = Math.Min(_speed == 5 ? 1.6 : .8, _accumulator + elapsed * _speed);
+            _accumulator = Math.Min((_speed == 5 ? 8 : 4) * SimulationTickSeconds, _accumulator + elapsed * _speed);
             var work = Stopwatch.GetTimestamp();
             var count = 0;
-            // 五倍档为补算及地图预留 64 ms，仍最多推进四个完整日并让出界面线程。
+            // 五倍档为补算及地图预留 64 ms，仍最多推进四个完整 tick并让出界面线程。
             var budgetMilliseconds = _speed == 1 ? 12 : _speed == 5 ? 64 : 48;
-            while (_accumulator >= .2 && count < 4)
+            while (_accumulator >= SimulationTickSeconds && count < 4)
             {
                 // 追加模拟日前先预留上一轮地图刷新耗时；首日再贵也须推进，避免世界停滞。
                 if (count > 0 && Stopwatch.GetElapsedTime(work).TotalMilliseconds
@@ -609,7 +610,7 @@ public sealed partial class MainView : UserControl
                 var stepStarted = Stopwatch.GetTimestamp();
                 _engine.Step();
                 _simulationDays.Record(Stopwatch.GetTimestamp());
-                _accumulator -= .2;
+                _accumulator -= SimulationTickSeconds;
                 count++;
                 _lastStepMilliseconds = Stopwatch.GetElapsedTime(stepStarted).TotalMilliseconds;
                 if (Stopwatch.GetElapsedTime(work).TotalMilliseconds + _lastMapRefreshMilliseconds >
@@ -619,7 +620,7 @@ public sealed partial class MainView : UserControl
 
             if (count > 0)
             {
-                _map.SimulationTickFraction = Math.Clamp(_accumulator / .2, 0, .999999);
+                _map.SimulationTickFraction = Math.Clamp(_accumulator / SimulationTickSeconds, 0, .999999);
                 var mapStarted = Stopwatch.GetTimestamp();
                 _map.RefreshWorld(deferAnimation: _speed == 5);
                 _lastMapRefreshMilliseconds = Stopwatch.GetElapsedTime(mapStarted).TotalMilliseconds;
@@ -654,7 +655,7 @@ public sealed partial class MainView : UserControl
         var idle = !_ready || WorldTimeStopped;
         // 计时器在回调结束后才等待，须把回调耗时计入下日截止时间，避免重步骤额外叠加固定等待。
         var workMilliseconds = (_clock.Elapsed.TotalSeconds - _previousTime) * 1000;
-        var delay = idle ? 50 : Math.Clamp((.2 - _accumulator) * 1000 / _speed - workMilliseconds, 1, 50);
+        var delay = idle ? 50 : Math.Clamp((SimulationTickSeconds - _accumulator) * 1000 / _speed - workMilliseconds, 1, 50);
         _timer.Interval = TimeSpan.FromMilliseconds(delay);
     }
 
@@ -773,7 +774,7 @@ public sealed partial class MainView : UserControl
         if (!_performancePanel.IsVisible)
             return;
         var timestamp = Stopwatch.GetTimestamp();
-        var text = $"FPS {_map.GetRecentFrameCount(timestamp)}\n{_simulationDays.Count(timestamp)} 日/秒";
+        var text = $"FPS {_map.GetRecentFrameCount(timestamp)}\n{_simulationDays.Count(timestamp) / (double)SimulationTime.TicksPerDay:0.##} 日/秒";
         if (_performanceText.Text != text)
             _performanceText.Text = text;
     }
@@ -782,7 +783,7 @@ public sealed partial class MainView : UserControl
     {
         RefreshPerformanceStats();
         var state = _engine.State;
-        _date.Text = $"第 {state.Year} 年 {state.Day} 日";
+        _date.Text = DateLabel(state.Tick);
         _population.Text = $"居民 {state.Population:N0}    国家 {state.Nations.Count}";
         _worldSubtitle.Text = $"地图：{state.Width} × {state.Height}\n种子：{state.Seed}\n文明演化";
         _play.Content = _paused ? "继续" : "暂停";
@@ -1653,6 +1654,7 @@ public sealed partial class MainView : UserControl
             ResidentActivity.Marching => "正在行军",
             ResidentActivity.Sick => "正在养病",
             ResidentActivity.Eating => "正在进食",
+            ResidentActivity.Sleeping => "正在睡觉",
             ResidentActivity.Resting => "正在休息",
             ResidentActivity.Talking => "交换消息",
             ResidentActivity.Delivering => "执行运输",

@@ -18,7 +18,7 @@ internal abstract class AgentFactTopic
     private static readonly AgentFactTopic WarReport = new WarReportTopic();
     private static readonly AgentFactTopic General = new GeneralTopic();
 
-    internal virtual double Lifetime => 600;
+    internal virtual double Lifetime => 5 * SimulationTime.TicksPerYear;
     internal virtual bool DistinguishesLocation => false;
     internal virtual bool OrdersSameDayById => false;
     internal virtual bool CreatesInstitutionReport => false;
@@ -68,7 +68,7 @@ internal abstract class AgentFactTopic
 
     private sealed class FoodTopic : AgentFactTopic
     {
-        internal override double Lifetime => 180;
+        internal override double Lifetime => 2 * SimulationTime.TicksPerMonth;
         internal override bool CreatesInstitutionReport => true;
         internal override PolicyKind SuggestedPolicy => PolicyKind.FoodSecurity;
 
@@ -80,7 +80,7 @@ internal abstract class AgentFactTopic
 
     private sealed class DangerTopic : AgentFactTopic
     {
-        internal override double Lifetime => 24;
+        internal override double Lifetime => SimulationTime.TicksPerDay;
         internal override bool DistinguishesLocation => true;
         internal override bool CreatesInstitutionReport => true;
 
@@ -94,7 +94,7 @@ internal abstract class AgentFactTopic
 
     private sealed class LocationTopic : AgentFactTopic
     {
-        internal override double Lifetime => 1200;
+        internal override double Lifetime => 10 * SimulationTime.TicksPerYear;
 
         internal override long RetentionBonus(AgentFact fact, int homeId)
         {
@@ -104,7 +104,7 @@ internal abstract class AgentFactTopic
 
     private sealed class ReliefTopic : AgentFactTopic
     {
-        internal override double Lifetime => 180;
+        internal override double Lifetime => 2 * SimulationTime.TicksPerMonth;
         internal override bool CreatesInstitutionReport => true;
 
         internal override PolicyKind SuggestedPolicy => PolicyKind.FoodSecurity;

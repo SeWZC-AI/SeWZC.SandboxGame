@@ -17,7 +17,7 @@ internal sealed class EntityMotionTrack(Point position)
     public long SeenRevision { get; set; }
 
     /// <summary>按模拟时间对已提交的移动轨迹插值，位置限制在轨迹两端之间。</summary>
-    /// <param name="simulationTime">用于采样的模拟日序，允许小数表示日内进度。</param>
+    /// <param name="simulationTime">用于采样的模拟 tick 序，允许小数表示日内进度。</param>
     public Point Position(double simulationTime)
     {
         if (_duration <= 0)
@@ -28,7 +28,7 @@ internal sealed class EntityMotionTrack(Point position)
     }
 
     /// <summary>判断指定模拟时刻是否尚未到达移动区段的终点。</summary>
-    /// <param name="simulationTime">用于判断的模拟日序，允许小数。</param>
+    /// <param name="simulationTime">用于判断的模拟 tick 序，允许小数。</param>
     public bool IsMoving(double simulationTime)
     {
         return _duration > 0 && simulationTime < _started + _duration;
@@ -37,8 +37,8 @@ internal sealed class EntityMotionTrack(Point position)
     /// <summary>根据逻辑状态更新移动区段；需要立即定位时直接显示目标位置。</summary>
     /// <param name="from">已提交移动区段的起点，以地格坐标计。</param>
     /// <param name="target">已提交移动区段的终点，以地格坐标计。</param>
-    /// <param name="startedTick">移动区段开始的模拟日序。</param>
-    /// <param name="durationTicks">移动区段所需的模拟日数，至少按一日处理。</param>
+    /// <param name="startedTick">移动区段开始的模拟 tick 序。</param>
+    /// <param name="durationTicks">移动区段所需的模拟 tick 数，至少按一 tick 处理。</param>
     /// <param name="snap">是否立即显示终点而不插值。</param>
     public void Update(Point from, Point target, long startedTick, int durationTicks, bool snap)
     {

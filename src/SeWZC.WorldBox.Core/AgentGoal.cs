@@ -6,7 +6,7 @@ namespace SeWZC.WorldBox.Core;
 /// <summary>居民当前行动目标与导航进度的不可变值。</summary>
 public sealed record AgentGoal
 {
-    /// <summary>登记领地、交付建村物资和当面递送所需的最长驻留日数。</summary>
+    /// <summary>登记领地、交付建村物资和当面递送所需的最长驻留 tick 数。</summary>
     public const int MaximumResidenceTicks = 3;
 
     /// <summary>创建尚未开始导航的空闲目标。</summary>
@@ -38,7 +38,7 @@ public sealed record AgentGoal
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int NavigationWithoutProgress { get; init; }
 
-    /// <summary>受阻后允许重新尝试导航的模拟日序。</summary>
+    /// <summary>受阻后允许重新尝试导航的模拟 tick 序。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long NavigationRetryTick { get; init; }
 
@@ -67,14 +67,14 @@ public sealed record AgentGoal
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int TargetEntityId { get; init; }
 
-    /// <summary>该目标开始执行的模拟日序。</summary>
+    /// <summary>该目标开始执行的模拟 tick 序。</summary>
     public long StartedTick { get; init; }
 
-    /// <summary>需要到场驻留的目标已完成的等待日数，达到三日后不再累积。</summary>
+    /// <summary>需要到场驻留的目标已完成的等待 tick 数，达到三 tick后不再累积。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int WorkTicks { get; init; }
 
-    /// <summary>下次重新评估该目标的模拟日序。</summary>
+    /// <summary>下次重新评估该目标的模拟 tick 序。</summary>
     public long ReviewTick { get; init; }
 
     /// <summary>该目标是否由玩家直接安排。</summary>

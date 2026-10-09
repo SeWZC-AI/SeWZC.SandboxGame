@@ -51,10 +51,10 @@ public sealed partial class WorldEngine
     {
         if (!Current.Rules.ResourceRegeneration)
             return;
-        // 将每年植物复评分摊到每日各行，避免年末全图更新峰值。
-        var band = (int)((Current.Tick - 1) % 120);
-        var firstRow = band * Current.Height / 120;
-        var lastRow = (band + 1) * Current.Height / 120;
+        // 将每年植物复评分摊到每 tick 各行，避免年末全图更新峰值。
+        var band = (int)((Current.Tick - 1) % SimulationTime.TicksPerYear);
+        var firstRow = band * Current.Height / SimulationTime.TicksPerYear;
+        var lastRow = (band + 1) * Current.Height / SimulationTime.TicksPerYear;
         Span<double> nearby = stackalloc double[4];
         for (var y = firstRow; y < lastRow; y++)
         for (var x = 0; x < Current.Width; x++)

@@ -118,7 +118,7 @@ public sealed partial class WorldMapControl
 
     private void CaptureArchitecture(WorldState state)
     {
-        if (ReferenceEquals(Engine, _architectureEngine) && _architectureYear == state.Tick / 120 &&
+        if (ReferenceEquals(Engine, _architectureEngine) && _architectureYear == state.Tick / SimulationTime.TicksPerYear &&
             _architectureTownCount == state.Settlements.Count && _architectureResidents is { } previous &&
             previous.Count == state.Residents.Count)
         {
@@ -140,7 +140,7 @@ public sealed partial class WorldMapControl
 
         _architectureEngine = Engine;
         _architectureResidents = state.Residents;
-        _architectureYear = state.Tick / 120;
+        _architectureYear = state.Tick / SimulationTime.TicksPerYear;
         _architectureTownCount = state.Settlements.Count;
         _settlementStyles.Clear();
         foreach (var group in state.Residents.GroupBy(r => r.SettlementId))

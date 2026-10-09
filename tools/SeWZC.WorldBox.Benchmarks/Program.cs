@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using SeWZC.WorldBox.Core;
 
-const int daysPerYear = 120;
+const int daysPerYear = SimulationTime.DaysPerYear;
 const int bytesPerMegabyte = 1_000_000;
 (string Name, int Size, int Population, int Days)[] cases =
 [
@@ -12,7 +12,7 @@ const int bytesPerMegabyte = 1_000_000;
     ("256x256-4096", 256, 4096, 12),
 ];
 var options = args.Skip(1).ToHashSet(StringComparer.Ordinal);
-if (args.Length < 1 || options.Any(option => option is not ("--verify" or "--initialization" or "--default-rules" or "--large" or "--steady" or "--save-final")
+if (args.Length < 1 || options.Any(option => option is not ("--audit" or "--verify" or "--initialization" or "--default-rules" or "--large" or "--steady" or "--save-final")
         && !option.StartsWith("--seed=", StringComparison.Ordinal) && !option.StartsWith("--start-day=", StringComparison.Ordinal)
         && !option.StartsWith("--years=", StringComparison.Ordinal) && !option.StartsWith("--repetitions=", StringComparison.Ordinal)
         && !option.StartsWith("--size=", StringComparison.Ordinal) && !option.StartsWith("--population=", StringComparison.Ordinal)
@@ -20,10 +20,12 @@ if (args.Length < 1 || options.Any(option => option is not ("--verify" or "--ini
     || options.Contains("--verify") && options.Any(option => option != "--verify"
         && !option.StartsWith("--size=", StringComparison.Ordinal) && !option.StartsWith("--population=", StringComparison.Ordinal)
         && !option.StartsWith("--seed=", StringComparison.Ordinal))
+    || options.Contains("--audit") && options.Any(option => option != "--audit"
+        && !option.StartsWith("--seed=", StringComparison.Ordinal) && !option.StartsWith("--years=", StringComparison.Ordinal))
     || options.Contains("--initialization") && options.Any(option => option is not ("--initialization" or "--large")
         && !option.StartsWith("--seed=", StringComparison.Ordinal) && !option.StartsWith("--repetitions=", StringComparison.Ordinal)))
-    throw new ArgumentException("请指定结果 JSON 路径；--initialization 测量创建地图并补足人口，--default-rules 使用默认规则，--large 只测 256² / 4096 人，--size=整数 --population=整数 选择自定义场景，--steady 测量后续 64 日；--seed=整数 指定种子，--start-day=整数 指定计时前推进日数；--years=整数 测量长期演化，--repetitions=整数 指定轮数，--population-floor=整数 在计时外补充居民维持人口负载；--save-final 在计时外保存终态，--verify 独立验证续演，可搭配自定义场景和种子。");
-var benchmarkSeed = ReadIntegerOption(options, "--seed=", 42);
+    throw new ArgumentException("请指定结果 JSON 路径；--audit 使用游戏默认开局检查指定年数（默认 100 年），仅可搭配 --seed 和 --years；--initialization 测量创建地图并补足人口，--default-rules 使用默认规则，--large 只测 256² / 4096 人，--size=整数 --population=整数 选择自定义场景，--steady 测量后续 64 日；--seed=整数 指定种子，--start-day=整数 指定计时前推进日数；--years=整数 测量长期演化，--repetitions=整数 指定轮数，--population-floor=整数 在计时外补充居民维持人口负载；--save-final 在计时外保存终态，--verify 独立验证续演，可搭配自定义场景和种子。");
+var benchmarkSeed = ReadIntegerOption(options, "--seed=", options.Contains("--audit") ? 73921 : 42);
 var years = ReadIntegerOption(options, "--years=", 0);
 var repetitions = ReadIntegerOption(options, "--repetitions=", years > 0 ? 3 : 7);
 var populationFloor = ReadIntegerOption(options, "--population-floor=", 0);
@@ -50,6 +52,12 @@ var core = typeof(WorldEngine).Assembly;
 var coreSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(core.Location)));
 var benchmarkSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(typeof(BenchmarkStatistics).Assembly.Location)));
 var results = new List<object>();
+if (options.Contains("--audit"))
+{
+    SimulationAudit.Run(args[0], benchmarkSeed, years == 0 ? 100 : years);
+    return;
+}
+
 if (options.Contains("--verify"))
 {
     // 完整规则的长程行为检查独立运行，不计入性能样本或单元测试。
@@ -60,10 +68,10 @@ if (options.Contains("--verify"))
         var population = customPopulation > 0 ? customPopulation : 144;
         var engine = CreateScenario(size, population, seed);
         var rules = engine.State.Rules;
-        engine.Step(120);
+        engine.Step(120 * SimulationTime.TicksPerDay);
         var restored = WorldEngine.ImportJson(engine.ExportJson());
-        engine.Step(120);
-        restored.Step(120);
+        engine.Step(120 * SimulationTime.TicksPerDay);
+        restored.Step(120 * SimulationTime.TicksPerDay);
         var saved = engine.ExportJson();
         var state = CanonicalState(saved);
         if (!state.AsSpan().SequenceEqual(CanonicalState(restored.ExportJson())))
@@ -142,7 +150,7 @@ foreach (var scenario in cases)
     for (var day = 0; day < startDay; day++)
     {
         preAdvanceReplenished += MaintainPopulation(engine, populationFloor);
-        engine.Step();
+        engine.Step(SimulationTime.TicksPerDay);
     }
     var measureStartTick = engine.State.Tick;
     var measuredInitialPopulation = engine.State.Population;
@@ -158,7 +166,7 @@ foreach (var scenario in cases)
         for (var day = 0; day < warmupWindow; day++)
         {
             MaintainPopulation(engine, populationFloor);
-            engine.Step();
+            engine.Step(SimulationTime.TicksPerDay);
         }
     }
     Console.WriteLine($"Warmup {scenario.Name}: {warmupDays} days, initial population {scenario.Population}");
@@ -191,7 +199,7 @@ foreach (var scenario in cases)
             var dayAllocated = GC.GetTotalAllocatedBytes(precise: true);
             var cpuBefore = BenchmarkClock.ReadProcessCpu();
             var started = Stopwatch.GetTimestamp();
-            engine.Step();
+            engine.Step(SimulationTime.TicksPerDay);
             days[day] = Stopwatch.GetElapsedTime(started).TotalMilliseconds;
             var cpuAfter = BenchmarkClock.ReadProcessCpu();
             var allocated = GC.GetTotalAllocatedBytes(precise: true) - dayAllocated;
@@ -211,7 +219,7 @@ foreach (var scenario in cases)
                 annualResults.Add(new
                 {
                     Repetition = repetition, Year = (day + 1) / daysPerYear,
-                    StartTick = yearSamples[0].Tick - 1, EndTick = engine.State.Tick, SampleCount = yearSamples.Length,
+                    StartTick = yearSamples[0].Tick - SimulationTime.TicksPerDay, EndTick = engine.State.Tick, SampleCount = yearSamples.Length,
                     MeanMsPerDay = yearTiming.Mean, P95MsPerDay = yearTiming.P95, MaxMsPerDay = yearTiming.Max,
                     MeanAllocatedMBPerDay = yearAllocation.Mean, P95AllocatedMBPerDay = yearAllocation.P95, MaxAllocatedMBPerDay = yearAllocation.Max,
                     GcCollections = new[] { yearSamples.Sum(sample => sample.Gen0), yearSamples.Sum(sample => sample.Gen1), yearSamples.Sum(sample => sample.Gen2) },
@@ -263,14 +271,14 @@ foreach (var scenario in cases)
     // 各次终态已逐一比较；同一终态的保存续演只需在计时外验证一次。
     var finalCivilization = CaptureCivilization(engine.State);
     var restored = WorldEngine.ImportJson(engine.ExportJson());
-    engine.Step();
-    restored.Step();
+    engine.Step(SimulationTime.TicksPerDay);
+    restored.Step(SimulationTime.TicksPerDay);
     if (!CanonicalState(engine.ExportJson()).AsSpan().SequenceEqual(CanonicalState(restored.ExportJson())))
         throw new InvalidOperationException("中途保存恢复后的续演结果不同。");
     results.Add(new
     {
         scenario.Name, scenario.Size, InitialPopulation = measuredInitialPopulation, RequestedPopulation = scenario.Population, Seed = benchmarkSeed, scenario.Days,
-        MeasureStartTick = measureStartTick, MeasureEndTick = measureStartTick + scenario.Days,
+        MeasureStartTick = measureStartTick, MeasureEndTick = measureStartTick + scenario.Days * SimulationTime.TicksPerDay,
         SimulatedYears = scenario.Days / (double)daysPerYear, DaysPerYear = daysPerYear, SampleCount = allSamples.Length,
         WarmupDays = warmupDays, Repetitions = repetitions, PopulationFloor = populationFloor,
         PreAdvanceReplenished = preAdvanceReplenished,
@@ -305,7 +313,7 @@ foreach (var scenario in cases)
         CpuQuota = File.Exists("/sys/fs/cgroup/cpu.max") ? File.ReadAllText("/sys/fs/cgroup/cpu.max").Trim() : null,
         MemoryLimit = File.Exists("/sys/fs/cgroup/memory.max") ? File.ReadAllText("/sys/fs/cgroup/memory.max").Trim() : null,
     });
-    Console.WriteLine($"Summary {scenario.Name}, ticks {measureStartTick}..{measureStartTick + scenario.Days}, {allSamples.Length} samples: time ms/day mean/P95/max {totalTiming.Mean:F3}/{totalTiming.P95:F3}/{totalTiming.Max:F3}, allocation MB/day mean/P95/max {totalAllocation.Mean:F3}/{totalAllocation.P95:F3}/{totalAllocation.Max:F3}");
+    Console.WriteLine($"Summary {scenario.Name}, ticks {measureStartTick}..{measureStartTick + scenario.Days * SimulationTime.TicksPerDay}, {allSamples.Length} samples: time ms/day mean/P95/max {totalTiming.Mean:F3}/{totalTiming.P95:F3}/{totalTiming.Max:F3}, allocation MB/day mean/P95/max {totalAllocation.Mean:F3}/{totalAllocation.P95:F3}/{totalAllocation.Max:F3}");
 }
 File.WriteAllText(args[0], JsonSerializer.Serialize(results, new JsonSerializerOptions { WriteIndented = true }));
 

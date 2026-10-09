@@ -159,7 +159,7 @@ public sealed partial class WorldEngine
                 if (patient is null)
                     return false;
                 patient.Health = Math.Min(100, patient.Health + .6 * effort);
-                patient.SicknessTicks = Math.Max(0, patient.SicknessTicks - 1);
+                patient.SicknessTicks = Math.Max(0, patient.SicknessTicks - SimulationTime.TicksPerDay);
                 return true;
             case BuildingKind.MiningHall:
                 var source = FindWorkshopResource(building, Profession.Miner);

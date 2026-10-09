@@ -201,7 +201,7 @@ public sealed class ResidentVitalsTests
         Assert.Equal(0, after.Health);
         Assert.Equal(DeathCause.OldAge, after.DeathCause);
         Assert.Equal(10, after.DeathTick);
-        Assert.Equal(190, after.DiseaseImmuneUntilTick);
+        Assert.Equal(10 + 6 * SimulationTime.TicksPerMonth, after.DiseaseImmuneUntilTick);
         Assert.Equal(before.Activity, after.Activity);
     }
 

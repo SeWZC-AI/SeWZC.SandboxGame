@@ -69,7 +69,7 @@ public sealed partial class WorldEngine
                 Report = "尚未收到前线战报",
             };
         else
-            _nations[nationId].Military = _nations[nationId].Military with { RecoveryUntilTick = Math.Max(_nations[nationId].Military.RecoveryUntilTick, Current.Tick + 360) };
+            _nations[nationId].Military = _nations[nationId].Military with { RecoveryUntilTick = Math.Max(_nations[nationId].Military.RecoveryUntilTick, Current.Tick + 3 * SimulationTime.TicksPerYear) };
 
         capital.PublicKnowledge = capital.PublicKnowledge.RemoveAll(f =>
             f.SubjectId == enemyId && f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder);
@@ -83,7 +83,7 @@ public sealed partial class WorldEngine
 
     private void UpdateArmies()
     {
-        if (Current.Tick % 30 == 0)
+        if (Current.Tick % SimulationTime.TicksPerMonth == SimulationTime.WakeTick)
         {
             foreach (var nation in Current.Nations.ToArray())
             {
@@ -233,22 +233,22 @@ public sealed partial class WorldEngine
                 DrinkCarriedWater(soldier);
                 if (!Current.Rules.Hunger)
                     soldier.Hunger = 0;
-                else if (Distance(soldier.X, soldier.Y, army.X, army.Y) <= 2 && army.Supplies >= 0.06)
+                else if (Distance(soldier.X, soldier.Y, army.X, army.Y) <= 2 && army.Supplies >= 0.06 / SimulationTime.TicksPerDay)
                 {
-                    army.Supplies -= 0.06;
-                    soldier.Hunger = Math.Max(0, soldier.Hunger - 3);
+                    army.Supplies -= 0.06 / SimulationTime.TicksPerDay;
+                    soldier.Hunger = Math.Max(0, soldier.Hunger - 3d / SimulationTime.TicksPerDay);
                 }
-                else if (soldier.Inventory.Food >= 0.05)
+                else if (soldier.Inventory.Food >= 0.05 / SimulationTime.TicksPerDay)
                     soldier.Replace(soldier.Value with
                     {
-                        Inventory = soldier.Inventory with { Food = soldier.Inventory.Food - 0.05 },
-                        Hunger = Math.Max(0, soldier.Hunger - 3),
+                        Inventory = soldier.Inventory with { Food = soldier.Inventory.Food - 0.05 / SimulationTime.TicksPerDay },
+                        Hunger = Math.Max(0, soldier.Hunger - 3d / SimulationTime.TicksPerDay),
                     });
                 else
-                    soldier.Hunger = Math.Min(100, soldier.Hunger + .8);
+                    soldier.Hunger = Math.Min(100, soldier.Hunger + .8 / SimulationTime.TicksPerDay);
 
                 if (Current.Rules.Hunger && soldier.Hunger > 80)
-                    DamageResident(soldier, .30, DeathCause.Starvation);
+                    DamageResident(soldier, .30 / SimulationTime.TicksPerDay, DeathCause.Starvation);
             }
 
             var depot = Current.Settlements.FirstOrDefault(s =>
@@ -267,7 +267,7 @@ public sealed partial class WorldEngine
                 army.WaterSupplies += water;
             }
 
-            army.Morale = Math.Clamp(army.Morale + (army.Supplies > 0 ? 0.15 : -1.2), 0, 100);
+            army.Morale = Math.Clamp(army.Morale + (army.Supplies > 0 ? 0.15 : -1.2) / SimulationTime.TicksPerDay, 0, 100);
             if (army.Outcome == WarOutcome.None)
             {
                 if (army.InitialSoldiers > 0 && soldiers.Length * 5 <= army.InitialSoldiers * 3)
@@ -276,10 +276,25 @@ public sealed partial class WorldEngine
                          army.Morale < 15 ||
                          (Current.Rules.Hunger && army.Supplies <= 0 && soldiers.Average(r => r.Hunger) > 40))
                     EndCampaign(army, WarOutcome.SupplyShortage, soldiers);
-                else if (army.BlockedTicks >= 120)
+                else if (army.BlockedTicks >= 5 * SimulationTime.TicksPerDay)
                     EndCampaign(army, WarOutcome.RouteBlocked, soldiers);
-                else if (Current.Tick - army.StartedTick >= 720)
+                else if (Current.Tick - army.StartedTick >= 6 * SimulationTime.TicksPerYear)
                     EndCampaign(army, WarOutcome.Exhausted, soldiers);
+            }
+
+            var time = SimulationTime.TimeOfDay(Current.Tick);
+            if ((time < SimulationTime.WakeTick || time >= SimulationTime.SleepTick)
+                && !soldiers.Any(r => Current.Tiles[Index(r.X, r.Y)].FireTicks > 0)
+                && !Current.Armies.Any(a => a.Id != army.Id && a.NationId == army.TargetNationId
+                    && Distance(army.X, army.Y, a.X, a.Y) <= 2))
+            {
+                army.Status = "夜间宿营休息";
+                foreach (var soldier in soldiers)
+                {
+                    soldier.Activity = ResidentActivity.Sleeping;
+                    soldier.Agent = soldier.Agent with { Fatigue = Math.Max(0, soldier.Agent.Fatigue - 2.2) };
+                }
+                continue;
             }
 
             if (army.Gathering && !army.Retreating)

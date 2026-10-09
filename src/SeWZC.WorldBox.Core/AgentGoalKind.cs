@@ -65,4 +65,7 @@ public enum AgentGoalKind
 
     /// <summary>扑灭火灾。</summary>
     ExtinguishFire,
+
+    /// <summary>夜间返家或在途中睡眠。</summary>
+    Sleep,
 }

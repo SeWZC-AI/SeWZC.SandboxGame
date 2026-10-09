@@ -47,9 +47,9 @@ public sealed partial record Settlement
     /// <summary>实际在本地观察或收到的公开信息，可能已经过时。</summary>
     public ImmutableList<AgentFact> PublicKnowledge { get; init; } = [];
 
-    /// <summary>丰饶祝福剩余模拟日数。</summary>
+    /// <summary>丰饶祝福剩余模拟 tick 数。</summary>
     public int FertilityBoostTicks { get; init; }
 
-    /// <summary>聚落局部护盾剩余模拟日数。</summary>
+    /// <summary>聚落局部护盾剩余模拟 tick 数。</summary>
     public int ShieldTicks { get; init; }
 }

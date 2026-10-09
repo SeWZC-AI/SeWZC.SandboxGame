@@ -20,7 +20,7 @@ public sealed class WorkforceTests
         var ground = fixture.Engine.Current.Tiles[16 * 32 + 17];
         ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Id, NationId = fixture.Town.NationId });
         var hospitalId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Hospital, 17, 16);
-        fixture.Engine.Current.Tick = 150;
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -41,7 +41,7 @@ public sealed class WorkforceTests
         var mountainIndex = 16 * 32 + 17;
         var mountain = fixture.Engine.Current.Tiles[mountainIndex];
         mountain.Replace(mountain.Value with { Terrain = TerrainType.Mountain, ResourceAmount = 100 });
-        fixture.Engine.Current.Tick = 150;
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -74,7 +74,7 @@ public sealed class WorkforceTests
             Profession = Profession.Miner
         });
         miner.Agent = miner.Agent with { WorkAreaIndex = mountainIndex };
-        fixture.Engine.Current.Tick = 150;
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -110,7 +110,7 @@ public sealed class WorkforceTests
         var miner = fixture.Engine.Current.Residents.First(person => person.Id != fixture.ResidentId);
         miner.Profession = Profession.Miner;
         miner.Agent = miner.Agent with { WorkAreaIndex = 16 * 32 + 17 };
-        fixture.Engine.Current.Tick = 150;
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -148,7 +148,7 @@ public sealed class WorkforceTests
             person.Agent = person.Agent with { JobChangedTick = 20 };
         }
 
-        fixture.Engine.Current.Tick = 30;
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -174,7 +174,7 @@ public sealed class WorkforceTests
         var available = fixture.Engine.Current.Residents.First(p => p.Id != fixture.ResidentId);
         available.Profession = Profession.Laborer;
         available.Agent = available.Agent with { JobChangedTick = 20 };
-        fixture.Engine.Current.Tick = 30;
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -204,7 +204,7 @@ public sealed class WorkforceTests
             Wildlife = WildlifeKind.Fish,
             WildlifePopulation = 20,
         });
-        fixture.Engine.Current.Tick = 30;
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -230,7 +230,7 @@ public sealed class WorkforceTests
             Plants = new PlantCoverage { Grass = 1 },
             Improvement = LandImprovement.None,
         });
-        fixture.Engine.Current.Tick = 30;
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -249,14 +249,14 @@ public sealed class WorkforceTests
         var fixture = Prepare();
         var people = fixture.Engine.Current.Residents.Where(p => p.Id != fixture.ResidentId).ToArray();
         people[0].Replace(people[0].Value with { X = 30, FromX = 30 });
-        people[1].Replace(people[1].Value with { MoveStartedTick = 29, MoveDurationTicks = 4 });
+        people[1].Replace(people[1].Value with { MoveStartedTick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick - 1, MoveDurationTicks = 4 });
         people[2].Health = 40;
         people[3].Agent = people[3].Agent with
         {
-            Goal = new AgentGoal { PlayerDirected = true, ReviewTick = 100 }
+            Goal = new AgentGoal { PlayerDirected = true, ReviewTick = 2 * SimulationTime.TicksPerMonth }
         };
         people[4].Agent = people[4].Agent with { JobChangedTick = 20 };
-        fixture.Engine.Current.Tick = 30;
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -296,7 +296,7 @@ public sealed class WorkforceTests
         var workplace = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.LumberCamp, 18, 16);
         fixture.Engine.Current.Buildings.Single(b => b.Id == workplace).WorkSlots = 1;
         var before = fixture.Engine.State;
-        fixture.Engine.Current.Tick = 30;
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -317,7 +317,7 @@ public sealed class WorkforceTests
             NationId = fixture.Town.NationId,
         });
         fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.LumberCamp, 17, 16);
-        fixture.Engine.Current.Tick = 150;
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -335,7 +335,7 @@ public sealed class WorkforceTests
         var index = 16 * 32 + 17;
         var source = fixture.Engine.Current.Tiles[index];
         source.Replace(source.Value with { Terrain = TerrainType.Grass, ResourceAmount = 100 });
-        fixture.Engine.Current.Tick = 150;
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -352,7 +352,7 @@ public sealed class WorkforceTests
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Research = true, Construction = true }, false, false);
         fixture.Town.Population = 100;
         fixture.Town.Resources = new ResourceStock { Food = 400, Water = 10_000, Wood = 50, Stone = 20 };
-        fixture.Engine.Current.Tick = 60 - fixture.Town.Id % 60;
+        fixture.Engine.Current.Tick = 2 * SimulationTime.TicksPerMonth - fixture.Town.Id % (2 * SimulationTime.TicksPerMonth);
 
         fixture.Engine.TickSociety();
 
@@ -375,7 +375,7 @@ public sealed class WorkforceTests
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Research = true, Construction = true }, false, true);
         fixture.Town.Population = 100;
         fixture.Town.Resources = new ResourceStock { Food = 400, Water = 10_000, Wood = 100, Stone = 100, Ore = 0 };
-        fixture.Engine.Current.Tick = 60 - fixture.Town.Id % 60;
+        fixture.Engine.Current.Tick = 2 * SimulationTime.TicksPerMonth - fixture.Town.Id % (2 * SimulationTime.TicksPerMonth);
 
         fixture.Engine.TickSociety();
 
@@ -390,7 +390,7 @@ public sealed class WorkforceTests
         var fixture = Prepare();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Births = true }, false, false);
         fixture.Town.Housing = 0;
-        fixture.Engine.Current.Tick = 11;
+        fixture.Engine.Current.Tick = SimulationTime.TicksPerYear / 10 - 1;
         var before = fixture.Engine.State.Population;
 
         fixture.Engine.Step();

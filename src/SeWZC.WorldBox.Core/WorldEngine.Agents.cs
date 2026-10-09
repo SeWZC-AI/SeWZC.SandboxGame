@@ -114,6 +114,10 @@ public sealed partial class WorldEngine
                                            && ((person.Hunger > 60 && person.Inventory.Food < .05)
                                                || (Current.Rules.Thirst && person.Thirst > 80 &&
                                                    person.Inventory.Water < .025)));
+                var survival = danger || (Current.Rules.Hunger && person.Hunger > 60 && person.Inventory.Food < .05)
+                               || (Current.Rules.Thirst && person.Thirst > 80 && person.Inventory.Water < .025);
+                if (FollowDailyRoutine(person, home, survival))
+                    continue;
                 if ((!directed && Current.Tick >= person.Agent.NextThinkTick
                                && (Current.Tick + person.Id) % 4 == 0) || emergency)
                     ChooseAgentGoal(person, home, emergency && directed);
@@ -142,7 +146,7 @@ public sealed partial class WorldEngine
             var knowsForeignTown = false;
             foreach (var fact in person.Agent.Memory)
                 if (fact.Kind == AgentFactKind.SettlementLocation && fact.Value != person.NationId
-                                                                  && Current.Tick - fact.ObservedTick < 1200)
+                                                                  && Current.Tick - fact.ObservedTick < 10 * SimulationTime.TicksPerYear)
                 {
                     knowsForeignTown = true;
                     break;
@@ -156,7 +160,7 @@ public sealed partial class WorldEngine
             ? 4
             : Math.Clamp(
                 .8 + Distance(person.X, person.Y, person.Agent.Goal.TargetX, person.Agent.Goal.TargetY) *
-                FoodUse(person) * 6, .8, 8);
+                FoodUse(person) * 6 / SimulationTime.TicksPerDay, .8, 8);
     }
 
     private void TransferPersonalProduction(ResidentCursor person, SettlementCursor home)
@@ -223,7 +227,8 @@ public sealed partial class WorldEngine
                                             && ExpansionJobHasNearbyWork(person))
             return false;
         if (Current.Rules.Hunger && Distance(person.X, person.Y, home.X, home.Y) > 1 && person.Hunger < 20
-            && person.Inventory.Food < FoodUse(person) * (Distance(person.X, person.Y, home.X, home.Y) * 4 + 12))
+            && person.Inventory.Food < FoodUse(person) * (Distance(person.X, person.Y, home.X, home.Y) * 4 + 12)
+                / SimulationTime.TicksPerDay)
             return false;
         if (goal.Kind == AgentGoalKind.Work && goal.TargetEntityId == 0 && person.Profession == Profession.Miner
             && person.Agent.MaterialPriority is not null && FindVisibleResourceSite(person, Profession.Miner) < 0 &&
@@ -287,12 +292,12 @@ public sealed partial class WorldEngine
                                                                       home.Resources.RareEarth < 16);
     }
 
-    // 初次紧急判断仍立即执行；后续复评对齐个人四日错峰，首次对齐只需三至六日。
+    // 初次紧急判断仍立即执行；后续复评对齐个人四 tick 错峰，首次对齐只需三至六 tick。
     private int GoalReviewInterval(ResidentCursor person)
     {
         if (!(person.Hunger > 60 && person.Inventory.Food < .05)
             && !(Current.Rules.Thirst && person.Thirst > 80 && person.Inventory.Water < .025))
-            return 48;
+            return 2 * SimulationTime.TicksPerDay;
         var earliest = Current.Tick + 3;
         var phase = (earliest + person.Id) % 4;
         return 3 + (int)((4 - phase) % 4);
@@ -372,7 +377,7 @@ public sealed partial class WorldEngine
         // 正在实地解决缺粮或补水时继续当前劳动；现场枯竭、疲劳和新的身体危险仍会提前复评。
         if (choices.Count == 0 && !interrupted && ProvisionGoalContinues(person))
         {
-            DeferGoalReview(person, 24);
+            DeferGoalReview(person, SimulationTime.TicksPerDay);
             return;
         }
 
@@ -381,7 +386,7 @@ public sealed partial class WorldEngine
                 || (person.Agent.Goal.Kind == AgentGoalKind.Rest && RecoveryGoalContinues(person)
                                                           && person.Hunger < 60 && person.Thirst < 60)
                 || (person.Agent.Goal.Kind == AgentGoalKind.ReturnHome && Distance(person.X, person.Y, home.X, home.Y) > 1
-                                                                && Current.Tick < person.Agent.Goal.StartedTick + 240 &&
+                                                                && Current.Tick < person.Agent.Goal.StartedTick + 10 * SimulationTime.TicksPerDay &&
                                                                 Current.Tick >= person.Agent.Goal.NavigationRetryTick
                                                                 && person.Hunger < 60 && person.Thirst < 60)))
         {
@@ -391,7 +396,7 @@ public sealed partial class WorldEngine
 
         if (person.Agent.Goal.Kind is AgentGoalKind.ClaimLand or AgentGoalKind.FetchWater or AgentGoalKind.Hunt
                 or AgentGoalKind.Fish
-            && choices.Count == 0 && Current.Tick - person.Agent.Goal.StartedTick < 48 && person.Hunger < 20 &&
+            && choices.Count == 0 && Current.Tick - person.Agent.Goal.StartedTick < 2 * SimulationTime.TicksPerDay && person.Hunger < 20 &&
             person.Thirst < 60
             && person.Agent.Fatigue < 60 && Current.Tick >= person.Agent.Goal.NavigationRetryTick
             && (person.Agent.Goal.Kind is not (AgentGoalKind.Hunt or AgentGoalKind.Fish) || WildlifeGoalProductive(person))
@@ -409,7 +414,7 @@ public sealed partial class WorldEngine
         }
 
         if (person.Agent.Goal.Kind == AgentGoalKind.Migrate && choices.Count == 0 &&
-            Current.Tick - person.Agent.Goal.StartedTick < 360
+            Current.Tick - person.Agent.Goal.StartedTick < 3 * SimulationTime.TicksPerYear
             && person.Hunger < 20 && person.Thirst < 60)
         {
             DeferGoalReview(person);
@@ -429,13 +434,13 @@ public sealed partial class WorldEngine
         if (person.Agent.Goal.Kind == AgentGoalKind.Explore && choices.Count == 0 && person.Hunger < 65 && person.Agent.Fatigue < 60
             && (person.Thirst < 40 || person.Inventory.Water >= .3)
             && Distance(person.X, person.Y, person.Agent.Goal.TargetX, person.Agent.Goal.TargetY) > 1 &&
-            Current.Tick - person.Agent.Goal.StartedTick < 48)
+            Current.Tick - person.Agent.Goal.StartedTick < 2 * SimulationTime.TicksPerDay)
         {
             DeferGoalReview(person);
             return;
         }
 
-        var activeMission = person.Agent.DestinationSettlementId != 0 && Current.Tick - person.Agent.MissionStartedTick < 360
+        var activeMission = person.Agent.DestinationSettlementId != 0 && Current.Tick - person.Agent.MissionStartedTick < 3 * SimulationTime.TicksPerYear
                                                                && person.Agent.Goal.Kind is AgentGoalKind.DeliverMessage
                                                                    or AgentGoalKind.Trade
                                                                    or AgentGoalKind.Petition;
@@ -783,6 +788,7 @@ public sealed partial class WorldEngine
         ChangeWorkReservation(previous, nextGoal);
         person.Agent = person.Agent with
         {
+            DaytimeGoal = null,
             Goal = nextGoal,
             NextThinkTick = Current.Tick + GoalReviewInterval(person),
             Decisions = decisions,
@@ -795,7 +801,7 @@ public sealed partial class WorldEngine
             {
                 DestinationSettlementId = 0,
                 CarriedMessages = [],
-                MissionRetryTick = Current.Tick + 120,
+                MissionRetryTick = Current.Tick + SimulationTime.TicksPerMonth,
             };
         }
     }
@@ -1049,7 +1055,7 @@ public sealed partial class WorldEngine
                 {
                     var reviewInterval = GoalReviewInterval(person);
                     var next = Math.Min(person.Agent.NextThinkTick,
-                        Current.Tick + (reviewInterval < 24 ? reviewInterval : 4));
+                        Current.Tick + (reviewInterval < SimulationTime.TicksPerDay ? reviewInterval : 4));
                     var observed = person.Agent.Remember(MakeAgentFact(person, AgentFactKind.FoodSupply, home.Id,
                         home.X, home.Y, home.Resources.Food, $"实地查看粮仓：{home.Resources.Food:0.0} 份粮食"), home.Id);
                     person.Agent = observed with
@@ -1085,6 +1091,10 @@ public sealed partial class WorldEngine
                     Fatigue = Math.Max(0, person.Agent.Fatigue - 2.2 * HomeRestMultiplier(person)),
                 };
                 person.Activity = ResidentActivity.Resting;
+                break;
+            case AgentGoalKind.Sleep:
+                person.Activity = ResidentActivity.Sleeping;
+                person.Agent = person.Agent with { Fatigue = Math.Max(0, person.Agent.Fatigue - 2.2) };
                 break;
             case AgentGoalKind.Flee:
                 person.Agent = person.Agent with
@@ -1182,7 +1192,7 @@ public sealed partial class WorldEngine
             or AgentGoalKind.Fish)
             return 0;
         if (goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest or AgentGoalKind.Socialize
-            or AgentGoalKind.ReturnHome)
+            or AgentGoalKind.ReturnHome or AgentGoalKind.Sleep)
             return 1;
         return goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic
                && FindBuilding(goal.TargetEntityId) is { } building
@@ -1207,7 +1217,7 @@ public sealed partial class WorldEngine
             return;
         }
 
-        var productivity = WorkInterval(person) * RaceTerrainRules.For(person.Race, tile.Terrain).Productivity *
+        var productivity = WorkInterval(person) / (double)SimulationTime.TicksPerDay * RaceTerrainRules.For(person.Race, tile.Terrain).Productivity *
                            GatheringCondition(person)
                            * (0.75 + person.Agent.Personality.Diligence * 0.5) * Current.Rules.GatheringRate
                            * (profession is Profession.Lumberjack or Profession.Miner &&
@@ -1265,7 +1275,7 @@ public sealed partial class WorldEngine
         person.Inventory = inventory;
         person.Agent = agent with
         {
-            Fatigue = Math.Min(100, agent.Fatigue + 0.30 * WorkInterval(person)),
+            Fatigue = Math.Min(100, agent.Fatigue + 0.30 * WorkInterval(person) / SimulationTime.TicksPerDay),
             NextThinkTick = nextThink,
         };
         person.Activity = ResidentActivity.Working;
@@ -1303,7 +1313,7 @@ public sealed partial class WorldEngine
             PlanVisibleCrossing(person, targetX, targetY);
             var blocked = navigation with
             {
-                NavigationRetryTick = Current.Tick + 24,
+                NavigationRetryTick = Current.Tick + SimulationTime.TicksPerDay,
                 Reason = "可见范围内没有可用路线，等待通道或重新选择任务",
             };
             if (!blocked.PlayerDirected)

@@ -5,21 +5,21 @@ namespace SeWZC.WorldBox.Core;
 /// <summary>两个国家之间的外交关系。</summary>
 public sealed record DiplomaticRelation
 {
-    /// <summary>最近一次外交状态变化的模拟日序。</summary>
+    /// <summary>最近一次外交状态变化的模拟 tick 序。</summary>
     public long LastChangedTick { get; init; }
 
-    /// <summary>最近一次实际接触的模拟日序。</summary>
+    /// <summary>最近一次实际接触的模拟 tick 序。</summary>
     public long LastContactTick { get; init; }
 
-    /// <summary>第一国首次进入持续敌意的日序，0 表示尚未开始。</summary>
+    /// <summary>第一国首次进入持续敌意的 tick 序，0 表示尚未开始。</summary>
     [JsonRequired]
     public long FirstEscalationTick { get; init; }
 
-    /// <summary>第二国首次进入持续敌意的日序，0 表示尚未开始。</summary>
+    /// <summary>第二国首次进入持续敌意的 tick 序，0 表示尚未开始。</summary>
     [JsonRequired]
     public long SecondEscalationTick { get; init; }
 
-    /// <summary>最近一次评估外交关系的模拟日序。</summary>
+    /// <summary>最近一次评估外交关系的模拟 tick 序。</summary>
     public long LastEvaluatedTick { get; init; }
 
     /// <summary>最近一次外交变化关联的事件 ID。</summary>
@@ -28,7 +28,7 @@ public sealed record DiplomaticRelation
     /// <summary>当前发起结盟提议的国家 ID。</summary>
     public int AllianceOfferNationId { get; init; }
 
-    /// <summary>当前结盟提议发起的模拟日序。</summary>
+    /// <summary>当前结盟提议发起的模拟 tick 序。</summary>
     public long AllianceOfferTick { get; init; }
 
     /// <summary>当前外交关系或协商决定的理由。</summary>

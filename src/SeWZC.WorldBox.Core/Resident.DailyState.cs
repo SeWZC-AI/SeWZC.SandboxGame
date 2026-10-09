@@ -6,10 +6,10 @@ public sealed partial record Resident
     /// <param name="Age">结算后的年龄。</param>
     /// <param name="Profession">结算后的职业。</param>
     /// <param name="Health">结算后的生命值。</param>
-    /// <param name="Sickness">剩余疫病日数。</param>
-    /// <param name="Immunity">免疫截止日序。</param>
+    /// <param name="Sickness">剩余疫病 tick 数。</param>
+    /// <param name="Immunity">免疫截止 tick 序。</param>
     /// <param name="DeathCause">死亡原因。</param>
-    /// <param name="DeathTick">死亡日序。</param>
+    /// <param name="DeathTick">死亡 tick 序。</param>
     /// <param name="Activity">结算后的活动。</param>
     /// <param name="Mana">结算后的魔力。</param>
     /// <param name="Hunger">结算后的饥饿程度。</param>
