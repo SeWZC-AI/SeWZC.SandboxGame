@@ -265,10 +265,12 @@ public sealed partial class WorldEngine
         {
             resident.Health = 0;
             if (resident.DeathCause == DeathCause.None)
+            {
                 resident.Replace(resident.Value with
                 {
                     DeathCause = DeathCause.PlayerIntervention, DeathTick = Current.Tick,
                 });
+            }
 
             var death = AddEvent(WorldEventKind.Death,
                 $"{resident.Name}逝世：{DeathCauseName(resident.DeathCause)}，终年 {resident.Age:0.0} 岁。", resident.X,

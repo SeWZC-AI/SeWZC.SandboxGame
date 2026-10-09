@@ -74,8 +74,11 @@ internal sealed class TerritoryCounts
         if (ReferenceEquals(_tiles, tiles) && _membershipRevision == tiles.MembershipRevision)
             return;
         if (_tiles is not null)
+        {
             foreach (var tile in _tiles)
                 tile.Changed = null;
+        }
+
         _tiles = tiles;
         _membershipRevision = tiles.MembershipRevision;
         _counts.Clear();
@@ -120,8 +123,10 @@ internal sealed class TerritoryCounts
             if (_traversalWidth == 0)
                 InvalidateTraversal();
             else
+            {
                 _traversalRegions[index / _traversalWidth / 16 * _regionColumns + index % _traversalWidth / 16] =
                     ++TraversalRevision;
+            }
         }
 
         if (before.Wildlife != after.Wildlife || before.WildlifePopulation != after.WildlifePopulation
@@ -139,8 +144,10 @@ internal sealed class TerritoryCounts
             if (_traversalWidth == 0)
                 _wildlifeFloor = revision;
             else
+            {
                 _wildlifeRegions[index / _traversalWidth / 16 * _regionColumns + index % _traversalWidth / 16] =
                     revision;
+            }
         }
     }
 

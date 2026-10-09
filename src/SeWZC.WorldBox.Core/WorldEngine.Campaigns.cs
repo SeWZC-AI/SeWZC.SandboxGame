@@ -85,8 +85,10 @@ public sealed partial class WorldEngine
             fact.Value > (int)WarOutcome.Exhausted)
             return;
         if (fact.CampaignEventId != nation.Military.CampaignEventId || fact.SubjectId != nation.Military.EnemyNationId
-                                                           || fact.EventId == nation.Military.LastReportEventId ||
-                                                           fact.ObservedTick < nation.Military.LastReportObservedTick)
+                                                                    || fact.EventId ==
+                                                                    nation.Military.LastReportEventId ||
+                                                                    fact.ObservedTick <
+                                                                    nation.Military.LastReportObservedTick)
             return;
         nation.Military = nation.Military with
         {
@@ -95,7 +97,8 @@ public sealed partial class WorldEngine
             LastReportReceivedTick = Current.Tick,
             ReportedOutcome = (WarOutcome)(int)fact.Value,
             Report = fact.Text,
-            RecoveryUntilTick = Math.Max(nation.Military.RecoveryUntilTick, Current.Tick + 3 * SimulationTime.TicksPerYear),
+            RecoveryUntilTick = Math.Max(nation.Military.RecoveryUntilTick,
+                Current.Tick + 3 * SimulationTime.TicksPerYear),
         };
         var received = AddEvent(WorldEventKind.War, $"{nation.Name}首都实际收到战报：{fact.Text}。", town.X, town.Y,
             EventAction.Report, town.Id, causeEventId: fact.EventId, evidenceFactId: fact.Id);

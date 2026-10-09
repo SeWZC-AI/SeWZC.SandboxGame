@@ -22,13 +22,15 @@ public sealed partial record Resident
     internal DailyState CalculateDay(WorldRules rules, Tile tile, long tick, Profession profession,
         int infectionDuration,
         double manaRecovery, bool consumeNeeds, double socialGrowth = .07, double deliveredWater = 0,
-        int arrivedTile = -1, ResourceStock? suppliedInventory = null, AgentState? suppliedAgent = null, double elapsedDays = 1)
+        int arrivedTile = -1, ResourceStock? suppliedInventory = null, AgentState? suppliedAgent = null,
+        double elapsedDays = 1)
     {
         var vitals = CalculateVitals(rules, tile, tick, profession, infectionDuration, manaRecovery, elapsedDays);
         var agent = suppliedAgent ?? Agent;
         var arrivedAgent = arrivedTile >= 0 ? agent.RememberRouteTile(arrivedTile) : agent;
         var next = consumeNeeds && vitals.Health > 0
-            ? CalculateNeeds(rules, tick, vitals, socialGrowth, deliveredWater, arrivedAgent, suppliedInventory, tile, elapsedDays)
+            ? CalculateNeeds(rules, tick, vitals, socialGrowth, deliveredWater, arrivedAgent, suppliedInventory, tile,
+                elapsedDays)
             : CalculateDailyVitals(vitals, vitals.Health > 0 ? socialGrowth : 0, deliveredWater, arrivedAgent,
                 suppliedInventory);
         if (consumeNeeds && vitals.Health > 0 && !agent.Goal.PlayerDirected

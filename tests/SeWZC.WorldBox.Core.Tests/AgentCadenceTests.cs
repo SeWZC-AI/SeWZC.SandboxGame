@@ -24,7 +24,7 @@ public sealed class AgentCadenceTests
                 TargetY = 16,
                 WorkTicks = 2,
                 ReviewTick = due,
-            }
+            },
         };
 
         fixture.Engine.Step();
@@ -54,7 +54,7 @@ public sealed class AgentCadenceTests
                 TargetY = 16,
                 PlayerDirected = true,
                 ReviewTick = 100,
-            }
+            },
         };
         var before = fixture.Resident.Value;
 
@@ -102,7 +102,7 @@ public sealed class AgentCadenceTests
                 SourceResidentId = fixture.ResidentId,
                 Confidence = 1,
                 Text = "亲眼见到家园",
-            })
+            }),
         };
 
         fixture.Engine.Step();
@@ -131,11 +131,8 @@ public sealed class AgentCadenceTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Gather,
-                TargetX = 16,
-                TargetY = 16,
-                ReviewTick = fixture.Engine.Current.Tick + 4,
-            }
+                Kind = AgentGoalKind.Gather, TargetX = 16, TargetY = 16, ReviewTick = fixture.Engine.Current.Tick + 4,
+            },
         };
         fixture.Resident.FrozenUntilTick = fixture.Engine.Current.Tick + 2;
 
@@ -159,12 +156,7 @@ public sealed class AgentCadenceTests
                 Hunger = 90,
                 Inventory = new ResourceStock { Water = 10 },
                 FrozenUntilTick = fixture.Engine.Current.Tick + 6,
-                Agent = person.Agent with
-                {
-                    Initialized = true,
-                    NextThinkTick = 100,
-                    Goal = new AgentGoal()
-                },
+                Agent = person.Agent with { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal() },
             });
 
         fixture.Engine.Step();
@@ -211,11 +203,8 @@ public sealed class AgentCadenceTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Gather,
-                TargetX = 16,
-                TargetY = 16,
-                StartedTick = fixture.Engine.Current.Tick - 4,
-            }
+                Kind = AgentGoalKind.Gather, TargetX = 16, TargetY = 16, StartedTick = fixture.Engine.Current.Tick - 4,
+            },
         };
 
         fixture.Engine.Step();
@@ -253,11 +242,8 @@ public sealed class AgentCadenceTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Eat,
-                TargetX = 16,
-                TargetY = 16,
-                ReviewTick = 100,
-            }
+                Kind = AgentGoalKind.Eat, TargetX = 16, TargetY = 16, ReviewTick = 100,
+            },
         };
 
         fixture.Engine.Step();
@@ -327,7 +313,7 @@ public sealed class AgentCadenceTests
                 TargetY = 17,
                 TargetEntityId = source + 1,
                 WorkTicks = 3,
-            }
+            },
         };
         var tile = fixture.Engine.Current.Tiles[source];
         fixture.AddWell(16, 17, .025);
@@ -446,12 +432,7 @@ public sealed class AgentCadenceTests
             FromX = 16,
             FromY = 16,
             Inventory = new ResourceStock { Food = 10, Water = 10 },
-            Agent = fixture.Resident.Agent with
-            {
-                Initialized = true,
-                NextThinkTick = 0,
-                Goal = new AgentGoal()
-            },
+            Agent = fixture.Resident.Agent with { Initialized = true, NextThinkTick = 0, Goal = new AgentGoal() },
         });
         return fixture;
     }

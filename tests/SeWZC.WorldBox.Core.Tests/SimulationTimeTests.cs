@@ -19,7 +19,10 @@ public sealed class SimulationTimeTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Work, TargetEntityId = buildingId, TargetX = 22, TargetY = 16,
+                Kind = AgentGoalKind.Work,
+                TargetEntityId = buildingId,
+                TargetX = 22,
+                TargetY = 16,
                 ReviewTick = SimulationTime.TicksPerYear,
             },
         };
@@ -51,7 +54,8 @@ public sealed class SimulationTimeTests
     [InlineData(SimulationTime.TicksPerDay, 1, 1, 2, 0)]
     [InlineData(SimulationTime.TicksPerMonth - 1, 1, 1, SimulationTime.DaysPerMonth, SimulationTime.TicksPerDay - 1)]
     [InlineData(SimulationTime.TicksPerMonth, 1, 2, 1, 0)]
-    [InlineData(SimulationTime.TicksPerYear - 1, 1, SimulationTime.MonthsPerYear, SimulationTime.DaysPerMonth, SimulationTime.TicksPerDay - 1)]
+    [InlineData(SimulationTime.TicksPerYear - 1, 1, SimulationTime.MonthsPerYear, SimulationTime.DaysPerMonth,
+        SimulationTime.TicksPerDay - 1)]
     [InlineData(SimulationTime.TicksPerYear, 2, 1, 1, 0)]
     public void Calendar_carries_at_day_month_and_year_boundaries(long tick, int year, int month, int day, int time)
     {
@@ -127,8 +131,11 @@ public sealed class SimulationTimeTests
         var fixture = Prepare(SimulationTime.SleepTick - 1);
         var goal = new AgentGoal
         {
-            Kind = AgentGoalKind.Migrate, TargetX = 24, TargetY = 16,
-            TargetSettlementId = fixture.Town.Id, ReviewTick = SimulationTime.TicksPerYear,
+            Kind = AgentGoalKind.Migrate,
+            TargetX = 24,
+            TargetY = 16,
+            TargetSettlementId = fixture.Town.Id,
+            ReviewTick = SimulationTime.TicksPerYear,
         };
         fixture.Resident.X = fixture.Resident.FromX = 22;
         fixture.Resident.Agent = fixture.Resident.Agent with { Goal = goal };
@@ -172,8 +179,11 @@ public sealed class SimulationTimeTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.FetchWater, TargetX = 22, TargetY = 16,
-                TargetEntityId = 16 * 32 + 23 + 1, ReviewTick = SimulationTime.TicksPerYear,
+                Kind = AgentGoalKind.FetchWater,
+                TargetX = 22,
+                TargetY = 16,
+                TargetEntityId = 16 * 32 + 23 + 1,
+                ReviewTick = SimulationTime.TicksPerYear,
             },
         };
 
@@ -253,8 +263,11 @@ public sealed class SimulationTimeTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 17,
-                TargetEntityId = 17 * 32 + 16 + 1, ReviewTick = SimulationTime.TicksPerYear,
+                Kind = AgentGoalKind.FetchWater,
+                TargetX = 16,
+                TargetY = 17,
+                TargetEntityId = 17 * 32 + 16 + 1,
+                ReviewTick = SimulationTime.TicksPerYear,
             },
         };
         Assert.True(fixture.Engine.TryFetchWater(fixture.Resident));
@@ -272,21 +285,35 @@ public sealed class SimulationTimeTests
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with
         {
-            Births = false, Construction = false, Expansion = false, Wars = false,
-            Secession = false, Migration = false, Research = false, Disease = false,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Wars = false,
+            Secession = false,
+            Migration = false,
+            Research = false,
+            Disease = false,
         }, false, false);
         fixture.Engine.Current.Tick = tick;
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            Age = 25, X = 16, Y = 16, FromX = 16, FromY = 16,
-            MoveStartedTick = 0, MoveDurationTicks = 1,
+            Age = 25,
+            X = 16,
+            Y = 16,
+            FromX = 16,
+            FromY = 16,
+            MoveStartedTick = 0,
+            MoveDurationTicks = 1,
             Inventory = new ResourceStock { Food = 10, Water = 10 },
             Agent = fixture.Resident.Agent with
             {
-                Initialized = true, NextThinkTick = SimulationTime.TicksPerYear,
+                Initialized = true,
+                NextThinkTick = SimulationTime.TicksPerYear,
                 Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.Socialize, TargetX = 16, TargetY = 16,
+                    Kind = AgentGoalKind.Socialize,
+                    TargetX = 16,
+                    TargetY = 16,
                     ReviewTick = SimulationTime.TicksPerYear,
                 },
             },

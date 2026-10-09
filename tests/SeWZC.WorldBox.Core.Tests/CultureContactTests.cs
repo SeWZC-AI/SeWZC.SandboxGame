@@ -13,22 +13,35 @@ public sealed class CultureContactTests
         var engine = fixture.Engine;
         engine.ConfigureWorld(engine.State.Rules with
         {
-            Births = false, Aging = false, Hunger = false, Thirst = false, Disease = false,
-            Construction = false, Expansion = false, Research = false, Wars = false,
+            Births = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Construction = false,
+            Expansion = false,
+            Research = false,
+            Wars = false,
         }, false, false);
         var ownCulture = fixture.Resident.CultureId;
-        var foreign = engine.Current.Society.Cultures.First() with
-        {
-            Id = engine.Current.NextId++, Name = "邻村文化",
-        };
+        var foreign = engine.Current.Society.Cultures.First() with { Id = engine.Current.NextId++, Name = "邻村文化" };
         var initialExposure = convert ? 9d : 1;
         engine.Current.Society = engine.Current.Society with
         {
             Cultures = engine.Current.Society.Cultures.Add(foreign),
             CulturalContacts =
             [
-                new() { ResidentId = fixture.ResidentId, CultureId = foreign.Id, Exposure = initialExposure, LastContactTick = -12 },
-                new() { ResidentId = fixture.ResidentId, CultureId = ownCulture, Exposure = 3, LastContactTick = -12 },
+                new CulturalContact
+                {
+                    ResidentId = fixture.ResidentId,
+                    CultureId = foreign.Id,
+                    Exposure = initialExposure,
+                    LastContactTick = -12,
+                },
+                new CulturalContact
+                {
+                    ResidentId = fixture.ResidentId, CultureId = ownCulture, Exposure = 3, LastContactTick = -12,
+                },
             ],
         };
         engine.Current.Tick = SimulationTime.WakeTick;
@@ -36,12 +49,13 @@ public sealed class CultureContactTests
         fixture.Resident.FrozenUntilTick = 10;
         fixture.Resident.Agent = fixture.Resident.Agent with
         {
-            NextThinkTick = 100,
-            Personality = fixture.Resident.Agent.Personality with { Sociability = .75 },
+            NextThinkTick = 100, Personality = fixture.Resident.Agent.Personality with { Sociability = .75 },
         };
         engine.Current.PendingMessages = engine.Current.PendingMessages.Add(new PendingMessage
         {
-            SenderId = fixture.ResidentId, RecipientId = fixture.ResidentId, DeliverTick = SimulationTime.WakeTick + 1,
+            SenderId = fixture.ResidentId,
+            RecipientId = fixture.ResidentId,
+            DeliverTick = SimulationTime.WakeTick + 1,
             Facts = [Report(foreign.Id), Report(foreign.Id), Report(ownCulture)],
         });
         var before = engine.State;
@@ -57,12 +71,22 @@ public sealed class CultureContactTests
         Assert.Equal(initialExposure, before.Society.CulturalContacts[0].Exposure);
         Assert.Equal(engine.ExportJson(), WorldEngine.ImportJson(engine.ExportJson()).ExportJson());
 
-        AgentFact Report(int cultureId) => new()
+        AgentFact Report(int cultureId)
         {
-            Id = engine.Current.NextId++, Kind = AgentFactKind.Culture, SubjectId = fixture.Town.Id,
-            X = 16, Y = 16, Value = cultureId, ObservedTick = SimulationTime.WakeTick,
-            LearnedTick = SimulationTime.WakeTick, OriginResidentId = fixture.ResidentId,
-            SourceResidentId = fixture.ResidentId, OriginProfession = fixture.Resident.Profession,
-        };
+            return new AgentFact
+            {
+                Id = engine.Current.NextId++,
+                Kind = AgentFactKind.Culture,
+                SubjectId = fixture.Town.Id,
+                X = 16,
+                Y = 16,
+                Value = cultureId,
+                ObservedTick = SimulationTime.WakeTick,
+                LearnedTick = SimulationTime.WakeTick,
+                OriginResidentId = fixture.ResidentId,
+                SourceResidentId = fixture.ResidentId,
+                OriginProfession = fixture.Resident.Profession,
+            };
+        }
     }
 }

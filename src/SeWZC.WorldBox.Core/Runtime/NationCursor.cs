@@ -5,10 +5,7 @@ internal sealed class NationCursor : StateCursor<Nation>
 {
     public NationCursor(Nation value) : base(value) { }
 
-    public int Id
-    {
-        get => Value.Id;
-    }
+    public int Id => Value.Id;
 
     public string Name
     {
@@ -30,10 +27,7 @@ internal sealed class NationCursor : StateCursor<Nation>
         }
     }
 
-    public RaceKind FoundingRace
-    {
-        get => Value.FoundingRace;
-    }
+    public RaceKind FoundingRace => Value.FoundingRace;
 
     public int CapitalId
     {
@@ -134,5 +128,4 @@ internal sealed class NationCursor : StateCursor<Nation>
     {
         return new NationCursor(value);
     }
-
 }

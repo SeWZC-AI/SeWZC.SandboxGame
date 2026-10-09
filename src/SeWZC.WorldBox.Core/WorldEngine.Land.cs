@@ -121,12 +121,14 @@ public sealed partial class WorldEngine
                 tile.Terrain = TerrainType.Grass;
         }
         else if (building.Kind == BuildingKind.MountainPass)
+        {
             tile.Replace(tile.Value with
             {
-                Improvement = LandImprovement.MountainPass,
-                RoadLevel = (byte)building.Level,
+                Improvement = LandImprovement.MountainPass, RoadLevel = (byte)building.Level,
             });
+        }
         else if (building.Kind == BuildingKind.Bridge)
+        {
             tile.Replace(tile.Value with
             {
                 Improvement = LandImprovement.Bridge,
@@ -134,6 +136,7 @@ public sealed partial class WorldEngine
                 BridgeDirection = building.Direction,
                 BridgeLevel = (byte)building.Level,
             });
+        }
 
         RegisterBuildingGround(building);
     }
@@ -285,8 +288,7 @@ public sealed partial class WorldEngine
             return;
         tile.Replace(tile.Value with
         {
-            LastHarvestTick = Current.Tick,
-            Harvested = Math.Min(1_000_000_000, tile.Harvested + amount),
+            LastHarvestTick = Current.Tick, Harvested = Math.Min(1_000_000_000, tile.Harvested + amount),
         });
     }
 
@@ -355,7 +357,8 @@ public sealed partial class WorldEngine
                 continue;
             tile.DepositDiscovered = true;
             var amount = Math.Min(tile.DepositAmount,
-                WorkInterval(person) / (double)SimulationTime.TicksPerDay * .4 * Current.Rules.GatheringRate * GatheringCondition(person) *
+                WorkInterval(person) / (double)SimulationTime.TicksPerDay * .4 * Current.Rules.GatheringRate *
+                GatheringCondition(person) *
                 GatheringTerritoryMultiplier(person, tile) *
                 (HasResearch(person.SettlementId, Advancement.Forestry) ? 1.25 : 1));
             amount = Math.Min(amount, 1_000_000 - person.Inventory.Get(kind));
@@ -365,7 +368,8 @@ public sealed partial class WorldEngine
             person.Activity = ResidentActivity.Working;
             person.Agent = person.Agent with
             {
-                Fatigue = Math.Min(100, person.Agent.Fatigue + .45 * WorkInterval(person) / SimulationTime.TicksPerDay)
+                Fatigue = Math.Min(100,
+                    person.Agent.Fatigue + .45 * WorkInterval(person) / SimulationTime.TicksPerDay),
             };
             return amount > 0;
         }

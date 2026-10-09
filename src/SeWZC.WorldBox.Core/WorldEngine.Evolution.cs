@@ -98,7 +98,7 @@ public sealed partial class WorldEngine
             return "精灵圣林需要森林和开放的魔法规则";
         if (kind == BuildingKind.Bridge &&
             BridgePlacementError(x, y, direction ?? InferBridgeDirection(x, y), bridgeLevel) is
-            { } bridgeError)
+                { } bridgeError)
             return bridgeError;
         var range = kind is BuildingKind.MountainPass or BuildingKind.Bridge ? 24 : Math.Max(8, town.MaxClaimRadius);
         if (Distance(x, y, town.X, town.Y) > range)
@@ -303,7 +303,8 @@ public sealed partial class WorldEngine
             var relation = Relation(town.NationId, fact.SubjectId);
             if (!Current.Rules.Alliances || relation.Status != DiplomaticStatus.Neutral ||
                 relation.AllianceOfferNationId != fact.SubjectId
-                || relation.AllianceOfferTick != fact.ObservedTick || Current.Tick - fact.ObservedTick > 5 * SimulationTime.TicksPerYear)
+                || relation.AllianceOfferTick != fact.ObservedTick ||
+                Current.Tick - fact.ObservedTick > 5 * SimulationTime.TicksPerYear)
                 return;
             var knowsSender = town.PublicKnowledge.Any(f =>
                 f.Kind == AgentFactKind.SettlementLocation && (int)f.Value == fact.SubjectId && f.Confidence >= .4 &&
@@ -321,8 +322,7 @@ public sealed partial class WorldEngine
                 $"{_nations[town.NationId].Name}收到并接受{_nations[fact.SubjectId].Name}的结盟提议。", town.X, town.Y);
             alliance = PublishEvent(alliance with
             {
-                SecondNationId = fact.SubjectId,
-                CauseEventId = relation.LastEventId,
+                SecondNationId = fact.SubjectId, CauseEventId = relation.LastEventId,
             });
             relation = PublishRelation(relation with { LastEventId = alliance.Id });
             return;
@@ -358,7 +358,8 @@ public sealed partial class WorldEngine
             var contacts = capital.PublicKnowledge.Where(f => f.Kind == AgentFactKind.SettlementLocation &&
                                                               f.LearnedTick < Current.Tick
                                                               && f.Confidence >= .4 &&
-                                                              Current.Tick - f.ObservedTick <= 10 * SimulationTime.TicksPerYear &&
+                                                              Current.Tick - f.ObservedTick <=
+                                                              10 * SimulationTime.TicksPerYear &&
                                                               f.Value != nation.Id && f.Value > 0)
                 .GroupBy(f => (int)f.Value).Select(g => g.OrderByDescending(f => f.ObservedTick).First())
                 .OrderBy(f => f.Value).ToArray();
@@ -374,7 +375,8 @@ public sealed partial class WorldEngine
                 var cooperation = GetCulture(capital.CultureId).Cooperation;
                 var tradeReport = capital.PublicKnowledge
                     .Where(f => f.Kind == AgentFactKind.TradeExchange && f.SubjectId == otherId &&
-                                Current.Tick - f.ObservedTick <= 3 * SimulationTime.TicksPerYear).OrderByDescending(f => f.ObservedTick)
+                                Current.Tick - f.ObservedTick <= 3 * SimulationTime.TicksPerYear)
+                    .OrderByDescending(f => f.ObservedTick)
                     .FirstOrDefault();
                 var trade = tradeReport is not null;
                 var nearby = Distance(capital.X, capital.Y, contact.X, contact.Y) <= 28;
@@ -409,10 +411,14 @@ public sealed partial class WorldEngine
                 .ThenBy(a => a.Contact.X).ThenBy(a => a.Contact.Y).ThenBy(a => a.Nation.Id).ToArray();
             var relation = group.Key;
             relation = relation with { LastEvaluatedTick = Current.Tick };
-            relation = relation with { LastContactTick = Math.Max(relation.LastContactTick, sides.Max(a => a.Contact.ObservedTick)) };
+            relation = relation with
+            {
+                LastContactTick = Math.Max(relation.LastContactTick, sides.Max(a => a.Contact.ObservedTick)),
+            };
             foreach (var side in sides)
             {
-                relation = relation.WithLocalOpinion(side.Nation.Id, LocalOpinion(relation, side.Nation.Id) + side.Change);
+                relation = relation.WithLocalOpinion(side.Nation.Id,
+                    LocalOpinion(relation, side.Nation.Id) + side.Change);
                 var first = side.Nation.Id == relation.FirstNationId;
                 var started = first ? relation.FirstEscalationTick : relation.SecondEscalationTick;
                 if (LocalOpinion(relation, side.Nation.Id) <= -25 && side.Change < 6 &&
@@ -426,8 +432,7 @@ public sealed partial class WorldEngine
                             side.Capital.Y, causeEventId: relation.LastEventId);
                         dispute = PublishEvent(dispute with
                         {
-                            SecondNationId = side.Other.Id,
-                            Importance = EventImportance.Notable,
+                            SecondNationId = side.Other.Id, Importance = EventImportance.Notable,
                         });
                         relation = relation with { LastEventId = dispute.Id };
                     }
@@ -441,16 +446,21 @@ public sealed partial class WorldEngine
                     relation = relation with { SecondEscalationTick = started };
             }
 
-            relation = relation with { Reason = sides.Length == 1 ? sides[0].Reason : "双方各自依据已送达消息与当地情况累计态度；所示关系为双方态度均值" };
+            relation = relation with
+            {
+                Reason = sides.Length == 1 ? sides[0].Reason : "双方各自依据已送达消息与当地情况累计态度；所示关系为双方态度均值",
+            };
             relation = PublishRelation(relation);
             if (Current.Tick - relation.LastChangedTick < 3 * SimulationTime.TicksPerYear)
                 continue;
             // 每轮只处理一种外交动作，停战或宣战优先于结盟，避免同日立即反转关系。
             if (relation.Status == DiplomaticStatus.War)
             {
-                var peacemaker = sides.Where(a => Current.Rules.Peace && (Current.Tick - relation.LastChangedTick >= 6 * SimulationTime.TicksPerYear
-                                                                          || a.Food < Math.Max(10,
-                                                                              a.Capital.Population * .5)))
+                var peacemaker = sides.Where(a => Current.Rules.Peace &&
+                                                  (Current.Tick - relation.LastChangedTick >=
+                                                   6 * SimulationTime.TicksPerYear
+                                                   || a.Food < Math.Max(10,
+                                                       a.Capital.Population * .5)))
                     .OrderBy(a => a.Food / Math.Max(10, a.Capital.Population * .5)).FirstOrDefault();
                 if (peacemaker is not null)
                 {
@@ -480,7 +490,8 @@ public sealed partial class WorldEngine
 
             if (!Current.Rules.Alliances || relation.Status != DiplomaticStatus.Neutral
                                          || (relation.AllianceOfferNationId != 0 &&
-                                             Current.Tick - relation.AllianceOfferTick <= 5 * SimulationTime.TicksPerYear))
+                                             Current.Tick - relation.AllianceOfferTick <=
+                                             5 * SimulationTime.TicksPerYear))
                 continue;
             var proposer = sides.Where(a => LocalOpinion(relation, a.Nation.Id) >= 55)
                 .OrderByDescending(a => LocalOpinion(relation, a.Nation.Id)).FirstOrDefault();
@@ -541,8 +552,7 @@ public sealed partial class WorldEngine
             capital.X, capital.Y);
         entry = PublishEvent(entry with
         {
-            SecondNationId = other.Id,
-            CauseEventId = contact.EventId > 0 ? contact.EventId : previous,
+            SecondNationId = other.Id, CauseEventId = contact.EventId > 0 ? contact.EventId : previous,
         });
         if (previous > 0 && previous != entry.CauseEventId)
             entry = PublishEvent(entry with { AdditionalCauseEventIds = entry.AdditionalCauseEventIds.Add(previous) });
@@ -584,11 +594,13 @@ public sealed partial class WorldEngine
         foreach (var town in Current.Settlements.ToArray())
         {
             var reports = Current.Society.Reports.Where(r =>
-                    r.RecipientSettlementId == town.Id && r.Confidence >= .5 && Current.Tick - r.ObservedTick < 2 * SimulationTime.TicksPerMonth)
+                    r.RecipientSettlementId == town.Id && r.Confidence >= .5 &&
+                    Current.Tick - r.ObservedTick < 2 * SimulationTime.TicksPerMonth)
                 .ToArray();
             var hardship = reports.Any(r => r.Topic == AgentFactKind.ReliefRequest && r.Value > 55);
             town.Unrest = Math.Clamp(town.Unrest + (hardship ? 5 + Current.Rules.Conflict : -4), 0, 100);
-            if (Current.Rules.Secession && town.Unrest >= 80 && Current.Tick - town.LastPoliticalChangeTick >= 10 * SimulationTime.TicksPerYear
+            if (Current.Rules.Secession && town.Unrest >= 80 &&
+                Current.Tick - town.LastPoliticalChangeTick >= 10 * SimulationTime.TicksPerYear
                 && Current.Nations.Count < 64 && _nations[town.NationId].CapitalId != town.Id && town.Population >= 12
                 && Current.Settlements.Count(t => t.NationId == town.NationId) > 1)
             {
@@ -598,17 +610,13 @@ public sealed partial class WorldEngine
                 var entry = AddEvent(WorldEventKind.Founding, $"{town.Name}长期收到未解决的困苦诉求，宣布自治建国。", town.X, town.Y);
                 entry = PublishEvent(entry with
                 {
-                    NationId = id,
-                    SecondNationId = parent,
-                    Action = EventAction.Secession,
-                    SettlementId = town.Id,
+                    NationId = id, SecondNationId = parent, Action = EventAction.Secession, SettlementId = town.Id,
                 });
                 var evidence = reports.Where(r => r.Topic == AgentFactKind.ReliefRequest && r.Value > 55)
                     .OrderByDescending(r => r.ObservedTick).FirstOrDefault();
                 entry = PublishEvent(entry with
                 {
-                    EvidenceFactId = evidence?.FactId ?? 0,
-                    CauseEventId = evidence?.EventId ?? 0,
+                    EvidenceFactId = evidence?.FactId ?? 0, CauseEventId = evidence?.EventId ?? 0,
                 });
             }
         }
@@ -676,8 +684,7 @@ public sealed partial class WorldEngine
             {
                 Agent = person.Agent with
                 {
-                    Goal = person.Agent.Goal with { Kind = AgentGoalKind.Idle },
-                    NextThinkTick = Current.Tick,
+                    Goal = person.Agent.Goal with { Kind = AgentGoalKind.Idle }, NextThinkTick = Current.Tick,
                 },
             });
             return;

@@ -608,8 +608,10 @@ public sealed partial class MainView : UserControl
         if (!WorldTimeStopped)
         {
             // 五倍档最多保留八 tick 欠账，让偶发慢帧之后仍能追回真实模拟步。
-            _accumulator = unlimited ? 0 : Math.Min((_speed == 5 ? 8 : 4) * SimulationTickSeconds,
-                _accumulator + elapsed * _speed);
+            _accumulator = unlimited
+                ? 0
+                : Math.Min((_speed == 5 ? 8 : 4) * SimulationTickSeconds,
+                    _accumulator + elapsed * _speed);
             var work = Stopwatch.GetTimestamp();
             var count = 0;
             // 五倍档和不限速档预留 64 ms；不限速不等待 tick 截止时间，也不限制批次步数，预算后让出界面线程。
@@ -669,7 +671,8 @@ public sealed partial class MainView : UserControl
         var idle = !_ready || WorldTimeStopped || _wasBackground;
         // 计时器在回调结束后才等待，须把回调耗时计入下日截止时间，避免重步骤额外叠加固定等待。
         var workMilliseconds = (_clock.Elapsed.TotalSeconds - _previousTime) * 1000;
-        var delay = idle ? 50 : _speed == UnlimitedSpeed ? 1
+        var delay = idle ? 50
+            : _speed == UnlimitedSpeed ? 1
             : Math.Clamp((SimulationTickSeconds - _accumulator) * 1000 / _speed - workMilliseconds, 1, 50);
         _timer.Interval = TimeSpan.FromMilliseconds(delay);
     }
@@ -769,7 +772,9 @@ public sealed partial class MainView : UserControl
         foreach (var (speed, button) in _speeds)
             button.Width = speed == UnlimitedSpeed
                 ? Bounds.Width < 420 ? 50 : 56
-                : Bounds.Width < 420 ? 34 : 42;
+                : Bounds.Width < 420
+                    ? 34
+                    : 42;
         UpdateToolBarSize();
         UpdateModalBounds();
         RefreshSelectionSummary();
@@ -793,7 +798,8 @@ public sealed partial class MainView : UserControl
         if (!_performancePanel.IsVisible)
             return;
         var timestamp = Stopwatch.GetTimestamp();
-        var text = $"FPS {_map.GetRecentFrameCount(timestamp)}\n{_simulationDays.Count(timestamp) / (double)SimulationTime.TicksPerDay:0.##} 日/秒";
+        var text =
+            $"FPS {_map.GetRecentFrameCount(timestamp)}\n{_simulationDays.Count(timestamp) / (double)SimulationTime.TicksPerDay:0.##} 日/秒";
         if (_performanceText.Text != text)
             _performanceText.Text = text;
     }

@@ -31,7 +31,8 @@ public sealed partial class WorldMapControl
                     resident.Id != SelectedResidentId)
                     continue;
                 var pen = resident.Activity is ResidentActivity.Working or ResidentActivity.Studying ? WorkingHighlight
-                    : resident.Activity is ResidentActivity.Resting or ResidentActivity.Sleeping ? RestingHighlight : TravelHighlight;
+                    : resident.Activity is ResidentActivity.Resting or ResidentActivity.Sleeping ? RestingHighlight
+                    : TravelHighlight;
                 context.DrawRectangle(null, pen, new Rect(point.X - 3, point.Y - 3, 6, 6));
                 if (Overlay == 10 && (Detail.ActivityBadges || resident.Id == SelectedResidentId))
                 {

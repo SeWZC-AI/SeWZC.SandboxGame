@@ -51,7 +51,8 @@ public sealed partial class WorldEngine
                                     !camp.FoundationPending
                                     && Distance(person.X, person.Y, camp.X, camp.Y) >= MinimumSettlementDistance - 6
                                     && !person.Agent.Memory.Any(f =>
-                                        f.Kind == AgentFactKind.FoundingSite && Current.Tick - f.ObservedTick < SimulationTime.TicksPerYear))
+                                        f.Kind == AgentFactKind.FoundingSite && Current.Tick - f.ObservedTick <
+                                        SimulationTime.TicksPerYear))
         {
             var site = Circle(person.X, person.Y, 3).Where(i => RaceTerrainRules.CanWalk(Current.Tiles[i], person.Race)
                                                                 && !IsWaterTerrain(Current.Tiles[i].Terrain) &&
@@ -255,7 +256,8 @@ public sealed partial class WorldEngine
             var sender = Current.Residents[senderIndex];
             if ((Current.Tick + senderIndex) % conversationInterval != 0 || Current.Tick -
                                                                          sender.Agent.LastConversationTick < 6
-                                                                         || sender.Health <= 0 || sender.Activity == ResidentActivity.Sleeping)
+                                                                         || sender.Health <= 0 ||
+                                                                         sender.Activity == ResidentActivity.Sleeping)
                 continue;
             var conversationRadius = 2;
             foreach (var building in Current.Buildings)
@@ -316,8 +318,7 @@ public sealed partial class WorldEngine
 
             sender.Agent = sender.Agent with
             {
-                LastConversationTick = Current.Tick,
-                SocialNeed = Math.Max(0, sender.Agent.SocialNeed - 14),
+                LastConversationTick = Current.Tick, SocialNeed = Math.Max(0, sender.Agent.SocialNeed - 14),
             };
             recipient.Agent = recipient.Agent with { SocialNeed = Math.Max(0, recipient.Agent.SocialNeed - 10) };
             ExchangeCulture(sender, recipient);
@@ -427,7 +428,8 @@ public sealed partial class WorldEngine
         var agent = person.Agent;
         if (person.Age < 16 || Current.Tick < agent.MissionRetryTick)
             return;
-        if (agent.DestinationSettlementId != 0 && Current.Tick - agent.MissionStartedTick < 3 * SimulationTime.TicksPerYear)
+        if (agent.DestinationSettlementId != 0 &&
+            Current.Tick - agent.MissionStartedTick < 3 * SimulationTime.TicksPerYear)
         {
             choices.Add(new GoalChoice(agent.Goal.Kind, agent.Goal.TargetX, agent.Goal.TargetY, 72,
                 "继续完成正在亲自递送的任务", agent.CarriedMessages.FirstOrDefault(), agent.DestinationSettlementId));
@@ -518,7 +520,9 @@ public sealed partial class WorldEngine
             if (addresses.Count == 0 && person.Inventory.Food >= 2 && agent.Fatigue < 35
                 && Distance(person.X, person.Y, home.X, home.Y) < 18)
             {
-                var heading = Directions[(person.Id + (int)(Current.Tick / (3 * SimulationTime.TicksPerYear))) % Directions.Length];
+                var heading =
+                    Directions[
+                        (person.Id + (int)(Current.Tick / (3 * SimulationTime.TicksPerYear))) % Directions.Length];
                 var frontier = Circle(person.X, person.Y, 6)
                     .Where(i => Current.Tiles[i].IsWalkable && Current.Tiles[i].FireTicks == 0)
                     .OrderByDescending(i =>
@@ -593,7 +597,7 @@ public sealed partial class WorldEngine
             person.Agent = person.Agent with
             {
                 CarriedMessages = person.Agent.Memory.OrderByDescending(f => f.ObservedTick).Take(8)
-                .ToImmutableList()
+                    .ToImmutableList(),
             };
             person.Agent = person.Agent.WithGoal(goal = goal with { TargetX = address.X, TargetY = address.Y });
         }
@@ -647,8 +651,7 @@ public sealed partial class WorldEngine
             person.Inventory = person.Inventory with { Food = person.Inventory.Food - food };
             destination.Resources = destination.Resources with
             {
-                Food = destination.Resources.Food + food,
-                Wood = Math.Max(0, destination.Resources.Wood - payment),
+                Food = destination.Resources.Food + food, Wood = Math.Max(0, destination.Resources.Wood - payment),
             };
             person.Inventory = person.Inventory with { Wood = person.Inventory.Wood + payment };
             if (food > 0)
@@ -659,11 +662,12 @@ public sealed partial class WorldEngine
             }
 
             if (tradeEvent is not null)
+            {
                 tradeEvent = PublishEvent(tradeEvent with
                 {
-                    SecondNationId = person.NationId,
-                    SecondSettlementId = home.Id,
+                    SecondNationId = person.NationId, SecondSettlementId = home.Id,
                 });
+            }
 
             completionReason = food > 0
                 ? $"实际交换 {food:0.0} 份粮食与 {payment:0.0} 份木材，携带所得木材及剩余粮食返乡"
@@ -722,11 +726,7 @@ public sealed partial class WorldEngine
                 ReviewTick = Current.Tick + 12,
                 Reason = reason,
             }
-            : person.Agent.Goal with
-            {
-                Kind = AgentGoalKind.Idle,
-                WorkTicks = 0
-            };
+            : person.Agent.Goal with { Kind = AgentGoalKind.Idle, WorkTicks = 0 };
         person.Agent = person.Agent.FinishMission(goal, reason, Current.Tick, person.Id);
     }
 }

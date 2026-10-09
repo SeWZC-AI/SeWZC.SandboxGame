@@ -198,7 +198,7 @@ public sealed class ResidentEditingTests
         fixture.Town.PublicKnowledge = fixture.Town.PublicKnowledge.Add(prior);
         fixture.Resident.Agent = fixture.Resident.Agent with
         {
-            Decisions = fixture.Resident.Agent.Decisions.Add(new AgentDecision { EvidenceFactId = prior.Id })
+            Decisions = fixture.Resident.Agent.Decisions.Add(new AgentDecision { EvidenceFactId = prior.Id }),
         };
         var mind = JsonNode.Parse(fixture.Engine.ExportResidentMind(fixture.ResidentId))!;
         var memory = mind["Memory"]!.AsArray();

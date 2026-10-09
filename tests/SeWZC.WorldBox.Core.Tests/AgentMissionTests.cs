@@ -9,8 +9,7 @@ public sealed class AgentMissionTests
     {
         var routine = Enumerable.Range(1, 9).Select(tick => new AgentFact
         {
-            Kind = AgentFactKind.FoodSupply,
-            ObservedTick = tick,
+            Kind = AgentFactKind.FoodSupply, ObservedTick = tick,
         }).ToArray();
         var urgent = new AgentFact { Kind = AgentFactKind.WarOrder, ObservedTick = 0 };
         var carried = new AgentFact { Kind = AgentFactKind.Personal };

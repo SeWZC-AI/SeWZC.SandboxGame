@@ -92,11 +92,7 @@ public sealed partial class WorldEngine
         if (person.Agent.Goal.WorkTicks < 3)
             return true;
         var tile = Current.Tiles[index];
-        tile.Replace(tile.Value with
-        {
-            NationId = town.NationId,
-            ClaimedSettlementId = town.Id
-        });
+        tile.Replace(tile.Value with { NationId = town.NationId, ClaimedSettlementId = town.Id });
         person.Agent = person.Agent with { NextThinkTick = Current.Tick };
         if (Current.Tick % 12 == 0)
         {

@@ -22,7 +22,8 @@ public sealed partial class WorldEngine
     private double[]? _wildlifeSharedBiomass;
 
     /// <summary>受每 tick 地格预算限制，完成一轮全部动物复评所需的模拟步数。</summary>
-    public int WildlifeCycleTicks => Math.Max(6, (Current.Tiles.Count + WildlifeTilesPerTick - 1) / WildlifeTilesPerTick);
+    public int WildlifeCycleTicks =>
+        Math.Max(6, (Current.Tiles.Count + WildlifeTilesPerTick - 1) / WildlifeTilesPerTick);
 
     private static int NextWildlife(ref int mask)
     {
@@ -153,10 +154,12 @@ public sealed partial class WorldEngine
 
                     if (capacity > 0)
                     {
-                        if (primary == WildlifeKind.None) primary = kind;
+                        if (primary == WildlifeKind.None)
+                            primary = kind;
                         populations[(int)kind] = capacity * (.15 + hash % 30 / 100d);
                     }
                 }
+
             // 捕食仍读取本格按原顺序生成的猎物数量，全部物种完成后只提交一次地格。
             tile.Replace(tile.Value.WithAnimalPopulations(primary, populations));
         }

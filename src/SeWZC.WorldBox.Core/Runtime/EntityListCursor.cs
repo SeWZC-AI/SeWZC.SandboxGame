@@ -61,16 +61,19 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>
         }
     }
 
-    public List<TCursor>.Enumerator GetEnumerator()
+    IEnumerator<TCursor> IEnumerable<TCursor>.GetEnumerator()
     {
         return _items.GetEnumerator();
     }
 
-    IEnumerator<TCursor> IEnumerable<TCursor>.GetEnumerator() => _items.GetEnumerator();
-
     IEnumerator IEnumerable.GetEnumerator()
     {
         return GetEnumerator();
+    }
+
+    public List<TCursor>.Enumerator GetEnumerator()
+    {
+        return _items.GetEnumerator();
     }
 
     private void Bind(TCursor cursor)
@@ -118,11 +121,16 @@ internal sealed class EntityListCursor<T, TCursor> : IReadOnlyList<TCursor>
         try
         {
             if (typeof(TCursor) == typeof(ResidentCursor))
+            {
                 foreach (var person in _items)
                     person.FlushPending();
+            }
+
             if (typeof(TCursor) == typeof(SettlementCursor))
+            {
                 foreach (var town in _items)
                     ((SettlementCursor)(object)town).FlushResources();
+            }
         }
         finally
         {

@@ -69,7 +69,7 @@ public sealed class ImmutableWorldTests
     [Fact]
     public void Agent_personality_remains_immutable_and_roundtrips_as_flat_fields()
     {
-        var before = new AgentState { Personality = new() { Diligence = .8 } };
+        var before = new AgentState { Personality = new PersonalityProfile { Diligence = .8 } };
         var daily = before with { Fatigue = 12, SocialNeed = 4 };
         var changed = daily with { Personality = daily.Personality with { Diligence = .2 } };
 
@@ -144,7 +144,7 @@ public sealed class ImmutableWorldTests
             fixture.Resident.Health = 50;
             fixture.Resident.Agent = fixture.Resident.Agent with
             {
-                Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = 15, TargetY = 16 }
+                Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = 15, TargetY = 16 },
             };
             fixture.Resident.Profession = Profession.Laborer;
             Assert.Equal(70, middle.Residents[0].Health);
@@ -427,8 +427,7 @@ public sealed class ImmutableWorldTests
 
         fixture.Engine.Current.Residents.Transform(person => person with
         {
-            Health = 80,
-            Agent = person.Agent with { Fatigue = 25 },
+            Health = 80, Agent = person.Agent with { Fatigue = 25 },
         });
         fixture.Resident.Agent = fixture.Resident.Agent.Remember(new AgentFact { SubjectId = 99 }, fixture.Town.Id);
 
@@ -556,8 +555,7 @@ public sealed class ImmutableWorldTests
 
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            Agent = agent with { Fatigue = 25 },
-            Activity = ResidentActivity.Working,
+            Agent = agent with { Fatigue = 25 }, Activity = ResidentActivity.Working,
         });
         fixture.Resident.Agent = fixture.Resident.Agent with { SocialNeed = 30 };
 

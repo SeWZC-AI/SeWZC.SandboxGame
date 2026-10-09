@@ -13,13 +13,24 @@ internal sealed class AgentFactJsonConverter : JsonConverter<AgentFact>
             throw new JsonException("信息快照须为紧凑数组。");
         var fact = new AgentFact
         {
-            Id = Integer(ref reader), Kind = (AgentFactKind)Integer(ref reader),
-            SubjectId = Integer(ref reader), X = Integer(ref reader), Y = Integer(ref reader),
-            Value = Number(ref reader), ObservedTick = Long(ref reader), LearnedTick = Long(ref reader),
-            OriginResidentId = Integer(ref reader), OriginProfession = (Profession)Integer(ref reader),
-            SourceResidentId = Integer(ref reader), Confidence = Number(ref reader), Hops = Integer(ref reader),
-            Text = Text(ref reader), EventId = Integer(ref reader), CampaignEventId = Integer(ref reader),
-            WarObjective = (WarObjective)Integer(ref reader), TargetNationId = Integer(ref reader),
+            Id = Integer(ref reader),
+            Kind = (AgentFactKind)Integer(ref reader),
+            SubjectId = Integer(ref reader),
+            X = Integer(ref reader),
+            Y = Integer(ref reader),
+            Value = Number(ref reader),
+            ObservedTick = Long(ref reader),
+            LearnedTick = Long(ref reader),
+            OriginResidentId = Integer(ref reader),
+            OriginProfession = (Profession)Integer(ref reader),
+            SourceResidentId = Integer(ref reader),
+            Confidence = Number(ref reader),
+            Hops = Integer(ref reader),
+            Text = Text(ref reader),
+            EventId = Integer(ref reader),
+            CampaignEventId = Integer(ref reader),
+            WarObjective = (WarObjective)Integer(ref reader),
+            TargetNationId = Integer(ref reader),
         };
         if (!reader.Read() || reader.TokenType != JsonTokenType.EndArray)
             throw new JsonException("信息快照字段数量无效。");

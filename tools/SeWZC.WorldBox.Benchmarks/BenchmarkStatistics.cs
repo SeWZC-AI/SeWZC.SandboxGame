@@ -7,6 +7,7 @@ internal readonly record struct BenchmarkStatistics(double Mean, double P95, dou
     internal static BenchmarkStatistics From(IEnumerable<double> values)
     {
         var sorted = values.Order().ToArray();
-        return new(sorted.Average(), sorted[(int)Math.Ceiling(sorted.Length * .95) - 1], sorted[^1]);
+        return new BenchmarkStatistics(sorted.Average(), sorted[(int)Math.Ceiling(sorted.Length * .95) - 1],
+            sorted[^1]);
     }
 }

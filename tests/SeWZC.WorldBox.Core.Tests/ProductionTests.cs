@@ -34,11 +34,8 @@ public sealed class ProductionTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Work,
-                TargetEntityId = foundry.Id,
-                TargetX = 17,
-                TargetY = 16,
-            }
+                Kind = AgentGoalKind.Work, TargetEntityId = foundry.Id, TargetX = 17, TargetY = 16,
+            },
         };
         return (fixture, foundry);
     }
@@ -97,10 +94,8 @@ public sealed class ProductionTests
         var research = society.Research.Single();
         fixture.Engine.Current.Society = society with
         {
-            Research = society.Research.SetItem(0, research with
-            {
-                Completed = research.Completed.Remove(Advancement.Industry.Prerequisites[0]),
-            }),
+            Research = society.Research.SetItem(0,
+                research with { Completed = research.Completed.Remove(Advancement.Industry.Prerequisites[0]) }),
         };
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident));
@@ -156,8 +151,7 @@ public sealed class ProductionTests
         var other = fixture.Engine.Current.Residents.Single(p => p.Id != fixture.ResidentId);
         other.Replace(fixture.Resident.Value with
         {
-            Id = other.Id,
-            Inventory = new ResourceStock { Coal = 1, Ore = 2 },
+            Id = other.Id, Inventory = new ResourceStock { Coal = 1, Ore = 2 },
         });
         fixture.Engine.Current.Tick += 4;
 

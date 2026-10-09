@@ -254,7 +254,8 @@ public sealed partial class MainView
         var health = Field(condition, "生命 0–100", resident.Health, "resident-health");
         var hunger = Field(condition, "饥饿 0–100", resident.Hunger, "resident-hunger");
         var thirst = Field(condition, "口渴 0–100", resident.Thirst, "resident-thirst");
-        var sickness = Field(condition, "疫病剩余日数", resident.SicknessTicks / (double)SimulationTime.TicksPerDay, "resident-sickness");
+        var sickness = Field(condition, "疫病剩余日数", resident.SicknessTicks / (double)SimulationTime.TicksPerDay,
+            "resident-sickness");
         var x = Field(belonging, "位置 X", resident.X, "resident-x");
         var y = Field(belonging, "位置 Y", resident.Y, "resident-y");
         var army = ObjectField(belonging, "军队",
@@ -457,7 +458,8 @@ public sealed partial class MainView
             }
         };
         panel.Children.Add(Paragraph("选择聚落会同步填写目标地点；目标改变未来行动，紧急生存需求仍可打断。"));
-        var initialDuration = Math.Max(1, (mind.Goal.ReviewTick - _engine.State.Tick) / (double)SimulationTime.TicksPerDay);
+        var initialDuration =
+            Math.Max(1, (mind.Goal.ReviewTick - _engine.State.Tick) / (double)SimulationTime.TicksPerDay);
         var duration = Field(panel, "目标保持日数", initialDuration, "resident-goal-duration");
         var fatigue = Field(panel, "疲劳", mind.Fatigue, "resident-fatigue");
         var social = Field(panel, "社交需求", mind.SocialNeed, "resident-social-need");

@@ -12,7 +12,14 @@ public sealed class DamageProtectionTests
         var fixture = new WorldFixture();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         var patient = fixture.Engine.Current.Residents.Single(person => person.Id != fixture.ResidentId);
-        patient.Replace(patient.Value with { X = 16, Y = 16, Health = 0, DeathCause = DeathCause.Fire, DeathTick = 1 });
+        patient.Replace(patient.Value with
+        {
+            X = 16,
+            Y = 16,
+            Health = 0,
+            DeathCause = DeathCause.Fire,
+            DeathTick = 1,
+        });
         fixture.Engine.Current.Tick = 1;
         fixture.Resident.Age = 25;
         fixture.Resident.MagicTalent = 60;
@@ -46,8 +53,15 @@ public sealed class DamageProtectionTests
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 2);
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with
         {
-            Aging = false, Hunger = false, Thirst = false, Disease = false, Births = false,
-            Construction = false, Expansion = false, Research = false, Wars = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Research = false,
+            Wars = false,
         }, false, false);
         foreach (var person in fixture.Engine.Current.Residents)
         {
@@ -57,6 +71,7 @@ public sealed class DamageProtectionTests
             person.FrozenUntilTick = 100;
             person.Agent = person.Agent with { Initialized = true, NextThinkTick = 100 };
         }
+
         fixture.Resident.MagicTalent = 60;
         fixture.Resident.MagicTraining = 20;
         fixture.Resident.Mana = 100;
@@ -68,11 +83,14 @@ public sealed class DamageProtectionTests
             patients[1].X = 18;
             patients[1].Y = 18;
         }
-        fixture.Engine.Current.Tick = SimulationTime.WakeTick
-            + (11 - fixture.ResidentId % 12 - SimulationTime.WakeTick + 24) % 12;
 
-        if (automatic) fixture.Engine.Step();
-        else fixture.Engine.CastSpell(fixture.ResidentId, SpellKind.Heal, 16, 16);
+        fixture.Engine.Current.Tick = SimulationTime.WakeTick
+                                      + (11 - fixture.ResidentId % 12 - SimulationTime.WakeTick + 24) % 12;
+
+        if (automatic)
+            fixture.Engine.Step();
+        else
+            fixture.Engine.CastSpell(fixture.ResidentId, SpellKind.Heal, 16, 16);
 
         if (outsideAutomaticRange)
         {
@@ -84,6 +102,7 @@ public sealed class DamageProtectionTests
             Assert.Equal(50 + (automatic ? .15 / SimulationTime.TicksPerDay : 0), patients[0].Health, 8);
             Assert.True(patients[1].Health > 30);
         }
+
         Assert.True(fixture.Resident.Mana < 100);
     }
 

@@ -177,8 +177,11 @@ public sealed partial class WorldEngine
             throw new InvalidOperationException(error);
         var building = Current.Buildings.First(b => b.Id == id);
         if (!gift)
+        {
             RequireTown(building.SettlementId).Resources = Spend(RequireTown(building.SettlementId).Resources,
                 GetUpgradeCost(building, direction.HasValue));
+        }
+
         building.Replace(building.Value with
         {
             PendingDirection = direction,

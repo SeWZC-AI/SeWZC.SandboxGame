@@ -9,5 +9,14 @@
 /// <param name="Gen1">本日一代回收次数。</param>
 /// <param name="Gen2">本日二代回收次数。</param>
 /// <param name="GcPauseMs">本日发生回收时最后一次回收记录的暂停总时长，单位毫秒。</param>
-internal readonly record struct DailyMeasurement(long Tick, int StartPopulation, int EndPopulation,
-    double WallMs, double? ProcessCpuMs, long AllocatedBytes, int Gen0, int Gen1, int Gen2, double GcPauseMs);
+internal readonly record struct DailyMeasurement(
+    long Tick,
+    int StartPopulation,
+    int EndPopulation,
+    double WallMs,
+    double? ProcessCpuMs,
+    long AllocatedBytes,
+    int Gen0,
+    int Gen1,
+    int Gen2,
+    double GcPauseMs);

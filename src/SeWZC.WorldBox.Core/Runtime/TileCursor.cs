@@ -5,10 +5,7 @@ internal sealed partial class TileCursor : StateCursor<Tile>
 {
     public TileCursor(Tile value) : base(value) { }
 
-    public WildlifeKind Wildlife
-    {
-        get => Value.Wildlife;
-    }
+    public WildlifeKind Wildlife => Value.Wildlife;
 
     public int WildlifeMask => Value.WildlifeMask;
 
@@ -52,10 +49,7 @@ internal sealed partial class TileCursor : StateCursor<Tile>
         }
     }
 
-    public double Harvested
-    {
-        get => Value.Harvested;
-    }
+    public double Harvested => Value.Harvested;
 
     public int ClaimedSettlementId
     {
@@ -67,10 +61,7 @@ internal sealed partial class TileCursor : StateCursor<Tile>
         }
     }
 
-    public BridgeDirection BridgeDirection
-    {
-        get => Value.BridgeDirection;
-    }
+    public BridgeDirection BridgeDirection => Value.BridgeDirection;
 
     public long WaterDrawTick
     {
@@ -200,10 +191,7 @@ internal sealed partial class TileCursor : StateCursor<Tile>
         }
     }
 
-    public long FireSuppressionTick
-    {
-        get => Value.FireSuppressionTick;
-    }
+    public long FireSuppressionTick => Value.FireSuppressionTick;
 
     public int FireSuppressed
     {

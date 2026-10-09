@@ -24,20 +24,11 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
         }
     }
 
-    public int Seed
-    {
-        get => Value.Seed;
-    }
+    public int Seed => Value.Seed;
 
-    public int Width
-    {
-        get => Value.Width;
-    }
+    public int Width => Value.Width;
 
-    public int Height
-    {
-        get => Value.Height;
-    }
+    public int Height => Value.Height;
 
     public long Tick
     {
@@ -84,50 +75,40 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
         }
     }
 
-    public EntityListCursor<Tile, TileCursor> Tiles
-    {
-        get => _tiles ??= new EntityListCursor<Tile, TileCursor>(Value.Tiles, value =>
+    public EntityListCursor<Tile, TileCursor> Tiles =>
+        _tiles ??= new EntityListCursor<Tile, TileCursor>(Value.Tiles, value =>
         {
             if (!ReferenceEquals(Value.Tiles, value))
                 ReplaceChanged(Value with { Tiles = value });
         }, value => new TileCursor(value));
-    }
 
-    public EntityListCursor<Resident, ResidentCursor> Residents
-    {
-        get => _residents ??= new EntityListCursor<Resident, ResidentCursor>(Value.Residents, value =>
+    public EntityListCursor<Resident, ResidentCursor> Residents =>
+        _residents ??= new EntityListCursor<Resident, ResidentCursor>(Value.Residents, value =>
         {
             if (!ReferenceEquals(Value.Residents, value))
                 ReplaceChanged(Value with { Residents = value });
         }, value => new ResidentCursor(value));
-    }
 
-    public EntityListCursor<Settlement, SettlementCursor> Settlements
-    {
-        get => _settlements ??= new EntityListCursor<Settlement, SettlementCursor>(Value.Settlements, value =>
+    public EntityListCursor<Settlement, SettlementCursor> Settlements =>
+        _settlements ??= new EntityListCursor<Settlement, SettlementCursor>(Value.Settlements, value =>
         {
             if (!ReferenceEquals(Value.Settlements, value))
                 ReplaceChanged(Value with { Settlements = value });
         }, value => new SettlementCursor(value));
-    }
 
-    public EntityListCursor<Nation, NationCursor> Nations
-    {
-        get => field ??= new EntityListCursor<Nation, NationCursor>(Value.Nations, value =>
+    public EntityListCursor<Nation, NationCursor> Nations =>
+        field ??= new EntityListCursor<Nation, NationCursor>(Value.Nations, value =>
         {
             if (!ReferenceEquals(Value.Nations, value))
                 ReplaceChanged(Value with { Nations = value });
         }, value => new NationCursor(value));
-    }
 
-    public EntityListCursor<Army, ArmyCursor> Armies
-    {
-        get => field ??= new EntityListCursor<Army, ArmyCursor>(Value.Armies, value =>
+    public EntityListCursor<Army, ArmyCursor> Armies =>
+        field ??= new EntityListCursor<Army, ArmyCursor>(Value.Armies, value =>
         {
             if (!ReferenceEquals(Value.Armies, value))
                 ReplaceChanged(Value with { Armies = value });
         }, value => new ArmyCursor(value));
-    }
 
     public ImmutableVector<DiplomaticRelation> Diplomacies
     {
@@ -163,10 +144,7 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
     public int Day => 1 + (int)(Tick / SimulationTime.TicksPerDay % SimulationTime.DaysPerMonth);
     public int Population => Residents.Count;
 
-    public WorldRules Rules
-    {
-        get => Value.Rules;
-    }
+    public WorldRules Rules => Value.Rules;
 
     public ImmutableVector<LocalConflict> Conflicts
     {
@@ -188,11 +166,9 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
         }
     }
 
-    public EntityListCursor<Building, BuildingCursor> Buildings
-    {
-        get => field ??= new EntityListCursor<Building, BuildingCursor>(Society.Buildings,
+    public EntityListCursor<Building, BuildingCursor> Buildings =>
+        field ??= new EntityListCursor<Building, BuildingCursor>(Society.Buildings,
             value => Society = Society with { Buildings = value }, value => new BuildingCursor(value));
-    }
 
     public ImmutableList<PendingMessage> PendingMessages
     {
@@ -204,14 +180,12 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
         }
     }
 
-    public EntityListCursor<Resident, ResidentCursor> ArchivedResidents
-    {
-        get => _archivedResidents ??= new EntityListCursor<Resident, ResidentCursor>(Value.ArchivedResidents, value =>
+    public EntityListCursor<Resident, ResidentCursor> ArchivedResidents =>
+        _archivedResidents ??= new EntityListCursor<Resident, ResidentCursor>(Value.ArchivedResidents, value =>
         {
             if (!ReferenceEquals(Value.ArchivedResidents, value))
                 ReplaceChanged(Value with { ArchivedResidents = value });
         }, value => new ResidentCursor(value));
-    }
 
     public static implicit operator WorldState(WorldStateCursor cursor)
     {
@@ -222,5 +196,4 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
     {
         return new WorldStateCursor(value);
     }
-
 }

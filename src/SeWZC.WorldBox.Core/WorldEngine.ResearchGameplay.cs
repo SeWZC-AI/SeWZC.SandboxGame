@@ -23,13 +23,11 @@ public sealed partial class WorldEngine
             Profession = job,
             Agent = person.Agent with
             {
-                JobChangedTick = Current.Tick,
-                WorkplaceId = 0,
-                WorkAreaIndex = -1,
-                NextThinkTick = Current.Tick,
+                JobChangedTick = Current.Tick, WorkplaceId = 0, WorkAreaIndex = -1, NextThinkTick = Current.Tick,
             },
         });
-        person.Agent = person.Agent.WithGoal(new AgentGoal { Kind = AgentGoalKind.Idle, TargetX = person.X, TargetY = person.Y });
+        person.Agent =
+            person.Agent.WithGoal(new AgentGoal { Kind = AgentGoalKind.Idle, TargetX = person.X, TargetY = person.Y });
         RecordLife(person, "根据已掌握的研究，接受" + ProfessionName(job) + "岗位。");
     }
 
@@ -148,9 +146,14 @@ public sealed partial class WorldEngine
         };
     }
 
-    private static double PersonalSpellCost(RaceKind race, SpellKind spell) => SpellManaCost(spell) * (
-        (race == RaceKind.Elf && spell == SpellKind.Heal) || (race == RaceKind.Dwarf && spell == SpellKind.Shield)
-        || (race == RaceKind.Orc && spell == SpellKind.Ember) ? .85 : 1);
+    private static double PersonalSpellCost(RaceKind race, SpellKind spell)
+    {
+        return SpellManaCost(spell) * (
+            (race == RaceKind.Elf && spell == SpellKind.Heal) || (race == RaceKind.Dwarf && spell == SpellKind.Shield)
+                                                              || (race == RaceKind.Orc && spell == SpellKind.Ember)
+                ? .85
+                : 1);
+    }
 
     /// <summary>检查施法者是否掌握法术及前置研究；已解锁时返回空值，否则返回原因。</summary>
     /// <param name="casterId">施法居民的稳定 ID。</param>
@@ -300,11 +303,7 @@ public sealed partial class WorldEngine
         person.Inventory = person.Inventory with { Crystals = person.Inventory.Crystals - 2 };
         person.X = person.FromX = target.X;
         person.Y = person.FromY = target.Y;
-        person.Replace(person.Value with
-        {
-            MoveStartedTick = Current.Tick,
-            MoveDurationTicks = 1
-        });
+        person.Replace(person.Value with { MoveStartedTick = Current.Tick, MoveDurationTicks = 1 });
         person.Replace(person.Value with
         {
             Agent = person.Agent with
@@ -312,10 +311,7 @@ public sealed partial class WorldEngine
                 DaytimeGoal = null,
                 Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.Idle,
-                    TargetX = target.X,
-                    TargetY = target.Y,
-                    Reason = "本人携带背包经折跃门抵达",
+                    Kind = AgentGoalKind.Idle, TargetX = target.X, TargetY = target.Y, Reason = "本人携带背包经折跃门抵达",
                 },
                 NextThinkTick = Current.Tick + 1,
             },
@@ -467,7 +463,8 @@ public sealed partial class WorldEngine
                     {
                         Health = Math.Min(100, patient.Health + 3 * effort),
                         SicknessTicks = Math.Max(0, patient.SicknessTicks - SimulationTime.TicksPerDay),
-                        DiseaseImmuneUntilTick = Math.Max(patient.DiseaseImmuneUntilTick, Current.Tick + SimulationTime.TicksPerYear),
+                        DiseaseImmuneUntilTick = Math.Max(patient.DiseaseImmuneUntilTick,
+                            Current.Tick + SimulationTime.TicksPerYear),
                     });
                     EmitVisual(WorldVisualKind.Heal, patient.X, patient.Y);
                     done = true;
@@ -476,12 +473,12 @@ public sealed partial class WorldEngine
                 break;
             case BuildingKind.FireStation:
                 var damaged = Current.Buildings.Where(other => other.SettlementId == b.SettlementId &&
-                                                                       other.Health is > 0 and < 100
-                                                                       && Distance(person.X, person.Y, other.X,
-                                                                           other.Y) <= 1 &&
-                                                                       Current.Tiles[Index(other.X, other.Y)]
-                                                                           .FireTicks ==
-                                                                       0).OrderBy(other => other.Health)
+                                                               other.Health is > 0 and < 100
+                                                               && Distance(person.X, person.Y, other.X,
+                                                                   other.Y) <= 1 &&
+                                                               Current.Tiles[Index(other.X, other.Y)]
+                                                                   .FireTicks ==
+                                                               0).OrderBy(other => other.Health)
                     .ThenBy(other => other.Id).FirstOrDefault();
                 if (damaged is not null && Supply(ResourceKind.Stone, .1))
                 {
@@ -512,8 +509,7 @@ public sealed partial class WorldEngine
                 {
                     person.Replace(person.Value with
                     {
-                        Inventory = person.Inventory with { Alloy = person.Inventory.Alloy - 2 },
-                        Armor = 30,
+                        Inventory = person.Inventory with { Alloy = person.Inventory.Alloy - 2 }, Armor = 30,
                     });
                     done = true;
                 }
@@ -576,11 +572,12 @@ public sealed partial class WorldEngine
         }
 
         if (done)
+        {
             b.Replace(b.Value with
             {
-                ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1),
-                LastServiceTick = Current.Tick,
+                ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1), LastServiceTick = Current.Tick,
             });
+        }
 
         return done;
     }
@@ -724,9 +721,7 @@ public sealed partial class WorldEngine
             {
                 person.Agent = person.Agent.WithGoal(goal = goal with
                 {
-                    TargetX = home.X,
-                    TargetY = home.Y,
-                    Reason = "返仓领取实际石材，运至受损设施维修",
+                    TargetX = home.X, TargetY = home.Y, Reason = "返仓领取实际石材，运至受损设施维修",
                 });
                 if (Distance(person.X, person.Y, home.X, home.Y) > 1)
                 {
@@ -741,9 +736,7 @@ public sealed partial class WorldEngine
 
             person.Agent = person.Agent.WithGoal(goal = goal with
             {
-                TargetX = repair.X,
-                TargetY = repair.Y,
-                Reason = "携带石材，步行至消防站附近的受损设施维修",
+                TargetX = repair.X, TargetY = repair.Y, Reason = "携带石材，步行至消防站附近的受损设施维修",
             });
             if (Distance(person.X, person.Y, repair.X, repair.Y) > 1)
             {
@@ -755,11 +748,12 @@ public sealed partial class WorldEngine
                 return true;
             RepairBuilding(person.Id, repair.Id);
             if (repair.Id != b.Id)
+            {
                 b.Replace(b.Value with
                 {
-                    ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1),
-                    LastServiceTick = Current.Tick,
+                    ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1), LastServiceTick = Current.Tick,
                 });
+            }
 
             person.Activity = ResidentActivity.Working;
             return true;
@@ -797,9 +791,7 @@ public sealed partial class WorldEngine
 
         person.Agent = person.Agent.WithGoal(goal = goal with
         {
-            TargetX = b.X,
-            TargetY = b.Y,
-            Reason = "携带补给，在" + BuildingName(b.Kind) + "提供现场服务",
+            TargetX = b.X, TargetY = b.Y, Reason = "携带补给，在" + BuildingName(b.Kind) + "提供现场服务",
         });
         if (Distance(person.X, person.Y, b.X, b.Y) > 0)
         {
@@ -823,11 +815,7 @@ public sealed partial class WorldEngine
             ChangeWorkReservation(person.Agent.Goal, returning);
             person.Replace(person.Value with
             {
-                Agent = person.Agent with
-                {
-                    Goal = returning,
-                    NextThinkTick = Current.Tick + 30
-                },
+                Agent = person.Agent with { Goal = returning, NextThinkTick = Current.Tick + 30 },
             });
         }
 

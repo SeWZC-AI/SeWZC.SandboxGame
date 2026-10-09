@@ -38,11 +38,7 @@ public sealed class ResidentBehaviorTests
         fixture.Engine.Step();
         Assert.Equal(AgentGoalKind.Explore, fixture.Resident.Agent.Goal.Kind);
         var source = fixture.Engine.Current.Tiles[16 * 32 + 19];
-        source.Replace(source.Value with
-        {
-            Wildlife = WildlifeKind.Rabbit,
-            WildlifePopulation = 20
-        });
+        source.Replace(source.Value with { Wildlife = WildlifeKind.Rabbit, WildlifePopulation = 20 });
         fixture.Resident.Agent = fixture.Resident.Agent with { Goal = new AgentGoal() };
         fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = 0 };
         fixture.Engine.Step(4);
@@ -80,9 +76,7 @@ public sealed class ResidentBehaviorTests
         var source = fixture.Engine.Current.Tiles[16 * 32 + 20];
         source.Replace(source.Value with
         {
-            ResourceAmount = 100,
-            Fertility = 100,
-            Plants = new PlantCoverage { Grass = 1 },
+            ResourceAmount = 100, Fertility = 100, Plants = new PlantCoverage { Grass = 1 },
         });
         fixture.Resident.Inventory = new ResourceStock { Water = 10 };
         fixture.Resident.Hunger = 90;
@@ -448,11 +442,8 @@ public sealed class ResidentBehaviorTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.FetchWater,
-                TargetX = 16,
-                TargetY = 16,
-                TargetEntityId = 16 * 32 + 16 + 1,
-            }
+                Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 16, TargetEntityId = 16 * 32 + 16 + 1,
+            },
         };
 
         Assert.False(fixture.Engine.TryFetchWater(fixture.Resident.Value));
@@ -483,11 +474,8 @@ public sealed class ResidentBehaviorTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.FetchWater,
-                TargetX = 16,
-                TargetY = 17,
-                TargetEntityId = 17 * 32 + 16 + 1,
-            }
+                Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 17, TargetEntityId = 17 * 32 + 16 + 1,
+            },
         };
 
         Assert.False(fixture.Engine.TryFetchWater(fixture.Resident.Value));
@@ -606,11 +594,8 @@ public sealed class ResidentBehaviorTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Gather,
-                TargetX = 16,
-                TargetY = 16,
-                ReviewTick = 0,
-            }
+                Kind = AgentGoalKind.Gather, TargetX = 16, TargetY = 16, ReviewTick = 0,
+            },
         };
 
         fixture.Engine.Step();
@@ -674,7 +659,7 @@ public sealed class ResidentBehaviorTests
         fixture.Resident.Health = health;
         fixture.Resident.Agent = fixture.Resident.Agent with
         {
-            Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = 16, TargetY = 16 }
+            Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = 16, TargetY = 16 },
         };
 
         fixture.Engine.Step();
@@ -696,8 +681,11 @@ public sealed class ResidentBehaviorTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Work, TargetX = 16, TargetY = 16,
-                PlayerDirected = true, ReviewTick = fixture.Engine.Current.Tick + 100,
+                Kind = AgentGoalKind.Work,
+                TargetX = 16,
+                TargetY = 16,
+                PlayerDirected = true,
+                ReviewTick = fixture.Engine.Current.Tick + 100,
             },
         };
 
@@ -756,12 +744,7 @@ public sealed class ResidentBehaviorTests
             FromX = 16,
             FromY = 16,
             Inventory = new ResourceStock { Food = 10, Water = 10 },
-            Agent = fixture.Resident.Agent with
-            {
-                Initialized = true,
-                NextThinkTick = 0,
-                Goal = new AgentGoal()
-            },
+            Agent = fixture.Resident.Agent with { Initialized = true, NextThinkTick = 0, Goal = new AgentGoal() },
         });
         fixture.Town.Resources = new ResourceStock { Food = 40 };
         return fixture;

@@ -3,16 +3,9 @@ namespace SeWZC.WorldBox.Core.Runtime;
 /// <summary>Army 的引擎内定位引用；每次写入提交新的不可变状态。</summary>
 internal sealed class ArmyCursor(Army value) : StateCursor<Army>(value)
 {
+    public WarObjective Objective => Value.Objective;
 
-    public WarObjective Objective
-    {
-        get => Value.Objective;
-    }
-
-    public int CampaignEventId
-    {
-        get => Value.CampaignEventId;
-    }
+    public int CampaignEventId => Value.CampaignEventId;
 
     public int LastEventId
     {
@@ -24,25 +17,13 @@ internal sealed class ArmyCursor(Army value) : StateCursor<Army>(value)
         }
     }
 
-    public int InitialSoldiers
-    {
-        get => Value.InitialSoldiers;
-    }
+    public int InitialSoldiers => Value.InitialSoldiers;
 
-    public long StartedTick
-    {
-        get => Value.StartedTick;
-    }
+    public long StartedTick => Value.StartedTick;
 
-    public int BlockedTicks
-    {
-        get => Value.BlockedTicks;
-    }
+    public int BlockedTicks => Value.BlockedTicks;
 
-    public WarOutcome Outcome
-    {
-        get => Value.Outcome;
-    }
+    public WarOutcome Outcome => Value.Outcome;
 
     public bool BattleRecorded
     {
@@ -64,20 +45,11 @@ internal sealed class ArmyCursor(Army value) : StateCursor<Army>(value)
         }
     }
 
-    public DiplomaticStatus KnownDiplomacy
-    {
-        get => Value.KnownDiplomacy;
-    }
+    public DiplomaticStatus KnownDiplomacy => Value.KnownDiplomacy;
 
-    public long LastOrderTick
-    {
-        get => Value.LastOrderTick;
-    }
+    public long LastOrderTick => Value.LastOrderTick;
 
-    public int LastOrderFactId
-    {
-        get => Value.LastOrderFactId;
-    }
+    public int LastOrderFactId => Value.LastOrderFactId;
 
     public bool Gathering
     {
@@ -89,50 +61,23 @@ internal sealed class ArmyCursor(Army value) : StateCursor<Army>(value)
         }
     }
 
-    public bool Retreating
-    {
-        get => Value.Retreating;
-    }
+    public bool Retreating => Value.Retreating;
 
-    public int TargetX
-    {
-        get => Value.TargetX;
-    }
+    public int TargetX => Value.TargetX;
 
-    public int TargetY
-    {
-        get => Value.TargetY;
-    }
+    public int TargetY => Value.TargetY;
 
-    public int TargetSettlementId
-    {
-        get => Value.TargetSettlementId;
-    }
+    public int TargetSettlementId => Value.TargetSettlementId;
 
-    public int Id
-    {
-        get => Value.Id;
-    }
+    public int Id => Value.Id;
 
-    public int NationId
-    {
-        get => Value.NationId;
-    }
+    public int NationId => Value.NationId;
 
-    public int TargetNationId
-    {
-        get => Value.TargetNationId;
-    }
+    public int TargetNationId => Value.TargetNationId;
 
-    public int X
-    {
-        get => Value.X;
-    }
+    public int X => Value.X;
 
-    public int Y
-    {
-        get => Value.Y;
-    }
+    public int Y => Value.Y;
 
     public int Soldiers
     {

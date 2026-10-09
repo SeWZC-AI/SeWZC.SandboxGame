@@ -28,9 +28,7 @@ public sealed class WorkReservationTests
                 {
                     Goal = new AgentGoal
                     {
-                        Kind = AgentGoalKind.Work,
-                        TargetEntityId = building.Id,
-                        PlayerDirected = true,
+                        Kind = AgentGoalKind.Work, TargetEntityId = building.Id, PlayerDirected = true,
                     },
                 },
             });
@@ -103,12 +101,7 @@ public sealed class WorkReservationTests
                 MoveStartedTick = 0,
                 MoveDurationTicks = 1,
                 Inventory = new ResourceStock { Food = 1, Water = 1 },
-                Agent = person.Agent with
-                {
-                    Initialized = true,
-                    NextThinkTick = 100,
-                    Goal = new AgentGoal()
-                },
+                Agent = person.Agent with { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal() },
             });
         var caster = fixture.Resident;
         caster.Replace(caster.Value with
@@ -145,7 +138,7 @@ public sealed class WorkReservationTests
                 SourceResidentId = caster.Id,
                 Value = 1,
                 Confidence = 1,
-            })
+            }),
         };
         var otherResidents = fixture.Engine.Current.Residents.Where(person => person.SettlementId == otherTown.Id)
             .ToArray();
@@ -219,12 +212,7 @@ public sealed class WorkReservationTests
                 MoveStartedTick = 0,
                 MoveDurationTicks = 1,
                 Inventory = new ResourceStock { Food = 1, Water = 1 },
-                Agent = person.Agent with
-                {
-                    Initialized = true,
-                    NextThinkTick = 100,
-                    Goal = new AgentGoal()
-                },
+                Agent = person.Agent with { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal() },
             });
         for (var x = 14; x <= 15; x++)
         {
@@ -265,7 +253,7 @@ public sealed class WorkReservationTests
                 TargetX = 14,
                 TargetY = 16,
                 ReviewTick = 100,
-            }
+            },
         };
         var replacement = fixture.Engine.Current.Residents.Single(person => person.Id != fixture.ResidentId);
         replacement.Agent = replacement.Agent with { NextThinkTick = 0 };
