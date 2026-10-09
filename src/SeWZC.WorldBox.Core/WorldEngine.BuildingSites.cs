@@ -197,6 +197,9 @@ public sealed partial class WorldEngine
         return building.Kind is BuildingKind.Granary or BuildingKind.Housing or BuildingKind.Watchtower;
     }
 
+    /// <summary>每级运营住宅提供的居民容量。</summary>
+    public const int HousingCapacityPerLevel = 80;
+
     /// <summary>计算本地基础住房与正在运营的住宅提供的总容量。</summary>
     /// <param name="settlementId">聚落 ID。</param>
     public int GetHousingCapacity(int settlementId)
@@ -204,7 +207,7 @@ public sealed partial class WorldEngine
         var town = RequireTown(settlementId);
         return Math.Min(20_000, town.Housing + Current.Buildings
             .Where(b => b.SettlementId == settlementId && b.Kind == BuildingKind.Housing && IsFacilityOperating(b))
-            .Sum(b => b.Level * 20));
+            .Sum(b => b.Level * HousingCapacityPerLevel));
     }
 
     private double GranaryRestBonus(int settlementId)

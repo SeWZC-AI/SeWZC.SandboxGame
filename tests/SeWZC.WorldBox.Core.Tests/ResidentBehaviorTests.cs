@@ -682,6 +682,47 @@ public sealed class ResidentBehaviorTests
         Assert.Equal(shouldRest, fixture.Resident.Agent.Goal.Kind == AgentGoalKind.Rest);
     }
 
+    /// <summary>邻山采矿须开采已选中的山体，不能因脚下草地也有少量石头而长期采不到矿石。</summary>
+    [Fact]
+    public void Mining_at_a_mountain_edge_extracts_ore_from_the_mountain()
+    {
+        var fixture = Prepare();
+        var ground = fixture.Engine.Current.Tiles[16 * 32 + 16];
+        ground.Replace(ground.Value with { Terrain = TerrainType.Grass, ResourceAmount = 100 });
+        var mountain = fixture.Engine.Current.Tiles[16 * 32 + 17];
+        mountain.Replace(mountain.Value with { Terrain = TerrainType.Mountain, ResourceAmount = 100 });
+        fixture.Resident.Profession = Profession.Miner;
+        fixture.Resident.Agent = fixture.Resident.Agent with
+        {
+            Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.Work, TargetX = 16, TargetY = 16,
+                PlayerDirected = true, ReviewTick = fixture.Engine.Current.Tick + 100,
+            },
+        };
+
+        fixture.Engine.Step();
+
+        Assert.True(fixture.Resident.Inventory.Ore > 0);
+        Assert.True(mountain.ResourceAmount < 100);
+        Assert.Equal(100, ground.ResourceAmount);
+    }
+
+    /// <summary>基础建设缺石材时，尚有矿石的居民先补石材，不因矿石未达到常备目标而拒绝纯石材地块。</summary>
+    [Fact]
+    public void A_miner_prioritizes_the_larger_stone_shortage()
+    {
+        var fixture = Prepare();
+        fixture.Engine.Current.Buildings.RemoveAll(building => building.Kind != BuildingKind.TownCenter);
+        fixture.Town.Resources = new ResourceStock { Food = 40, Stone = 0, Ore = 12 };
+        fixture.Resident.Profession = Profession.Miner;
+
+        fixture.Engine.Step();
+
+        Assert.Equal(ResourceKind.Stone, fixture.Resident.Agent.MaterialPriority);
+        Assert.Equal(AgentGoalKind.Work, fixture.Resident.Agent.Goal.Kind);
+    }
+
     private static WorldFixture Prepare(bool thirst = false)
     {
         var fixture = new WorldFixture();

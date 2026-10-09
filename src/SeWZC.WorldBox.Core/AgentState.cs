@@ -73,6 +73,7 @@ public sealed partial record AgentState
     }
 
     /// <summary>当前贸易或递送任务的目的聚落 ID。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int DestinationSettlementId
     {
         get => _identity.DestinationSettlementId;
@@ -95,6 +96,7 @@ public sealed partial record AgentState
     }
 
     /// <summary>当前贸易或递送任务的出发聚落 ID。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int MissionOriginSettlementId
     {
         get => _identity.MissionOriginSettlementId;
@@ -106,6 +108,7 @@ public sealed partial record AgentState
     }
 
     /// <summary>当前任务开始的模拟日序。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long MissionStartedTick
     {
         get => _identity.MissionStartedTick;
@@ -117,6 +120,7 @@ public sealed partial record AgentState
     }
 
     /// <summary>当前任务受阻后允许再次尝试的模拟日序。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long MissionRetryTick
     {
         get => _identity.MissionRetryTick;
@@ -140,6 +144,7 @@ public sealed partial record AgentState
     }
 
     /// <summary>当前优先补充的材料种类，空值表示无指定优先材料。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public ResourceKind? MaterialPriority
     {
         get => _identity.MaterialPriority;
@@ -162,6 +167,7 @@ public sealed partial record AgentState
     }
 
     /// <summary>在家园当面接受的固定工作设施 ID；零表示没有固定设施。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int WorkplaceId
     {
         get => _identity.WorkplaceId;

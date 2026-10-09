@@ -324,6 +324,81 @@ public sealed class WorkforceTests
         Assert.Equal(workplace, suitable.Agent.WorkplaceId);
     }
 
+    /// <summary>缺石材且只有低产露头时仍安排真实开采岗位，不能把少量可用石材视为不存在。</summary>
+    [Fact]
+    public void A_low_yield_stone_plot_can_supply_a_mining_job()
+    {
+        var fixture = Prepare();
+        foreach (var tile in fixture.Engine.Current.Tiles)
+            tile.Replace(tile.Value with { ResourceAmount = 0, Deposit = null, DepositAmount = 0 });
+        fixture.Town.Resources = fixture.Town.Resources with { Stone = 0 };
+        var index = 16 * 32 + 17;
+        var source = fixture.Engine.Current.Tiles[index];
+        source.Replace(source.Value with { Terrain = TerrainType.Grass, ResourceAmount = 100 });
+        fixture.Engine.Current.Tick = 150;
+
+        fixture.Engine.TickSociety();
+
+        Assert.Contains(fixture.Engine.State.Residents,
+            person => person.Profession == Profession.Miner && person.Agent.WorkAreaIndex == index);
+        Assert.Equal(100, source.ResourceAmount);
+    }
+
+    /// <summary>人口超过住房时仍先建立唯一研究岗位，避免连续补住宅耗尽学舍材料。</summary>
+    [Fact]
+    public void An_overcrowded_town_builds_its_first_academy_before_more_housing()
+    {
+        var fixture = Prepare();
+        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Research = true, Construction = true }, false, false);
+        fixture.Town.Population = 100;
+        fixture.Town.Resources = new ResourceStock { Food = 400, Water = 10_000, Wood = 50, Stone = 20 };
+        fixture.Engine.Current.Tick = 60 - fixture.Town.Id % 60;
+
+        fixture.Engine.TickSociety();
+
+        Assert.Contains(fixture.Engine.State.Society.Buildings,
+            building => building.Kind == BuildingKind.Academy && !building.IsCompleted);
+        Assert.DoesNotContain(fixture.Engine.State.Society.Buildings, building => building.Kind == BuildingKind.Housing);
+    }
+
+    /// <summary>住宅不消耗矿石，后续奥术研究缺矿不能阻止已可支付的住宅建设。</summary>
+    [Fact]
+    public void Housing_is_not_blocked_by_unshared_research_materials()
+    {
+        var fixture = Prepare();
+        fixture.Engine.SetDevelopmentFocus(fixture.Town.NationId, DevelopmentFocus.MagicPractice);
+        GrantResearch(fixture, Advancement.Agriculture);
+        GrantResearch(fixture, Advancement.Forestry);
+        GrantResearch(fixture, Advancement.Logistics);
+        GrantResearch(fixture, Advancement.Medicine);
+        fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Academy, 17, 16);
+        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Research = true, Construction = true }, false, true);
+        fixture.Town.Population = 100;
+        fixture.Town.Resources = new ResourceStock { Food = 400, Water = 10_000, Wood = 100, Stone = 100, Ore = 0 };
+        fixture.Engine.Current.Tick = 60 - fixture.Town.Id % 60;
+
+        fixture.Engine.TickSociety();
+
+        Assert.Contains(fixture.Engine.State.Society.Buildings, building => building.Kind == BuildingKind.Housing);
+        Assert.Equal(0, fixture.Town.Resources.Ore);
+    }
+
+    /// <summary>住房不足压低出生率，粮食充足且有健康成年人时仍能延续下一代。</summary>
+    [Fact]
+    public void Overcrowding_slows_births_without_stopping_generation_replacement()
+    {
+        var fixture = Prepare();
+        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Births = true }, false, false);
+        fixture.Town.Housing = 0;
+        fixture.Engine.Current.Tick = 11;
+        var before = fixture.Engine.State.Population;
+
+        fixture.Engine.Step();
+
+        Assert.Equal(before + 1, fixture.Engine.State.Population);
+        Assert.Single(fixture.Engine.State.Residents, person => person.Age == 0 && person.Profession == Profession.Child);
+    }
+
     private static void GrantResearch(WorldFixture fixture, Advancement research)
     {
         foreach (var prerequisite in research.Prerequisites)

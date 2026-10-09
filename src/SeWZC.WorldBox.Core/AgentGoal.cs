@@ -23,24 +23,31 @@ public sealed record AgentGoal
     public ImmutableArray<int> NavigationRoute { get; init; } = [];
 
     /// <summary>短路线中下次要走的地格位置；空路线为零。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int NavigationRouteOffset { get; init; }
 
     /// <summary>规划短路线时使用的交通方式，方式改变后重新规划。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public TravelMode NavigationRouteMode { get; init; }
 
     /// <summary>当前导航曾达到的最短目标距离，以地格计。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int NavigationBestDistance { get; init; }
 
     /// <summary>连续未缩短目标距离的导航尝试次数。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int NavigationWithoutProgress { get; init; }
 
     /// <summary>受阻后允许重新尝试导航的模拟日序。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long NavigationRetryTick { get; init; }
 
     /// <summary>选择该目标使用的信息依据 ID。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int EvidenceFactId { get; init; }
 
     /// <summary>该行动关联的前因事件 ID。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int CauseEventId { get; init; }
 
     /// <summary>当前行动目标类别。</summary>
@@ -53,21 +60,25 @@ public sealed record AgentGoal
     public int TargetY { get; init; }
 
     /// <summary>目标关联的聚落 ID。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int TargetSettlementId { get; init; }
 
     /// <summary>任务对象编号；设施任务使用建筑 ID，取水和狩猎捕鱼使用资源地格索引加 1。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int TargetEntityId { get; init; }
 
     /// <summary>该目标开始执行的模拟日序。</summary>
     public long StartedTick { get; init; }
 
     /// <summary>需要到场驻留的目标已完成的等待日数，达到三日后不再累积。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int WorkTicks { get; init; }
 
     /// <summary>下次重新评估该目标的模拟日序。</summary>
     public long ReviewTick { get; init; }
 
     /// <summary>该目标是否由玩家直接安排。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool PlayerDirected { get; init; }
 
     /// <summary>选择该目标的理由。</summary>

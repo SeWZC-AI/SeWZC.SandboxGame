@@ -73,7 +73,7 @@ public sealed partial class WorldEngine
             BuildingKind.Quarry => "设在山地或丘陵矿区旁，矿工到场开采相邻石材和矿石，随身运回家园；资源耗尽时停工。",
             BuildingKind.Well => "设在供水充足的陆地。地块供水量决定每日可打水量，居民与工人到井边取水，共享水井日额度并携带返仓；干旱会减少井水。",
             BuildingKind.Granary => "居民返乡休息恢复每级提高 10%；多个粮仓取最高倍率。",
-            BuildingKind.Housing => "每级增加 20 人住房容量。",
+            BuildingKind.Housing => $"每级增加 {HousingCapacityPerLevel} 人住房容量。",
             BuildingKind.Market => "人员到场值守后，在集市 3 格内的居民可与最多相距 3 格的人交换已有消息；消耗少量当地粮食。",
             BuildingKind.Watchtower => "塔 2 格内的同聚落居民观察火灾范围增加：1／2／3 级分别为 4／5／6 格；无需工作人员。",
             BuildingKind.AssemblyHall => "人类议事厅：当地有成年的人类可建。人类到场携带粮水值守，为两格内居民缓解社交需求，并为附近居民提供三格当面交流范围。",

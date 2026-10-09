@@ -15,15 +15,27 @@ var options = args.Skip(1).ToHashSet(StringComparer.Ordinal);
 if (args.Length < 1 || options.Any(option => option is not ("--verify" or "--initialization" or "--default-rules" or "--large" or "--steady" or "--save-final")
         && !option.StartsWith("--seed=", StringComparison.Ordinal) && !option.StartsWith("--start-day=", StringComparison.Ordinal)
         && !option.StartsWith("--years=", StringComparison.Ordinal) && !option.StartsWith("--repetitions=", StringComparison.Ordinal)
+        && !option.StartsWith("--size=", StringComparison.Ordinal) && !option.StartsWith("--population=", StringComparison.Ordinal)
         && !option.StartsWith("--population-floor=", StringComparison.Ordinal))
-    || options.Contains("--verify") && options.Count != 1
+    || options.Contains("--verify") && options.Any(option => option != "--verify"
+        && !option.StartsWith("--size=", StringComparison.Ordinal) && !option.StartsWith("--population=", StringComparison.Ordinal)
+        && !option.StartsWith("--seed=", StringComparison.Ordinal))
     || options.Contains("--initialization") && options.Any(option => option is not ("--initialization" or "--large")
         && !option.StartsWith("--seed=", StringComparison.Ordinal) && !option.StartsWith("--repetitions=", StringComparison.Ordinal)))
-    throw new ArgumentException("请指定结果 JSON 路径；--initialization 测量创建地图并补足人口，--default-rules 使用默认规则，--large 只测 256² / 4096 人，--steady 测量后续 64 日；--seed=整数 指定种子，--start-day=整数 指定计时前推进日数；--years=整数 测量长期演化，--repetitions=整数 指定轮数，--population-floor=整数 在计时外补充居民维持人口负载；--save-final 在计时外保存终态，--verify 独立验证续演。");
+    throw new ArgumentException("请指定结果 JSON 路径；--initialization 测量创建地图并补足人口，--default-rules 使用默认规则，--large 只测 256² / 4096 人，--size=整数 --population=整数 选择自定义场景，--steady 测量后续 64 日；--seed=整数 指定种子，--start-day=整数 指定计时前推进日数；--years=整数 测量长期演化，--repetitions=整数 指定轮数，--population-floor=整数 在计时外补充居民维持人口负载；--save-final 在计时外保存终态，--verify 独立验证续演，可搭配自定义场景和种子。");
 var benchmarkSeed = ReadIntegerOption(options, "--seed=", 42);
 var years = ReadIntegerOption(options, "--years=", 0);
 var repetitions = ReadIntegerOption(options, "--repetitions=", years > 0 ? 3 : 7);
 var populationFloor = ReadIntegerOption(options, "--population-floor=", 0);
+var customSize = ReadIntegerOption(options, "--size=", 0);
+var customPopulation = ReadIntegerOption(options, "--population=", 0);
+if (customSize != 0 || customPopulation != 0)
+{
+    if (customSize is < 32 or > 256 || customPopulation is < 144 or > WorldEngine.MaxPopulation
+        || options.Contains("--large") || options.Contains("--initialization"))
+        throw new ArgumentException("自定义场景须同时指定 --size=32..256 和 --population=144..10000，不能搭配 --large 或 --initialization。");
+    cases = [($"{customSize}x{customSize}-{customPopulation}", customSize, customPopulation, 24)];
+}
 if (years is < 0 or > 500 || repetitions is < 1 or > 9 || populationFloor is < 0 or > WorldEngine.MaxPopulation)
     throw new ArgumentOutOfRangeException(nameof(options));
 if (populationFloor > 0 && (!options.Contains("--large") || !options.Contains("--default-rules") || years == 0))
@@ -41,10 +53,12 @@ var results = new List<object>();
 if (options.Contains("--verify"))
 {
     // 完整规则的长程行为检查独立运行，不计入性能样本或单元测试。
-    foreach (var seed in new[] { 42, 731 })
-    foreach (var size in new[] { 64, 128 })
+    foreach (var seed in options.Any(option => option.StartsWith("--seed=", StringComparison.Ordinal))
+                 ? new[] { benchmarkSeed } : new[] { 42, 731 })
+    foreach (var size in customSize > 0 ? new[] { customSize } : new[] { 64, 128 })
     {
-        var engine = WorldEngine.Create(seed, size, size, true);
+        var population = customPopulation > 0 ? customPopulation : 144;
+        var engine = CreateScenario(size, population, seed);
         var rules = engine.State.Rules;
         engine.Step(120);
         var restored = WorldEngine.ImportJson(engine.ExportJson());
@@ -56,7 +70,7 @@ if (options.Contains("--verify"))
             throw new InvalidOperationException("默认规则下中途保存恢复后的续演结果不同。");
         results.Add(new
         {
-            Seed = seed, Size = size, Days = 240, InitialPopulation = 144,
+            Seed = seed, Size = size, Days = 240, InitialPopulation = population,
             FinalPopulation = engine.State.Population, Rules = rules, NaturalDisasters = true,
             CoreAssemblySha256 = coreSha256,
             StateSha256 = Convert.ToHexString(SHA256.HashData(state)), SaveContinuationVerified = true,
@@ -132,6 +146,7 @@ foreach (var scenario in cases)
     }
     var measureStartTick = engine.State.Tick;
     var measuredInitialPopulation = engine.State.Population;
+    var initialCivilization = CaptureCivilization(engine.State);
     var initial = engine.ExportJson();
     // 动态 PGO 在后台优化热点，短窗口也至少预热 128 日，避免首轮混入编译开销。
     var warmupWindow = years > 0 ? 256 : scenario.Days;
@@ -204,6 +219,7 @@ foreach (var scenario in cases)
                     MaxPopulation = yearSamples.Max(sample => Math.Max(sample.StartPopulation, sample.EndPopulation)), EndPopulation = engine.State.Population,
                     EndSettlements = engine.State.Settlements.Count, EndBuildings = engine.State.Society.Buildings.Count,
                     EndArmies = engine.State.Armies.Count,
+                    Civilization = CaptureCivilization(engine.State),
                 });
                 if ((day + 1) % (10 * daysPerYear) == 0)
                 {
@@ -245,6 +261,7 @@ foreach (var scenario in cases)
     var totalTiming = BenchmarkStatistics.From(allSamples.Select(sample => sample.WallMs));
     var totalAllocation = BenchmarkStatistics.From(allSamples.Select(sample => sample.AllocatedBytes / (double)bytesPerMegabyte));
     // 各次终态已逐一比较；同一终态的保存续演只需在计时外验证一次。
+    var finalCivilization = CaptureCivilization(engine.State);
     var restored = WorldEngine.ImportJson(engine.ExportJson());
     engine.Step();
     restored.Step();
@@ -277,6 +294,8 @@ foreach (var scenario in cases)
         DailyMeasurements = dailySamples, AnnualResults = annualResults, RepetitionResults = repetitionResults,
         BytesPerDay = allocations, GcCollections = collections,
         FinalPopulation = finalPopulation, StateSha256 = checksum,
+        InitialCivilization = initialCivilization,
+        FinalCivilization = finalCivilization,
         RepeatedSimulationVerified = repetitions > 1, SaveContinuationVerified = true,
         engine.State.FormatVersion, engine.State.SimulationVersion,
         Runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
@@ -289,6 +308,27 @@ foreach (var scenario in cases)
     Console.WriteLine($"Summary {scenario.Name}, ticks {measureStartTick}..{measureStartTick + scenario.Days}, {allSamples.Length} samples: time ms/day mean/P95/max {totalTiming.Mean:F3}/{totalTiming.P95:F3}/{totalTiming.Max:F3}, allocation MB/day mean/P95/max {totalAllocation.Mean:F3}/{totalAllocation.P95:F3}/{totalAllocation.Max:F3}");
 }
 File.WriteAllText(args[0], JsonSerializer.Serialize(results, new JsonSerializerOptions { WriteIndented = true }));
+
+// 年度诊断在 Step 计时外采样，保留各聚落差异，不用单个总分掩盖饥荒或停滞。
+static object CaptureCivilization(WorldState state) => new
+{
+    Population = state.Population,
+    Hungry = state.Residents.Count(person => person.Hunger > 60),
+    Thirsty = state.Residents.Count(person => person.Thirst > 80),
+    Sick = state.Residents.Count(person => person.SicknessTicks > 0),
+    Children = state.Residents.Count(person => person.Age < 18),
+    MeanHealth = state.Residents.Count == 0 ? 0 : state.Residents.Average(person => person.Health),
+    CompletedBuildings = state.Society.Buildings.Count(building => building.IsCompleted),
+    ProductionBatches = state.Society.Buildings.Sum(building => (long)building.ProductionBatches),
+    Settlements = state.Settlements.Select(town => new
+    {
+        town.Id, town.Name, town.Population, town.Tier, town.Resources,
+        Research = state.Society.Research.FirstOrDefault(research => research.SettlementId == town.Id)
+            ?.Completed.Select(research => research.Id).ToArray(),
+        Buildings = state.Society.Buildings.Where(building => building.SettlementId == town.Id)
+            .Select(building => new { building.Kind, building.IsCompleted, building.Health, building.ProductionBatches }).ToArray(),
+    }).ToArray(),
+};
 
 static WorldEngine CreateScenario(int size, int population, int seed)
 {

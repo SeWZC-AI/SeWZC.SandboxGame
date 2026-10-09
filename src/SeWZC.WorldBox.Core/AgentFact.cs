@@ -1,18 +1,24 @@
+using System.Text.Json.Serialization;
+
 namespace SeWZC.WorldBox.Core;
 
 /// <summary>居民观察或获知的不可变信息快照，可能已经过时。</summary>
 public sealed record AgentFact
 {
     /// <summary>关联的世界事件 ID，0 表示未关联事件。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int EventId { get; init; }
 
     /// <summary>该信息关联的战役起始事件 ID。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int CampaignEventId { get; init; }
 
     /// <summary>战争信息中的军事目标。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public WarObjective WarObjective { get; init; }
 
     /// <summary>战争信息中的目标国家 ID。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int TargetNationId { get; init; }
 
     /// <summary>信息记录的稳定 ID。</summary>
@@ -52,6 +58,7 @@ public sealed record AgentFact
     public double Confidence { get; init; } = 1;
 
     /// <summary>信息已经转述的次数。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int Hops { get; init; }
 
     /// <summary>观察或转述的内容说明。</summary>

@@ -5,6 +5,27 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>当前保存格式、必需字段和异步取消的检查。</summary>
 public sealed class WorldPersistenceTests
 {
+    /// <summary>紧凑存档保留零可信度和非零默认值，中文直接写入 UTF-8，HTML 敏感字符仍转义。</summary>
+    [Fact]
+    public void Compact_save_preserves_zero_confidence_and_navigation_defaults()
+    {
+        var fixture = new WorldFixture();
+        var fact = fixture.Resident.Agent.Memory[0] with { Confidence = 0, Text = "中文 <html>" };
+        fixture.Resident.Agent = fixture.Resident.Agent with { Memory = [fact], Goal = new AgentGoal() };
+
+        var json = fixture.Engine.ExportJson();
+        var restored = WorldEngine.ImportJson(json).GetResident(fixture.ResidentId)!;
+
+        Assert.Contains("中文", json);
+        Assert.Contains("\\u003Chtml\\u003E", json);
+        var savedFact = JsonNode.Parse(json)!["Residents"]![0]!["Agent"]!["Memory"]![0]!.AsObject();
+        Assert.False(savedFact.ContainsKey("CampaignEventId"));
+        Assert.Equal(fact, Assert.Single(restored.Agent.Memory));
+        Assert.Equal(0, restored.Agent.Memory[0].Confidence);
+        Assert.Equal(-1, restored.Agent.Goal.NavigationTarget);
+        Assert.Equal(-1, restored.Agent.WorkAreaIndex);
+    }
+
     /// <summary>工作范围须属于当前地图；旧岗位已拆除时可保留原地址，不能因此拒绝历史记录。</summary>
     [Theory]
     [InlineData(-1, 0, true)]
