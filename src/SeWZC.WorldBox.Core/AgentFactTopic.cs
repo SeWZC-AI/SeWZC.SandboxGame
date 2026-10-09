@@ -62,7 +62,7 @@ internal abstract class AgentFactTopic
         return Math.Clamp(value, 0, 100);
     }
 
-    internal virtual void Receive(WorldEngine engine, SettlementCursor town, ResidentCursor carrier, AgentFact fact) { }
+    internal virtual void Receive(WorldEngine engine, StateReference<Settlement> town, ResidentCursor carrier, AgentFact fact) { }
 
     private sealed class GeneralTopic : AgentFactTopic;
 
@@ -122,7 +122,7 @@ internal abstract class AgentFactTopic
             return 60;
         }
 
-        internal override void Receive(WorldEngine engine, SettlementCursor town, ResidentCursor carrier,
+        internal override void Receive(WorldEngine engine, StateReference<Settlement> town, ResidentCursor carrier,
             AgentFact fact)
         {
             engine.ReceivePolicyFact(town, fact);
@@ -141,7 +141,7 @@ internal abstract class AgentFactTopic
 
     private sealed class CultureTopic : AgentFactTopic
     {
-        internal override void Receive(WorldEngine engine, SettlementCursor town, ResidentCursor carrier,
+        internal override void Receive(WorldEngine engine, StateReference<Settlement> town, ResidentCursor carrier,
             AgentFact fact)
         {
             engine.ReceiveCultureFact(carrier, fact);
@@ -169,7 +169,7 @@ internal abstract class AgentFactTopic
             return 40;
         }
 
-        internal override void Receive(WorldEngine engine, SettlementCursor town, ResidentCursor carrier,
+        internal override void Receive(WorldEngine engine, StateReference<Settlement> town, ResidentCursor carrier,
             AgentFact fact)
         {
             engine.ReceiveResearchFact(town, fact);
@@ -189,7 +189,7 @@ internal abstract class AgentFactTopic
             return true;
         }
 
-        internal override void Receive(WorldEngine engine, SettlementCursor town, ResidentCursor carrier,
+        internal override void Receive(WorldEngine engine, StateReference<Settlement> town, ResidentCursor carrier,
             AgentFact fact)
         {
             engine.ReceiveDiplomaticNotice(town, fact);
@@ -203,7 +203,7 @@ internal abstract class AgentFactTopic
             return true;
         }
 
-        internal override void Receive(WorldEngine engine, SettlementCursor town, ResidentCursor carrier,
+        internal override void Receive(WorldEngine engine, StateReference<Settlement> town, ResidentCursor carrier,
             AgentFact fact)
         {
             engine.ReceiveWarReport(town, fact);

@@ -84,12 +84,12 @@ public sealed partial class WorldEngine
             return;
         foreach (var town in Current.Settlements)
         {
-            if (Current.Conflicts.Count >= 128 || Current.Conflicts.Any(c => c.SettlementId == town.Id
+            if (Current.Conflicts.Count >= 128 || Current.Conflicts.Any(c => c.SettlementId == town.Value.Id
                                                                              && (c.Stage != ConflictStage.Resolved ||
                                                                                  Current.Tick - c.LastChangedTick <
                                                                                  120)))
                 continue;
-            var candidates = _citizens[town.Id].Where(r => r.Age >= 14 && r.ArmyId == 0 && HasResourcePressure(r))
+            var candidates = _citizens[town.Value.Id].Where(r => r.Age >= 14 && r.ArmyId == 0 && HasResourcePressure(r))
                 .OrderBy(r => r.Id).Take(32).ToArray();
             for (var i = 0; i < candidates.Length; i++)
             {
@@ -102,7 +102,7 @@ public sealed partial class WorldEngine
                     Id = NewId(),
                     FirstResidentId = first.Id,
                     SecondResidentId = second.Id,
-                    SettlementId = town.Id,
+                    SettlementId = town.Value.Id,
                     X = first.X,
                     Y = first.Y,
                     Tension = 16,
@@ -127,7 +127,7 @@ public sealed partial class WorldEngine
     private LocalConflict RecordConflictEvent(LocalConflict conflict, string reason)
     {
         conflict = conflict with { LastChangedTick = Current.Tick };
-        var entry = AddEvent(WorldEventKind.Personal, $"{_settlements[conflict.SettlementId].Name}：{reason}。",
+        var entry = AddEvent(WorldEventKind.Personal, $"{_settlements[conflict.SettlementId].Value.Name}：{reason}。",
             conflict.X, conflict.Y, settlementId: conflict.SettlementId, residentId: conflict.FirstResidentId,
             causeEventId: conflict.LastEventId);
         entry = PublishEvent(entry with

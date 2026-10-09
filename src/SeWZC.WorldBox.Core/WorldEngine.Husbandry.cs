@@ -37,9 +37,9 @@ public sealed partial class WorldEngine
             if (aquatic && !IsFreshWater(Current.Tiles[i].Value))
                 continue;
             foreach (var kind in AnimalRules.Species)
-                if (CanDomesticate(kind, aquatic) && Current.Tiles[i].AnimalPopulation(kind) > largest)
+                if (CanDomesticate(kind, aquatic) && Current.Tiles[i].Value.AnimalPopulation(kind) > largest)
                 {
-                    largest = Current.Tiles[i].AnimalPopulation(kind);
+                    largest = Current.Tiles[i].Value.AnimalPopulation(kind);
                     source = i;
                     species = kind;
                 }
@@ -67,18 +67,18 @@ public sealed partial class WorldEngine
         if (person.Profession != (b.Kind == BuildingKind.Pasture ? Profession.Farmer : Profession.Fisher))
             return false;
         var tile = Current.Tiles[Index(b.X, b.Y)];
-        if (tile.DroughtTicks > 0 || tile.FireTicks > 0)
+        if (tile.Value.DroughtTicks > 0 || tile.Value.FireTicks > 0)
             return false;
         if (b.LivestockPopulation < .01)
             return HusbandryStockAt(b.X, b.Y, b.Kind == BuildingKind.Aquaculture).Source >= 0;
         var home = RequireTown(b.SettlementId);
-        return (person.Inventory.Food >= LivestockFeed(b) || home.Resources.Food >= LivestockFeed(b))
-               && (person.Inventory.Water >= .75 + LivestockWater(b) || home.Resources.Water >= .08 ||
+        return (person.Inventory.Food >= LivestockFeed(b) || home.Value.Resources.Food >= LivestockFeed(b))
+               && (person.Inventory.Water >= .75 + LivestockWater(b) || home.Value.Resources.Water >= .08 ||
                    DailyWaterYield(tile.Value) >= .08)
-               && (b.Kind == BuildingKind.Aquaculture || tile.ResourceAmount >= .2);
+               && (b.Kind == BuildingKind.Aquaculture || tile.Value.ResourceAmount >= .2);
     }
 
-    private bool ActOnHusbandry(ResidentCursor person, SettlementCursor home)
+    private bool ActOnHusbandry(ResidentCursor person, StateReference<Settlement> home)
     {
         var goal = person.Agent.Goal;
         if (goal.Kind != AgentGoalKind.Work || FindBuilding(goal.TargetEntityId) is not { } b || !IsHusbandry(b.Value.Kind)
@@ -93,10 +93,10 @@ public sealed partial class WorldEngine
         if (b.Value.LivestockPopulation >= .01 && (person.Inventory.Food < LivestockFeed(b.Value) ||
                                              person.Inventory.Water < .75 + LivestockWater(b.Value)))
         {
-            person.Agent = person.Agent.WithGoal(goal = goal with { TargetX = home.X, TargetY = home.Y });
-            if (Distance(person.X, person.Y, home.X, home.Y) > 1)
+            person.Agent = person.Agent.WithGoal(goal = goal with { TargetX = home.Value.X, TargetY = home.Value.Y });
+            if (Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1)
             {
-                MoveAgentTowards(person, home.X, home.Y);
+                MoveAgentTowards(person, home.Value.X, home.Value.Y);
                 person.Activity = ResidentActivity.Delivering;
                 return true;
             }
@@ -106,8 +106,8 @@ public sealed partial class WorldEngine
                          (ResourceKind.Food, TravelReserve(person) + 1), (ResourceKind.Water, 1.5),
                      })
             {
-                var take = Math.Min(home.Resources.Get(kind), Math.Max(0, target - person.Inventory.Get(kind)));
-                home.UpdateResources(home.Resources.WithAmount(kind, home.Resources.Get(kind) - take));
+                var take = Math.Min(home.Value.Resources.Get(kind), Math.Max(0, target - person.Inventory.Get(kind)));
+                home.Replace(home.Value.WithResources(home.Value.Resources.WithAmount(kind, home.Value.Resources.Get(kind) - take)));
                 person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + take);
             }
 
@@ -129,7 +129,7 @@ public sealed partial class WorldEngine
             var previous = person.Agent.Goal;
             person.Agent = person.Agent.WithGoal(new AgentGoal
             {
-                Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, StartedTick = Current.Tick,
+                Kind = AgentGoalKind.ReturnHome, TargetX = home.Value.X, TargetY = home.Value.Y, StartedTick = Current.Tick,
             });
             ChangeWorkReservation(previous, person.Agent.Goal);
             person.Agent = person.Agent with { NextThinkTick = Current.Tick };
@@ -148,8 +148,8 @@ public sealed partial class WorldEngine
             if (stock.Source < 0)
                 return false;
             var tile = Current.Tiles[stock.Source];
-            var take = Math.Min(1, tile.AnimalPopulation(stock.Kind) * .5);
-            tile.SetAnimalPopulation(stock.Kind, tile.AnimalPopulation(stock.Kind) - take);
+            var take = Math.Min(1, tile.Value.AnimalPopulation(stock.Kind) * .5);
+            tile.Replace(tile.Value.WithAnimalPopulation(stock.Kind, tile.Value.AnimalPopulation(stock.Kind) - take));
             b.Replace(b.Value with { LivestockKind = stock.Kind, LivestockPopulation = take });
         }
         else

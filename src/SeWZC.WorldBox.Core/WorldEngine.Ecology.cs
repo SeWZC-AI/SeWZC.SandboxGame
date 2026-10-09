@@ -207,18 +207,18 @@ public sealed partial class WorldEngine
         {
             var tile = tiles[i];
             var local = i - snapshotFirst;
-            var mask = tile.WildlifeMask;
+            var mask = tile.Value.WildlifeMask;
             var pressure = 0d;
             var offset = local * AnimalRules.SpeciesCount;
             // 按地格索引复用边界地格的环境容量缓存。
             var habitatSlot = i % bufferTiles;
             var capacityOffset = habitatSlot * AnimalRules.SpeciesCount;
-            tile.CopyAnimalPopulations(_wildlifePopulations.AsSpan(offset, AnimalRules.SpeciesCount));
+            tile.Value.CopyAnimalPopulations(_wildlifePopulations.AsSpan(offset, AnimalRules.SpeciesCount));
             _wildlifeMasks[local] = mask;
             // 食物供给饱和后，更多资源不应使环境容量缓存反复失效。
-            var habitat = new WildlifeHabitat(tile.Terrain, Math.Clamp(tile.ResourceAmount / 100, 0, 1), tile.Fertility,
-                tile.Improvement,
-                tile.SettlementId != 0, tile.DroughtTicks > 0, tile.FireTicks > 0, tile.NaturalWaterYield, tile.Plants,
+            var habitat = new WildlifeHabitat(tile.Value.Terrain, Math.Clamp(tile.Value.ResourceAmount / 100, 0, 1), tile.Value.Fertility,
+                tile.Value.Improvement,
+                tile.Value.SettlementId != 0, tile.Value.DroughtTicks > 0, tile.Value.FireTicks > 0, tile.Value.NaturalWaterYield, tile.Value.Plants,
                 true);
             if (_wildlifeHabitats[habitatSlot] != habitat)
             {
@@ -373,7 +373,7 @@ public sealed partial class WorldEngine
                     var targetLocal = next - snapshotFirst;
                     var targetOffset = targetLocal * AnimalRules.SpeciesCount + species;
                     var targetCapacityOffset = next % bufferTiles * AnimalRules.SpeciesCount;
-                    var creek = tiles[next].Terrain == TerrainType.Stream && !animal.Aquatic;
+                    var creek = tiles[next].Value.Terrain == TerrainType.Stream && !animal.Aquatic;
                     if (_wildlifeCapacities[targetCapacityOffset + species] <= 0 && !creek)
                         continue;
                     var targetCapacity = _wildlifeCapacities[targetCapacityOffset + species];
@@ -392,7 +392,7 @@ public sealed partial class WorldEngine
                                 : 0), 0, 1);
                     var amount = available * migrationRate / count * preference
                                                                    * (creek ||
-                                                                      (tiles[i].Terrain == TerrainType.Stream &&
+                                                                      (tiles[i].Value.Terrain == TerrainType.Stream &&
                                                                        !animal.Aquatic)
                                                                        ? .35
                                                                        : 1);
@@ -423,7 +423,7 @@ public sealed partial class WorldEngine
                 populations[species] = population;
             }
 
-            var primary = tile.Wildlife;
+            var primary = tile.Value.Wildlife;
             if (populations[(int)primary] == 0)
             {
                 primary = WildlifeKind.None;
@@ -452,15 +452,15 @@ public sealed partial class WorldEngine
         };
     }
 
-    private void RefreshSettlementName(SettlementCursor town)
+    private void RefreshSettlementName(StateReference<Settlement> town)
     {
-        var suffix = SettlementTierName(town.Tier);
-        if (town.Name.EndsWith(suffix, StringComparison.Ordinal))
+        var suffix = SettlementTierName(town.Value.Tier);
+        if (town.Value.Name.EndsWith(suffix, StringComparison.Ordinal))
             return;
-        var stem = town.Name.Length > 0 && town.Name[^1] is '城' or '镇' or '村' ? town.Name[..^1] : town.Name;
+        var stem = town.Value.Name.Length > 0 && town.Value.Name[^1] is '城' or '镇' or '村' ? town.Value.Name[..^1] : town.Value.Name;
         var name = stem + suffix;
-        if (Current.Settlements.Any(other => other.Id != town.Id && other.Name == name))
-            name = stem + town.Id + suffix;
+        if (Current.Settlements.Any(other => other.Value.Id != town.Value.Id && other.Value.Name == name))
+            name = stem + town.Value.Id + suffix;
         town.Replace(town.Value with { Name = name });
     }
 
@@ -470,16 +470,16 @@ public sealed partial class WorldEngine
         {
             var center =
                 Current.Buildings.FirstOrDefault(b =>
-                    b.Value.SettlementId == town.Id && b.Value.Kind == BuildingKind.TownCenter);
+                    b.Value.SettlementId == town.Value.Id && b.Value.Kind == BuildingKind.TownCenter);
             if (center is null)
             {
                 center = new StateReference<Building>(new Building
                 {
                     Id = NewId(),
                     Kind = BuildingKind.TownCenter,
-                    SettlementId = town.Id,
-                    X = town.X,
-                    Y = town.Y,
+                    SettlementId = town.Value.Id,
+                    X = town.Value.X,
+                    Y = town.Value.Y,
                     ConstructionProgress = 30,
                     ConstructionRequired = 30,
                     WorkSlots = 3,
@@ -487,16 +487,16 @@ public sealed partial class WorldEngine
                 Current.Buildings.Add(center);
             }
 
-            center.Replace(center.Value with { X = town.X, Y = town.Y });
-            if (center.Value.Health <= 0 && Current.Tiles[Index(town.X, town.Y)].FireTicks == 0 && Current.Rules.Construction
-                && MissingResources(town.Resources, GetBuildingCost(BuildingKind.TownCenter)) is null)
+            center.Replace(center.Value with { X = town.Value.X, Y = town.Value.Y });
+            if (center.Value.Health <= 0 && Current.Tiles[Index(town.Value.X, town.Value.Y)].Value.FireTicks == 0 && Current.Rules.Construction
+                && MissingResources(town.Value.Resources, GetBuildingCost(BuildingKind.TownCenter)) is null)
             {
-                town.UpdateResources(Spend(town.Resources, GetBuildingCost(BuildingKind.TownCenter)));
+                town.Replace(town.Value.WithResources(Spend(town.Value.Resources, GetBuildingCost(BuildingKind.TownCenter))));
                 center.Replace(center.Value with { Health = 100, ConstructionProgress = 0 });
                 center.Replace(center.Value with { Workers = center.Value.Workers.Clear() });
                 center.Replace(center.Value with { LastWorkedTick = -100, Observation = new ProjectObservation() });
-                var rebuilding = AddEvent(WorldEventKind.Construction, $"{town.Name}投入材料重建受损的城镇中心。", town.X, town.Y,
-                    EventAction.Started, town.Id);
+                var rebuilding = AddEvent(WorldEventKind.Construction, $"{town.Value.Name}投入材料重建受损的城镇中心。", town.Value.X, town.Value.Y,
+                    EventAction.Started, town.Value.Id);
                 center.Replace(center.Value with { Observation = center.Value.Observation with { StartEventId = rebuilding.Id } });
             }
         }

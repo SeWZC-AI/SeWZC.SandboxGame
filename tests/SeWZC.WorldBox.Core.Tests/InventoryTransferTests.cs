@@ -1,6 +1,6 @@
 namespace SeWZC.WorldBox.Core.Tests;
 
-/// <summary>返仓卸货的纯状态转换检查。</summary>
+/// <summary>返仓卸货与补给的纯状态转换检查。</summary>
 public sealed class InventoryTransferTests
 {
     /// <summary>卸货保留粮水和职业用品，各类资源总量保持一致且不修改旧库存。</summary>
@@ -41,5 +41,46 @@ public sealed class InventoryTransferTests
 
         Assert.Equal(inventory, result.Inventory);
         Assert.Equal(warehouse, result.Warehouse);
+    }
+
+    /// <summary>库存紧张时先保障当日需求，不让首位居民领走其他居民的公共口粮。</summary>
+    [Fact]
+    public void Provisioning_preserves_shared_daily_supplies()
+    {
+        var inventory = new ResourceStock();
+        var warehouse = new ResourceStock { Food = .12, Water = .06 };
+        var first = InventoryTransfer.Provision(inventory, warehouse, 2, Profession.Laborer,
+            true, true, 4, 4, .04, .025);
+        var second = InventoryTransfer.Provision(inventory, first.Warehouse, 2, Profession.Laborer,
+            true, true, 4, 4, .04, .025);
+
+        Assert.Equal(.04, first.Inventory.Food, 10);
+        Assert.Equal(.025, first.Inventory.Water, 10);
+        Assert.Equal(.04, second.Inventory.Food, 10);
+        Assert.Equal(.025, second.Inventory.Water, 10);
+        Assert.Equal(warehouse.Food, first.Inventory.Food + second.Inventory.Food + second.Warehouse.Food, 10);
+        Assert.Equal(warehouse.Water, first.Inventory.Water + second.Inventory.Water + second.Warehouse.Water, 10);
+        Assert.Equal(0, inventory.Food);
+        Assert.Equal(.12, warehouse.Food);
+    }
+
+    /// <summary>关闭饥渴时只领取相应职业用品，原库存保持独立。</summary>
+    [Theory]
+    [InlineData(Profession.Engineer, ResourceKind.Tools, .5)]
+    [InlineData(Profession.Physician, ResourceKind.Medicine, 2)]
+    [InlineData(Profession.Ranger, ResourceKind.Ammunition, 8)]
+    public void Provisioning_disables_needs_but_retains_job_supplies(Profession profession, ResourceKind kind, double target)
+    {
+        var inventory = new ResourceStock { Food = .1, Water = .2 };
+        var warehouse = new ResourceStock { Food = 10, Water = 20 }.WithAmount(kind, target * 2);
+        var result = InventoryTransfer.Provision(inventory, warehouse, 1, profession,
+            false, false, 4, 4, .04, .025);
+
+        Assert.Equal(inventory.Food, result.Inventory.Food);
+        Assert.Equal(inventory.Water, result.Inventory.Water);
+        Assert.Equal(target, result.Inventory.Get(kind));
+        Assert.Equal(target, result.Warehouse.Get(kind));
+        Assert.Equal(target * 2, warehouse.Get(kind));
+        Assert.Equal(0, inventory.Get(kind));
     }
 }

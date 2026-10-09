@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private int FindSafeVisibleSite(ResidentCursor person, SettlementCursor home, AgentFact? danger)
+    private int FindSafeVisibleSite(ResidentCursor person, StateReference<Settlement> home, AgentFact? danger)
     {
         var reachable = 0;
         var best = -1;
@@ -16,10 +16,10 @@ public sealed partial class WorldEngine
                 break;
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
-            if (!Walkable(x, y, person.Race) || Current.Tiles[Index(x, y)].FireTicks > 0)
+            if (!Walkable(x, y, person.Race) || Current.Tiles[Index(x, y)].Value.FireTicks > 0)
                 continue;
             var dangerDistance = Distance(x, y, danger?.X ?? person.X, danger?.Y ?? person.Y);
-            var homeDistance = Distance(x, y, home.X, home.Y);
+            var homeDistance = Distance(x, y, home.Value.X, home.Value.Y);
             if ((dangerDistance > bestDangerDistance ||
                  (dangerDistance == bestDangerDistance && homeDistance < bestHomeDistance))
                 && VisibleSiteReachable(person, Index(x, y), ref reachable))
@@ -40,13 +40,13 @@ public sealed partial class WorldEngine
                    || (FindBuilding(person.Agent.Goal.TargetEntityId) is { } clinic && IsBuildingOperational(clinic.Value)));
     }
 
-    private void AddRecoveryChoice(ResidentCursor person, SettlementCursor home, List<GoalChoice> choices)
+    private void AddRecoveryChoice(ResidentCursor person, StateReference<Settlement> home, List<GoalChoice> choices)
     {
         if (person.SicknessTicks == 0 && person.Health >= 40
                                       && !(person.Agent.Goal.Kind == AgentGoalKind.Rest && person.Health < 70))
             return;
         IReadOnlyList<StateReference<Building>>? buildings = _localWorkQueriesActive
-            ? _localWorkBuildings.GetValueOrDefault(home.Id)
+            ? _localWorkBuildings.GetValueOrDefault(home.Value.Id)
             : Current.Buildings;
         StateReference<Building>? selected = null;
         var bestDistance = int.MaxValue;
@@ -55,7 +55,7 @@ public sealed partial class WorldEngine
         {
             foreach (var building in buildings)
             {
-                if (building.Value.SettlementId != home.Id || building.Value.Kind is not (BuildingKind.Infirmary
+                if (building.Value.SettlementId != home.Value.Id || building.Value.Kind is not (BuildingKind.Infirmary
                                                          or BuildingKind.Hospital)
                                                      || !IsBuildingOperational(building.Value))
                     continue;
@@ -68,11 +68,11 @@ public sealed partial class WorldEngine
             }
         }
 
-        choices.Add(new GoalChoice(AgentGoalKind.Rest, selected?.Value.X ?? home.X, selected?.Value.Y ?? home.Y,
+        choices.Add(new GoalChoice(AgentGoalKind.Rest, selected?.Value.X ?? home.Value.X, selected?.Value.Y ?? home.Value.Y,
             105 + (100 - person.Health) * .4,
             selected is null
                 ? "患病或伤势尚未恢复，回家休养，暂缓普通劳动"
                 : "患病或伤势尚未恢复，前往眼前可达的医疗设施休养并等待现场治疗",
-            SettlementId: home.Id, EntityId: selected?.Value.Id ?? 0));
+            SettlementId: home.Value.Id, EntityId: selected?.Value.Id ?? 0));
     }
 }

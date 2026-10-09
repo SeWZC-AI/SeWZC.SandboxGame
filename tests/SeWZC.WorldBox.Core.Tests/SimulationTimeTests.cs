@@ -9,8 +9,8 @@ public sealed class SimulationTimeTests
     {
         var fixture = Prepare(12);
         var ground = fixture.Engine.Current.Tiles[16 * 32 + 22];
-        ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Id, NationId = fixture.Town.NationId });
-        var buildingId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Farm, 22, 16);
+        ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+        var buildingId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Farm, 22, 16);
         fixture.Engine.Current.Buildings.Single(b => b.Value.Id == buildingId).Replace(fixture.Engine.Current.Buildings.Single(b => b.Value.Id == buildingId).Value with { Health = 10 });
         fixture.Resident.Replace(fixture.Resident.Value with { Profession = Profession.Builder });
         fixture.Resident.Inventory = fixture.Resident.Inventory with { Stone = 1 };
@@ -90,14 +90,14 @@ public sealed class SimulationTimeTests
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
         var before = fixture.Resident.Value;
-        var foodBefore = before.Inventory.Food + fixture.Town.Resources.Food;
+        var foodBefore = before.Inventory.Food + fixture.Town.Value.Resources.Food;
 
         fixture.Engine.Step();
 
         Assert.Equal(ResidentActivity.Sleeping, fixture.Resident.Activity);
         Assert.Equal(before.Age + 1d / SimulationTime.TicksPerYear, fixture.Resident.Age, 10);
         Assert.Equal(foodBefore - WorldEngine.FoodUse(before) / SimulationTime.TicksPerDay,
-            fixture.Resident.Inventory.Food + fixture.Town.Resources.Food, 10);
+            fixture.Resident.Inventory.Food + fixture.Town.Value.Resources.Food, 10);
         var restored = WorldEngine.ImportJson(fixture.Engine.ExportJson());
         var untilMorning = SimulationTime.TicksPerDay - SimulationTime.SleepTick + SimulationTime.WakeTick;
         fixture.Engine.Step(untilMorning);
@@ -115,7 +115,7 @@ public sealed class SimulationTimeTests
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
         fixture.Engine.Step();
-        fixture.Engine.Current.Tiles[16 * 32 + 16].FireTicks = SimulationTime.TicksPerDay;
+        fixture.Engine.Current.Tiles[16 * 32 + 16].Replace(fixture.Engine.Current.Tiles[16 * 32 + 16].Value.WithFireTicks(SimulationTime.TicksPerDay));
 
         fixture.Engine.Step();
 
@@ -134,7 +134,7 @@ public sealed class SimulationTimeTests
             Kind = AgentGoalKind.Migrate,
             TargetX = 24,
             TargetY = 16,
-            TargetSettlementId = fixture.Town.Id,
+            TargetSettlementId = fixture.Town.Value.Id,
             ReviewTick = SimulationTime.TicksPerYear,
         };
         fixture.Resident.X = fixture.Resident.FromX = 22;
@@ -172,7 +172,7 @@ public sealed class SimulationTimeTests
     public void Water_trip_can_collect_after_arriving_in_the_evening()
     {
         var fixture = Prepare(SimulationTime.ReturnHomeTick - 1);
-        fixture.Engine.Current.Tiles[16 * 32 + 23].Terrain = TerrainType.River;
+        fixture.Engine.Current.Tiles[16 * 32 + 23].Replace(fixture.Engine.Current.Tiles[16 * 32 + 23].Value.WithTerrain(TerrainType.River));
         fixture.Resident.X = fixture.Resident.FromX = 22;
         fixture.Resident.Inventory = new ResourceStock { Food = 1 };
         fixture.Resident.Agent = fixture.Resident.Agent with

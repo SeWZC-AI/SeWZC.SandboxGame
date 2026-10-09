@@ -49,7 +49,7 @@ public sealed partial class WorldEngine
     /// <param name="id">聚落的稳定 ID。</param>
     public int GetSettlementExpansionArea(int id)
     {
-        return ClaimRadiusArea((RequireTown(id).MaxClaimRadius + 1) / 2);
+        return ClaimRadiusArea((RequireTown(id).Value.MaxClaimRadius + 1) / 2);
     }
 
     /// <summary>返回从当前村镇城等级晋升需要投入的资源。</summary>
@@ -73,21 +73,21 @@ public sealed partial class WorldEngine
         _territoryCounts.Bind(Current.Tiles);
         // 面积取决于归属与陆水转换；其他地方的起火及桥梁轴向变化不改变登记面积。
         if (_settlementAreas.TryGetValue(id, out var cached) && cached.Claims == _territoryCounts.Revision &&
-            cached.X == town.X && cached.Y == town.Y &&
-            cached.Nation == town.NationId)
+            cached.X == town.Value.X && cached.Y == town.Value.Y &&
+            cached.Nation == town.Value.NationId)
             return cached.Area;
         // 城镇加成须按本地独占登记陆地计算，避免借用国家总领土满足条件。
-        var area = Circle(town.X, town.Y, 17).Count(i =>
-            Distance(town.X, town.Y, i % Current.Width, i / Current.Width) <= 17 &&
-            Current.Tiles[i].ClaimedSettlementId == id
-            && Current.Tiles[i].NationId ==
-            town.NationId &&
-            (Current.Tiles[i].IsWalkable ||
-             Current.Tiles[i].Terrain ==
+        var area = Circle(town.Value.X, town.Value.Y, 17).Count(i =>
+            Distance(town.Value.X, town.Value.Y, i % Current.Width, i / Current.Width) <= 17 &&
+            Current.Tiles[i].Value.ClaimedSettlementId == id
+            && Current.Tiles[i].Value.NationId ==
+            town.Value.NationId &&
+            (Current.Tiles[i].Value.IsWalkable ||
+             Current.Tiles[i].Value.Terrain ==
              TerrainType.Mountain) &&
-            !IsWaterTerrain(Current.Tiles[i].Terrain));
-        _settlementAreas[id] = (_territoryCounts.Revision, town.X, town.Y,
-            town.NationId, area);
+            !IsWaterTerrain(Current.Tiles[i].Value.Terrain));
+        _settlementAreas[id] = (_territoryCounts.Revision, town.Value.X, town.Value.Y,
+            town.Value.NationId, area);
         return area;
     }
 
@@ -95,23 +95,23 @@ public sealed partial class WorldEngine
     /// <param name="id">聚落的稳定 ID。</param>
     public bool IsSettlementActive(int id)
     {
-        return _settlements.TryGetValue(id, out var town) && !town.FoundationPending
+        return _settlements.TryGetValue(id, out var town) && !town.Value.FoundationPending
                                                           && GetSettlementArea(id) >= SettlementActivationArea;
     }
 
-    private int EffectiveSettlementRank(SettlementCursor town)
+    private int EffectiveSettlementRank(StateReference<Settlement> town)
     {
-        return IsSettlementActive(town.Id) ? (int)town.Tier : 0;
+        return IsSettlementActive(town.Value.Id) ? (int)town.Value.Tier : 0;
     }
 
-    private bool SettlementNeedsClaimArea(SettlementCursor town)
+    private bool SettlementNeedsClaimArea(StateReference<Settlement> town)
     {
-        return Current.Rules.Expansion && !town.FoundationPending
-                                       && (!IsSettlementActive(town.Id) || (town.Tier < SettlementTier.City &&
-                                                                            town.Population >=
-                                                                            ExpansionPopulation(town.Tier)
-                                                                            && GetSettlementArea(town.Id) <
-                                                                            GetSettlementExpansionArea(town.Id)));
+        return Current.Rules.Expansion && !town.Value.FoundationPending
+                                       && (!IsSettlementActive(town.Value.Id) || (town.Value.Tier < SettlementTier.City &&
+                                                                            town.Value.Population >=
+                                                                            ExpansionPopulation(town.Value.Tier)
+                                                                            && GetSettlementArea(town.Value.Id) <
+                                                                            GetSettlementExpansionArea(town.Value.Id)));
     }
 
     /// <summary>查询居民在此地采集所用的本城镇领地内外倍率。</summary>
@@ -140,23 +140,23 @@ public sealed partial class WorldEngine
     {
         if (!_settlements.TryGetValue(id, out var town))
             return "聚落已不存在";
-        if (town.FoundationPending)
+        if (town.Value.FoundationPending)
             return "先完成建村登记";
-        if (town.Tier == SettlementTier.City)
+        if (town.Value.Tier == SettlementTier.City)
             return "已完成城级扩充";
-        if (town.IsExpanding)
+        if (town.Value.IsExpanding)
             return "已有城镇扩充工程";
-        if (town.Population < ExpansionPopulation(town.Tier))
-            return $"人口 {town.Population} / {ExpansionPopulation(town.Tier)}";
+        if (town.Value.Population < ExpansionPopulation(town.Value.Tier))
+            return $"人口 {town.Value.Population} / {ExpansionPopulation(town.Value.Tier)}";
         var area = GetSettlementArea(id);
         if (area < GetSettlementExpansionArea(id))
             return $"独占陆地 {area} / {GetSettlementExpansionArea(id)} 格，需占领最大半径一半的等价面积并实地登记";
         var center =
             Current.Buildings.FirstOrDefault(b => b.Value.SettlementId == id && b.Value.Kind == BuildingKind.TownCenter);
         if (center is null || !center.Value.IsCompleted || center.Value.IsUpgrading || center.Value.Health < 50
-            || Current.Tiles[Index(town.X, town.Y)].FireTicks > 0)
+            || Current.Tiles[Index(town.Value.X, town.Value.Y)].Value.FireTicks > 0)
             return "需要可工作的城镇中心组织扩充";
-        return MissingResources(town.Resources, SettlementExpansionCost(town.Tier));
+        return MissingResources(town.Value.Resources, SettlementExpansionCost(town.Value.Tier));
     }
 
     /// <summary>扣除聚落材料并启动村镇城晋升施工。</summary>
@@ -166,21 +166,21 @@ public sealed partial class WorldEngine
         if (SettlementExpansionError(id) is { } error)
             throw new InvalidOperationException(error);
         var town = RequireTown(id);
-        town.UpdateResources(Spend(town.Resources, SettlementExpansionCost(town.Tier)));
+        town.Replace(town.Value.WithResources(Spend(town.Value.Resources, SettlementExpansionCost(town.Value.Tier))));
         town.Replace(town.Value with
         {
-            ExpansionProgress = 0, ExpansionRequired = town.Tier == SettlementTier.Village ? 60 : 120,
+            ExpansionProgress = 0, ExpansionRequired = town.Value.Tier == SettlementTier.Village ? 60 : 120,
         });
-        AddEvent(WorldEventKind.Construction, $"{town.Name}投入扩充材料，居民到城镇中心施工后升为{SettlementTierName(town.Tier + 1)}。",
-            town.X, town.Y, EventAction.Started, town.Id);
+        AddEvent(WorldEventKind.Construction, $"{town.Value.Name}投入扩充材料，居民到城镇中心施工后升为{SettlementTierName(town.Value.Tier + 1)}。",
+            town.Value.X, town.Value.Y, EventAction.Started, town.Value.Id);
     }
 
-    private bool WorkOnTownExpansion(SettlementCursor town, double effort)
+    private bool WorkOnTownExpansion(StateReference<Settlement> town, double effort)
     {
-        if (!town.IsExpanding)
+        if (!town.Value.IsExpanding)
             return false;
         // 领地不足时暂停晋升完工，保留已经支付的材料和施工进度，避免重复收费。
-        if (GetSettlementArea(town.Id) < GetSettlementExpansionArea(town.Id))
+        if (GetSettlementArea(town.Value.Id) < GetSettlementExpansionArea(town.Value.Id))
             return false;
         var before = town.Value;
         var after = before.AdvanceExpansion(effort, Current.Rules.DevelopmentRate);
@@ -188,8 +188,8 @@ public sealed partial class WorldEngine
         if (after.Tier == before.Tier)
             return true;
         RefreshSettlementName(town);
-        AddEvent(WorldEventKind.Growth, $"{town.Name}完成城镇扩充，公共组织与通信效率提高。", town.X, town.Y, EventAction.Completed,
-            town.Id);
+        AddEvent(WorldEventKind.Growth, $"{town.Value.Name}完成城镇扩充，公共组织与通信效率提高。", town.Value.X, town.Value.Y, EventAction.Completed,
+            town.Value.Id);
         return true;
     }
 
@@ -200,20 +200,20 @@ public sealed partial class WorldEngine
         var town = RequireTown(id);
         var rank = EffectiveSettlementRank(town);
         var area = GetSettlementArea(id);
-        var text = $"城镇等级：{SettlementTierName(town.Tier)}\n"
+        var text = $"城镇等级：{SettlementTierName(town.Value.Tier)}\n"
                    + $"城镇生效：{(IsSettlementActive(id) ? "已生效" : "领地不足，加成暂停")}\n"
-                   + $"人口 {town.Population}   住房 {GetHousingCapacity(id)}";
-        if (town.IsExpanding)
+                   + $"人口 {town.Value.Population}   住房 {GetHousingCapacity(id)}";
+        if (town.Value.IsExpanding)
         {
-            return text + $"\n扩充施工 {town.ExpansionProgress:0.#} / {town.ExpansionRequired:0}，需居民到场"
+            return text + $"\n扩充施工 {town.Value.ExpansionProgress:0.#} / {town.Value.ExpansionRequired:0}，需居民到场"
                         + (area < GetSettlementExpansionArea(id) ? "\n领地不足，扩充暂停" : "");
         }
 
-        if (town.Tier == SettlementTier.City)
+        if (town.Value.Tier == SettlementTier.City)
             return text;
         return
-            text + $"\n升{SettlementTierName(town.Tier + 1)}要求：人口 {town.Population}/{ExpansionPopulation(town.Tier)}\n"
-                 + "扩充材料：" + ResourceStock.Format(SettlementExpansionCost(town.Tier)) + "\n" +
+            text + $"\n升{SettlementTierName(town.Value.Tier + 1)}要求：人口 {town.Value.Population}/{ExpansionPopulation(town.Value.Tier)}\n"
+                 + "扩充材料：" + ResourceStock.Format(SettlementExpansionCost(town.Value.Tier)) + "\n" +
                  (SettlementExpansionError(id) ?? "条件已满足，可投入扩充");
     }
 }

@@ -65,31 +65,31 @@ public sealed class WorkReservationTests
             Secession = false,
             Wars = false,
         }, false, true);
-        var otherTown = fixture.Engine.Current.Settlements.Single(town => town.Id != fixture.Town.Id);
+        var otherTown = fixture.Engine.Current.Settlements.Single(town => town.Value.Id != fixture.Town.Value.Id);
         fixture.Town.Replace(fixture.Town.Value with { MaxClaimRadius = 8 });
         for (var x = 8; x <= 16; x++)
         {
             var ground = fixture.Engine.Current.Tiles[16 * 32 + x];
-            ground.NationId = fixture.Town.NationId;
-            ground.ClaimedSettlementId = fixture.Town.Id;
+            ground.Replace(ground.Value.WithNationId(fixture.Town.Value.NationId));
+            ground.Replace(ground.Value.WithClaimedSettlementId(fixture.Town.Value.Id));
         }
 
         for (var x = 0; x <= 5; x++)
         {
             var ground = fixture.Engine.Current.Tiles[16 * 32 + x];
-            ground.NationId = otherTown.NationId;
-            ground.ClaimedSettlementId = otherTown.Id;
+            ground.Replace(ground.Value.WithNationId(otherTown.Value.NationId));
+            ground.Replace(ground.Value.WithClaimedSettlementId(otherTown.Value.Id));
         }
 
         GrantResearch(fixture, Advancement.BattleMagic);
-        var towerId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.StormSpire, 8, 16);
-        var clinicId = fixture.Engine.GrantFacility(otherTown.Id, BuildingKind.Infirmary, 5, 16);
+        var towerId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.StormSpire, 8, 16);
+        var clinicId = fixture.Engine.GrantFacility(otherTown.Value.Id, BuildingKind.Infirmary, 5, 16);
         var clinic = fixture.Engine.Current.Buildings.Single(building => building.Value.Id == clinicId);
         clinic.Replace(clinic.Value with { WorkSlots = 1 });
         foreach (var building in fixture.Engine.Current.Buildings)
             building.Replace(building.Value with { Enabled = building.Value.Id == towerId || building.Value.Id == clinicId });
-        otherTown.UpdateResources(new ResourceStock { Food = 100 });
-        fixture.Town.UpdateResources(otherTown.Resources);
+        otherTown.Replace(otherTown.Value.WithResources(new ResourceStock { Food = 100 }));
+        fixture.Town.Replace(fixture.Town.Value.WithResources(otherTown.Value.Resources));
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with
             {
@@ -135,7 +135,7 @@ public sealed class WorkReservationTests
             {
                 Id = 90_001,
                 Kind = AgentFactKind.WarOrder,
-                SubjectId = otherTown.NationId,
+                SubjectId = otherTown.Value.NationId,
                 TargetNationId = caster.NationId,
                 OriginResidentId = caster.Id,
                 SourceResidentId = caster.Id,
@@ -143,7 +143,7 @@ public sealed class WorkReservationTests
                 Confidence = 1,
             }),
         };
-        var otherResidents = fixture.Engine.Current.Residents.Where(person => person.SettlementId == otherTown.Id)
+        var otherResidents = fixture.Engine.Current.Residents.Where(person => person.SettlementId == otherTown.Value.Id)
             .ToArray();
         var victim = otherResidents[0];
         victim.Replace(victim.Value with
@@ -220,26 +220,26 @@ public sealed class WorkReservationTests
         for (var x = 14; x <= 15; x++)
         {
             var ground = fixture.Engine.Current.Tiles[16 * 32 + x];
-            ground.NationId = fixture.Town.NationId;
-            ground.ClaimedSettlementId = fixture.Town.Id;
+            ground.Replace(ground.Value.WithNationId(fixture.Town.Value.NationId));
+            ground.Replace(ground.Value.WithClaimedSettlementId(fixture.Town.Value.Id));
         }
 
         var site = fixture.Engine.Current.Tiles[16 * 32 + 14];
-        site.Terrain = kind switch
+        site.Replace(site.Value.WithTerrain(kind switch
         {
             BuildingKind.MiningHall => TerrainType.Hills,
             BuildingKind.HuntingCamp => TerrainType.Forest,
             _ => TerrainType.Grass,
-        };
-        site.ResourceAmount = 100;
-        site.SetAnimalPopulation(WildlifeKind.Deer, 10);
+        }));
+        site.Replace(site.Value.WithResourceAmount(100));
+        site.Replace(site.Value.WithAnimalPopulation(WildlifeKind.Deer, 10));
         if (kind == BuildingKind.Reservoir)
         {
-            fixture.Engine.Current.Tiles[17 * 32 + 14].Terrain = TerrainType.River;
+            fixture.Engine.Current.Tiles[17 * 32 + 14].Replace(fixture.Engine.Current.Tiles[17 * 32 + 14].Value.WithTerrain(TerrainType.River));
             GrantResearch(fixture, Advancement.CivilEngineering);
         }
 
-        var buildingId = fixture.Engine.GrantFacility(fixture.Town.Id, kind, 14, 16);
+        var buildingId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, kind, 14, 16);
         var building = fixture.Engine.Current.Buildings.Single(candidate => candidate.Value.Id == buildingId);
         building.Replace(building.Value with { WorkSlots = 1 });
         foreach (var other in fixture.Engine.Current.Buildings.Where(candidate => candidate.Value.Id != buildingId))
@@ -274,6 +274,6 @@ public sealed class WorkReservationTests
     {
         foreach (var prerequisite in research.Prerequisites)
             GrantResearch(fixture, prerequisite);
-        fixture.Engine.GrantReceivedResearch(fixture.Town.Id, research);
+        fixture.Engine.GrantReceivedResearch(fixture.Town.Value.Id, research);
     }
 }

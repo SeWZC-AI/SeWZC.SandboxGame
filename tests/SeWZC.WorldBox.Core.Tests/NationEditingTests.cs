@@ -8,13 +8,13 @@ public sealed class NationEditingTests
     public void Resources_update_the_warehouse_and_nation_total()
     {
         var fixture = new WorldFixture();
-        var wood = fixture.Town.Resources.Wood;
+        var wood = fixture.Town.Value.Resources.Wood;
 
-        fixture.Engine.SetNationResources(fixture.Town.NationId, 12.5);
+        fixture.Engine.SetNationResources(fixture.Town.Value.NationId, 12.5);
 
-        Assert.Equal(12.5, fixture.Town.Resources.Food);
+        Assert.Equal(12.5, fixture.Town.Value.Resources.Food);
         Assert.Equal(12.5, fixture.Engine.Current.Nations.Single().Value.Resources.Food);
-        Assert.Equal(wood, fixture.Town.Resources.Wood);
+        Assert.Equal(wood, fixture.Town.Value.Resources.Wood);
     }
 
     /// <summary>零库存是合法编辑值。</summary>
@@ -23,9 +23,9 @@ public sealed class NationEditingTests
     {
         var fixture = new WorldFixture();
 
-        fixture.Engine.SetNationResources(fixture.Town.NationId, 0);
+        fixture.Engine.SetNationResources(fixture.Town.Value.NationId, 0);
 
-        Assert.Equal(0, fixture.Town.Resources.Food);
+        Assert.Equal(0, fixture.Town.Value.Resources.Food);
         Assert.Equal(0, fixture.Engine.Current.Nations.Single().Value.Resources.Food);
     }
 
@@ -41,7 +41,7 @@ public sealed class NationEditingTests
         var before = fixture.Engine.ExportJson();
 
         Assert.Throws<ArgumentOutOfRangeException>(() => fixture.Engine.SetNationResources(
-            fixture.Town.NationId, 9, invalid));
+            fixture.Town.Value.NationId, 9, invalid));
 
         Assert.Equal(before, fixture.Engine.ExportJson());
     }
@@ -52,7 +52,7 @@ public sealed class NationEditingTests
     {
         var fixture = new WorldFixture();
 
-        fixture.Engine.RenameNation(fixture.Town.NationId, "  新国家  ");
+        fixture.Engine.RenameNation(fixture.Town.Value.NationId, "  新国家  ");
 
         Assert.Equal("新国家", fixture.Engine.Current.Nations.Single().Value.Name);
     }
@@ -68,7 +68,7 @@ public sealed class NationEditingTests
         var fixture = new WorldFixture();
         var before = fixture.Engine.ExportJson();
 
-        Assert.Throws<ArgumentException>(() => fixture.Engine.RenameNation(fixture.Town.NationId, name));
+        Assert.Throws<ArgumentException>(() => fixture.Engine.RenameNation(fixture.Town.Value.NationId, name));
 
         Assert.Equal(before, fixture.Engine.ExportJson());
     }
@@ -80,7 +80,7 @@ public sealed class NationEditingTests
         var fixture = new WorldFixture();
         var completed = fixture.Engine.Current.Society.Research.Single().Completed.ToArray();
 
-        fixture.Engine.SetNationTechnology(fixture.Town.NationId, 5);
+        fixture.Engine.SetNationTechnology(fixture.Town.Value.NationId, 5);
 
         Assert.Equal(5, fixture.Engine.Current.Nations.Single().Value.Technology);
         Assert.Equal(completed, fixture.Engine.Current.Society.Research.Single().Completed);
@@ -96,7 +96,7 @@ public sealed class NationEditingTests
         var before = fixture.Engine.ExportJson();
 
         Assert.Throws<ArgumentOutOfRangeException>(() => fixture.Engine.SetNationTechnology(
-            fixture.Town.NationId, level));
+            fixture.Town.Value.NationId, level));
 
         Assert.Equal(before, fixture.Engine.ExportJson());
     }

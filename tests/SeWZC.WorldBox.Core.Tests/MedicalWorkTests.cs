@@ -21,7 +21,7 @@ public sealed class MedicalWorkTests
         Assert.Equal(0, deceased.Health);
         Assert.True(patient.Health > 50 - .2 / SimulationTime.TicksPerDay);
         Assert.Contains(worker.Id, clinic.Value.Workers);
-        Assert.Equal(99.95, fixture.Town.Resources.Food, 6);
+        Assert.Equal(99.95, fixture.Town.Value.Resources.Food, 6);
     }
 
     /// <summary>附近只剩健康居民时，不为当天病死者消耗医疗物资。</summary>
@@ -34,7 +34,7 @@ public sealed class MedicalWorkTests
 
         Assert.Equal(0, Assert.Single(fixture.Engine.State.ArchivedResidents).Health);
         Assert.Empty(clinic.Value.Workers);
-        Assert.Equal(100, fixture.Town.Resources.Food);
+        Assert.Equal(100, fixture.Town.Value.Resources.Food);
     }
 
     /// <summary>病死者预约的唯一工位当天释放，其他居民可自主接手医疗劳动。</summary>
@@ -84,13 +84,13 @@ public sealed class MedicalWorkTests
         for (var x = 14; x <= 15; x++)
         {
             var ground = fixture.Engine.Current.Tiles[16 * 32 + x];
-            ground.NationId = fixture.Town.NationId;
-            ground.ClaimedSettlementId = fixture.Town.Id;
+            ground.Replace(ground.Value.WithNationId(fixture.Town.Value.NationId));
+            ground.Replace(ground.Value.WithClaimedSettlementId(fixture.Town.Value.Id));
         }
 
-        var clinicId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Infirmary, 14, 16);
+        var clinicId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Infirmary, 14, 16);
         var clinic = fixture.Engine.Current.Buildings.Single(building => building.Value.Id == clinicId);
-        fixture.Town.UpdateResources(new ResourceStock { Food = 100 });
+        fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock { Food = 100 }));
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with
             {

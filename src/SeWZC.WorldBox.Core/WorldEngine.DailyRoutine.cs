@@ -5,7 +5,7 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     // 作息只改变未来行动；返家沿真实路径移动，睡眠不推进驻留或劳动量。
-    private bool FollowDailyRoutine(ResidentCursor person, SettlementCursor home, bool emergency)
+    private bool FollowDailyRoutine(ResidentCursor person, StateReference<Settlement> home, bool emergency)
     {
         var agent = person.Agent;
         var time = SimulationTime.TimeOfDay(Current.Tick);
@@ -18,10 +18,10 @@ public sealed partial class WorldEngine
             if (agent.Goal.Kind == AgentGoalKind.Sleep)
             {
                 // 尚未走完返程时先到家；晨起不能把人再次拉回昨天的远处目标。
-                if (!evening && !emergency && (Distance(person.X, person.Y, home.X, home.Y) > 1
+                if (!evening && !emergency && (Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1
                                                || !Walkable(person.X, person.Y, person.Race)))
                 {
-                    MoveAgentTowards(person, home.X, home.Y, ResidentActivity.Wandering);
+                    MoveAgentTowards(person, home.Value.X, home.Value.Y, ResidentActivity.Wandering);
                     return true;
                 }
 
@@ -45,15 +45,15 @@ public sealed partial class WorldEngine
         var journey =
             agent.DestinationSettlementId != 0 || agent.Goal.Kind is AgentGoalKind.Migrate or AgentGoalKind.Explore
                                                || (agent.Goal.Kind == AgentGoalKind.FetchWater &&
-                                                   Distance(person.X, person.Y, home.X, home.Y) > 1)
+                                                   Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1)
                                                || (agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Work
                                                        or AgentGoalKind.Study
                                                        or AgentGoalKind.TrainMagic or AgentGoalKind.Hunt
                                                        or AgentGoalKind.Fish
-                                                   && Distance(agent.Goal.TargetX, agent.Goal.TargetY, home.X, home.Y) >
+                                                   && Distance(agent.Goal.TargetX, agent.Goal.TargetY, home.Value.X, home.Value.Y) >
                                                    3
-                                                   && Distance(person.X, person.Y, home.X, home.Y) > 1)
-                                               || home.FoundationPending;
+                                                   && Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1)
+                                               || home.Value.FoundationPending;
         var medicalRest = agent.Goal.Kind == AgentGoalKind.Rest && agent.Goal.TargetEntityId != 0;
         if (journey || medicalRest)
         {
@@ -74,9 +74,9 @@ public sealed partial class WorldEngine
             var sleep = new AgentGoal
             {
                 Kind = AgentGoalKind.Sleep,
-                TargetX = home.X,
-                TargetY = home.Y,
-                TargetSettlementId = home.Id,
+                TargetX = home.Value.X,
+                TargetY = home.Value.Y,
+                TargetSettlementId = home.Value.Id,
                 StartedTick = Current.Tick,
                 ReviewTick = morning,
                 Reason = "傍晚沿实际道路返家，夜间睡眠，晨起继续白天活动",
@@ -86,10 +86,10 @@ public sealed partial class WorldEngine
             person.Agent = agent;
         }
 
-        if (Distance(person.X, person.Y, home.X, home.Y) > 1
+        if (Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1
             || !Walkable(person.X, person.Y, person.Race))
         {
-            MoveAgentTowards(person, home.X, home.Y, ResidentActivity.Wandering);
+            MoveAgentTowards(person, home.Value.X, home.Value.Y, ResidentActivity.Wandering);
             return true;
         }
 

@@ -8,11 +8,11 @@ public sealed class ResearchCommandsTests
     private static WorldFixture ReadyWorld()
     {
         var fixture = new WorldFixture();
-        fixture.Town.UpdateResources(new ResourceStock { Food = 100, Wood = 100, Stone = 100, Ore = 100 });
+        fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock { Food = 100, Wood = 100, Stone = 100, Ore = 100 }));
         fixture.Engine.Current.Buildings.Add(new StateReference<Building>(new Building
         {
             Id = fixture.Engine.Current.NextId++,
-            SettlementId = fixture.Town.Id,
+            SettlementId = fixture.Town.Value.Id,
             Kind = BuildingKind.Academy,
             X = 17,
             Y = 16,
@@ -26,13 +26,13 @@ public sealed class ResearchCommandsTests
     public void Start_spends_the_local_cost_and_creates_an_unfinished_project()
     {
         var fixture = ReadyWorld();
-        var before = fixture.Town.Resources;
+        var before = fixture.Town.Value.Resources;
         var project = Advancement.Agriculture;
 
-        fixture.Engine.StartResearch(fixture.Town.Id, project);
+        fixture.Engine.StartResearch(fixture.Town.Value.Id, project);
 
         foreach (var kind in ResourceStock.Kinds)
-            Assert.Equal(before.Get(kind) - project.Cost.Get(kind), fixture.Town.Resources.Get(kind));
+            Assert.Equal(before.Get(kind) - project.Cost.Get(kind), fixture.Town.Value.Resources.Get(kind));
         var research = fixture.Engine.Current.Society.Research.Single();
         Assert.Same(project, research.ActiveProject);
         Assert.Equal(0, research.Progress);
@@ -48,7 +48,7 @@ public sealed class ResearchCommandsTests
         fixture.Engine.Current.Buildings.RemoveAll(building => building.Value.Kind == BuildingKind.Academy);
         var before = fixture.Engine.ExportJson();
 
-        Assert.Throws<InvalidOperationException>(() => fixture.Engine.StartResearch(fixture.Town.Id,
+        Assert.Throws<InvalidOperationException>(() => fixture.Engine.StartResearch(fixture.Town.Value.Id,
             Advancement.Agriculture));
 
         Assert.Equal(before, fixture.Engine.ExportJson());
@@ -61,7 +61,7 @@ public sealed class ResearchCommandsTests
         var fixture = ReadyWorld();
         var before = fixture.Engine.ExportJson();
 
-        Assert.Throws<InvalidOperationException>(() => fixture.Engine.StartResearch(fixture.Town.Id,
+        Assert.Throws<InvalidOperationException>(() => fixture.Engine.StartResearch(fixture.Town.Value.Id,
             Advancement.Irrigation));
 
         Assert.Equal(before, fixture.Engine.ExportJson());
@@ -72,10 +72,10 @@ public sealed class ResearchCommandsTests
     public void Start_rejects_insufficient_materials_atomically()
     {
         var fixture = ReadyWorld();
-        fixture.Town.UpdateResources(fixture.Town.Resources with { Wood = 0 });
+        fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Wood = 0 }));
         var before = fixture.Engine.ExportJson();
 
-        Assert.Throws<InvalidOperationException>(() => fixture.Engine.StartResearch(fixture.Town.Id,
+        Assert.Throws<InvalidOperationException>(() => fixture.Engine.StartResearch(fixture.Town.Value.Id,
             Advancement.Agriculture));
 
         Assert.Equal(before, fixture.Engine.ExportJson());
@@ -86,10 +86,10 @@ public sealed class ResearchCommandsTests
     public void Start_rejects_a_second_project_without_spending_again()
     {
         var fixture = ReadyWorld();
-        fixture.Engine.StartResearch(fixture.Town.Id, Advancement.Agriculture);
+        fixture.Engine.StartResearch(fixture.Town.Value.Id, Advancement.Agriculture);
         var before = fixture.Engine.ExportJson();
 
-        Assert.Throws<InvalidOperationException>(() => fixture.Engine.StartResearch(fixture.Town.Id,
+        Assert.Throws<InvalidOperationException>(() => fixture.Engine.StartResearch(fixture.Town.Value.Id,
             Advancement.Logistics));
 
         Assert.Equal(before, fixture.Engine.ExportJson());
@@ -100,10 +100,10 @@ public sealed class ResearchCommandsTests
     public void Receiving_the_same_knowledge_twice_is_idempotent()
     {
         var fixture = new WorldFixture();
-        fixture.Engine.GrantReceivedResearch(fixture.Town.Id, Advancement.Agriculture);
+        fixture.Engine.GrantReceivedResearch(fixture.Town.Value.Id, Advancement.Agriculture);
         var before = fixture.Engine.ExportJson();
 
-        fixture.Engine.GrantReceivedResearch(fixture.Town.Id, Advancement.Agriculture);
+        fixture.Engine.GrantReceivedResearch(fixture.Town.Value.Id, Advancement.Agriculture);
 
         Assert.Equal(before, fixture.Engine.ExportJson());
         Assert.Single(fixture.Engine.Current.Society.Research.Single().Completed);
@@ -116,7 +116,7 @@ public sealed class ResearchCommandsTests
         var fixture = new WorldFixture();
         var before = fixture.Engine.ExportJson();
 
-        Assert.False(fixture.Engine.HasResearch(fixture.Town.Id, Advancement.Agriculture));
+        Assert.False(fixture.Engine.HasResearch(fixture.Town.Value.Id, Advancement.Agriculture));
 
         Assert.Equal(before, fixture.Engine.ExportJson());
     }

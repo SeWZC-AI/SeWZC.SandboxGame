@@ -24,13 +24,13 @@ public sealed partial class WorldEngine
             _visuals.Dequeue();
     }
 
-    private void FinishLogging(TileCursor tile, int x, int y)
+    private void FinishLogging(StateReference<Tile> tile, int x, int y)
     {
-        if (!IsForestTerrain(tile.Terrain) || tile.ResourceAmount > .000001)
+        if (!IsForestTerrain(tile.Value.Terrain) || tile.Value.ResourceAmount > .000001)
             return;
-        tile.Terrain = TerrainType.Grass;
-        tile.ResourceAmount = 0;
-        tile.Fertility = TerrainRules.Fertility(TerrainType.Grass);
+        tile.Replace(tile.Value.WithTerrain(TerrainType.Grass));
+        tile.Replace(tile.Value.WithResourceAmount(0));
+        tile.Replace(tile.Value.WithFertility(TerrainRules.Fertility(TerrainType.Grass)));
         EmitVisual(WorldVisualKind.Logging, x, y);
     }
 
@@ -55,8 +55,8 @@ public sealed partial class WorldEngine
         if (production is not null && _settlements.TryGetValue(person.SettlementId, out var home))
         {
             var needsInputs = MissingResources(person.Inventory, production.Input) is not null;
-            targetX = needsInputs ? home.X : factory!.Value.X;
-            targetY = needsInputs ? home.Y : factory!.Value.Y;
+            targetX = needsInputs ? home.Value.X : factory!.Value.X;
+            targetY = needsInputs ? home.Value.Y : factory!.Value.Y;
         }
 
         var cursor = new ResidentCursor(person.Value);
@@ -105,7 +105,7 @@ public sealed partial class WorldEngine
             roadLevel is < 0 or > 3)
             throw new ArgumentException("地格资源、肥力或道路等级超出范围。");
         var tile = Current.Tiles[Index(x, y)];
-        if (!tile.IsWalkable && roadLevel > 0)
+        if (!tile.Value.IsWalkable && roadLevel > 0)
             throw new ArgumentException("道路需要可通行的陆地。");
         tile.Replace(tile.Value with
         {

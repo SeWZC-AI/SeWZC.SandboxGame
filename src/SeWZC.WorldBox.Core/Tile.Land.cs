@@ -27,4 +27,30 @@ public sealed partial record Tile
     /// <summary>最近记录的模拟日内，累计采收的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Harvested { get; init; }
+    /// <summary>根据种子和位置重新生成矿藏，不修改原地格。</summary>
+    /// <param name="seed">地图种子。</param>
+    /// <param name="x">横向地格坐标。</param>
+    /// <param name="y">纵向地格坐标。</param>
+    internal Tile WithGeneratedDeposit(int seed, int x, int y)
+    {
+        ResourceKind? deposit = null;
+        double amount = 0;
+        if (!WorldEngine.IsWaterTerrain(Terrain))
+        {
+            var hash = unchecked((uint)(x * 374761393 + y * 668265263 + seed * 31 + 937));
+            hash = (hash ^ (hash >> 13)) * 1274126177;
+            deposit = (hash % 43) switch
+            {
+                0 or 1 => ResourceKind.Coal,
+                2 => ResourceKind.Oil,
+                3 => ResourceKind.RareEarth,
+                _ => null,
+            };
+            if (deposit.HasValue)
+                amount = 120 + hash % 181;
+        }
+
+        return Deposit == deposit && DepositAmount == amount && !DepositDiscovered
+            ? this : this with { Deposit = deposit, DepositAmount = amount, DepositDiscovered = false };
+    }
 }

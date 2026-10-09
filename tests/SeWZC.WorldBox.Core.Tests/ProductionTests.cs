@@ -9,12 +9,12 @@ public sealed class ProductionTests
     {
         var fixture = new WorldFixture();
         foreach (var prerequisite in Advancement.Industry.Prerequisites)
-            fixture.Engine.GrantReceivedResearch(fixture.Town.Id, prerequisite);
-        fixture.Engine.GrantReceivedResearch(fixture.Town.Id, Advancement.Industry);
+            fixture.Engine.GrantReceivedResearch(fixture.Town.Value.Id, prerequisite);
+        fixture.Engine.GrantReceivedResearch(fixture.Town.Value.Id, Advancement.Industry);
         var foundry = new StateReference<Building>(new Building
         {
             Id = fixture.Engine.Current.NextId++,
-            SettlementId = fixture.Town.Id,
+            SettlementId = fixture.Town.Value.Id,
             Kind = BuildingKind.Foundry,
             X = 17,
             Y = 16,
@@ -22,8 +22,8 @@ public sealed class ProductionTests
         });
         fixture.Engine.Current.Buildings.Add(foundry);
         var ground = fixture.Engine.Current.Tiles[16 * 32 + 17];
-        ground.NationId = fixture.Town.NationId;
-        ground.ClaimedSettlementId = fixture.Town.Id;
+        ground.Replace(ground.Value.WithNationId(fixture.Town.Value.NationId));
+        ground.Replace(ground.Value.WithClaimedSettlementId(fixture.Town.Value.Id));
         var worker = fixture.Resident;
         worker.Age = 25;
         worker.Replace(worker.Value with { Profession = Profession.Builder });
@@ -48,14 +48,14 @@ public sealed class ProductionTests
     public void Work_consumes_carried_inputs_and_keeps_output_with_the_worker()
     {
         var (fixture, foundry) = FoundryWorld();
-        var warehouseAlloy = fixture.Town.Resources.Alloy;
+        var warehouseAlloy = fixture.Town.Value.Resources.Alloy;
 
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
         Assert.Equal(0, fixture.Resident.Inventory.Coal);
         Assert.Equal(0, fixture.Resident.Inventory.Ore);
         Assert.Equal(1, fixture.Resident.Inventory.Alloy);
-        Assert.Equal(warehouseAlloy, fixture.Town.Resources.Alloy);
+        Assert.Equal(warehouseAlloy, fixture.Town.Value.Resources.Alloy);
         Assert.Equal(1, foundry.Value.ProductionBatches);
     }
 

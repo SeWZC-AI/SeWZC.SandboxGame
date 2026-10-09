@@ -3,7 +3,7 @@ namespace SeWZC.WorldBox.Core;
 /// <summary>居民返仓卸货后的个人库存与聚落仓库。</summary>
 /// <param name="Inventory">卸货后保留在居民身上的资源。</param>
 /// <param name="Warehouse">接收卸货后的聚落资源。</param>
-public readonly record struct InventoryTransfer(ResourceStock Inventory, ResourceStock Warehouse)
+public readonly partial record struct InventoryTransfer(ResourceStock Inventory, ResourceStock Warehouse)
 {
     /// <summary>计算返仓卸货结果，保留旅程粮水和职业用品，不修改输入库存。</summary>
     /// <param name="inventory">居民卸货前的库存。</param>

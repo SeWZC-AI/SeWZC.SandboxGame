@@ -11,7 +11,7 @@ public sealed class ResidentNeedsTests
     {
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = false }, false, true);
-        fixture.Town.UpdateResources(new ResourceStock());
+        fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock()));
         fixture.Resident.Replace(fixture.Resident.Value with
         {
             Age = 20,
@@ -25,8 +25,8 @@ public sealed class ResidentNeedsTests
         });
         fixture.Engine.Current.Residents.Add(new ResidentCursor(fixture.Resident.Value with { Id = 900, Name = "第二位居民" }));
         var source = fixture.Engine.Current.Tiles[16 * 32 + 16];
-        source.NaturalWaterYield = .04;
-        source.DroughtTicks = 0;
+        source.Replace(source.Value.WithNaturalWaterYield(.04));
+        source.Replace(source.Value.WithDroughtTicks(0));
         var before = fixture.Engine.State;
 
         fixture.Engine.Step();
@@ -68,7 +68,7 @@ public sealed class ResidentNeedsTests
     {
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Hunger = false }, false, true);
-        fixture.Town.UpdateResources(new ResourceStock());
+        fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock()));
         fixture.AddWell(16, 17, .025);
         fixture.Resident.Replace(fixture.Resident.Value with
         {
@@ -83,8 +83,8 @@ public sealed class ResidentNeedsTests
         });
         fixture.Engine.Current.Residents.Add(new ResidentCursor(fixture.Resident.Value with { Id = 900, Name = "第二位居民" }));
         var source = fixture.Engine.Current.Tiles[17 * 32 + 16];
-        source.WaterDrawTick = 1;
-        source.WaterDrawn = .15 - .0125 / SimulationTime.TicksPerDay;
+        source.Replace(source.Value.WithWaterDrawTick(1));
+        source.Replace(source.Value.WithWaterDrawn(.15 - .0125 / SimulationTime.TicksPerDay));
         var before = fixture.Engine.State;
 
         fixture.Engine.Step();

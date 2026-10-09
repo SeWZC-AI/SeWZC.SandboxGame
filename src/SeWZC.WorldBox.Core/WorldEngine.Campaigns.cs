@@ -82,10 +82,10 @@ public sealed partial class WorldEngine
             RecordLife(person, "亲历交战，战斗结果见关联世界事件。", entry, PersonalExperienceKind.Hardship, EventImportance.Major);
     }
 
-    internal void ReceiveWarReport(SettlementCursor town, AgentFact fact)
+    internal void ReceiveWarReport(StateReference<Settlement> town, AgentFact fact)
     {
-        if (fact.Kind != AgentFactKind.WarReport || fact.TargetNationId != town.NationId || fact.Confidence < .4
-            || !_nations.TryGetValue(town.NationId, out var nation) || nation.Value.CapitalId != town.Id
+        if (fact.Kind != AgentFactKind.WarReport || fact.TargetNationId != town.Value.NationId || fact.Confidence < .4
+            || !_nations.TryGetValue(town.Value.NationId, out var nation) || nation.Value.CapitalId != town.Value.Id
             || fact.Value != Math.Truncate(fact.Value) || fact.Value < 1 ||
             fact.Value > (int)WarOutcome.Exhausted)
             return;
@@ -108,8 +108,8 @@ public sealed partial class WorldEngine
                 Current.Tick + 3 * SimulationTime.TicksPerYear),
             }
         });
-        var received = AddEvent(WorldEventKind.War, $"{nation.Value.Name}首都实际收到战报：{fact.Text}。", town.X, town.Y,
-            EventAction.Report, town.Id, causeEventId: fact.EventId, evidenceFactId: fact.Id);
+        var received = AddEvent(WorldEventKind.War, $"{nation.Value.Name}首都实际收到战报：{fact.Text}。", town.Value.X, town.Value.Y,
+            EventAction.Report, town.Value.Id, causeEventId: fact.EventId, evidenceFactId: fact.Id);
         received = PublishEvent(received with { NationId = nation.Value.Id, SecondNationId = fact.SubjectId });
         if (!Current.Rules.Peace || !_nations.TryGetValue(fact.SubjectId, out var other))
             return;

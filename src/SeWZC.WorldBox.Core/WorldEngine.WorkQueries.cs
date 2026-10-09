@@ -188,10 +188,10 @@ public sealed partial class WorldEngine
                 continue;
             var distance = Distance(resident.X, resident.Y, building.Value.X, building.Value.Y);
             if (range == 1 && IsWaterfrontBuilding(building.Value.Kind) && (distance != 1
-                                                                      || !Current.Tiles[Index(resident.X, resident.Y)]
+                                                                      || !Current.Tiles[Index(resident.X, resident.Y)].Value
                                                                           .IsWalkable
                                                                       || IsWaterTerrain(Current
-                                                                          .Tiles[Index(resident.X, resident.Y)]
+                                                                          .Tiles[Index(resident.X, resident.Y)].Value
                                                                           .Terrain)))
                 continue;
             var workRange = range > 1 && building.Value.Kind is BuildingKind.MountainPass or BuildingKind.Bridge ? 24 : range;

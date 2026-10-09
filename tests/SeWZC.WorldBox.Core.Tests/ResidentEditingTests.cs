@@ -87,7 +87,7 @@ public sealed class ResidentEditingTests
     public void Position_rejects_inaccessible_land()
     {
         var fixture = new WorldFixture();
-        fixture.Engine.Current.Tiles[10 * 32 + 10].Terrain = TerrainType.DeepWater;
+        fixture.Engine.Current.Tiles[10 * 32 + 10].Replace(fixture.Engine.Current.Tiles[10 * 32 + 10].Value.WithTerrain(TerrainType.DeepWater));
         var before = fixture.Engine.ExportJson();
 
         Assert.Throws<ArgumentException>(() => fixture.Engine.EditResident(fixture.ResidentId,
@@ -161,7 +161,7 @@ public sealed class ResidentEditingTests
         var fixture = new WorldFixture();
         var courage = fixture.Resident.Agent.Personality.Courage;
         var events = fixture.Engine.Current.Events.Select(entry => JsonSerializer.Serialize(entry)).ToArray();
-        var resources = JsonSerializer.Serialize(fixture.Town.Resources);
+        var resources = JsonSerializer.Serialize(fixture.Town.Value.Resources);
         var history = new List<ResidentHistoryEntry>
         {
             new() { Tick = 0, Text = "经历困难", Experience = PersonalExperienceKind.Hardship, Impact = 1 },
@@ -172,7 +172,7 @@ public sealed class ResidentEditingTests
         Assert.True(fixture.Resident.Agent.Personality.Courage < courage);
         Assert.Equal(events, fixture.Engine.Current.Events.Take(events.Length)
             .Select(entry => JsonSerializer.Serialize(entry)));
-        Assert.Equal(resources, JsonSerializer.Serialize(fixture.Town.Resources));
+        Assert.Equal(resources, JsonSerializer.Serialize(fixture.Town.Value.Resources));
     }
 
     /// <summary>经历草稿与提交后的记录互不影响。</summary>
@@ -195,7 +195,7 @@ public sealed class ResidentEditingTests
     {
         var fixture = new WorldFixture();
         var prior = fixture.Resident.Agent.Memory.First();
-        fixture.Town.Replace(fixture.Town.Value with { PublicKnowledge = fixture.Town.PublicKnowledge.Add(prior) });
+        fixture.Town.Replace(fixture.Town.Value with { PublicKnowledge = fixture.Town.Value.PublicKnowledge.Add(prior) });
         fixture.Resident.Agent = fixture.Resident.Agent with
         {
             Decisions = fixture.Resident.Agent.Decisions.Add(new AgentDecision { EvidenceFactId = prior.Id }),
@@ -208,7 +208,7 @@ public sealed class ResidentEditingTests
 
         var revised = fixture.Resident.Agent.Memory.First(fact => fact.Text == "新的观察描述");
         Assert.NotEqual(prior.Id, revised.Id);
-        Assert.Contains(prior, fixture.Town.PublicKnowledge);
+        Assert.Contains(prior, fixture.Town.Value.PublicKnowledge);
         Assert.Equal(revised.Id, fixture.Resident.Agent.Decisions.Last().EvidenceFactId);
         Assert.NotEqual("新的观察描述", prior.Text);
     }

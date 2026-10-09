@@ -18,18 +18,21 @@ public sealed partial class WorldEngine
         for (var i = 0; i < tiles.Length; i++)
         {
             var tile = tiles[i];
-            tile.RiverWidth = 0;
-            tile.Terrain = tile.Elevation < 51 ? TerrainType.DeepWater :
-                tile.Elevation < 69 ? TerrainType.Water : TerrainType.Grass;
+            var before = tile.Value;
             var x = i % Current.Width;
             var y = i / Current.Width;
-            tile.Fertility = (byte)Math.Clamp(15 + Noise(x / 23d, y / 23d, 1201) * 85, 0, 100);
-            tile.Rainfall = Math.Round(.002 + Math.Pow(Noise(x / 27d, y / 27d, 1601), 3) * .24, 6);
-            flow[i] = .2 + tile.Rainfall * 15;
-            if (!IsWaterTerrain(tile.Terrain))
+            tile.Replace(before with
+            {
+                RiverWidth = 0,
+                Terrain = before.Elevation < 51 ? TerrainType.DeepWater : before.Elevation < 69 ? TerrainType.Water : TerrainType.Grass,
+                Fertility = (byte)Math.Clamp(15 + Noise(x / 23d, y / 23d, 1201) * 85, 0, 100),
+                Rainfall = Math.Round(.002 + Math.Pow(Noise(x / 27d, y / 27d, 1601), 3) * .24, 6),
+            });
+            flow[i] = .2 + tile.Value.Rainfall * 15;
+            if (!IsWaterTerrain(tile.Value.Terrain))
                 continue;
             visited[i] = true;
-            frontier.Enqueue(i, (tile.Elevation, i));
+            frontier.Enqueue(i, (tile.Value.Elevation, i));
         }
 
         // 优先洪泛为平坦盆地也建立通向海洋的无环出口，出队顺序可直接用于汇流计算。
@@ -47,7 +50,7 @@ public sealed partial class WorldEngine
                     continue;
                 visited[next] = true;
                 parents[next] = current;
-                frontier.Enqueue(next, (Math.Max(priority.Height, tiles[next].Elevation), next));
+                frontier.Enqueue(next, (Math.Max(priority.Height, tiles[next].Value.Elevation), next));
             }
         }
 
@@ -62,18 +65,18 @@ public sealed partial class WorldEngine
                 continue;
             var area = Circle(x, y, 3).ToArray();
             if (area.Any(i =>
-                    IsWaterTerrain(tiles[i].Terrain) || tiles[i].Elevation > 178 || _demoHabitat?[i] >= 0))
+                    IsWaterTerrain(tiles[i].Value.Terrain) || tiles[i].Value.Elevation > 178 || _demoHabitat?[i] >= 0))
                 continue;
             var radius = Noise(x, y, 983) > .7 ? 2 : 1;
             foreach (var i in Circle(x, y, radius))
-                tiles[i].Terrain = TerrainType.Lake;
+                tiles[i].Replace(tiles[i].Value.WithTerrain(TerrainType.Lake));
         }
 
         var sources = Enumerable.Range(0, tiles.Length)
-            .Where(i => parents[i] >= 0 && !IsWaterTerrain(tiles[i].Terrain) && tiles[i].Elevation >= 120 &&
+            .Where(i => parents[i] >= 0 && !IsWaterTerrain(tiles[i].Value.Terrain) && tiles[i].Value.Elevation >= 120 &&
                         flow[i] < 12)
             .OrderByDescending(i =>
-                tiles[i].Elevation + Noise(i % Current.Width / 7d, i / Current.Width / 7d, 1879) * 65)
+                tiles[i].Value.Elevation + Noise(i % Current.Width / 7d, i / Current.Width / 7d, 1879) * 65)
             .ThenBy(i => i);
         var selected = new List<int>();
         var desired = Math.Clamp(tiles.Length / 4096 + 2, 2, 12);
@@ -87,7 +90,7 @@ public sealed partial class WorldEngine
             var path = new List<int>();
             var current = source;
             var reserved = false;
-            while (current >= 0 && tiles[current].Terrain is not (TerrainType.DeepWater or TerrainType.Water))
+            while (current >= 0 && tiles[current].Value.Terrain is not (TerrainType.DeepWater or TerrainType.Water))
             {
                 if (_demoHabitat?[current] >= 0)
                 {
@@ -125,13 +128,14 @@ public sealed partial class WorldEngine
                     continue;
                 var next = Index(x, y);
                 var tile = tiles[next];
-                if (tile.Terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.Lake ||
+                if (tile.Value.Terrain is TerrainType.DeepWater or TerrainType.Water or TerrainType.Lake ||
                     _demoHabitat?[next] >= 0)
                     continue;
-                var riverWidth = Math.Max(tile.RiverWidth, width);
-                tile.Terrain = riverWidth == 1 ? TerrainType.Stream :
+                var riverWidth = Math.Max(tile.Value.RiverWidth, width);
+                var terrain = riverWidth == 1 ? TerrainType.Stream :
                     riverWidth <= 3 ? TerrainType.River : TerrainType.LargeRiver;
-                tile.RiverWidth = riverWidth;
+                if (tile.Value.Terrain != terrain || tile.Value.RiverWidth != riverWidth)
+                    tile.Replace(tile.Value with { Terrain = terrain, RiverWidth = riverWidth });
             }
         }
 
@@ -163,87 +167,23 @@ public sealed partial class WorldEngine
         {
             var tile = tiles[i];
             var shore = distances[i] == int.MaxValue ? 0 : .1 * Math.Exp(-Math.Pow(distances[i] / 4d, 2));
-            tile.NaturalWaterYield = IsWaterTerrain(tile.Terrain) ? 0 : Math.Round(tile.Rainfall + shore, 6);
-            if (!IsWaterTerrain(tile.Terrain))
-                tile.Terrain = GeneratedBiome(tile, i, distances[i]);
-            tile.ResourceAmount = IsWaterTerrain(tile.Terrain) ? 0 : 50 + tile.Fertility;
-            SeedDeposit(tile, i % Current.Width, i / Current.Width);
+            var generated = tile.Value.WithNaturalWaterYield(IsWaterTerrain(tile.Value.Terrain)
+                ? 0 : Math.Round(tile.Value.Rainfall + shore, 6));
+            if (!IsWaterTerrain(generated.Terrain))
+            {
+                RaceKind? demoRace = _demoHabitat is not null && _demoHabitat[i] >= 0 ? (RaceKind)_demoHabitat[i] : null;
+                var variation = demoRace is null ? 0 : Noise(i % Current.Width / 2d, i / Current.Width / 2d, 1901);
+                generated = generated.WithGeneratedBiome((i / Current.Width + .5) / Current.Height * 2 - 1,
+                    distances[i], demoRace, variation);
+            }
+
+            tile.Replace(generated.WithResourceAmount(IsWaterTerrain(generated.Terrain) ? 0 : 50 + generated.Fertility));
+            tile.Replace(tile.Value.WithGeneratedDeposit(Current.Seed, i % Current.Width, i / Current.Width));
         }
 
         LimitMountainRanges();
     }
 
-    private TerrainType GeneratedBiome(TileCursor tile, int index, int waterDistance)
-    {
-        var y = index / Current.Width;
-        if (_demoHabitat is not null && index >= 0 && _demoHabitat[index] >= 0)
-        {
-            var race = (RaceKind)_demoHabitat[index];
-            tile.Replace(tile.Value with
-            {
-                Fertility = race == RaceKind.Dwarf ? (byte)60 : race == RaceKind.Orc ? (byte)55 : (byte)80,
-                Rainfall = race == RaceKind.Elf ? .096 :
-                race == RaceKind.Orc ? .012 :
-                race == RaceKind.Dwarf ? .064 : .036,
-            });
-            var variation = Noise(index % Current.Width / 2d, index / Current.Width / 2d, 1901);
-            if (variation > .58)
-            {
-                tile.Replace(tile.Value with { Elevation = 120, Rainfall = .064 });
-                tile.NaturalWaterYield = tile.Rainfall;
-                return TerrainType.Woodland;
-            }
-
-            if (variation < .35 && race is RaceKind.Human or RaceKind.Orc)
-            {
-                tile.Replace(tile.Value with { Elevation = 160, Fertility = 50, Rainfall = .024 });
-                tile.NaturalWaterYield = tile.Rainfall;
-                return TerrainType.Hills;
-            }
-
-            tile.NaturalWaterYield = tile.Rainfall;
-            return race switch
-            {
-                RaceKind.Elf => TerrainType.Forest,
-                RaceKind.Dwarf => TerrainType.AlpineMeadow,
-                RaceKind.Orc => TerrainType.Savanna,
-                _ => TerrainType.Meadow,
-            };
-        }
-
-        if (tile.Elevation < 79)
-            return TerrainType.Sand;
-        if (tile.Elevation > 197)
-            return TerrainType.Snow;
-        if (tile.Elevation > 180)
-            return TerrainType.Mountain;
-        if (tile.Elevation > 149)
-        {
-            return tile.Fertility >= 55 && tile.NaturalWaterYield >= .032
-                ? TerrainType.AlpineMeadow
-                : TerrainType.Hills;
-        }
-
-        if (Math.Abs((y + .5) / Current.Height * 2 - 1) > .72)
-            return TerrainType.Tundra;
-        if (tile.NaturalWaterYield < .016)
-        {
-            return tile.Fertility >= 65 ? TerrainType.DryFertile :
-                tile.Fertility < 30 ? TerrainType.Desert : TerrainType.Savanna;
-        }
-
-        if (tile.Fertility < 30)
-            return TerrainType.Scrub;
-        if (waterDistance <= 3 && tile.Fertility >= 70 && tile.Elevation < 135)
-            return TerrainType.Floodplain;
-        if (tile.NaturalWaterYield >= .132)
-            return tile.Fertility >= 65 ? TerrainType.Rainforest : TerrainType.Wetland;
-        if (tile.NaturalWaterYield >= .076)
-            return TerrainType.Forest;
-        if (tile.NaturalWaterYield >= .044)
-            return TerrainType.Woodland;
-        return tile.Fertility >= 70 ? TerrainType.Meadow : TerrainType.Grass;
-    }
 
     private int[] PrepareDemoSites()
     {
@@ -261,8 +201,8 @@ public sealed partial class WorldEngine
                 if (distance >= bestDistance || sites.Any(i =>
                         Distance(x, y, i % Current.Width, i / Current.Width) < MinimumSettlementDistance))
                     continue;
-                if (Current.Tiles[Index(x, y)].Fertility < 40 || !Circle(x, y, 6).All(i =>
-                        RaceTerrainRules.For((RaceKind)race, Current.Tiles[i].Terrain).Habitable))
+                if (Current.Tiles[Index(x, y)].Value.Fertility < 40 || !Circle(x, y, 6).All(i =>
+                        RaceTerrainRules.For((RaceKind)race, Current.Tiles[i].Value.Terrain).Habitable))
                     continue;
                 best = Index(x, y);
                 bestDistance = distance;
@@ -289,7 +229,7 @@ public sealed partial class WorldEngine
             foreach (var i in Circle(x, y, 6))
             {
                 _demoHabitat[i] = race;
-                Current.Tiles[i].Elevation = race == (int)RaceKind.Dwarf ? (byte)160 : (byte)120;
+                Current.Tiles[i].Replace(Current.Tiles[i].Value.WithElevation(race == (int)RaceKind.Dwarf ? (byte)160 : (byte)120));
             }
         }
 

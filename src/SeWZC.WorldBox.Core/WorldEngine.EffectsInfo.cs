@@ -23,17 +23,17 @@ public sealed partial class WorldEngine
     private double HomeRestMultiplier(int settlementId, int x, int y)
     {
         if (!_settlements.TryGetValue(settlementId, out var home) ||
-            Distance(x, y, home.X, home.Y) > 1)
+            Distance(x, y, home.Value.X, home.Value.Y) > 1)
             return 1;
         IEnumerable<StateReference<Building>>? buildings = _localWorkQueriesActive
-            ? _localWorkBuildings.GetValueOrDefault(home.Id)
+            ? _localWorkBuildings.GetValueOrDefault(home.Value.Id)
             : Current.Buildings;
-        var bonus = (1 + EffectiveSettlementRank(home) * .1) * GranaryRestBonus(home.Id);
+        var bonus = (1 + EffectiveSettlementRank(home) * .1) * GranaryRestBonus(home.Value.Id);
         if (buildings is null)
             return bonus;
         foreach (var building in buildings)
-            if (building.Value.SettlementId == home.Id && building.Value.Kind == BuildingKind.TownCenter && building.Value.Level > 1 &&
-                IsSettlementActive(home.Id) && IsFacilityOperating(building.Value))
+            if (building.Value.SettlementId == home.Value.Id && building.Value.Kind == BuildingKind.TownCenter && building.Value.Level > 1 &&
+                IsSettlementActive(home.Value.Id) && IsFacilityOperating(building.Value))
                 return bonus * building.Value.Efficiency;
         return bonus;
     }
@@ -56,7 +56,7 @@ public sealed partial class WorldEngine
             effects.Add(new EffectInfo("精灵采伐", "野外伐木产出 ×1.20", ""));
         if (person.Race == RaceKind.Dwarf)
             effects.Add(new EffectInfo("矮人采矿", "野外石矿产出 ×1.30", ""));
-        var adaptation = RaceTerrainRules.For(person.Race, Current.Tiles[Index(person.X, person.Y)].Terrain);
+        var adaptation = RaceTerrainRules.For(person.Race, Current.Tiles[Index(person.X, person.Y)].Value.Terrain);
         effects.Add(new EffectInfo("地形适应",
             $"{(adaptation.Habitable ? "宜居" : "不宜居")}   地形移动耗时 ×{adaptation.Movement:0.00}   现场生产 ×{adaptation.Productivity:0.00}",
             "种族与当前地形"));
@@ -75,21 +75,21 @@ public sealed partial class WorldEngine
 
         foreach (var town in Current.Settlements)
         {
-            if (town.NationId != person.NationId || Distance(town.X, town.Y, person.X, person.Y) > 5)
+            if (town.Value.NationId != person.NationId || Distance(town.Value.X, town.Value.Y, person.X, person.Y) > 5)
                 continue;
-            if (town.ShieldTicks > 0)
-                effects.Add(new EffectInfo("护盾", "附近伤害 ×0.60，同类保护取最强", town.Name, town.ShieldTicks));
-            if (GetLocalPolicy(town.Id) == PolicyKind.Defense)
-                effects.Add(new EffectInfo("防御政策", "附近伤害 ×0.88，与当地护盾相乘", town.Name));
+            if (town.Value.ShieldTicks > 0)
+                effects.Add(new EffectInfo("护盾", "附近伤害 ×0.60，同类保护取最强", town.Value.Name, town.Value.ShieldTicks));
+            if (GetLocalPolicy(town.Value.Id) == PolicyKind.Defense)
+                effects.Add(new EffectInfo("防御政策", "附近伤害 ×0.88，与当地护盾相乘", town.Value.Name));
         }
 
         if (_settlements.TryGetValue(person.SettlementId, out var home))
         {
-            var instruction = LatestAgentFact(person.Agent.Memory, AgentFactKind.Policy, home.Id);
+            var instruction = LatestAgentFact(person.Agent.Memory, AgentFactKind.Policy, home.Value.Id);
             if (instruction?.Value == (int)PolicyKind.FoodSecurity)
             {
                 effects.Add(new EffectInfo("已获知粮食政策", $"个人粮食采集倍率 ×{AgentFoodPolicyMultiplier(person.Agent, person.SettlementId, person.X, person.Y):0.00}",
-                    home.Name + "实际收到的政策"));
+                    home.Value.Name + "实际收到的政策"));
             }
         }
 
@@ -108,8 +108,8 @@ public sealed partial class WorldEngine
         if (building is null)
             return effects;
         var ground = Current.Tiles[Index(building.Value.X, building.Value.Y)];
-        var active = building.Value.Kind == BuildingKind.Bridge ? ground.Improvement == LandImprovement.Bridge
-            : building.Value.Kind == BuildingKind.MountainPass ? ground.Improvement == LandImprovement.MountainPass
+        var active = building.Value.Kind == BuildingKind.Bridge ? ground.Value.Improvement == LandImprovement.Bridge
+            : building.Value.Kind == BuildingKind.MountainPass ? ground.Value.Improvement == LandImprovement.MountainPass
             : IsBuildingOperational(building.Value);
         var source = ""; // 标题已显示所选建筑及等级，效果来源无需重复。
         var factor = building.Value.Efficiency;
@@ -215,20 +215,20 @@ public sealed partial class WorldEngine
 
         if (_settlements.TryGetValue(building.Value.SettlementId, out var town))
         {
-            if (building.Value.Kind == BuildingKind.Academy && town.Tier > SettlementTier.Village)
+            if (building.Value.Kind == BuildingKind.Academy && town.Value.Tier > SettlementTier.Village)
             {
                 effects.Add(new EffectInfo("城镇组织",
                     $"本地研究效率 ×{1 + EffectiveSettlementRank(town) * .1:0.00}" +
-                    (IsSettlementActive(town.Id) ? "" : "，占地不足，加成暂停"), town.Name, Active: IsSettlementActive(town.Id)));
+                    (IsSettlementActive(town.Value.Id) ? "" : "，占地不足，加成暂停"), town.Value.Name, Active: IsSettlementActive(town.Value.Id)));
             }
 
-            if (building.Value.Kind == BuildingKind.Farm && HasResearch(town.Id, Advancement.Agriculture))
-                effects.Add(new EffectInfo("农业知识", "农场粮食产出 ×1.35", town.Name));
+            if (building.Value.Kind == BuildingKind.Farm && HasResearch(town.Value.Id, Advancement.Agriculture))
+                effects.Add(new EffectInfo("农业知识", "农场粮食产出 ×1.35", town.Value.Name));
 
             void Knowledge(Advancement kind, string description)
             {
-                if (HasResearch(town.Id, kind))
-                    effects.Add(new EffectInfo(kind.Name, description, town.Name));
+                if (HasResearch(town.Value.Id, kind))
+                    effects.Add(new EffectInfo(kind.Name, description, town.Value.Name));
             }
 
             if (building.Value.Kind == BuildingKind.Farm || ProductionRules.For(building.Value.Kind)?.Output == ResourceKind.Food)
@@ -255,14 +255,14 @@ public sealed partial class WorldEngine
                 Knowledge(Advancement.EnergyRecycling, "每批动力单元产出 ×1.50");
             if (building.Value.Kind is BuildingKind.Crystallizer or BuildingKind.AetherForge)
                 Knowledge(Advancement.Leylines, "每批产出 ×1.25");
-            if (building.Value.Kind == BuildingKind.Farm && town.FertilityBoostTicks > 0)
-                effects.Add(new EffectInfo("丰饶", "农场粮食产出 ×1.35", town.Name, town.FertilityBoostTicks));
-            if (building.Value.Kind == BuildingKind.Academy && GetLocalPolicy(town.Id) == PolicyKind.Scholarship)
-                effects.Add(new EffectInfo("学术政策", "研究效率 ×1.35", town.Name));
-            if (building.Value.Kind == BuildingKind.Farm && GetPolicyProductionMultiplier(town.Id) != 1)
+            if (building.Value.Kind == BuildingKind.Farm && town.Value.FertilityBoostTicks > 0)
+                effects.Add(new EffectInfo("丰饶", "农场粮食产出 ×1.35", town.Value.Name, town.Value.FertilityBoostTicks));
+            if (building.Value.Kind == BuildingKind.Academy && GetLocalPolicy(town.Value.Id) == PolicyKind.Scholarship)
+                effects.Add(new EffectInfo("学术政策", "研究效率 ×1.35", town.Value.Name));
+            if (building.Value.Kind == BuildingKind.Farm && GetPolicyProductionMultiplier(town.Value.Id) != 1)
             {
-                effects.Add(new EffectInfo("当地生产政策", $"农场产出 ×{GetPolicyProductionMultiplier(town.Id):0.00}",
-                    town.Name));
+                effects.Add(new EffectInfo("当地生产政策", $"农场产出 ×{GetPolicyProductionMultiplier(town.Value.Id):0.00}",
+                    town.Value.Name));
             }
         }
 
@@ -279,24 +279,24 @@ public sealed partial class WorldEngine
             return effects;
         var tile = Current.Tiles[Index(x, y)];
         effects.Add(new EffectInfo("地形可燃性", $"{TerrainFlammability(tile.Value):0.00} / 1；受植被、剩余资源、供水与干旱影响", "当地地形；建筑可燃性另计"));
-        if (tile.FireTicks > 0)
-            effects.Add(new EffectInfo("燃烧", "停止生产与取水，居民每 tick 灼伤 4", "", tile.FireTicks));
-        if (tile.DroughtTicks > 0)
+        if (tile.Value.FireTicks > 0)
+            effects.Add(new EffectInfo("燃烧", "停止生产与取水，居民每 tick 灼伤 4", "", tile.Value.FireTicks));
+        if (tile.Value.DroughtTicks > 0)
         {
             effects.Add(new EffectInfo("干旱", "野外食物产出 ×0.15   农场粮食 ×0.18"
-                                             + (IsWaterTerrain(tile.Terrain) ? "   河湖无限淡水不减少" : "   天然供水 ×0.20"), "",
-                tile.DroughtTicks));
+                                             + (IsWaterTerrain(tile.Value.Terrain) ? "   河湖无限淡水不减少" : "   天然供水 ×0.20"), "",
+                tile.Value.DroughtTicks));
         }
 
-        if (tile.RoadLevel > 0 || tile.Improvement != LandImprovement.None)
+        if (tile.Value.RoadLevel > 0 || tile.Value.Improvement != LandImprovement.None)
         {
             effects.Add(new EffectInfo("通行改造",
                 (double.IsFinite(GetTerrainMoveCost(x, y))
                     ? $"步行耗时系数 {GetTerrainMoveCost(x, y):0.00}"
                     : "无法步行通行，需桥梁、山路或载具")
-                + (tile.Improvement == LandImprovement.Bridge
-                    ? $"，仅沿{BridgeDirectionName(tile.BridgeDirection)}通行"
-                    : ""), ImprovementName(tile.Improvement)));
+                + (tile.Value.Improvement == LandImprovement.Bridge
+                    ? $"，仅沿{BridgeDirectionName(tile.Value.BridgeDirection)}通行"
+                    : ""), ImprovementName(tile.Value.Improvement)));
         }
 
         foreach (var building in Current.Buildings)

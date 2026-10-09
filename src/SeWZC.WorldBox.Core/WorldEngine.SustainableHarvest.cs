@@ -24,8 +24,8 @@ public sealed partial class WorldEngine
                 continue;
             ref readonly var yields = ref TerrainRules.For(before.Terrain);
             var renewal = (yields.FoodYield + yields.WoodYield) * (before.DroughtTicks > 0 ? .2 : 1);
-            tile.ResourceAmount = Math.Min(capacity,
-                before.ResourceAmount + renewal * 2 * interval / SimulationTime.TicksPerDay);
+            tile.Replace(tile.Value.WithResourceAmount(Math.Min(capacity,
+                before.ResourceAmount + renewal * 2 * interval / SimulationTime.TicksPerDay)));
         }
     }
 
@@ -36,34 +36,34 @@ public sealed partial class WorldEngine
         return IsWaterTerrain(tile.Terrain) ? 0 : 50 + tile.Fertility;
     }
 
-    private static double WildlifeHarvestEfficiency(TileCursor tile, WildlifeKind kind)
+    private double WildlifeHarvestEfficiency(StateReference<Tile> tile, WildlifeKind kind)
     {
         // 稀少的动物更难找到，降低采集效率能促使居民在种群耗尽前转向其他来源。
-        return tile.HarvestEfficiency(kind);
+        return HarvestEfficiency(tile, kind);
     }
 
-    private static double WildlifeHarvestAmount(TileCursor tile, WildlifeKind kind, double effort)
+    private double WildlifeHarvestAmount(StateReference<Tile> tile, WildlifeKind kind, double effort)
     {
-        return Math.Min(tile.AnimalPopulation(kind) * .1, Math.Max(0, effort) * WildlifeHarvestEfficiency(tile, kind));
+        return Math.Min(tile.Value.AnimalPopulation(kind) * .1, Math.Max(0, effort) * WildlifeHarvestEfficiency(tile, kind));
     }
 
-    private static double NaturalPlantHarvestEfficiency(TileCursor tile, bool wood = false)
+    private double NaturalPlantHarvestEfficiency(StateReference<Tile> tile, bool wood = false)
     {
-        return tile.PlantHarvestEfficiency(wood);
+        return PlantHarvestEfficiency(tile, wood);
     }
 
     /// <summary>扣除可采集的植物生物量，保留未采集的物种，并返回实际采集量。</summary>
     /// <param name="tile">采集植物的地格。</param>
     /// <param name="desired">希望采集的资源数量，实际量受可持续存量限制。</param>
     /// <param name="wood">是否采集木材；关闭时采集食物。</param>
-    private static double HarvestPlants(TileCursor tile, double desired, bool wood = false)
+    private static double HarvestPlants(StateReference<Tile> tile, double desired, bool wood = false)
     {
         var harvest = tile.Value.HarvestPlants(desired, wood);
         tile.Replace(harvest.Tile);
         return harvest.Amount;
     }
 
-    private static bool WildlifeSiteProductive(TileCursor tile, bool aquatic)
+    private bool WildlifeSiteProductive(StateReference<Tile> tile, bool aquatic)
     {
         var kind = EdibleAnimal(tile, aquatic);
         return kind != WildlifeKind.None && WildlifeHarvestEfficiency(tile, kind) >= .25;

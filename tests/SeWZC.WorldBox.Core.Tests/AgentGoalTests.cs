@@ -73,10 +73,10 @@ public sealed class AgentGoalTests
             Migration = false,
             Secession = false,
         }, false, false);
-        fixture.Resident.X = fixture.Town.X;
-        fixture.Resident.Y = fixture.Town.Y;
-        fixture.Resident.FromX = fixture.Town.X;
-        fixture.Resident.FromY = fixture.Town.Y;
+        fixture.Resident.X = fixture.Town.Value.X;
+        fixture.Resident.Y = fixture.Town.Value.Y;
+        fixture.Resident.FromX = fixture.Town.Value.X;
+        fixture.Resident.FromY = fixture.Town.Value.Y;
         fixture.Resident.MoveDurationTicks = frozen ? 1 : 3;
         fixture.Resident.MoveStartedTick = 0;
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = frozen ? 3 : 0 });
@@ -85,9 +85,9 @@ public sealed class AgentGoalTests
             Goal = new AgentGoal
             {
                 Kind = AgentGoalKind.ReturnHome,
-                TargetX = fixture.Town.X,
-                TargetY = fixture.Town.Y,
-                TargetSettlementId = fixture.Town.Id,
+                TargetX = fixture.Town.Value.X,
+                TargetY = fixture.Town.Value.Y,
+                TargetSettlementId = fixture.Town.Value.Id,
                 PlayerDirected = true,
                 ReviewTick = 100,
             },

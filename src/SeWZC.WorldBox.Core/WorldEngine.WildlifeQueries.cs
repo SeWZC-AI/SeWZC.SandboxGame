@@ -29,9 +29,9 @@ public sealed partial class WorldEngine
                 continue;
             var index = Index(x, y);
             var tile = Current.Tiles[index];
-            if (tile.FireTicks > 0)
+            if (tile.Value.FireTicks > 0)
                 continue;
-            var aquatic = IsWaterTerrain(tile.Terrain);
+            var aquatic = IsWaterTerrain(tile.Value.Terrain);
             if (!aquatic && offset.Distance > 6)
                 continue;
             var kind = EdibleAnimal(tile, aquatic);
