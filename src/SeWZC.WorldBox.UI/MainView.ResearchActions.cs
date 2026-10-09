@@ -89,7 +89,7 @@ public sealed partial class MainView
             return "岗位功能：" + WorldEngine.ProfessionDescription(current.Profession)
                            + $"\n护甲剩余 {current.Armor:0.#}   个人结界 {current.PersonalWard:0.#}"
                            + (current.FrozenUntilTick > _engine.State.Tick
-                               ? $"\n冻结剩余 {current.FrozenUntilTick - _engine.State.Tick} 日"
+                               ? $"\n冻结剩余 {(current.FrozenUntilTick - _engine.State.Tick) / (double)SimulationTime.TicksPerDay:0.##} 日"
                                : "");
         }), "resident-research-role"));
         if (person.Health <= 0)
@@ -106,7 +106,7 @@ public sealed partial class MainView
                     return;
                 }
 
-                var modal = ModalPanel("游击射手射击", "需要随身弹药 1，目标在 4 格内且视线畅通，本人已收到交战军令。射击间隔至少 3 日。");
+                var modal = ModalPanel("游击射手射击", "需要随身弹药 1，目标在 4 格内且视线畅通，本人已收到交战军令。射击间隔至少 3 tick。");
                 var target = ObjectField(modal, "目标", targets.Select(r => (r.Id, r.Name)), targets[0].Id,
                     "ranged-target");
                 var requirements = Named(Paragraph(""), "ranged-requirements");

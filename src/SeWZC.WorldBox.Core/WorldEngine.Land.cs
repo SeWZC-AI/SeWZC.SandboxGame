@@ -355,7 +355,7 @@ public sealed partial class WorldEngine
                 continue;
             tile.DepositDiscovered = true;
             var amount = Math.Min(tile.DepositAmount,
-                WorkInterval(person) * .4 * Current.Rules.GatheringRate * GatheringCondition(person) *
+                WorkInterval(person) / (double)SimulationTime.TicksPerDay * .4 * Current.Rules.GatheringRate * GatheringCondition(person) *
                 GatheringTerritoryMultiplier(person, tile) *
                 (HasResearch(person.SettlementId, Advancement.Forestry) ? 1.25 : 1));
             amount = Math.Min(amount, 1_000_000 - person.Inventory.Get(kind));
@@ -365,7 +365,7 @@ public sealed partial class WorldEngine
             person.Activity = ResidentActivity.Working;
             person.Agent = person.Agent with
             {
-                Fatigue = Math.Min(100, person.Agent.Fatigue + .45 * WorkInterval(person))
+                Fatigue = Math.Min(100, person.Agent.Fatigue + .45 * WorkInterval(person) / SimulationTime.TicksPerDay)
             };
             return amount > 0;
         }
@@ -461,9 +461,9 @@ public sealed partial class WorldEngine
         if (tile.Improvement == LandImprovement.Farmland)
             lines.Add("耕地：需要居民到场耕作，产物随身运回家园");
         if (tile.FireTicks > 0)
-            lines.Add($"正在燃烧：剩余 {tile.FireTicks} 日，暂停生产");
+            lines.Add($"正在燃烧：剩余 {tile.FireTicks / (double)SimulationTime.TicksPerDay:0.##} 日，暂停生产");
         else if (tile.DroughtTicks > 0)
-            lines.Add($"干旱：剩余 {tile.DroughtTicks} 日，粮食减产");
+            lines.Add($"干旱：剩余 {tile.DroughtTicks / (double)SimulationTime.TicksPerDay:0.##} 日，粮食减产");
         else if (tile.ResourceAmount >= 1 && tile.IsWalkable)
             lines.Add("状态：可以采收");
         if (IsDepositVisible(tile, visibility) && tile.Deposit is { } kind)

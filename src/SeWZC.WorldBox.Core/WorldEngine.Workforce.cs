@@ -193,7 +193,7 @@ public sealed partial class WorldEngine
                && person.TravelMode == TravelMode.Foot && Distance(person.X, person.Y, town.X, town.Y) <= 3
                && Current.Tick - person.MoveStartedTick >= person.MoveDurationTicks
                && (person.Profession == Profession.Laborer || Current.Tick == 0 ||
-                   Current.Tick - person.Agent.JobChangedTick >= 120);
+                   Current.Tick - person.Agent.JobChangedTick >= SimulationTime.TicksPerYear);
     }
 
     private static bool SuitableForProfession(ResidentCursor person, Profession job)
@@ -232,6 +232,7 @@ public sealed partial class WorldEngine
                 WorkplaceId = 0,
                 WorkAreaIndex = -1,
                 NextThinkTick = Current.Tick,
+                DaytimeGoal = null,
                 Goal = new AgentGoal
                 {
                     Kind = AgentGoalKind.Idle,

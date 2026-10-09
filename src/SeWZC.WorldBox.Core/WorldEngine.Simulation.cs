@@ -4,14 +4,14 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    /// <summary>将世界推进一个模拟日。</summary>
+    /// <summary>将世界推进一个模拟 tick。</summary>
     public void Tick()
     {
         Step();
     }
 
-    /// <summary>将世界推进指定数量的模拟日。</summary>
-    /// <param name="steps">推进的日数，范围为 0 至 10,000；为零时不改变世界。</param>
+    /// <summary>将世界推进指定数量的模拟 tick。</summary>
+    /// <param name="steps">推进的 tick 数，范围为 0 至 10,000；为零时不改变世界。</param>
     public void Step(int steps = 1)
     {
         if (steps is < 0 or > 10_000)
@@ -44,9 +44,9 @@ public sealed partial class WorldEngine
                 TickLocalConflicts();
                 TickMigrationAndSecession();
                 Reindex();
-                if (Current.Tick % 12 == 0)
+                if (Current.Tick % (SimulationTime.TicksPerYear / 10) == 0)
                     GrowSettlements();
-                if (Current.Tick % 30 == 0)
+                if (Current.Tick % SimulationTime.TicksPerMonth == 0)
                     RefreshTerritoryClaims();
                 UpdateArmies();
                 ArchiveDeadResidents();
@@ -137,7 +137,7 @@ public sealed partial class WorldEngine
                 inventory = ProvisionAtHome(cursor, home);
             }
 
-            var age = rules.Aging ? Math.Min(1000, person.Age + 1d / 120) : person.Age;
+            var age = rules.Aging ? Math.Min(1000, person.Age + 1d / SimulationTime.TicksPerYear) : person.Age;
             var profession = person.Profession == Profession.Child && age >= 14
                 ? AssignProfession()
                 : person.Profession;
@@ -155,7 +155,7 @@ public sealed partial class WorldEngine
                     }
 
                 if (exposed && RandomInt(100) < 6)
-                    infectionDuration = 72 + RandomInt(25);
+                    infectionDuration = 3 * SimulationTime.TicksPerDay + RandomInt(SimulationTime.TicksPerDay + 1);
             }
 
             var tile = tiles[Index(person.X, person.Y)];
@@ -165,7 +165,7 @@ public sealed partial class WorldEngine
                   * (.5 + person.MagicTalent / 100)
                   * (HasResearch(person.SettlementId, Advancement.ManaAttunement) ? 1.5 : 1);
             var hasHome = _settlements.ContainsKey(person.SettlementId);
-            var waterUse = WaterUse(age, tile);
+            var waterUse = WaterUse(age, tile) / SimulationTime.TicksPerDay;
             var water = hasHome && person.ArmyId == 0 && person.Health > 0 && rules.Thirst
                         && inventory.Water < waterUse
                 ? WithdrawWater(person.X, person.Y, person.MoveStartedTick, person.MoveDurationTicks,
@@ -179,10 +179,10 @@ public sealed partial class WorldEngine
                 Tile = tile.Value,
                 Profession = profession,
                 InfectionDuration = infectionDuration,
-                ManaRecovery = manaRecovery,
+                ManaRecovery = manaRecovery / SimulationTime.TicksPerDay,
                 ConsumeNeeds =
                     person.ArmyId == 0 && hasHome,
-                SocialGrowth = hasHome && (tick + person.Id) % 4 == 0 ? .28 : 0,
+                SocialGrowth = hasHome && (tick + person.Id) % 4 == 0 ? .28 / SimulationTime.TicksPerDay : 0,
                 DeliveredWater = water,
                 ArrivedTile =
                     hasHome && person.ArmyId == 0 && person.Health > 0
@@ -249,11 +249,11 @@ public sealed partial class WorldEngine
                     town.Resources = town.Resources with { Food = Math.Max(0, town.Resources.Food - 0.6) };
                 }
 
-                if (Current.Tick % 120 == 0)
+                if (Current.Tick % SimulationTime.TicksPerYear == 0)
                     AddEvent(WorldEventKind.Growth, $"{town.Name}迎来新生儿，人口增至{citizens.Count}。", town.X, town.Y);
             }
 
-            if (Current.Rules.Expansion && Current.Tick % 120 == 0 && citizens.Count >= 80 && !town.IsExpanding
+            if (Current.Rules.Expansion && Current.Tick % SimulationTime.TicksPerYear == 0 && citizens.Count >= 80 && !town.IsExpanding
                 && ResourceStock.Kinds.All(k =>
                     town.Resources.Get(k) >= VillageFoundingCost.Get(k) + developmentReserve.Get(k)) &&
                 Current.Settlements.Count < 256)
@@ -272,7 +272,7 @@ public sealed partial class WorldEngine
         // 建村地点须在出发前报告给原聚落，避免迁徙队伍使用未送达的信息。
         var location = origin.PublicKnowledge.Where(f => f.Kind == AgentFactKind.FoundingSite &&
                                                          f.LearnedTick < Current.Tick
-                                                         && Current.Tick - f.ObservedTick <= 600 &&
+                                                         && Current.Tick - f.ObservedTick <= 5 * SimulationTime.TicksPerYear &&
                                                          f.Confidence >= .5 &&
                                                          InBounds(f.X, f.Y))
             .Select(f => Index(f.X, f.Y)).Where(i => !IsWaterTerrain(Current.Tiles[i].Terrain)
@@ -424,7 +424,7 @@ public sealed partial class WorldEngine
             }
 
         if (Current.NaturalDisasters && Current.Rules.DisasterFrequency > 0 &&
-            Current.Tick % (1200 / Current.Rules.DisasterFrequency) == 0 && Current.Residents.Count > 0)
+            Current.Tick % (10 * SimulationTime.TicksPerYear / Current.Rules.DisasterFrequency) == 0 && Current.Residents.Count > 0)
         {
             var person = Current.Residents[RandomInt(Current.Residents.Count)];
             TriggerDisaster(person.X, person.Y, (DisasterKind)RandomInt(Current.Rules.Disease ? 3 : 2),

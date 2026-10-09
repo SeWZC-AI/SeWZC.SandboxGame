@@ -357,7 +357,7 @@ public sealed partial class WorldEngine
     {
         if (!CanProduce(building, person, recipe) || !HasProductionInputs(person.Inventory, recipe))
             return false;
-        var batches = WorkInterval(person);
+        var batches = 1;
         foreach (var kind in recipe.InputResources)
             batches = Math.Min(batches, (int)Math.Min(batches,
                 Math.Floor((person.Inventory.Get(kind) + .000001) / recipe.Input.Get(kind))));

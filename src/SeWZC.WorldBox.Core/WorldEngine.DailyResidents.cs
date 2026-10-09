@@ -27,7 +27,7 @@ public sealed partial class WorldEngine
         {
             return Person.CalculateDay(rules, Tile, tick,
                 Profession, InfectionDuration, ManaRecovery, ConsumeNeeds, SocialGrowth, DeliveredWater, ArrivedTile,
-                Inventory, Agent);
+                Inventory, Agent, 1d / SimulationTime.TicksPerDay);
         }
     }
 }

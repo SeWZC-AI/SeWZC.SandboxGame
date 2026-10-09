@@ -123,7 +123,7 @@ public sealed partial class WorldEngine
                 $"信号接入 {12 + (building.Level - 1) * 4} 格、塔间至多 {24 + (building.Level - 1) * 8} 格（取双方较低等级）；山脉阻挡信号",
             BuildingKind.ArcaneSanctum => "居民到场训练魔法并恢复魔力；天赋至少 25、训练未满 100，每次消耗仓库粮食 0.03" +
                                           (factor > 1 ? $"；等级训练与恢复倍率 ×{factor:0.00}" : ""),
-            BuildingKind.Infirmary => $"治疗 3 格内同聚落伤病居民；每单位劳动恢复生命 {0.45 * factor:0.###}、病程减少 1 日，每次消耗仓库粮食 0.05",
+            BuildingKind.Infirmary => $"治疗 3 格内同聚落伤病居民；每单位劳动恢复生命 {0.45 * factor:0.###}；每次治疗病程减少 1 日，每次消耗仓库粮食 0.05",
             BuildingKind.MountainPass => $"山地步行耗时系数 {3.5 / factor:0.00}",
             BuildingKind.Bridge =>
                 $"仅沿{BridgeDirectionName(building.Direction)}通行，步行耗时系数 {1.2 / factor:0.00}；离自然岸最多 {BridgeShoreLimit(building.Level)} 格",
@@ -142,12 +142,12 @@ public sealed partial class WorldEngine
             BuildingKind.TradeGuild => $"人类值守，3 格内本聚落商人移动速度 ×{1.15 * factor:0.00}；3 格内居民交谈距离增至 3 格",
             BuildingKind.SacredGrove =>
                 $"精灵现场训练，每单位劳动增加训练 {0.1 * factor:0.###}（另乘魔法训练速率）、恢复魔力 {0.3 * factor:0.###}；天赋至少 25、训练未满 100",
-            BuildingKind.HerbGarden => $"精灵治疗 3 格内同聚落伤病居民，每单位劳动恢复生命 {0.6 * factor:0.###}、病程减少 1 日",
+            BuildingKind.HerbGarden => $"精灵治疗 3 格内同聚落伤病居民，每单位劳动恢复生命 {0.6 * factor:0.###}；每次治疗病程减少 1 日",
             BuildingKind.MiningHall => $"矮人开采邻格石矿，每单位劳动采收 {0.3 * factor:0.###} 份资源，再携带石材、矿石返仓",
             BuildingKind.HuntingCamp => $"兽人狩猎本格食草动物，每单位劳动捕获 {0.25 * factor:0.###} 只，按猎物体型折算食物并携带返仓",
             BuildingKind.WarDrum => $"兽人击鼓，每单位劳动为 2 格内同聚落居民恢复体力 {factor:0.00}，为同国军队恢复士气 {0.3 * factor:0.###}",
             BuildingKind.Pasture or BuildingKind.Aquaculture =>
-                $"养殖上限 {LivestockCapacity(building):0.#}；投喂按存栏量消耗随身粮食与水（每次最多 0.12、0.03），保留至少 2 份繁殖群。连续 30 日无人照料后数量下降",
+                $"养殖上限 {LivestockCapacity(building):0.#}；投喂按存栏量消耗随身粮食与水（每次最多 0.12、0.03），保留至少 2 份繁殖群。连续 {SimulationTime.DaysPerMonth} 日无人照料后数量下降",
             _ => (factor > 1 ? $"等级产出倍率 ×{factor:0.00}\n" : "") + ProductionRecipe(building.Kind),
         };
         if (ProductionRules.For(building.Kind) is { Research.Magic: true })
@@ -174,7 +174,7 @@ public sealed partial class WorldEngine
                 Active: IsBuildingOperational(building)));
         }
 
-        effects.Add(new EffectInfo("建筑耐火", $"着火时每日损失生命 {1.5 * BuildingFlammability(building):0.00}"
+        effects.Add(new EffectInfo("建筑耐火", $"着火时每 tick 损失生命 {1.5 * BuildingFlammability(building):0.00}"
                                            + (building.Level < 3 && BuildingFlammability(building) > 0
                                                ? $"；升至 {building.Level + 1} 级后为 {1.5 * BuildingFlammability(building) * .75:0.00}"
                                                : ""), source));
@@ -280,7 +280,7 @@ public sealed partial class WorldEngine
         var tile = Current.Tiles[Index(x, y)];
         effects.Add(new EffectInfo("地形可燃性", $"{TerrainFlammability(tile):0.00} / 1；受植被、剩余资源、供水与干旱影响", "当地地形；建筑可燃性另计"));
         if (tile.FireTicks > 0)
-            effects.Add(new EffectInfo("燃烧", "停止生产与取水，居民每日灼伤 4", "", tile.FireTicks));
+            effects.Add(new EffectInfo("燃烧", "停止生产与取水，居民每 tick 灼伤 4", "", tile.FireTicks));
         if (tile.DroughtTicks > 0)
         {
             effects.Add(new EffectInfo("干旱", "野外食物产出 ×0.15   农场粮食 ×0.18"

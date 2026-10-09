@@ -393,7 +393,7 @@ public sealed class AgentCadenceTests
     public void Water_collection_runs_daily_after_arrival(int movementStarted, bool draws)
     {
         var fixture = Prepare();
-        fixture.Engine.Current.Tick = (4 - fixture.ResidentId % 4) % 4;
+        fixture.Engine.Current.Tick = 8 + (4 - fixture.ResidentId % 4) % 4;
         fixture.Town.Resources = new ResourceStock();
         fixture.Resident.Replace(fixture.Resident.Value with
         {
@@ -422,7 +422,7 @@ public sealed class AgentCadenceTests
 
         fixture.Engine.Step();
 
-        Assert.Equal(draws ? .3875 : .0875, fixture.Resident.Inventory.Water, 8);
+        Assert.Equal(.1 - .0125 / SimulationTime.TicksPerDay + (draws ? .3 : 0), fixture.Resident.Inventory.Water, 8);
         Assert.Equal(draws ? .3 : 0, fixture.Engine.Current.Tiles[17 * 32 + 16].WaterDrawn, 8);
     }
 

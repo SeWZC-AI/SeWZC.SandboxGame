@@ -90,7 +90,7 @@ public sealed partial record Resident
     /// <summary>饥饿程度，越高表示越缺粮。</summary>
     public double Hunger { get; init; }
 
-    /// <summary>疫病剩余模拟日数，0 表示未患病。</summary>
+    /// <summary>疫病剩余模拟 tick 数，0 表示未患病。</summary>
     public int SicknessTicks { get; init; }
 
     /// <summary>所加入的军队 ID，0 表示未编入军队。</summary>
@@ -115,7 +115,7 @@ public sealed partial record Resident
         }
     }
 
-    /// <summary>疫病康复后的暂时免疫截止日序。</summary>
+    /// <summary>疫病康复后的暂时免疫截止 tick 序。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long DiseaseImmuneUntilTick
     {
@@ -139,7 +139,7 @@ public sealed partial record Resident
         }
     }
 
-    /// <summary>死亡时的模拟日序。</summary>
+    /// <summary>死亡时的模拟 tick 序。</summary>
     [JsonRequired]
     public long DeathTick
     {
@@ -175,7 +175,7 @@ public sealed partial record Resident
         }
     }
 
-    /// <summary>冰霜减速效果的截止日序。</summary>
+    /// <summary>冰霜减速效果的截止 tick 序。</summary>
     [JsonRequired]
     public long FrozenUntilTick
     {
@@ -187,7 +187,7 @@ public sealed partial record Resident
         }
     }
 
-    /// <summary>最近一次远程攻击的模拟日序。</summary>
+    /// <summary>最近一次远程攻击的模拟 tick 序。</summary>
     [JsonRequired]
     public long LastRangedAttackTick
     {
@@ -255,10 +255,10 @@ public sealed partial record Resident
     /// <summary>当前移动区段起点的纵向地格坐标。</summary>
     public int FromY { get; init; }
 
-    /// <summary>当前移动区段开始的模拟日序。</summary>
+    /// <summary>当前移动区段开始的模拟 tick 序。</summary>
     public long MoveStartedTick { get; init; }
 
-    /// <summary>当前移动区段所需的模拟日数。</summary>
+    /// <summary>当前移动区段所需的模拟 tick 数。</summary>
     public int MoveDurationTicks { get; init; } = 1;
 
     /// <summary>容量受限的个人经历记录。</summary>

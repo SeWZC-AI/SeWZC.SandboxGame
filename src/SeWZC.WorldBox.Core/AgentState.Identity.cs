@@ -22,7 +22,7 @@ public sealed partial record AgentState
         public long MissionRetryTick { get; init; }
         public int ExplorationHeading { get; init; }
         public ResourceKind? MaterialPriority { get; init; }
-        public long JobChangedTick { get; init; } = -120;
+        public long JobChangedTick { get; init; } = -SimulationTime.TicksPerYear;
         public int WorkplaceId { get; init; }
         public int WorkAreaIndex { get; init; } = -1;
     }

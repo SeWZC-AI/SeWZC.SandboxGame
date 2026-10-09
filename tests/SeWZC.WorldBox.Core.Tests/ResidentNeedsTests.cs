@@ -30,8 +30,8 @@ public sealed class ResidentNeedsTests
         fixture.Engine.Step();
 
         var after = fixture.Engine.State;
-        Assert.Equal(10.3, after.Residents[0].Thirst, 8);
-        Assert.Equal(10.3, after.Residents[1].Thirst, 8);
+        Assert.Equal(10 + .3 / SimulationTime.TicksPerDay, after.Residents[0].Thirst, 8);
+        Assert.Equal(10 + .3 / SimulationTime.TicksPerDay, after.Residents[1].Thirst, 8);
         Assert.All(after.Residents, person => Assert.Equal(0, person.Inventory.Water));
         Assert.Equal(before.Tiles[16 * 32 + 16].WaterDrawn, after.Tiles[16 * 32 + 16].WaterDrawn);
         Assert.Equal(before.Tiles[16 * 32 + 16].WaterDrawTick, after.Tiles[16 * 32 + 16].WaterDrawTick);
@@ -82,17 +82,17 @@ public sealed class ResidentNeedsTests
         fixture.Engine.Current.Residents.Add(fixture.Resident.Value with { Id = 900, Name = "第二位居民" });
         var source = fixture.Engine.Current.Tiles[17 * 32 + 16];
         source.WaterDrawTick = 1;
-        source.WaterDrawn = .13;
+        source.WaterDrawn = .15 - .0125 / SimulationTime.TicksPerDay;
         var before = fixture.Engine.State;
 
         fixture.Engine.Step();
 
         var after = fixture.Engine.State;
-        Assert.Equal(7, after.Residents[0].Thirst, 8);
-        Assert.Equal(10.12, after.Residents[1].Thirst, 8);
+        Assert.Equal(10 - 3d / SimulationTime.TicksPerDay, after.Residents[0].Thirst, 8);
+        Assert.Equal(10 + .3 / SimulationTime.TicksPerDay, after.Residents[1].Thirst, 8);
         Assert.Equal(.15, after.Tiles[17 * 32 + 16].WaterDrawn, 8);
         Assert.Equal(0, fixture.Engine.AvailableWater(16, 17), 8);
-        Assert.Equal(.13, before.Tiles[17 * 32 + 16].WaterDrawn);
+        Assert.Equal(.15 - .0125 / SimulationTime.TicksPerDay, before.Tiles[17 * 32 + 16].WaterDrawn);
         Assert.Equal(10, before.Residents[0].Thirst);
     }
 

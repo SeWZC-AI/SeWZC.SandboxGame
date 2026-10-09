@@ -19,7 +19,7 @@ public sealed class MedicalWorkTests
         var deceased = Assert.Single(fixture.Engine.State.ArchivedResidents);
         Assert.Equal(DeathCause.Disease, deceased.DeathCause);
         Assert.Equal(0, deceased.Health);
-        Assert.True(patient.Health > 49.8);
+        Assert.True(patient.Health > 50 - .2 / SimulationTime.TicksPerDay);
         Assert.Contains(worker.Id, clinic.Workers);
         Assert.Equal(99.95, fixture.Town.Resources.Food, 6);
     }
@@ -49,7 +49,7 @@ public sealed class MedicalWorkTests
         patient.Health = 50;
         foreach (var building in fixture.Engine.Current.Buildings.Where(building => building.Id != clinic.Id))
             building.Enabled = false;
-        fixture.Engine.Current.Tick = (3 - worker.Id % 4 + 4) % 4;
+        fixture.Engine.Current.Tick = 8 + (3 - worker.Id % 4 + 4) % 4;
         worker.Replace(worker.Value with
         {
             Inventory = new ResourceStock { Food = 1, Water = 1 },
@@ -65,7 +65,7 @@ public sealed class MedicalWorkTests
         Assert.Equal(AgentGoalKind.Work, worker.Agent.Goal.Kind);
         Assert.Equal(clinic.Id, worker.Agent.Goal.TargetEntityId);
         Assert.Contains(worker.Id, clinic.Workers);
-        Assert.True(patient.Health > 50.15);
+        Assert.True(patient.Health > 50 + .15 / SimulationTime.TicksPerDay);
     }
 
     private static (WorldFixture Fixture, BuildingCursor Clinic, ResidentCursor Worker) PrepareClinic(int residentCount)
@@ -115,7 +115,7 @@ public sealed class MedicalWorkTests
                     Goal = new AgentGoal { ReviewTick = 100 },
                 },
             });
-        fixture.Resident.Replace(fixture.Resident.Value with { Health = .1, SicknessTicks = 1 });
+        fixture.Resident.Replace(fixture.Resident.Value with { Health = .001, SicknessTicks = 1 });
         var worker = fixture.Engine.Current.Residents.First(person => person.Id != fixture.ResidentId);
         worker.Replace(worker.Value with
         {

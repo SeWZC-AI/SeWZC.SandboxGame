@@ -301,11 +301,11 @@ public sealed partial class WorldEngine
             var relation = Relation(town.NationId, fact.SubjectId);
             if (!Current.Rules.Alliances || relation.Status != DiplomaticStatus.Neutral ||
                 relation.AllianceOfferNationId != fact.SubjectId
-                || relation.AllianceOfferTick != fact.ObservedTick || Current.Tick - fact.ObservedTick > 600)
+                || relation.AllianceOfferTick != fact.ObservedTick || Current.Tick - fact.ObservedTick > 5 * SimulationTime.TicksPerYear)
                 return;
             var knowsSender = town.PublicKnowledge.Any(f =>
                 f.Kind == AgentFactKind.SettlementLocation && (int)f.Value == fact.SubjectId && f.Confidence >= .4 &&
-                Current.Tick - f.ObservedTick < 1200);
+                Current.Tick - f.ObservedTick < 10 * SimulationTime.TicksPerYear);
             if (!knowsSender)
                 return;
             relation = PublishRelation(relation with
@@ -346,7 +346,7 @@ public sealed partial class WorldEngine
 
     private void TickDiplomacy()
     {
-        if (Current.Tick % 60 != 0)
+        if (Current.Tick % (2 * SimulationTime.TicksPerMonth) != 0)
             return;
         var assessments = new List<DiplomaticAssessment>();
         foreach (var nation in Current.Nations)
@@ -356,7 +356,7 @@ public sealed partial class WorldEngine
             var contacts = capital.PublicKnowledge.Where(f => f.Kind == AgentFactKind.SettlementLocation &&
                                                               f.LearnedTick < Current.Tick
                                                               && f.Confidence >= .4 &&
-                                                              Current.Tick - f.ObservedTick <= 1200 &&
+                                                              Current.Tick - f.ObservedTick <= 10 * SimulationTime.TicksPerYear &&
                                                               f.Value != nation.Id && f.Value > 0)
                 .GroupBy(f => (int)f.Value).Select(g => g.OrderByDescending(f => f.ObservedTick).First())
                 .OrderBy(f => f.Value).ToArray();
@@ -372,14 +372,14 @@ public sealed partial class WorldEngine
                 var cooperation = GetCulture(capital.CultureId).Cooperation;
                 var tradeReport = capital.PublicKnowledge
                     .Where(f => f.Kind == AgentFactKind.TradeExchange && f.SubjectId == otherId &&
-                                Current.Tick - f.ObservedTick <= 360).OrderByDescending(f => f.ObservedTick)
+                                Current.Tick - f.ObservedTick <= 3 * SimulationTime.TicksPerYear).OrderByDescending(f => f.ObservedTick)
                     .FirstOrDefault();
                 var trade = tradeReport is not null;
                 var nearby = Distance(capital.X, capital.Y, contact.X, contact.Y) <= 28;
                 var otherFood = capital.PublicKnowledge
                     .Where(f => f.Kind == AgentFactKind.FoodSupply && f.SubjectId == contact.SubjectId &&
                                 f.LearnedTick < Current.Tick && f.Confidence >= .5 &&
-                                Current.Tick - f.ObservedTick <= 180)
+                                Current.Tick - f.ObservedTick <= 2 * SimulationTime.TicksPerMonth)
                     .OrderByDescending(f => f.ObservedTick).FirstOrDefault();
                 var bothScarce = ownFood < capital.Population && otherFood is { Value: < 12 };
                 var abundant = ownFood >= capital.Population * 3 && otherFood is { Value: >= 36 };
@@ -441,12 +441,12 @@ public sealed partial class WorldEngine
 
             relation = relation with { Reason = sides.Length == 1 ? sides[0].Reason : "双方各自依据已送达消息与当地情况累计态度；所示关系为双方态度均值" };
             relation = PublishRelation(relation);
-            if (Current.Tick - relation.LastChangedTick < 360)
+            if (Current.Tick - relation.LastChangedTick < 3 * SimulationTime.TicksPerYear)
                 continue;
             // 每轮只处理一种外交动作，停战或宣战优先于结盟，避免同日立即反转关系。
             if (relation.Status == DiplomaticStatus.War)
             {
-                var peacemaker = sides.Where(a => Current.Rules.Peace && (Current.Tick - relation.LastChangedTick >= 720
+                var peacemaker = sides.Where(a => Current.Rules.Peace && (Current.Tick - relation.LastChangedTick >= 6 * SimulationTime.TicksPerYear
                                                                           || a.Food < Math.Max(10,
                                                                               a.Capital.Population * .5)))
                     .OrderBy(a => a.Food / Math.Max(10, a.Capital.Population * .5)).FirstOrDefault();
@@ -478,7 +478,7 @@ public sealed partial class WorldEngine
 
             if (!Current.Rules.Alliances || relation.Status != DiplomaticStatus.Neutral
                                          || (relation.AllianceOfferNationId != 0 &&
-                                             Current.Tick - relation.AllianceOfferTick <= 600))
+                                             Current.Tick - relation.AllianceOfferTick <= 5 * SimulationTime.TicksPerYear))
                 continue;
             var proposer = sides.Where(a => LocalOpinion(relation, a.Nation.Id) >= 55)
                 .OrderByDescending(a => LocalOpinion(relation, a.Nation.Id)).FirstOrDefault();
@@ -577,16 +577,16 @@ public sealed partial class WorldEngine
 
     private void TickMigrationAndSecession()
     {
-        if (Current.Tick % 60 != 0)
+        if (Current.Tick % (2 * SimulationTime.TicksPerMonth) != 0)
             return;
         foreach (var town in Current.Settlements.ToArray())
         {
             var reports = Current.Society.Reports.Where(r =>
-                    r.RecipientSettlementId == town.Id && r.Confidence >= .5 && Current.Tick - r.ObservedTick < 180)
+                    r.RecipientSettlementId == town.Id && r.Confidence >= .5 && Current.Tick - r.ObservedTick < 2 * SimulationTime.TicksPerMonth)
                 .ToArray();
             var hardship = reports.Any(r => r.Topic == AgentFactKind.ReliefRequest && r.Value > 55);
             town.Unrest = Math.Clamp(town.Unrest + (hardship ? 5 + Current.Rules.Conflict : -4), 0, 100);
-            if (Current.Rules.Secession && town.Unrest >= 80 && Current.Tick - town.LastPoliticalChangeTick >= 1200
+            if (Current.Rules.Secession && town.Unrest >= 80 && Current.Tick - town.LastPoliticalChangeTick >= 10 * SimulationTime.TicksPerYear
                 && Current.Nations.Count < 64 && _nations[town.NationId].CapitalId != town.Id && town.Population >= 12
                 && Current.Settlements.Count(t => t.NationId == town.NationId) > 1)
             {
@@ -634,6 +634,7 @@ public sealed partial class WorldEngine
             {
                 Agent = person.Agent with
                 {
+                    DaytimeGoal = null,
                     Goal = new AgentGoal
                     {
                         Kind = AgentGoalKind.Migrate,
@@ -641,7 +642,7 @@ public sealed partial class WorldEngine
                         TargetY = destination.Y,
                         TargetSettlementId = town.Id,
                         StartedTick = Current.Tick,
-                        ReviewTick = Current.Tick + 360,
+                        ReviewTick = Current.Tick + 3 * SimulationTime.TicksPerYear,
                         EvidenceFactId = destination.Id,
                         CauseEventId = destination.EventId,
                         Reason = "长期饥饿，依据收到的粮情步行寻找可接纳的新家园",

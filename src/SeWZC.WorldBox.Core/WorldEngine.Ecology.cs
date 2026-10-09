@@ -5,8 +5,8 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    // 每日限制生态复评地格数，避免大地图出现整图更新峰值；完整周期随地图规模增长。
-    private const int WildlifeTilesPerDay = 256;
+    // 每 tick 限制生态复评地格数，避免大地图出现整图更新峰值；完整周期随地图规模增长。
+    private const int WildlifeTilesPerTick = 256;
     private double[]? _wildlifeBiomass;
     private double[]? _wildlifeCapacities;
     private double[]? _wildlifeChanges;
@@ -21,8 +21,8 @@ public sealed partial class WorldEngine
     private double[]? _wildlifeReplacement;
     private double[]? _wildlifeSharedBiomass;
 
-    /// <summary>受每日地格预算限制，完成一轮全部动物复评所需的模拟日数。</summary>
-    public int WildlifeCycleDays => Math.Max(6, (Current.Tiles.Count + WildlifeTilesPerDay - 1) / WildlifeTilesPerDay);
+    /// <summary>受每 tick 地格预算限制，完成一轮全部动物复评所需的模拟步数。</summary>
+    public int WildlifeCycleTicks => Math.Max(6, (Current.Tiles.Count + WildlifeTilesPerTick - 1) / WildlifeTilesPerTick);
 
     private static int NextWildlife(ref int mask)
     {
@@ -166,7 +166,7 @@ public sealed partial class WorldEngine
     private void TickWildlife()
     {
         var tiles = Current.Tiles;
-        var bufferTiles = WildlifeTilesPerDay + Current.Width * 2;
+        var bufferTiles = WildlifeTilesPerTick + Current.Width * 2;
         _wildlifeChanges ??= new double[bufferTiles * AnimalRules.SpeciesCount];
         _wildlifePopulations ??= new double[bufferTiles * AnimalRules.SpeciesCount];
         _wildlifePressure ??= new double[bufferTiles];
@@ -180,7 +180,7 @@ public sealed partial class WorldEngine
         _wildlifeHerbivoreKinds ??= new byte[bufferTiles];
         _wildlifeBiomass ??= new double[bufferTiles * 3];
         _wildlifeSharedBiomass ??= new double[bufferTiles * 3];
-        var cycle = WildlifeCycleDays;
+        var cycle = WildlifeCycleTicks;
         // 从存档中的模拟时间推导分区，载入后即可接续复评顺序，无需另存游标。
         var phase = (int)((Current.Tick - 1) % cycle);
         var first = phase * tiles.Length / cycle;
@@ -191,7 +191,7 @@ public sealed partial class WorldEngine
         Array.Clear(_wildlifeChanges, 0, snapshotCount * AnimalRules.SpeciesCount);
         Array.Clear(_wildlifeIncoming, 0, snapshotCount);
         // 按复评间隔折算生态速率，并限制单次损失。
-        var elapsed = cycle / 6d;
+        var elapsed = cycle / (SimulationTime.TicksPerYear / 20d);
         var growthRate = Math.Min(.25, .018 * elapsed);
         var deathRate = Math.Min(.65, 1 - Math.Pow(.88, elapsed));
         // 长复评周期下繁殖量有上限，捕食也须使用同一有效间隔，避免捕食增长超过可恢复供给。

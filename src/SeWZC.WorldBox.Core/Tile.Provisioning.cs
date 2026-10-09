@@ -16,7 +16,7 @@ public sealed partial record Tile
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public byte BridgeLevel { get; init; }
 
-    /// <summary>最近记录取水量的模拟日序。</summary>
+    /// <summary>最近记录取水量的模拟 tick 序。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long WaterDrawTick { get; init; }
 

@@ -12,7 +12,7 @@ public sealed partial record Resident
 
     private DailyState CalculateNeeds(WorldRules rules, long tick, VitalState vitals, double socialGrowth = .07,
         double deliveredWater = 0, AgentState? arrivedAgent = null, ResourceStock? suppliedInventory = null,
-        Tile? tile = null)
+        Tile? tile = null, double elapsedDays = 1)
     {
         var beforeAgent = arrivedAgent ?? Agent;
         var inventory = suppliedInventory ?? Inventory;
@@ -39,14 +39,14 @@ public sealed partial record Resident
 
         if (rules.Thirst)
         {
-            var use = WorldEngine.WaterUse(vitals.Age, tile);
+            var use = WorldEngine.WaterUse(vitals.Age, tile) * elapsedDays;
             var drink = Math.Min(use, water);
             water -= drink;
             thirst = Math.Clamp(thirst + (drink >= use - .000001
-                ? -3
+                ? -3 * elapsedDays
                 : .6 * (use - drink) / WorldEngine.WaterUse(vitals.Age)), 0, 100);
             if (thirst > 95)
-                Damage(.25, DeathCause.Dehydration);
+                Damage(.25 * elapsedDays, DeathCause.Dehydration);
         }
         else
             thirst = 0;
@@ -54,12 +54,12 @@ public sealed partial record Resident
         // 脱水先于进食；当天因脱水死亡的居民不再消耗粮食或承受饥饿伤害。
         if (health > 0)
         {
-            var use = rules.Hunger ? vitals.Age < 14 ? .02 : Race == RaceKind.Orc ? .052 : .04 : 0;
+            var use = rules.Hunger ? WorldEngine.FoodUse(vitals.Age, Race) * elapsedDays : 0;
             var meal = Math.Min(use, food);
             food -= meal;
-            hunger = Math.Clamp(hunger + (meal >= use - .000001 ? -3 : .8 * (1 - meal / use)), 0, 100);
+            hunger = Math.Clamp(hunger + (meal >= use - .000001 ? -3 * elapsedDays : .8 * elapsedDays * (1 - meal / use)), 0, 100);
             if (rules.Hunger && hunger > 80)
-                Damage(.30, DeathCause.Starvation);
+                Damage(.30 * elapsedDays, DeathCause.Starvation);
         }
 
         var crisis = health > 0 && ((rules.Hunger && Hunger <= 60 && hunger > 60 && food < .05)

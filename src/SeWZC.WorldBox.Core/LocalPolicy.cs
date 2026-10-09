@@ -12,7 +12,7 @@ public sealed record LocalPolicy
     /// <summary>当前政策是否由玩家指定。</summary>
     public bool PlayerOverride { get; init; }
 
-    /// <summary>本次政策决定的模拟日序。</summary>
+    /// <summary>本次政策决定的模拟 tick 序。</summary>
     public long DecidedTick { get; init; }
 
     /// <summary>选择此政策的实际理由。</summary>

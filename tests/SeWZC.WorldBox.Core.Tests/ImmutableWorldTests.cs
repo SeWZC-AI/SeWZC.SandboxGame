@@ -225,7 +225,7 @@ public sealed class ImmutableWorldTests
         WorldState middle;
         using (current.BeginScalarUpdates())
         {
-            current.Tick = 120;
+            current.Tick = SimulationTime.TicksPerYear;
             current.NextId += 2;
             current.RandomState = 123;
             fixture.Resident.Health = 80;
@@ -245,7 +245,7 @@ public sealed class ImmutableWorldTests
         Assert.Equal(123u, middle.RandomState);
         Assert.Equal(80, middle.Residents[0].Health);
         Assert.Equal(initial.NextId + 3, fixture.Engine.State.NextId);
-        Assert.Equal(121, fixture.Engine.State.Tick);
+        Assert.Equal(SimulationTime.TicksPerYear + 1, fixture.Engine.State.Tick);
         Assert.Equal(456u, fixture.Engine.State.RandomState);
         Assert.Equal(100, initial.Residents[0].Health);
         Assert.Equal(0, initial.Tick);
@@ -281,7 +281,7 @@ public sealed class ImmutableWorldTests
         Assert.Equal(12, saved.RootElement.GetProperty("DestinationSettlementId").GetInt32());
         Assert.Equal(20, saved.RootElement.GetProperty("MissionStartedTick").GetInt64());
         Assert.False(saved.RootElement.TryGetProperty("Identity", out _));
-        Assert.Equal(-120, new AgentState().JobChangedTick);
+        Assert.Equal(-SimulationTime.TicksPerYear, new AgentState().JobChangedTick);
         Assert.Equal(2_000_001, saved.RootElement.GetProperty("WorkplaceId").GetInt32());
         Assert.Equal(-1, new AgentState().WorkAreaIndex);
     }

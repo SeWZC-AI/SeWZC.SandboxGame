@@ -14,7 +14,7 @@ public sealed record PendingMessage
     /// <summary>作为中继接收地点的聚落 ID。</summary>
     public int TargetSettlementId { get; init; }
 
-    /// <summary>计划送达的模拟日序。</summary>
+    /// <summary>计划送达的模拟 tick 序。</summary>
     public long DeliverTick { get; init; }
 
     /// <summary>待递送的信息副本。</summary>

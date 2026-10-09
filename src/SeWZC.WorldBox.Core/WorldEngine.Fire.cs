@@ -103,7 +103,7 @@ public sealed partial class WorldEngine
             return false;
         }
 
-        if (tile.FireSuppressionTick != Current.Tick)
+        if (SimulationTime.DayIndex(tile.FireSuppressionTick) != SimulationTime.DayIndex(Current.Tick))
             tile.Replace(tile.Value with { FireSuppressionTick = Current.Tick, FireSuppressed = 0 });
 
         // 每格共用每日扑救上限，避免聚集大量居民后火灾在一日内直接消失。

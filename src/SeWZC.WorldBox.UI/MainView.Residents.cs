@@ -138,7 +138,7 @@ public sealed partial class MainView
         {
             var r = Current();
             return
-                $"{ActivityName(r.Activity)}\n生命 {r.Health:F1}\n饥饿 {r.Hunger:F1}\n口渴 {r.Thirst:F1}\n疫病 {r.SicknessTicks} 日\n疲劳 {r.Agent.Fatigue:F1}\n社交需求 {r.Agent.SocialNeed:F1}\n特质：{r.Trait}\n随身库存：{StockLabel(r.Inventory)}\n魔力 {r.Mana:F1}\n天赋 {r.MagicTalent:F1}\n训练 {r.MagicTraining:F1}\n军队 {(r.ArmyId == 0 ? "无" : r.ArmyId.ToString())}\n家园 {TownName(r.SettlementId)}";
+                $"{ActivityName(r.Activity)}\n生命 {r.Health:F1}\n饥饿 {r.Hunger:F1}\n口渴 {r.Thirst:F1}\n疫病 {r.SicknessTicks / (double)SimulationTime.TicksPerDay:0.##} 日\n疲劳 {r.Agent.Fatigue:F1}\n社交需求 {r.Agent.SocialNeed:F1}\n特质：{r.Trait}\n随身库存：{StockLabel(r.Inventory)}\n魔力 {r.Mana:F1}\n天赋 {r.MagicTalent:F1}\n训练 {r.MagicTraining:F1}\n军队 {(r.ArmyId == 0 ? "无" : r.ArmyId.ToString())}\n家园 {TownName(r.SettlementId)}";
         }));
         var effects = FoldSection(panel, "当前加成与减益", "resident-effects");
         effects.Children.Add(LiveText(() => EffectLabel(_engine.GetResidentEffects(id))));
@@ -254,7 +254,7 @@ public sealed partial class MainView
         var health = Field(condition, "生命 0–100", resident.Health, "resident-health");
         var hunger = Field(condition, "饥饿 0–100", resident.Hunger, "resident-hunger");
         var thirst = Field(condition, "口渴 0–100", resident.Thirst, "resident-thirst");
-        var sickness = Field(condition, "疫病剩余日数", resident.SicknessTicks, "resident-sickness");
+        var sickness = Field(condition, "疫病剩余日数", resident.SicknessTicks / (double)SimulationTime.TicksPerDay, "resident-sickness");
         var x = Field(belonging, "位置 X", resident.X, "resident-x");
         var y = Field(belonging, "位置 Y", resident.Y, "resident-y");
         var army = ObjectField(belonging, "军队",
@@ -284,7 +284,7 @@ public sealed partial class MainView
                     Health = Number(health),
                     Hunger = Number(hunger),
                     Thirst = Number(thirst),
-                    SicknessTicks = Integer(sickness),
+                    SicknessTicks = (int)Math.Round(Number(sickness) * SimulationTime.TicksPerDay),
                     X = Integer(x),
                     Y = Integer(y),
                     ArmyId = Integer(army) == resident.ArmyId ? null : Integer(army),
@@ -457,7 +457,7 @@ public sealed partial class MainView
             }
         };
         panel.Children.Add(Paragraph("选择聚落会同步填写目标地点；目标改变未来行动，紧急生存需求仍可打断。"));
-        var initialDuration = Math.Max(24, mind.Goal.ReviewTick - _engine.State.Tick);
+        var initialDuration = Math.Max(1, (mind.Goal.ReviewTick - _engine.State.Tick) / (double)SimulationTime.TicksPerDay);
         var duration = Field(panel, "目标保持日数", initialDuration, "resident-goal-duration");
         var fatigue = Field(panel, "疲劳", mind.Fatigue, "resident-fatigue");
         var social = Field(panel, "社交需求", mind.SocialNeed, "resident-social-need");
@@ -476,7 +476,7 @@ public sealed partial class MainView
                 var targetY = Integer(y);
                 var targetTown = Integer(town);
                 var targetEntity = Integer(entity);
-                var keepDays = Integer(duration);
+                var keepDays = Number(duration);
                 var goalReason = originalGoal.Reason;
                 var goalChanged = kind != originalGoal.Kind || targetX != originalGoal.TargetX ||
                                   targetY != originalGoal.TargetY
@@ -485,6 +485,7 @@ public sealed partial class MainView
                                   || goalReason != originalGoal.Reason || keepDays != initialDuration;
                 mind = mind with
                 {
+                    DaytimeGoal = goalChanged ? null : mind.DaytimeGoal,
                     Goal = goalChanged
                         ? new AgentGoal
                         {
@@ -496,7 +497,7 @@ public sealed partial class MainView
                             Reason = "玩家指定：" + GoalName(kind),
                             PlayerDirected = true,
                             StartedTick = _engine.State.Tick,
-                            ReviewTick = _engine.State.Tick + keepDays,
+                            ReviewTick = _engine.State.Tick + (long)Math.Ceiling(keepDays * SimulationTime.TicksPerDay),
                         }
                         : originalGoal,
                 };
@@ -625,8 +626,8 @@ public sealed partial class MainView
         UpdateSubject();
         var x = Field(panel, "地点 X", fact.X, "memory-x");
         var y = Field(panel, "地点 Y", fact.Y, "memory-y");
-        var observed = Field(panel, "观察日序（0 起）", fact.ObservedTick, "memory-observed");
-        var learned = Field(panel, "获知日序（0 起）", fact.LearnedTick, "memory-learned");
+        var observed = Field(panel, "观察 tick 序（0 起）", fact.ObservedTick, "memory-observed");
+        var learned = Field(panel, "获知 tick 序（0 起）", fact.LearnedTick, "memory-learned");
         AddDatePreview(panel, observed, "观察时间");
         AddDatePreview(panel, learned, "获知时间");
         var origin = ObjectField(panel, "最初观察者",
@@ -739,7 +740,7 @@ public sealed partial class MainView
         if (!adding)
             panel.Children.Add(Paragraph(entry.Text));
         panel.Children.Add(Paragraph("选择经历类型和强度，会直接调整今后的性格倾向。"));
-        var tick = Field(panel, "发生日序（0 起）", entry.Tick, "history-entry-tick");
+        var tick = Field(panel, "发生 tick 序（0 起）", entry.Tick, "history-entry-tick");
         AddDatePreview(panel, tick, "发生时间");
         var importance = EnumField(panel, "重要程度", entry.Importance, ImportanceName, "history-entry-importance");
         var experience = EnumField(panel, "经历类型", entry.Experience, ExperienceName, "history-entry-experience");
@@ -876,7 +877,7 @@ public sealed partial class MainView
         {
             preview.Text = long.TryParse(input.Text, out var tick) && tick >= 0
                 ? $"{label}：{DateLabel(tick)}"
-                : $"{label}：请输入非负日序";
+                : $"{label}：请输入非负 tick 序";
         }
 
         input.TextChanged += (_, _) => Update();

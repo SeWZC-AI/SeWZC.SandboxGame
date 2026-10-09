@@ -20,7 +20,7 @@ public sealed partial record Tile
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool DepositDiscovered { get; init; }
 
-    /// <summary>最近记录采收量的模拟日序。</summary>
+    /// <summary>最近记录采收量的模拟 tick 序。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long LastHarvestTick { get; init; }
 

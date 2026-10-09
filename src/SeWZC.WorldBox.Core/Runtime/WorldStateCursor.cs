@@ -159,8 +159,8 @@ internal sealed partial class WorldStateCursor : StateCursor<WorldState>
         }
     }
 
-    public int Year => 1 + (int)(Tick / 120);
-    public int Day => 1 + (int)(Tick % 120);
+    public int Year => 1 + (int)(Tick / SimulationTime.TicksPerYear);
+    public int Day => 1 + (int)(Tick / SimulationTime.TicksPerDay % SimulationTime.DaysPerMonth);
     public int Population => Residents.Count;
 
     public WorldRules Rules

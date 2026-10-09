@@ -95,7 +95,7 @@ public sealed partial class WorldEngine
             LastReportReceivedTick = Current.Tick,
             ReportedOutcome = (WarOutcome)(int)fact.Value,
             Report = fact.Text,
-            RecoveryUntilTick = Math.Max(nation.Military.RecoveryUntilTick, Current.Tick + 360),
+            RecoveryUntilTick = Math.Max(nation.Military.RecoveryUntilTick, Current.Tick + 3 * SimulationTime.TicksPerYear),
         };
         var received = AddEvent(WorldEventKind.War, $"{nation.Name}首都实际收到战报：{fact.Text}。", town.X, town.Y,
             EventAction.Report, town.Id, causeEventId: fact.EventId, evidenceFactId: fact.Id);

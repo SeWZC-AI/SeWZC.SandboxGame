@@ -66,8 +66,8 @@ public sealed record AgentFact
 
     internal AgentFactTopic Topic => AgentFactTopic.For(Kind);
 
-    /// <summary>根据原始观察时间和议题有效期，计算指定日序的可信度。</summary>
-    /// <param name="tick">评估信息的模拟日序。</param>
+    /// <summary>根据原始观察时间和议题有效期，计算指定 tick 序的可信度。</summary>
+    /// <param name="tick">评估信息的模拟 tick 序。</param>
     public double ReliabilityAt(long tick)
     {
         return Math.Clamp(Confidence, 0, 1) * Math.Clamp(1 - (tick - ObservedTick) / Topic.Lifetime, 0, 1);

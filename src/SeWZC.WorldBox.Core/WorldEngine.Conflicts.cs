@@ -9,7 +9,7 @@ public sealed partial class WorldEngine
         return person.Hunger >= 40 && person.Inventory.Food < .5
                                    && person.Agent.Memory.Any(f =>
                                        f.Kind == AgentFactKind.FoodSupply && f.Value < 12 && f.Confidence >= .5 &&
-                                       f.SubjectId == person.SettlementId && Current.Tick - f.ObservedTick <= 180);
+                                       f.SubjectId == person.SettlementId && Current.Tick - f.ObservedTick <= 2 * SimulationTime.TicksPerMonth);
     }
 
     private void TickLocalConflicts()
@@ -17,7 +17,7 @@ public sealed partial class WorldEngine
         if (Current.Tick % 12 != 0)
             return;
         var residents = Current.Residents.ToDictionary(r => r.Id);
-        Current.Conflicts = Current.Conflicts.RemoveAll(c => (c.Stage == ConflictStage.Resolved && Current.Tick - c.LastChangedTick > 360)
+        Current.Conflicts = Current.Conflicts.RemoveAll(c => (c.Stage == ConflictStage.Resolved && Current.Tick - c.LastChangedTick > 3 * SimulationTime.TicksPerYear)
                                          || !_settlements.ContainsKey(c.SettlementId));
         foreach (var previous in Current.Conflicts.Where(c => c.Stage != ConflictStage.Resolved))
         {
@@ -64,7 +64,7 @@ public sealed partial class WorldEngine
                     && Distance(r.X, r.Y, conflict.X, conflict.Y) <= 2).OrderBy(r => r.Id).FirstOrDefault();
                 if (witness is not null)
                     conflict = PublishConflict(conflict with { Participants = conflict.Participants.Add(witness.Id) });
-                var scope = conflict.Participants.Count >= 8 && Current.Tick - conflict.StartedTick >= 180
+                var scope = conflict.Participants.Count >= 8 && Current.Tick - conflict.StartedTick >= 2 * SimulationTime.TicksPerMonth
                     ? ConflictScope.Settlement
                     : conflict.Participants.Count >= 4
                         ? ConflictScope.Group

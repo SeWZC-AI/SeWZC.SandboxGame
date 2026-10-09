@@ -58,7 +58,7 @@ public sealed partial class WorldEngine
         if (!double.IsFinite(duration) || duration > 100_000)
             return new CompletionEstimate(null, "暂无法估算：有效工作速率过低");
         var remaining = (long)duration;
-        return new CompletionEstimate(remaining, $"按近期实际速率，预计还需约 {remaining} 日；人员与供给变化会影响结果");
+        return new CompletionEstimate(remaining, $"按近期实际速率，预计还需约 {remaining / (double)SimulationTime.TicksPerDay:0.##} 日；人员与供给变化会影响结果");
     }
 
     /// <summary>估算聚落当前建设或研究项目的剩余日数。</summary>
@@ -87,6 +87,8 @@ public sealed partial class WorldEngine
         }
 
         CheckV2(Valid(person.Agent.Goal.EvidenceFactId) && Valid(person.Agent.Goal.CauseEventId), "目标证据引用无效。");
+        if (person.Agent.DaytimeGoal is { } daytime)
+            CheckV2(Valid(daytime.EvidenceFactId) && Valid(daytime.CauseEventId), "暂存白天目标的证据引用无效。");
         foreach (var fact in person.Agent.Memory.Concat(person.Agent.CarriedMessages))
             CheckV2(Valid(fact.EventId) && Valid(fact.CampaignEventId), "消息事件引用无效。");
         foreach (var entry in person.History)

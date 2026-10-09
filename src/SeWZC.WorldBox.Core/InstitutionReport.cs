@@ -33,9 +33,9 @@ public sealed record InstitutionReport
     /// <summary>报告的可信度。</summary>
     public double Confidence { get; init; }
 
-    /// <summary>最初观察发生的模拟日序。</summary>
+    /// <summary>最初观察发生的模拟 tick 序。</summary>
     public long ObservedTick { get; init; }
 
-    /// <summary>机构实际收到报告的模拟日序。</summary>
+    /// <summary>机构实际收到报告的模拟 tick 序。</summary>
     public long ReceivedTick { get; init; }
 }

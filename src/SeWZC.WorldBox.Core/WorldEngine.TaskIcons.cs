@@ -18,7 +18,7 @@ public sealed partial class WorldEngine
             AgentGoalKind.Eat => ResidentTaskIcon.Eat,
             AgentGoalKind.Gather => ResidentTaskIcon.Gather,
             AgentGoalKind.Work when facility is { IsUpgrading: true } => ResidentTaskIcon.Upgrade,
-            AgentGoalKind.Rest => ResidentTaskIcon.Rest,
+            AgentGoalKind.Rest or AgentGoalKind.Sleep => ResidentTaskIcon.Rest,
             AgentGoalKind.Flee => ResidentTaskIcon.Flee,
             AgentGoalKind.Socialize => ResidentTaskIcon.Talk,
             AgentGoalKind.DeliverMessage or AgentGoalKind.Petition => ResidentTaskIcon.Message,

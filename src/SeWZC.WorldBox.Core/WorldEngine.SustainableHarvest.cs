@@ -24,7 +24,7 @@ public sealed partial class WorldEngine
                 continue;
             ref readonly var yields = ref TerrainRules.For(before.Terrain);
             var renewal = (yields.FoodYield + yields.WoodYield) * (before.DroughtTicks > 0 ? .2 : 1);
-            tile.ResourceAmount = Math.Min(capacity, before.ResourceAmount + renewal * 2 * interval);
+            tile.ResourceAmount = Math.Min(capacity, before.ResourceAmount + renewal * 2 * interval / SimulationTime.TicksPerDay);
         }
     }
 

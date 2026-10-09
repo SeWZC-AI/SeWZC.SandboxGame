@@ -22,13 +22,13 @@ public sealed partial record Resident
     internal DailyState CalculateDay(WorldRules rules, Tile tile, long tick, Profession profession,
         int infectionDuration,
         double manaRecovery, bool consumeNeeds, double socialGrowth = .07, double deliveredWater = 0,
-        int arrivedTile = -1, ResourceStock? suppliedInventory = null, AgentState? suppliedAgent = null)
+        int arrivedTile = -1, ResourceStock? suppliedInventory = null, AgentState? suppliedAgent = null, double elapsedDays = 1)
     {
-        var vitals = CalculateVitals(rules, tile, tick, profession, infectionDuration, manaRecovery);
+        var vitals = CalculateVitals(rules, tile, tick, profession, infectionDuration, manaRecovery, elapsedDays);
         var agent = suppliedAgent ?? Agent;
         var arrivedAgent = arrivedTile >= 0 ? agent.RememberRouteTile(arrivedTile) : agent;
         var next = consumeNeeds && vitals.Health > 0
-            ? CalculateNeeds(rules, tick, vitals, socialGrowth, deliveredWater, arrivedAgent, suppliedInventory, tile)
+            ? CalculateNeeds(rules, tick, vitals, socialGrowth, deliveredWater, arrivedAgent, suppliedInventory, tile, elapsedDays)
             : CalculateDailyVitals(vitals, vitals.Health > 0 ? socialGrowth : 0, deliveredWater, arrivedAgent,
                 suppliedInventory);
         if (consumeNeeds && vitals.Health > 0 && !agent.Goal.PlayerDirected
@@ -44,9 +44,9 @@ public sealed partial record Resident
     }
 
     private VitalState CalculateVitals(WorldRules rules, Tile tile, long tick, Profession profession,
-        int infectionDuration, double manaRecovery)
+        int infectionDuration, double manaRecovery, double elapsedDays = 1)
     {
-        var age = rules.Aging ? Math.Min(1000, Age + 1d / 120) : Age;
+        var age = rules.Aging ? Math.Min(1000, Age + elapsedDays / SimulationTime.DaysPerYear) : Age;
         var health = Health;
         var sickness = SicknessTicks;
         var immunity = DiseaseImmuneUntilTick;
@@ -67,19 +67,19 @@ public sealed partial record Resident
         }
 
         if (rules.Aging && age > maxAge)
-            Damage(.5, DeathCause.OldAge);
+            Damage(.5 * elapsedDays, DeathCause.OldAge);
         if ((!rules.Hunger || Hunger <= 80) && health > 0 && sickness == 0 && age <= maxAge &&
             (!rules.Thirst || Thirst <= 95))
-            health = Math.Min(100, health + .15);
+            health = Math.Min(100, health + .15 * elapsedDays);
         if (tile.FireTicks > 0)
             Damage(4, DeathCause.Fire);
         if (sickness > 0)
         {
-            sickness--;
+            sickness = Math.Max(0, sickness - (int)Math.Round(elapsedDays * SimulationTime.TicksPerDay));
             if (rules.Disease)
-                Damage(.2, DeathCause.Disease);
+                Damage(.2 * elapsedDays, DeathCause.Disease);
             if (sickness == 0)
-                immunity = tick + 180;
+                immunity = tick + 6 * SimulationTime.TicksPerMonth;
         }
         else if (infectionDuration > 0)
             sickness = infectionDuration;
@@ -106,10 +106,10 @@ public sealed partial record Resident
     /// <param name="Age">结算后的年龄。</param>
     /// <param name="Profession">成年后的职业。</param>
     /// <param name="Health">结算后的生命值。</param>
-    /// <param name="Sickness">剩余疫病日数。</param>
-    /// <param name="Immunity">免疫截止日序。</param>
+    /// <param name="Sickness">剩余疫病 tick 数。</param>
+    /// <param name="Immunity">免疫截止 tick 序。</param>
     /// <param name="DeathCause">死亡原因。</param>
-    /// <param name="DeathTick">死亡日序。</param>
+    /// <param name="DeathTick">死亡 tick 序。</param>
     /// <param name="Activity">身体状态对应的活动。</param>
     /// <param name="Mana">恢复后的魔力。</param>
     private readonly record struct VitalState(

@@ -22,7 +22,7 @@ public sealed partial record Building
     [JsonRequired]
     public int ServiceActions { get; init; }
 
-    /// <summary>最近一次提供服务的模拟日序。</summary>
+    /// <summary>最近一次提供服务的模拟 tick 序。</summary>
     [JsonRequired]
     public long LastServiceTick { get; init; } = -100;
 
@@ -63,7 +63,7 @@ public sealed partial record Building
     /// <summary>当前登记的工人居民 ID。</summary>
     public ImmutableList<int> Workers { get; init; } = [];
 
-    /// <summary>最近一次居民在此劳动的模拟日序。</summary>
+    /// <summary>最近一次居民在此劳动的模拟 tick 序。</summary>
     public long LastWorkedTick { get; init; } = -100;
 
     /// <summary>建造进度是否达标且建筑仍有生命值。</summary>

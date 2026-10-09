@@ -23,11 +23,11 @@ public sealed partial record Tile
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int SettlementId { get; init; }
 
-    /// <summary>火灾剩余模拟日数，0 表示未燃烧。</summary>
+    /// <summary>火灾剩余模拟 tick 数，0 表示未燃烧。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int FireTicks { get; init; }
 
-    /// <summary>干旱剩余模拟日数，0 表示未受干旱影响。</summary>
+    /// <summary>干旱剩余模拟 tick 数，0 表示未受干旱影响。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int DroughtTicks { get; init; }
 
@@ -48,11 +48,11 @@ public sealed partial record Tile
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public byte RiverWidth { get; init; }
 
-    /// <summary>最近一次记录扑救效果的模拟日序。</summary>
+    /// <summary>最近一次记录扑救效果的模拟 tick 序。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public long FireSuppressionTick { get; init; }
 
-    /// <summary>在最近记录的模拟日内，扑救累计缩短的火灾日数。</summary>
+    /// <summary>在最近记录的模拟日内，扑救累计缩短的火灾 tick 数。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int FireSuppressed { get; init; }
 

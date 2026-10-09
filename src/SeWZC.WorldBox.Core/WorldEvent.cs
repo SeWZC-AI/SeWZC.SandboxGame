@@ -5,7 +5,7 @@ namespace SeWZC.WorldBox.Core;
 /// <summary>世界编年史中的一条事件记录。</summary>
 public sealed record WorldEvent
 {
-    /// <summary>事件发生的模拟日序。</summary>
+    /// <summary>事件发生的模拟 tick 序。</summary>
     public long Tick { get; init; }
 
     /// <summary>事件所属类别。</summary>
