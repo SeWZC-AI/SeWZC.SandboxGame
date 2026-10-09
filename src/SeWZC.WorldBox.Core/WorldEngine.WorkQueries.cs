@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private readonly Dictionary<int, SettlementResearchCursor> _localResearch = [];
+    private readonly Dictionary<int, int> _localResearch = [];
     private readonly Dictionary<int, BuildingCursor> _localWaterWells = [];
 
     private readonly List<List<BuildingCursor>> _localWorkBuildingBuffers = [];
@@ -35,7 +35,7 @@ public sealed partial class WorldEngine
             return null;
         if (_localWorkQueriesActive)
             return _workBuildingsById.GetValueOrDefault(id);
-        foreach (var building in Current.Society.Buildings)
+        foreach (var building in Current.Buildings)
             if (building.Id == id)
                 return building;
         return null;
@@ -76,9 +76,9 @@ public sealed partial class WorldEngine
 
     private void BeginLocalWorkQueries()
     {
-        foreach (var research in Current.Society.Research)
-            _localResearch[research.SettlementId] = research;
-        foreach (var building in Current.Society.Buildings)
+        for (var index = 0; index < Current.Society.Research.Count; index++)
+            _localResearch[Current.Society.Research[index].SettlementId] = index;
+        foreach (var building in Current.Buildings)
         {
             _workBuildingsById[building.Id] = building;
             if (building.Kind == BuildingKind.Well)
@@ -119,8 +119,8 @@ public sealed partial class WorldEngine
 
     private void UpdateLocalWorkMembership(ResidentCursor resident, int previousSettlementId)
     {
-        resident.Agent.WorkplaceId = 0;
-        resident.Agent.WorkAreaIndex = -1;
+        if (resident.Agent.WorkplaceId != 0 || resident.Agent.WorkAreaIndex != -1)
+            resident.Agent = resident.Agent with { WorkplaceId = 0, WorkAreaIndex = -1 };
         if (!_localWorkQueriesActive)
             return;
         if (_localWorkResidents.TryGetValue(previousSettlementId, out var previous))
@@ -150,7 +150,7 @@ public sealed partial class WorldEngine
     {
         IReadOnlyList<BuildingCursor>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(resident.SettlementId)
-            : Current.Society.Buildings;
+            : Current.Buildings;
         if (buildings is null)
             return null;
         BuildingCursor? selected = null;

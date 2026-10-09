@@ -43,17 +43,21 @@ public sealed class MedicalWorkTests
     {
         var (fixture, clinic, worker) = PrepareClinic(3);
         clinic.WorkSlots = 1;
-        fixture.Resident.Agent.Goal = worker.Agent.Goal;
+        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = worker.Agent.Goal };
         var patient = fixture.Engine.Current.Residents.Single(person =>
             person.Id != fixture.ResidentId && person.Id != worker.Id);
         patient.Health = 50;
-        foreach (var building in fixture.Engine.Current.Society.Buildings.Where(building => building.Id != clinic.Id))
+        foreach (var building in fixture.Engine.Current.Buildings.Where(building => building.Id != clinic.Id))
             building.Enabled = false;
         fixture.Engine.Current.Tick = (3 - worker.Id % 4 + 4) % 4;
         worker.Replace(worker.Value with
         {
             Inventory = new ResourceStock { Food = 1, Water = 1 },
-            Agent = worker.Agent.Value with { NextThinkTick = 0, Goal = new AgentGoal() },
+            Agent = worker.Agent with
+            {
+                NextThinkTick = 0,
+                Goal = new AgentGoal()
+            },
         });
 
         fixture.Engine.Step();
@@ -89,7 +93,7 @@ public sealed class MedicalWorkTests
         }
 
         var clinicId = fixture.Engine.GrantFacility(fixture.Town.Id, BuildingKind.Infirmary, 14, 16);
-        var clinic = fixture.Engine.Current.Society.Buildings.Single(building => building.Id == clinicId);
+        var clinic = fixture.Engine.Current.Buildings.Single(building => building.Id == clinicId);
         fixture.Town.Resources = new ResourceStock { Food = 100 };
         foreach (var person in fixture.Engine.Current.Residents)
             person.Replace(person.Value with
@@ -104,9 +108,11 @@ public sealed class MedicalWorkTests
                 FromY = 16,
                 MoveStartedTick = 0,
                 MoveDurationTicks = 1,
-                Agent = person.Agent.Value with
+                Agent = person.Agent with
                 {
-                    Initialized = true, NextThinkTick = 100, Goal = new AgentGoal { ReviewTick = 100 },
+                    Initialized = true,
+                    NextThinkTick = 100,
+                    Goal = new AgentGoal { ReviewTick = 100 },
                 },
             });
         fixture.Resident.Replace(fixture.Resident.Value with { Health = .1, SicknessTicks = 1 });
@@ -114,7 +120,7 @@ public sealed class MedicalWorkTests
         worker.Replace(worker.Value with
         {
             Profession = Profession.Builder,
-            Agent = worker.Agent.Value with
+            Agent = worker.Agent with
             {
                 Goal = new AgentGoal
                 {

@@ -48,7 +48,7 @@ public sealed partial class WorldEngine
         var targetX = goal.TargetX;
         var targetY = goal.TargetY;
         var factory = goal.Kind == AgentGoalKind.Work
-            ? Current.Society.Buildings.FirstOrDefault(b =>
+            ? Current.Buildings.FirstOrDefault(b =>
                 b.Id == goal.TargetEntityId && b.SettlementId == person.SettlementId && b.IsCompleted)
             : null;
         var production = factory is null ? null : ProductionRules.For(factory.Kind);
@@ -67,7 +67,7 @@ public sealed partial class WorldEngine
             var interactionRange = production is not null || goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest
                                                               or AgentGoalKind.Socialize or AgentGoalKind.ReturnHome
                                                           || (goal.TargetEntityId != 0 &&
-                                                              Current.Society.Buildings.Any(b =>
+                                                              Current.Buildings.Any(b =>
                                                                   b.Id == goal.TargetEntityId &&
                                                                   (!b.IsCompleted || b.IsUpgrading ||
                                                                    IsWaterfrontBuilding(b.Kind))))
@@ -77,12 +77,15 @@ public sealed partial class WorldEngine
                 Walkable(cursor.X, cursor.Y, cursor.Race))
                 break;
             var next = SelectAgentStep(cursor, targetX, targetY, out var navigation);
-            cursor.Agent.Goal = navigation;
+            cursor.Agent = cursor.Agent.WithGoal(navigation);
             if (next < 0 || !visited.Add(next))
                 break;
             cursor.Replace(cursor.Value with
             {
-                FromX = cursor.X, FromY = cursor.Y, X = next % Current.Width, Y = next / Current.Width,
+                FromX = cursor.X,
+                FromY = cursor.Y,
+                X = next % Current.Width,
+                Y = next / Current.Width,
             });
             route.Add(new RoutePoint(cursor.X, cursor.Y));
         }
@@ -108,7 +111,9 @@ public sealed partial class WorldEngine
             throw new ArgumentException("道路需要可通行的陆地。");
         tile.Replace(tile.Value with
         {
-            ResourceAmount = resources, Fertility = (byte)fertility, RoadLevel = (byte)roadLevel,
+            ResourceAmount = resources,
+            Fertility = (byte)fertility,
+            RoadLevel = (byte)roadLevel,
         });
         AddEvent(WorldEventKind.Editor, "玩家调整当地资源、肥力与道路。", x, y);
     }

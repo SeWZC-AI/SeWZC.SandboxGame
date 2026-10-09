@@ -116,14 +116,14 @@ public sealed partial class WorldEngine
             foreach (var other in Current.Nations)
             {
                 var opinion = RandomInt(41) - 10;
-                Current.Diplomacies.Add(new DiplomaticRelationCursor(new DiplomaticRelation
+                Current.Diplomacies = Current.Diplomacies.Add(new DiplomaticRelation
                 {
                     FirstNationId = other.Id,
                     SecondNationId = nation.Id,
                     Opinion = opinion,
                     FirstOpinion = opinion,
                     SecondOpinion = opinion,
-                }));
+                });
             }
 
             Current.Nations.Add(nation);
@@ -274,7 +274,7 @@ public sealed partial class WorldEngine
 
             foreach (var resident in Current.Residents.Where(r => Distance(r.X, r.Y, x, y) <= radius))
                 DamageResident(resident, 65, DeathCause.Meteor);
-            foreach (var building in Current.Society.Buildings.Where(b => Distance(b.X, b.Y, x, y) <= radius))
+            foreach (var building in Current.Buildings.Where(b => Distance(b.X, b.Y, x, y) <= radius))
                 building.Health = Math.Max(0, building.Health - 80);
         }
 
@@ -393,16 +393,20 @@ public sealed partial class WorldEngine
         if (!Enum.IsDefined(status))
             throw new ArgumentOutOfRangeException(nameof(status));
         var relation = Relation(first, second);
-        relation.Status = status;
-        relation.FirstOpinion = relation.SecondOpinion = relation.Opinion =
-            status == DiplomaticStatus.War ? -80 : status == DiplomaticStatus.Allied ? 80 : 0;
-        relation.Replace(relation.Value with
+        var opinion = status == DiplomaticStatus.War ? -80 : status == DiplomaticStatus.Allied ? 80 : 0;
+        relation = PublishRelation(relation with
         {
-            LastChangedTick = Current.Tick, Reason = "玩家直接调整外交关系", AllianceOfferNationId = 0,
+            Status = status,
+            FirstOpinion = opinion,
+            SecondOpinion = opinion,
+            Opinion = opinion,
+            LastChangedTick = Current.Tick,
+            Reason = "玩家直接调整外交关系",
+            AllianceOfferNationId = 0,
         });
         var diplomaticEvent = AddEvent(status == DiplomaticStatus.War ? WorldEventKind.War : WorldEventKind.Diplomacy,
             $"{_nations[first].Name}与{_nations[second].Name}{(status == DiplomaticStatus.War ? "开战" : status == DiplomaticStatus.Allied ? "结盟" : "恢复中立关系")}。");
-        diplomaticEvent.Replace(diplomaticEvent.Value with
+        diplomaticEvent = PublishEvent(diplomaticEvent with
         {
             NationId = first,
             SecondNationId = second,
@@ -412,7 +416,7 @@ public sealed partial class WorldEngine
         PublishDiplomaticOrder(first, second, status, eventId: diplomaticEvent.Id);
         PublishDiplomaticOrder(second, first, status, eventId: diplomaticEvent.Id,
             objective: WarObjective.DefendHomeland);
-        relation.LastEventId = diplomaticEvent.Id;
+        relation = PublishRelation(relation with { LastEventId = diplomaticEvent.Id });
     }
 
     /// <summary>查询两国共同的外交状态；同国视为结盟，无关系记录时为中立。</summary>
@@ -427,28 +431,28 @@ public sealed partial class WorldEngine
                 (r.FirstNationId == second && r.SecondNationId == first))?.Status ?? DiplomaticStatus.Neutral;
     }
 
-    private DiplomaticRelationCursor Relation(int first, int second)
+    private DiplomaticRelation Relation(int first, int second)
     {
         var relation = Current.Diplomacies.FirstOrDefault(r =>
             (r.FirstNationId == first && r.SecondNationId == second) ||
             (r.FirstNationId == second && r.SecondNationId == first));
         if (relation is not null)
             return relation;
-        relation = new DiplomaticRelationCursor(new DiplomaticRelation
+        relation = new DiplomaticRelation
         {
             FirstNationId = Math.Min(first, second),
             SecondNationId = Math.Max(first, second),
-        });
-        Current.Diplomacies.Add(relation);
+        };
+        Current.Diplomacies = Current.Diplomacies.Add(relation);
         return relation;
     }
 
     private IEnumerable<int> Circle(int cx, int cy, int radius)
     {
         for (var y = Math.Max(0, cy - radius); y <= Math.Min(Current.Height - 1, cy + radius); y++)
-        for (var x = Math.Max(0, cx - radius); x <= Math.Min(Current.Width - 1, cx + radius); x++)
-            if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= radius * radius)
-                yield return Index(x, y);
+            for (var x = Math.Max(0, cx - radius); x <= Math.Min(Current.Width - 1, cx + radius); x++)
+                if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= radius * radius)
+                    yield return Index(x, y);
     }
 
     private void RelocateInvalidEntities()
@@ -470,7 +474,7 @@ public sealed partial class WorldEngine
             var position = Circle(settlement.X, settlement.Y, 12)
                 .Where(i => Current.Tiles[i].IsWalkable && !IsWaterTerrain(Current.Tiles[i].Terrain) &&
                             Current.Tiles[i].SettlementId == 0 &&
-                            !Current.Society.Buildings.Any(b => b.X == i % Current.Width && b.Y == i / Current.Width) &&
+                            !Current.Buildings.Any(b => b.X == i % Current.Width && b.Y == i / Current.Width) &&
                             (Current.Tiles[i].NationId == 0 || Current.Tiles[i].NationId == settlement.NationId))
                 .OrderBy(i => Distance(i % Current.Width, i / Current.Width, settlement.X, settlement.Y))
                 .FirstOrDefault(-1);
@@ -478,7 +482,8 @@ public sealed partial class WorldEngine
             {
                 settlement.Replace(settlement.Value with
                 {
-                    X = position % Current.Width, Y = position / Current.Width,
+                    X = position % Current.Width,
+                    Y = position / Current.Width,
                 });
                 Current.Tiles[position].SettlementId = settlement.Id;
                 ClaimTerritory(settlement, 6);

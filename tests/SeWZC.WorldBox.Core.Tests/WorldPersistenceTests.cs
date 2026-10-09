@@ -165,10 +165,13 @@ public sealed class WorldPersistenceTests
             Confidence = 0.8,
             Text = "现场危险观察",
         };
-        fixture.Resident.Agent.Memory.Add(fact);
-        fixture.Engine.Current.PendingMessages.Add(new PendingMessage
+        fixture.Resident.Agent = fixture.Resident.Agent with { Memory = fixture.Resident.Agent.Memory.Add(fact) };
+        fixture.Engine.Current.PendingMessages = fixture.Engine.Current.PendingMessages.Add(new PendingMessage
         {
-            SenderId = fixture.ResidentId, RecipientId = fixture.ResidentId, DeliverTick = 1, Facts = [fact],
+            SenderId = fixture.ResidentId,
+            RecipientId = fixture.ResidentId,
+            DeliverTick = 1,
+            Facts = [fact],
         });
 
         var restoredWorld = WorldEngine.ImportJson(fixture.Engine.ExportJson());
@@ -184,9 +187,11 @@ public sealed class WorldPersistenceTests
     public void Import_rejects_null_message_facts()
     {
         var fixture = new WorldFixture();
-        fixture.Engine.Current.PendingMessages.Add(new PendingMessage
+        fixture.Engine.Current.PendingMessages = fixture.Engine.Current.PendingMessages.Add(new PendingMessage
         {
-            SenderId = fixture.ResidentId, RecipientId = fixture.ResidentId, DeliverTick = 1,
+            SenderId = fixture.ResidentId,
+            RecipientId = fixture.ResidentId,
+            DeliverTick = 1,
         });
         var saved = JsonNode.Parse(fixture.Engine.ExportJson())!;
         saved["PendingMessages"]![0]!["Facts"] = null;

@@ -85,15 +85,19 @@ public sealed partial class WorldEngine
             return false;
         if (!CanClaimTile(town, index, person.Race))
         {
-            person.Agent.NextThinkTick = Current.Tick;
+            person.Agent = person.Agent with { NextThinkTick = Current.Tick };
             return false;
         }
 
         if (person.Agent.Goal.WorkTicks < 3)
             return true;
         var tile = Current.Tiles[index];
-        tile.Replace(tile.Value with { NationId = town.NationId, ClaimedSettlementId = town.Id });
-        person.Agent.NextThinkTick = Current.Tick;
+        tile.Replace(tile.Value with
+        {
+            NationId = town.NationId,
+            ClaimedSettlementId = town.Id
+        });
+        person.Agent = person.Agent with { NextThinkTick = Current.Tick };
         if (Current.Tick % 12 == 0)
         {
             AddEvent(WorldEventKind.Growth, $"{person.Name}实地为{town.Name}登记新地盘。", person.X, person.Y,

@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace SeWZC.WorldBox.Core.Runtime;
 
 /// <summary>Settlement 的引擎内定位引用；连续仓库补给在阶段结束或读取快照时合并提交。</summary>
@@ -190,17 +192,13 @@ internal sealed partial class SettlementCursor : StateCursor<Settlement>
         }
     }
 
-    public SnapshotListCursor<AgentFact> PublicKnowledge
+    public ImmutableList<AgentFact> PublicKnowledge
     {
-        get => field ??= new SnapshotListCursor<AgentFact>(Value.PublicKnowledge, value =>
+        get => Value.PublicKnowledge;
+        set
         {
             if (!ReferenceEquals(Value.PublicKnowledge, value))
                 ReplaceChanged(Value with { PublicKnowledge = value });
-        });
-        set
-        {
-            field = null;
-            Replace(Value with { PublicKnowledge = value.Snapshot });
         }
     }
 

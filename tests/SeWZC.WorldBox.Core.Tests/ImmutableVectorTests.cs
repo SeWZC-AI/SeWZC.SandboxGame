@@ -3,6 +3,38 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>持久化序列的分支边界、路径更新和输入隔离。</summary>
 public sealed class ImmutableVectorTests
 {
+    /// <summary>筛选保留未合并的差异、对象身份和原顺序；无变化时复用输入。</summary>
+    [Fact]
+    public void RemoveAll_preserves_pending_updates_and_retained_items()
+    {
+        var original = ImmutableVector<Item>.CreateRange(Enumerable.Range(0, 65).Select(id => new Item(id)));
+        var before = original.SetItem(64, new Item(-1));
+
+        var after = before.RemoveAll(item => item.Id % 2 == 0);
+
+        Assert.Equal(64, original[64].Id);
+        Assert.Equal(-1, before[64].Id);
+        Assert.Equal([.. Enumerable.Range(0, 65).Where(id => id % 2 != 0), -1], after.Select(item => item.Id));
+        Assert.Same(before[1], after[0]);
+        Assert.Same(before[64], after[^1]);
+        Assert.Same(before, before.RemoveAll(item => item.Id == -2));
+        Assert.Empty(before.RemoveAll(_ => true));
+        Assert.Equal(64, before.FindIndex(item => item.Id == -1));
+        Assert.Equal(-1, before.FindIndex(item => item.Id == 64));
+    }
+
+    /// <summary>筛选中途失败不能改变输入快照。</summary>
+    [Fact]
+    public void Failing_filter_preserves_the_input()
+    {
+        ImmutableVector<Item> before = [new(1), new(2), new(3)];
+
+        Assert.Throws<InvalidOperationException>(() => before.RemoveAll(item =>
+            item.Id == 3 ? throw new InvalidOperationException() : item.Id == 1));
+
+        Assert.Equal([1, 2, 3], before.Select(item => item.Id));
+    }
+
     /// <summary>局部可变更新读取原序列的差异，跨分支冻结后不能改写任何已返回的版本。</summary>
     [Theory]
     [InlineData(9)]

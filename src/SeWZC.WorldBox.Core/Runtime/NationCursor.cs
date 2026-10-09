@@ -3,7 +3,6 @@ namespace SeWZC.WorldBox.Core.Runtime;
 /// <summary>Nation 的引擎内定位引用；每次写入提交新的不可变状态。</summary>
 internal sealed class NationCursor : StateCursor<Nation>
 {
-    private MilitaryRecordCursor? _military;
     public NationCursor(Nation value) : base(value) { }
 
     public int Id
@@ -96,21 +95,13 @@ internal sealed class NationCursor : StateCursor<Nation>
         }
     }
 
-    public MilitaryRecordCursor Military
+    public MilitaryRecord Military
     {
-        get
+        get => Value.Military;
+        set
         {
-            if (_military is null)
-            {
-                _military = new MilitaryRecordCursor(Value.Military);
-                _military.Bind(value =>
-                {
-                    if (!ReferenceEquals(Value.Military, value))
-                        ReplaceChanged(Value with { Military = value });
-                });
-            }
-
-            return _military;
+            if (!ReferenceEquals(Value.Military, value))
+                ReplaceChanged(Value with { Military = value });
         }
     }
 
@@ -144,9 +135,4 @@ internal sealed class NationCursor : StateCursor<Nation>
         return new NationCursor(value);
     }
 
-    protected override void OnReplace(in Nation before, in Nation after)
-    {
-        if (_military is not null && !ReferenceEquals(_military.Value, after.Military))
-            _military.Synchronize(after.Military);
-    }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text.Json;
 using SeWZC.WorldBox.Core.Runtime;
 
@@ -85,7 +86,7 @@ public sealed partial class WorldEngine
     public void SetWorldRules(bool naturalDisasters, bool magicEnabled)
     {
         Current.NaturalDisasters = naturalDisasters;
-        Current.Society.MagicEnabled = magicEnabled;
+        Current.Society = Current.Society with { MagicEnabled = magicEnabled };
         AddEvent(WorldEventKind.Editor, "世界规则已更新；居民通过当地观察了解变化。");
     }
 
@@ -98,99 +99,115 @@ public sealed partial class WorldEngine
         var original = RequireResident(id);
         var liveIndex = Current.Residents.IndexOf(original);
         var isLive = liveIndex >= 0;
-        var candidate = new ResidentCursor(original.Value);
-        if (patch.Name is not null)
-            candidate.Name = patch.Name.Trim();
-        if (patch.Race is { } race)
-            candidate.Race = race;
-        if (patch.CultureId is { } culture)
-            candidate.CultureId = culture;
-        if (patch.SettlementId is { } townId && (isLive || townId != original.SettlementId))
-        {
-            if (!_settlements.TryGetValue(townId, out var town))
-                throw new ArgumentException("目标聚落不存在。");
-            candidate.Replace(candidate.Value with { SettlementId = townId, NationId = town.NationId });
-            if (townId != original.SettlementId)
-                candidate.Replace(candidate.Value with { X = town.X, Y = town.Y, ArmyId = 0 });
-        }
-
-        if (patch.X is { } x)
-            candidate.X = x;
-        if (patch.Y is { } y)
-            candidate.Y = y;
-        if (patch.ArmyId is { } army)
-            candidate.ArmyId = army;
-        if (patch.SicknessTicks is { } sickness)
-            candidate.SicknessTicks = sickness;
-        if (patch.Inventory is { } stock)
-            candidate.Inventory = stock;
-        if (patch.Profession is { } profession)
-            candidate.Profession = profession;
-        if (candidate.Profession != original.Profession || candidate.SettlementId != original.SettlementId)
-        {
-            candidate.Agent.WorkplaceId = 0;
-            candidate.Agent.WorkAreaIndex = -1;
-        }
-
-        if (patch.Age is { } age)
-            candidate.Age = age;
-        if (patch.Health is { } health)
-        {
-            candidate.Health = health;
-            if (isLive && health <= 0)
-                candidate.Replace(candidate.Value with
-                {
-                    DeathCause = DeathCause.PlayerIntervention, DeathTick = Current.Tick,
-                });
-        }
-
-        if (patch.Hunger is { } hunger)
-            candidate.Hunger = hunger;
-        if (patch.Thirst is { } thirst)
-            candidate.Thirst = thirst;
-        if (patch.Trait is not null)
-        {
-            candidate.Trait = patch.Trait;
-            switch (patch.Trait)
-            {
-                case "勤劳":
-                    candidate.Agent.Personality = candidate.Agent.Personality with { Diligence = .9 };
-                    break;
-                case "勇敢":
-                    candidate.Agent.Personality = candidate.Agent.Personality with { Courage = .9 };
-                    break;
-                case "好奇":
-                    candidate.Agent.Personality = candidate.Agent.Personality with { Ambition = .9 };
-                    break;
-                case "温和":
-                    candidate.Agent.Personality = candidate.Agent.Personality with { Sociability = .9 };
-                    break;
-            }
-        }
-
-        if (patch.Mana is { } mana)
-            candidate.Mana = mana;
-        if (patch.MagicTalent is { } talent)
-            candidate.MagicTalent = talent;
-        if (patch.MagicTraining is { } training)
-            candidate.MagicTraining = training;
-        if (patch.Agent is not null)
-            candidate.Agent = new AgentStateCursor(patch.Agent);
-
-        if (patch.History is not null)
-            candidate.History = patch.History.ToList();
-
-        ValidateResidentV2(candidate, Current.Tick, Current.Width, Current.Height);
-        ValidateStoryReferences(candidate, Current.NextId);
+        var (candidate, startMission, nextId) = PrepareResidentEdit(original.Value, patch, isLive, State);
+        Current.NextId = nextId;
+        var edited = new ResidentCursor(candidate);
+        if (isLive)
+            Current.Residents[liveIndex] = edited;
+        else
+            Current.ArchivedResidents[Current.ArchivedResidents.IndexOf(original)] = edited;
         if (isLive)
         {
-            if (!InBounds(candidate.X, candidate.Y) || !CanTraverse(Current.Tiles[Index(candidate.X, candidate.Y)],
+            if (startMission && _settlements.TryGetValue(candidate.SettlementId, out var missionHome))
+                BeginAgentMission(edited, missionHome);
+            Reindex();
+            InitializeSociety();
+            RefreshTotals();
+        }
+
+        var editEvent = AddEvent(WorldEventKind.Editor, $"{candidate.Name}的角色记录已修订；过去的世界结果保持原样。", candidate.X,
+            candidate.Y);
+        editEvent = PublishEvent(editEvent with
+        {
+            ResidentId = candidate.Id,
+            NationId = candidate.NationId
+        });
+    }
+
+    // 候选编辑只转换输入快照；校验通过后由命令提交居民和编号。
+    private static (Resident Candidate, bool StartMission, int NextId) PrepareResidentEdit(
+        Resident original, ResidentEdit patch, bool isLive, in WorldState state)
+    {
+        var candidate = original with
+        {
+            Name = patch.Name?.Trim() ?? original.Name,
+            Race = patch.Race ?? original.Race,
+            CultureId = patch.CultureId ?? original.CultureId,
+        };
+        var nextId = state.NextId;
+        if (patch.SettlementId is { } townId && (isLive || townId != original.SettlementId))
+        {
+            if (state.Settlements.FirstOrDefault(town => town.Id == townId) is not { } town)
+                throw new ArgumentException("目标聚落不存在。");
+            candidate = candidate with
+            {
+                SettlementId = townId,
+                NationId = town.NationId
+            };
+            if (townId != original.SettlementId)
+                candidate = candidate with
+                {
+                    X = town.X,
+                    Y = town.Y,
+                    ArmyId = 0
+                };
+        }
+
+        candidate = candidate with
+        {
+            X = patch.X ?? candidate.X,
+            Y = patch.Y ?? candidate.Y,
+            ArmyId = patch.ArmyId ?? candidate.ArmyId,
+            SicknessTicks = patch.SicknessTicks ?? candidate.SicknessTicks,
+            Inventory = patch.Inventory ?? candidate.Inventory,
+            Profession = patch.Profession ?? candidate.Profession,
+            Age = patch.Age ?? candidate.Age,
+            Health = patch.Health ?? candidate.Health,
+            DeathCause = isLive && patch.Health is <= 0 ? DeathCause.PlayerIntervention : candidate.DeathCause,
+            DeathTick = isLive && patch.Health is <= 0 ? state.Tick : candidate.DeathTick,
+            Hunger = patch.Hunger ?? candidate.Hunger,
+            Thirst = patch.Thirst ?? candidate.Thirst,
+            Trait = patch.Trait ?? candidate.Trait,
+            Mana = patch.Mana ?? candidate.Mana,
+            MagicTalent = patch.MagicTalent ?? candidate.MagicTalent,
+            MagicTraining = patch.MagicTraining ?? candidate.MagicTraining,
+            History = patch.History?.ToImmutableList() ?? candidate.History,
+        };
+        var agent = candidate.Agent;
+        if (candidate.Profession != original.Profession || candidate.SettlementId != original.SettlementId)
+            agent = agent with
+            {
+                WorkplaceId = 0,
+                WorkAreaIndex = -1
+            };
+        if (patch.Trait is not null)
+        {
+            var personality = agent.Personality;
+            agent = agent with
+            {
+                Personality = patch.Trait switch
+                {
+                    "勤劳" => personality with { Diligence = .9 },
+                    "勇敢" => personality with { Courage = .9 },
+                    "好奇" => personality with { Ambition = .9 },
+                    "温和" => personality with { Sociability = .9 },
+                    _ => personality,
+                },
+            };
+        }
+        candidate = candidate with { Agent = patch.Agent ?? agent };
+
+        ValidateResidentV2(candidate, state.Tick, state.Width, state.Height);
+        ValidateStoryReferences(candidate, state.NextId);
+        if (isLive)
+        {
+            if (!Coordinates(candidate.X, candidate.Y, state.Width, state.Height) || !CanTraverse(state.Tiles[candidate.Y * state.Width + candidate.X],
                     candidate.TravelMode, candidate.Race))
                 throw new ArgumentException("居民必须位于可通行地格。");
             if (candidate.ArmyId != 0 &&
-                !Current.Armies.Any(a => a.Id == candidate.ArmyId && a.NationId == candidate.NationId))
+                !state.Armies.Any(a => a.Id == candidate.ArmyId && a.NationId == candidate.NationId))
                 throw new ArgumentException("军队不存在或与居民所属国家不一致。");
-            if (candidate.CultureId != 0 && !Current.Society.Cultures.Any(c => c.Id == candidate.CultureId))
+            if (candidate.CultureId != 0 && !state.Society.Cultures.Any(c => c.Id == candidate.CultureId))
                 throw new ArgumentException("文化不存在。");
         }
 
@@ -212,31 +229,52 @@ public sealed partial class WorldEngine
                            Impact(original.History, PersonalExperienceKind.Betrayal);
             var learning = Impact(candidate.History, PersonalExperienceKind.Learning) -
                            Impact(original.History, PersonalExperienceKind.Learning);
-            candidate.Agent.Personality = personality with
+            candidate = candidate with
             {
-                Courage = Math.Clamp(personality.Courage + (achievement - hardship) * 0.1, 0, 1),
-                Sociability = Math.Clamp(personality.Sociability + (kindness - betrayal) * 0.1, 0, 1),
-                Diligence = Math.Clamp(personality.Diligence + learning * 0.1, 0, 1),
+                Agent = candidate.Agent with
+                {
+                    Personality = personality with
+                    {
+                        Courage = Math.Clamp(personality.Courage + (achievement - hardship) * 0.1, 0, 1),
+                        Sociability = Math.Clamp(personality.Sociability + (kindness - betrayal) * 0.1, 0, 1),
+                        Diligence = Math.Clamp(personality.Diligence + learning * 0.1, 0, 1),
+                    }
+                }
             };
-            candidate.History = candidate.History.Select(entry => entry with { PlayerEdited = true }).ToList();
+            candidate = candidate with
+            {
+                History = candidate.History.Select(entry => entry with { PlayerEdited = true }).ToImmutableList()
+            };
         }
 
         if (patch.Agent is not null && candidate.Agent.Decisions.LastOrDefault() is { } thought &&
             candidate.Agent.Goal.Kind == original.Agent.Goal.Kind &&
             thought.Reason != original.Agent.Decisions.LastOrDefault()?.Reason)
         {
-            candidate.Agent.Goal = candidate.Agent.Goal with
+            candidate = candidate with
             {
-                Kind = thought.Goal, Reason = thought.Reason, PlayerDirected = true, ReviewTick = Current.Tick + 24,
+                Agent = candidate.Agent.WithGoal(candidate.Agent.Goal with
+                {
+                    Kind = thought.Goal,
+                    Reason = thought.Reason,
+                    PlayerDirected = true,
+                    ReviewTick = state.Tick + 24,
+                })
             };
         }
 
-        candidate.Agent.NextThinkTick = Current.Tick;
+        candidate = candidate with
+        {
+            Agent = candidate.Agent with { NextThinkTick = state.Tick }
+        };
         if (candidate.X != original.X || candidate.Y != original.Y)
-            candidate.Replace(candidate.Value with
+            candidate = candidate with
             {
-                FromX = candidate.X, FromY = candidate.Y, MoveStartedTick = Current.Tick, MoveDurationTicks = 1,
-            });
+                FromX = candidate.X,
+                FromY = candidate.Y,
+                MoveStartedTick = state.Tick,
+                MoveDurationTicks = 1,
+            };
 
         var startMission = isLive && patch.Agent is not null &&
                            candidate.Agent.Goal.Kind is AgentGoalKind.DeliverMessage or AgentGoalKind.Trade
@@ -247,7 +285,7 @@ public sealed partial class WorldEngine
         {
             if (candidate.ArmyId != 0)
                 throw new ArgumentException("正在军队服役的居民需要先退役，才能执行民用运输任务。");
-            if (!_settlements.TryGetValue(candidate.Agent.Goal.TargetSettlementId, out var destination))
+            if (state.Settlements.FirstOrDefault(town => town.Id == candidate.Agent.Goal.TargetSettlementId) is not { } destination)
                 throw new ArgumentException("运输或递送目标需要选择有效聚落编号。");
             if (destination.Id == candidate.SettlementId && candidate.Agent.Goal.Kind == AgentGoalKind.Trade)
                 throw new ArgumentException("贸易目标须为另一座聚落。");
@@ -255,49 +293,62 @@ public sealed partial class WorldEngine
                 f.Kind == AgentFactKind.SettlementLocation && f.SubjectId == destination.Id);
             if (address is null || address.X != destination.X || address.Y != destination.Y)
             {
+                var memory = candidate.Agent.Memory;
                 if (address is not null)
-                    candidate.Agent.Memory.Remove(address);
-                if (candidate.Agent.Memory.Count == 16)
-                    candidate.Agent.Memory.RemoveAt(0);
-                candidate.Agent.Memory.Add(new AgentFact
+                    memory = memory.Remove(address);
+                if (memory.Length == 16)
+                    memory = memory.RemoveAt(0);
+                memory = memory.Add(new AgentFact
                 {
                     Kind = AgentFactKind.SettlementLocation,
                     SubjectId = destination.Id,
                     X = destination.X,
                     Y = destination.Y,
                     Value = destination.NationId,
-                    ObservedTick = Current.Tick,
-                    LearnedTick = Current.Tick,
+                    ObservedTick = state.Tick,
+                    LearnedTick = state.Tick,
                     OriginResidentId = candidate.Id,
                     SourceResidentId = candidate.Id,
                     OriginProfession = candidate.Profession,
                     Text = "玩家告知了本次递送的目的地",
                 });
+                candidate = candidate with
+                {
+                    Agent = candidate.Agent with { Memory = memory }
+                };
             }
 
-            candidate.Replace(candidate.Value with
+            candidate = candidate with
             {
-                Agent = candidate.Agent.Value with
+                Agent = candidate.Agent with
                 {
                     Goal = candidate.Agent.Goal with
                     {
-                        TargetX = destination.X, TargetY = destination.Y, StartedTick = Current.Tick,
+                        TargetX = destination.X,
+                        TargetY = destination.Y,
+                        StartedTick = state.Tick,
                     },
-                    MissionRetryTick = Current.Tick,
+                    MissionRetryTick = state.Tick,
                 },
-            });
+            };
         }
         else if (patch.Agent is not null && candidate.Agent.Goal.Kind is not AgentGoalKind.Trade
                      and not AgentGoalKind.DeliverMessage and not AgentGoalKind.Petition)
         {
-            candidate.Agent.DestinationSettlementId = 0;
-            candidate.Agent.CarriedMessages.Clear();
+            candidate = candidate with
+            {
+                Agent = candidate.Agent with
+                {
+                    DestinationSettlementId = 0,
+                    CarriedMessages = []
+                },
+            };
         }
 
         // 编辑产生新身份的信息快照，已传播副本保留旧身份，避免修改过去收到的信息。
         if (patch.Agent is not null)
         {
-            ValidateResidentV2(candidate, Current.Tick, Current.Width, Current.Height);
+            ValidateResidentV2(candidate, state.Tick, state.Width, state.Height);
             var changedFacts = candidate.Agent.Memory.Concat(candidate.Agent.CarriedMessages)
                 .Where(fact => !original.Agent.Memory.Concat(original.Agent.CarriedMessages)
                     .Any(prior => fact.Id > 0 && prior.Id == fact.Id && SameFactSnapshot(prior, fact))).ToArray();
@@ -315,7 +366,7 @@ public sealed partial class WorldEngine
                 var oldId = fact.Id;
                 if (oldId <= 0 || !revisions.TryGetValue(oldId, out var assigned))
                 {
-                    assigned = NewId();
+                    assigned = nextId++;
                     if (oldId > 0)
                         revisions[oldId] = assigned;
                 }
@@ -327,34 +378,31 @@ public sealed partial class WorldEngine
                     OriginProfession = fact.OriginResidentId == 0 ? candidate.Profession : fact.OriginProfession,
                     SourceResidentId = fact.SourceResidentId == 0 ? candidate.Id : fact.SourceResidentId,
                 };
-                candidate.Agent.Memory = candidate.Agent.Memory
-                    .Select(item => ReferenceEquals(item, fact) ? revisedFact : item).ToList();
-                candidate.Agent.CarriedMessages = candidate.Agent.CarriedMessages
-                    .Select(item => ReferenceEquals(item, fact) ? revisedFact : item).ToList();
+                candidate = candidate with
+                {
+                    Agent = candidate.Agent with
+                    {
+                        Memory = candidate.Agent.Memory
+                            .Select(item => ReferenceEquals(item, fact) ? revisedFact : item).ToImmutableArray(),
+                        CarriedMessages = candidate.Agent.CarriedMessages
+                            .Select(item => ReferenceEquals(item, fact) ? revisedFact : item).ToImmutableList(),
+                    },
+                };
             }
 
-            candidate.Agent.Decisions = candidate.Agent.Decisions.Select(decision =>
-                revisions.TryGetValue(decision.EvidenceFactId, out var revised)
-                    ? decision with { EvidenceFactId = revised }
-                    : decision).ToList();
+            candidate = candidate with
+            {
+                Agent = candidate.Agent with
+                {
+                    Decisions = candidate.Agent.Decisions.Select(decision =>
+                    revisions.TryGetValue(decision.EvidenceFactId, out var revised)
+                        ? decision with { EvidenceFactId = revised }
+                        : decision).ToImmutableList()
+                }
+            };
         }
 
-        if (isLive)
-            Current.Residents[liveIndex] = candidate;
-        else
-            Current.ArchivedResidents[Current.ArchivedResidents.IndexOf(original)] = candidate;
-        if (isLive)
-        {
-            if (startMission && _settlements.TryGetValue(candidate.SettlementId, out var missionHome))
-                BeginAgentMission(candidate, missionHome);
-            Reindex();
-            InitializeSociety();
-            RefreshTotals();
-        }
-
-        var editEvent = AddEvent(WorldEventKind.Editor, $"{candidate.Name}的角色记录已修订；过去的世界结果保持原样。", candidate.X,
-            candidate.Y);
-        editEvent.Replace(editEvent.Value with { ResidentId = candidate.Id, NationId = candidate.NationId });
+        return (candidate, startMission, nextId);
     }
 
     private static bool SameFactSnapshot(AgentFact first, AgentFact second)

@@ -3,6 +3,23 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>行动目标的纯导航与驻留进度转换检查。</summary>
 public sealed class AgentGoalTests
 {
+    /// <summary>相同目标复用原认知，改变目标时保留原状态及其记忆。</summary>
+    [Fact]
+    public void Unchanged_goal_reuses_agent_state_and_changed_goal_preserves_the_input()
+    {
+        var goal = new AgentGoal { Kind = AgentGoalKind.Work };
+        var before = new AgentState { Goal = goal, Memory = [new AgentFact()] };
+
+        Assert.Same(before, before.WithGoal(goal));
+        Assert.Same(before, before.WithGoal(goal with { }));
+        var next = goal with { Kind = AgentGoalKind.ReturnHome };
+        var after = before.WithGoal(next);
+
+        Assert.Same(goal, before.Goal);
+        Assert.Same(next, after.Goal);
+        Assert.Equal(before.Memory, after.Memory);
+    }
+
     /// <summary>需要等待的任务逐日到场登记，在三日后保留已完成的进度。</summary>
     [Theory]
     [InlineData(AgentGoalKind.ReturnHome)]
@@ -63,14 +80,17 @@ public sealed class AgentGoalTests
         fixture.Resident.MoveDurationTicks = frozen ? 1 : 3;
         fixture.Resident.MoveStartedTick = 0;
         fixture.Resident.FrozenUntilTick = frozen ? 3 : 0;
-        fixture.Resident.Agent.Goal = new AgentGoal
+        fixture.Resident.Agent = fixture.Resident.Agent with
         {
-            Kind = AgentGoalKind.ReturnHome,
-            TargetX = fixture.Town.X,
-            TargetY = fixture.Town.Y,
-            TargetSettlementId = fixture.Town.Id,
-            PlayerDirected = true,
-            ReviewTick = 100,
+            Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.ReturnHome,
+                TargetX = fixture.Town.X,
+                TargetY = fixture.Town.Y,
+                TargetSettlementId = fixture.Town.Id,
+                PlayerDirected = true,
+                ReviewTick = 100,
+            }
         };
 
         fixture.Engine.Step();
@@ -98,13 +118,16 @@ public sealed class AgentGoalTests
         fixture.Resident.Y = 16;
         fixture.Resident.FromX = 16;
         fixture.Resident.FromY = 16;
-        fixture.Resident.Agent.Goal = new AgentGoal
+        fixture.Resident.Agent = fixture.Resident.Agent with
         {
-            Kind = AgentGoalKind.Explore,
-            TargetX = 19,
-            TargetY = 16,
-            PlayerDirected = true,
-            ReviewTick = 100,
+            Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.Explore,
+                TargetX = 19,
+                TargetY = 16,
+                PlayerDirected = true,
+                ReviewTick = 100,
+            }
         };
         var before = fixture.Engine.State.Residents[0];
 

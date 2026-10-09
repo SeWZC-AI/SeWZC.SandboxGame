@@ -105,7 +105,7 @@ public sealed class ImmutableWorldTests
         {
             survivor.Health = 60;
             list.RemoveAt(0);
-            survivor.Agent.Fatigue = 20;
+            survivor.Agent = survivor.Agent with { Fatigue = 20 };
             Assert.Equal(2, fixture.Engine.Current.Population);
             var middle = fixture.Engine.State;
             Assert.Equal(60, middle.Residents[0].Health);
@@ -137,12 +137,15 @@ public sealed class ImmutableWorldTests
             fixture.Resident.Health = 70;
             fixture.Resident.X = 15;
             fixture.Resident.Inventory = new ResourceStock { Food = 3 };
-            fixture.Resident.Agent.Fatigue = 40;
+            fixture.Resident.Agent = fixture.Resident.Agent with { Fatigue = 40 };
             Assert.Equal(70, fixture.Resident.Health);
             Assert.Equal(15, fixture.Resident.X);
             var middle = fixture.Engine.State;
             fixture.Resident.Health = 50;
-            fixture.Resident.Agent.Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = 15, TargetY = 16 };
+            fixture.Resident.Agent = fixture.Resident.Agent with
+            {
+                Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = 15, TargetY = 16 }
+            };
             fixture.Resident.Profession = Profession.Laborer;
             Assert.Equal(70, middle.Residents[0].Health);
             Assert.Equal(40, middle.Residents[0].Agent.Fatigue);
@@ -378,7 +381,7 @@ public sealed class ImmutableWorldTests
             }
 
             fixture.Engine.Current.Residents.Transform(person => person with { Hunger = 20 });
-            fixture.Resident.Agent.Fatigue = 25;
+            fixture.Resident.Agent = fixture.Resident.Agent with { Fatigue = 25 };
             fixture.Engine.Current.Residents.Remove(fixture.Resident);
             fixture.Engine.Current.Residents.Add(new Resident { Id = 900, Name = "新居民" });
             fixture.Engine.Current.Residents[0].Inventory = new ResourceStock { Food = 7 };
@@ -414,9 +417,9 @@ public sealed class ImmutableWorldTests
         Assert.Equal(20, fixture.Engine.State.Residents[0].Hunger);
     }
 
-    /// <summary>整批需求转换后，已有嵌套定位引用仍保留新身体和认知状态。</summary>
+    /// <summary>整批需求转换后显式更新当前认知，保留此前取得的认知值。</summary>
     [Fact]
-    public void Batch_transition_synchronizes_existing_nested_cursors()
+    public void Batch_transition_preserves_previously_read_agent_values()
     {
         var fixture = new WorldFixture();
         var agent = fixture.Resident.Agent;
@@ -424,15 +427,17 @@ public sealed class ImmutableWorldTests
 
         fixture.Engine.Current.Residents.Transform(person => person with
         {
-            Health = 80, Agent = person.Agent with { Fatigue = 25 },
+            Health = 80,
+            Agent = person.Agent with { Fatigue = 25 },
         });
-        agent.Memory.Add(new AgentFact { SubjectId = 99 });
+        fixture.Resident.Agent = fixture.Resident.Agent.Remember(new AgentFact { SubjectId = 99 }, fixture.Town.Id);
 
         Assert.Equal(80, fixture.Engine.State.Residents[0].Health);
         Assert.Equal(25, fixture.Engine.State.Residents[0].Agent.Fatigue);
         Assert.Equal(99, fixture.Engine.State.Residents[0].Agent.Memory[^1].SubjectId);
         Assert.Equal(100, before.Residents[0].Health);
         Assert.Equal(0, before.Residents[0].Agent.Fatigue);
+        Assert.Same(before.Residents[0].Agent, agent);
     }
 
     /// <summary>移除后重新绑定归档集合的定位引用不会继续改写原集合。</summary>
@@ -528,7 +533,7 @@ public sealed class ImmutableWorldTests
         var initialKnowledge = initial.Residents[0].Agent.Memory;
         var fact = new AgentFact { Id = fixture.Engine.Current.NextId++, Text = "新观察" };
 
-        fixture.Resident.Agent.Memory.Add(fact);
+        fixture.Resident.Agent = fixture.Resident.Agent with { Memory = fixture.Resident.Agent.Memory.Add(fact) };
         var observed = fixture.Engine.State;
         fixture.Resident.Inventory = new ResourceStock { Food = 3 };
         var supplied = fixture.Engine.State;
@@ -541,9 +546,9 @@ public sealed class ImmutableWorldTests
         Assert.Equal(initial.Tick, supplied.Tick);
     }
 
-    /// <summary>嵌套定位引用在父记录转换后仍指向当前状态，不能覆盖已经提交的需求。</summary>
+    /// <summary>父记录转换后读取新的认知值，旧认知值保持独立。</summary>
     [Fact]
-    public void Nested_locator_follows_a_parent_transition()
+    public void Parent_transition_keeps_previously_read_agent_values_independent()
     {
         var fixture = new WorldFixture();
         var agent = fixture.Resident.Agent;
@@ -551,14 +556,16 @@ public sealed class ImmutableWorldTests
 
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            Agent = agent.Value with { Fatigue = 25 }, Activity = ResidentActivity.Working,
+            Agent = agent with { Fatigue = 25 },
+            Activity = ResidentActivity.Working,
         });
-        agent.SocialNeed = 30;
+        fixture.Resident.Agent = fixture.Resident.Agent with { SocialNeed = 30 };
 
         Assert.Equal(25, fixture.Engine.State.Residents[0].Agent.Fatigue);
         Assert.Equal(30, fixture.Engine.State.Residents[0].Agent.SocialNeed);
         Assert.Equal(ResidentActivity.Working, fixture.Engine.State.Residents[0].Activity);
         Assert.NotEqual(25, before.Residents[0].Agent.Fatigue);
+        Assert.Same(before.Residents[0].Agent, agent);
     }
 
     /// <summary>不可变种群和地形转换保留原地格，离开河道时清除宽度。</summary>

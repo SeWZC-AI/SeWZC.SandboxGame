@@ -45,7 +45,7 @@ dotnet run --project src/SeWZC.WorldBox.Browser
 - 注释用中文。类型注释先说明它是什么，不罗列字段或所有行为；成员说明业务含义、参数约定和必要调用条件，删除重复实现与空泛理由。公开及受保护 API、枚举成员提供 XML 文档；位置式 record 用 `<param>`，接口实现或重写可用 `<inheritdoc />`。参数较多或含义不明确的非公开构造函数同样提供 XML 和参数说明。[构建配置](../Directory.Build.props) 生成 XML，并将 `CS1591` 作为错误。
 - 延续人工提交的展开参数、明确类型归属与简洁注释风格，复杂流程不用单字母代替业务含义。枚举 `switch` 分支及同组成员按声明顺序排列；条件重叠、范围匹配和跳转以原匹配语义为先。
 - 行为分派优先用带明确参数的对象及多态方法，显示文案和自动化标识不参与业务判断。新地图工具在 `MapTool` 中实现校验、预览和执行，不重新解析 `build:` 字符串。
-- 共享规则、费用及前置集合不可变；研究前置直接引用 `Advancement` 对象，前置与解锁保存为 `ImmutableArray`。`ResourceAmounts` 表示只读配方，`ResourceStock` 表示不可变库存值；扣费、缩放和运输显式提交转换后的库存。构造与状态转换优先使用不可变类型，性能取舍先测量、再优化，不以更新频繁为由直接保留可变类型。世界和编辑候选以不可变记录及持久化集合转换；候选校验通过后提交，拒绝操作不污染当前世界。局部可变构建器仅用于日内合并，冻结后交出分支所有权，后续写入重新复制，已返回的世界及实体快照不能被修改。引擎定位引用及派生索引不进入可保存状态。
+- 共享规则、费用及前置集合不可变；研究前置直接引用 `Advancement` 对象，前置与解锁保存为 `ImmutableArray`。`ResourceAmounts` 表示只读配方，`ResourceStock` 表示不可变库存值；扣费、缩放和运输显式提交转换后的库存。构造与状态转换优先使用不可变类型及只依赖显式输入、无对外副作用的纯函数，允许函数内部的局部可变操作；不以可变包装器代替值转换。性能取舍先测量、再优化，不以更新频繁为由直接保留可变类型。世界和编辑候选以不可变记录及持久化集合转换；候选校验通过后提交，拒绝操作不污染当前世界。局部可变构建器不对外暴露，冻结后交出分支所有权，后续写入重新复制，已返回的世界及实体快照不能被修改。引擎定位引用及派生索引不进入可保存状态。
 - 构造后不再赋值的命令参数优先 `init`，必需参数用 `required` 或构造参数；有合法缺省语义的存档字段不能一律改为必需。保留有实际用途的紧凑枚举，热点不增加逐格对象或无依据的通用层。
 
 ## 容易破坏的边界
@@ -84,14 +84,14 @@ dotnet run --project src/SeWZC.WorldBox.Browser
 
 CI 范围见 [部署指南](deployment.md#发布到-github-pages)。验证与测量结果在任务回复中说明实际源码、环境和未覆盖范围；测量另注明种子、规模、配置、预热与复测，原生结果不能换算为浏览器帧率。日志、TRX、截图和测量数据放入已忽略的 `artifacts/` 或 Actions 产物。
 
-核心模拟基准使用 `DOTNET_TieredCompilation=1 DOTNET_TieredPGO=1 dotnet run --project tools/SeWZC.WorldBox.Benchmarks -c Release -- artifacts/immutable-benchmark.json`。工具在计时外构建初态、至少预热 128 日并保存，记录全程、各轮与逐年的每日耗时（ms）和分配量（MB）的平均值、P95、最大值，以及逐日样本、人口、GC、实际程序集哈希、规则和环境配额，并检查重复模拟和保存恢复后的结果。P95 使用全部每日样本的最近秩，MB 为 1,000,000 字节；分配量覆盖全部托管线程，包含并行身体计算，仅统计 `Step()` 窗口。原生桌面及基准入口启用服务器 GC、分层编译和动态 PGO，基准记录实际 GC 模式和编译开关；可用 `DOTNET_gcServer=0` 对比工作站 GC、`DOTNET_TieredCompilation=0` 对比关闭分层编译的结果。平均耗时目标与逐日 P95、峰值分别报告，不将平均值当作单日硬上限。追加 `--initialization` 单独测量创建地图并补足场景人口，预热四次后记录每轮耗时和当前线程分配，并验证重复初始化及保存往返；该模式只可搭配 `--large`、`--seed=整数` 和 `--repetitions=整数`。追加 `--default-rules` 测量默认规则；`--large` 只测 256²／4096 人，`--steady` 在计时外推进 12 日后测量后续 64 日；`--seed=整数` 与 `--start-day=整数` 可更换种子和计时起始日；`--years=100` 从日序 0 连续测量到日序 12,000（经过 0–100 年，游戏日期从第 1 年开始），预热后恢复初态，默认复测三轮，每轮记录 100 个年度窗口的起止日序、样本数、六项性能统计、GC、人口及年末聚落、建筑、军队数量；`--repetitions=整数` 可调整轮数。指定 `--start-day` 或 `--steady` 时，起点相应后移。搭配 `--large --default-rules --years=100 --population-floor=4096` 会在每日计时外通过正常居民生成入口补足人口，并记录补充数量与实际人口，防止人口下降掩盖负载。追加 `--save-final` 在计时外按场景名和轮次分别保存终态，便于采样同一成熟世界；Linux 采集全进程 CPU，其他平台的 CPU 字段为 `null`，逐日 `GcPauseMs` 仅为最后一次回收记录的暂停时长。追加 `--verify` 独立验证两个种子、两种地图在默认规则下运行 240 日及中途恢复的结果。
+核心模拟基准只测 256×256 地图、4096 人开局、默认规则自然演化 100 年，使用 `DOTNET_TieredCompilation=1 DOTNET_TieredPGO=1 dotnet run --project tools/SeWZC.WorldBox.Benchmarks -c Release -- artifacts/immutable-benchmark.json --large --default-rules --years=100`。工具在计时外构建初态、至少预热 128 日并保存，记录全程、各轮与逐年的每日耗时（ms）和分配量（MB）的平均值、P95、最大值，以及逐日样本、人口、GC、实际程序集哈希、规则和环境配额，并检查重复模拟和保存恢复后的结果。P95 使用全部每日样本的最近秩，MB 为 1,000,000 字节；分配量覆盖全部托管线程，包含并行身体计算，仅统计 `Step()` 窗口。原生桌面及基准入口启用服务器 GC、分层编译和动态 PGO，基准记录实际 GC 模式和编译开关；可用 `DOTNET_gcServer=0` 对比工作站 GC、`DOTNET_TieredCompilation=0` 对比关闭分层编译的结果。平均耗时目标与逐日 P95、峰值分别报告，不将平均值当作单日硬上限。追加 `--initialization` 单独测量创建地图并补足场景人口，预热四次后记录每轮耗时和当前线程分配，并验证重复初始化及保存往返；该模式只可搭配 `--large`、`--seed=整数` 和 `--repetitions=整数`。追加 `--default-rules` 测量默认规则；`--large` 只测 256²／4096 人，`--steady` 在计时外推进 12 日后测量后续 64 日；`--seed=整数` 与 `--start-day=整数` 可更换种子和计时起始日；`--years=100` 从日序 0 连续测量到日序 12,000（经过 0–100 年，游戏日期从第 1 年开始），预热后恢复初态，默认复测三轮，每轮记录 100 个年度窗口的起止日序、样本数、六项性能统计、GC、人口及年末聚落、建筑、军队数量；`--repetitions=整数` 可调整轮数。指定 `--start-day` 或 `--steady` 时，起点相应后移。搭配 `--large --default-rules --years=100 --population-floor=4096` 会在每日计时外通过正常居民生成入口补足人口，并记录补充数量与实际人口，防止人口下降掩盖负载。追加 `--save-final` 在计时外按场景名和轮次分别保存终态，便于采样同一成熟世界；Linux 采集全进程 CPU，其他平台的 CPU 字段为 `null`，逐日 `GcPauseMs` 仅为最后一次回收记录的暂停时长。
 
 基准默认关闭 DATAS，避免已在 .NET 10.0.6 复现的累计分配计数下降及突增（[上游修复](https://github.com/dotnet/runtime/pull/131069)），并记录实际 `GcConfiguration`；这与桌面默认 GC 配置不同。计数下降时直接拒绝结果，不将负值置零。使用已修复的 runtime 时可通过 `DOTNET_GCDynamicAdaptationMode=1` 测量 DATAS。
 
-从 0 到 100 年按默认规则测量三个规模（64²／144 人、128²／1024 人、256²／4096 人）：
+从 0 到 100 年按默认规则测量 256×256 地图、4096 人开局，不补充人口：
 
 ```bash
-dotnet run --project tools/SeWZC.WorldBox.Benchmarks -c Release -- artifacts/benchmark-0-100-years.json --default-rules --years=100
+dotnet run --project tools/SeWZC.WorldBox.Benchmarks -c Release -- artifacts/benchmark-0-100-years.json --large --default-rules --years=100
 ```
 
 ## 协作与文档维护

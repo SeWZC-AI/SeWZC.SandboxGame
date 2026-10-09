@@ -53,4 +53,16 @@ public sealed record DiplomaticRelation
 
     /// <summary>双方态度的舍入均值，用于展示。</summary>
     public int Opinion { get; init; }
+
+    internal DiplomaticRelation WithLocalOpinion(int nationId, int opinion)
+    {
+        var first = nationId == FirstNationId ? Math.Clamp(opinion, -100, 100) : FirstOpinion;
+        var second = nationId == FirstNationId ? SecondOpinion : Math.Clamp(opinion, -100, 100);
+        return this with
+        {
+            FirstOpinion = first,
+            SecondOpinion = second,
+            Opinion = (int)Math.Round((first + second) / 2d, MidpointRounding.AwayFromZero),
+        };
+    }
 }

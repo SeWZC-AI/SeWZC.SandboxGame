@@ -4,11 +4,11 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private void RecordLife(ResidentCursor person, string text, WorldEventCursor? entry = null,
+    private void RecordLife(ResidentCursor person, string text, WorldEvent? entry = null,
         PersonalExperienceKind experience = PersonalExperienceKind.Neutral,
         EventImportance importance = EventImportance.Notable)
     {
-        person.History.Add(new ResidentHistoryEntry
+        person.History = person.History.Add(new ResidentHistoryEntry
         {
             Tick = Current.Tick,
             Text = text,
@@ -20,19 +20,20 @@ public sealed partial class WorldEngine
             Experience = experience,
         });
         while (person.History.Count > 24)
-            person.History.RemoveAt(0);
+            person.History = person.History.RemoveAt(0);
     }
 
     private void ObserveProjects()
     {
-        foreach (var building in Current.Society.Buildings)
+        foreach (var building in Current.Buildings)
             if (!building.IsCompleted)
                 building.Observation = building.Observation.Observe(Current.Tick, Current.Rules.DevelopmentRate,
                     building.ConstructionProgress);
-        foreach (var research in Current.Society.Research)
-            if (research.ActiveProject is not null)
-                research.Observation =
-                    research.Observation.Observe(Current.Tick, Current.Rules.DevelopmentRate, research.Progress);
+        var tick = Current.Tick;
+        var rate = Current.Rules.DevelopmentRate;
+        var research = Current.Society.Research.Map(project => project.Observe(tick, rate));
+        if (!ReferenceEquals(research, Current.Society.Research))
+            Current.Society = Current.Society with { Research = research };
     }
 
     /// <summary>依据近期稳定的实际工作速率估算项目剩余日数；依据不足时给出原因。</summary>
@@ -65,7 +66,7 @@ public sealed partial class WorldEngine
     public CompletionEstimate GetDevelopmentEstimate(int settlementId)
     {
         _ = RequireTown(settlementId);
-        var building = Current.Society.Buildings.FirstOrDefault(b => b.SettlementId == settlementId && !b.IsCompleted);
+        var building = Current.Buildings.FirstOrDefault(b => b.SettlementId == settlementId && !b.IsCompleted);
         if (building is not null)
         {
             return GetCompletionEstimate(building.Observation, building.ConstructionProgress,
@@ -178,10 +179,10 @@ public sealed partial class WorldEngine
         foreach (var person in state.Residents.Concat(state.ArchivedResidents))
             ValidateStoryReferences(person, state.NextId);
         foreach (var person in state.Residents.Concat(state.ArchivedResidents))
-        foreach (var entry in person.History)
-            CheckV2(
-                Reference(entry.EventId) && Reference(entry.EvidenceFactId) && Reference(entry.SettlementId) &&
-                Reference(entry.NationId), "人物经历关联无效。");
+            foreach (var entry in person.History)
+                CheckV2(
+                    Reference(entry.EventId) && Reference(entry.EvidenceFactId) && Reference(entry.SettlementId) &&
+                    Reference(entry.NationId), "人物经历关联无效。");
         foreach (var fact in state.Residents.Concat(state.ArchivedResidents)
                      .SelectMany(r => r.Agent.Memory.Concat(r.Agent.CarriedMessages))
                      .Concat(state.Settlements.SelectMany(t => t.PublicKnowledge))

@@ -1,10 +1,10 @@
+using System.Collections.Immutable;
+
 namespace SeWZC.WorldBox.Core.Runtime;
 
 /// <summary>Resident 的引擎内定位引用；连续日常字段变化在快照边界合并为不可变状态。</summary>
 internal sealed partial class ResidentCursor(Resident value) : StateCursor<Resident>(value)
 {
-    private AgentStateCursor? _agent;
-
     public int Id
     {
         get => base.Value.Id;
@@ -257,29 +257,16 @@ internal sealed partial class ResidentCursor(Resident value) : StateCursor<Resid
         }
     }
 
-    public AgentStateCursor Agent
+    public AgentState Agent
     {
-        get
-        {
-            if (_agent is null)
-            {
-                _agent = new AgentStateCursor(_draft.Agent);
-                _agent.Bind(value =>
-                {
-                    if (!ReferenceEquals(_draft.Agent, value))
-                    {
-                        _draft.Agent = value;
-                        _draftChanged = true;
-                    }
-                });
-            }
-
-            return _agent;
-        }
+        get => _draft.Agent;
         set
         {
-            _agent = null;
-            Replace(Value with { Agent = value.Value });
+            if (!ReferenceEquals(_draft.Agent, value))
+            {
+                _draft.Agent = value;
+                _draftChanged = true;
+            }
         }
     }
 
@@ -381,17 +368,13 @@ internal sealed partial class ResidentCursor(Resident value) : StateCursor<Resid
         }
     }
 
-    public SnapshotListCursor<ResidentHistoryEntry> History
+    public ImmutableList<ResidentHistoryEntry> History
     {
-        get => field ??= new SnapshotListCursor<ResidentHistoryEntry>(Value.History, value =>
+        get => Value.History;
+        set
         {
             if (!ReferenceEquals(Value.History, value))
                 ReplaceChanged(Value with { History = value });
-        });
-        set
-        {
-            field = null;
-            Replace(Value with { History = value.Snapshot });
         }
     }
 
@@ -409,7 +392,5 @@ internal sealed partial class ResidentCursor(Resident value) : StateCursor<Resid
     {
         _draft = new DailyDraft(after);
         _draftChanged = false;
-        if (_agent is not null && !ReferenceEquals(_agent.Value, after.Agent))
-            _agent.Synchronize(after.Agent);
     }
 }

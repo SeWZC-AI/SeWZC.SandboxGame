@@ -36,7 +36,7 @@ public sealed partial class WorldEngine
         army.Status = OutcomeName(outcome) + "，实际返乡并报告";
         var entry = AddEvent(WorldEventKind.War, $"{_nations[army.NationId].Name}的军队{army.Status}。", army.X, army.Y,
             EventAction.Retreat, army.TargetSettlementId, causeEventId: cause > 0 ? cause : army.LastEventId);
-        entry.Replace(entry.Value with { NationId = army.NationId, SecondNationId = army.TargetNationId });
+        entry = PublishEvent(entry with { NationId = army.NationId, SecondNationId = army.TargetNationId });
         army.LastEventId = entry.Id;
         // 编年史记录世界事实，但战报只能由实际目击者获得。
         var witnesses = soldiers.Where(r => r.Health > 0 && Distance(r.X, r.Y, army.X, army.Y) <= 3).ToArray();
@@ -70,7 +70,7 @@ public sealed partial class WorldEngine
         army.BattleRecorded = true;
         var entry = AddEvent(WorldEventKind.War, $"{_nations[army.NationId].Name}的军队在目标附近实际交战。", army.X, army.Y,
             EventAction.Battle, army.TargetSettlementId, causeEventId: army.LastEventId);
-        entry.Replace(entry.Value with { NationId = army.NationId, SecondNationId = army.TargetNationId });
+        entry = PublishEvent(entry with { NationId = army.NationId, SecondNationId = army.TargetNationId });
         army.LastEventId = entry.Id;
         foreach (var person in soldiers.Concat(defenders ?? [])
                      .Where(r => r.Health > 0 && Distance(r.X, r.Y, army.X, army.Y) <= 5))
@@ -84,23 +84,22 @@ public sealed partial class WorldEngine
             || fact.Value != Math.Truncate(fact.Value) || fact.Value < 1 ||
             fact.Value > (int)WarOutcome.Exhausted)
             return;
-        var record = nation.Military;
-        if (fact.CampaignEventId != record.CampaignEventId || fact.SubjectId != record.EnemyNationId
-                                                           || fact.EventId == record.LastReportEventId ||
-                                                           fact.ObservedTick < record.LastReportObservedTick)
+        if (fact.CampaignEventId != nation.Military.CampaignEventId || fact.SubjectId != nation.Military.EnemyNationId
+                                                           || fact.EventId == nation.Military.LastReportEventId ||
+                                                           fact.ObservedTick < nation.Military.LastReportObservedTick)
             return;
-        record.Replace(record.Value with
+        nation.Military = nation.Military with
         {
             LastReportEventId = fact.EventId,
             LastReportObservedTick = fact.ObservedTick,
             LastReportReceivedTick = Current.Tick,
             ReportedOutcome = (WarOutcome)(int)fact.Value,
             Report = fact.Text,
-            RecoveryUntilTick = Math.Max(record.RecoveryUntilTick, Current.Tick + 360),
-        });
+            RecoveryUntilTick = Math.Max(nation.Military.RecoveryUntilTick, Current.Tick + 360),
+        };
         var received = AddEvent(WorldEventKind.War, $"{nation.Name}首都实际收到战报：{fact.Text}。", town.X, town.Y,
             EventAction.Report, town.Id, causeEventId: fact.EventId, evidenceFactId: fact.Id);
-        received.Replace(received.Value with { NationId = nation.Id, SecondNationId = fact.SubjectId });
+        received = PublishEvent(received with { NationId = nation.Id, SecondNationId = fact.SubjectId });
         if (!Current.Rules.Peace || !_nations.TryGetValue(fact.SubjectId, out var other))
             return;
         var relation = Relation(nation.Id, other.Id);

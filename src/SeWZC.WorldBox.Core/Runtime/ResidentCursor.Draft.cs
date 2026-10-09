@@ -63,7 +63,6 @@ internal sealed partial class ResidentCursor
         _draft.Inventory = value.Inventory;
         if (!ReferenceEquals(_draft.Agent, value.Agent))
         {
-            _agent?.Synchronize(value.Agent);
             _draft.Agent = value.Agent;
             _draftChanged = true;
         }

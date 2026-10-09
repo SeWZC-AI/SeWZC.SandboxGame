@@ -25,4 +25,36 @@ public sealed record SettlementResearch
 
     /// <summary>本聚落已经研究完成或通过递送掌握的知识。</summary>
     public ImmutableList<Advancement> Completed { get; init; } = [];
+
+    internal SettlementResearch Begin(Advancement project, int eventId, long tick, double rate)
+    {
+        var observation = new ProjectObservation { StartEventId = eventId, DevelopmentRate = rate };
+        return this with
+        {
+            ActiveProject = project,
+            Progress = 0,
+            RequiredProgress = project.Work,
+            Observation = observation.Observe(tick, rate, 0),
+        };
+    }
+
+    internal SettlementResearch AddWork(int residentId, double progress)
+    {
+        return this with { Observation = Observation.AddContributor(residentId), Progress = Progress + progress };
+    }
+
+    internal SettlementResearch Observe(long tick, double rate)
+    {
+        if (ActiveProject is null)
+            return this;
+        var observation = Observation.Observe(tick, rate, Progress);
+        return observation.Equals(Observation) ? this : this with { Observation = observation };
+    }
+
+    internal SettlementResearch Learn(Advancement project)
+    {
+        return Completed.Contains(project)
+            ? this
+            : this with { Completed = Completed.Add(project).Sort((left, right) => left.Id.CompareTo(right.Id)) };
+    }
 }

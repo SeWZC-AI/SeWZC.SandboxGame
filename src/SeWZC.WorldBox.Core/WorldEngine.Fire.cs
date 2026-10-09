@@ -48,7 +48,7 @@ public sealed partial class WorldEngine
         if (!InBounds(x, y))
             return 0;
         var fuel = TerrainFlammability(Current.Tiles[Index(x, y)]);
-        foreach (var building in Current.Society.Buildings)
+        foreach (var building in Current.Buildings)
             if (building.X == x && building.Y == y && building.Health > 0)
                 fuel = Math.Max(fuel, BuildingFlammability(building));
         return fuel;
@@ -99,7 +99,7 @@ public sealed partial class WorldEngine
         var tile = Current.Tiles[index];
         if (tile.FireTicks <= 0)
         {
-            person.Agent.NextThinkTick = Current.Tick;
+            person.Agent = person.Agent with { NextThinkTick = Current.Tick };
             return false;
         }
 
@@ -113,7 +113,7 @@ public sealed partial class WorldEngine
         person.Inventory = person.Inventory with { Water = person.Inventory.Water - .1 };
         tile.FireSuppressed += reduction;
         tile.FireTicks -= reduction;
-        person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + .3);
+        person.Agent = person.Agent with { Fatigue = Math.Min(100, person.Agent.Fatigue + .3) };
         person.Activity = ResidentActivity.Working;
         if (tile.FireTicks == 0)
             EndFire(index, false);

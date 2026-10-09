@@ -243,7 +243,7 @@ public sealed partial class WorldEngine
     {
         var x = index % Current.Width;
         var y = index / Current.Width;
-        foreach (var building in Current.Society.Buildings)
+        foreach (var building in Current.Buildings)
             if (building.Kind == BuildingKind.Well && building.X == x && building.Y == y)
                 return building;
         return null;
@@ -329,7 +329,7 @@ public sealed partial class WorldEngine
         // 一次查询只读一次个人水源记忆，不为每个候选岸边重复扫描整份记忆。
         Span<byte> familiarSources = stackalloc byte[13 * 13];
         familiarSources.Clear();
-        foreach (var fact in person.Agent.Value.Memory)
+        foreach (var fact in person.Agent.Memory)
         {
             if (fact.Kind != AgentFactKind.WaterSource || fact.OriginResidentId != person.Id
                                                        || fact.ReliabilityAt(Current.Tick) < .5)
@@ -421,7 +421,7 @@ public sealed partial class WorldEngine
             Distance(person.X, person.Y, bestSource % Current.Width, bestSource / Current.Width) <= 6)
         {
             AgentFact? existing = null;
-            foreach (var fact in person.Agent.Value.Memory)
+            foreach (var fact in person.Agent.Memory)
                 if (fact.Kind == AgentFactKind.WaterSource && fact.SubjectId == bestSource + 1)
                 {
                     existing = fact;
@@ -586,11 +586,14 @@ public sealed partial class WorldEngine
                             || GetDailyWaterCapacity(source % Current.Width, source / Current.Width)
                             <= WaterUse(person)))
         {
-            person.Agent.Goal = new AgentGoal
+            person.Agent = person.Agent.WithGoal(new AgentGoal
             {
-                TargetX = person.X, TargetY = person.Y, ReviewTick = Current.Tick, Reason = "此处无法持续补充饮水，重新寻找河湖或运营水井",
-            };
-            person.Agent.NextThinkTick = Current.Tick;
+                TargetX = person.X,
+                TargetY = person.Y,
+                ReviewTick = Current.Tick,
+                Reason = "此处无法持续补充饮水，重新寻找河湖或运营水井",
+            });
+            person.Agent = person.Agent with { NextThinkTick = Current.Tick };
             return false;
         }
 
@@ -606,7 +609,7 @@ public sealed partial class WorldEngine
             var home = _settlements.GetValueOrDefault(person.SettlementId);
             var deliver = person.Id % 5 == 0 && home is not null
                                              && person.Inventory.Water >= WaterReserve(person) + 2;
-            person.Agent.Replace(person.Agent.Value with
+            person.Agent = person.Agent with
             {
                 Goal = new AgentGoal
                 {
@@ -619,7 +622,7 @@ public sealed partial class WorldEngine
                     Reason = deliver ? "装好公共补给后实地运回家园" : "已补足随身饮水，重新安排其他事务",
                 },
                 NextThinkTick = Current.Tick,
-            });
+            };
             person.Activity = ResidentActivity.Working;
             return amount > 0;
         }
@@ -636,8 +639,8 @@ public sealed partial class WorldEngine
 
             // 完成探索段后继续向外，边界受阻才转向，避免每次到达都转向而绕同一小圈。
             if (source >= 0 || person.Agent.Goal.WorkTicks > 1)
-                person.Agent.ExplorationHeading = (person.Agent.ExplorationHeading + 1) % 8;
-            person.Agent.NextThinkTick = Current.Tick;
+                person.Agent = person.Agent with { ExplorationHeading = (person.Agent.ExplorationHeading + 1) % 8 };
+            person.Agent = person.Agent with { NextThinkTick = Current.Tick };
         }
 
         person.Activity = ResidentActivity.Working;
@@ -762,7 +765,7 @@ public sealed partial class WorldEngine
         var kind = EdibleAnimal(tile, goal.Kind == AgentGoalKind.Fish);
         if (kind == WildlifeKind.None || tile.FireTicks > 0)
         {
-            person.Agent.NextThinkTick = Current.Tick;
+            person.Agent = person.Agent with { NextThinkTick = Current.Tick };
             return false;
         }
 
@@ -774,10 +777,10 @@ public sealed partial class WorldEngine
         tile.SetAnimalPopulation(kind, tile.AnimalPopulation(kind) - amount);
         person.Inventory = person.Inventory with { Food = person.Inventory.Food + amount * yield };
         RecordHarvest(tile, amount * yield);
-        person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + .3 * WorkInterval(person));
+        person.Agent = person.Agent with { Fatigue = Math.Min(100, person.Agent.Fatigue + .3 * WorkInterval(person)) };
         person.Activity = ResidentActivity.Working;
         if (!goal.PlayerDirected && !WildlifeSiteProductive(tile, goal.Kind == AgentGoalKind.Fish))
-            person.Agent.NextThinkTick = Current.Tick + 1;
+            person.Agent = person.Agent with { NextThinkTick = Current.Tick + 1 };
         return amount > 0;
     }
 }

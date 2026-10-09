@@ -139,7 +139,7 @@ public sealed partial class WorldEngine
     /// <param name="direction">桥梁改向的目标轴向，空值表示升级一级。</param>
     public string? BuildingUpgradeError(int id, bool gift = false, BridgeDirection? direction = null)
     {
-        var building = Current.Society.Buildings.FirstOrDefault(b => b.Id == id);
+        var building = Current.Buildings.FirstOrDefault(b => b.Id == id);
         if (building is null)
             return "建筑已不存在";
         if (!building.IsCompleted || building.Health < 50)
@@ -175,7 +175,7 @@ public sealed partial class WorldEngine
     {
         if (BuildingUpgradeError(id, gift, direction) is { } error)
             throw new InvalidOperationException(error);
-        var building = Current.Society.Buildings.First(b => b.Id == id);
+        var building = Current.Buildings.First(b => b.Id == id);
         if (!gift)
             RequireTown(building.SettlementId).Resources = Spend(RequireTown(building.SettlementId).Resources,
                 GetUpgradeCost(building, direction.HasValue));
@@ -185,7 +185,7 @@ public sealed partial class WorldEngine
             UpgradeProgress = 0,
             UpgradeRequired = direction.HasValue ? 15 : 30 * building.Level,
         });
-        building.Workers.Clear();
+        building.Workers = building.Workers.Clear();
         building.LastWorkedTick = -100;
         var entry = AddEvent(WorldEventKind.Construction,
             $"{BuildingName(building.Kind)}开始{(direction.HasValue ? "改向" : "升级")}，等待实地施工。",

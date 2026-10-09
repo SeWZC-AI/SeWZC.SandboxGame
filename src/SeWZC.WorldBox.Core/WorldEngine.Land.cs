@@ -123,7 +123,8 @@ public sealed partial class WorldEngine
         else if (building.Kind == BuildingKind.MountainPass)
             tile.Replace(tile.Value with
             {
-                Improvement = LandImprovement.MountainPass, RoadLevel = (byte)building.Level,
+                Improvement = LandImprovement.MountainPass,
+                RoadLevel = (byte)building.Level,
             });
         else if (building.Kind == BuildingKind.Bridge)
             tile.Replace(tile.Value with
@@ -144,7 +145,7 @@ public sealed partial class WorldEngine
             || person.Agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Explore or AgentGoalKind.FetchWater
             || (person.Agent.Goal.TargetSettlementId == 0 && person.Agent.Goal.TargetEntityId == 0))
             return;
-        if (Current.Society.Buildings.Any(b =>
+        if (Current.Buildings.Any(b =>
                 b.SettlementId == person.SettlementId && (!b.IsCompleted || b.IsUpgrading)))
             return;
         // 任务确有需求仍须核对可见陆路，已有通路时不应无故建桥。
@@ -263,7 +264,7 @@ public sealed partial class WorldEngine
     private bool RemoveFailedCrossings()
     {
         var changed = false;
-        foreach (var building in Current.Society.Buildings)
+        foreach (var building in Current.Buildings)
         {
             if (building.Kind != BuildingKind.Bridge || building.Health > 0 ||
                 !InBounds(building.X, building.Y))
@@ -284,7 +285,8 @@ public sealed partial class WorldEngine
             return;
         tile.Replace(tile.Value with
         {
-            LastHarvestTick = Current.Tick, Harvested = Math.Min(1_000_000_000, tile.Harvested + amount),
+            LastHarvestTick = Current.Tick,
+            Harvested = Math.Min(1_000_000_000, tile.Harvested + amount),
         });
     }
 
@@ -361,7 +363,10 @@ public sealed partial class WorldEngine
             person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + amount);
             RecordHarvest(tile, amount);
             person.Activity = ResidentActivity.Working;
-            person.Agent.Fatigue = Math.Min(100, person.Agent.Fatigue + .45 * WorkInterval(person));
+            person.Agent = person.Agent with
+            {
+                Fatigue = Math.Min(100, person.Agent.Fatigue + .45 * WorkInterval(person))
+            };
             return amount > 0;
         }
 
