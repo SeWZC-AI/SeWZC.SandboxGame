@@ -23,7 +23,7 @@ public sealed partial class WorldEngine
 
     /// <summary>受每 tick 地格预算限制，完成一轮全部动物复评所需的模拟步数。</summary>
     public int WildlifeCycleTicks =>
-        Math.Max(6, (Current.Tiles.Count + WildlifeTilesPerTick - 1) / WildlifeTilesPerTick);
+        Math.Max(6, (Tiles.Count + WildlifeTilesPerTick - 1) / WildlifeTilesPerTick);
 
     private static int NextWildlife(ref int mask)
     {
@@ -130,9 +130,9 @@ public sealed partial class WorldEngine
         Span<double> capacities = stackalloc double[AnimalRules.SpeciesCount];
         Span<double> populations = stackalloc double[AnimalRules.SpeciesCount];
         Span<byte> competitors = stackalloc byte[AnimalRules.SpeciesCount];
-        for (var i = 0; i < Current.Tiles.Count; i++)
+        for (var i = 0; i < Tiles.Count; i++)
         {
-            var tile = Current.Tiles[i];
+            var tile = Tiles[i];
             populations.Clear();
             var primary = WildlifeKind.None;
             AnimalRules.FillCapacities(tile.Value, capacities, competitors);
@@ -141,7 +141,7 @@ public sealed partial class WorldEngine
                 {
                     if ((int)AnimalRules.For(kind).Diet != diet)
                         continue;
-                    var hash = unchecked((uint)i * 2654435761u + (uint)Current.Seed * 31 + (uint)kind * 2246822519u);
+                    var hash = unchecked((uint)i * 2654435761u + (uint)Seed * 31 + (uint)kind * 2246822519u);
                     var capacity = capacities[(int)kind];
                     if (diet == 1 && capacity > 0)
                     {
@@ -168,8 +168,8 @@ public sealed partial class WorldEngine
     /// <summary>基于同一份种群快照，处理当日地格分区的繁殖、捕食和迁移。</summary>
     private void TickWildlife()
     {
-        var tiles = Current.Tiles;
-        var bufferTiles = WildlifeTilesPerTick + Current.Width * 2;
+        var tiles = Tiles;
+        var bufferTiles = WildlifeTilesPerTick + Width * 2;
         _wildlifeChanges ??= new double[bufferTiles * AnimalRules.SpeciesCount];
         _wildlifePopulations ??= new double[bufferTiles * AnimalRules.SpeciesCount];
         _wildlifePressure ??= new double[bufferTiles];
@@ -185,11 +185,11 @@ public sealed partial class WorldEngine
         _wildlifeSharedBiomass ??= new double[bufferTiles * 3];
         var cycle = WildlifeCycleTicks;
         // 从存档中的模拟时间推导分区，载入后即可接续复评顺序，无需另存游标。
-        var phase = (int)((Current.Tick - 1) % cycle);
+        var phase = (int)((SimulationTick - 1) % cycle);
         var first = phase * tiles.Length / cycle;
         var last = (phase + 1) * tiles.Length / cycle;
-        var snapshotFirst = Math.Max(0, first - Current.Width);
-        var snapshotLast = Math.Min(tiles.Length, last + Current.Width);
+        var snapshotFirst = Math.Max(0, first - Width);
+        var snapshotLast = Math.Min(tiles.Length, last + Width);
         var snapshotCount = snapshotLast - snapshotFirst;
         Array.Clear(_wildlifeChanges, 0, snapshotCount * AnimalRules.SpeciesCount);
         Array.Clear(_wildlifeIncoming, 0, snapshotCount);
@@ -286,8 +286,8 @@ public sealed partial class WorldEngine
         Span<double> predatorSurvivors = stackalloc double[AnimalRules.SpeciesCount];
         for (var i = first; i < last; i++)
         {
-            var x = i % Current.Width;
-            var y = i / Current.Width;
+            var x = i % Width;
+            var y = i / Width;
             var local = i - snapshotFirst;
             var offset = local * AnimalRules.SpeciesCount;
             var mask = _wildlifeMasks[local];
@@ -297,14 +297,14 @@ public sealed partial class WorldEngine
             preyLosses.Clear();
             preyRenewal.Clear();
             var count = 0;
-            if (x + 1 < Current.Width)
+            if (x + 1 < Width)
                 neighbours[count++] = i + 1;
-            if (y + 1 < Current.Height)
-                neighbours[count++] = i + Current.Width;
+            if (y + 1 < Height)
+                neighbours[count++] = i + Width;
             if (x > 0)
                 neighbours[count++] = i - 1;
             if (y > 0)
-                neighbours[count++] = i - Current.Width;
+                neighbours[count++] = i - Width;
             var predators = mask & ~AnimalRules.HerbivoreMask;
             while (predators != 0)
             {
@@ -459,17 +459,17 @@ public sealed partial class WorldEngine
             return;
         var stem = town.Value.Name.Length > 0 && town.Value.Name[^1] is '城' or '镇' or '村' ? town.Value.Name[..^1] : town.Value.Name;
         var name = stem + suffix;
-        if (Current.Settlements.Any(other => other.Value.Id != town.Value.Id && other.Value.Name == name))
+        if (Settlements.Any(other => other.Value.Id != town.Value.Id && other.Value.Name == name))
             name = stem + town.Value.Id + suffix;
         town.Replace(town.Value with { Name = name });
     }
 
     private void EnsureTownCenters()
     {
-        foreach (var town in Current.Settlements)
+        foreach (var town in Settlements)
         {
             var center =
-                Current.Buildings.FirstOrDefault(b =>
+                Buildings.FirstOrDefault(b =>
                     b.Value.SettlementId == town.Value.Id && b.Value.Kind == BuildingKind.TownCenter);
             if (center is null)
             {
@@ -484,11 +484,11 @@ public sealed partial class WorldEngine
                     ConstructionRequired = 30,
                     WorkSlots = 3,
                 });
-                Current.Buildings.Add(center);
+                Buildings.Add(center);
             }
 
             center.Replace(center.Value with { X = town.Value.X, Y = town.Value.Y });
-            if (center.Value.Health <= 0 && Current.Tiles[Index(town.Value.X, town.Value.Y)].Value.FireTicks == 0 && Current.Rules.Construction
+            if (center.Value.Health <= 0 && Tiles[Index(town.Value.X, town.Value.Y)].Value.FireTicks == 0 && Rules.Construction
                 && MissingResources(town.Value.Resources, GetBuildingCost(BuildingKind.TownCenter)) is null)
             {
                 town.Replace(town.Value.WithResources(Spend(town.Value.Resources, GetBuildingCost(BuildingKind.TownCenter))));

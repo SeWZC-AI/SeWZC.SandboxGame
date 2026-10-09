@@ -23,8 +23,8 @@ public sealed class ResidentNeedsTests
             Thirst = 10,
             FrozenUntilTick = 10,
         });
-        fixture.Engine.Current.Residents.Add(new ResidentCursor(fixture.Resident.Value with { Id = 900, Name = "第二位居民" }));
-        var source = fixture.Engine.Current.Tiles[16 * 32 + 16];
+        fixture.Engine.Residents.Add(new ResidentCursor(fixture.Resident.Value with { Id = 900, Name = "第二位居民" }));
+        var source = fixture.Engine.Tiles[16 * 32 + 16];
         source.Replace(source.Value.WithNaturalWaterYield(.04));
         source.Replace(source.Value.WithDroughtTicks(0));
         var before = fixture.Engine.State;
@@ -81,8 +81,8 @@ public sealed class ResidentNeedsTests
             Thirst = 10,
             FrozenUntilTick = 10,
         });
-        fixture.Engine.Current.Residents.Add(new ResidentCursor(fixture.Resident.Value with { Id = 900, Name = "第二位居民" }));
-        var source = fixture.Engine.Current.Tiles[17 * 32 + 16];
+        fixture.Engine.Residents.Add(new ResidentCursor(fixture.Resident.Value with { Id = 900, Name = "第二位居民" }));
+        var source = fixture.Engine.Tiles[17 * 32 + 16];
         source.Replace(source.Value.WithWaterDrawTick(1));
         source.Replace(source.Value.WithWaterDrawn(.15 - .0125 / SimulationTime.TicksPerDay));
         var before = fixture.Engine.State;

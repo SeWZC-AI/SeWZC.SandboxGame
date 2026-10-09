@@ -6,7 +6,7 @@ public sealed partial class WorldEngine
 {
     private bool NaturalWorkPlotAvailable(int index, Profession profession, StateReference<Settlement> town)
     {
-        var tile = Current.Tiles[index];
+        var tile = Tiles[index];
         if (tile.Value.FireTicks > 0)
             return false;
         // 矮人可进入天然山地，其他种族也可站在邻格采矿；岗位须与实际开采规则一致。
@@ -28,10 +28,10 @@ public sealed partial class WorldEngine
 
     private bool KnownDepositWorkAvailable(int index, StateReference<Settlement> town)
     {
-        foreach (var nearby in Circle(index % Current.Width, index / Current.Width, 1))
+        foreach (var nearby in Circle(index % Width, index / Width, 1))
         {
-            var tile = Current.Tiles[nearby];
-            if (Distance(nearby % Current.Width, nearby / Current.Width, town.Value.X, town.Value.Y) > 6
+            var tile = Tiles[nearby];
+            if (Distance(nearby % Width, nearby / Width, town.Value.X, town.Value.Y) > 6
                 || !tile.Value.DepositDiscovered || tile.Value.DepositAmount <= 0 || tile.Value.FireTicks > 0
                 || tile.Value.Deposit is not { } kind || town.Value.Resources.Get(kind) >= 16
                 || DepositResearch(kind) is not { } research || !HasResearch(town.Value.Id, research))
@@ -67,13 +67,13 @@ public sealed partial class WorldEngine
             if (person.Health < 60 || person.SicknessTicks > 0 || person.Agent.Goal.PlayerDirected
                 || person.Agent.DestinationSettlementId != 0 || Distance(person.X, person.Y, town.Value.X, town.Value.Y) > 3
                 || person.TravelMode != TravelMode.Foot ||
-                Current.Tick - person.MoveStartedTick < person.MoveDurationTicks)
+                SimulationTick - person.MoveStartedTick < person.MoveDurationTicks)
                 continue;
             var previous = person.Agent.WorkAreaIndex;
             var previousPlot = new NaturalWorkPlot(previous, person.Profession);
             if (person.Agent.WorkplaceId == 0 && plots.Contains(previousPlot)
                                               && occupied.GetValueOrDefault(previousPlot) == 1
-                                              && RaceTerrainRules.CanWalk(Current.Tiles[previous].Value, person.Race))
+                                              && RaceTerrainRules.CanWalk(Tiles[previous].Value, person.Race))
                 continue;
             if (previous >= 0)
                 occupied[previousPlot]--;
@@ -84,10 +84,10 @@ public sealed partial class WorldEngine
                 foreach (var plot in plots)
                 {
                     if (plot.Profession != person.Profession || occupied.GetValueOrDefault(plot) > 0
-                                                             || !RaceTerrainRules.CanWalk(Current.Tiles[plot.Index].Value,
+                                                             || !RaceTerrainRules.CanWalk(Tiles[plot.Index].Value,
                                                                  person.Race))
                         continue;
-                    var distance = Distance(person.X, person.Y, plot.Index % Current.Width, plot.Index / Current.Width);
+                    var distance = Distance(person.X, person.Y, plot.Index % Width, plot.Index / Width);
                     if (distance < bestDistance || (distance == bestDistance && plot.Index < selected))
                     {
                         selected = plot.Index;

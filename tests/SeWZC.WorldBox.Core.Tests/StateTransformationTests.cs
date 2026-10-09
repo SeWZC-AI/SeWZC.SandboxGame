@@ -73,12 +73,12 @@ public sealed class StateTransformationTests
     public void Policy_commands_preserve_retained_society_values()
     {
         var fixture = new WorldFixture();
-        var original = fixture.Engine.Current.Society;
+        var original = fixture.Engine.Society;
 
         fixture.Engine.SetPolicy(fixture.Town.Value.NationId, PolicyKind.Defense);
-        var directed = fixture.Engine.Current.Society;
+        var directed = fixture.Engine.Society;
         fixture.Engine.SetPolicyAutonomy(fixture.Town.Value.NationId);
-        var autonomous = fixture.Engine.Current.Society;
+        var autonomous = fixture.Engine.Society;
 
         Assert.Null(original.Institutions.Single().PlayerPolicy);
         Assert.False(original.Policies.Single().PlayerOverride);

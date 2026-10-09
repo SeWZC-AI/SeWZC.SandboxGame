@@ -8,11 +8,11 @@ internal sealed class WorldFixture
     internal WorldFixture()
     {
         Engine = WorldEngine.Create(42, 32, 32, false);
-        foreach (var tile in Engine.Current.Tiles)
+        foreach (var tile in Engine.Tiles)
             tile.Replace(tile.Value.WithTerrain(TerrainType.Grass));
         Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
-        Town = Engine.Current.Settlements.Single();
-        ResidentId = Engine.Current.Residents.Single().Id;
+        Town = Engine.Settlements.Single();
+        ResidentId = Engine.Residents.Single().Id;
     }
 
     internal WorldEngine Engine { get; }
@@ -22,9 +22,9 @@ internal sealed class WorldFixture
 
     internal int AddWell(int x, int y, double naturalWater)
     {
-        Engine.Current.Buildings.RemoveAll(building =>
+        Engine.Buildings.RemoveAll(building =>
             building.Value.X == x && building.Value.Y == y && building.Value.Kind != BuildingKind.TownCenter);
-        var tile = Engine.Current.Tiles[y * Engine.Current.Width + x];
+        var tile = Engine.Tiles[y * Engine.Width + x];
         tile.Replace(tile.Value with
         {
             Terrain = TerrainType.Grass,

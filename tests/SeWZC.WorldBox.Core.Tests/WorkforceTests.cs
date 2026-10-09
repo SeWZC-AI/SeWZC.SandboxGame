@@ -11,7 +11,7 @@ public sealed class WorkforceTests
     public void A_sick_child_keeps_or_creates_a_local_physician_job(Profession initialProfession)
     {
         var fixture = Prepare();
-        var people = fixture.Engine.Current.Residents.Where(person => person.Id != fixture.ResidentId).ToArray();
+        var people = fixture.Engine.Residents.Where(person => person.Id != fixture.ResidentId).ToArray();
         var patient = people[0];
         patient.Replace(patient.Value with
         {
@@ -20,10 +20,10 @@ public sealed class WorkforceTests
         var physician = people[1];
         physician.Replace(physician.Value with { Profession = initialProfession });
         GrantResearch(fixture, Advancement.Sanitation);
-        var ground = fixture.Engine.Current.Tiles[16 * 32 + 17];
+        var ground = fixture.Engine.Tiles[16 * 32 + 17];
         ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
         var hospitalId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Hospital, 17, 16);
-        fixture.Engine.Current.Tick =
+        fixture.Engine.SimulationTick =
             SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
@@ -39,13 +39,13 @@ public sealed class WorkforceTests
     public void A_mountain_edge_provides_mining_jobs_when_only_ore_is_missing()
     {
         var fixture = Prepare();
-        foreach (var tile in fixture.Engine.Current.Tiles)
+        foreach (var tile in fixture.Engine.Tiles)
             tile.Replace(tile.Value with { ResourceAmount = 0, Deposit = null, DepositAmount = 0 });
         fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Stone = 100, Ore = 0 }));
         var mountainIndex = 16 * 32 + 17;
-        var mountain = fixture.Engine.Current.Tiles[mountainIndex];
+        var mountain = fixture.Engine.Tiles[mountainIndex];
         mountain.Replace(mountain.Value with { Terrain = TerrainType.Mountain, ResourceAmount = 100 });
-        fixture.Engine.Current.Tick =
+        fixture.Engine.SimulationTick =
             SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
@@ -66,16 +66,16 @@ public sealed class WorkforceTests
     public void A_dwarf_keeps_a_work_area_on_a_natural_mountain()
     {
         var fixture = Prepare();
-        foreach (var tile in fixture.Engine.Current.Tiles)
+        foreach (var tile in fixture.Engine.Tiles)
             tile.Replace(tile.Value with { ResourceAmount = 0, Deposit = null, DepositAmount = 0 });
         fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Stone = 0, Ore = 0 }));
         var mountainIndex = 16 * 32 + 17;
-        var mountain = fixture.Engine.Current.Tiles[mountainIndex];
+        var mountain = fixture.Engine.Tiles[mountainIndex];
         mountain.Replace(mountain.Value with { Terrain = TerrainType.Mountain, ResourceAmount = 100 });
-        var miner = fixture.Engine.Current.Residents.First(person => person.Id != fixture.ResidentId);
+        var miner = fixture.Engine.Residents.First(person => person.Id != fixture.ResidentId);
         miner.Replace(miner.Value with { Race = RaceKind.Dwarf, Profession = Profession.Miner });
         miner.Agent = miner.Agent with { WorkAreaIndex = mountainIndex };
-        fixture.Engine.Current.Tick =
+        fixture.Engine.SimulationTick =
             SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
@@ -95,9 +95,9 @@ public sealed class WorkforceTests
     public void Known_deposit_demand_is_not_hidden_by_full_stone_and_ore(ResourceKind kind, bool discovered)
     {
         var fixture = Prepare();
-        foreach (var tile in fixture.Engine.Current.Tiles)
+        foreach (var tile in fixture.Engine.Tiles)
             tile.Replace(tile.Value with { ResourceAmount = 0, Deposit = null, DepositAmount = 0 });
-        var deposit = fixture.Engine.Current.Tiles[16 * 32 + 17];
+        var deposit = fixture.Engine.Tiles[16 * 32 + 17];
         deposit.Replace(deposit.Value with { Deposit = kind, DepositAmount = 100, DepositDiscovered = discovered });
         GrantResearch(fixture, WorldEngine.DepositResearch(kind)!);
         fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with
@@ -109,10 +109,10 @@ public sealed class WorkforceTests
             RareEarth = 16,
         }));
         fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources.WithAmount(kind, 0)));
-        var miner = fixture.Engine.Current.Residents.First(person => person.Id != fixture.ResidentId);
+        var miner = fixture.Engine.Residents.First(person => person.Id != fixture.ResidentId);
         miner.Replace(miner.Value with { Profession = Profession.Miner });
         miner.Agent = miner.Agent with { WorkAreaIndex = 16 * 32 + 17 };
-        fixture.Engine.Current.Tick =
+        fixture.Engine.SimulationTick =
             SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
@@ -130,7 +130,7 @@ public sealed class WorkforceTests
     {
         var fixture = Prepare();
         fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Wood = 48 }));
-        var plot = fixture.Engine.Current.Tiles[16 * 32 + 17];
+        var plot = fixture.Engine.Tiles[16 * 32 + 17];
         plot.Replace(plot.Value with
         {
             Terrain = TerrainType.Forest,
@@ -139,11 +139,11 @@ public sealed class WorkforceTests
             ClaimedSettlementId = fixture.Town.Value.Id,
             NationId = fixture.Town.Value.NationId,
         });
-        fixture.Engine.Current.Tiles[16 * 32 + 18].Replace(plot.Value);
+        fixture.Engine.Tiles[16 * 32 + 18].Replace(plot.Value);
         var id = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.LumberCamp, 17, 16);
-        var building = fixture.Engine.Current.Buildings.Single(b => b.Value.Id == id);
+        var building = fixture.Engine.Buildings.Single(b => b.Value.Id == id);
         building.Replace(building.Value with { WorkSlots = 1 });
-        var people = fixture.Engine.Current.Residents.Where(p => p.Id != fixture.ResidentId).Take(2).ToArray();
+        var people = fixture.Engine.Residents.Where(p => p.Id != fixture.ResidentId).Take(2).ToArray();
         foreach (var person in people)
         {
             person.Replace(person.Value with { Profession = Profession.Lumberjack });
@@ -151,7 +151,7 @@ public sealed class WorkforceTests
             person.Agent = person.Agent with { JobChangedTick = 20 };
         }
 
-        fixture.Engine.Current.Tick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
+        fixture.Engine.SimulationTick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -165,17 +165,17 @@ public sealed class WorkforceTests
     {
         var fixture = Prepare();
         fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Wood = 48 }));
-        foreach (var tile in fixture.Engine.Current.Tiles)
+        foreach (var tile in fixture.Engine.Tiles)
             tile.Replace(tile.Value with { ResourceAmount = 0, Plants = new PlantCoverage() });
-        var plot = fixture.Engine.Current.Tiles[16 * 32 + 17];
+        var plot = fixture.Engine.Tiles[16 * 32 + 17];
         plot.Replace(plot.Value with
         {
             Terrain = TerrainType.Forest, ResourceAmount = 100, Plants = new PlantCoverage { Trees = 1 },
         });
-        var available = fixture.Engine.Current.Residents.First(p => p.Id != fixture.ResidentId);
+        var available = fixture.Engine.Residents.First(p => p.Id != fixture.ResidentId);
         available.Replace(available.Value with { Profession = Profession.Laborer });
         available.Agent = available.Agent with { JobChangedTick = 20 };
-        fixture.Engine.Current.Tick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
+        fixture.Engine.SimulationTick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -189,7 +189,7 @@ public sealed class WorkforceTests
     {
         var fixture = Prepare();
         fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Food = 0 }));
-        foreach (var tile in fixture.Engine.Current.Tiles)
+        foreach (var tile in fixture.Engine.Tiles)
             tile.Replace(tile.Value with
             {
                 ResourceAmount = 0,
@@ -198,12 +198,12 @@ public sealed class WorkforceTests
                 WildlifePopulation = 0,
                 OtherWildlife = new WildlifePopulations(),
             });
-        var water = fixture.Engine.Current.Tiles[16 * 32 + 17];
+        var water = fixture.Engine.Tiles[16 * 32 + 17];
         water.Replace(water.Value with
         {
             Terrain = TerrainType.River, Wildlife = WildlifeKind.Fish, WildlifePopulation = 20,
         });
-        fixture.Engine.Current.Tick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
+        fixture.Engine.SimulationTick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -218,10 +218,10 @@ public sealed class WorkforceTests
     {
         var fixture = Prepare();
         fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Food = 0 }));
-        foreach (var tile in fixture.Engine.Current.Tiles)
+        foreach (var tile in fixture.Engine.Tiles)
             tile.Replace(tile.Value with { ResourceAmount = 0, Plants = new PlantCoverage() });
         var index = 16 * 32 + 17;
-        var plot = fixture.Engine.Current.Tiles[index];
+        var plot = fixture.Engine.Tiles[index];
         plot.Replace(plot.Value with
         {
             ResourceAmount = 100,
@@ -229,7 +229,7 @@ public sealed class WorkforceTests
             Plants = new PlantCoverage { Grass = 1 },
             Improvement = LandImprovement.None,
         });
-        fixture.Engine.Current.Tick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
+        fixture.Engine.SimulationTick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -246,7 +246,7 @@ public sealed class WorkforceTests
     public void Surplus_professions_are_adjusted_only_when_people_can_accept_local_work()
     {
         var fixture = Prepare();
-        var people = fixture.Engine.Current.Residents.Where(p => p.Id != fixture.ResidentId).ToArray();
+        var people = fixture.Engine.Residents.Where(p => p.Id != fixture.ResidentId).ToArray();
         people[0].Replace(people[0].Value with { X = 30, FromX = 30 });
         people[1].Replace(people[1].Value with
         {
@@ -258,7 +258,7 @@ public sealed class WorkforceTests
             Goal = new AgentGoal { PlayerDirected = true, ReviewTick = 2 * SimulationTime.TicksPerMonth },
         };
         people[4].Agent = people[4].Agent with { JobChangedTick = 20 };
-        fixture.Engine.Current.Tick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
+        fixture.Engine.SimulationTick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -273,13 +273,13 @@ public sealed class WorkforceTests
     {
         var fixture = Prepare();
         fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Wood = 48 }));
-        var people = fixture.Engine.Current.Residents.Where(p => p.Id != fixture.ResidentId).ToArray();
+        var people = fixture.Engine.Residents.Where(p => p.Id != fixture.ResidentId).ToArray();
         foreach (var person in people)
             person.Agent = person.Agent with { Personality = person.Agent.Personality with { Diligence = .2 } };
         var suitable = people[^1];
         suitable.Replace(suitable.Value with { Race = RaceKind.Elf });
         suitable.Agent = suitable.Agent with { Personality = suitable.Agent.Personality with { Diligence = .9 } };
-        var source = fixture.Engine.Current.Tiles[16 * 32 + 18];
+        var source = fixture.Engine.Tiles[16 * 32 + 18];
         source.Replace(source.Value with
         {
             Terrain = TerrainType.Forest,
@@ -288,11 +288,11 @@ public sealed class WorkforceTests
             ClaimedSettlementId = fixture.Town.Value.Id,
             NationId = fixture.Town.Value.NationId,
         });
-        fixture.Engine.Current.Tiles[16 * 32 + 19].Replace(source.Value);
+        fixture.Engine.Tiles[16 * 32 + 19].Replace(source.Value);
         var workplace = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.LumberCamp, 18, 16);
-        fixture.Engine.Current.Buildings.Single(b => b.Value.Id == workplace).Replace(fixture.Engine.Current.Buildings.Single(b => b.Value.Id == workplace).Value with { WorkSlots = 1 });
+        fixture.Engine.Buildings.Single(b => b.Value.Id == workplace).Replace(fixture.Engine.Buildings.Single(b => b.Value.Id == workplace).Value with { WorkSlots = 1 });
         var before = fixture.Engine.State;
-        fixture.Engine.Current.Tick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
+        fixture.Engine.SimulationTick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
@@ -303,7 +303,7 @@ public sealed class WorkforceTests
         Assert.Equal(0, before.Residents.Single(p => p.Id == suitable.Id).Agent.WorkplaceId);
         var restored = WorldEngine.ImportJson(fixture.Engine.ExportJson());
         Assert.Equal(workplace, restored.State.Residents.Single(p => p.Id == suitable.Id).Agent.WorkplaceId);
-        var nearer = fixture.Engine.Current.Tiles[16 * 32 + 17];
+        var nearer = fixture.Engine.Tiles[16 * 32 + 17];
         nearer.Replace(nearer.Value with
         {
             Terrain = TerrainType.Forest,
@@ -313,7 +313,7 @@ public sealed class WorkforceTests
             NationId = fixture.Town.Value.NationId,
         });
         fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.LumberCamp, 17, 16);
-        fixture.Engine.Current.Tick =
+        fixture.Engine.SimulationTick =
             SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
@@ -326,13 +326,13 @@ public sealed class WorkforceTests
     public void A_low_yield_stone_plot_can_supply_a_mining_job()
     {
         var fixture = Prepare();
-        foreach (var tile in fixture.Engine.Current.Tiles)
+        foreach (var tile in fixture.Engine.Tiles)
             tile.Replace(tile.Value with { ResourceAmount = 0, Deposit = null, DepositAmount = 0 });
         fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Stone = 0 }));
         var index = 16 * 32 + 17;
-        var source = fixture.Engine.Current.Tiles[index];
+        var source = fixture.Engine.Tiles[index];
         source.Replace(source.Value with { Terrain = TerrainType.Grass, ResourceAmount = 100 });
-        fixture.Engine.Current.Tick =
+        fixture.Engine.SimulationTick =
             SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
@@ -351,7 +351,7 @@ public sealed class WorkforceTests
             false);
         fixture.Town.Replace(fixture.Town.Value with { Population = 100 });
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock { Food = 400, Water = 10_000, Wood = 50, Stone = 20 }));
-        fixture.Engine.Current.Tick =
+        fixture.Engine.SimulationTick =
             2 * SimulationTime.TicksPerMonth - fixture.Town.Value.Id % (2 * SimulationTime.TicksPerMonth);
 
         fixture.Engine.TickSociety();
@@ -384,7 +384,7 @@ public sealed class WorkforceTests
             Stone = 100,
             Ore = 0,
         }));
-        fixture.Engine.Current.Tick =
+        fixture.Engine.SimulationTick =
             2 * SimulationTime.TicksPerMonth - fixture.Town.Value.Id % (2 * SimulationTime.TicksPerMonth);
 
         fixture.Engine.TickSociety();
@@ -400,7 +400,7 @@ public sealed class WorkforceTests
         var fixture = Prepare();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Births = true }, false, false);
         fixture.Town.Replace(fixture.Town.Value with { Housing = 0 });
-        fixture.Engine.Current.Tick = SimulationTime.TicksPerYear / 10 - 1;
+        fixture.Engine.SimulationTick = SimulationTime.TicksPerYear / 10 - 1;
         var before = fixture.Engine.State.Population;
 
         fixture.Engine.Step();
@@ -417,12 +417,12 @@ public sealed class WorkforceTests
         var fixture = Prepare();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Births = true, Hunger = false, Aging = false },
             false, false);
-        fixture.Engine.Current.Tick = SimulationTime.TicksPerYear / 10 - 1;
+        fixture.Engine.SimulationTick = SimulationTime.TicksPerYear / 10 - 1;
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock()));
-        foreach (var person in fixture.Engine.Current.Residents)
+        foreach (var person in fixture.Engine.Residents)
         {
             person.Inventory = new ResourceStock { Food = .8, Water = 1 };
-            person.Replace(person.Value with { FrozenUntilTick = fixture.Engine.Current.Tick + 2 });
+            person.Replace(person.Value with { FrozenUntilTick = fixture.Engine.SimulationTick + 2 });
         }
 
         var before = fixture.Engine.State;
@@ -442,13 +442,13 @@ public sealed class WorkforceTests
     {
         var fixture = Prepare();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Births = true }, false, false);
-        fixture.Engine.Current.Tick = SimulationTime.TicksPerYear / 10 - 1;
+        fixture.Engine.SimulationTick = SimulationTime.TicksPerYear / 10 - 1;
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock()));
-        foreach (var person in fixture.Engine.Current.Residents)
+        foreach (var person in fixture.Engine.Residents)
         {
             person.X = person.FromX = 24;
             person.Inventory = new ResourceStock { Food = .8, Water = 1 };
-            person.Replace(person.Value with { FrozenUntilTick = fixture.Engine.Current.Tick + 2 });
+            person.Replace(person.Value with { FrozenUntilTick = fixture.Engine.SimulationTick + 2 });
         }
 
         var before = fixture.Engine.State.Population;
@@ -469,7 +469,7 @@ public sealed class WorkforceTests
     {
         var fixture = new WorldFixture();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human);
-        fixture.Engine.Current.Buildings.RemoveAll(b => b.Value.Kind != BuildingKind.TownCenter);
+        fixture.Engine.Buildings.RemoveAll(b => b.Value.Kind != BuildingKind.TownCenter);
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock
         {
             Food = 10_000,
@@ -478,7 +478,7 @@ public sealed class WorkforceTests
             Stone = 80,
             Ore = 80,
         }));
-        foreach (var person in fixture.Engine.Current.Residents)
+        foreach (var person in fixture.Engine.Residents)
             person.Replace(person.Value with
             {
                 Age = 25,

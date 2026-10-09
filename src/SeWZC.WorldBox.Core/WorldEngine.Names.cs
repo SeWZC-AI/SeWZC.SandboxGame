@@ -45,11 +45,11 @@ public sealed partial class WorldEngine
 
     private HashSet<string> CollectResidentNames()
     {
-        var names = new HashSet<string>(Current.Residents.Count + Current.ArchivedResidents.Count,
+        var names = new HashSet<string>(Residents.Count + ArchivedResidents.Count,
             StringComparer.Ordinal);
-        foreach (var resident in Current.Residents)
+        foreach (var resident in Residents)
             names.Add(resident.Name);
-        foreach (var resident in Current.ArchivedResidents)
+        foreach (var resident in ArchivedResidents)
             names.Add(resident.Name);
         return names;
     }
@@ -72,9 +72,9 @@ public sealed partial class WorldEngine
 
     private string NewPlaceName(string suffix)
     {
-        var used = Current.Nations.Select(n => n.Value.Name).Concat(Current.Settlements.Select(t => t.Value.Name))
+        var used = Nations.Select(n => n.Value.Name).Concat(Settlements.Select(t => t.Value.Name))
             .ToHashSet(StringComparer.Ordinal);
-        var code = unchecked((uint)Current.NextId * 137u + (uint)Current.Seed) % 512;
+        var code = unchecked((uint)NextId * 137u + (uint)Seed) % 512;
         for (var i = 0; i < 512; i++)
         {
             var n = (code + (uint)i) % 512;
@@ -83,6 +83,6 @@ public sealed partial class WorldEngine
                 return name;
         }
 
-        return PlaceRoots[code % 32] + Current.NextId + suffix;
+        return PlaceRoots[code % 32] + NextId + suffix;
     }
 }

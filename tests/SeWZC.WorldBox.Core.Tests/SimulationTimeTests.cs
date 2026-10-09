@@ -8,10 +8,10 @@ public sealed class SimulationTimeTests
     public void Worker_in_transit_does_not_keep_the_previous_working_activity()
     {
         var fixture = Prepare(12);
-        var ground = fixture.Engine.Current.Tiles[16 * 32 + 22];
+        var ground = fixture.Engine.Tiles[16 * 32 + 22];
         ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
         var buildingId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Farm, 22, 16);
-        fixture.Engine.Current.Buildings.Single(b => b.Value.Id == buildingId).Replace(fixture.Engine.Current.Buildings.Single(b => b.Value.Id == buildingId).Value with { Health = 10 });
+        fixture.Engine.Buildings.Single(b => b.Value.Id == buildingId).Replace(fixture.Engine.Buildings.Single(b => b.Value.Id == buildingId).Value with { Health = 10 });
         fixture.Resident.Replace(fixture.Resident.Value with { Profession = Profession.Builder });
         fixture.Resident.Inventory = fixture.Resident.Inventory with { Stone = 1 };
         fixture.Resident.Activity = ResidentActivity.Working;
@@ -31,7 +31,7 @@ public sealed class SimulationTimeTests
 
         Assert.Equal(fixture.Engine.State.Tick, fixture.Resident.MoveStartedTick);
         Assert.Equal(ResidentActivity.Wandering, fixture.Resident.Activity);
-        Assert.Equal(10, fixture.Engine.Current.Buildings.Single(b => b.Value.Id == buildingId).Value.Health);
+        Assert.Equal(10, fixture.Engine.Buildings.Single(b => b.Value.Id == buildingId).Value.Health);
     }
 
     /// <summary>夜间冰冻不能保留此前的劳动标记，也不能产生劳动量。</summary>
@@ -115,7 +115,7 @@ public sealed class SimulationTimeTests
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
         fixture.Engine.Step();
-        fixture.Engine.Current.Tiles[16 * 32 + 16].Replace(fixture.Engine.Current.Tiles[16 * 32 + 16].Value.WithFireTicks(SimulationTime.TicksPerDay));
+        fixture.Engine.Tiles[16 * 32 + 16].Replace(fixture.Engine.Tiles[16 * 32 + 16].Value.WithFireTicks(SimulationTime.TicksPerDay));
 
         fixture.Engine.Step();
 
@@ -172,7 +172,7 @@ public sealed class SimulationTimeTests
     public void Water_trip_can_collect_after_arriving_in_the_evening()
     {
         var fixture = Prepare(SimulationTime.ReturnHomeTick - 1);
-        fixture.Engine.Current.Tiles[16 * 32 + 23].Replace(fixture.Engine.Current.Tiles[16 * 32 + 23].Value.WithTerrain(TerrainType.River));
+        fixture.Engine.Tiles[16 * 32 + 23].Replace(fixture.Engine.Tiles[16 * 32 + 23].Value.WithTerrain(TerrainType.River));
         fixture.Resident.X = fixture.Resident.FromX = 22;
         fixture.Resident.Inventory = new ResourceStock { Food = 1 };
         fixture.Resident.Agent = fixture.Resident.Agent with
@@ -271,11 +271,11 @@ public sealed class SimulationTimeTests
             },
         };
         Assert.True(fixture.Engine.TryFetchWater(fixture.Resident.Value));
-        fixture.Engine.Current.Tick++;
+        fixture.Engine.SimulationTick++;
 
         Assert.False(fixture.Engine.TryFetchWater(fixture.Resident.Value));
         Assert.Equal(.15, fixture.Resident.Inventory.Water, 8);
-        fixture.Engine.Current.Tick = SimulationTime.TicksPerDay;
+        fixture.Engine.SimulationTick = SimulationTime.TicksPerDay;
         Assert.True(fixture.Engine.TryFetchWater(fixture.Resident.Value));
         Assert.Equal(.3, fixture.Resident.Inventory.Water, 8);
     }
@@ -294,7 +294,7 @@ public sealed class SimulationTimeTests
             Research = false,
             Disease = false,
         }, false, false);
-        fixture.Engine.Current.Tick = tick;
+        fixture.Engine.SimulationTick = tick;
         fixture.Resident.Replace(fixture.Resident.Value with
         {
             Age = 25,

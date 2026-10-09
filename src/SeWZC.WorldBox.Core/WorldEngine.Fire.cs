@@ -47,8 +47,8 @@ public sealed partial class WorldEngine
     {
         if (!InBounds(x, y))
             return 0;
-        var fuel = TerrainFlammability(Current.Tiles[Index(x, y)].Value);
-        foreach (var building in Current.Buildings)
+        var fuel = TerrainFlammability(Tiles[Index(x, y)].Value);
+        foreach (var building in Buildings)
             if (building.Value.X == x && building.Value.Y == y && building.Value.Health > 0)
                 fuel = Math.Max(fuel, BuildingFlammability(building.Value));
         return fuel;
@@ -56,18 +56,18 @@ public sealed partial class WorldEngine
 
     private bool Ignite(int index)
     {
-        var tile = Current.Tiles[index];
-        if (tile.Value.FireTicks > 0 || GetTileFlammability(index % Current.Width, index / Current.Width) <= 0)
+        var tile = Tiles[index];
+        if (tile.Value.FireTicks > 0 || GetTileFlammability(index % Width, index / Width) <= 0)
             return false;
         tile.Replace(tile.Value.WithFireTicks(60 + RandomInt(31)));
         _burningTiles.Add(index);
-        EmitVisual(WorldVisualKind.Fire, index % Current.Width, index / Current.Width);
+        EmitVisual(WorldVisualKind.Fire, index % Width, index / Width);
         return true;
     }
 
     private void EndFire(int index, bool exhausted)
     {
-        var tile = Current.Tiles[index];
+        var tile = Tiles[index];
         tile.Replace(tile.Value.WithFireTicks(0));
         _burningTiles.Remove(index);
         if (!exhausted || TerrainFlammability(tile.Value) <= 0)
@@ -94,19 +94,19 @@ public sealed partial class WorldEngine
         var goal = person.Agent.Goal;
         if (person.Health <= 0 || person.Age < 14 || goal.Kind != AgentGoalKind.ExtinguishFire
             || !InBounds(goal.TargetX, goal.TargetY) || Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > 1
-            || Current.Tick - person.MoveStartedTick < person.MoveDurationTicks || !Walkable(person.X, person.Y)
-            || Current.Tiles[Index(person.X, person.Y)].Value.FireTicks > 0 || person.Inventory.Water < .1)
+            || SimulationTick - person.MoveStartedTick < person.MoveDurationTicks || !Walkable(person.X, person.Y)
+            || Tiles[Index(person.X, person.Y)].Value.FireTicks > 0 || person.Inventory.Water < .1)
             return false;
         var index = Index(goal.TargetX, goal.TargetY);
-        var tile = Current.Tiles[index];
+        var tile = Tiles[index];
         if (tile.Value.FireTicks <= 0)
         {
-            person.Agent = person.Agent with { NextThinkTick = Current.Tick };
+            person.Agent = person.Agent with { NextThinkTick = SimulationTick };
             return false;
         }
 
-        if (SimulationTime.DayIndex(tile.Value.FireSuppressionTick) != SimulationTime.DayIndex(Current.Tick))
-            tile.Replace(tile.Value with { FireSuppressionTick = Current.Tick, FireSuppressed = 0 });
+        if (SimulationTime.DayIndex(tile.Value.FireSuppressionTick) != SimulationTime.DayIndex(SimulationTick))
+            tile.Replace(tile.Value with { FireSuppressionTick = SimulationTick, FireSuppressed = 0 });
 
         // 每格共用每日扑救上限，避免聚集大量居民后火灾在一日内直接消失。
         var reduction = Math.Min(2 - tile.Value.FireSuppressed, tile.Value.FireTicks);
@@ -130,19 +130,19 @@ public sealed partial class WorldEngine
         if (_burningTiles.Count == 0 || person.Age < 14 || person.Inventory.Water < .1
             || person.SicknessTicks > 0 || person.Health < 40
             || person.Hunger >= 60 || person.Thirst >= 60 ||
-            Current.Tiles[Index(person.X, person.Y)].Value.FireTicks > 0)
+            Tiles[Index(person.X, person.Y)].Value.FireTicks > 0)
             return;
         var reachable = 0;
         foreach (var offset in VisibleResourceOffsets)
         {
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
-            if (!InBounds(x, y) || Current.Tiles[Index(x, y)].Value.FireTicks <= 0)
+            if (!InBounds(x, y) || Tiles[Index(x, y)].Value.FireTicks <= 0)
                 continue;
             var safeEdge = false;
             foreach (var (dx, dy) in Directions)
                 if (Walkable(x + dx, y + dy, person.Race)
-                    && Current.Tiles[Index(x + dx, y + dy)].Value.FireTicks == 0
+                    && Tiles[Index(x + dx, y + dy)].Value.FireTicks == 0
                     && VisibleSiteReachable(person, Index(x + dx, y + dy), ref reachable))
                 {
                     safeEdge = true;

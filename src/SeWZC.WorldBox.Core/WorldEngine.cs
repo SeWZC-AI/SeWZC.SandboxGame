@@ -32,28 +32,27 @@ public sealed partial class WorldEngine
 
     private long _residentLookupRevision = -1;
 
-    private WorldEngine(WorldState state) : this(new WorldStateCursor(state)) { }
-
-    private WorldEngine(WorldStateCursor state)
+    internal WorldEngine(WorldState state)
     {
-        Current = state;
+        _state = state;
+        SimulationTick = state.Tick;
+        RandomState = state.RandomState;
+        NextId = state.NextId;
         Reindex();
-        for (var i = 0; i < Current.Tiles.Count; i++)
+        for (var i = 0; i < Tiles.Count; i++)
         {
-            if (Current.Tiles[i]?.Value.FireTicks > 0)
+            if (Tiles[i]?.Value.FireTicks > 0)
                 _burningTiles.Add(i);
-            if (Current.Tiles[i]?.Value.DroughtTicks > 0)
+            if (Tiles[i]?.Value.DroughtTicks > 0)
                 _dryTiles.Add(i);
         }
 
-        _territoryCounts.Bind(Current.Tiles);
-        Current.Tiles.Changed = OnTileChanged;
+        _territoryCounts.Bind(Tiles);
+        Tiles.Changed = OnTileChanged;
     }
 
     /// <summary>引擎持有的当前不可变世界快照；继续模拟或编辑不会修改已取得的快照。</summary>
-    public WorldState State => Current.CaptureSnapshot();
-
-    internal WorldStateCursor Current { get; }
+    public WorldState State => CaptureSnapshot();
 
     /// <summary>根据种子生成世界，可选择为每个种族建立开局聚落。</summary>
     /// <param name="seed">地形生成及模拟随机序列的种子。</param>
@@ -64,26 +63,25 @@ public sealed partial class WorldEngine
     {
         if (width is < 32 or > 256 || height is < 32 or > 256)
             throw new ArgumentOutOfRangeException(nameof(width), "地图宽高必须在 32 到 256 之间。");
-        var state = new WorldStateCursor(new WorldState
+        var state = new WorldState
         {
             Seed = seed,
             Width = width,
             Height = height,
             RandomState = (uint)seed ^ 0xA341316Cu,
             Tiles = ImmutableVector<Tile>.CreateRange(Enumerable.Repeat(new Tile(), width * height)),
-        });
+        };
         if (state.RandomState == 0)
-            state.RandomState = 1;
+            state = state with { RandomState = 1 };
         var engine = new WorldEngine(state);
         // 初始化只发布最终集合；定位引用仍立即读取当前字段和成员。
-        using var scalarUpdates = state.BeginScalarUpdates();
-        using var tileUpdates = state.Tiles.BeginUpdates();
-        using var residentUpdates = state.Residents.BeginUpdates();
-        using var settlementUpdates = state.Settlements.BeginUpdates();
+        using var tileUpdates = engine.Tiles.BeginUpdates();
+        using var residentUpdates = engine.Residents.BeginUpdates();
+        using var settlementUpdates = engine.Settlements.BeginUpdates();
         engine.GenerateTerrain();
         engine.GenerateLakesAndWater();
         var demoSites = demo ? engine.PrepareDemoSites() : [];
-        foreach (var tile in state.Tiles)
+        foreach (var tile in engine.Tiles)
             tile.Replace(tile.Value.WithSeededPlants());
         engine.SeedWildlife();
         if (demo)
@@ -93,10 +91,10 @@ public sealed partial class WorldEngine
             {
                 var location = demoSites[race];
                 engine.SpawnResidents(location % width, location / width, (RaceKind)race, 36);
-                var town = state.Settlements.Single(t => t.Value.X == location % width && t.Value.Y == location / width);
+                var town = engine.Settlements.Single(t => t.Value.X == location % width && t.Value.Y == location / width);
                 foreach (var i in engine.Circle(town.Value.X, town.Value.Y, 3))
                 {
-                    state.Tiles[i].Replace(state.Tiles[i].Value with
+                    engine.Tiles[i].Replace(engine.Tiles[i].Value with
                     {
                         NationId = town.Value.NationId, ClaimedSettlementId = town.Value.Id,
                     });
@@ -108,16 +106,16 @@ public sealed partial class WorldEngine
         }
 
         engine.InitializeSociety();
-        foreach (var resident in state.Residents)
+        foreach (var resident in engine.Residents)
             engine.InitializeAgent(resident);
         return engine;
     }
 
     private void Reindex()
     {
-        var people = Current.Residents;
-        var towns = Current.Settlements;
-        var nations = Current.Nations;
+        var people = Residents;
+        var towns = Settlements;
+        var nations = Nations;
         // 定位引用本身持续读取最新状态；只有成员或居民家园变化才重建分组。
         if (ReferenceEquals(_indexedPeople, people) && ReferenceEquals(_indexedTowns, towns)
                                                     && ReferenceEquals(_indexedNations, nations) &&
@@ -130,7 +128,7 @@ public sealed partial class WorldEngine
         _nations.Clear();
         foreach (var group in _citizens.Values)
             group.Clear();
-        foreach (var settlement in Current.Settlements)
+        foreach (var settlement in Settlements)
         {
             _settlements[settlement.Value.Id] = settlement;
             if (!_citizens.ContainsKey(settlement.Value.Id))
@@ -143,9 +141,9 @@ public sealed partial class WorldEngine
                 _citizens.Remove(id);
         }
 
-        foreach (var nation in Current.Nations)
+        foreach (var nation in Nations)
             _nations[nation.Value.Id] = nation;
-        foreach (var person in Current.Residents)
+        foreach (var person in Residents)
             if (_citizens.TryGetValue(person.SettlementId, out var list))
                 list.Add(person);
         _indexedPeople = people;
@@ -159,12 +157,12 @@ public sealed partial class WorldEngine
 
     private ResidentCursor? FindLiveResident(int id)
     {
-        if (_residentLookupRevision != Current.Residents.MembershipRevision)
+        if (_residentLookupRevision != Residents.MembershipRevision)
         {
             _residentLookup.Clear();
-            foreach (var resident in Current.Residents)
+            foreach (var resident in Residents)
                 _residentLookup.Add(resident.Id, resident);
-            _residentLookupRevision = Current.Residents.MembershipRevision;
+            _residentLookupRevision = Residents.MembershipRevision;
         }
 
         return _residentLookup.GetValueOrDefault(id);
@@ -173,11 +171,11 @@ public sealed partial class WorldEngine
     private uint RandomUInt()
     {
         // 每次取值都更新世界的随机状态，才能在存档载入后继续同一序列。
-        var value = Current.RandomState;
+        var value = RandomState;
         value ^= value << 13;
         value ^= value >> 17;
         value ^= value << 5;
-        Current.RandomState = value;
+        RandomState = value;
         return value;
     }
 
@@ -188,17 +186,17 @@ public sealed partial class WorldEngine
 
     private bool InBounds(int x, int y)
     {
-        return x >= 0 && y >= 0 && x < Current.Width && y < Current.Height;
+        return x >= 0 && y >= 0 && x < Width && y < Height;
     }
 
     private int Index(int x, int y)
     {
-        return y * Current.Width + x;
+        return y * Width + x;
     }
 
     private bool Walkable(int x, int y, RaceKind race = RaceKind.Human)
     {
-        return InBounds(x, y) && RaceTerrainRules.CanWalk(Current.Tiles[Index(x, y)].Value, race);
+        return InBounds(x, y) && RaceTerrainRules.CanWalk(Tiles[Index(x, y)].Value, race);
     }
 
     private static int Distance(int ax, int ay, int bx, int by)
@@ -208,7 +206,7 @@ public sealed partial class WorldEngine
 
     private int NewId()
     {
-        return Current.NextId++;
+        return NextId++;
     }
 
     /// <summary>创建并返回编年史记录；即使该记录被容量淘汰规则立即移除，也返回该对象。</summary>
@@ -236,7 +234,7 @@ public sealed partial class WorldEngine
         var entry = new WorldEvent
         {
             Id = NewId(),
-            Tick = Current.Tick,
+            Tick = SimulationTick,
             Kind = kind,
             Message = message,
             X = x,
@@ -249,14 +247,14 @@ public sealed partial class WorldEngine
             EvidenceFactId = evidenceFactId,
         };
         if (InBounds(x, y))
-            entry = entry with { NationId = Current.Tiles[Index(x, y)]?.Value.NationId ?? 0 };
-        Current.Events = Current.Events.Add(entry);
-        while (Current.Events.Count > 400)
+            entry = entry with { NationId = Tiles[Index(x, y)]?.Value.NationId ?? 0 };
+        Events = Events.Add(entry);
+        while (Events.Count > 400)
         {
-            var expendable = Current.Events.FindIndex(e => e.Importance == EventImportance.Routine);
+            var expendable = Events.FindIndex(e => e.Importance == EventImportance.Routine);
             if (expendable < 0)
-                expendable = Current.Events.FindIndex(e => e.Importance == EventImportance.Notable);
-            Current.Events = Current.Events.RemoveAt(Math.Max(0, expendable));
+                expendable = Events.FindIndex(e => e.Importance == EventImportance.Notable);
+            Events = Events.RemoveAt(Math.Max(0, expendable));
         }
 
         return entry;
@@ -264,14 +262,14 @@ public sealed partial class WorldEngine
 
     private void ArchiveDeadResidents()
     {
-        foreach (var resident in Current.Residents.Where(r => r.Health <= 0).ToArray())
+        foreach (var resident in Residents.Where(r => r.Health <= 0).ToArray())
         {
             resident.Health = 0;
             if (resident.DeathCause == DeathCause.None)
             {
                 resident.Replace(resident.Value with
                 {
-                    DeathCause = DeathCause.PlayerIntervention, DeathTick = Current.Tick,
+                    DeathCause = DeathCause.PlayerIntervention, DeathTick = SimulationTick,
                 });
             }
 
@@ -284,14 +282,14 @@ public sealed partial class WorldEngine
             if (resident.History.Count > 24)
                 resident.Replace(resident.Value with { History = resident.History.RemoveAt(0) });
             RemoveLocalWorkResident(resident);
-            Current.Residents.Remove(resident);
-            Current.ArchivedResidents.Add(resident);
+            Residents.Remove(resident);
+            ArchivedResidents.Add(resident);
             if (_citizens.TryGetValue(resident.SettlementId, out var citizens))
                 citizens.Remove(resident);
         }
 
-        while (Current.ArchivedResidents.Count > 256)
-            Current.ArchivedResidents.RemoveAt(0);
+        while (ArchivedResidents.Count > 256)
+            ArchivedResidents.RemoveAt(0);
     }
 
     private int FindWalkable(int x, int y, int radius, RaceKind race = RaceKind.Human)
@@ -322,16 +320,16 @@ public sealed partial class WorldEngine
 
     private void GenerateTerrain()
     {
-        for (var y = 0; y < Current.Height; y++)
-        for (var x = 0; x < Current.Width; x++)
+        for (var y = 0; y < Height; y++)
+        for (var x = 0; x < Width; x++)
         {
-            var nx = (x + 0.5) / Current.Width * 2 - 1;
-            var ny = (y + 0.5) / Current.Height * 2 - 1;
+            var nx = (x + 0.5) / Width * 2 - 1;
+            var ny = (y + 0.5) / Height * 2 - 1;
             var radial = Math.Sqrt(nx * nx + ny * ny);
-            var broad = Noise(x / (Current.Width * 0.16), y / (Current.Height * 0.16), 0);
+            var broad = Noise(x / (Width * 0.16), y / (Height * 0.16), 0);
             var fine = Noise(x / 7.0, y / 7.0, 71);
             var elevation = 0.75 - radial * 0.58 + (broad - 0.5) * 0.48 + (fine - 0.5) * 0.10;
-            Current.Tiles[Index(x, y)] = new StateReference<Tile>(new Tile
+            Tiles[Index(x, y)] = new StateReference<Tile>(new Tile
             {
                 Terrain = elevation < .20 ? TerrainType.DeepWater :
                     elevation < .27 ? TerrainType.Water : TerrainType.Grass,
@@ -351,7 +349,7 @@ public sealed partial class WorldEngine
 
         double Hash(int a, int b)
         {
-            var n = unchecked((uint)(a * 374761393 + b * 668265263 + Current.Seed * 31 + salt));
+            var n = unchecked((uint)(a * 374761393 + b * 668265263 + Seed * 31 + salt));
             n = (n ^ (n >> 13)) * 1274126177;
             n ^= n >> 16;
             return n / 4294967295d;
@@ -364,8 +362,8 @@ public sealed partial class WorldEngine
     private void RefreshTotals()
     {
         ReconcileConnectedClaims();
-        _territoryCounts.Bind(Current.Tiles);
-        foreach (var settlement in Current.Settlements)
+        _territoryCounts.Bind(Tiles);
+        foreach (var settlement in Settlements)
         {
             var population = _citizens.GetValueOrDefault(settlement.Value.Id)?.Count ?? 0;
             if (settlement.Value.Population != population)
@@ -373,8 +371,8 @@ public sealed partial class WorldEngine
             RefreshSettlementName(settlement);
         }
 
-        var settlements = Current.Settlements.CaptureSnapshot();
-        foreach (var nation in Current.Nations)
+        var settlements = Settlements.CaptureSnapshot();
+        foreach (var nation in Nations)
             nation.Replace(AggregateNation(nation.Value, settlements, _territoryCounts.Get(nation.Value.Id)));
     }
 

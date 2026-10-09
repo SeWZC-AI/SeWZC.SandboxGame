@@ -42,7 +42,7 @@ public sealed partial class WorldEngine
                && (visibility == ResourceVisibility.All || (visibility == ResourceVisibility.Researched
                                                             && (tile.DepositDiscovered || (DepositResearch(kind) is
                                                                     { } research &&
-                                                                Current.Society.Research.Any(r =>
+                                                                Society.Research.Any(r =>
                                                                     r.Completed.Contains(research))))));
     }
 
@@ -92,10 +92,10 @@ public sealed partial class WorldEngine
     /// <param name="id">建筑的稳定 ID。</param>
     public string GetBuildingDetailStatus(int id)
     {
-        var b = Current.Buildings.FirstOrDefault(building => building.Value.Id == id);
+        var b = Buildings.FirstOrDefault(building => building.Value.Id == id);
         if (b is null)
             return "建筑已被移除";
-        var tile = Current.Tiles[Index(b.Value.X, b.Value.Y)];
+        var tile = Tiles[Index(b.Value.X, b.Value.Y)];
         if (b.Value.Kind is BuildingKind.MountainPass or BuildingKind.Bridge
             && tile.Value.Improvement ==
             (b.Value.Kind == BuildingKind.Bridge ? LandImprovement.Bridge : LandImprovement.MountainPass))
@@ -145,7 +145,7 @@ public sealed partial class WorldEngine
             return ExpansionFacilityStatus(b.Value);
         if (b.Value.Kind == BuildingKind.Academy)
         {
-            var research = Current.Society.Research.First(r => r.SettlementId == town.Value.Id);
+            var research = Society.Research.First(r => r.SettlementId == town.Value.Id);
             return research.ActiveProject is { } project
                 ? $"研究：{project.Name}\n进度 {research.Progress:0.#} / {research.RequiredProgress:0}"
                 : "尚未立项；到聚落的研究页面选择项目并投入材料";
@@ -155,7 +155,7 @@ public sealed partial class WorldEngine
             return town.Value.IsExpanding ? $"城镇扩充进度 {town.Value.ExpansionProgress:0.#} / {town.Value.ExpansionRequired:0}" : "";
         if (PassiveFacility(b.Value))
             return "";
-        if (b.Value.Kind is BuildingKind.ArcaneSanctum or BuildingKind.SacredGrove && !Current.Society.MagicEnabled)
+        if (b.Value.Kind is BuildingKind.ArcaneSanctum or BuildingKind.SacredGrove && !Society.MagicEnabled)
             return "暂停训练：世界规则已关闭新的魔法发展";
         if (b.Value.Kind == BuildingKind.SacredGrove && !IsForestTerrain(tile.Value.Terrain))
             return "暂停训练：圣林须位于森林、疏林或雨林";
@@ -187,7 +187,7 @@ public sealed partial class WorldEngine
     /// <param name="enabled">是否允许运营该建筑。</param>
     public void SetBuildingEnabled(int id, bool enabled)
     {
-        var building = Current.Buildings.FirstOrDefault(b => b.Value.Id == id) ??
+        var building = Buildings.FirstOrDefault(b => b.Value.Id == id) ??
                        throw new ArgumentException("建筑已不存在。");
         if (building.Value.Kind == BuildingKind.TownCenter)
             throw new InvalidOperationException("城镇中心是公共家园，不能停用。");
@@ -202,7 +202,7 @@ public sealed partial class WorldEngine
     /// <param name="finish">是否同时将建造进度设为完工；升级项目仍按原状态保留。</param>
     public void RestoreBuilding(int id, bool finish = false)
     {
-        var building = Current.Buildings.FirstOrDefault(b => b.Value.Id == id) ??
+        var building = Buildings.FirstOrDefault(b => b.Value.Id == id) ??
                        throw new ArgumentException("建筑已不存在。");
         building.Replace(building.Value with { Health = 100 });
         if (finish)
@@ -245,7 +245,7 @@ public sealed partial class WorldEngine
                 BuildingKind.Workshop or BuildingKind.LumberCamp or BuildingKind.Quarry or BuildingKind.MiningHall =>
                     "在" + name + (person.Profession == Profession.Lumberjack ? "采伐木材" : "采收石材与矿石"),
                 BuildingKind.Academy => "在学舍研究" +
-                                        (Current.Society.Research
+                                        (Society.Research
                                             .FirstOrDefault(r => r.SettlementId == building.Value.SettlementId)
                                             ?.ActiveProject is { } research
                                             ? research.Name
@@ -307,7 +307,7 @@ public sealed partial class WorldEngine
                               person.Profession is Profession.Trader or Profession.Messenger
                                   or Profession.Representative;
         var facility = goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic
-            ? Current.Buildings.FirstOrDefault(b => b.Value.Id == goal.TargetEntityId)
+            ? Buildings.FirstOrDefault(b => b.Value.Id == goal.TargetEntityId)
             : null;
         if (goal.Kind == AgentGoalKind.Work && facility?.Value is { IsCompleted: true } &&
             facility.Value.SettlementId == person.SettlementId
@@ -317,7 +317,7 @@ public sealed partial class WorldEngine
             var pickingUp = MissingResources(person.Inventory, recipe.Input) is not null;
             var x = pickingUp ? home.Value.X : facility.Value.X;
             var y = pickingUp ? home.Value.Y : facility.Value.Y;
-            var travelling = person.MoveStartedTick + person.MoveDurationTicks > Current.Tick ||
+            var travelling = person.MoveStartedTick + person.MoveDurationTicks > SimulationTick ||
                              Distance(person.X, person.Y, x, y) > 1;
             var action = !CanProduce(facility.Value, cursor, recipe) ? "当前加工条件未满足：" + GetProductionStatus(facility.Value.Id)
                 : travelling ? pickingUp ? "正在返回" + home.Value.Name + "的仓库取料" : "正在携带原料前往" + BuildingName(facility.Value.Kind)
@@ -331,9 +331,9 @@ public sealed partial class WorldEngine
             ? BuildingName(facility.Value.Kind)
             : _settlements.GetValueOrDefault(goal.TargetSettlementId)?.Value.Name ?? "目标地块";
         var workingRange = AgentInteractionRange(goal, _settlements.GetValueOrDefault(person.SettlementId)?.Value.FoundationPending == true);
-        var moving = person.MoveStartedTick + person.MoveDurationTicks > Current.Tick
+        var moving = person.MoveStartedTick + person.MoveDurationTicks > SimulationTick
                      || Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > workingRange;
-        var current = Current.Tick < goal.NavigationRetryTick ? "路线受阻，正在等待通道或重新选择任务" :
+        var current = SimulationTick < goal.NavigationRetryTick ? "路线受阻，正在等待通道或重新选择任务" :
             moving ? $"正在前往{destination}执行“{task}”（{TravelModeName(person.TravelMode)}），到场后开始劳动" : goal.Kind switch
             {
                 AgentGoalKind.Eat => "正在家园领取口粮",

@@ -13,7 +13,7 @@ public sealed class NationEditingTests
         fixture.Engine.SetNationResources(fixture.Town.Value.NationId, 12.5);
 
         Assert.Equal(12.5, fixture.Town.Value.Resources.Food);
-        Assert.Equal(12.5, fixture.Engine.Current.Nations.Single().Value.Resources.Food);
+        Assert.Equal(12.5, fixture.Engine.Nations.Single().Value.Resources.Food);
         Assert.Equal(wood, fixture.Town.Value.Resources.Wood);
     }
 
@@ -26,7 +26,7 @@ public sealed class NationEditingTests
         fixture.Engine.SetNationResources(fixture.Town.Value.NationId, 0);
 
         Assert.Equal(0, fixture.Town.Value.Resources.Food);
-        Assert.Equal(0, fixture.Engine.Current.Nations.Single().Value.Resources.Food);
+        Assert.Equal(0, fixture.Engine.Nations.Single().Value.Resources.Food);
     }
 
     /// <summary>非法金额不会先提交其他合法资源。</summary>
@@ -54,7 +54,7 @@ public sealed class NationEditingTests
 
         fixture.Engine.RenameNation(fixture.Town.Value.NationId, "  新国家  ");
 
-        Assert.Equal("新国家", fixture.Engine.Current.Nations.Single().Value.Name);
+        Assert.Equal("新国家", fixture.Engine.Nations.Single().Value.Name);
     }
 
     /// <summary>非法国名不会修改世界。</summary>
@@ -78,12 +78,12 @@ public sealed class NationEditingTests
     public void Basic_technology_does_not_grant_research()
     {
         var fixture = new WorldFixture();
-        var completed = fixture.Engine.Current.Society.Research.Single().Completed.ToArray();
+        var completed = fixture.Engine.Society.Research.Single().Completed.ToArray();
 
         fixture.Engine.SetNationTechnology(fixture.Town.Value.NationId, 5);
 
-        Assert.Equal(5, fixture.Engine.Current.Nations.Single().Value.Technology);
-        Assert.Equal(completed, fixture.Engine.Current.Society.Research.Single().Completed);
+        Assert.Equal(5, fixture.Engine.Nations.Single().Value.Technology);
+        Assert.Equal(completed, fixture.Engine.Society.Research.Single().Completed);
     }
 
     /// <summary>等级范围外的编辑不会提交。</summary>

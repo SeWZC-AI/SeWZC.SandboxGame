@@ -250,7 +250,7 @@ public sealed class WorldPersistenceTests
         var fixture = new WorldFixture();
         var fact = new AgentFact
         {
-            Id = fixture.Engine.Current.NextId++,
+            Id = fixture.Engine.NextId++,
             Kind = AgentFactKind.Danger,
             X = 16,
             Y = 16,
@@ -258,7 +258,7 @@ public sealed class WorldPersistenceTests
             Text = "现场危险观察",
         };
         fixture.Resident.Agent = fixture.Resident.Agent with { Memory = fixture.Resident.Agent.Memory.Add(fact) };
-        fixture.Engine.Current.PendingMessages = fixture.Engine.Current.PendingMessages.Add(new PendingMessage
+        fixture.Engine.PendingMessages = fixture.Engine.PendingMessages.Add(new PendingMessage
         {
             SenderId = fixture.ResidentId, RecipientId = fixture.ResidentId, DeliverTick = 1, Facts = [fact],
         });
@@ -266,7 +266,7 @@ public sealed class WorldPersistenceTests
         var restoredWorld = WorldEngine.ImportJson(fixture.Engine.ExportJson());
         var savedFact = restoredWorld.GetResident(fixture.ResidentId)!.Agent.Memory.Last();
 
-        Assert.Equal(fact, Assert.Single(Assert.Single(restoredWorld.Current.PendingMessages).Facts));
+        Assert.Equal(fact, Assert.Single(Assert.Single(restoredWorld.PendingMessages).Facts));
         Assert.Equal(fact, savedFact);
         Assert.Equal(0.4, savedFact.ReliabilityAt(12), 10);
     }
@@ -276,7 +276,7 @@ public sealed class WorldPersistenceTests
     public void Import_rejects_null_message_facts()
     {
         var fixture = new WorldFixture();
-        fixture.Engine.Current.PendingMessages = fixture.Engine.Current.PendingMessages.Add(new PendingMessage
+        fixture.Engine.PendingMessages = fixture.Engine.PendingMessages.Add(new PendingMessage
         {
             SenderId = fixture.ResidentId, RecipientId = fixture.ResidentId, DeliverTick = 1,
         });

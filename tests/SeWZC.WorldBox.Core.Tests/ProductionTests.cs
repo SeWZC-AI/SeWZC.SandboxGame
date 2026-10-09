@@ -13,15 +13,15 @@ public sealed class ProductionTests
         fixture.Engine.GrantReceivedResearch(fixture.Town.Value.Id, Advancement.Industry);
         var foundry = new StateReference<Building>(new Building
         {
-            Id = fixture.Engine.Current.NextId++,
+            Id = fixture.Engine.NextId++,
             SettlementId = fixture.Town.Value.Id,
             Kind = BuildingKind.Foundry,
             X = 17,
             Y = 16,
             ConstructionProgress = 30,
         });
-        fixture.Engine.Current.Buildings.Add(foundry);
-        var ground = fixture.Engine.Current.Tiles[16 * 32 + 17];
+        fixture.Engine.Buildings.Add(foundry);
+        var ground = fixture.Engine.Tiles[16 * 32 + 17];
         ground.Replace(ground.Value.WithNationId(fixture.Town.Value.NationId));
         ground.Replace(ground.Value.WithClaimedSettlementId(fixture.Town.Value.Id));
         var worker = fixture.Resident;
@@ -93,9 +93,9 @@ public sealed class ProductionTests
     public void Missing_operating_prerequisite_prevents_production()
     {
         var (fixture, foundry) = FoundryWorld();
-        var society = fixture.Engine.Current.Society;
+        var society = fixture.Engine.Society;
         var research = society.Research.Single();
-        fixture.Engine.Current.Society = society with
+        fixture.Engine.Society = society with
         {
             Research = society.Research.SetItem(0,
                 research with { Completed = research.Completed.Remove(Advancement.Industry.Prerequisites[0]) }),
@@ -131,14 +131,14 @@ public sealed class ProductionTests
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
-        fixture.Engine.Current.Tick += 4;
+        fixture.Engine.SimulationTick += 4;
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
         Assert.Equal(1, fixture.Resident.Inventory.Alloy);
         Assert.Equal(1, fixture.Resident.Inventory.Coal);
         Assert.Equal(2, fixture.Resident.Inventory.Ore);
         Assert.Equal(1, foundry.Value.ProductionBatches);
-        fixture.Engine.Current.Tick = SimulationTime.TicksPerDay;
+        fixture.Engine.SimulationTick = SimulationTime.TicksPerDay;
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
         Assert.Equal(2, foundry.Value.ProductionBatches);
     }
@@ -151,12 +151,12 @@ public sealed class ProductionTests
         foundry.Replace(foundry.Value with { WorkSlots = 1 });
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
-        var other = fixture.Engine.Current.Residents.Single(p => p.Id != fixture.ResidentId);
+        var other = fixture.Engine.Residents.Single(p => p.Id != fixture.ResidentId);
         other.Replace(fixture.Resident.Value with
         {
             Id = other.Id, Inventory = new ResourceStock { Coal = 1, Ore = 2 },
         });
-        fixture.Engine.Current.Tick += 4;
+        fixture.Engine.SimulationTick += 4;
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(other.Value));
 

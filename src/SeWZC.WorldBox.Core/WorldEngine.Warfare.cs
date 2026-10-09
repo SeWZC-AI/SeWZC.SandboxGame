@@ -12,7 +12,7 @@ public sealed partial class WorldEngine
             .OrderByDescending(f => f.ObservedTick).ThenByDescending(f => f.Id).FirstOrDefault();
         if (order is not null)
             return order.Kind == AgentFactKind.WarOrder;
-        return Current.Armies.Any(a =>
+        return Armies.Any(a =>
             a.Value.Id == resident.ArmyId && a.Value.TargetNationId == targetNationId && a.Value.KnownDiplomacy == DiplomaticStatus.War);
     }
 
@@ -20,8 +20,8 @@ public sealed partial class WorldEngine
         int? knownY = null, long? observedTick = null, int targetSettlementId = 0, int eventId = 0,
         WarObjective objective = WarObjective.OccupySettlement)
     {
-        var capital = Current.Settlements.FirstOrDefault(t => t.Value.Id == _nations[nationId].Value.CapitalId);
-        var enemyCapital = Current.Settlements.FirstOrDefault(t => t.Value.Id == _nations[enemyId].Value.CapitalId);
+        var capital = Settlements.FirstOrDefault(t => t.Value.Id == _nations[nationId].Value.CapitalId);
+        var enemyCapital = Settlements.FirstOrDefault(t => t.Value.Id == _nations[enemyId].Value.CapitalId);
         if (capital is null || enemyCapital is null)
             return;
         if (objective == WarObjective.DefendHomeland)
@@ -32,7 +32,7 @@ public sealed partial class WorldEngine
         }
 
         var witness =
-            Current.Residents.FirstOrDefault(r =>
+            Residents.FirstOrDefault(r =>
                 r.NationId == nationId && Distance(r.X, r.Y, capital.Value.X, capital.Value.Y) <= 4);
         var fact = new AgentFact
         {
@@ -46,8 +46,8 @@ public sealed partial class WorldEngine
             X = knownX ?? enemyCapital.Value.X,
             Y = knownY ?? enemyCapital.Value.Y,
             Value = targetSettlementId > 0 ? targetSettlementId : knownX.HasValue ? 0 : enemyCapital.Value.Id,
-            ObservedTick = observedTick ?? Current.Tick,
-            LearnedTick = Current.Tick,
+            ObservedTick = observedTick ?? SimulationTick,
+            LearnedTick = SimulationTick,
             OriginResidentId = witness?.Id ?? 0,
             SourceResidentId = witness?.Id ?? 0,
             Text = status == DiplomaticStatus.War ? "首都宣布开战，征召当地志愿者" : "首都宣布停止敌对，前线须等待消息送达",
@@ -64,7 +64,7 @@ public sealed partial class WorldEngine
                 TargetSettlementId = (int)fact.Value,
                 TargetX = fact.X,
                 TargetY = fact.Y,
-                StartedTick = Current.Tick,
+                StartedTick = SimulationTick,
                 ReportedOutcome = WarOutcome.None,
                 LastReportEventId = 0,
                 LastReportObservedTick = 0,
@@ -79,7 +79,7 @@ public sealed partial class WorldEngine
                 Military = _nations[nationId].Value.Military with
                 {
                     RecoveryUntilTick = Math.Max(_nations[nationId].Value.Military.RecoveryUntilTick,
-                    Current.Tick + 3 * SimulationTime.TicksPerYear),
+                    SimulationTick + 3 * SimulationTime.TicksPerYear),
                 }
             });
 
@@ -88,20 +88,20 @@ public sealed partial class WorldEngine
         AddPublicFact(capital, fact);
         if (capital.Value.PublicKnowledge.Count > 24)
             capital.Replace(capital.Value with { PublicKnowledge = capital.Value.PublicKnowledge.RemoveAt(0) });
-        foreach (var person in Current.Residents.Where(r =>
+        foreach (var person in Residents.Where(r =>
                      r.NationId == nationId && Distance(r.X, r.Y, capital.Value.X, capital.Value.Y) <= 4))
             RememberAgentFact(person, fact);
     }
 
     private void UpdateArmies()
     {
-        if (Current.Tick % SimulationTime.TicksPerMonth == SimulationTime.WakeTick)
+        if (SimulationTick % SimulationTime.TicksPerMonth == SimulationTime.WakeTick)
         {
-            foreach (var nation in Current.Nations.ToArray())
+            foreach (var nation in Nations.ToArray())
             {
-                if (Current.Armies.Any(a => a.Value.NationId == nation.Value.Id))
+                if (Armies.Any(a => a.Value.NationId == nation.Value.Id))
                     continue;
-                var capital = Current.Settlements.FirstOrDefault(s => s.Value.Id == nation.Value.CapitalId);
+                var capital = Settlements.FirstOrDefault(s => s.Value.Id == nation.Value.CapitalId);
                 if (capital is null)
                     continue;
                 var order = capital.Value.PublicKnowledge.Where(f =>
@@ -112,9 +112,9 @@ public sealed partial class WorldEngine
                 if (order is null || order.Kind != AgentFactKind.WarOrder ||
                     order.Id <= nation.Value.Military.LastMobilizedOrderId
                     || (order.WarObjective == WarObjective.OccupySettlement &&
-                        Current.Tick < nation.Value.Military.RecoveryUntilTick))
+                        SimulationTick < nation.Value.Military.RecoveryUntilTick))
                     continue;
-                var recruits = Current.Residents.Where(r =>
+                var recruits = Residents.Where(r =>
                     r.NationId == nation.Value.Id && r.ArmyId == 0 && r.Age >= 16 && r.Health > 50 &&
                     r.TravelMode == TravelMode.Foot
                     && Distance(r.X, r.Y, capital.Value.X, capital.Value.Y) <= 5).ToArray();
@@ -136,7 +136,7 @@ public sealed partial class WorldEngine
                     CampaignEventId = order.CampaignEventId,
                     Objective = order.WarObjective,
                     InitialSoldiers = count,
-                    StartedTick = Current.Tick,
+                    StartedTick = SimulationTick,
                     NationId = nation.Value.Id,
                     TargetNationId = order.SubjectId,
                     TargetX = order.X,
@@ -153,7 +153,7 @@ public sealed partial class WorldEngine
                     LastOrderTick = order.ObservedTick,
                     LastOrderFactId = order.Id,
                 });
-                Current.Armies.Add(army);
+                Armies.Add(army);
                 foreach (var resident in recruits.Take(count))
                 {
                     resident.Replace(resident.Value with { ArmyId = army.Value.Id });
@@ -164,7 +164,7 @@ public sealed partial class WorldEngine
                         Kind = AgentGoalKind.March,
                         TargetX = capital.Value.X,
                         TargetY = capital.Value.Y,
-                        StartedTick = Current.Tick,
+                        StartedTick = SimulationTick,
                         Reason = "听到当地征召，步行前往集结点",
                     });
                     RememberAgentFact(resident, order);
@@ -180,11 +180,11 @@ public sealed partial class WorldEngine
             }
         }
 
-        foreach (var army in Current.Armies.ToArray())
+        foreach (var army in Armies.ToArray())
         {
-            if (!Current.Armies.Contains(army))
+            if (!Armies.Contains(army))
                 continue;
-            var soldiers = Current.Residents.Where(r => r.ArmyId == army.Value.Id && r.Health > 0).ToArray();
+            var soldiers = Residents.Where(r => r.ArmyId == army.Value.Id && r.Health > 0).ToArray();
             army.Replace(army.Value with { Soldiers = soldiers.Length });
             if (soldiers.Length == 0)
             {
@@ -236,7 +236,7 @@ public sealed partial class WorldEngine
 
             foreach (var soldier in soldiers)
             {
-                if (Current.Rules.Thirst && Distance(soldier.X, soldier.Y, army.Value.X, army.Value.Y) <= 2 &&
+                if (Rules.Thirst && Distance(soldier.X, soldier.Y, army.Value.X, army.Value.Y) <= 2 &&
                     soldier.Inventory.Water < .025)
                 {
                     var water = Math.Min(army.Value.WaterSupplies, .125);
@@ -245,7 +245,7 @@ public sealed partial class WorldEngine
                 }
 
                 DrinkCarriedWater(soldier);
-                if (!Current.Rules.Hunger)
+                if (!Rules.Hunger)
                     soldier.Hunger = 0;
                 else if (Distance(soldier.X, soldier.Y, army.Value.X, army.Value.Y) <= 2 &&
                          army.Value.Supplies >= 0.06 / SimulationTime.TicksPerDay)
@@ -267,11 +267,11 @@ public sealed partial class WorldEngine
                 else
                     soldier.Hunger = Math.Min(100, soldier.Hunger + .8 / SimulationTime.TicksPerDay);
 
-                if (Current.Rules.Hunger && soldier.Hunger > 80)
+                if (Rules.Hunger && soldier.Hunger > 80)
                     DamageResident(soldier, .30 / SimulationTime.TicksPerDay, DeathCause.Starvation);
             }
 
-            var depot = Current.Settlements.FirstOrDefault(s =>
+            var depot = Settlements.FirstOrDefault(s =>
                 s.Value.NationId == army.Value.NationId && Distance(s.Value.X, s.Value.Y, army.Value.X, army.Value.Y) <= 1);
             if (depot is not null && army.Value.Supplies < soldiers.Length * 5)
             {
@@ -296,20 +296,20 @@ public sealed partial class WorldEngine
             {
                 if (army.Value.InitialSoldiers > 0 && soldiers.Length * 5 <= army.Value.InitialSoldiers * 3)
                     EndCampaign(army, WarOutcome.HeavyLosses, soldiers);
-                else if ((Current.Rules.Thirst && army.Value.WaterSupplies <= 0 && soldiers.Average(r => r.Thirst) > 60) ||
+                else if ((Rules.Thirst && army.Value.WaterSupplies <= 0 && soldiers.Average(r => r.Thirst) > 60) ||
                          army.Value.Morale < 15 ||
-                         (Current.Rules.Hunger && army.Value.Supplies <= 0 && soldiers.Average(r => r.Hunger) > 40))
+                         (Rules.Hunger && army.Value.Supplies <= 0 && soldiers.Average(r => r.Hunger) > 40))
                     EndCampaign(army, WarOutcome.SupplyShortage, soldiers);
                 else if (army.Value.BlockedTicks >= 5 * SimulationTime.TicksPerDay)
                     EndCampaign(army, WarOutcome.RouteBlocked, soldiers);
-                else if (Current.Tick - army.Value.StartedTick >= 6 * SimulationTime.TicksPerYear)
+                else if (SimulationTick - army.Value.StartedTick >= 6 * SimulationTime.TicksPerYear)
                     EndCampaign(army, WarOutcome.Exhausted, soldiers);
             }
 
-            var time = SimulationTime.TimeOfDay(Current.Tick);
+            var time = SimulationTime.TimeOfDay(SimulationTick);
             if ((time < SimulationTime.WakeTick || time >= SimulationTime.SleepTick)
-                && !soldiers.Any(r => Current.Tiles[Index(r.X, r.Y)].Value.FireTicks > 0)
-                && !Current.Armies.Any(a => a.Value.Id != army.Value.Id && a.Value.NationId == army.Value.TargetNationId
+                && !soldiers.Any(r => Tiles[Index(r.X, r.Y)].Value.FireTicks > 0)
+                && !Armies.Any(a => a.Value.Id != army.Value.Id && a.Value.NationId == army.Value.TargetNationId
                                                             && Distance(army.Value.X, army.Value.Y, a.Value.X, a.Value.Y) <= 2))
             {
                 army.Replace(army.Value with { Status = "夜间宿营休息" });
@@ -353,7 +353,7 @@ public sealed partial class WorldEngine
                 continue;
             }
 
-            var opponent = Current.Armies.FirstOrDefault(a =>
+            var opponent = Armies.FirstOrDefault(a =>
                 a.Value.Id != army.Value.Id && a.Value.NationId == army.Value.TargetNationId && Distance(army.Value.X, army.Value.Y, a.Value.X, a.Value.Y) <= 2);
             foreach (var ranger in soldiers.Where(p => p.Profession == Profession.Ranger))
             {
@@ -373,10 +373,10 @@ public sealed partial class WorldEngine
             {
                 army.Replace(army.Value with { Status = "交战" });
                 RecordBattle(army, soldiers);
-                if (Current.Tick % 3 == 0)
+                if (SimulationTick % 3 == 0)
                 {
                     ApplyDamage(
-                        Current.Residents.Where(r =>
+                        Residents.Where(r =>
                             r.ArmyId == opponent.Value.Id && r.Health > 0 && Distance(r.X, r.Y, army.Value.X, army.Value.Y) <= 3),
                         soldiers.Count(r => Distance(r.X, r.Y, army.Value.X, army.Value.Y) <= 2) * 5 * army.Value.Morale / 100);
                 }
@@ -386,7 +386,7 @@ public sealed partial class WorldEngine
 
             if (army.Value.Objective == WarObjective.DefendHomeland)
             {
-                var intruder = Current.Armies.FirstOrDefault(a => a.Value.NationId == army.Value.TargetNationId
+                var intruder = Armies.FirstOrDefault(a => a.Value.NationId == army.Value.TargetNationId
                                                                   && Distance(army.Value.X, army.Value.Y, a.Value.X, a.Value.Y) <= 6 &&
                                                                   Distance(a.Value.X, a.Value.Y, army.Value.TargetX, army.Value.TargetY) <= 8);
                 army.Replace(army.Value with { Status = "保卫家园，依据当地观察巡守" });
@@ -399,7 +399,7 @@ public sealed partial class WorldEngine
 
             if (Distance(army.Value.X, army.Value.Y, army.Value.TargetX, army.Value.TargetY) <= 1)
             {
-                var visibleTarget = Current.Settlements.FirstOrDefault(t => t.Value.NationId == army.Value.TargetNationId
+                var visibleTarget = Settlements.FirstOrDefault(t => t.Value.NationId == army.Value.TargetNationId
                                                                             && (army.Value.TargetSettlementId == 0 ||
                                                                                 t.Value.Id == army.Value.TargetSettlementId)
                                                                             && Distance(t.Value.X, t.Value.Y, army.Value.TargetX,
@@ -414,7 +414,7 @@ public sealed partial class WorldEngine
                 {
                     TargetSettlementId = visibleTarget.Value.Id, Status = "围攻既定目标 " + visibleTarget.Value.Name,
                 });
-                if (Current.Tick % 3 == 0)
+                if (SimulationTick % 3 == 0)
                     Siege(army, visibleTarget, soldiers.Where(r => Distance(r.X, r.Y, army.Value.X, army.Value.Y) <= 2).ToArray());
                 continue;
             }
@@ -459,7 +459,7 @@ public sealed partial class WorldEngine
 
     private void ApplyDamage(IEnumerable<ResidentCursor> residents, double damage)
     {
-        damage *= Current.Rules.CombatDamageRate;
+        damage *= Rules.CombatDamageRate;
         foreach (var resident in residents)
         {
             EmitVisual(WorldVisualKind.Battle, resident.X, resident.Y);
@@ -474,7 +474,7 @@ public sealed partial class WorldEngine
 
     private void Siege(StateReference<Army> army, StateReference<Settlement> target, ResidentCursor[] soldiers)
     {
-        var defenders = Current.Residents.Where(r =>
+        var defenders = Residents.Where(r =>
             r.SettlementId == target.Value.Id && r.ArmyId == 0 && r.Age >= 14 && r.Health > 0 &&
             Distance(r.X, r.Y, target.Value.X, target.Value.Y) <= 5).ToArray();
         if (defenders.Length == 0)
@@ -500,25 +500,25 @@ public sealed partial class WorldEngine
             return;
         TransferSettlementOwnership(town, army.Value.NationId);
         foreach (var index in Circle(town.Value.X, town.Value.Y, 15))
-            if (Current.Tiles[index].Value.NationId == previous &&
-                (Current.Tiles[index].Value.SettlementId == 0 || Current.Tiles[index].Value.SettlementId == town.Value.Id))
-                Current.Tiles[index].Replace(Current.Tiles[index].Value.WithNationId(army.Value.NationId));
+            if (Tiles[index].Value.NationId == previous &&
+                (Tiles[index].Value.SettlementId == 0 || Tiles[index].Value.SettlementId == town.Value.Id))
+                Tiles[index].Replace(Tiles[index].Value.WithNationId(army.Value.NationId));
         ClaimTerritory(town, 8);
         var occupationEvent = AddEvent(WorldEventKind.War,
             $"{_nations[army.Value.NationId].Value.Name}占领了{previousNation.Value.Name}的{town.Value.Name}。", town.Value.X, town.Value.Y, EventAction.Capture,
             town.Value.Id, causeEventId: army.Value.LastEventId);
         occupationEvent = PublishEvent(occupationEvent with { SecondNationId = previous });
         EndCampaign(army, WarOutcome.ObjectiveReached,
-            Current.Residents.Where(r => r.ArmyId == army.Value.Id && r.Health > 0).ToArray(), occupationEvent.Id);
+            Residents.Where(r => r.ArmyId == army.Value.Id && r.Health > 0).ToArray(), occupationEvent.Id);
         Reindex();
         RemoveEmptyNations();
     }
 
     private void DisbandArmy(StateReference<Army> army)
     {
-        var veterans = Current.Residents.Where(r => r.ArmyId == army.Value.Id).ToArray();
+        var veterans = Residents.Where(r => r.ArmyId == army.Value.Id).ToArray();
         var localDepot =
-            Current.Settlements.FirstOrDefault(s =>
+            Settlements.FirstOrDefault(s =>
                 s.Value.NationId == army.Value.NationId && Distance(s.Value.X, s.Value.Y, army.Value.X, army.Value.Y) <= 1);
         if (localDepot is not null)
         {
@@ -566,27 +566,27 @@ public sealed partial class WorldEngine
                     TargetX = home.Value.X,
                     TargetY = home.Value.Y,
                     TargetSettlementId = home.Value.Id,
-                    StartedTick = Current.Tick,
-                    ReviewTick = Current.Tick + 200,
+                    StartedTick = SimulationTick,
+                    ReviewTick = SimulationTick + 200,
                     PlayerDirected = true,
                     Reason = "退伍后步行返回家园",
                 });
             }
         }
 
-        Current.Armies.Remove(army);
+        Armies.Remove(army);
     }
 
     private void RemoveSettlement(StateReference<Settlement> settlement, string reason)
     {
         AddEvent(WorldEventKind.Death, $"{settlement.Value.Name}：{reason}。", settlement.Value.X, settlement.Value.Y);
         var destination =
-            Current.Settlements.FirstOrDefault(s => s.Value.Id != settlement.Value.Id && s.Value.NationId == settlement.Value.NationId);
-        foreach (var resident in Current.Residents.Where(r => r.SettlementId == settlement.Value.Id).ToArray())
+            Settlements.FirstOrDefault(s => s.Value.Id != settlement.Value.Id && s.Value.NationId == settlement.Value.NationId);
+        foreach (var resident in Residents.Where(r => r.SettlementId == settlement.Value.Id).ToArray())
         {
             if (destination is null)
             {
-                Current.Residents.Remove(resident);
+                Residents.Remove(resident);
                 continue;
             }
 
@@ -594,15 +594,15 @@ public sealed partial class WorldEngine
                 resident.Value with { SettlementId = destination.Value.Id, X = destination.Value.X, Y = destination.Value.Y });
         }
 
-        var tile = Current.Tiles[Index(settlement.Value.X, settlement.Value.Y)];
+        var tile = Tiles[Index(settlement.Value.X, settlement.Value.Y)];
         if (tile.Value.SettlementId == settlement.Value.Id)
             tile.Replace(tile.Value.WithSettlementId(0));
-        Current.Conflicts = Current.Conflicts.RemoveAll(c => c.SettlementId == settlement.Value.Id);
-        foreach (var ground in Current.Tiles)
+        Conflicts = Conflicts.RemoveAll(c => c.SettlementId == settlement.Value.Id);
+        foreach (var ground in Tiles)
             if (ground.Value.ClaimedSettlementId == settlement.Value.Id)
                 ground.Replace(ground.Value with { ClaimedSettlementId = 0, NationId = 0 });
 
-        Current.Settlements.Remove(settlement);
+        Settlements.Remove(settlement);
         _settlements.Remove(settlement.Value.Id);
         _citizens.Remove(settlement.Value.Id);
         if (_nations.TryGetValue(settlement.Value.NationId, out var nation) && nation.Value.CapitalId == settlement.Value.Id)
@@ -611,17 +611,17 @@ public sealed partial class WorldEngine
 
     private void RemoveEmptyNations()
     {
-        foreach (var nation in Current.Nations.Where(n => !Current.Settlements.Any(s => s.Value.NationId == n.Value.Id)).ToArray())
+        foreach (var nation in Nations.Where(n => !Settlements.Any(s => s.Value.NationId == n.Value.Id)).ToArray())
         {
             AddEvent(WorldEventKind.War, $"{nation.Value.Name}失去了最后的聚落，退出历史舞台。");
-            Current.Nations.Remove(nation);
+            Nations.Remove(nation);
             _nations.Remove(nation.Value.Id);
-            Current.Diplomacies =
-                Current.Diplomacies.RemoveAll(r => r.FirstNationId == nation.Value.Id || r.SecondNationId == nation.Value.Id);
-            foreach (var tile in Current.Tiles)
+            Diplomacies =
+                Diplomacies.RemoveAll(r => r.FirstNationId == nation.Value.Id || r.SecondNationId == nation.Value.Id);
+            foreach (var tile in Tiles)
                 if (tile.Value.NationId == nation.Value.Id)
                     tile.Replace(tile.Value.WithNationId(0));
-            foreach (var army in Current.Armies.Where(a => a.Value.NationId == nation.Value.Id).ToArray())
+            foreach (var army in Armies.Where(a => a.Value.NationId == nation.Value.Id).ToArray())
                 DisbandArmy(army);
         }
     }

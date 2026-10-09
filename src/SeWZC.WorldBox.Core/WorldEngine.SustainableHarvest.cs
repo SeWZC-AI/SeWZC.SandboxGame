@@ -7,15 +7,15 @@ public sealed partial class WorldEngine
     // 恢复按十六日累计，各行错峰；固定更新格数会令大地图上的同一片土地恢复得更慢。
     private void RegenerateNaturalResources()
     {
-        if (!Current.Rules.ResourceRegeneration || Current.Tick == 0)
+        if (!Rules.ResourceRegeneration || SimulationTick == 0)
             return;
         const int interval = 16;
-        var band = (int)((Current.Tick - 1) % interval);
-        var first = band * Current.Height / interval * Current.Width;
-        var last = (band + 1) * Current.Height / interval * Current.Width;
+        var band = (int)((SimulationTick - 1) % interval);
+        var first = band * Height / interval * Width;
+        var last = (band + 1) * Height / interval * Width;
         for (var index = first; index < last; index++)
         {
-            var tile = Current.Tiles[index];
+            var tile = Tiles[index];
             var before = tile.Value;
             if (!before.IsWalkable || before.FireTicks > 0)
                 continue;
@@ -72,8 +72,8 @@ public sealed partial class WorldEngine
     private bool WildlifeGoalProductive(ResidentCursor person)
     {
         var source = person.Agent.Goal.TargetEntityId - 1;
-        return source >= 0 && source < Current.Tiles.Count
-                           && WildlifeSiteProductive(Current.Tiles[source],
+        return source >= 0 && source < Tiles.Count
+                           && WildlifeSiteProductive(Tiles[source],
                                person.Agent.Goal.Kind == AgentGoalKind.Fish);
     }
 }

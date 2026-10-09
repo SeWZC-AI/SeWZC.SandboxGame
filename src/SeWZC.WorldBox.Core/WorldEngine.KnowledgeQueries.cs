@@ -15,9 +15,9 @@ public sealed partial class WorldEngine
         _knowledgeByTown.Clear();
         _institutionReports.Clear();
         IndexCultureContacts();
-        foreach (var report in Current.Society.Reports)
+        foreach (var report in Society.Reports)
             _institutionReports.Add((report.RecipientSettlementId, report.FactId));
-        foreach (var research in Current.Society.Research)
+        foreach (var research in Society.Research)
         {
             var mask = 0UL;
             foreach (var kind in research.Completed)
@@ -42,7 +42,7 @@ public sealed partial class WorldEngine
     private void IndexCultureContacts()
     {
         _cultureContactIndices.Clear();
-        var contacts = Current.Society.CulturalContacts;
+        var contacts = Society.CulturalContacts;
         for (var index = 0; index < contacts.Count; index++)
             _cultureContactIndices.TryAdd((contacts[index].ResidentId, contacts[index].CultureId), index);
         _indexedCultureContactCount = contacts.Count;
@@ -51,10 +51,10 @@ public sealed partial class WorldEngine
     private int FindCultureContactIndex(int residentId, int cultureId)
     {
         if (!_knowledgeQueriesActive)
-            return Current.Society.CulturalContacts.FindIndex(c =>
+            return Society.CulturalContacts.FindIndex(c =>
                 c.ResidentId == residentId && c.CultureId == cultureId);
         // 新增接触同步登记；删除接触后重建位置，接触程度的改写仍从权威记录即时读取。
-        if (_indexedCultureContactCount != Current.Society.CulturalContacts.Count)
+        if (_indexedCultureContactCount != Society.CulturalContacts.Count)
             IndexCultureContacts();
         return _cultureContactIndices.GetValueOrDefault((residentId, cultureId), -1);
     }

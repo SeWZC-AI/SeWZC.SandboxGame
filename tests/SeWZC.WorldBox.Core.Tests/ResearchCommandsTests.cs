@@ -9,9 +9,9 @@ public sealed class ResearchCommandsTests
     {
         var fixture = new WorldFixture();
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock { Food = 100, Wood = 100, Stone = 100, Ore = 100 }));
-        fixture.Engine.Current.Buildings.Add(new StateReference<Building>(new Building
+        fixture.Engine.Buildings.Add(new StateReference<Building>(new Building
         {
-            Id = fixture.Engine.Current.NextId++,
+            Id = fixture.Engine.NextId++,
             SettlementId = fixture.Town.Value.Id,
             Kind = BuildingKind.Academy,
             X = 17,
@@ -33,7 +33,7 @@ public sealed class ResearchCommandsTests
 
         foreach (var kind in ResourceStock.Kinds)
             Assert.Equal(before.Get(kind) - project.Cost.Get(kind), fixture.Town.Value.Resources.Get(kind));
-        var research = fixture.Engine.Current.Society.Research.Single();
+        var research = fixture.Engine.Society.Research.Single();
         Assert.Same(project, research.ActiveProject);
         Assert.Equal(0, research.Progress);
         Assert.Equal(project.Work, research.RequiredProgress);
@@ -45,7 +45,7 @@ public sealed class ResearchCommandsTests
     public void Start_requires_a_completed_academy()
     {
         var fixture = ReadyWorld();
-        fixture.Engine.Current.Buildings.RemoveAll(building => building.Value.Kind == BuildingKind.Academy);
+        fixture.Engine.Buildings.RemoveAll(building => building.Value.Kind == BuildingKind.Academy);
         var before = fixture.Engine.ExportJson();
 
         Assert.Throws<InvalidOperationException>(() => fixture.Engine.StartResearch(fixture.Town.Value.Id,
@@ -106,7 +106,7 @@ public sealed class ResearchCommandsTests
         fixture.Engine.GrantReceivedResearch(fixture.Town.Value.Id, Advancement.Agriculture);
 
         Assert.Equal(before, fixture.Engine.ExportJson());
-        Assert.Single(fixture.Engine.Current.Society.Research.Single().Completed);
+        Assert.Single(fixture.Engine.Society.Research.Single().Completed);
     }
 
     /// <summary>查询不会授予知识、推进世界或消耗随机数。</summary>

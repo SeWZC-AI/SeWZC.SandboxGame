@@ -34,17 +34,17 @@ public sealed partial class WorldEngine
 
     private void TickPlants()
     {
-        if (!Current.Rules.ResourceRegeneration)
+        if (!Rules.ResourceRegeneration)
             return;
         // 将每年植物复评分摊到每 tick 各行，避免年末全图更新峰值。
-        var band = (int)((Current.Tick - 1) % SimulationTime.TicksPerYear);
-        var firstRow = band * Current.Height / SimulationTime.TicksPerYear;
-        var lastRow = (band + 1) * Current.Height / SimulationTime.TicksPerYear;
+        var band = (int)((SimulationTick - 1) % SimulationTime.TicksPerYear);
+        var firstRow = band * Height / SimulationTime.TicksPerYear;
+        var lastRow = (band + 1) * Height / SimulationTime.TicksPerYear;
         Span<double> nearby = stackalloc double[4];
         for (var y = firstRow; y < lastRow; y++)
-        for (var x = 0; x < Current.Width; x++)
+        for (var x = 0; x < Width; x++)
         {
-            var tile = Current.Tiles[Index(x, y)];
+            var tile = Tiles[Index(x, y)];
             if (!tile.Value.IsWalkable || tile.Value.Improvement != LandImprovement.None)
                 continue;
             if (tile.Value.FireTicks > 0)
@@ -55,14 +55,14 @@ public sealed partial class WorldEngine
 
             var plants = tile.Value.Plants;
             nearby.Clear();
-            if (x + 1 < Current.Width)
-                Include(Current.Tiles[Index(x + 1, y)].Value.Plants, nearby);
-            if (y + 1 < Current.Height)
-                Include(Current.Tiles[Index(x, y + 1)].Value.Plants, nearby);
+            if (x + 1 < Width)
+                Include(Tiles[Index(x + 1, y)].Value.Plants, nearby);
+            if (y + 1 < Height)
+                Include(Tiles[Index(x, y + 1)].Value.Plants, nearby);
             if (x > 0)
-                Include(Current.Tiles[Index(x - 1, y)].Value.Plants, nearby);
+                Include(Tiles[Index(x - 1, y)].Value.Plants, nearby);
             if (y > 0)
-                Include(Current.Tiles[Index(x, y - 1)].Value.Plants, nearby);
+                Include(Tiles[Index(x, y - 1)].Value.Plants, nearby);
             for (var species = 0; species < 4; species++)
             {
                 var kind = (PlantKind)species;

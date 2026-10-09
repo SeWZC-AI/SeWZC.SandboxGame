@@ -11,7 +11,7 @@ public sealed class DamageProtectionTests
     {
         var fixture = new WorldFixture();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
-        var patient = fixture.Engine.Current.Residents.Single(person => person.Id != fixture.ResidentId);
+        var patient = fixture.Engine.Residents.Single(person => person.Id != fixture.ResidentId);
         patient.Replace(patient.Value with
         {
             X = 16,
@@ -20,7 +20,7 @@ public sealed class DamageProtectionTests
             DeathCause = DeathCause.Fire,
             DeathTick = 1,
         });
-        fixture.Engine.Current.Tick = 1;
+        fixture.Engine.SimulationTick = 1;
         fixture.Resident.Age = 25;
         fixture.Resident.Replace(fixture.Resident.Value with { MagicTalent = 60 });
         fixture.Resident.Replace(fixture.Resident.Value with { MagicTraining = 20 });
@@ -63,7 +63,7 @@ public sealed class DamageProtectionTests
             Research = false,
             Wars = false,
         }, false, false);
-        foreach (var person in fixture.Engine.Current.Residents)
+        foreach (var person in fixture.Engine.Residents)
         {
             person.Age = 25;
             person.X = 16;
@@ -75,7 +75,7 @@ public sealed class DamageProtectionTests
         fixture.Resident.Replace(fixture.Resident.Value with { MagicTalent = 60 });
         fixture.Resident.Replace(fixture.Resident.Value with { MagicTraining = 20 });
         fixture.Resident.Mana = 100;
-        var patients = fixture.Engine.Current.Residents.Where(person => person.Id != fixture.ResidentId).ToArray();
+        var patients = fixture.Engine.Residents.Where(person => person.Id != fixture.ResidentId).ToArray();
         patients[0].Health = 50;
         patients[1].Health = 30;
         if (outsideAutomaticRange)
@@ -84,7 +84,7 @@ public sealed class DamageProtectionTests
             patients[1].Y = 18;
         }
 
-        fixture.Engine.Current.Tick = SimulationTime.WakeTick
+        fixture.Engine.SimulationTick = SimulationTime.WakeTick
                                       + (11 - fixture.ResidentId % 12 - SimulationTime.WakeTick + 24) % 12;
 
         if (automatic)

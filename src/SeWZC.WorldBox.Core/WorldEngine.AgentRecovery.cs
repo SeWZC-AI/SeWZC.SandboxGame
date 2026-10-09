@@ -16,7 +16,7 @@ public sealed partial class WorldEngine
                 break;
             var x = person.X + offset.X;
             var y = person.Y + offset.Y;
-            if (!Walkable(x, y, person.Race) || Current.Tiles[Index(x, y)].Value.FireTicks > 0)
+            if (!Walkable(x, y, person.Race) || Tiles[Index(x, y)].Value.FireTicks > 0)
                 continue;
             var dangerDistance = Distance(x, y, danger?.X ?? person.X, danger?.Y ?? person.Y);
             var homeDistance = Distance(x, y, home.Value.X, home.Value.Y);
@@ -47,7 +47,7 @@ public sealed partial class WorldEngine
             return;
         IReadOnlyList<StateReference<Building>>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(home.Value.Id)
-            : Current.Buildings;
+            : Buildings;
         StateReference<Building>? selected = null;
         var bestDistance = int.MaxValue;
         var reachable = 0;

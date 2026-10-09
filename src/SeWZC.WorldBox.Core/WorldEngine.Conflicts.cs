@@ -10,18 +10,18 @@ public sealed partial class WorldEngine
                                    && person.Agent.Memory.Any(f =>
                                        f.Kind == AgentFactKind.FoodSupply && f.Value < 12 && f.Confidence >= .5 &&
                                        f.SubjectId == person.SettlementId &&
-                                       Current.Tick - f.ObservedTick <= 2 * SimulationTime.TicksPerMonth);
+                                       SimulationTick - f.ObservedTick <= 2 * SimulationTime.TicksPerMonth);
     }
 
     private void TickLocalConflicts()
     {
-        if (Current.Tick % 12 != 0)
+        if (SimulationTick % 12 != 0)
             return;
-        var residents = Current.Residents.ToDictionary(r => r.Id);
-        Current.Conflicts = Current.Conflicts.RemoveAll(c =>
-            (c.Stage == ConflictStage.Resolved && Current.Tick - c.LastChangedTick > 3 * SimulationTime.TicksPerYear)
+        var residents = Residents.ToDictionary(r => r.Id);
+        Conflicts = Conflicts.RemoveAll(c =>
+            (c.Stage == ConflictStage.Resolved && SimulationTick - c.LastChangedTick > 3 * SimulationTime.TicksPerYear)
             || !_settlements.ContainsKey(c.SettlementId));
-        foreach (var previous in Current.Conflicts.Where(c => c.Stage != ConflictStage.Resolved))
+        foreach (var previous in Conflicts.Where(c => c.Stage != ConflictStage.Resolved))
         {
             var conflict = previous;
             var together = residents.TryGetValue(conflict.FirstResidentId, out var first)
@@ -36,16 +36,16 @@ public sealed partial class WorldEngine
             {
                 Participants = conflict.Participants.RemoveAll(id => !residents.ContainsKey(id)),
                 Tension = Math.Clamp(
-                    conflict.Tension + (pressured && Current.Rules.Conflict > 0 ? 4 * Current.Rules.Conflict : -12),
+                    conflict.Tension + (pressured && Rules.Conflict > 0 ? 4 * Rules.Conflict : -12),
                     0, 100),
             });
-            if (conflict.Tension <= 0 || !Current.Rules.Wars || Current.Rules.Conflict == 0)
+            if (conflict.Tension <= 0 || !Rules.Wars || Rules.Conflict == 0)
             {
                 conflict = ChangeConflictStage(conflict, ConflictStage.Resolved, "双方离开争夺地点、获得食物或停止冲突，争执平息");
                 continue;
             }
 
-            var elapsed = Current.Tick - conflict.StageStartedTick;
+            var elapsed = SimulationTick - conflict.StageStartedTick;
             if (pressured && elapsed >= 36 && conflict.Stage == ConflictStage.Dispute && conflict.Tension >= 40)
                 conflict = ChangeConflictStage(conflict, ConflictStage.Confrontation, "资源争执持续，当事人开始对峙");
             else if (pressured && elapsed >= 48 && conflict.Stage == ConflictStage.Confrontation &&
@@ -53,13 +53,13 @@ public sealed partial class WorldEngine
                 conflict = ChangeConflictStage(conflict, ConflictStage.Violence, "持续对峙未解决，演变为局部斗殴");
             if (pressured && conflict.Stage == ConflictStage.Violence)
             {
-                DamageResident(first!, .6 * Current.Rules.Conflict, DeathCause.Conflict);
-                DamageResident(residents[conflict.SecondResidentId], .6 * Current.Rules.Conflict, DeathCause.Conflict);
+                DamageResident(first!, .6 * Rules.Conflict, DeathCause.Conflict);
+                DamageResident(residents[conflict.SecondResidentId], .6 * Rules.Conflict, DeathCause.Conflict);
                 EmitVisual(WorldVisualKind.Battle, conflict.X, conflict.Y);
             }
 
             // 其他居民须在本地目击持续争端后才参与，避免冲突隔空扩散。
-            if (pressured && Current.Tick - conflict.StartedTick >= 72 && conflict.Participants.Count < 16)
+            if (pressured && SimulationTick - conflict.StartedTick >= 72 && conflict.Participants.Count < 16)
             {
                 var witness = _citizens[conflict.SettlementId].Where(r => r.Age >= 14 && r.ArmyId == 0
                     && !conflict.Participants.Contains(r.Id) && HasResourcePressure(r)
@@ -67,7 +67,7 @@ public sealed partial class WorldEngine
                 if (witness is not null)
                     conflict = PublishConflict(conflict with { Participants = conflict.Participants.Add(witness.Id) });
                 var scope = conflict.Participants.Count >= 8 &&
-                            Current.Tick - conflict.StartedTick >= 2 * SimulationTime.TicksPerMonth
+                            SimulationTick - conflict.StartedTick >= 2 * SimulationTime.TicksPerMonth
                     ? ConflictScope.Settlement
                     : conflict.Participants.Count >= 4
                         ? ConflictScope.Group
@@ -80,13 +80,13 @@ public sealed partial class WorldEngine
             }
         }
 
-        if (!Current.Rules.Wars || Current.Rules.Conflict <= 0)
+        if (!Rules.Wars || Rules.Conflict <= 0)
             return;
-        foreach (var town in Current.Settlements)
+        foreach (var town in Settlements)
         {
-            if (Current.Conflicts.Count >= 128 || Current.Conflicts.Any(c => c.SettlementId == town.Value.Id
+            if (Conflicts.Count >= 128 || Conflicts.Any(c => c.SettlementId == town.Value.Id
                                                                              && (c.Stage != ConflictStage.Resolved ||
-                                                                                 Current.Tick - c.LastChangedTick <
+                                                                                 SimulationTick - c.LastChangedTick <
                                                                                  120)))
                 continue;
             var candidates = _citizens[town.Value.Id].Where(r => r.Age >= 14 && r.ArmyId == 0 && HasResourcePressure(r))
@@ -106,12 +106,12 @@ public sealed partial class WorldEngine
                     X = first.X,
                     Y = first.Y,
                     Tension = 16,
-                    StartedTick = Current.Tick,
-                    StageStartedTick = Current.Tick,
-                    LastChangedTick = Current.Tick,
+                    StartedTick = SimulationTick,
+                    StageStartedTick = SimulationTick,
+                    LastChangedTick = SimulationTick,
                     Participants = [first.Id, second.Id],
                 };
-                Current.Conflicts = Current.Conflicts.Add(conflict);
+                Conflicts = Conflicts.Add(conflict);
                 conflict = RecordConflictEvent(conflict, "两位缺粮居民在现场为有限的食物发生争执");
                 break;
             }
@@ -120,13 +120,13 @@ public sealed partial class WorldEngine
 
     private LocalConflict ChangeConflictStage(LocalConflict conflict, ConflictStage stage, string reason)
     {
-        conflict = conflict with { Stage = stage, StageStartedTick = Current.Tick };
+        conflict = conflict with { Stage = stage, StageStartedTick = SimulationTick };
         return RecordConflictEvent(conflict, reason);
     }
 
     private LocalConflict RecordConflictEvent(LocalConflict conflict, string reason)
     {
-        conflict = conflict with { LastChangedTick = Current.Tick };
+        conflict = conflict with { LastChangedTick = SimulationTick };
         var entry = AddEvent(WorldEventKind.Personal, $"{_settlements[conflict.SettlementId].Value.Name}：{reason}。",
             conflict.X, conflict.Y, settlementId: conflict.SettlementId, residentId: conflict.FirstResidentId,
             causeEventId: conflict.LastEventId);
@@ -137,7 +137,7 @@ public sealed partial class WorldEngine
                 : EventImportance.Notable,
         });
         conflict = PublishConflict(conflict with { LastEventId = entry.Id });
-        foreach (var person in Current.Residents.Where(r => conflict.Participants.Contains(r.Id)))
+        foreach (var person in Residents.Where(r => conflict.Participants.Contains(r.Id)))
             RecordLife(person, reason, entry,
                 conflict.Stage == ConflictStage.Resolved
                     ? PersonalExperienceKind.Kindness

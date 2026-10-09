@@ -35,7 +35,7 @@ public sealed partial class WorldEngine
         {
             Health = health,
             DeathCause = health <= 0 ? cause : person.DeathCause,
-            DeathTick = health <= 0 ? Current.Tick : person.DeathTick,
+            DeathTick = health <= 0 ? SimulationTick : person.DeathTick,
         });
         if (health <= 0)
             RemoveLocalWorkResident(person);

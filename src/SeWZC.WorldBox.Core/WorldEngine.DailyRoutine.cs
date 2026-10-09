@@ -8,9 +8,9 @@ public sealed partial class WorldEngine
     private bool FollowDailyRoutine(ResidentCursor person, StateReference<Settlement> home, bool emergency)
     {
         var agent = person.Agent;
-        var time = SimulationTime.TimeOfDay(Current.Tick);
+        var time = SimulationTime.TimeOfDay(SimulationTick);
         var evening = time >= SimulationTime.ReturnHomeTick || time < SimulationTime.WakeTick;
-        if ((agent.Goal.PlayerDirected && Current.Tick < agent.Goal.ReviewTick) || person.ArmyId != 0)
+        if ((agent.Goal.PlayerDirected && SimulationTick < agent.Goal.ReviewTick) || person.ArmyId != 0)
             return false;
 
         if (!evening || emergency)
@@ -27,14 +27,14 @@ public sealed partial class WorldEngine
 
                 var resumed = (agent.DaytimeGoal ?? new AgentGoal()).ResetNavigation();
                 ChangeWorkReservation(agent.Goal, resumed);
-                person.Agent = agent with { Goal = resumed, DaytimeGoal = null, NextThinkTick = Current.Tick };
+                person.Agent = agent with { Goal = resumed, DaytimeGoal = null, NextThinkTick = SimulationTick };
                 person.Activity = ResidentActivity.Resting;
             }
 
             return false;
         }
 
-        if (person.FrozenUntilTick > Current.Tick)
+        if (person.FrozenUntilTick > SimulationTick)
         {
             person.Activity = ResidentActivity.Resting;
             return true;
@@ -67,9 +67,9 @@ public sealed partial class WorldEngine
 
         if (agent.Goal.Kind != AgentGoalKind.Sleep)
         {
-            var morning = SimulationTime.DayIndex(Current.Tick) * SimulationTime.TicksPerDay
+            var morning = SimulationTime.DayIndex(SimulationTick) * SimulationTime.TicksPerDay
                           + SimulationTime.WakeTick;
-            if (morning <= Current.Tick)
+            if (morning <= SimulationTick)
                 morning += SimulationTime.TicksPerDay;
             var sleep = new AgentGoal
             {
@@ -77,7 +77,7 @@ public sealed partial class WorldEngine
                 TargetX = home.Value.X,
                 TargetY = home.Value.Y,
                 TargetSettlementId = home.Value.Id,
-                StartedTick = Current.Tick,
+                StartedTick = SimulationTick,
                 ReviewTick = morning,
                 Reason = "傍晚沿实际道路返家，夜间睡眠，晨起继续白天活动",
             };

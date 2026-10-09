@@ -10,14 +10,14 @@ public sealed partial class WorldEngine
     private void OnTileChanged(int index, Tile before, Tile after)
     {
         var change = TileChange.Between(before, after);
-        if (_tileQueryMembershipRevision == Current.Tiles.MembershipRevision)
+        if (_tileQueryMembershipRevision == Tiles.MembershipRevision)
             _tileQueries[index].Invalidate(change);
         _territoryCounts.OnTileChanged(index, before, after, change);
     }
 
     private ref TileQueryCache QueryCache(StateReference<Tile> tile)
     {
-        var tiles = Current.Tiles;
+        var tiles = Tiles;
         if (_tileQueryMembershipRevision != tiles.MembershipRevision)
         {
             if (_tileQueries.Length != tiles.Count)
@@ -32,14 +32,14 @@ public sealed partial class WorldEngine
 
     private double PlantHarvestEfficiency(StateReference<Tile> tile, bool wood)
     {
-        return ReferenceEquals(tile.Collection, Current.Tiles)
+        return ReferenceEquals(tile.Collection, Tiles)
             ? QueryCache(tile).PlantHarvestEfficiency(tile.Value, wood)
             : tile.Value.PlantHarvestEfficiency(wood);
     }
 
     private double PlantSiteYield(StateReference<Tile> tile, bool wood)
     {
-        return ReferenceEquals(tile.Collection, Current.Tiles)
+        return ReferenceEquals(tile.Collection, Tiles)
             ? QueryCache(tile).PlantSiteYield(tile.Value, wood)
             : tile.Value.PlantSiteYield(wood, tile.Value.PlantHarvestEfficiency(wood));
     }
@@ -48,14 +48,14 @@ public sealed partial class WorldEngine
     {
         if (aquatic != IsWaterTerrain(tile.Value.Terrain))
             return WildlifeKind.None;
-        return ReferenceEquals(tile.Collection, Current.Tiles)
+        return ReferenceEquals(tile.Collection, Tiles)
             ? QueryCache(tile).EdibleAnimal(tile.Value, aquatic)
             : tile.Value.EdibleAnimal(aquatic);
     }
 
     private double HarvestEfficiency(StateReference<Tile> tile, WildlifeKind kind)
     {
-        if (ReferenceEquals(tile.Collection, Current.Tiles))
+        if (ReferenceEquals(tile.Collection, Tiles))
             return QueryCache(tile).HarvestEfficiency(tile.Value, kind);
         if (kind == WildlifeKind.None)
             return 0;

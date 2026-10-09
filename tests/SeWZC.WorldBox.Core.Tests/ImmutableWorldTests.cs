@@ -13,9 +13,9 @@ public sealed class ImmutableWorldTests
     public void Tile_replacement_and_transform_invalidate_claim_queries(bool transform)
     {
         var fixture = new WorldFixture();
-        var tiles = fixture.Engine.Current.Tiles;
+        var tiles = fixture.Engine.Tiles;
         var town = fixture.Town.Value;
-        var index = town.Y * fixture.Engine.Current.Width + town.X;
+        var index = town.Y * fixture.Engine.Width + town.X;
         var area = fixture.Engine.GetSettlementArea(town.Id);
         Assert.True(area > 0);
         using var updates = tiles.BeginUpdates();
@@ -32,7 +32,7 @@ public sealed class ImmutableWorldTests
     [Fact]
     public void Snapshot_includes_batched_nations_buildings_and_armies()
     {
-        var current = new WorldStateCursor(new WorldState
+        var current = new WorldEngine(new WorldState
         {
             Width = 1,
             Height = 1,
@@ -44,7 +44,7 @@ public sealed class ImmutableWorldTests
                 Buildings = ImmutableVector<Building>.Create([new Building { Id = 4, Health = 100 }]),
             },
         });
-        var before = current.CaptureSnapshot();
+        var before = current.State;
         using var nations = current.Nations.BeginUpdates();
         using var buildings = current.Buildings.BeginUpdates();
         using var armies = current.Armies.BeginUpdates();
@@ -52,11 +52,11 @@ public sealed class ImmutableWorldTests
         current.Nations[0].Replace(current.Nations[0].Value with { Name = "更新" });
         current.Buildings[0].Replace(current.Buildings[0].Value with { Health = 80 });
         current.Armies[0].Replace(current.Armies[0].Value with { Supplies = 2 });
-        var middle = current.CaptureSnapshot();
+        var middle = current.State;
         current.Nations[0].Replace(current.Nations[0].Value with { Name = "继续更新" });
         current.Buildings[0].Replace(current.Buildings[0].Value with { Health = 60 });
         current.Armies[0].Replace(current.Armies[0].Value with { Supplies = 1 });
-        var after = current.CaptureSnapshot();
+        var after = current.State;
 
         Assert.Equal("初始", before.Nations[0].Name);
         Assert.Equal(100, before.Society.Buildings[0].Health);
@@ -76,13 +76,13 @@ public sealed class ImmutableWorldTests
         var fixture = new WorldFixture();
         var before = fixture.Engine.State;
         var town = fixture.Town;
-        using var updates = fixture.Engine.Current.Settlements.BeginUpdates();
+        using var updates = fixture.Engine.Settlements.BeginUpdates();
         town.Replace(town.Value.WithResources(town.Value.Resources with { Food = 7, Water = 3 }));
         var middle = fixture.Engine.State;
         town.Replace(town.Value.WithResources(town.Value.Resources with { Food = 5 }));
         town.Replace(town.Value with { Housing = 100 });
         Assert.Equal(5, town.Value.Resources.Food);
-        var current = fixture.Engine.Current.Settlements.CaptureSnapshot().Single();
+        var current = fixture.Engine.Settlements.CaptureSnapshot().Single();
 
         Assert.Equal(7, middle.Settlements.Single().Resources.Food);
         Assert.Equal(5, current.Resources.Food);
@@ -160,7 +160,7 @@ public sealed class ImmutableWorldTests
     {
         var fixture = new WorldFixture();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 2);
-        var list = fixture.Engine.Current.Residents;
+        var list = fixture.Engine.Residents;
         var before = fixture.Engine.State;
         var survivor = list[1];
         using (list.BeginUpdates())
@@ -168,14 +168,14 @@ public sealed class ImmutableWorldTests
             survivor.Health = 60;
             list.RemoveAt(0);
             survivor.Agent = survivor.Agent with { Fatigue = 20 };
-            Assert.Equal(2, fixture.Engine.Current.Population);
+            Assert.Equal(2, fixture.Engine.Population);
             var middle = fixture.Engine.State;
             Assert.Equal(60, middle.Residents[0].Health);
             Assert.Equal(20, middle.Residents[0].Agent.Fatigue);
             list.Add(new ResidentCursor(new Resident { Id = 123, Health = 90 }));
             survivor.Hunger = 40;
             list.RemoveAt(1);
-            Assert.Equal(2, fixture.Engine.Current.Population);
+            Assert.Equal(2, fixture.Engine.Population);
             Assert.Equal(0, middle.Residents[0].Hunger);
         }
 
@@ -194,7 +194,7 @@ public sealed class ImmutableWorldTests
         var fixture = new WorldFixture();
         var before = fixture.Engine.State;
         var original = fixture.Resident.Value;
-        using (fixture.Engine.Current.Residents.BeginUpdates())
+        using (fixture.Engine.Residents.BeginUpdates())
         {
             fixture.Resident.Health = 70;
             fixture.Resident.X = 15;
@@ -277,31 +277,25 @@ public sealed class ImmutableWorldTests
         Assert.Equal(0, promoted.OtherWildlife.SnowLeopard);
     }
 
-    /// <summary>日内 ID 和随机序列立即供后续行为读取，冻结时合并元数据并保留旧快照。</summary>
+    /// <summary>引擎当前标量在捕获时与实体组合，后续变化不修改已取得的快照。</summary>
     [Fact]
-    public void Scalar_updates_freeze_together_with_entity_changes()
+    public void Engine_scalars_are_captured_together_with_entity_changes()
     {
         var fixture = new WorldFixture();
         var initial = fixture.Engine.State;
-        var current = fixture.Engine.Current;
-        WorldState middle;
-        using (current.BeginScalarUpdates())
-        {
-            current.Tick = SimulationTime.TicksPerYear;
-            current.NextId += 2;
-            current.RandomState = 123;
-            fixture.Resident.Health = 80;
-            Assert.Equal(2, current.Year);
-            Assert.Equal(1, current.Day);
-            middle = fixture.Engine.State;
-            using (current.BeginScalarUpdates())
-            {
-                current.NextId++;
-            }
+        var current = fixture.Engine;
+        current.SimulationTick = SimulationTime.TicksPerYear;
+        current.NextId += 2;
+        current.RandomState = 123;
+        fixture.Resident.Health = 80;
+        var middle = current.State;
+        Assert.Equal(2, middle.Year);
+        Assert.Equal(1, middle.Day);
+        Assert.Equal(middle, current.State);
 
-            current.Tick++;
-            current.RandomState = 456;
-        }
+        current.NextId++;
+        current.SimulationTick++;
+        current.RandomState = 456;
 
         Assert.Equal(initial.NextId + 2, middle.NextId);
         Assert.Equal(123u, middle.RandomState);
@@ -401,11 +395,11 @@ public sealed class ImmutableWorldTests
     {
         var fixture = new WorldFixture();
         var initial = fixture.Engine.State;
-        var tile = fixture.Engine.Current.Tiles[0];
+        var tile = fixture.Engine.Tiles[0];
         WorldState middle;
-        using (fixture.Engine.Current.Tiles.BeginUpdates())
-        using (fixture.Engine.Current.Residents.BeginUpdates())
-        using (fixture.Engine.Current.Settlements.BeginUpdates())
+        using (fixture.Engine.Tiles.BeginUpdates())
+        using (fixture.Engine.Residents.BeginUpdates())
+        using (fixture.Engine.Settlements.BeginUpdates())
         {
             fixture.Resident.Inventory = new ResourceStock { Food = 3 };
             fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock { Food = 9 }));
@@ -435,18 +429,18 @@ public sealed class ImmutableWorldTests
         var fixture = new WorldFixture();
         var before = fixture.Engine.State;
         var removed = fixture.Resident;
-        using (fixture.Engine.Current.Residents.BeginUpdates())
+        using (fixture.Engine.Residents.BeginUpdates())
         {
-            using (fixture.Engine.Current.Residents.BeginUpdates())
+            using (fixture.Engine.Residents.BeginUpdates())
             {
                 fixture.Resident.Health = 80;
             }
 
-            fixture.Engine.Current.Residents.Transform(person => person with { Hunger = 20 });
+            fixture.Engine.Residents.Transform(person => person with { Hunger = 20 });
             fixture.Resident.Agent = fixture.Resident.Agent with { Fatigue = 25 };
-            fixture.Engine.Current.Residents.Remove(fixture.Resident);
-            fixture.Engine.Current.Residents.Add(new ResidentCursor(new Resident { Id = 900, Name = "新居民" }));
-            fixture.Engine.Current.Residents[0].Inventory = new ResourceStock { Food = 7 };
+            fixture.Engine.Residents.Remove(fixture.Resident);
+            fixture.Engine.Residents.Add(new ResidentCursor(new Resident { Id = 900, Name = "新居民" }));
+            fixture.Engine.Residents[0].Inventory = new ResourceStock { Food = 7 };
         }
 
         var after = Assert.Single(fixture.Engine.State.Residents);
@@ -467,7 +461,7 @@ public sealed class ImmutableWorldTests
 
         void Fail()
         {
-            using var updates = fixture.Engine.Current.Residents.BeginUpdates();
+            using var updates = fixture.Engine.Residents.BeginUpdates();
             fixture.Resident.Health = 80;
             throw new InvalidOperationException();
         }
@@ -487,7 +481,7 @@ public sealed class ImmutableWorldTests
         var agent = fixture.Resident.Agent;
         var before = fixture.Engine.State;
 
-        fixture.Engine.Current.Residents.Transform(person => person with
+        fixture.Engine.Residents.Transform(person => person with
         {
             Health = 80, Agent = person.Agent with { Fatigue = 25 },
         });
@@ -509,8 +503,8 @@ public sealed class ImmutableWorldTests
         var person = fixture.Resident;
         var before = fixture.Engine.State;
 
-        fixture.Engine.Current.Residents.Remove(person);
-        fixture.Engine.Current.ArchivedResidents.Add(person);
+        fixture.Engine.Residents.Remove(person);
+        fixture.Engine.ArchivedResidents.Add(person);
         person.Replace(person.Value with { Name = "归档的新姓名" });
         person.Inventory = new ResourceStock { Food = 3 };
 
@@ -592,7 +586,7 @@ public sealed class ImmutableWorldTests
         var fixture = new WorldFixture();
         var initial = fixture.Engine.State;
         var initialKnowledge = initial.Residents[0].Agent.Memory;
-        var fact = new AgentFact { Id = fixture.Engine.Current.NextId++, Text = "新观察" };
+        var fact = new AgentFact { Id = fixture.Engine.NextId++, Text = "新观察" };
 
         fixture.Resident.Agent = fixture.Resident.Agent with { Memory = fixture.Resident.Agent.Memory.Add(fact) };
         var observed = fixture.Engine.State;
