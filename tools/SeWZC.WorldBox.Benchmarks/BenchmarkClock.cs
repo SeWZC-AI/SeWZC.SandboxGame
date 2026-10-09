@@ -4,8 +4,10 @@ internal static class BenchmarkClock
 {
     internal static long? ReadProcessCpu()
     {
-        if (!OperatingSystem.IsLinux()) return null;
-        if (clock_gettime(2, out var time) != 0) throw new InvalidOperationException("无法读取进程 CPU 时钟。");
+        if (!OperatingSystem.IsLinux())
+            return null;
+        if (clock_gettime(2, out var time) != 0)
+            throw new InvalidOperationException("无法读取进程 CPU 时钟。");
         return time.Seconds * 1_000_000_000 + time.Nanoseconds;
     }
 
@@ -13,5 +15,9 @@ internal static class BenchmarkClock
     private static extern int clock_gettime(int clock, out Timespec time);
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct Timespec { internal long Seconds; internal long Nanoseconds; }
+    private struct Timespec
+    {
+        internal long Seconds;
+        internal long Nanoseconds;
+    }
 }

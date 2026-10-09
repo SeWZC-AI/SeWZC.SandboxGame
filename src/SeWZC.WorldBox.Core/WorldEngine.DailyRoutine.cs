@@ -24,11 +24,13 @@ public sealed partial class WorldEngine
                     MoveAgentTowards(person, home.X, home.Y, ResidentActivity.Wandering);
                     return true;
                 }
+
                 var resumed = (agent.DaytimeGoal ?? new AgentGoal()).ResetNavigation();
                 ChangeWorkReservation(agent.Goal, resumed);
                 person.Agent = agent with { Goal = resumed, DaytimeGoal = null, NextThinkTick = Current.Tick };
                 person.Activity = ResidentActivity.Resting;
             }
+
             return false;
         }
 
@@ -37,15 +39,21 @@ public sealed partial class WorldEngine
             person.Activity = ResidentActivity.Resting;
             return true;
         }
+
         var sleeping = time >= SimulationTime.SleepTick || time < SimulationTime.WakeTick;
         // 远处取水与劳动先取得实物再返仓；夜间宿营，避免每日往返耗尽白天。
-        var journey = agent.DestinationSettlementId != 0 || agent.Goal.Kind is AgentGoalKind.Migrate or AgentGoalKind.Explore
-                      || (agent.Goal.Kind == AgentGoalKind.FetchWater && Distance(person.X, person.Y, home.X, home.Y) > 1)
-                      || (agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Work or AgentGoalKind.Study
-                              or AgentGoalKind.TrainMagic or AgentGoalKind.Hunt or AgentGoalKind.Fish
-                          && Distance(agent.Goal.TargetX, agent.Goal.TargetY, home.X, home.Y) > 3
-                          && Distance(person.X, person.Y, home.X, home.Y) > 1)
-                      || home.FoundationPending;
+        var journey =
+            agent.DestinationSettlementId != 0 || agent.Goal.Kind is AgentGoalKind.Migrate or AgentGoalKind.Explore
+                                               || (agent.Goal.Kind == AgentGoalKind.FetchWater &&
+                                                   Distance(person.X, person.Y, home.X, home.Y) > 1)
+                                               || (agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Work
+                                                       or AgentGoalKind.Study
+                                                       or AgentGoalKind.TrainMagic or AgentGoalKind.Hunt
+                                                       or AgentGoalKind.Fish
+                                                   && Distance(agent.Goal.TargetX, agent.Goal.TargetY, home.X, home.Y) >
+                                                   3
+                                                   && Distance(person.X, person.Y, home.X, home.Y) > 1)
+                                               || home.FoundationPending;
         var medicalRest = agent.Goal.Kind == AgentGoalKind.Rest && agent.Goal.TargetEntityId != 0;
         if (journey || medicalRest)
         {
@@ -87,10 +95,13 @@ public sealed partial class WorldEngine
 
         person.Activity = sleeping ? ResidentActivity.Sleeping : ResidentActivity.Resting;
         if (person.Agent.Fatigue > 0)
+        {
             person.Agent = person.Agent with
             {
                 Fatigue = Math.Max(0, person.Agent.Fatigue - (sleeping ? 2.2 : .8) * HomeRestMultiplier(person)),
             };
+        }
+
         return true;
     }
 }

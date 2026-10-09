@@ -90,7 +90,7 @@ public sealed class AgentGoalTests
                 TargetSettlementId = fixture.Town.Id,
                 PlayerDirected = true,
                 ReviewTick = 100,
-            }
+            },
         };
 
         fixture.Engine.Step();
@@ -127,7 +127,7 @@ public sealed class AgentGoalTests
                 TargetY = 16,
                 PlayerDirected = true,
                 ReviewTick = 100,
-            }
+            },
         };
         var before = fixture.Engine.State.Residents[0];
 

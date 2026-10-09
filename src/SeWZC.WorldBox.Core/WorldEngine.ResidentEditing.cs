@@ -117,11 +117,7 @@ public sealed partial class WorldEngine
 
         var editEvent = AddEvent(WorldEventKind.Editor, $"{candidate.Name}的角色记录已修订；过去的世界结果保持原样。", candidate.X,
             candidate.Y);
-        editEvent = PublishEvent(editEvent with
-        {
-            ResidentId = candidate.Id,
-            NationId = candidate.NationId
-        });
+        editEvent = PublishEvent(editEvent with { ResidentId = candidate.Id, NationId = candidate.NationId });
     }
 
     // 候选编辑只转换输入快照；校验通过后由命令提交居民和编号。
@@ -139,18 +135,11 @@ public sealed partial class WorldEngine
         {
             if (state.Settlements.FirstOrDefault(town => town.Id == townId) is not { } town)
                 throw new ArgumentException("目标聚落不存在。");
-            candidate = candidate with
-            {
-                SettlementId = townId,
-                NationId = town.NationId
-            };
+            candidate = candidate with { SettlementId = townId, NationId = town.NationId };
             if (townId != original.SettlementId)
-                candidate = candidate with
-                {
-                    X = town.X,
-                    Y = town.Y,
-                    ArmyId = 0
-                };
+            {
+                candidate = candidate with { X = town.X, Y = town.Y, ArmyId = 0 };
+            }
         }
 
         candidate = candidate with
@@ -175,11 +164,10 @@ public sealed partial class WorldEngine
         };
         var agent = candidate.Agent;
         if (candidate.Profession != original.Profession || candidate.SettlementId != original.SettlementId)
-            agent = agent with
-            {
-                WorkplaceId = 0,
-                WorkAreaIndex = -1
-            };
+        {
+            agent = agent with { WorkplaceId = 0, WorkAreaIndex = -1 };
+        }
+
         if (patch.Trait is not null)
         {
             var personality = agent.Personality;
@@ -195,13 +183,15 @@ public sealed partial class WorldEngine
                 },
             };
         }
+
         candidate = candidate with { Agent = patch.Agent ?? agent };
 
         ValidateResidentV2(candidate, state.Tick, state.Width, state.Height);
         ValidateStoryReferences(candidate, state.NextId);
         if (isLive)
         {
-            if (!Coordinates(candidate.X, candidate.Y, state.Width, state.Height) || !CanTraverse(state.Tiles[candidate.Y * state.Width + candidate.X],
+            if (!Coordinates(candidate.X, candidate.Y, state.Width, state.Height) || !CanTraverse(
+                    state.Tiles[candidate.Y * state.Width + candidate.X],
                     candidate.TravelMode, candidate.Race))
                 throw new ArgumentException("居民必须位于可通行地格。");
             if (candidate.ArmyId != 0 &&
@@ -236,14 +226,15 @@ public sealed partial class WorldEngine
                     Personality = personality with
                     {
                         Courage = Math.Clamp(personality.Courage + (achievement - hardship) * 0.1, 0, 1),
-                        Sociability = Math.Clamp(personality.Sociability + (kindness - betrayal) * 0.1, 0, 1),
+                        Sociability =
+                        Math.Clamp(personality.Sociability + (kindness - betrayal) * 0.1, 0, 1),
                         Diligence = Math.Clamp(personality.Diligence + learning * 0.1, 0, 1),
-                    }
-                }
+                    },
+                },
             };
             candidate = candidate with
             {
-                History = candidate.History.Select(entry => entry with { PlayerEdited = true }).ToImmutableList()
+                History = candidate.History.Select(entry => entry with { PlayerEdited = true }).ToImmutableList(),
             };
         }
 
@@ -255,26 +246,19 @@ public sealed partial class WorldEngine
             {
                 Agent = candidate.Agent.WithGoal(candidate.Agent.Goal with
                 {
-                    Kind = thought.Goal,
-                    Reason = thought.Reason,
-                    PlayerDirected = true,
-                    ReviewTick = state.Tick + 24,
-                })
+                    Kind = thought.Goal, Reason = thought.Reason, PlayerDirected = true, ReviewTick = state.Tick + 24,
+                }),
             };
         }
 
-        candidate = candidate with
-        {
-            Agent = candidate.Agent with { NextThinkTick = state.Tick }
-        };
+        candidate = candidate with { Agent = candidate.Agent with { NextThinkTick = state.Tick } };
         if (candidate.X != original.X || candidate.Y != original.Y)
+        {
             candidate = candidate with
             {
-                FromX = candidate.X,
-                FromY = candidate.Y,
-                MoveStartedTick = state.Tick,
-                MoveDurationTicks = 1,
+                FromX = candidate.X, FromY = candidate.Y, MoveStartedTick = state.Tick, MoveDurationTicks = 1,
             };
+        }
 
         var startMission = isLive && patch.Agent is not null &&
                            candidate.Agent.Goal.Kind is AgentGoalKind.DeliverMessage or AgentGoalKind.Trade
@@ -285,7 +269,8 @@ public sealed partial class WorldEngine
         {
             if (candidate.ArmyId != 0)
                 throw new ArgumentException("正在军队服役的居民需要先退役，才能执行民用运输任务。");
-            if (state.Settlements.FirstOrDefault(town => town.Id == candidate.Agent.Goal.TargetSettlementId) is not { } destination)
+            if (state.Settlements.FirstOrDefault(town => town.Id == candidate.Agent.Goal.TargetSettlementId) is not
+                { } destination)
                 throw new ArgumentException("运输或递送目标需要选择有效聚落编号。");
             if (destination.Id == candidate.SettlementId && candidate.Agent.Goal.Kind == AgentGoalKind.Trade)
                 throw new ArgumentException("贸易目标须为另一座聚落。");
@@ -312,10 +297,7 @@ public sealed partial class WorldEngine
                     OriginProfession = candidate.Profession,
                     Text = "玩家告知了本次递送的目的地",
                 });
-                candidate = candidate with
-                {
-                    Agent = candidate.Agent with { Memory = memory }
-                };
+                candidate = candidate with { Agent = candidate.Agent with { Memory = memory } };
             }
 
             candidate = candidate with
@@ -324,9 +306,7 @@ public sealed partial class WorldEngine
                 {
                     Goal = candidate.Agent.Goal with
                     {
-                        TargetX = destination.X,
-                        TargetY = destination.Y,
-                        StartedTick = state.Tick,
+                        TargetX = destination.X, TargetY = destination.Y, StartedTick = state.Tick,
                     },
                     MissionRetryTick = state.Tick,
                 },
@@ -337,11 +317,7 @@ public sealed partial class WorldEngine
         {
             candidate = candidate with
             {
-                Agent = candidate.Agent with
-                {
-                    DestinationSettlementId = 0,
-                    CarriedMessages = []
-                },
+                Agent = candidate.Agent with { DestinationSettlementId = 0, CarriedMessages = [] },
             };
         }
 
@@ -395,10 +371,10 @@ public sealed partial class WorldEngine
                 Agent = candidate.Agent with
                 {
                     Decisions = candidate.Agent.Decisions.Select(decision =>
-                    revisions.TryGetValue(decision.EvidenceFactId, out var revised)
-                        ? decision with { EvidenceFactId = revised }
-                        : decision).ToImmutableList()
-                }
+                        revisions.TryGetValue(decision.EvidenceFactId, out var revised)
+                            ? decision with { EvidenceFactId = revised }
+                            : decision).ToImmutableList(),
+                },
             };
         }
 

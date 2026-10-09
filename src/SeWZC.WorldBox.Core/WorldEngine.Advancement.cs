@@ -277,9 +277,7 @@ public sealed partial class WorldEngine
         {
             person.Agent = person.Agent.WithGoal(goal = goal with
             {
-                TargetX = home.X,
-                TargetY = home.Y,
-                Reason = "前往家园取料，亲自运至" + BuildingName(building.Kind),
+                TargetX = home.X, TargetY = home.Y, Reason = "前往家园取料，亲自运至" + BuildingName(building.Kind),
             });
             if (Distance(person.X, person.Y, home.X, home.Y) > 1)
             {
@@ -309,9 +307,7 @@ public sealed partial class WorldEngine
 
         person.Agent = person.Agent.WithGoal(goal = goal with
         {
-            TargetX = building.X,
-            TargetY = building.Y,
-            Reason = "携带实际原料，前往" + BuildingName(building.Kind) + "加工",
+            TargetX = building.X, TargetY = building.Y, Reason = "携带实际原料，前往" + BuildingName(building.Kind) + "加工",
         });
         if (Distance(person.X, person.Y, building.X, building.Y) > 1)
         {

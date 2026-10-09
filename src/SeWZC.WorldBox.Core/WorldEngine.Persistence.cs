@@ -14,8 +14,7 @@ public sealed partial class WorldEngine
     private static readonly WorldJsonContext StorageJson = new(
         new JsonSerializerOptions(WorldJsonContext.Default.Options)
         {
-            Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
-            Converters = { new AgentFactJsonConverter() },
+            Encoder = JavaScriptEncoder.Create(UnicodeRanges.All), Converters = { new AgentFactJsonConverter() },
         });
 
     private static readonly WorldJsonContext StreamingJson = new(

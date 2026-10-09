@@ -5,10 +5,7 @@ namespace SeWZC.WorldBox.Core.Runtime;
 /// <summary>Resident 的引擎内定位引用；连续日常字段变化在快照边界合并为不可变状态。</summary>
 internal sealed partial class ResidentCursor(Resident value) : StateCursor<Resident>(value)
 {
-    public int Id
-    {
-        get => base.Value.Id;
-    }
+    public int Id => base.Value.Id;
 
     public string Name
     {
@@ -171,20 +168,11 @@ internal sealed partial class ResidentCursor(Resident value) : StateCursor<Resid
         }
     }
 
-    public long DiseaseImmuneUntilTick
-    {
-        get => base.Value.DiseaseImmuneUntilTick;
-    }
+    public long DiseaseImmuneUntilTick => base.Value.DiseaseImmuneUntilTick;
 
-    public DeathCause DeathCause
-    {
-        get => base.Value.DeathCause;
-    }
+    public DeathCause DeathCause => base.Value.DeathCause;
 
-    public long DeathTick
-    {
-        get => base.Value.DeathTick;
-    }
+    public long DeathTick => base.Value.DeathTick;
 
     public double Armor
     {
@@ -216,10 +204,7 @@ internal sealed partial class ResidentCursor(Resident value) : StateCursor<Resid
         }
     }
 
-    public long LastRangedAttackTick
-    {
-        get => base.Value.LastRangedAttackTick;
-    }
+    public long LastRangedAttackTick => base.Value.LastRangedAttackTick;
 
     public TravelMode TravelMode
     {

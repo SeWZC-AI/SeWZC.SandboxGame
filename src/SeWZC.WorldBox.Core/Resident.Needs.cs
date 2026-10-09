@@ -57,7 +57,8 @@ public sealed partial record Resident
             var use = rules.Hunger ? WorldEngine.FoodUse(vitals.Age, Race) * elapsedDays : 0;
             var meal = Math.Min(use, food);
             food -= meal;
-            hunger = Math.Clamp(hunger + (meal >= use - .000001 ? -3 * elapsedDays : .8 * elapsedDays * (1 - meal / use)), 0, 100);
+            hunger = Math.Clamp(
+                hunger + (meal >= use - .000001 ? -3 * elapsedDays : .8 * elapsedDays * (1 - meal / use)), 0, 100);
             if (rules.Hunger && hunger > 80)
                 Damage(.30 * elapsedDays, DeathCause.Starvation);
         }

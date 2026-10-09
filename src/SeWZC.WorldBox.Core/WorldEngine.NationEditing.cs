@@ -114,7 +114,11 @@ public sealed partial class WorldEngine
             Decision = "独立建国：储备资源，建立外交关系",
         });
         foreach (var other in Current.Nations)
-            Current.Diplomacies = Current.Diplomacies.Add(new DiplomaticRelation { FirstNationId = other.Id, SecondNationId = nation.Id });
+            Current.Diplomacies =
+                Current.Diplomacies.Add(new DiplomaticRelation
+                {
+                    FirstNationId = other.Id, SecondNationId = nation.Id,
+                });
         Current.Nations.Add(nation);
         _nations[nation.Id] = nation;
         TransferSettlementOwnership(town, nation.Id);

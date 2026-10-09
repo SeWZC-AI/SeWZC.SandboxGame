@@ -83,8 +83,10 @@ public sealed partial class WorldEngine
         {
             var count = Current.Residents.Count;
             if (count < 4096 || Environment.ProcessorCount <= 1 || OperatingSystem.IsBrowser())
+            {
                 foreach (var cursor in Current.Residents)
                     cursor.ApplyDay(Prepare(cursor).Advance(rules, tick));
+            }
             else
             {
                 if (_dailyResidentInputs.Length < count)
@@ -249,11 +251,13 @@ public sealed partial class WorldEngine
                     remaining -= stored;
                     foreach (var parent in adults)
                     {
-                        if (remaining <= .000001) break;
+                        if (remaining <= .000001)
+                            break;
                         var supplied = Math.Min(remaining, Math.Max(0, parent.Inventory.Food - FoodUse(parent) * 2));
                         parent.Inventory = parent.Inventory with { Food = parent.Inventory.Food - supplied };
                         remaining -= supplied;
                     }
+
                     var child = NewResident(town, adults[RandomInt(adults.Length)].Race, 0);
                     child.Inventory = new ResourceStock { Food = .6 - remaining };
                     Current.Residents.Add(child);
@@ -264,7 +268,8 @@ public sealed partial class WorldEngine
                     AddEvent(WorldEventKind.Growth, $"{town.Name}迎来新生儿，人口增至{citizens.Count}。", town.X, town.Y);
             }
 
-            if (Current.Rules.Expansion && Current.Tick % SimulationTime.TicksPerYear == 0 && citizens.Count >= 80 && !town.IsExpanding
+            if (Current.Rules.Expansion && Current.Tick % SimulationTime.TicksPerYear == 0 && citizens.Count >= 80 &&
+                !town.IsExpanding
                 && ResourceStock.Kinds.All(k =>
                     town.Resources.Get(k) >= VillageFoundingCost.Get(k) + developmentReserve.Get(k)) &&
                 Current.Settlements.Count < 256)
@@ -283,7 +288,8 @@ public sealed partial class WorldEngine
         // 建村地点须在出发前报告给原聚落，避免迁徙队伍使用未送达的信息。
         var location = origin.PublicKnowledge.Where(f => f.Kind == AgentFactKind.FoundingSite &&
                                                          f.LearnedTick < Current.Tick
-                                                         && Current.Tick - f.ObservedTick <= 5 * SimulationTime.TicksPerYear &&
+                                                         && Current.Tick - f.ObservedTick <=
+                                                         5 * SimulationTime.TicksPerYear &&
                                                          f.Confidence >= .5 &&
                                                          InBounds(f.X, f.Y))
             .Select(f => Index(f.X, f.Y)).Where(i => !IsWaterTerrain(Current.Tiles[i].Terrain)
@@ -375,24 +381,24 @@ public sealed partial class WorldEngine
         // 建村地点须能连通取得最小占地范围，避免定居在四周无法利用的单个肥沃地格。
         var available = 0;
         for (var nearbyY = Math.Max(0, y - 3); nearbyY <= Math.Min(Current.Height - 1, y + 3); nearbyY++)
-            for (var nearbyX = Math.Max(0, x - 3); nearbyX <= Math.Min(Current.Width - 1, x + 3); nearbyX++)
-            {
-                if ((nearbyX - x) * (nearbyX - x) + (nearbyY - y) * (nearbyY - y) > 9)
-                    continue;
-                var tile = Current.Tiles[Index(nearbyX, nearbyY)].Value;
-                if (IsWaterTerrain(tile.Terrain) || tile.FireTicks > 0 || tile.ClaimedSettlementId != 0)
-                    continue;
-                var usable = true;
-                foreach (var race in races)
-                    if (!RaceTerrainRules.CanWalk(tile, race))
-                    {
-                        usable = false;
-                        break;
-                    }
+        for (var nearbyX = Math.Max(0, x - 3); nearbyX <= Math.Min(Current.Width - 1, x + 3); nearbyX++)
+        {
+            if ((nearbyX - x) * (nearbyX - x) + (nearbyY - y) * (nearbyY - y) > 9)
+                continue;
+            var tile = Current.Tiles[Index(nearbyX, nearbyY)].Value;
+            if (IsWaterTerrain(tile.Terrain) || tile.FireTicks > 0 || tile.ClaimedSettlementId != 0)
+                continue;
+            var usable = true;
+            foreach (var race in races)
+                if (!RaceTerrainRules.CanWalk(tile, race))
+                {
+                    usable = false;
+                    break;
+                }
 
-                if (usable && ++available >= SettlementActivationArea)
-                    return true;
-            }
+            if (usable && ++available >= SettlementActivationArea)
+                return true;
+        }
 
         return false;
     }
@@ -435,7 +441,8 @@ public sealed partial class WorldEngine
             }
 
         if (Current.NaturalDisasters && Current.Rules.DisasterFrequency > 0 &&
-            Current.Tick % (10 * SimulationTime.TicksPerYear / Current.Rules.DisasterFrequency) == 0 && Current.Residents.Count > 0)
+            Current.Tick % (10 * SimulationTime.TicksPerYear / Current.Rules.DisasterFrequency) == 0 &&
+            Current.Residents.Count > 0)
         {
             var person = Current.Residents[RandomInt(Current.Residents.Count)];
             TriggerDisaster(person.X, person.Y, (DisasterKind)RandomInt(Current.Rules.Disease ? 3 : 2),

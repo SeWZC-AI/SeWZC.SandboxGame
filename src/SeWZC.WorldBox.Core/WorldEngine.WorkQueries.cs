@@ -30,9 +30,13 @@ public sealed partial class WorldEngine
     }
 
     // 自主劳动的日产量按白天班次折算，避免加入夜间睡眠后把原有日供给再减半。
-    private double WorkDays(ResidentCursor person) => WorkInterval(person) / (double)(
-        person.Agent.Goal.PlayerDirected ? SimulationTime.TicksPerDay
-            : SimulationTime.ReturnHomeTick - SimulationTime.WakeTick);
+    private double WorkDays(ResidentCursor person)
+    {
+        return WorkInterval(person) / (double)(
+            person.Agent.Goal.PlayerDirected
+                ? SimulationTime.TicksPerDay
+                : SimulationTime.ReturnHomeTick - SimulationTime.WakeTick);
+    }
 
     private BuildingCursor? FindBuilding(int id)
     {

@@ -64,14 +64,15 @@ public abstract class ToolCategory
     {
         return
         [
-            new(MapTool.ForBuilding(BuildingKind.Farm), "农场", "#ADBB75"),
-            new(MapTool.ForBuilding(BuildingKind.Workshop), "工坊", "#CEB294"),
-            new(MapTool.ForBuilding(BuildingKind.Academy), "学舍", "#91B0C8"),
-            new(MapTool.ForBuilding(BuildingKind.Waystation), "驿站", "#CEAB76"),
-            new(MapTool.ForBuilding(BuildingKind.Bridge), "桥梁", "#99AAC8"),
-            new(MapTool.ForBuilding(BuildingKind.MountainPass), "山路", "#B598D1"),
-            new(MapTool.ForBuilding(BuildingKind.Dock), "码头", "#91C7B1"), new(MapTool.Road, "道路", "#B0A28B"),
-            new(MapTool.Rail, "铁路", "#ADC1D3"),
+            new MapToolChoice(MapTool.ForBuilding(BuildingKind.Farm), "农场", "#ADBB75"),
+            new MapToolChoice(MapTool.ForBuilding(BuildingKind.Workshop), "工坊", "#CEB294"),
+            new MapToolChoice(MapTool.ForBuilding(BuildingKind.Academy), "学舍", "#91B0C8"),
+            new MapToolChoice(MapTool.ForBuilding(BuildingKind.Waystation), "驿站", "#CEAB76"),
+            new MapToolChoice(MapTool.ForBuilding(BuildingKind.Bridge), "桥梁", "#99AAC8"),
+            new MapToolChoice(MapTool.ForBuilding(BuildingKind.MountainPass), "山路", "#B598D1"),
+            new MapToolChoice(MapTool.ForBuilding(BuildingKind.Dock), "码头", "#91C7B1"),
+            new MapToolChoice(MapTool.Road, "道路", "#B0A28B"),
+            new MapToolChoice(MapTool.Rail, "铁路", "#ADC1D3"),
             .. Enum.GetValues<BuildingKind>()
                 .Where(k => k is not (BuildingKind.Farm or BuildingKind.Workshop or BuildingKind.Academy
                     or BuildingKind.Waystation or BuildingKind.MountainPass or BuildingKind.Bridge or BuildingKind.Dock

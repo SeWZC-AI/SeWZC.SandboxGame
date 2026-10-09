@@ -118,7 +118,8 @@ public sealed partial class WorldMapControl
 
     private void CaptureArchitecture(WorldState state)
     {
-        if (ReferenceEquals(Engine, _architectureEngine) && _architectureYear == state.Tick / SimulationTime.TicksPerYear &&
+        if (ReferenceEquals(Engine, _architectureEngine) &&
+            _architectureYear == state.Tick / SimulationTime.TicksPerYear &&
             _architectureTownCount == state.Settlements.Count && _architectureResidents is { } previous &&
             previous.Count == state.Residents.Count)
         {

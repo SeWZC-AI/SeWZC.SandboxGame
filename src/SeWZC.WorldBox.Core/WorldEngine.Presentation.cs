@@ -65,7 +65,8 @@ public sealed partial class WorldEngine
         for (var i = 0; i < Math.Clamp(steps, 0, 64); i++)
         {
             var interactionRange = production is not null || goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest
-                                                              or AgentGoalKind.Socialize or AgentGoalKind.ReturnHome or AgentGoalKind.Sleep
+                                                              or AgentGoalKind.Socialize or AgentGoalKind.ReturnHome
+                                                              or AgentGoalKind.Sleep
                                                           || (goal.TargetEntityId != 0 &&
                                                               Current.Buildings.Any(b =>
                                                                   b.Id == goal.TargetEntityId &&
@@ -82,10 +83,7 @@ public sealed partial class WorldEngine
                 break;
             cursor.Replace(cursor.Value with
             {
-                FromX = cursor.X,
-                FromY = cursor.Y,
-                X = next % Current.Width,
-                Y = next / Current.Width,
+                FromX = cursor.X, FromY = cursor.Y, X = next % Current.Width, Y = next / Current.Width,
             });
             route.Add(new RoutePoint(cursor.X, cursor.Y));
         }
@@ -111,9 +109,7 @@ public sealed partial class WorldEngine
             throw new ArgumentException("道路需要可通行的陆地。");
         tile.Replace(tile.Value with
         {
-            ResourceAmount = resources,
-            Fertility = (byte)fertility,
-            RoadLevel = (byte)roadLevel,
+            ResourceAmount = resources, Fertility = (byte)fertility, RoadLevel = (byte)roadLevel,
         });
         AddEvent(WorldEventKind.Editor, "玩家调整当地资源、肥力与道路。", x, y);
     }

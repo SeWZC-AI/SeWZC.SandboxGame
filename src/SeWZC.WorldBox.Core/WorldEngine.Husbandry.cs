@@ -129,10 +129,7 @@ public sealed partial class WorldEngine
             var previous = person.Agent.Goal;
             person.Agent = person.Agent.WithGoal(new AgentGoal
             {
-                Kind = AgentGoalKind.ReturnHome,
-                TargetX = home.X,
-                TargetY = home.Y,
-                StartedTick = Current.Tick,
+                Kind = AgentGoalKind.ReturnHome, TargetX = home.X, TargetY = home.Y, StartedTick = Current.Tick,
             });
             ChangeWorkReservation(previous, person.Agent.Goal);
             person.Agent = person.Agent with { NextThinkTick = Current.Tick };
@@ -161,8 +158,7 @@ public sealed partial class WorldEngine
                 return false;
             person.Inventory = person.Inventory with
             {
-                Food = person.Inventory.Food - LivestockFeed(b),
-                Water = person.Inventory.Water - LivestockWater(b),
+                Food = person.Inventory.Food - LivestockFeed(b), Water = person.Inventory.Water - LivestockWater(b),
             };
             var tile = Current.Tiles[Index(b.X, b.Y)];
             if (b.Kind == BuildingKind.Pasture)
@@ -185,8 +181,7 @@ public sealed partial class WorldEngine
 
         b.Replace(b.Value with
         {
-            ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1),
-            LastServiceTick = Current.Tick,
+            ServiceActions = Math.Min(1_000_000_000, b.ServiceActions + 1), LastServiceTick = Current.Tick,
         });
         return true;
     }

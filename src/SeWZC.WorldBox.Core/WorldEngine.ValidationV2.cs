@@ -63,7 +63,9 @@ public sealed partial class WorldEngine
             person.Agent.MaterialPriority is null or ResourceKind.Ore or ResourceKind.Stone or ResourceKind.Coal
                 or ResourceKind.Oil or ResourceKind.RareEarth, "采矿材料目标无效。");
         CheckV2(Enum.IsDefined(person.DeathCause) && person.DeathTick >= 0 && person.DeathTick <= tick, "死亡记录无效。");
-        CheckV2(person.DiseaseImmuneUntilTick >= 0 && person.DiseaseImmuneUntilTick <= tick + 6 * SimulationTime.TicksPerMonth, "疾病恢复免疫时间无效。");
+        CheckV2(
+            person.DiseaseImmuneUntilTick >= 0 &&
+            person.DiseaseImmuneUntilTick <= tick + 6 * SimulationTime.TicksPerMonth, "疾病恢复免疫时间无效。");
         CheckV2(Number(person.Armor, 0, 100) && Number(person.PersonalWard, 0, 100)
                                              && person.FrozenUntilTick >= 0 && person.FrozenUntilTick <= tick + 12
                                              && person.LastRangedAttackTick >= -100 &&
@@ -89,10 +91,13 @@ public sealed partial class WorldEngine
             agent.CarriedMessages is not null && agent.CarriedMessages.Count <= 8, "心智结构或容量无效。");
         if (agent!.DaytimeGoal is { } daytime)
         {
-            CheckV2(agent.Goal is not null && agent.Goal.Kind == AgentGoalKind.Sleep && daytime.Kind != AgentGoalKind.Sleep,
+            CheckV2(
+                agent.Goal is not null && agent.Goal.Kind == AgentGoalKind.Sleep && daytime.Kind != AgentGoalKind.Sleep,
                 "白天目标只能在夜间作息中暂存。");
-            ValidateResidentV2(person with { Agent = agent with { Goal = daytime, DaytimeGoal = null } }, tick, width, height);
+            ValidateResidentV2(person with { Agent = agent with { Goal = daytime, DaytimeGoal = null } }, tick, width,
+                height);
         }
+
         CheckV2(!agent!.FamiliarTiles.IsDefault && agent.FamiliarTiles.Length <= AgentState.MaximumFamiliarTiles
                                                 && agent.FamiliarTiles.All(index =>
                                                     index >= 0 && index < width * height)
@@ -139,7 +144,8 @@ public sealed partial class WorldEngine
             goal.WorkTicks is >= 0 and <= AgentGoal.MaximumResidenceTicks &&
             BoundedText(goal.Reason, 400), "目标位置、时间或内容无效。");
         CheckV2(
-            agent.JobChangedTick >= -SimulationTime.TicksPerYear && agent.JobChangedTick <= tick && agent.NextThinkTick >= 0 &&
+            agent.JobChangedTick >= -SimulationTime.TicksPerYear && agent.JobChangedTick <= tick &&
+            agent.NextThinkTick >= 0 &&
             agent.NextThinkTick <= tick + 100_000 && agent.LastConversationTick >= 0 &&
             agent.LastConversationTick <= tick && agent.MissionStartedTick >= 0 && agent.MissionStartedTick <= tick &&
             agent.MissionRetryTick >= 0 && agent.MissionRetryTick <= tick + 100_000, "行动调度时间无效。");

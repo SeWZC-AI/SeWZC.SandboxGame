@@ -68,10 +68,13 @@ public sealed partial record Tile
         if (kind == Wildlife)
             return this with { WildlifePopulation = population };
         if (Wildlife == WildlifeKind.None && population > 0)
+        {
             return this with
             {
                 _wildlife = _wildlife.WithPopulation(kind, 0), Wildlife = kind, WildlifePopulation = population,
             };
+        }
+
         return this with { _wildlife = _wildlife.WithPopulation(kind, population) };
     }
 }

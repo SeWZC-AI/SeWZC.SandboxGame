@@ -12,11 +12,24 @@ public sealed class WorldPersistenceTests
     {
         var fact = new AgentFact
         {
-            Id = 123, Kind = AgentFactKind.WarOrder, SubjectId = 456, X = 12, Y = 34,
-            Value = 1.23456789012345, ObservedTick = 98_765_432_100, LearnedTick = 98_765_432_111,
-            OriginResidentId = 789, OriginProfession = Profession.Soldier, SourceResidentId = 890,
-            Confidence = .123456789012345, Hops = 7, Text = "转述的防御命令",
-            EventId = 91, CampaignEventId = 92, WarObjective = WarObjective.DefendHomeland, TargetNationId = 93,
+            Id = 123,
+            Kind = AgentFactKind.WarOrder,
+            SubjectId = 456,
+            X = 12,
+            Y = 34,
+            Value = 1.23456789012345,
+            ObservedTick = 98_765_432_100,
+            LearnedTick = 98_765_432_111,
+            OriginResidentId = 789,
+            OriginProfession = Profession.Soldier,
+            SourceResidentId = 890,
+            Confidence = .123456789012345,
+            Hops = 7,
+            Text = "转述的防御命令",
+            EventId = 91,
+            CampaignEventId = 92,
+            WarObjective = WarObjective.DefendHomeland,
+            TargetNationId = 93,
         };
         var context = new WorldJsonContext(new JsonSerializerOptions(WorldJsonContext.Default.Options)
         {
@@ -43,11 +56,21 @@ public sealed class WorldPersistenceTests
         var fact = memory[0]!.AsArray();
         switch (corruption)
         {
-            case "short": fact.RemoveAt(fact.Count - 1); break;
-            case "extra": fact.Add(0); break;
-            case "text": fact[13] = null; break;
-            case "enum": fact[1] = 999; break;
-            case "object": memory[0] = new JsonObject(); break;
+            case "short":
+                fact.RemoveAt(fact.Count - 1);
+                break;
+            case "extra":
+                fact.Add(0);
+                break;
+            case "text":
+                fact[13] = null;
+                break;
+            case "enum":
+                fact[1] = 999;
+                break;
+            case "object":
+                memory[0] = new JsonObject();
+                break;
         }
 
         Assert.Throws<ArgumentException>(() => WorldEngine.ImportJson(document.ToJsonString()));
@@ -237,10 +260,7 @@ public sealed class WorldPersistenceTests
         fixture.Resident.Agent = fixture.Resident.Agent with { Memory = fixture.Resident.Agent.Memory.Add(fact) };
         fixture.Engine.Current.PendingMessages = fixture.Engine.Current.PendingMessages.Add(new PendingMessage
         {
-            SenderId = fixture.ResidentId,
-            RecipientId = fixture.ResidentId,
-            DeliverTick = 1,
-            Facts = [fact],
+            SenderId = fixture.ResidentId, RecipientId = fixture.ResidentId, DeliverTick = 1, Facts = [fact],
         });
 
         var restoredWorld = WorldEngine.ImportJson(fixture.Engine.ExportJson());
@@ -258,9 +278,7 @@ public sealed class WorldPersistenceTests
         var fixture = new WorldFixture();
         fixture.Engine.Current.PendingMessages = fixture.Engine.Current.PendingMessages.Add(new PendingMessage
         {
-            SenderId = fixture.ResidentId,
-            RecipientId = fixture.ResidentId,
-            DeliverTick = 1,
+            SenderId = fixture.ResidentId, RecipientId = fixture.ResidentId, DeliverTick = 1,
         });
         var saved = JsonNode.Parse(fixture.Engine.ExportJson())!;
         saved["PendingMessages"]![0]!["Facts"] = null;

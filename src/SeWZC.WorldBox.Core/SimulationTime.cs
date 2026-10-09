@@ -32,9 +32,15 @@ public static class SimulationTime
 
     /// <summary>返回从零开始的模拟日序。</summary>
     /// <param name="tick">从零开始的模拟步序。</param>
-    public static long DayIndex(long tick) => tick / TicksPerDay;
+    public static long DayIndex(long tick)
+    {
+        return tick / TicksPerDay;
+    }
 
     /// <summary>返回一天内从零开始的模拟步数。</summary>
     /// <param name="tick">从零开始的模拟步序。</param>
-    public static int TimeOfDay(long tick) => (int)(tick % TicksPerDay);
+    public static int TimeOfDay(long tick)
+    {
+        return (int)(tick % TicksPerDay);
+    }
 }

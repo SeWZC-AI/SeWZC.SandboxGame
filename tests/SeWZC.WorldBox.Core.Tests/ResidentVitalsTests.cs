@@ -31,11 +31,7 @@ public sealed class ResidentVitalsTests
         Assert.Equal(immutable, fixture.Resident.Value);
         fixture.Resident.X = 15;
         fixture.Resident.Agent = fixture.Resident.Agent with { Fatigue = 30 };
-        Assert.Equal(immutable with
-        {
-            X = 15,
-            Agent = immutable.Agent with { Fatigue = 30 }
-        },
+        Assert.Equal(immutable with { X = 15, Agent = immutable.Agent with { Fatigue = 30 } },
             fixture.Engine.State.Residents[0]);
         Assert.Equal(16, original.X);
         Assert.NotEqual(30, original.Agent.Fatigue);
@@ -68,13 +64,11 @@ public sealed class ResidentVitalsTests
     {
         var before = new Resident
         {
-            Age = 25,
-            Agent = new AgentState { MissionOriginSettlementId = 7, FamiliarTiles = [5] },
+            Age = 25, Agent = new AgentState { MissionOriginSettlementId = 7, FamiliarTiles = [5] },
         };
         var returned = before.Agent with
         {
-            MissionOriginSettlementId = 0,
-            Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome },
+            MissionOriginSettlementId = 0, Goal = new AgentGoal { Kind = AgentGoalKind.ReturnHome },
         };
         var supplies = new ResourceStock { Food = 1, Water = 1, Medicine = 2 };
 
@@ -99,13 +93,11 @@ public sealed class ResidentVitalsTests
     {
         var before = new Resident
         {
-            Age = 25,
-            Agent = new AgentState { Goal = new AgentGoal { PlayerDirected = !playerDirected } },
+            Age = 25, Agent = new AgentState { Goal = new AgentGoal { PlayerDirected = !playerDirected } },
         };
         var current = before.Agent with
         {
-            NextThinkTick = 100,
-            Goal = new AgentGoal { PlayerDirected = playerDirected, ReviewTick = 100 },
+            NextThinkTick = 100, Goal = new AgentGoal { PlayerDirected = playerDirected, ReviewTick = 100 },
         };
 
         var after = before.CalculateDay(new WorldRules(), new Tile(), 7, Profession.Farmer, 80, 0,
@@ -157,10 +149,7 @@ public sealed class ResidentVitalsTests
     {
         var before = new Resident
         {
-            Age = 20,
-            Health = 60,
-            SicknessTicks = 2,
-            Inventory = new ResourceStock { Food = 1, Water = 1 },
+            Age = 20, Health = 60, SicknessTicks = 2, Inventory = new ResourceStock { Food = 1, Water = 1 },
         };
         var rules = new WorldRules();
         var tile = new Tile();

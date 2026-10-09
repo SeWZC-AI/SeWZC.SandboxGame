@@ -440,8 +440,7 @@ public sealed partial class WorldEngine
             return relation;
         relation = new DiplomaticRelation
         {
-            FirstNationId = Math.Min(first, second),
-            SecondNationId = Math.Max(first, second),
+            FirstNationId = Math.Min(first, second), SecondNationId = Math.Max(first, second),
         };
         Current.Diplomacies = Current.Diplomacies.Add(relation);
         return relation;
@@ -450,9 +449,9 @@ public sealed partial class WorldEngine
     private IEnumerable<int> Circle(int cx, int cy, int radius)
     {
         for (var y = Math.Max(0, cy - radius); y <= Math.Min(Current.Height - 1, cy + radius); y++)
-            for (var x = Math.Max(0, cx - radius); x <= Math.Min(Current.Width - 1, cx + radius); x++)
-                if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= radius * radius)
-                    yield return Index(x, y);
+        for (var x = Math.Max(0, cx - radius); x <= Math.Min(Current.Width - 1, cx + radius); x++)
+            if ((x - cx) * (x - cx) + (y - cy) * (y - cy) <= radius * radius)
+                yield return Index(x, y);
     }
 
     private void RelocateInvalidEntities()
@@ -480,11 +479,8 @@ public sealed partial class WorldEngine
                 .FirstOrDefault(-1);
             if (position >= 0)
             {
-                settlement.Replace(settlement.Value with
-                {
-                    X = position % Current.Width,
-                    Y = position / Current.Width,
-                });
+                settlement.Replace(
+                    settlement.Value with { X = position % Current.Width, Y = position / Current.Width });
                 Current.Tiles[position].SettlementId = settlement.Id;
                 ClaimTerritory(settlement, 6);
                 AddEvent(WorldEventKind.Editor, $"地形改变，{settlement.Name}迁往可居住的土地。", settlement.X, settlement.Y);

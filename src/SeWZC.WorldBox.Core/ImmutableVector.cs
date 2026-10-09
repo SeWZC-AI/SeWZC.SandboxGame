@@ -107,8 +107,10 @@ public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : clas
     {
         var node = new object?[Width];
         if (shift == 0)
+        {
             for (var i = 0; i < items.Length; i++)
                 node[i] = items[i];
+        }
         else
         {
             var length = 1 << shift;
@@ -271,6 +273,7 @@ public sealed partial class ImmutableVector<T> : IReadOnlyList<T> where T : clas
             if (!predicate(item))
                 items[count++] = item;
         }
+
         return Create(items.AsSpan(0, count));
     }
 

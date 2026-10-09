@@ -39,9 +39,7 @@ public sealed class AgentMemoryTests
         var home = new AgentFact { Kind = AgentFactKind.SettlementLocation, SubjectId = 4 };
         var other = Enumerable.Range(10, 15).Select(id => new AgentFact
         {
-            Kind = AgentFactKind.Personal,
-            SubjectId = id,
-            LearnedTick = 1,
+            Kind = AgentFactKind.Personal, SubjectId = id, LearnedTick = 1,
         }).ToArray();
         var before = new AgentState { Memory = [home, .. other] };
         var policy = new AgentFact { Kind = AgentFactKind.Policy, LearnedTick = 1 };

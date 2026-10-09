@@ -16,7 +16,8 @@ public sealed partial class WorldEngine
                                            && Distance(p.X, p.Y, town.X, town.Y) <= 6).ToArray() ?? [];
         var defense = GetLocalPolicy(town.Id) == PolicyKind.Defense || adults.Any(p => p.Agent.Memory.Any(f =>
             f.Kind is AgentFactKind.Danger or AgentFactKind.WarOrder
-            && f.Value > 0 && Current.Tick - f.ObservedTick < SimulationTime.TicksPerYear && f.ReliabilityAt(Current.Tick) >= .5));
+            && f.Value > 0 && Current.Tick - f.ObservedTick < SimulationTime.TicksPerYear &&
+            f.ReliabilityAt(Current.Tick) >= .5));
         var coast = false;
         var timber = false;
         var stone = false;

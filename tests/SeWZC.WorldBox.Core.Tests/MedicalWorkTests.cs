@@ -53,11 +53,7 @@ public sealed class MedicalWorkTests
         worker.Replace(worker.Value with
         {
             Inventory = new ResourceStock { Food = 1, Water = 1 },
-            Agent = worker.Agent with
-            {
-                NextThinkTick = 0,
-                Goal = new AgentGoal()
-            },
+            Agent = worker.Agent with { NextThinkTick = 0, Goal = new AgentGoal() },
         });
 
         fixture.Engine.Step();
@@ -110,9 +106,7 @@ public sealed class MedicalWorkTests
                 MoveDurationTicks = 1,
                 Agent = person.Agent with
                 {
-                    Initialized = true,
-                    NextThinkTick = 100,
-                    Goal = new AgentGoal { ReviewTick = 100 },
+                    Initialized = true, NextThinkTick = 100, Goal = new AgentGoal { ReviewTick = 100 },
                 },
             });
         fixture.Resident.Replace(fixture.Resident.Value with { Health = .001, SicknessTicks = 1 });

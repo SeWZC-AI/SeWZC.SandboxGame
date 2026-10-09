@@ -60,10 +60,7 @@ internal sealed class BuildingCursor(Building value) : StateCursor<Building>(val
     public bool IsUpgrading => Value.IsUpgrading;
     public double Efficiency => Value.Efficiency;
 
-    public WildlifeKind LivestockKind
-    {
-        get => Value.LivestockKind;
-    }
+    public WildlifeKind LivestockKind => Value.LivestockKind;
 
     public double LivestockPopulation
     {
@@ -185,10 +182,7 @@ internal sealed class BuildingCursor(Building value) : StateCursor<Building>(val
         }
     }
 
-    public double ConstructionRequired
-    {
-        get => Value.ConstructionRequired;
-    }
+    public double ConstructionRequired => Value.ConstructionRequired;
 
     public double Health
     {

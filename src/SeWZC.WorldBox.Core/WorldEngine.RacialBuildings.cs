@@ -77,9 +77,7 @@ public sealed partial class WorldEngine
         {
             person.Agent = person.Agent.WithGoal(goal = goal with
             {
-                TargetX = home.X,
-                TargetY = home.Y,
-                Reason = "实地返仓领取" + BuildingName(building.Kind) + "的劳动物资",
+                TargetX = home.X, TargetY = home.Y, Reason = "实地返仓领取" + BuildingName(building.Kind) + "的劳动物资",
             });
             if (Distance(person.X, person.Y, home.X, home.Y) > 1)
             {
@@ -122,11 +120,7 @@ public sealed partial class WorldEngine
             ChangeWorkReservation(person.Agent.Goal, returning);
             person.Replace(person.Value with
             {
-                Agent = person.Agent with
-                {
-                    Goal = returning,
-                    NextThinkTick = Current.Tick + 24
-                },
+                Agent = person.Agent with { Goal = returning, NextThinkTick = Current.Tick + 24 },
             });
         }
 

@@ -47,10 +47,7 @@ internal sealed partial class SettlementCursor : StateCursor<Settlement>
         }
     }
 
-    public long LastPoliticalChangeTick
-    {
-        get => Value.LastPoliticalChangeTick;
-    }
+    public long LastPoliticalChangeTick => Value.LastPoliticalChangeTick;
 
     public SettlementTier Tier
     {
@@ -84,10 +81,7 @@ internal sealed partial class SettlementCursor : StateCursor<Settlement>
 
     public bool IsExpanding => Value.IsExpanding;
 
-    public int Id
-    {
-        get => Value.Id;
-    }
+    public int Id => Value.Id;
 
     public string Name
     {
@@ -99,15 +93,9 @@ internal sealed partial class SettlementCursor : StateCursor<Settlement>
         }
     }
 
-    public int X
-    {
-        get => Value.X;
-    }
+    public int X => Value.X;
 
-    public int Y
-    {
-        get => Value.Y;
-    }
+    public int Y => Value.Y;
 
     public int NationId
     {
@@ -157,10 +145,7 @@ internal sealed partial class SettlementCursor : StateCursor<Settlement>
         }
     }
 
-    public bool FoundationPending
-    {
-        get => Value.FoundationPending;
-    }
+    public bool FoundationPending => Value.FoundationPending;
 
     public int MaxClaimRadius
     {

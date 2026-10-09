@@ -28,20 +28,20 @@ public sealed partial record AgentState
     internal AgentState FinishMission(AgentGoal nextGoal, string reason, long tick, int residentId)
     {
         return RecordDecision(new AgentDecision
-        {
-            Tick = tick,
-            Goal = AgentGoalKind.ReturnHome,
-            Reason = reason,
-            Score = 80,
-            KnowledgeObservedTick = tick,
-            SourceResidentId = residentId,
-        }) with
-        {
-            DestinationSettlementId = 0,
-            CarriedMessages = [],
-            MissionRetryTick = tick + 90,
-            Goal = nextGoal,
-            NextThinkTick = tick + 12,
-        };
+            {
+                Tick = tick,
+                Goal = AgentGoalKind.ReturnHome,
+                Reason = reason,
+                Score = 80,
+                KnowledgeObservedTick = tick,
+                SourceResidentId = residentId,
+            }) with
+            {
+                DestinationSettlementId = 0,
+                CarriedMessages = [],
+                MissionRetryTick = tick + 90,
+                Goal = nextGoal,
+                NextThinkTick = tick + 12,
+            };
     }
 }

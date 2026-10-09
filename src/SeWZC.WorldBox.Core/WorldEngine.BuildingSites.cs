@@ -4,6 +4,9 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
+    /// <summary>每级运营住宅提供的居民容量。</summary>
+    public const int HousingCapacityPerLevel = 80;
+
     private bool VisibleWorkSiteReachable(ResidentCursor person, int x, int y, bool adjacent)
     {
         var search = 0;
@@ -196,9 +199,6 @@ public sealed partial class WorldEngine
     {
         return building.Kind is BuildingKind.Granary or BuildingKind.Housing or BuildingKind.Watchtower;
     }
-
-    /// <summary>每级运营住宅提供的居民容量。</summary>
-    public const int HousingCapacityPerLevel = 80;
 
     /// <summary>计算本地基础住房与正在运营的住宅提供的总容量。</summary>
     /// <param name="settlementId">聚落 ID。</param>
