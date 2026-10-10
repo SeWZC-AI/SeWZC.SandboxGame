@@ -138,7 +138,8 @@ public sealed partial class WorldEngine
         {
             return
                 $"养殖：{(building.Value.LivestockKind == WildlifeKind.None ? "等待取得种群" : WildlifeName(building.Value.LivestockKind))}  {building.Value.LivestockPopulation:0.##} / {LivestockCapacity(building.Value):0.#}\n" +
-                BuildingDescription(building.Value.Kind);
+                BuildingDescription(building.Value.Kind)
+                + (building.Value.ProductionProgress > 0 ? $"\n本轮劳动进度 {building.Value.ProductionProgress:P0}" : "");
         }
 
         if (recipe is null)
@@ -165,7 +166,7 @@ public sealed partial class WorldEngine
                 BuildingKind.TownCenter => $"家园粮仓：粮食 {town.Value.Resources.Food:0.#}   木材 {town.Value.Resources.Wood:0.#}",
                 _ => BuildingDescription(building.Value.Kind),
             };
-            return activity +
+            return activity + (building.Value.ProductionProgress > 0 ? $"\n本轮劳动进度 {building.Value.ProductionProgress:P0}" : "") +
                    (PassiveFacility(building.Value) ||
                     building.Value.Kind is BuildingKind.MountainPass or BuildingKind.Bridge or BuildingKind.TownCenter
                        ? ""
@@ -192,7 +193,7 @@ public sealed partial class WorldEngine
         else if (reserved.Length > 0)
             missing = "为下一发展项目预留：" + string.Join("、", reserved);
         return
-            $"产出：{ResourceStock.Name(recipe.Output)} {ProductionYield(building.Value, recipe):0.#} / 批   累计 {building.Value.ProductionBatches} 批\n" +
+            $"产出：{ResourceStock.Name(recipe.Output)} {ProductionYield(building.Value, recipe):0.#} / 批   累计 {building.Value.ProductionBatches} 批\n本批劳动进度 {building.Value.ProductionProgress:P0}\n" +
             (missing is not null ? missing
                 : recipe.Research.Magic ? "需要天赋 ≥25、训练 ≥8 且魔力足够的到场施作者" : "原料可用，等待工人取料并到场加工");
     }
@@ -369,6 +370,8 @@ public sealed partial class WorldEngine
 
         if (batches <= 0)
             return false;
+        if (!CompleteBuildingWorkCycle(building, person))
+            return true;
         var inventory = Spend(person.Value.Inventory, recipe.Input.ToStock().Scale(batches));
         inventory = inventory.WithAmount(recipe.Output, inventory.Get(recipe.Output) + yield * batches);
         person.Replace(person.Value.WithInventory(inventory));

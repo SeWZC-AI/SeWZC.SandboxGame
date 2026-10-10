@@ -30,12 +30,12 @@ public sealed partial class WorldEngine
     }
 
     // 自主劳动的日产量按白天班次折算，避免加入夜间睡眠后把原有日供给再减半。
-    private double WorkDays(StateReference<Resident> person)
+    private double WorkDays(StateReference<Resident> person, bool mental = false)
     {
         return WorkInterval(person) / (double)(
             person.Value.Agent.Goal.PlayerDirected
                 ? SimulationTime.TicksPerDay
-                : SimulationTime.ReturnHomeTick - SimulationTime.WakeTick);
+                : SimulationTime.ReturnHomeTick - SimulationTime.WakeTick) * ResidentNeedsRules.WorkEfficiency(person.Value, mental);
     }
 
     private StateReference<Building>? FindBuilding(int id)

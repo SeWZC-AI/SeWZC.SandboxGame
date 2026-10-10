@@ -37,11 +37,11 @@ public sealed class AgentCadenceTests
         Assert.NotEmpty(fixture.Resident.Value.Agent.Decisions);
     }
 
-    /// <summary>精力已恢复的到场休息仍结算身体需求，但复用未改变的心智快照。</summary>
+    /// <summary>体力充足时仍持续消耗睡眠，原目标及其他认知保持不变。</summary>
     [Theory]
     [InlineData(AgentGoalKind.Rest, ResidentActivity.Resting)]
     [InlineData(AgentGoalKind.Socialize, ResidentActivity.Talking)]
-    public void Recovered_resident_reuses_unchanged_agent_state(AgentGoalKind kind, ResidentActivity activity)
+    public void Recovered_resident_consumes_sleep_without_changing_the_goal(AgentGoalKind kind, ResidentActivity activity)
     {
         var fixture = Prepare();
         fixture.Resident.Replace(fixture.Resident.Value.WithActivity(activity));
@@ -60,7 +60,10 @@ public sealed class AgentCadenceTests
 
         fixture.Engine.Step();
 
-        Assert.Same(before.Agent, fixture.Resident.Value.Agent);
+        var after = fixture.Resident.Value;
+        Assert.True(after.Agent.Sleep < before.Agent.Sleep);
+        Assert.Equal(before.Agent with { Sleep = after.Agent.Sleep }, after.Agent);
+        Assert.Same(before.Agent.Goal, after.Agent.Goal);
         Assert.True(fixture.Resident.Value.Age > before.Age);
         Assert.True(fixture.Resident.Value.Inventory.Food < before.Inventory.Food);
     }

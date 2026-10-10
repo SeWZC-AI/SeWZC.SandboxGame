@@ -46,6 +46,8 @@ public sealed partial class WorldEngine
         var effects = new List<EffectInfo>();
         if (person is null)
             return effects;
+        effects.Add(new EffectInfo("身体需求", $"体力劳动效率 ×{ResidentNeedsRules.WorkEfficiency(person):0.00}\n脑力劳动效率 ×{ResidentNeedsRules.WorkEfficiency(person, true):0.00}",
+            "睡眠、体力与年龄；任一需求耗尽时强制昏迷"));
         if (person.SicknessTicks > 0)
             effects.Add(new EffectInfo("疫病", "采集效率 ×0.40   施工与岗位劳动效率 ×0.45", "", person.SicknessTicks));
         if (person.Hunger > 60)

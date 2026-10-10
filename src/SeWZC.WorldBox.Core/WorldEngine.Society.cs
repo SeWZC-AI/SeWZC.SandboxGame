@@ -474,7 +474,7 @@ public sealed partial class WorldEngine
 
     private bool BuildingHasWork(Building building, StateReference<Resident> resident)
     {
-        if (!BuildingGroundOwned(building) || !building.Enabled || resident.Value.Age < 14 || resident.Value.ArmyId != 0 ||
+        if (!BuildingGroundOwned(building) || !building.Enabled || !ResidentNeedsRules.CanWork(resident.Value) || resident.Value.ArmyId != 0 ||
             resident.Value.Health <= 0)
             return false;
         if (Tiles[Index(building.X, building.Y)].Value.FireTicks > 0
@@ -548,6 +548,25 @@ public sealed partial class WorldEngine
 
     private bool TryWorkAtBuilding(StateReference<Resident> resident)
     {
+        if (!ResidentNeedsRules.CanWork(resident.Value))
+            return false;
+        var building = FindLocalWorkBuilding(resident, 1, false, true);
+        var mental = building is not null && IsMentalWork(building.Value);
+        if (ResidentNeedsRules.WorkEfficiency(resident.Value, mental) <= 0)
+            return false;
+        var repairs = building is not null && building.Value.Health < 50;
+        var worked = PerformBuildingWork(resident);
+        if (worked && IsWorkDay(resident) && !repairs)
+            resident.Replace(resident.Value.WithAgent(resident.Value.Agent with
+            {
+                Fatigue = ResidentNeedsRules.ExertionFatigue(resident.Value, ResidentNeedsRules.PhysicalWorkCostPerTick
+                    * (mental ? ResidentNeedsRules.MentalWorkCostRatio : 1) * WorkInterval(resident)),
+            }));
+        return worked;
+    }
+
+    private bool PerformBuildingWork(StateReference<Resident> resident)
+    {
         var building = FindLocalWorkBuilding(resident, 1, false, true);
         if (building is null || !_settlements.TryGetValue(building.Value.SettlementId, out var town))
             return false;
@@ -576,11 +595,11 @@ public sealed partial class WorldEngine
         building.Replace(building.Value with { Workers = building.Value.Workers.Add(resident.Value.Id) });
         if (building.Value.Health < 50)
         {
-            RepairBuilding(resident.Value.Id, building.Value.Id);
+            RepairBuilding(resident.Value.Id, building.Value.Id, WorkInterval(resident));
             return true;
         }
 
-        var effort = WorkDays(resident) * Math.Clamp(
+        var effort = WorkDays(resident, IsMentalWork(building.Value)) * Math.Clamp(
             (0.6 + resident.Value.Agent.Personality.Diligence * 0.6) * LaborCondition(resident.Value.SicknessTicks, resident.Value.Thirst), 0.1,
             1.2);
         if ((!building.Value.IsCompleted || building.Value.IsUpgrading) && resident.Value.Profession == Profession.Engineer
@@ -774,7 +793,8 @@ public sealed partial class WorldEngine
                 town.Replace(town.Value.WithResources(town.Value.Resources with { Food = town.Value.Resources.Food - 0.05 }));
                 patient.Replace(patient.Value.WithHealth(Math.Min(100,
                     patient.Value.Health + 0.45 * effort * (HasResearch(town.Value.Id, Advancement.Medicine) ? 1.5 : 1))));
-                patient.Replace(patient.Value.WithSicknessTicks(Math.Max(0, patient.Value.SicknessTicks - SimulationTime.TicksPerDay)));
+                patient.Replace(patient.Value.WithSicknessTicks(Math.Max(0, patient.Value.SicknessTicks
+                    - ServiceDurationTicks(resident.Value, building.Value, SimulationTime.TicksPerDay))));
                 return true;
             case BuildingKind.TownCenter:
                 return WorkOnTownExpansion(town, effort / building.Value.Efficiency);
@@ -938,7 +958,7 @@ public sealed partial class WorldEngine
         foreach (var id in building.Workers)
             if (FindLiveResident(id) is { } worker && worker.Value.SettlementId == building.SettlementId
                                                    && worker.Value.Health > 0 && (race is null ||
-                                                                            (worker.Value.Race == race && worker.Value.Age >= 14))
+                                                                            (worker.Value.Race == race && worker.Value.Age >= ResidentNeedsRules.MinimumWorkAge))
                                                    && Distance(worker.Value.X, worker.Value.Y, building.X, building.Y) <= 1)
                 return true;
         return false;
@@ -1345,7 +1365,7 @@ public sealed partial class WorldEngine
         // 自主施法频繁探测；缺魔力或尚未解锁属于普通不可用条件，不用异常完成判断。
         var caster = FindLiveResident(casterId);
         if (!Enum.IsDefined(spell) || caster is null || !InBounds(x, y)
-            || Distance(caster.Value.X, caster.Value.Y, x, y) > 4 || caster.Value.Health <= 0 || caster.Value.Age < 14
+            || Distance(caster.Value.X, caster.Value.Y, x, y) > 4 || caster.Value.Health <= 0 || !ResidentNeedsRules.CanWork(caster.Value)
             || caster.Value.MagicTalent < 25 || caster.Value.MagicTraining < 8 ||
             caster.Value.Mana < PersonalSpellCost(caster.Value.Race, spell))
             return false;
@@ -1376,8 +1396,8 @@ public sealed partial class WorldEngine
         var caster = FindLiveResident(casterId) ?? throw new ArgumentException("施法居民不存在。");
         if (!InBounds(x, y) || Distance(caster.Value.X, caster.Value.Y, x, y) > 4)
             throw new InvalidOperationException("目标须位于施法者 4 格以内。");
-        if (caster.Value.Health <= 0 || caster.Value.Age < 14 || caster.Value.MagicTalent < 25 || caster.Value.MagicTraining < 8)
-            throw new InvalidOperationException("需要成年、魔法天赋至少 25 且完成至少 8 点奥术训练。");
+        if (caster.Value.Health <= 0 || !ResidentNeedsRules.CanWork(caster.Value) || caster.Value.MagicTalent < 25 || caster.Value.MagicTraining < 8)
+            throw new InvalidOperationException("需要达到劳动年龄且能够行动、魔法天赋至少 25 且完成至少 8 点奥术训练。");
         if (SpellUnlockError(casterId, spell) is { } unlockError)
             throw new InvalidOperationException(unlockError);
         var cost = PersonalSpellCost(caster.Value.Race, spell);
@@ -1427,12 +1447,18 @@ public sealed partial class WorldEngine
         }
 
         caster.Replace(caster.Value.WithMana(caster.Value.Mana - (cost)));
-        var power = 0.7 + caster.Value.MagicTalent / 150 + caster.Value.MagicTraining / 250;
+        var efficiency = ResidentNeedsRules.WorkEfficiency(caster.Value, true);
+        var power = (0.7 + caster.Value.MagicTalent / 150 + caster.Value.MagicTraining / 250) * efficiency;
+        caster.Replace(caster.Value.WithAction(caster.Value.Agent with
+        {
+            Fatigue = ResidentNeedsRules.ExertionFatigue(caster.Value, ResidentNeedsRules.PhysicalWorkCostPerTick * ResidentNeedsRules.MentalWorkCostRatio),
+        }, ResidentActivity.Casting));
         if (spell == SpellKind.Heal)
         {
             recipient!.Replace(recipient!.Value.WithHealth(Math.Min(100,
                 recipient.Value.Health + 22 * power * (HasResearch(caster.Value.SettlementId, Advancement.Restoration) ? 1.5 : 1))));
-            recipient.Replace(recipient.Value.WithSicknessTicks(Math.Max(0, recipient.Value.SicknessTicks - SimulationTime.TicksPerDay)));
+            recipient.Replace(recipient.Value.WithSicknessTicks(Math.Max(0,
+                recipient.Value.SicknessTicks - (int)(SimulationTime.TicksPerDay * efficiency))));
         }
 
         if (spell == SpellKind.HarvestBlessing)
@@ -1445,7 +1471,10 @@ public sealed partial class WorldEngine
         {
             DamageResident(recipient!, TryAbsorbShieldDamage(recipient!, 10 * power * Rules.CombatDamageRate),
                 DeathCause.Magic);
-            recipient!.Replace(recipient!.Value with { FrozenUntilTick = Math.Max(recipient.Value.FrozenUntilTick, SimulationTick + 6) });
+            recipient!.Replace(recipient!.Value with
+            {
+                FrozenUntilTick = Math.Max(recipient.Value.FrozenUntilTick, SimulationTick + (int)(6 * efficiency)),
+            });
         }
 
         if (spell == SpellKind.ChainLightning)
@@ -1465,12 +1494,13 @@ public sealed partial class WorldEngine
             foreach (var index in Circle(x, y, 2))
             {
                 var tile = Tiles[index];
-                tile.Replace(tile.Value.WithDroughtTicks(Math.Max(0, tile.Value.DroughtTicks - 2 * SimulationTime.TicksPerMonth)));
+                tile.Replace(tile.Value.WithDroughtTicks(Math.Max(0,
+                    tile.Value.DroughtTicks - (int)(2 * SimulationTime.TicksPerMonth * efficiency))));
                 if (tile.Value.DroughtTicks == 0)
                     _dryTiles.Remove(index);
                 if (tile.Value.FireTicks > 0)
                 {
-                    tile.Replace(tile.Value.WithFireTicks(Math.Max(0, tile.Value.FireTicks - 8)));
+                    tile.Replace(tile.Value.WithFireTicks(Math.Max(0, tile.Value.FireTicks - (int)(8 * efficiency))));
                     if (tile.Value.FireTicks == 0)
                         EndFire(index, false);
                 }
@@ -1673,7 +1703,7 @@ public sealed partial class WorldEngine
         {
             foreach (var person in Residents)
             {
-                if (!InBounds(person.Value.X, person.Value.Y) || person.Value.Health <= 0 || person.Value.Activity == ResidentActivity.Sleeping)
+                if (!InBounds(person.Value.X, person.Value.Y) || person.Value.Health <= 0 || person.Value.Activity is ResidentActivity.Sleeping or ResidentActivity.Unconscious)
                     continue;
                 if (person.Value.MagicTalent >= 25 && person.Value.MagicTraining >= 8 && (SimulationTick + person.Value.Id) % 12 == 0)
                     TryAutomaticMagic(person);
@@ -2184,6 +2214,7 @@ public sealed partial class WorldEngine
                          building.Kind == BuildingKind.Aquaculture)
                      : building.LivestockKind == WildlifeKind.None && building.LivestockPopulation == 0)
                  && building.ProductionBatches is >= 0 and <= 1_000_000_000
+                 && Range(building.ProductionProgress, 1) && building.ProductionProgress < 1
                  && building.ServiceActions is >= 0 and <= 1_000_000_000 && building.LastServiceTick >= -100 &&
                  building.LastServiceTick <= state.Tick
                  && building.WorkSlots is > 0 and <= 20 && building.Workers is not null &&

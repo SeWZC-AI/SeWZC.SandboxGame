@@ -7,6 +7,8 @@ public sealed partial class WorldEngine
     /// <param name="facility">已查到的目标设施，空值时按任务查找；非设施任务忽略此值。</param>
     public ResidentTaskIcon GetResidentTaskIcon(Resident person, Building? facility = null)
     {
+        if (ResidentNeedsRules.IsUnconscious(person))
+            return ResidentTaskIcon.Rest;
         var goal = person.Agent.Goal;
         // 取水和捕鱼的目标编号表示资源地格，不能作为建筑 ID 查找。
         if (goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic)

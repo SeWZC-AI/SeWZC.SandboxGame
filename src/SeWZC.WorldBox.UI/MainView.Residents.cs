@@ -54,7 +54,7 @@ public sealed partial class MainView
                 ? $"逝世时间：{DateLabel(Current().DeathTick)}\n死亡原因：{WorldEngine.DeathCauseName(Current().DeathCause)}"
                 : ""));
         panel.Children.Add(LiveText(() =>
-            $"生命 {Current().Health:0} / 100   体力 {100 - Current().Agent.Fatigue:0} / 100   饥饿 {Current().Hunger:0}%   口渴 {Current().Thirst:0}%"));
+            $"生命 {Current().Health:0} / 100   体力 {ResidentNeedsRules.StaminaValue(Current()):0.#} / {ResidentNeedsRules.StaminaCapacity(Current()):0.#}   睡眠 {ResidentNeedsRules.SleepValue(Current()):0.#} / {ResidentNeedsRules.SleepCapacity(Current()):0.#}   饥饿 {Current().Hunger:0}%   口渴 {Current().Thirst:0}%"));
         panel.Children.Add(LiveText(() => _engine.GetResidentActionSummary(id)));
         panel.Children.Add(LiveText(() =>
         {
@@ -85,12 +85,12 @@ public sealed partial class MainView
                 Button("治疗",
                     () => RunEdit(() => _engine.EditResident(id, new ResidentEdit { Health = 100, SicknessTicks = 0 }),
                         "居民已得到治疗")), "resident-heal"));
-            if (resident.Age >= 14)
+            if (resident.Age >= ResidentNeedsRules.MinimumWorkAge)
             {
                 var cast = Named(
                     Button("施放法术", () => ShowSpellSelectionEditor(SpellKind.Heal), "选择本人施法；窗口显示知识、训练和魔力要求"),
                     "resident-spell");
-                _inspectorUpdates.Add(() => cast.IsEnabled = Current().Health > 0 && Current().Age >= 14);
+                _inspectorUpdates.Add(() => cast.IsEnabled = Current().Health > 0 && ResidentNeedsRules.CanWork(Current()));
                 quick.Children.Add(cast);
             }
 
@@ -138,7 +138,7 @@ public sealed partial class MainView
         {
             var r = Current();
             return
-                $"{ActivityName(r.Activity)}\n生命 {r.Health:F1}\n饥饿 {r.Hunger:F1}\n口渴 {r.Thirst:F1}\n疫病 {r.SicknessTicks / (double)SimulationTime.TicksPerDay:0.##} 日\n疲劳 {r.Agent.Fatigue:F1}\n社交需求 {r.Agent.SocialNeed:F1}\n特质：{r.Trait}\n随身库存：{StockLabel(r.Inventory)}\n魔力 {r.Mana:F1}\n天赋 {r.MagicTalent:F1}\n训练 {r.MagicTraining:F1}\n军队 {(r.ArmyId == 0 ? "无" : r.ArmyId.ToString())}\n家园 {TownName(r.SettlementId)}";
+                $"{ActivityName(r.Activity)}\n生命 {r.Health:F1}\n饥饿 {r.Hunger:F1}\n口渴 {r.Thirst:F1}\n疫病 {r.SicknessTicks / (double)SimulationTime.TicksPerDay:0.##} 日\n体力 {ResidentNeedsRules.StaminaValue(r):F1} / {ResidentNeedsRules.StaminaCapacity(r):F1}\n睡眠 {ResidentNeedsRules.SleepValue(r):F1} / {ResidentNeedsRules.SleepCapacity(r):F1}\n社交需求 {r.Agent.SocialNeed:F1}\n特质：{r.Trait}\n随身库存：{StockLabel(r.Inventory)}\n魔力 {r.Mana:F1}\n天赋 {r.MagicTalent:F1}\n训练 {r.MagicTraining:F1}\n军队 {(r.ArmyId == 0 ? "无" : r.ArmyId.ToString())}\n家园 {TownName(r.SettlementId)}";
         }));
         var effects = FoldSection(panel, "当前加成与减益", "resident-effects");
         effects.Children.Add(LiveText(() => EffectLabel(_engine.GetResidentEffects(id))));
@@ -461,7 +461,8 @@ public sealed partial class MainView
         var initialDuration =
             Math.Max(1, (mind.Goal.ReviewTick - _engine.State.Tick) / (double)SimulationTime.TicksPerDay);
         var duration = Field(panel, "目标保持日数", initialDuration, "resident-goal-duration");
-        var fatigue = Field(panel, "疲劳", mind.Fatigue, "resident-fatigue");
+        var fatigue = Field(panel, "已消耗体力百分比", mind.Fatigue, "resident-fatigue");
+        var sleep = Field(panel, "剩余睡眠百分比", mind.Sleep, "resident-sleep");
         var social = Field(panel, "社交需求", mind.SocialNeed, "resident-social-need");
         var courage = Field(panel, "勇气 0–1", mind.Personality.Courage, "resident-courage");
         var diligence = Field(panel, "勤勉 0–1", mind.Personality.Diligence, "resident-diligence");
@@ -503,7 +504,7 @@ public sealed partial class MainView
                         }
                         : originalGoal,
                 };
-                mind = mind with { Fatigue = Number(fatigue) };
+                mind = mind with { Fatigue = Number(fatigue), Sleep = Number(sleep) };
                 mind = mind with { SocialNeed = Number(social) };
                 mind = mind with
                 {

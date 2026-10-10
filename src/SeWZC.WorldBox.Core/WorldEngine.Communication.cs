@@ -261,7 +261,7 @@ public sealed partial class WorldEngine
             if ((SimulationTick + senderIndex) % conversationInterval != 0 || SimulationTick -
                                                                          sender.Value.Agent.LastConversationTick < 6
                                                                          || sender.Value.Health <= 0 ||
-                                                                         sender.Value.Activity == ResidentActivity.Sleeping)
+                                                                         sender.Value.Activity is ResidentActivity.Sleeping or ResidentActivity.Unconscious)
                 continue;
             var conversationRadius = 2;
             foreach (var building in Buildings)
@@ -306,7 +306,7 @@ public sealed partial class WorldEngine
                 break;
             }
 
-            if (recipient is null || recipient.Value.Activity == ResidentActivity.Sleeping)
+            if (recipient is null || recipient.Value.Activity is ResidentActivity.Sleeping or ResidentActivity.Unconscious)
                 continue;
             var facts = SelectMessageFacts(sender, false);
             if (facts.Count > 0 && PendingMessages.Count < MaxPopulation * 2)
@@ -347,6 +347,7 @@ public sealed partial class WorldEngine
         foreach (var sender in Residents)
         {
             if (sender.Value.Profession is not Profession.Messenger and not Profession.Representative
+                || !ResidentNeedsRules.CanWork(sender.Value) || sender.Value.Activity == ResidentActivity.Sleeping
                 || (SimulationTick + sender.Value.Id) % 24 != 0 || !_settlements.TryGetValue(sender.Value.SettlementId, out var home)
                 || Distance(sender.Value.X, sender.Value.Y, home.Value.X, home.Value.Y) > 1)
                 continue;

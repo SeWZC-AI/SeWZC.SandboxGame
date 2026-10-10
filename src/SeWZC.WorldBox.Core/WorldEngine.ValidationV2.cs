@@ -107,7 +107,8 @@ public sealed partial class WorldEngine
         CheckV2(
             Number(personality.Courage, 0, 1) && Number(personality.Diligence, 0, 1) &&
             Number(personality.Sociability, 0, 1) && Number(personality.Ambition, 0, 1) &&
-            Number(agent.Fatigue, 0, 100) && Number(agent.SocialNeed, 0, 100), "性格或需求超出范围。");
+            Number(agent.Fatigue, 0, ResidentNeedsRules.MaximumPercent) && Number(agent.Sleep, 0, ResidentNeedsRules.MaximumPercent)
+            && Number(agent.SocialNeed, 0, 100), "性格或需求超出范围。");
         CheckV2(agent.Goal is not null, "行动目标缺失。");
         var goal = agent.Goal!;
         CheckV2(goal.NavigationTarget >= -1 && goal.NavigationTarget < width * height
@@ -142,6 +143,7 @@ public sealed partial class WorldEngine
             goal.TargetEntityId >= 0 && goal.TargetSettlementId >= 0 && goal.StartedTick >= 0 &&
             goal.StartedTick <= tick && goal.ReviewTick is >= 0 && goal.ReviewTick <= tick + 100_000 &&
             goal.WorkTicks is >= 0 and <= AgentGoal.MaximumResidenceTicks &&
+            Number(goal.LaborProgress, 0, AgentGoal.MaximumResidenceTicks) &&
             BoundedText(goal.Reason, 400), "目标位置、时间或内容无效。");
         CheckV2(
             agent.JobChangedTick >= -SimulationTime.TicksPerYear && agent.JobChangedTick <= tick &&

@@ -315,11 +315,23 @@ public sealed partial class WorldEngine
                 army.Replace(army.Value with { Status = "夜间宿营休息" });
                 foreach (var soldier in soldiers)
                 {
-                    soldier.Replace(soldier.Value.WithAction(soldier.Value.Agent with { Fatigue = Math.Max(0, soldier.Value.Agent.Fatigue - 2.2) }, ResidentActivity.Sleeping));
+                    if (!ResidentNeedsRules.IsUnconscious(soldier.Value))
+                        soldier.Replace(soldier.Value.WithActivity(ResidentActivity.Sleeping));
                 }
 
                 continue;
             }
+
+            soldiers = soldiers.Where(soldier => ResidentNeedsRules.CanWork(soldier.Value)).ToArray();
+            if (soldiers.Length == 0)
+            {
+                army.Replace(army.Value with { Status = "士兵昏迷，等待恢复行动" });
+                continue;
+            }
+            commander = soldiers.FirstOrDefault(soldier => soldier.Value.Id == army.Value.CommanderId) ?? soldiers[0];
+            foreach (var soldier in soldiers)
+                if (soldier.Value.Activity == ResidentActivity.Sleeping)
+                    soldier.Replace(soldier.Value.WithActivity(ResidentActivity.Resting));
 
             if (army.Value.Gathering && !army.Value.Retreating)
             {
@@ -377,7 +389,8 @@ public sealed partial class WorldEngine
                     ApplyDamage(
                         Residents.Where(r =>
                             r.Value.ArmyId == opponent.Value.Id && r.Value.Health > 0 && Distance(r.Value.X, r.Value.Y, army.Value.X, army.Value.Y) <= 3),
-                        soldiers.Count(r => Distance(r.Value.X, r.Value.Y, army.Value.X, army.Value.Y) <= 2) * 5 * army.Value.Morale / 100);
+                        CombatEffort(soldiers.Where(r => Distance(r.Value.X, r.Value.Y, army.Value.X, army.Value.Y) <= 2), 3)
+                            * 5 * army.Value.Morale / 100);
                 }
 
                 continue;
@@ -444,7 +457,7 @@ public sealed partial class WorldEngine
                 MoveAgentTowards(soldier, commander.Value.X, commander.Value.Y);
             soldier.Replace(soldier.Value with
             {
-                Activity = ResidentActivity.Marching,
+                Activity = ResidentNeedsRules.IsUnconscious(soldier.Value) ? ResidentActivity.Unconscious : ResidentActivity.Marching,
                 Agent = soldier.Value.Agent.WithGoal(soldier.Value.Agent.Goal with
                 {
                     Kind = AgentGoalKind.March,
@@ -474,7 +487,7 @@ public sealed partial class WorldEngine
     private void Siege(StateReference<Army> army, StateReference<Settlement> target, StateReference<Resident>[] soldiers)
     {
         var defenders = Residents.Where(r =>
-            r.Value.SettlementId == target.Value.Id && r.Value.ArmyId == 0 && r.Value.Age >= 14 && r.Value.Health > 0 &&
+            r.Value.SettlementId == target.Value.Id && r.Value.ArmyId == 0 && r.Value.Age >= ResidentNeedsRules.MinimumWorkAge && r.Value.Health > 0 &&
             Distance(r.Value.X, r.Value.Y, target.Value.X, target.Value.Y) <= 5).ToArray();
         if (defenders.Length == 0)
         {
@@ -483,8 +496,8 @@ public sealed partial class WorldEngine
         }
 
         RecordBattle(army, soldiers, defenders);
-        var attack = soldiers.Length * (6 + _nations[army.Value.NationId].Value.Technology) * army.Value.Morale / 100;
-        var defense = defenders.Length * 1.7;
+        var attack = CombatEffort(soldiers, 3) * (6 + _nations[army.Value.NationId].Value.Technology) * army.Value.Morale / 100;
+        var defense = CombatEffort(defenders, 3) * 1.7;
         ApplyDamage(defenders, attack);
         ApplyDamage(soldiers, defense);
         army.Replace(army.Value with { Morale = Math.Max(0, army.Value.Morale - 0.2) });

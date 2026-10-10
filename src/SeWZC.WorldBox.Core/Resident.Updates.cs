@@ -4,7 +4,12 @@ public sealed partial record Resident
 {
     internal Resident WithTravelMode(TravelMode value) => TravelMode == value ? this : this with { TravelMode = value };
 
-    internal Resident WithActivity(ResidentActivity value) => Activity == value ? this : this with { Activity = value };
+    internal Resident WithActivity(ResidentActivity value)
+    {
+        if (Health > 0 && ResidentNeedsRules.IsUnconscious(this))
+            value = ResidentActivity.Unconscious;
+        return Activity == value ? this : this with { Activity = value };
+    }
 
     internal Resident WithHealth(double value) => Health.Equals(value) ? this : this with { Health = value };
 
@@ -16,13 +21,19 @@ public sealed partial record Resident
 
     internal Resident WithMana(double value) => Mana.Equals(value) ? this : this with { Mana = value };
 
-    internal Resident WithAgent(AgentState value) => ReferenceEquals(Agent, value) ? this : this with { Agent = value };
+    internal Resident WithAgent(AgentState value)
+    {
+        var activity = Health > 0 && ResidentNeedsRules.IsUnconscious(value, Activity) ? ResidentActivity.Unconscious : Activity;
+        return ReferenceEquals(Agent, value) && Activity == activity ? this : this with { Agent = value, Activity = activity };
+    }
 
     internal Resident WithInventory(ResourceStock value) => Inventory == value ? this : this with { Inventory = value };
 
     // 认知、库存与活动共同构成一次动作，源居民及其身体、移动和身份值保持不变。
     internal Resident WithAction(AgentState agent, ResidentActivity activity)
     {
+        if (Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity))
+            activity = ResidentActivity.Unconscious;
         if (ReferenceEquals(Agent, agent) && Activity == activity)
             return this;
         return this with { Agent = agent, Activity = activity };
@@ -30,6 +41,8 @@ public sealed partial record Resident
 
     internal Resident WithAction(in ResourceStock inventory, AgentState agent, ResidentActivity activity)
     {
+        if (Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity))
+            activity = ResidentActivity.Unconscious;
         if (Inventory == inventory && ReferenceEquals(Agent, agent) && Activity == activity)
             return this;
         return this with
@@ -57,6 +70,8 @@ public sealed partial record Resident
 
     internal Resident BeginMove(int x, int y, long tick, int duration, ResidentActivity activity, AgentState agent)
     {
+        if (Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity))
+            activity = ResidentActivity.Unconscious;
         return this with
         {
             MovementState = new Movement

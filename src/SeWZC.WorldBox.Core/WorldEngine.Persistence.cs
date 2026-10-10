@@ -118,8 +118,8 @@ public sealed partial class WorldEngine
             return PositionValid(x, y) && state.Tiles[y * state.Width + x].IsWalkable;
         }
 
-        Require(state.FormatVersion == 22, "不支持该存档版本，请为本版新建世界。");
-        Require(state.SimulationVersion == 26, "不支持该模拟版本，请为本版新建世界。");
+        Require(state.FormatVersion == 23, "不支持该存档版本，请为本版新建世界。");
+        Require(state.SimulationVersion == 27, "不支持该模拟版本，请为本版新建世界。");
         Require(state.Width is >= 32 and <= 256 && state.Height is >= 32 and <= 256, "地图尺寸超出范围。");
         Require(
             state.Tick is >= 0 and <= 120_000_000 && state.RandomState != 0 && state.NextId is > 0 and < 2_000_000_000,

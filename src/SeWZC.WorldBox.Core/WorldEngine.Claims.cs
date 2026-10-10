@@ -38,7 +38,7 @@ public sealed partial class WorldEngine
 
     private int VisibleClaimSite(StateReference<Resident> person, StateReference<Settlement> town)
     {
-        if (town.Value.FoundationPending || !Rules.Expansion || person.Value.Age < 14 || person.Value.ArmyId != 0
+        if (town.Value.FoundationPending || !Rules.Expansion || person.Value.Age < ResidentNeedsRules.MinimumWorkAge || person.Value.ArmyId != 0
             || person.Value.Profession != Profession.Builder)
             return -1;
         var active = 0;
@@ -74,7 +74,7 @@ public sealed partial class WorldEngine
 
     private bool TryClaimLand(StateReference<Resident> person)
     {
-        if (!_settlements.TryGetValue(person.Value.SettlementId, out var town) || person.Value.Age < 14 || person.Value.ArmyId != 0
+        if (!_settlements.TryGetValue(person.Value.SettlementId, out var town) || !ResidentNeedsRules.CanWork(person.Value) || person.Value.ArmyId != 0
             || person.Value.Health <= 0 || person.Value.Agent.Goal.Kind != AgentGoalKind.ClaimLand
             || SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks
             || person.Value.X != person.Value.Agent.Goal.TargetX || person.Value.Y != person.Value.Agent.Goal.TargetY)
@@ -89,7 +89,14 @@ public sealed partial class WorldEngine
             return false;
         }
 
-        if (person.Value.Agent.Goal.WorkTicks < 3)
+        var goal = person.Value.Agent.Goal;
+        var progress = Math.Min(AgentGoal.MaximumResidenceTicks, goal.LaborProgress + ResidentNeedsRules.WorkEfficiency(person.Value));
+        person.Replace(person.Value.WithAction(person.Value.Agent with
+        {
+            Goal = goal with { LaborProgress = progress },
+            Fatigue = ResidentNeedsRules.ExertionFatigue(person.Value, ResidentNeedsRules.PhysicalWorkCostPerTick),
+        }, ResidentActivity.Working));
+        if (progress < AgentGoal.MaximumResidenceTicks)
             return true;
         var tile = Tiles[index];
         tile.Replace(tile.Value with { NationId = town.Value.NationId, ClaimedSettlementId = town.Value.Id });

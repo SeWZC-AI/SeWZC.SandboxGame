@@ -59,6 +59,52 @@ public sealed class ProductionTests
         Assert.Equal(1, foundry.Value.ProductionBatches);
     }
 
+    /// <summary>睡眠不足按比例累计加工进度，保存恢复后完成一批才扣料和产出。</summary>
+    [Fact]
+    public void Reduced_efficiency_accumulates_saved_progress_before_consuming_a_batch()
+    {
+        var (fixture, foundry) = FoundryWorld();
+        fixture.Engine.Buildings.RemoveAll(building => building.Value.Id != foundry.Value.Id && building.Value.X == 17 && building.Value.Y == 16);
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Sleep = 25 }));
+        Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
+        Assert.Equal(.75, foundry.Value.ProductionProgress);
+        Assert.Equal(0, foundry.Value.ProductionBatches);
+        Assert.Equal(2, fixture.Resident.Value.Inventory.Ore);
+        var loaded = WorldEngine.ImportJson(fixture.Engine.ExportJson());
+        loaded.SimulationTick = SimulationTime.TicksPerDay;
+
+        Assert.True(loaded.TryWorkAtBuilding(loaded.GetResident(fixture.ResidentId)!));
+
+        Assert.Equal(.5, loaded.State.Society.Buildings.Single(building => building.Id == foundry.Value.Id).ProductionProgress);
+        Assert.Equal(1, loaded.State.Society.Buildings.Single(building => building.Id == foundry.Value.Id).ProductionBatches);
+        Assert.Equal(0, loaded.GetResident(fixture.ResidentId)!.Inventory.Ore);
+        Assert.Equal(1, loaded.GetResident(fixture.ResidentId)!.Inventory.Alloy);
+    }
+
+    /// <summary>体力耗尽时现场加工立即停止且不消耗原料。</summary>
+    [Fact]
+    public void Exhausted_worker_cannot_process_carried_materials()
+    {
+        var (fixture, foundry) = FoundryWorld();
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Fatigue = 100 }));
+        Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
+        Assert.Equal(2, fixture.Resident.Value.Inventory.Ore);
+        Assert.Equal(0, foundry.Value.ProductionProgress);
+        Assert.Equal(ResidentActivity.Unconscious, fixture.Resident.Value.Activity);
+    }
+
+    /// <summary>实际劳动耗尽体力时在命令返回前进入昏迷。</summary>
+    [Fact]
+    public void Work_that_exhausts_stamina_marks_unconsciousness_immediately()
+    {
+        var (fixture, foundry) = FoundryWorld();
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Fatigue = 98 }));
+        Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
+        Assert.Equal(100, fixture.Resident.Value.Agent.Fatigue);
+        Assert.Equal(ResidentActivity.Unconscious, fixture.Resident.Value.Activity);
+        Assert.Equal(.04, foundry.Value.ProductionProgress, 10);
+    }
+
     /// <summary>加工缺料不会消耗已有原料。</summary>
     [Fact]
     public void Missing_input_does_not_partially_consume_materials()

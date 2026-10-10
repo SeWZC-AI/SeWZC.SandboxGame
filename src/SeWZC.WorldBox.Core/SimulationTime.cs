@@ -28,7 +28,7 @@ public static class SimulationTime
     public const int ReturnHomeTick = TicksPerDay * 3 / 4;
 
     /// <summary>夜晚开始睡眠的日内步数。</summary>
-    public const int SleepTick = TicksPerDay * 5 / 6;
+    public const int SleepTick = TicksPerDay + WakeTick - ResidentNeedsRules.NormalSleepTicks;
 
     /// <summary>返回从零开始的模拟日序。</summary>
     /// <param name="tick">从零开始的模拟步序。</param>

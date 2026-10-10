@@ -506,7 +506,7 @@ public sealed partial class WorldEngine
                 SettlementId: home.Value.Id));
         }
 
-        if (person.Value.Age < 14)
+        if (person.Value.Age < ResidentNeedsRules.MinimumWorkAge)
             return false;
         var foodNeeded = FoodSupplyNeeded(person, home);
         if (foodNeeded)
@@ -553,7 +553,8 @@ public sealed partial class WorldEngine
 
     private bool TryFetchWater(StateReference<Resident> person)
     {
-        if (person.Value.Agent.Goal.Kind != AgentGoalKind.FetchWater || person.Value.Health <= 0)
+        if (person.Value.Agent.Goal.Kind != AgentGoalKind.FetchWater || person.Value.Health <= 0
+            || !ResidentNeedsRules.CanWork(person.Value))
             return false;
         var source = person.Value.Agent.Goal.TargetEntityId - 1;
         if (source >= 0 && (source >= Tiles.Count
@@ -573,7 +574,13 @@ public sealed partial class WorldEngine
             Math.Min(
                 source >= 0 && source < Tiles.Count
                     ? GatheringTerritoryMultiplier(person.Value.SettlementId, person.Value.NationId, Tiles[source].Value)
+                        * ResidentNeedsRules.WorkEfficiency(person.Value)
                     : 0, target - person.Value.Inventory.Water));
+        if (amount > 0)
+            person.Replace(person.Value.WithAgent(person.Value.Agent with
+            {
+                Fatigue = ResidentNeedsRules.ExertionFatigue(person.Value, ResidentNeedsRules.PhysicalWorkCostPerTick),
+            }));
         if (source >= 0 && person.Value.Inventory.Water >= target - .000001)
         {
             // 当场完成后结束取水目标，避免下一日喝掉少量水又被当成尚未完成。
@@ -662,7 +669,7 @@ public sealed partial class WorldEngine
 
     private void AddBoatFishingChoice(StateReference<Resident> person, StateReference<Settlement> home, List<GoalChoice> choices)
     {
-        if (person.Value.Profession != Profession.Fisher || person.Value.Age < 14
+        if (person.Value.Profession != Profession.Fisher || person.Value.Age < ResidentNeedsRules.MinimumWorkAge
                                                    || (person.Value.TravelMode != TravelMode.Boat &&
                                                        !(Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) <= 1
                                                          && HasResearch(home.Value.Id, Advancement.Logistics) &&
@@ -719,7 +726,7 @@ public sealed partial class WorldEngine
     {
         var goal = person.Value.Agent.Goal;
         var source = goal.TargetEntityId - 1;
-        if (person.Value.Health <= 0 || person.Value.Age < 14 || source < 0 || source >= Tiles.Count
+        if (person.Value.Health <= 0 || !ResidentNeedsRules.CanWork(person.Value) || source < 0 || source >= Tiles.Count
             || goal.Kind is not (AgentGoalKind.Hunt or AgentGoalKind.Fish)
             || SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks
             || Distance(person.Value.X, person.Value.Y, source % Width, source / Width) >
@@ -743,7 +750,7 @@ public sealed partial class WorldEngine
         RecordHarvest(tile, amount * yield);
         person.Replace(person.Value.WithAction(person.Value.Agent with
         {
-            Fatigue = Math.Min(100, person.Value.Agent.Fatigue + .3 * WorkInterval(person) / SimulationTime.TicksPerDay),
+            Fatigue = ResidentNeedsRules.ExertionFatigue(person.Value, ResidentNeedsRules.PhysicalWorkCostPerTick * WorkInterval(person)),
         }, ResidentActivity.Working));
         if (!goal.PlayerDirected && !WildlifeSiteProductive(tile, goal.Kind == AgentGoalKind.Fish))
             person.Replace(person.Value.WithAgent(person.Value.Agent with { NextThinkTick = SimulationTick + 1 }));

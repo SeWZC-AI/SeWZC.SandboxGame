@@ -74,6 +74,10 @@ public sealed record AgentGoal
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public int WorkTicks { get; init; }
 
+    /// <summary>扑火或土地登记尚未完成的实际劳动量。</summary>
+    [JsonRequired]
+    public double LaborProgress { get; init; }
+
     /// <summary>下次重新评估该目标的模拟 tick 序。</summary>
     public long ReviewTick { get; init; }
 

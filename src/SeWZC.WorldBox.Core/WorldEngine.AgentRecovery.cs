@@ -35,7 +35,8 @@ public sealed partial class WorldEngine
 
     private bool RecoveryGoalContinues(StateReference<Resident> person)
     {
-        return (person.Value.Agent.Fatigue > 8 || person.Value.SicknessTicks > 0 || person.Value.Health < 70)
+        return (person.Value.Agent.Fatigue > 8 || person.Value.Agent.Sleep < ResidentNeedsRules.FullEfficiencyThreshold * ResidentNeedsRules.MaximumPercent
+                || person.Value.SicknessTicks > 0 || person.Value.Health < 70)
                && (person.Value.Agent.Goal.TargetEntityId == 0
                    || (FindBuilding(person.Value.Agent.Goal.TargetEntityId) is { } clinic && IsBuildingOperational(clinic.Value)));
     }

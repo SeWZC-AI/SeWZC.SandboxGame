@@ -86,7 +86,8 @@ public sealed partial record Resident
         else if (infectionDuration > 0)
             sickness = infectionDuration;
 
-        var activity = health > 0 && sickness > 0 ? ResidentActivity.Sick : Activity;
+        var activity = health > 0 && ResidentNeedsRules.IsUnconscious(this) ? ResidentActivity.Unconscious
+            : health > 0 && sickness > 0 ? ResidentActivity.Sick : Activity;
         var mana = health > 0 ? Math.Min(100, Mana + manaRecovery) : Mana;
         return new VitalState(age, profession, health, sickness, immunity, deathCause, deathTick, activity, mana);
     }

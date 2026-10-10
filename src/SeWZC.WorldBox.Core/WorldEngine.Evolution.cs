@@ -112,7 +112,7 @@ public sealed partial class WorldEngine
             return "需要紧邻自然陆岸，居民从岸边施工和工作";
         var tile = Tiles[Index(x, y)];
         if (tile.Value.Terrain == TerrainType.Mountain && kind != BuildingKind.MountainPass && !Residents.Any(p =>
-                p.Value.SettlementId == settlementId && p.Value.Race == RaceKind.Dwarf && p.Value.Health > 0 && p.Value.Age >= 14))
+                p.Value.SettlementId == settlementId && p.Value.Race == RaceKind.Dwarf && p.Value.Health > 0 && p.Value.Age >= ResidentNeedsRules.MinimumWorkAge))
             return "山地建设需要当地成年矮人";
         if (tile.Value.FireTicks > 0)
             return "此处正在燃烧";

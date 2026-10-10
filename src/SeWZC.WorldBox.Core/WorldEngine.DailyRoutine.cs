@@ -29,6 +29,8 @@ public sealed partial class WorldEngine
                 ChangeWorkReservation(agent.Goal, resumed);
                 person.Replace(person.Value.WithAction(agent with { Goal = resumed, DaytimeGoal = null, NextThinkTick = SimulationTick }, ResidentActivity.Resting));
             }
+            else if (person.Value.Activity == ResidentActivity.Sleeping && agent.Goal.Kind != AgentGoalKind.Rest)
+                person.Replace(person.Value.WithActivity(ResidentActivity.Resting));
 
             return false;
         }
@@ -58,8 +60,7 @@ public sealed partial class WorldEngine
         {
             if (!sleeping)
                 return false;
-            var rested = agent.Fatigue > 0 ? agent with { Fatigue = Math.Max(0, agent.Fatigue - 2.2) } : agent;
-            person.Replace(person.Value.WithAction(rested, ResidentActivity.Sleeping));
+            person.Replace(person.Value.WithActivity(ResidentActivity.Sleeping));
             return true;
         }
 
@@ -91,15 +92,7 @@ public sealed partial class WorldEngine
             return true;
         }
 
-        var restingAgent = agent;
-        if (restingAgent.Fatigue > 0)
-        {
-            restingAgent = restingAgent with
-            {
-                Fatigue = Math.Max(0, restingAgent.Fatigue - (sleeping ? 2.2 : .8) * HomeRestMultiplier(person.Value.SettlementId, person.Value.X, person.Value.Y)),
-            };
-        }
-        person.Replace(person.Value.WithAction(restingAgent, sleeping ? ResidentActivity.Sleeping : ResidentActivity.Resting));
+        person.Replace(person.Value.WithAction(agent, sleeping ? ResidentActivity.Sleeping : ResidentActivity.Resting));
 
         return true;
     }

@@ -12,7 +12,7 @@ public sealed partial class WorldEngine
         var residents = _localWorkQueriesActive
             ? _localWorkResidents.GetValueOrDefault(town.Value.Id)
             : _citizens.GetValueOrDefault(town.Value.Id);
-        var adults = residents?.Where(p => p.Value.SettlementId == town.Value.Id && p.Value.Age >= 14 && p.Value.Health > 0 && p.Value.ArmyId == 0
+        var adults = residents?.Where(p => p.Value.SettlementId == town.Value.Id && p.Value.Age >= ResidentNeedsRules.MinimumWorkAge && p.Value.Health > 0 && p.Value.ArmyId == 0
                                            && Distance(p.Value.X, p.Value.Y, town.Value.X, town.Value.Y) <= 6).ToArray() ?? [];
         var defense = GetLocalPolicy(town.Value.Id) == PolicyKind.Defense || adults.Any(p => p.Value.Agent.Memory.Any(f =>
             f.Kind is AgentFactKind.Danger or AgentFactKind.WarOrder
