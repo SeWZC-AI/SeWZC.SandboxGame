@@ -160,18 +160,17 @@ public sealed partial class WorldEngine
         {
             var person = NewResident(settlement, race, 16 + RandomInt(28), usedNames);
             var position = spawnSites[RandomInt(spawnSites.Count)];
-            person.X = person.FromX = position % Width;
-            person.Y = person.FromY = position / Width;
+            person.Replace(person.Value.WithPosition(position % Width, position / Width));
             Residents.Add(person);
-            usedNames.Add(person.Name);
+            usedNames.Add(person.Value.Name);
             _citizens[settlement.Value.Id].Add(person);
             // 开局口粮统一分配，避免职业和居民处理顺序造成不公平的库存差异。
             var food = Rules.Hunger ? Math.Min(settlement.Value.Resources.Food, 1) : 0;
             var water = Rules.Thirst ? Math.Min(settlement.Value.Resources.Water, .75) : 0;
             settlement.Replace(settlement.Value.WithResources(settlement.Value.Resources with { Food = settlement.Value.Resources.Food - food }));
-            person.Inventory = person.Inventory with { Food = person.Inventory.Food + food };
+            person.Replace(person.Value.WithInventory(person.Value.Inventory with { Food = person.Value.Inventory.Food + food }));
             settlement.Replace(settlement.Value.WithResources(settlement.Value.Resources with { Water = settlement.Value.Resources.Water - water }));
-            person.Inventory = person.Inventory with { Water = person.Inventory.Water + water };
+            person.Replace(person.Value.WithInventory(person.Value.Inventory with { Water = person.Value.Inventory.Water + water }));
         }
 
         InitializeSociety();
@@ -180,11 +179,11 @@ public sealed partial class WorldEngine
         RefreshTotals();
     }
 
-    private ResidentCursor NewResident(StateReference<Settlement> settlement, RaceKind race, double age,
+    private StateReference<Resident> NewResident(StateReference<Settlement> settlement, RaceKind race, double age,
         IReadOnlySet<string> usedNames)
     {
         var id = NewId();
-        return new ResidentCursor(new Resident
+        return new StateReference<Resident>(new Resident
         {
             Id = id,
             Name = NewResidentName(id, race, Seed, usedNames),
@@ -274,7 +273,7 @@ public sealed partial class WorldEngine
                 _burningTiles.Add(index);
             }
 
-            foreach (var resident in Residents.Where(r => Distance(r.X, r.Y, x, y) <= radius))
+            foreach (var resident in Residents.Where(r => Distance(r.Value.X, r.Value.Y, x, y) <= radius))
                 DamageResident(resident, 65, DeathCause.Meteor);
             foreach (var building in Buildings.Where(b => Distance(b.Value.X, b.Value.Y, x, y) <= radius))
                 building.Replace(building.Value with { Health = Math.Max(0, building.Value.Health - 80) });
@@ -284,15 +283,15 @@ public sealed partial class WorldEngine
             EmitVisual(kind == DisasterKind.Drought ? WorldVisualKind.Drought : WorldVisualKind.Meteor, x, y, radius);
         if (kind == DisasterKind.Plague)
         {
-            foreach (var resident in Residents.Where(r => r.Health > 0 && r.SicknessTicks == 0
-                                                                               && r.DiseaseImmuneUntilTick <=
+            foreach (var resident in Residents.Where(r => r.Value.Health > 0 && r.Value.SicknessTicks == 0
+                                                                               && r.Value.DiseaseImmuneUntilTick <=
                                                                                SimulationTick &&
-                                                                               Distance(r.X, r.Y, x, y) <= radius)
-                         .OrderBy(r => Distance(r.X, r.Y, x, y)).ThenBy(r => r.Id)
+                                                                               Distance(r.Value.X, r.Value.Y, x, y) <= radius)
+                         .OrderBy(r => Distance(r.Value.X, r.Value.Y, x, y)).ThenBy(r => r.Value.Id)
                          .Take(Math.Clamp(1 + radius / 10, 1, 3)))
             {
-                resident.SicknessTicks = 3 * SimulationTime.TicksPerDay + RandomInt(SimulationTime.TicksPerDay + 1);
-                EmitVisual(WorldVisualKind.Plague, resident.X, resident.Y);
+                resident.Replace(resident.Value.WithSicknessTicks(3 * SimulationTime.TicksPerDay + RandomInt(SimulationTime.TicksPerDay + 1)));
+                EmitVisual(WorldVisualKind.Plague, resident.Value.X, resident.Value.Y);
             }
         }
 
@@ -454,8 +453,8 @@ public sealed partial class WorldEngine
             var center = Tiles[Index(settlement.Value.X, settlement.Value.Y)];
             if ((center.Value.IsWalkable && !IsWaterTerrain(center.Value.Terrain)) || (center.Value.Terrain == TerrainType.Mountain
                                                                            && _citizens.GetValueOrDefault(settlement.Value.Id)
-                                                                               ?.Any(p => p.Race == RaceKind.Dwarf &&
-                                                                                   p.Health > 0 && p.Age >= 14) ==
+                                                                               ?.Any(p => p.Value.Race == RaceKind.Dwarf &&
+                                                                                   p.Value.Health > 0 && p.Value.Age >= 14) ==
                                                                            true))
             {
                 ClaimTerritory(settlement, 6);
@@ -484,9 +483,9 @@ public sealed partial class WorldEngine
 
         foreach (var resident in Residents)
         {
-            if (CanTraverse(Tiles[Index(resident.X, resident.Y)].Value, resident.TravelMode, resident.Race))
+            if (CanTraverse(Tiles[Index(resident.Value.X, resident.Value.Y)].Value, resident.Value.TravelMode, resident.Value.Race))
                 continue;
-            var position = FindWalkable(resident.X, resident.Y, 10, resident.Race);
+            var position = FindWalkable(resident.Value.X, resident.Value.Y, 10, resident.Value.Race);
             if (position >= 0)
             {
                 resident.Replace(resident.Value with { X = position % Width, Y = position / Width });
@@ -494,8 +493,8 @@ public sealed partial class WorldEngine
             }
             else
             {
-                DamageResident(resident, resident.Health,
-                    IsWaterTerrain(Tiles[Index(resident.X, resident.Y)].Value.Terrain)
+                DamageResident(resident, resident.Value.Health,
+                    IsWaterTerrain(Tiles[Index(resident.Value.X, resident.Value.Y)].Value.Terrain)
                         ? DeathCause.Drowning
                         : DeathCause.TerrainChange);
             }

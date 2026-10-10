@@ -11,7 +11,7 @@ public sealed class WorkforceTests
     public void A_sick_child_keeps_or_creates_a_local_physician_job(Profession initialProfession)
     {
         var fixture = Prepare();
-        var people = fixture.Engine.Residents.Where(person => person.Id != fixture.ResidentId).ToArray();
+        var people = fixture.Engine.Residents.Where(person => person.Value.Id != fixture.ResidentId).ToArray();
         var patient = people[0];
         patient.Replace(patient.Value with
         {
@@ -28,10 +28,10 @@ public sealed class WorkforceTests
 
         fixture.Engine.TickSociety();
 
-        Assert.Equal(Profession.Physician, physician.Profession);
-        Assert.Equal(hospitalId, physician.Agent.WorkplaceId);
+        Assert.Equal(Profession.Physician, physician.Value.Profession);
+        Assert.Equal(hospitalId, physician.Value.Agent.WorkplaceId);
         Assert.Single(fixture.Engine.State.Residents, person => person.Profession == Profession.Physician);
-        Assert.Equal(Profession.Child, patient.Profession);
+        Assert.Equal(Profession.Child, patient.Value.Profession);
     }
 
     /// <summary>人类能够在天然山地邻格开采矿石，石材充足不能抵消矿石缺口。</summary>
@@ -72,16 +72,16 @@ public sealed class WorkforceTests
         var mountainIndex = 16 * 32 + 17;
         var mountain = fixture.Engine.Tiles[mountainIndex];
         mountain.Replace(mountain.Value with { Terrain = TerrainType.Mountain, ResourceAmount = 100 });
-        var miner = fixture.Engine.Residents.First(person => person.Id != fixture.ResidentId);
+        var miner = fixture.Engine.Residents.First(person => person.Value.Id != fixture.ResidentId);
         miner.Replace(miner.Value with { Race = RaceKind.Dwarf, Profession = Profession.Miner });
-        miner.Agent = miner.Agent with { WorkAreaIndex = mountainIndex };
+        miner.Replace(miner.Value.WithAgent(miner.Value.Agent with { WorkAreaIndex = mountainIndex }));
         fixture.Engine.SimulationTick =
             SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
-        Assert.Equal(Profession.Miner, miner.Profession);
-        Assert.Equal(mountainIndex, miner.Agent.WorkAreaIndex);
+        Assert.Equal(Profession.Miner, miner.Value.Profession);
+        Assert.Equal(mountainIndex, miner.Value.Agent.WorkAreaIndex);
     }
 
     /// <summary>已解锁且已发现的阶段矿藏短缺仍需要矿工，安排岗位本身不能发现未知矿藏。</summary>
@@ -109,19 +109,19 @@ public sealed class WorkforceTests
             RareEarth = 16,
         }));
         fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources.WithAmount(kind, 0)));
-        var miner = fixture.Engine.Residents.First(person => person.Id != fixture.ResidentId);
+        var miner = fixture.Engine.Residents.First(person => person.Value.Id != fixture.ResidentId);
         miner.Replace(miner.Value with { Profession = Profession.Miner });
-        miner.Agent = miner.Agent with { WorkAreaIndex = 16 * 32 + 17 };
+        miner.Replace(miner.Value.WithAgent(miner.Value.Agent with { WorkAreaIndex = 16 * 32 + 17 }));
         fixture.Engine.SimulationTick =
             SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
-        Assert.Equal(discovered ? Profession.Miner : Profession.Laborer, miner.Profession);
-        Assert.Equal(discovered ? 16 * 32 + 17 : -1, miner.Agent.WorkAreaIndex);
+        Assert.Equal(discovered ? Profession.Miner : Profession.Laborer, miner.Value.Profession);
+        Assert.Equal(discovered ? 16 * 32 + 17 : -1, miner.Value.Agent.WorkAreaIndex);
         Assert.Equal(discovered, deposit.Value.DepositDiscovered);
         Assert.Equal(100, deposit.Value.DepositAmount);
-        Assert.Equal(0, miner.Inventory.Get(kind));
+        Assert.Equal(0, miner.Value.Inventory.Get(kind));
     }
 
     /// <summary>容量减少后，多余的本地专业工人可以等待换岗，但不能共同保留同一个容量不足的固定岗位。</summary>
@@ -143,20 +143,20 @@ public sealed class WorkforceTests
         var id = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.LumberCamp, 17, 16);
         var building = fixture.Engine.Buildings.Single(b => b.Value.Id == id);
         building.Replace(building.Value with { WorkSlots = 1 });
-        var people = fixture.Engine.Residents.Where(p => p.Id != fixture.ResidentId).Take(2).ToArray();
+        var people = fixture.Engine.Residents.Where(p => p.Value.Id != fixture.ResidentId).Take(2).ToArray();
         foreach (var person in people)
         {
             person.Replace(person.Value with { Profession = Profession.Lumberjack });
-            person.Agent = person.Agent with { WorkplaceId = id };
-            person.Agent = person.Agent with { JobChangedTick = 20 };
+            person.Replace(person.Value.WithAgent(person.Value.Agent with { WorkplaceId = id }));
+            person.Replace(person.Value.WithAgent(person.Value.Agent with { JobChangedTick = 20 }));
         }
 
         fixture.Engine.SimulationTick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
-        Assert.All(people, p => Assert.Equal(Profession.Lumberjack, p.Profession));
-        Assert.Single(people, p => p.Agent.WorkplaceId == id);
+        Assert.All(people, p => Assert.Equal(Profession.Lumberjack, p.Value.Profession));
+        Assert.Single(people, p => p.Value.Agent.WorkplaceId == id);
     }
 
     /// <summary>临时劳工可接受新出现的工位，已有专业分工仍受换岗间隔约束。</summary>
@@ -172,15 +172,15 @@ public sealed class WorkforceTests
         {
             Terrain = TerrainType.Forest, ResourceAmount = 100, Plants = new PlantCoverage { Trees = 1 },
         });
-        var available = fixture.Engine.Residents.First(p => p.Id != fixture.ResidentId);
+        var available = fixture.Engine.Residents.First(p => p.Value.Id != fixture.ResidentId);
         available.Replace(available.Value with { Profession = Profession.Laborer });
-        available.Agent = available.Agent with { JobChangedTick = 20 };
+        available.Replace(available.Value.WithAgent(available.Value.Agent with { JobChangedTick = 20 }));
         fixture.Engine.SimulationTick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
-        Assert.Equal(Profession.Lumberjack, available.Profession);
-        Assert.Equal(16 * 32 + 17, available.Agent.WorkAreaIndex);
+        Assert.Equal(Profession.Lumberjack, available.Value.Profession);
+        Assert.Equal(16 * 32 + 17, available.Value.Agent.WorkAreaIndex);
     }
 
     /// <summary>没有可耕地的沿水聚落仍能根据粮食缺口和鱼群产量安排渔民。</summary>
@@ -246,25 +246,25 @@ public sealed class WorkforceTests
     public void Surplus_professions_are_adjusted_only_when_people_can_accept_local_work()
     {
         var fixture = Prepare();
-        var people = fixture.Engine.Residents.Where(p => p.Id != fixture.ResidentId).ToArray();
+        var people = fixture.Engine.Residents.Where(p => p.Value.Id != fixture.ResidentId).ToArray();
         people[0].Replace(people[0].Value with { X = 30, FromX = 30 });
         people[1].Replace(people[1].Value with
         {
             MoveStartedTick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick - 1, MoveDurationTicks = 4,
         });
-        people[2].Health = 40;
-        people[3].Agent = people[3].Agent with
+        people[2].Replace(people[2].Value.WithHealth(40));
+        people[3].Replace(people[3].Value.WithAgent(people[3].Value.Agent with
         {
             Goal = new AgentGoal { PlayerDirected = true, ReviewTick = 2 * SimulationTime.TicksPerMonth },
-        };
-        people[4].Agent = people[4].Agent with { JobChangedTick = 20 };
+        }));
+        people[4].Replace(people[4].Value.WithAgent(people[4].Value.Agent with { JobChangedTick = 20 }));
         fixture.Engine.SimulationTick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
         fixture.Engine.TickSociety();
 
-        Assert.All(people.Take(5), p => Assert.Equal(Profession.Scholar, p.Profession));
-        Assert.DoesNotContain(people.Skip(5), p => p.Profession == Profession.Scholar);
-        Assert.Contains(people.Skip(5), p => p.Profession == Profession.Laborer);
+        Assert.All(people.Take(5), p => Assert.Equal(Profession.Scholar, p.Value.Profession));
+        Assert.DoesNotContain(people.Skip(5), p => p.Value.Profession == Profession.Scholar);
+        Assert.Contains(people.Skip(5), p => p.Value.Profession == Profession.Laborer);
     }
 
     /// <summary>按木材缺口挑选适合的工人，固定工位不超过容量，也不会被更近的新设施反复吸走。</summary>
@@ -273,12 +273,12 @@ public sealed class WorkforceTests
     {
         var fixture = Prepare();
         fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Wood = 48 }));
-        var people = fixture.Engine.Residents.Where(p => p.Id != fixture.ResidentId).ToArray();
+        var people = fixture.Engine.Residents.Where(p => p.Value.Id != fixture.ResidentId).ToArray();
         foreach (var person in people)
-            person.Agent = person.Agent with { Personality = person.Agent.Personality with { Diligence = .2 } };
+            person.Replace(person.Value.WithAgent(person.Value.Agent with { Personality = person.Value.Agent.Personality with { Diligence = .2 } }));
         var suitable = people[^1];
         suitable.Replace(suitable.Value with { Race = RaceKind.Elf });
-        suitable.Agent = suitable.Agent with { Personality = suitable.Agent.Personality with { Diligence = .9 } };
+        suitable.Replace(suitable.Value.WithAgent(suitable.Value.Agent with { Personality = suitable.Value.Agent.Personality with { Diligence = .9 } }));
         var source = fixture.Engine.Tiles[16 * 32 + 18];
         source.Replace(source.Value with
         {
@@ -296,13 +296,13 @@ public sealed class WorkforceTests
 
         fixture.Engine.TickSociety();
 
-        Assert.Equal(Profession.Lumberjack, suitable.Profession);
-        Assert.Equal(workplace, suitable.Agent.WorkplaceId);
+        Assert.Equal(Profession.Lumberjack, suitable.Value.Profession);
+        Assert.Equal(workplace, suitable.Value.Agent.WorkplaceId);
         Assert.Single(fixture.Engine.State.Residents, p => p.Profession == Profession.Lumberjack);
         Assert.Single(fixture.Engine.State.Residents, p => p.Agent.WorkplaceId == workplace);
-        Assert.Equal(0, before.Residents.Single(p => p.Id == suitable.Id).Agent.WorkplaceId);
+        Assert.Equal(0, before.Residents.Single(p => p.Id == suitable.Value.Id).Agent.WorkplaceId);
         var restored = WorldEngine.ImportJson(fixture.Engine.ExportJson());
-        Assert.Equal(workplace, restored.State.Residents.Single(p => p.Id == suitable.Id).Agent.WorkplaceId);
+        Assert.Equal(workplace, restored.State.Residents.Single(p => p.Id == suitable.Value.Id).Agent.WorkplaceId);
         var nearer = fixture.Engine.Tiles[16 * 32 + 17];
         nearer.Replace(nearer.Value with
         {
@@ -318,7 +318,7 @@ public sealed class WorkforceTests
 
         fixture.Engine.TickSociety();
 
-        Assert.Equal(workplace, suitable.Agent.WorkplaceId);
+        Assert.Equal(workplace, suitable.Value.Agent.WorkplaceId);
     }
 
     /// <summary>缺石材且只有低产露头时仍安排真实开采岗位，不能把少量可用石材视为不存在。</summary>
@@ -421,7 +421,7 @@ public sealed class WorkforceTests
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock()));
         foreach (var person in fixture.Engine.Residents)
         {
-            person.Inventory = new ResourceStock { Food = .8, Water = 1 };
+            person.Replace(person.Value.WithInventory(new ResourceStock { Food = .8, Water = 1 }));
             person.Replace(person.Value with { FrozenUntilTick = fixture.Engine.SimulationTick + 2 });
         }
 
@@ -446,8 +446,8 @@ public sealed class WorkforceTests
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock()));
         foreach (var person in fixture.Engine.Residents)
         {
-            person.X = person.FromX = 24;
-            person.Inventory = new ResourceStock { Food = .8, Water = 1 };
+            person.Replace(person.Value with { FromX = 24, X = 24 });
+            person.Replace(person.Value.WithInventory(new ResourceStock { Food = .8, Water = 1 }));
             person.Replace(person.Value with { FrozenUntilTick = fixture.Engine.SimulationTick + 2 });
         }
 

@@ -56,16 +56,16 @@ public sealed class AgentMemoryTests
     public void Memory_transition_is_local_until_explicitly_committed()
     {
         var fixture = new WorldFixture();
-        var agent = fixture.Resident.Agent;
+        var agent = fixture.Resident.Value.Agent;
         var initial = agent.Memory;
         var observed = new AgentFact { SubjectId = 4 };
         var received = new AgentFact { SubjectId = 5 };
 
         var next = agent.Remember(observed, fixture.Town.Value.Id);
-        Assert.Same(agent, fixture.Resident.Agent);
-        fixture.Resident.Agent = next;
+        Assert.Same(agent, fixture.Resident.Value.Agent);
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(next));
         var before = fixture.Engine.State;
-        fixture.Resident.Agent = next.Remember(received, fixture.Town.Value.Id);
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(next.Remember(received, fixture.Town.Value.Id)));
 
         Assert.Equal<AgentFact>([.. initial, observed], before.Residents[0].Agent.Memory);
         Assert.Equal<AgentFact>([.. initial, observed, received], fixture.Engine.State.Residents[0].Agent.Memory);

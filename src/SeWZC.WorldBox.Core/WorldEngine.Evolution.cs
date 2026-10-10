@@ -112,7 +112,7 @@ public sealed partial class WorldEngine
             return "需要紧邻自然陆岸，居民从岸边施工和工作";
         var tile = Tiles[Index(x, y)];
         if (tile.Value.Terrain == TerrainType.Mountain && kind != BuildingKind.MountainPass && !Residents.Any(p =>
-                p.SettlementId == settlementId && p.Race == RaceKind.Dwarf && p.Health > 0 && p.Age >= 14))
+                p.Value.SettlementId == settlementId && p.Value.Race == RaceKind.Dwarf && p.Value.Health > 0 && p.Value.Age >= 14))
             return "山地建设需要当地成年矮人";
         if (tile.Value.FireTicks > 0)
             return "此处正在燃烧";
@@ -254,9 +254,9 @@ public sealed partial class WorldEngine
         return MissingResources(town.Value.Resources, new ResourceStock { Wood = count * .5, Stone = count });
     }
 
-    private void DeliverLocalDiscoveries(ResidentCursor person, StateReference<Settlement> home)
+    private void DeliverLocalDiscoveries(StateReference<Resident> person, StateReference<Settlement> home)
     {
-        foreach (var site in person.Agent.Memory)
+        foreach (var site in person.Value.Agent.Memory)
         {
             if (site.Kind != AgentFactKind.FoundingSite || site.LearnedTick >= SimulationTick)
                 continue;
@@ -264,16 +264,16 @@ public sealed partial class WorldEngine
                 f.Kind == AgentFactKind.FoundingSite && f.SubjectId == site.SubjectId);
             if (prior is not null && prior.ObservedTick >= site.ObservedTick)
                 continue;
-            var delivered = site with { LearnedTick = SimulationTick, SourceResidentId = person.Id };
+            var delivered = site with { LearnedTick = SimulationTick, SourceResidentId = person.Value.Id };
             AddPublicFact(home, delivered);
         }
 
-        foreach (var report in person.Agent.Memory)
+        foreach (var report in person.Value.Agent.Memory)
             if (report.Kind == AgentFactKind.WarReport && report.LearnedTick < SimulationTick)
                 ReceiveWarReport(home, report);
-        if (person.Profession is not (Profession.Trader or Profession.Messenger or Profession.Representative))
+        if (person.Value.Profession is not (Profession.Trader or Profession.Messenger or Profession.Representative))
             return;
-        foreach (var fact in person.Agent.Memory)
+        foreach (var fact in person.Value.Agent.Memory)
         {
             if (fact.LearnedTick >= SimulationTick || fact.Kind is not (AgentFactKind.SettlementLocation
                     or AgentFactKind.TradeExchange or AgentFactKind.DiplomaticNotice))
@@ -282,7 +282,7 @@ public sealed partial class WorldEngine
                 f.Kind == fact.Kind && f.SubjectId == fact.SubjectId && f.TargetNationId == fact.TargetNationId);
             if (old is not null && old.ObservedTick >= fact.ObservedTick)
                 continue;
-            var delivered = fact with { LearnedTick = SimulationTick, SourceResidentId = person.Id };
+            var delivered = fact with { LearnedTick = SimulationTick, SourceResidentId = person.Value.Id };
             AddPublicFact(home, delivered);
             ReceiveDiplomaticNotice(home, delivered);
         }
@@ -626,16 +626,16 @@ public sealed partial class WorldEngine
         if (!Rules.Migration)
             return;
         foreach (var person in Residents.Where(r =>
-                         r.Age >= 16 && r.ArmyId == 0 && r.Hunger > 65 && r.Agent.DestinationSettlementId == 0
-                         && !r.Agent.Goal.PlayerDirected && r.Agent.Goal.Kind != AgentGoalKind.Migrate)
-                     .OrderBy(r => r.Id)
+                         r.Value.Age >= 16 && r.Value.ArmyId == 0 && r.Value.Hunger > 65 && r.Value.Agent.DestinationSettlementId == 0
+                         && !r.Value.Agent.Goal.PlayerDirected && r.Value.Agent.Goal.Kind != AgentGoalKind.Migrate)
+                     .OrderBy(r => r.Value.Id)
                      .ToArray())
         {
-            if (person.Agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Hunt or AgentGoalKind.Fish
-                && person.Inventory.Food < FoodUse(person) * 8)
+            if (person.Value.Agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Hunt or AgentGoalKind.Fish
+                && person.Value.Inventory.Food < FoodUse(person) * 8)
                 continue;
-            var destination = person.Agent.Memory.Where(f => f.Kind == AgentFactKind.FoodSupply &&
-                                                             f.SubjectId != person.SettlementId
+            var destination = person.Value.Agent.Memory.Where(f => f.Kind == AgentFactKind.FoodSupply &&
+                                                             f.SubjectId != person.Value.SettlementId
                                                              && f.Value > 50 && f.ReliabilityAt(SimulationTick) >= .5)
                 .OrderByDescending(f => f.Value).FirstOrDefault();
             if (destination is null || !_settlements.TryGetValue(destination.SubjectId, out var town))
@@ -644,7 +644,7 @@ public sealed partial class WorldEngine
                 continue;
             person.Replace(person.Value with
             {
-                Agent = person.Agent with
+                Agent = person.Value.Agent with
                 {
                     DaytimeGoal = null,
                     Goal = new AgentGoal
@@ -665,17 +665,17 @@ public sealed partial class WorldEngine
         }
     }
 
-    private void ActOnMigration(ResidentCursor person)
+    private void ActOnMigration(StateReference<Resident> person)
     {
-        var goal = person.Agent.Goal;
-        if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > 1)
+        var goal = person.Value.Agent.Goal;
+        if (Distance(person.Value.X, person.Value.Y, goal.TargetX, goal.TargetY) > 1)
         {
             MoveAgentTowards(person, goal.TargetX, goal.TargetY);
-            person.Activity = ResidentActivity.Wandering;
+            person.Replace(person.Value.WithActivity(ResidentActivity.Wandering));
             return;
         }
 
-        if (!_settlements.TryGetValue(goal.TargetSettlementId, out var town) || Distance(person.X, person.Y, town.Value.X,
+        if (!_settlements.TryGetValue(goal.TargetSettlementId, out var town) || Distance(person.Value.X, person.Value.Y, town.Value.X,
                                                                                  town.Value.Y) > 1
                                                                              || town.Value.Resources.Food < 10 ||
                                                                              _citizens[town.Value.Id].Count >=
@@ -684,18 +684,18 @@ public sealed partial class WorldEngine
         {
             person.Replace(person.Value with
             {
-                Agent = person.Agent with
+                Agent = person.Value.Agent with
                 {
-                    Goal = person.Agent.Goal with { Kind = AgentGoalKind.Idle }, NextThinkTick = SimulationTick,
+                    Goal = person.Value.Agent.Goal with { Kind = AgentGoalKind.Idle }, NextThinkTick = SimulationTick,
                 },
             });
             return;
         }
 
-        var old = person.SettlementId;
+        var old = person.Value.SettlementId;
         person.Replace(person.Value with { SettlementId = town.Value.Id, NationId = town.Value.NationId });
         UpdateLocalWorkMembership(person, old);
-        person.Agent = person.Agent.WithGoal(new AgentGoal
+        person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(new AgentGoal
         {
             Kind = AgentGoalKind.ReturnHome,
             TargetX = town.Value.X,
@@ -703,17 +703,17 @@ public sealed partial class WorldEngine
             TargetSettlementId = town.Value.Id,
             StartedTick = SimulationTick,
             Reason = "实地抵达后确认新家园可以接纳",
-        });
+        })));
         RememberAgentFact(person,
             MakeAgentFact(person, AgentFactKind.SettlementLocation, town.Value.Id, town.Value.X, town.Value.Y, town.Value.NationId,
                 "步行抵达的新家园"));
         if (_citizens.TryGetValue(old, out var previous))
             previous.Remove(person);
         _citizens[town.Value.Id].Add(person);
-        var entry = AddEvent(WorldEventKind.Growth, $"{person.Name}依据获知的粮情，步行迁入{town.Value.Name}。", town.Value.X, town.Value.Y);
+        var entry = AddEvent(WorldEventKind.Growth, $"{person.Value.Name}依据获知的粮情，步行迁入{town.Value.Name}。", town.Value.X, town.Value.Y);
         entry = PublishEvent(entry with
         {
-            ResidentId = person.Id,
+            ResidentId = person.Value.Id,
             Action = EventAction.Migration,
             SettlementId = town.Value.Id,
             SecondSettlementId = old,

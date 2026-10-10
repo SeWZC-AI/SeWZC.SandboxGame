@@ -5,12 +5,12 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     // 作息只改变未来行动；返家沿真实路径移动，睡眠不推进驻留或劳动量。
-    private bool FollowDailyRoutine(ResidentCursor person, StateReference<Settlement> home, bool emergency)
+    private bool FollowDailyRoutine(StateReference<Resident> person, StateReference<Settlement> home, bool emergency)
     {
-        var agent = person.Agent;
+        var agent = person.Value.Agent;
         var time = SimulationTime.TimeOfDay(SimulationTick);
         var evening = time >= SimulationTime.ReturnHomeTick || time < SimulationTime.WakeTick;
-        if ((agent.Goal.PlayerDirected && SimulationTick < agent.Goal.ReviewTick) || person.ArmyId != 0)
+        if ((agent.Goal.PlayerDirected && SimulationTick < agent.Goal.ReviewTick) || person.Value.ArmyId != 0)
             return false;
 
         if (!evening || emergency)
@@ -18,8 +18,8 @@ public sealed partial class WorldEngine
             if (agent.Goal.Kind == AgentGoalKind.Sleep)
             {
                 // 尚未走完返程时先到家；晨起不能把人再次拉回昨天的远处目标。
-                if (!evening && !emergency && (Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1
-                                               || !Walkable(person.X, person.Y, person.Race)))
+                if (!evening && !emergency && (Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) > 1
+                                               || !Walkable(person.Value.X, person.Value.Y, person.Value.Race)))
                 {
                     MoveAgentTowards(person, home.Value.X, home.Value.Y, ResidentActivity.Wandering);
                     return true;
@@ -27,16 +27,15 @@ public sealed partial class WorldEngine
 
                 var resumed = (agent.DaytimeGoal ?? new AgentGoal()).ResetNavigation();
                 ChangeWorkReservation(agent.Goal, resumed);
-                person.Agent = agent with { Goal = resumed, DaytimeGoal = null, NextThinkTick = SimulationTick };
-                person.Activity = ResidentActivity.Resting;
+                person.Replace(person.Value.WithAction(agent with { Goal = resumed, DaytimeGoal = null, NextThinkTick = SimulationTick }, ResidentActivity.Resting));
             }
 
             return false;
         }
 
-        if (person.FrozenUntilTick > SimulationTick)
+        if (person.Value.FrozenUntilTick > SimulationTick)
         {
-            person.Activity = ResidentActivity.Resting;
+            person.Replace(person.Value.WithActivity(ResidentActivity.Resting));
             return true;
         }
 
@@ -45,23 +44,22 @@ public sealed partial class WorldEngine
         var journey =
             agent.DestinationSettlementId != 0 || agent.Goal.Kind is AgentGoalKind.Migrate or AgentGoalKind.Explore
                                                || (agent.Goal.Kind == AgentGoalKind.FetchWater &&
-                                                   Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1)
+                                                   Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) > 1)
                                                || (agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Work
                                                        or AgentGoalKind.Study
                                                        or AgentGoalKind.TrainMagic or AgentGoalKind.Hunt
                                                        or AgentGoalKind.Fish
                                                    && Distance(agent.Goal.TargetX, agent.Goal.TargetY, home.Value.X, home.Value.Y) >
                                                    3
-                                                   && Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1)
+                                                   && Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) > 1)
                                                || home.Value.FoundationPending;
         var medicalRest = agent.Goal.Kind == AgentGoalKind.Rest && agent.Goal.TargetEntityId != 0;
         if (journey || medicalRest)
         {
             if (!sleeping)
                 return false;
-            if (agent.Fatigue > 0)
-                person.Agent = agent with { Fatigue = Math.Max(0, agent.Fatigue - 2.2) };
-            person.Activity = ResidentActivity.Sleeping;
+            var rested = agent.Fatigue > 0 ? agent with { Fatigue = Math.Max(0, agent.Fatigue - 2.2) } : agent;
+            person.Replace(person.Value.WithAction(rested, ResidentActivity.Sleeping));
             return true;
         }
 
@@ -83,24 +81,25 @@ public sealed partial class WorldEngine
             };
             ChangeWorkReservation(agent.Goal, sleep);
             agent = agent with { Goal = sleep, DaytimeGoal = agent.Goal, NextThinkTick = morning };
-            person.Agent = agent;
+            person.Replace(person.Value.WithAgent(agent));
         }
 
-        if (Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1
-            || !Walkable(person.X, person.Y, person.Race))
+        if (Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) > 1
+            || !Walkable(person.Value.X, person.Value.Y, person.Value.Race))
         {
             MoveAgentTowards(person, home.Value.X, home.Value.Y, ResidentActivity.Wandering);
             return true;
         }
 
-        person.Activity = sleeping ? ResidentActivity.Sleeping : ResidentActivity.Resting;
-        if (person.Agent.Fatigue > 0)
+        var restingAgent = person.Value.Agent;
+        if (restingAgent.Fatigue > 0)
         {
-            person.Agent = person.Agent with
+            restingAgent = restingAgent with
             {
-                Fatigue = Math.Max(0, person.Agent.Fatigue - (sleeping ? 2.2 : .8) * HomeRestMultiplier(person.SettlementId, person.X, person.Y)),
+                Fatigue = Math.Max(0, restingAgent.Fatigue - (sleeping ? 2.2 : .8) * HomeRestMultiplier(person.Value.SettlementId, person.Value.X, person.Value.Y)),
             };
         }
+        person.Replace(person.Value.WithAction(restingAgent, sleeping ? ResidentActivity.Sleeping : ResidentActivity.Resting));
 
         return true;
     }

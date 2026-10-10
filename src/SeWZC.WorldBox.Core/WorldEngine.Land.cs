@@ -123,26 +123,26 @@ public sealed partial class WorldEngine
         RegisterBuildingGround(building);
     }
 
-    private void PlanVisibleCrossing(ResidentCursor person, int targetX, int targetY)
+    private void PlanVisibleCrossing(StateReference<Resident> person, int targetX, int targetY)
     {
-        if (!Rules.Construction || person.TravelMode != TravelMode.Foot || person.ArmyId != 0 || person.Age < 14
-            || !HasResearch(person.SettlementId, Advancement.Logistics)
-            || person.Agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Explore or AgentGoalKind.FetchWater
-            || (person.Agent.Goal.TargetSettlementId == 0 && person.Agent.Goal.TargetEntityId == 0))
+        if (!Rules.Construction || person.Value.TravelMode != TravelMode.Foot || person.Value.ArmyId != 0 || person.Value.Age < 14
+            || !HasResearch(person.Value.SettlementId, Advancement.Logistics)
+            || person.Value.Agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Explore or AgentGoalKind.FetchWater
+            || (person.Value.Agent.Goal.TargetSettlementId == 0 && person.Value.Agent.Goal.TargetEntityId == 0))
             return;
         if (Buildings.Any(b =>
-                b.Value.SettlementId == person.SettlementId && (!b.Value.IsCompleted || b.Value.IsUpgrading)))
+                b.Value.SettlementId == person.Value.SettlementId && (!b.Value.IsCompleted || b.Value.IsUpgrading)))
             return;
         // 任务确有需求仍须核对可见陆路，已有通路时不应无故建桥。
-        if (Distance(person.X, person.Y, targetX, targetY) <= 6 && VisibleWorkSiteReachable(person, targetX, targetY,
-                AgentInteractionRange(person.Agent.Goal, _settlements.GetValueOrDefault(person.SettlementId)?.Value.FoundationPending == true) > 0))
+        if (Distance(person.Value.X, person.Value.Y, targetX, targetY) <= 6 && VisibleWorkSiteReachable(person, targetX, targetY,
+                AgentInteractionRange(person.Value.Agent.Goal, _settlements.GetValueOrDefault(person.Value.SettlementId)?.Value.FoundationPending == true) > 0))
             return;
         foreach (var (dx, dy) in Directions)
         {
-            var x = person.X + dx;
-            var y = person.Y + dy;
+            var x = person.Value.X + dx;
+            var y = person.Value.Y + dy;
             if (!InBounds(x, y) ||
-                Distance(x, y, targetX, targetY) >= Distance(person.X, person.Y, targetX, targetY))
+                Distance(x, y, targetX, targetY) >= Distance(person.Value.X, person.Value.Y, targetX, targetY))
                 continue;
             var direction = dx != 0 ? BridgeDirection.Horizontal : BridgeDirection.Vertical;
             var first = Tiles[Index(x, y)];
@@ -156,8 +156,8 @@ public sealed partial class WorldEngine
             var unfinished = 0;
             for (var length = 1; length <= 6; length++)
             {
-                var xx = person.X + dx * length;
-                var yy = person.Y + dy * length;
+                var xx = person.Value.X + dx * length;
+                var yy = person.Value.Y + dy * length;
                 if (!InBounds(xx, yy))
                     break;
                 var tile = Tiles[Index(xx, yy)];
@@ -170,7 +170,7 @@ public sealed partial class WorldEngine
                 if (tile.Value.Terrain == TerrainType.DeepWater || tile.Value.FireTicks > 0
                                                           || (tile.Value.Improvement == LandImprovement.Bridge &&
                                                               tile.Value.BridgeDirection != direction)
-                                                          || (tile.Value.NationId != 0 && tile.Value.NationId != person.NationId))
+                                                          || (tile.Value.NationId != 0 && tile.Value.NationId != person.Value.NationId))
                     break;
                 span++;
                 if (tile.Value.Improvement != LandImprovement.Bridge)
@@ -179,16 +179,16 @@ public sealed partial class WorldEngine
 
             if (!farBank || span == 0)
                 continue;
-            var bankX = person.X + dx * (span + 1);
-            var bankY = person.Y + dy * (span + 1);
-            if (Distance(bankX, bankY, targetX, targetY) >= Distance(person.X, person.Y, targetX, targetY))
+            var bankX = person.Value.X + dx * (span + 1);
+            var bankY = person.Value.Y + dy * (span + 1);
+            if (Distance(bankX, bankY, targetX, targetY) >= Distance(person.Value.X, person.Value.Y, targetX, targetY))
                 continue;
-            if (Distance(person.X, person.Y, targetX, targetY) <= 6 && !VisibleLandPathConnects(person, bankX, bankY,
+            if (Distance(person.Value.X, person.Value.Y, targetX, targetY) <= 6 && !VisibleLandPathConnects(person, bankX, bankY,
                     targetX, targetY,
-                    AgentInteractionRange(person.Agent.Goal, _settlements.GetValueOrDefault(person.SettlementId)?.Value.FoundationPending == true)))
+                    AgentInteractionRange(person.Value.Agent.Goal, _settlements.GetValueOrDefault(person.Value.SettlementId)?.Value.FoundationPending == true)))
                 continue;
             var level = Math.Clamp(Math.Max((span + 3) / 4, (BridgeShoreDistance(x, y, direction) + 1) / 2), 1, 3);
-            var home = _settlements[person.SettlementId];
+            var home = _settlements[person.Value.SettlementId];
             var reserve = LocalDevelopmentReserve(home);
             var cost = FacilityCost(BuildingKind.Bridge, level);
             if (ResourceStock.Kinds.Any(k => home.Value.Resources.Get(k) < cost.Get(k) * unfinished + reserve.Get(k)))
@@ -197,13 +197,13 @@ public sealed partial class WorldEngine
                 not null)
                 continue;
             var reason =
-                $"{person.Name}执行{GetResidentTaskSummary(person.Id)}，可见陆路无法到达；已看见两岸，需沿{BridgeDirectionName(direction)}连接 {span} 格水面，整段材料已备齐";
+                $"{person.Value.Name}执行{GetResidentTaskSummary(person.Value.Id)}，可见陆路无法到达；已看见两岸，需沿{BridgeDirectionName(direction)}连接 {span} 格水面，整段材料已备齐";
             BuildPlannedFacility(home, BuildingKind.Bridge, x, y, reason, direction, level);
             return;
         }
     }
 
-    private bool VisibleLandPathConnects(ResidentCursor observer, int originX, int originY, int targetX, int targetY,
+    private bool VisibleLandPathConnects(StateReference<Resident> observer, int originX, int originY, int targetX, int targetY,
         int range)
     {
         if (_localMoveVisited.Length != Tiles.Count)
@@ -231,8 +231,8 @@ public sealed partial class WorldEngine
             {
                 var xx = x + dx;
                 var yy = y + dy;
-                if (!CanTraverseStep(x, y, xx, yy, TravelMode.Foot, observer.Race)
-                    || Distance(xx, yy, observer.X, observer.Y) > 6 ||
+                if (!CanTraverseStep(x, y, xx, yy, TravelMode.Foot, observer.Value.Race)
+                    || Distance(xx, yy, observer.Value.X, observer.Value.Y) > 6 ||
                     Tiles[Index(xx, yy)].Value.FireTicks > 0)
                     continue;
                 var index = Index(xx, yy);
@@ -274,10 +274,10 @@ public sealed partial class WorldEngine
         });
     }
 
-    private int VisibleDepositSite(ResidentCursor person)
+    private int VisibleDepositSite(StateReference<Resident> person)
     {
-        if (person.Profession != Profession.Miner ||
-            !_settlements.TryGetValue(person.SettlementId, out var home))
+        if (person.Value.Profession != Profession.Miner ||
+            !_settlements.TryGetValue(person.Value.SettlementId, out var home))
             return -1;
         var coal = HasResearch(home.Value.Id, Advancement.Industry);
         var oil = HasResearch(home.Value.Id, Advancement.Electrification);
@@ -288,8 +288,8 @@ public sealed partial class WorldEngine
         var bestDistance = int.MaxValue;
         foreach (var offset in VisibleResourceOffsets)
         {
-            var x = person.X + offset.X;
-            var y = person.Y + offset.Y;
+            var x = person.Value.X + offset.X;
+            var y = person.Value.Y + offset.Y;
             if (!InBounds(x, y))
                 continue;
             var tile = Tiles[Index(x, y)];
@@ -299,22 +299,22 @@ public sealed partial class WorldEngine
             if (!tile.Value.DepositDiscovered)
             {
                 tile.Replace(tile.Value.WithDepositDiscovered(true));
-                AddEvent(WorldEventKind.Research, $"{person.Name}在实地勘探中发现{ResourceStock.Name(resource)}。", x, y,
-                    EventAction.General, home.Value.Id, person.Id);
+                AddEvent(WorldEventKind.Research, $"{person.Value.Name}在实地勘探中发现{ResourceStock.Name(resource)}。", x, y,
+                    EventAction.General, home.Value.Id, person.Value.Id);
             }
 
             if (home.Value.Resources.Get(resource) >= 80 ||
-                (person.Agent.MaterialPriority is { } needed && needed != resource))
+                (person.Value.Agent.MaterialPriority is { } needed && needed != resource))
                 continue;
             var site = tile.Value.IsWalkable
                 ? Index(x, y)
                 : Directions.Select(d => (X: x + d.X, Y: y + d.Y))
                     .Where(p => Walkable(p.X, p.Y) && Tiles[Index(p.X, p.Y)].Value.FireTicks == 0)
-                    .OrderBy(p => Distance(person.X, person.Y, p.X, p.Y)).Select(p => Index(p.X, p.Y))
+                    .OrderBy(p => Distance(person.Value.X, person.Value.Y, p.X, p.Y)).Select(p => Index(p.X, p.Y))
                     .FirstOrDefault(-1);
             if (site < 0)
                 continue;
-            var distance = Distance(person.X, person.Y, site % Width, site / Width);
+            var distance = Distance(person.Value.X, person.Value.Y, site % Width, site / Width);
             if (distance < bestDistance)
             {
                 best = site;
@@ -325,34 +325,34 @@ public sealed partial class WorldEngine
         return best;
     }
 
-    private bool TryGatherDeposit(ResidentCursor person)
+    private bool TryGatherDeposit(StateReference<Resident> person)
     {
-        if (!_settlements.TryGetValue(person.SettlementId, out var home))
+        if (!_settlements.TryGetValue(person.Value.SettlementId, out var home))
             return false;
-        foreach (var index in Circle(person.X, person.Y, 1))
+        foreach (var index in Circle(person.Value.X, person.Value.Y, 1))
         {
             var tile = Tiles[index];
             if (tile.Value.Deposit is not { } kind || tile.Value.DepositAmount <= 0 || tile.Value.FireTicks > 0
                 || DepositResearch(kind) is not { } research || !HasResearch(home.Value.Id, research) ||
                 home.Value.Resources.Get(kind) >= 80
-                || (person.Agent.MaterialPriority is { } needed && needed != kind))
+                || (person.Value.Agent.MaterialPriority is { } needed && needed != kind))
                 continue;
             tile.Replace(tile.Value.WithDepositDiscovered(true));
             var amount = Math.Min(tile.Value.DepositAmount,
                 WorkInterval(person) / (double)SimulationTime.TicksPerDay * .4 * Rules.GatheringRate *
-                GatheringCondition(person.SicknessTicks, person.Hunger, person.Thirst) *
-                GatheringTerritoryMultiplier(person.SettlementId, person.NationId, tile.Value) *
-                (HasResearch(person.SettlementId, Advancement.Forestry) ? 1.25 : 1));
-            amount = Math.Min(amount, 1_000_000 - person.Inventory.Get(kind));
+                GatheringCondition(person.Value.SicknessTicks, person.Value.Hunger, person.Value.Thirst) *
+                GatheringTerritoryMultiplier(person.Value.SettlementId, person.Value.NationId, tile.Value) *
+                (HasResearch(person.Value.SettlementId, Advancement.Forestry) ? 1.25 : 1));
+            amount = Math.Min(amount, 1_000_000 - person.Value.Inventory.Get(kind));
             tile.Replace(tile.Value.WithDepositAmount(tile.Value.DepositAmount - (amount)));
-            person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + amount);
+            person.Replace(person.Value.WithInventory(person.Value.Inventory.WithAmount(kind, person.Value.Inventory.Get(kind) + amount)));
             RecordHarvest(tile, amount);
-            person.Activity = ResidentActivity.Working;
-            person.Agent = person.Agent with
+            person.Replace(person.Value.WithActivity(ResidentActivity.Working));
+            person.Replace(person.Value.WithAgent(person.Value.Agent with
             {
                 Fatigue = Math.Min(100,
-                    person.Agent.Fatigue + .45 * WorkInterval(person) / SimulationTime.TicksPerDay),
-            };
+                    person.Value.Agent.Fatigue + .45 * WorkInterval(person) / SimulationTime.TicksPerDay),
+            }));
             return amount > 0;
         }
 

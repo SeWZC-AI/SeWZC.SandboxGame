@@ -52,42 +52,42 @@ public sealed partial class WorldEngine
                + (HasResearch(town.Value.Id, Advancement.AdvancedComputing) ? Math.Max(0, 16 - town.Value.Resources.RareEarth) : 0);
     }
 
-    private void AssignNaturalWorkAreas(StateReference<Settlement> town, List<ResidentCursor> adults, List<NaturalWorkPlot> plots)
+    private void AssignNaturalWorkAreas(StateReference<Settlement> town, List<StateReference<Resident>> adults, List<NaturalWorkPlot> plots)
     {
         var occupied = new Dictionary<NaturalWorkPlot, int>();
         foreach (var person in adults)
-            if (person.Agent.WorkAreaIndex >= 0)
+            if (person.Value.Agent.WorkAreaIndex >= 0)
             {
-                var plot = new NaturalWorkPlot(person.Agent.WorkAreaIndex, person.Profession);
+                var plot = new NaturalWorkPlot(person.Value.Agent.WorkAreaIndex, person.Value.Profession);
                 occupied[plot] = occupied.GetValueOrDefault(plot) + 1;
             }
 
         foreach (var person in adults)
         {
-            if (person.Health < 60 || person.SicknessTicks > 0 || person.Agent.Goal.PlayerDirected
-                || person.Agent.DestinationSettlementId != 0 || Distance(person.X, person.Y, town.Value.X, town.Value.Y) > 3
-                || person.TravelMode != TravelMode.Foot ||
-                SimulationTick - person.MoveStartedTick < person.MoveDurationTicks)
+            if (person.Value.Health < 60 || person.Value.SicknessTicks > 0 || person.Value.Agent.Goal.PlayerDirected
+                || person.Value.Agent.DestinationSettlementId != 0 || Distance(person.Value.X, person.Value.Y, town.Value.X, town.Value.Y) > 3
+                || person.Value.TravelMode != TravelMode.Foot ||
+                SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks)
                 continue;
-            var previous = person.Agent.WorkAreaIndex;
-            var previousPlot = new NaturalWorkPlot(previous, person.Profession);
-            if (person.Agent.WorkplaceId == 0 && plots.Contains(previousPlot)
+            var previous = person.Value.Agent.WorkAreaIndex;
+            var previousPlot = new NaturalWorkPlot(previous, person.Value.Profession);
+            if (person.Value.Agent.WorkplaceId == 0 && plots.Contains(previousPlot)
                                               && occupied.GetValueOrDefault(previousPlot) == 1
-                                              && RaceTerrainRules.CanWalk(Tiles[previous].Value, person.Race))
+                                              && RaceTerrainRules.CanWalk(Tiles[previous].Value, person.Value.Race))
                 continue;
             if (previous >= 0)
                 occupied[previousPlot]--;
             var selected = -1;
             var bestDistance = int.MaxValue;
-            if (person.Agent.WorkplaceId == 0)
+            if (person.Value.Agent.WorkplaceId == 0)
             {
                 foreach (var plot in plots)
                 {
-                    if (plot.Profession != person.Profession || occupied.GetValueOrDefault(plot) > 0
+                    if (plot.Profession != person.Value.Profession || occupied.GetValueOrDefault(plot) > 0
                                                              || !RaceTerrainRules.CanWalk(Tiles[plot.Index].Value,
-                                                                 person.Race))
+                                                                 person.Value.Race))
                         continue;
-                    var distance = Distance(person.X, person.Y, plot.Index % Width, plot.Index / Width);
+                    var distance = Distance(person.Value.X, person.Value.Y, plot.Index % Width, plot.Index / Width);
                     if (distance < bestDistance || (distance == bestDistance && plot.Index < selected))
                     {
                         selected = plot.Index;
@@ -97,9 +97,9 @@ public sealed partial class WorldEngine
             }
 
             if (selected >= 0)
-                occupied[new NaturalWorkPlot(selected, person.Profession)] = 1;
-            if (person.Agent.WorkAreaIndex != selected)
-                person.Agent = person.Agent with { WorkAreaIndex = selected };
+                occupied[new NaturalWorkPlot(selected, person.Value.Profession)] = 1;
+            if (person.Value.Agent.WorkAreaIndex != selected)
+                person.Replace(person.Value.WithAgent(person.Value.Agent with { WorkAreaIndex = selected }));
         }
     }
 

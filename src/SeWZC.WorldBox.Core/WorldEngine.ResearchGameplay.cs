@@ -9,25 +9,24 @@ public sealed partial class WorldEngine
     /// <param name="job">职业。</param>
     public void AssignResearchProfession(int residentId, Profession job)
     {
-        var person = Residents.FirstOrDefault(r => r.Id == residentId) ?? throw new ArgumentException("居民不存在");
+        var person = Residents.FirstOrDefault(r => r.Value.Id == residentId) ?? throw new ArgumentException("居民不存在");
         var unlock = ResearchRules.Unlocking(job) ?? throw new ArgumentException("此岗位不属于研究解锁职业");
-        if (!HasResearch(person.SettlementId, unlock) ||
-            !HasResearchPrerequisites(person.SettlementId, unlock.Prerequisites))
+        if (!HasResearch(person.Value.SettlementId, unlock) ||
+            !HasResearchPrerequisites(person.Value.SettlementId, unlock.Prerequisites))
             throw new InvalidOperationException("当地须掌握" + unlock.Name + "及其前置");
-        if (person.Age < 14 || person.Health <= 0 || person.ArmyId != 0 || person.Agent.DestinationSettlementId != 0)
+        if (person.Value.Age < 14 || person.Value.Health <= 0 || person.Value.ArmyId != 0 || person.Value.Agent.DestinationSettlementId != 0)
             throw new InvalidOperationException("只能分配当地未出征、未在异地递送的成年居民");
-        if (job is Profession.Battlemage or Profession.Gardener && person.MagicTalent < 25)
+        if (job is Profession.Battlemage or Profession.Gardener && person.Value.MagicTalent < 25)
             throw new InvalidOperationException("此岗位需要魔法天赋至少 25");
         person.Replace(person.Value with
         {
             Profession = job,
-            Agent = person.Agent with
+            Agent = person.Value.Agent with
             {
                 JobChangedTick = SimulationTick, WorkplaceId = 0, WorkAreaIndex = -1, NextThinkTick = SimulationTick,
             },
         });
-        person.Agent =
-            person.Agent.WithGoal(new AgentGoal { Kind = AgentGoalKind.Idle, TargetX = person.X, TargetY = person.Y });
+        person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(new AgentGoal { Kind = AgentGoalKind.Idle, TargetX = person.Value.X, TargetY = person.Value.Y })));
         RecordLife(person, "根据已掌握的研究，接受" + ProfessionName(job) + "岗位。");
     }
 
@@ -36,18 +35,18 @@ public sealed partial class WorldEngine
     /// <param name="buildingId">待操作建筑的稳定 ID。</param>
     public void RepairBuilding(int residentId, int buildingId)
     {
-        var person = Residents.FirstOrDefault(r => r.Id == residentId);
+        var person = Residents.FirstOrDefault(r => r.Value.Id == residentId);
         var b = FindBuilding(buildingId);
-        if (person is null || b is null || person.Health <= 0 || person.Age < 14 ||
-            person.Profession is not (Profession.Builder or Profession.Engineer or Profession.Firefighter)
-            || !BuildingGroundOwned(b.Value) || b.Value.SettlementId != person.SettlementId ||
-            Distance(person.X, person.Y, b.Value.X, b.Value.Y) > 1
-            || SimulationTick - person.MoveStartedTick < person.MoveDurationTicks || b.Value.Health is <= 0 or >= 100 ||
+        if (person is null || b is null || person.Value.Health <= 0 || person.Value.Age < 14 ||
+            person.Value.Profession is not (Profession.Builder or Profession.Engineer or Profession.Firefighter)
+            || !BuildingGroundOwned(b.Value) || b.Value.SettlementId != person.Value.SettlementId ||
+            Distance(person.Value.X, person.Value.Y, b.Value.X, b.Value.Y) > 1
+            || SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks || b.Value.Health is <= 0 or >= 100 ||
             Tiles[Index(b.Value.X, b.Value.Y)].Value.FireTicks > 0)
             throw new InvalidOperationException("需本地建造者、工程师或消防员到受损设施 1 格内，且火势已扑灭");
-        if (person.Inventory.Stone < .5)
+        if (person.Value.Inventory.Stone < .5)
             throw new InvalidOperationException("需要随身石材 0.5");
-        person.Inventory = person.Inventory with { Stone = person.Inventory.Stone - .5 };
+        person.Replace(person.Value.WithInventory(person.Value.Inventory with { Stone = person.Value.Inventory.Stone - .5 }));
         b.Replace(b.Value with
         {
             Health = Math.Min(100, b.Value.Health + 10),
@@ -164,8 +163,8 @@ public sealed partial class WorldEngine
         if (caster is null)
             return "施法居民不存在";
         var research = ResearchRules.Unlocking(spell);
-        return research is not null && (!HasResearch(caster.SettlementId, research)
-                                        || !HasResearchPrerequisites(caster.SettlementId, research.Prerequisites))
+        return research is not null && (!HasResearch(caster.Value.SettlementId, research)
+                                        || !HasResearchPrerequisites(caster.Value.SettlementId, research.Prerequisites))
             ? "当地需要掌握" + research.Name + "及其前置"
             : null;
     }
@@ -238,9 +237,9 @@ public sealed partial class WorldEngine
         }
 
         var job = PreferredExpansionJob(b.Kind);
-        var staff = Residents.Count(p => p.SettlementId == b.SettlementId && p.Age >= 14 && p.Health > 0
-                                                 && p.ArmyId == 0 && (job is null || p.Profession == job) &&
-                                                 Distance(p.X, p.Y, b.X, b.Y) <= 1);
+        var staff = Residents.Count(p => p.Value.SettlementId == b.SettlementId && p.Value.Age >= 14 && p.Value.Health > 0
+                                                 && p.Value.ArmyId == 0 && (job is null || p.Value.Profession == job) &&
+                                                 Distance(p.Value.X, p.Value.Y, b.X, b.Y) <= 1);
         return $"累计现场服务 {b.ServiceActions} 次\n到场人员 {staff}"
                + (job is { } role ? "\n岗位：" + ProfessionName(role) : "")
                + (ExpansionSupply(b.Kind) is { } supply
@@ -254,27 +253,27 @@ public sealed partial class WorldEngine
     /// <param name="destinationId">目的地折跃门的建筑 ID。</param>
     public string? WaygateTravelError(int residentId, int destinationId)
     {
-        var person = Residents.FirstOrDefault(r => r.Id == residentId);
+        var person = Residents.FirstOrDefault(r => r.Value.Id == residentId);
         var destination = FindBuilding(destinationId);
-        if (person is null || person.Health <= 0 || person.Age < 14 || person.ArmyId != 0 ||
-            person.TravelMode != TravelMode.Foot)
+        if (person is null || person.Value.Health <= 0 || person.Value.Age < 14 || person.Value.ArmyId != 0 ||
+            person.Value.TravelMode != TravelMode.Foot)
             return "需要活着的成年步行居民，且未编入军队";
-        if (person.FrozenUntilTick > SimulationTick || SimulationTick - person.MoveStartedTick < person.MoveDurationTicks)
+        if (person.Value.FrozenUntilTick > SimulationTick || SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks)
             return "等待当前移动或冻结结束";
         if (destination is null || destination.Value.Kind != BuildingKind.Waygate || !GateReady(destination.Value)
-            || RequireTown(destination.Value.SettlementId).Value.NationId != person.NationId)
+            || RequireTown(destination.Value.SettlementId).Value.NationId != person.Value.NationId)
             return "目标须为同国、已完工且掌握空间折跃的可用折跃门";
         var source = Buildings.FirstOrDefault(b =>
             b.Value.Id != destinationId && b.Value.Kind == BuildingKind.Waygate && GateReady(b.Value)
-            && RequireTown(b.Value.SettlementId).Value.NationId == person.NationId && Distance(person.X, person.Y, b.Value.X, b.Value.Y) <= 1
+            && RequireTown(b.Value.SettlementId).Value.NationId == person.Value.NationId && Distance(person.Value.X, person.Value.Y, b.Value.X, b.Value.Y) <= 1
             && Distance(b.Value.X, b.Value.Y, destination.Value.X, destination.Value.Y) <= 24);
         if (source is null)
             return "本人须到另一座可用折跃门 1 格内，两门相距至多 24 格";
-        if (person.MagicTalent < 25 || person.MagicTraining < 8)
+        if (person.Value.MagicTalent < 25 || person.Value.MagicTraining < 8)
             return "需要魔法天赋至少 25、训练至少 8";
-        if (person.Mana < 30 || person.Inventory.Crystals < 2)
+        if (person.Value.Mana < 30 || person.Value.Inventory.Crystals < 2)
             return "需要个人魔力 30 和随身魔晶 2";
-        if (!RaceTerrainRules.CanWalk(Tiles[Index(destination.Value.X, destination.Value.Y)].Value, person.Race))
+        if (!RaceTerrainRules.CanWalk(Tiles[Index(destination.Value.X, destination.Value.Y)].Value, person.Value.Race))
             return "目标门地形不可通行";
         return null;
     }
@@ -293,20 +292,19 @@ public sealed partial class WorldEngine
     {
         if (WaygateTravelError(residentId, destinationId) is { } error)
             throw new InvalidOperationException(error);
-        var person = Residents.First(r => r.Id == residentId);
+        var person = Residents.First(r => r.Value.Id == residentId);
         var target = FindBuilding(destinationId)!;
         var source = Buildings.First(b =>
             b.Value.Id != target.Value.Id && b.Value.Kind == BuildingKind.Waygate && GateReady(b.Value)
-            && RequireTown(b.Value.SettlementId).Value.NationId == person.NationId && Distance(person.X, person.Y, b.Value.X, b.Value.Y) <= 1
+            && RequireTown(b.Value.SettlementId).Value.NationId == person.Value.NationId && Distance(person.Value.X, person.Value.Y, b.Value.X, b.Value.Y) <= 1
             && Distance(b.Value.X, b.Value.Y, target.Value.X, target.Value.Y) <= 24);
-        person.Mana -= 30;
-        person.Inventory = person.Inventory with { Crystals = person.Inventory.Crystals - 2 };
-        person.X = person.FromX = target.Value.X;
-        person.Y = person.FromY = target.Value.Y;
+        person.Replace(person.Value.WithMana(person.Value.Mana - (30)));
+        person.Replace(person.Value.WithInventory(person.Value.Inventory with { Crystals = person.Value.Inventory.Crystals - 2 }));
+        person.Replace(person.Value.WithPosition(target.Value.X, target.Value.Y));
         person.Replace(person.Value with { MoveStartedTick = SimulationTick, MoveDurationTicks = 1 });
         person.Replace(person.Value with
         {
-            Agent = person.Agent with
+            Agent = person.Value.Agent with
             {
                 DaytimeGoal = null,
                 Goal = new AgentGoal
@@ -330,8 +328,8 @@ public sealed partial class WorldEngine
             LastServiceTick = SimulationTick,
         });
         EmitVisual(WorldVisualKind.Waygate, target.Value.X, target.Value.Y, 2, source.Value.X, source.Value.Y);
-        AddEvent(WorldEventKind.Magic, person.Name + "携带真实背包经折跃门抵达，消耗个人魔力 30、魔晶 2。", target.Value.X, target.Value.Y,
-            residentId: person.Id);
+        AddEvent(WorldEventKind.Magic, person.Value.Name + "携带真实背包经折跃门抵达，消耗个人魔力 30、魔晶 2。", target.Value.X, target.Value.Y,
+            residentId: person.Value.Id);
     }
 
     /// <summary>检查射手、目标、距离和弹药；可攻击时返回空值，否则返回原因。</summary>
@@ -339,22 +337,22 @@ public sealed partial class WorldEngine
     /// <param name="targetId">要攻击的敌方居民 ID。</param>
     public string? RangedAttackError(int attackerId, int targetId)
     {
-        var person = Residents.FirstOrDefault(r => r.Id == attackerId);
-        var target = Residents.FirstOrDefault(r => r.Id == targetId);
-        if (person is null || target is null || person.Health <= 0 || target.Health <= 0 || person.Age < 14 ||
-            person.NationId == target.NationId)
+        var person = Residents.FirstOrDefault(r => r.Value.Id == attackerId);
+        var target = Residents.FirstOrDefault(r => r.Value.Id == targetId);
+        if (person is null || target is null || person.Value.Health <= 0 || target.Value.Health <= 0 || person.Value.Age < 14 ||
+            person.Value.NationId == target.Value.NationId)
             return "攻击者或目标无效";
-        if (person.Profession != Profession.Ranger || !HasResearch(person.SettlementId, Advancement.Ballistics) ||
-            ResearchPrerequisiteError(person.SettlementId, Advancement.Ballistics) is not null)
+        if (person.Value.Profession != Profession.Ranger || !HasResearch(person.Value.SettlementId, Advancement.Ballistics) ||
+            ResearchPrerequisiteError(person.Value.SettlementId, Advancement.Ballistics) is not null)
             return "需要掌握弹道学的游击射手";
-        if (person.FrozenUntilTick > SimulationTick || SimulationTick - person.LastRangedAttackTick < 3)
+        if (person.Value.FrozenUntilTick > SimulationTick || SimulationTick - person.Value.LastRangedAttackTick < 3)
             return "冻结中或射击尚未冷却";
-        if (!IsKnownHostile(person, target.NationId))
+        if (!IsKnownHostile(person, target.Value.NationId))
             return "本人未收到对目标国家的交战军令";
-        if (Distance(person.X, person.Y, target.X, target.Y) > 4 ||
-            !ClearSignalLine(person.X, person.Y, target.X, target.Y))
+        if (Distance(person.Value.X, person.Value.Y, target.Value.X, target.Value.Y) > 4 ||
+            !ClearSignalLine(person.Value.X, person.Value.Y, target.Value.X, target.Value.Y))
             return "目标须在 4 格内且山体不遮挡";
-        return person.Inventory.Ammunition < 1 ? "随身弹药不足 1" : null;
+        return person.Value.Inventory.Ammunition < 1 ? "随身弹药不足 1" : null;
     }
 
     /// <summary>校验攻击条件后消耗随身弹药，对指定敌方居民造成远程伤害。</summary>
@@ -364,19 +362,19 @@ public sealed partial class WorldEngine
     {
         if (RangedAttackError(attackerId, targetId) is { } error)
             throw new InvalidOperationException(error);
-        var person = Residents.First(r => r.Id == attackerId);
-        var target = Residents.First(r => r.Id == targetId);
+        var person = Residents.First(r => r.Value.Id == attackerId);
+        var target = Residents.First(r => r.Value.Id == targetId);
         person.Replace(person.Value with
         {
-            Inventory = person.Inventory with { Ammunition = person.Inventory.Ammunition - 1 },
+            Inventory = person.Value.Inventory with { Ammunition = person.Value.Inventory.Ammunition - 1 },
             LastRangedAttackTick = SimulationTick,
         });
         DamageResident(target, TryAbsorbShieldDamage(target, 12 * Rules.CombatDamageRate), DeathCause.Battle);
-        EmitVisual(WorldVisualKind.Battle, target.X, target.Y, 1, person.X, person.Y);
-        AddEvent(WorldEventKind.War, person.Name + "消耗一份随身弹药，向已知交战目标射击。", target.X, target.Y, residentId: person.Id);
+        EmitVisual(WorldVisualKind.Battle, target.Value.X, target.Value.Y, 1, person.Value.X, person.Value.Y);
+        AddEvent(WorldEventKind.War, person.Value.Name + "消耗一份随身弹药，向已知交战目标射击。", target.Value.X, target.Value.Y, residentId: person.Value.Id);
     }
 
-    private bool ExpansionFacilityHasWork(Building b, ResidentCursor person)
+    private bool ExpansionFacilityHasWork(Building b, StateReference<Resident> person)
     {
         var research = ResearchRules.Unlocking(b.Kind);
         if (research is null || !HasResearch(b.SettlementId, research) ||
@@ -384,33 +382,33 @@ public sealed partial class WorldEngine
             return false;
         return b.Kind switch
         {
-            BuildingKind.Reservoir => person.Inventory.Water < 6 && WaterSourceForStation(b) >= 0,
+            BuildingKind.Reservoir => person.Value.Inventory.Water < 6 && WaterSourceForStation(b) >= 0,
             BuildingKind.Hospital =>
-                person.Profession == Profession.Physician && FindLocalWorkPatient(b, true) is not null
-                                                          && (person.Inventory.Medicine >= .25 ||
+                person.Value.Profession == Profession.Physician && FindLocalWorkPatient(b, true) is not null
+                                                          && (person.Value.Inventory.Medicine >= .25 ||
                                                               RequireTown(b.SettlementId).Value.Resources.Medicine >= .25),
-            BuildingKind.FireStation => person.Profession == Profession.Firefighter &&
-                                        ((person.Inventory.Water < 5 &&
+            BuildingKind.FireStation => person.Value.Profession == Profession.Firefighter &&
+                                        ((person.Value.Inventory.Water < 5 &&
                                           RequireTown(b.SettlementId).Value.Resources.Water >= .5)
-                                         || (RepairTargetForStation(b) is not null && (person.Inventory.Stone >= .5 ||
+                                         || (RepairTargetForStation(b) is not null && (person.Value.Inventory.Stone >= .5 ||
                                              RequireTown(b.SettlementId).Value.Resources.Stone >= .5))),
-            BuildingKind.Library => person.Profession == Profession.Archivist && SimulationTick - b.LastServiceTick >= 12,
-            BuildingKind.SurveyOffice => person.Profession == Profession.Surveyor &&
+            BuildingKind.Library => person.Value.Profession == Profession.Archivist && SimulationTick - b.LastServiceTick >= 12,
+            BuildingKind.SurveyOffice => person.Value.Profession == Profession.Surveyor &&
                                          SimulationTick - b.LastServiceTick >= 12,
-            BuildingKind.Armory => person.Armor < 30 && RequireTown(b.SettlementId).Value.Resources.Alloy >= 2,
-            BuildingKind.WardTower => person.MagicTalent >= 25 && person.MagicTraining >= 8 && person.Mana >= 8 &&
+            BuildingKind.Armory => person.Value.Armor < 30 && RequireTown(b.SettlementId).Value.Resources.Alloy >= 2,
+            BuildingKind.WardTower => person.Value.MagicTalent >= 25 && person.Value.MagicTraining >= 8 && person.Value.Mana >= 8 &&
                                       SimulationTick - b.LastServiceTick >= 12
-                                      && (person.Inventory.Crystals >= .25 ||
+                                      && (person.Value.Inventory.Crystals >= .25 ||
                                           RequireTown(b.SettlementId).Value.Resources.Crystals >= .25)
                                       && LocalWardPatient(b) is not null,
-            BuildingKind.StormSpire => person.Profession == Profession.Battlemage && person.MagicTraining >= 8 &&
-                                       person.Mana >= 12
-                                       && (person.Inventory.Crystals >= .5 ||
+            BuildingKind.StormSpire => person.Value.Profession == Profession.Battlemage && person.Value.MagicTraining >= 8 &&
+                                       person.Value.Mana >= 12
+                                       && (person.Value.Inventory.Crystals >= .5 ||
                                            RequireTown(b.SettlementId).Value.Resources.Crystals >= .5) &&
                                        LocalHostile(person, b.X, b.Y, 5) is not null,
-            BuildingKind.GroveSanctuary => person.Profession == Profession.Gardener && person.MagicTalent >= 25 &&
-                                           person.MagicTraining >= 8 && person.Mana >= 2
-                                           && (person.Inventory.Water >= .25 ||
+            BuildingKind.GroveSanctuary => person.Value.Profession == Profession.Gardener && person.Value.MagicTalent >= 25 &&
+                                           person.Value.MagicTraining >= 8 && person.Value.Mana >= 2
+                                           && (person.Value.Inventory.Water >= .25 ||
                                                RequireTown(b.SettlementId).Value.Resources.Water >= .25)
                                            && Circle(b.X, b.Y, 2).Any(i =>
                                                CanRestoreTrees(Tiles[i].Value) && Tiles[i].Value.Plants.Trees < .7),
@@ -425,35 +423,35 @@ public sealed partial class WorldEngine
             .OrderByDescending(i => GetDailyWaterCapacity(i % Width, i / Width)).FirstOrDefault(-1);
     }
 
-    private ResidentCursor? LocalWardPatient(Building b)
+    private StateReference<Resident>? LocalWardPatient(Building b)
     {
-        return Residents.Where(p => p.SettlementId == b.SettlementId && p.Health > 0
-                                                                             && p.PersonalWard < 12 &&
-                                                                             Distance(p.X, p.Y, b.X, b.Y) <= 3)
-            .OrderBy(p => p.PersonalWard).ThenBy(p => p.Id).FirstOrDefault();
+        return Residents.Where(p => p.Value.SettlementId == b.SettlementId && p.Value.Health > 0
+                                                                             && p.Value.PersonalWard < 12 &&
+                                                                             Distance(p.Value.X, p.Value.Y, b.X, b.Y) <= 3)
+            .OrderBy(p => p.Value.PersonalWard).ThenBy(p => p.Value.Id).FirstOrDefault();
     }
 
-    private ResidentCursor? LocalHostile(ResidentCursor person, int x, int y, int radius)
+    private StateReference<Resident>? LocalHostile(StateReference<Resident> person, int x, int y, int radius)
     {
-        return Residents.Where(p => p.Health > 0
-                                            && p.NationId != person.NationId && Distance(p.X, p.Y, x, y) <= radius &&
-                                            IsKnownHostile(person, p.NationId)
-                                            && ClearSignalLine(x, y, p.X, p.Y)).OrderBy(p => p.Id).FirstOrDefault();
+        return Residents.Where(p => p.Value.Health > 0
+                                            && p.Value.NationId != person.Value.NationId && Distance(p.Value.X, p.Value.Y, x, y) <= radius &&
+                                            IsKnownHostile(person, p.Value.NationId)
+                                            && ClearSignalLine(x, y, p.Value.X, p.Value.Y)).OrderBy(p => p.Value.Id).FirstOrDefault();
     }
 
-    private bool WorkExpansionFacility(StateReference<Building> b, ResidentCursor person, StateReference<Settlement> town, double effort)
+    private bool WorkExpansionFacility(StateReference<Building> b, StateReference<Resident> person, StateReference<Settlement> town, double effort)
     {
         // 服务人员须先从家乡仓库实际携带限量物资到岗，避免远程消耗库存。
         bool Supply(ResourceKind kind, double amount, double reserve = 0)
         {
-            if (person.Inventory.Get(kind) + .000001 >= amount + reserve)
+            if (person.Value.Inventory.Get(kind) + .000001 >= amount + reserve)
                 return true;
-            if (Distance(person.X, person.Y, town.Value.X, town.Value.Y) > 1)
+            if (Distance(person.Value.X, person.Value.Y, town.Value.X, town.Value.Y) > 1)
                 return false;
-            var take = Math.Min(town.Value.Resources.Get(kind), Math.Max(0, amount + reserve - person.Inventory.Get(kind)));
+            var take = Math.Min(town.Value.Resources.Get(kind), Math.Max(0, amount + reserve - person.Value.Inventory.Get(kind)));
             town.Replace(town.Value.WithResources(town.Value.Resources.WithAmount(kind, town.Value.Resources.Get(kind) - take)));
-            person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + take);
-            return person.Inventory.Get(kind) + .000001 >= amount + reserve;
+            person.Replace(person.Value.WithInventory(person.Value.Inventory.WithAmount(kind, person.Value.Inventory.Get(kind) + take)));
+            return person.Value.Inventory.Get(kind) + .000001 >= amount + reserve;
         }
 
         var done = false;
@@ -468,15 +466,15 @@ public sealed partial class WorldEngine
                 var patient = FindLocalWorkPatient(b.Value);
                 if (patient is not null && Supply(ResourceKind.Medicine, .25))
                 {
-                    person.Inventory = person.Inventory with { Medicine = person.Inventory.Medicine - .25 };
+                    person.Replace(person.Value.WithInventory(person.Value.Inventory with { Medicine = person.Value.Inventory.Medicine - .25 }));
                     patient.Replace(patient.Value with
                     {
-                        Health = Math.Min(100, patient.Health + 3 * effort),
-                        SicknessTicks = Math.Max(0, patient.SicknessTicks - SimulationTime.TicksPerDay),
-                        DiseaseImmuneUntilTick = Math.Max(patient.DiseaseImmuneUntilTick,
+                        Health = Math.Min(100, patient.Value.Health + 3 * effort),
+                        SicknessTicks = Math.Max(0, patient.Value.SicknessTicks - SimulationTime.TicksPerDay),
+                        DiseaseImmuneUntilTick = Math.Max(patient.Value.DiseaseImmuneUntilTick,
                             SimulationTick + SimulationTime.TicksPerYear),
                     });
-                    EmitVisual(WorldVisualKind.Heal, patient.X, patient.Y);
+                    EmitVisual(WorldVisualKind.Heal, patient.Value.X, patient.Value.Y);
                     done = true;
                 }
 
@@ -484,7 +482,7 @@ public sealed partial class WorldEngine
             case BuildingKind.FireStation:
                 var damaged = Buildings.Where(other => other.Value.SettlementId == b.Value.SettlementId &&
                                                                other.Value.Health is > 0 and < 100
-                                                               && Distance(person.X, person.Y, other.Value.X,
+                                                               && Distance(person.Value.X, person.Value.Y, other.Value.X,
                                                                    other.Value.Y) <= 1 &&
                                                                Tiles[Index(other.Value.X, other.Value.Y)].Value
                                                                    .FireTicks ==
@@ -492,7 +490,7 @@ public sealed partial class WorldEngine
                     .ThenBy(other => other.Value.Id).FirstOrDefault();
                 if (damaged is not null && Supply(ResourceKind.Stone, .1))
                 {
-                    person.Inventory = person.Inventory with { Stone = person.Inventory.Stone - .1 };
+                    person.Replace(person.Value.WithInventory(person.Value.Inventory with { Stone = person.Value.Inventory.Stone - .1 }));
                     damaged.Replace(damaged.Value with { Health = Math.Min(100, damaged.Value.Health + 2 * effort) });
                     done = true;
                 }
@@ -506,7 +504,7 @@ public sealed partial class WorldEngine
                 var fact = MakeAgentFact(person, AgentFactKind.Research, town.Value.Id, b.Value.X, b.Value.Y, knowledge.Id,
                     "在图书馆研读当地已有的" + knowledge.Name);
                 foreach (var pupil in Residents.Where(p =>
-                             p.SettlementId == town.Value.Id && p.Health > 0 && Distance(p.X, p.Y, b.Value.X, b.Value.Y) <= 2))
+                             p.Value.SettlementId == town.Value.Id && p.Value.Health > 0 && Distance(p.Value.X, p.Value.Y, b.Value.X, b.Value.Y) <= 2))
                     RememberAgentFact(pupil, fact);
                 done = true;
                 break;
@@ -519,7 +517,7 @@ public sealed partial class WorldEngine
                 {
                     person.Replace(person.Value with
                     {
-                        Inventory = person.Inventory with { Alloy = person.Inventory.Alloy - 2 }, Armor = 30,
+                        Inventory = person.Value.Inventory with { Alloy = person.Value.Inventory.Alloy - 2 }, Armor = 30,
                     });
                     done = true;
                 }
@@ -529,10 +527,10 @@ public sealed partial class WorldEngine
                 var wardPatient = LocalWardPatient(b.Value);
                 if (wardPatient is not null && Supply(ResourceKind.Crystals, .25))
                 {
-                    person.Inventory = person.Inventory with { Crystals = person.Inventory.Crystals - .25 };
-                    person.Mana -= 8;
-                    wardPatient.Replace(wardPatient.Value with { PersonalWard = Math.Max(wardPatient.PersonalWard, 24) });
-                    EmitVisual(WorldVisualKind.Shield, wardPatient.X, wardPatient.Y);
+                    person.Replace(person.Value.WithInventory(person.Value.Inventory with { Crystals = person.Value.Inventory.Crystals - .25 }));
+                    person.Replace(person.Value.WithMana(person.Value.Mana - (8)));
+                    wardPatient.Replace(wardPatient.Value with { PersonalWard = Math.Max(wardPatient.Value.PersonalWard, 24) });
+                    EmitVisual(WorldVisualKind.Shield, wardPatient.Value.X, wardPatient.Value.Y);
                     done = true;
                 }
 
@@ -541,11 +539,11 @@ public sealed partial class WorldEngine
                 var target = LocalHostile(person, b.Value.X, b.Value.Y, 5);
                 if (target is not null && Supply(ResourceKind.Crystals, .5))
                 {
-                    person.Inventory = person.Inventory with { Crystals = person.Inventory.Crystals - .5 };
-                    person.Mana -= 12;
+                    person.Replace(person.Value.WithInventory(person.Value.Inventory with { Crystals = person.Value.Inventory.Crystals - .5 }));
+                    person.Replace(person.Value.WithMana(person.Value.Mana - (12)));
                     DamageResident(target, TryAbsorbShieldDamage(target, 16 * effort * Rules.CombatDamageRate),
                         DeathCause.Magic);
-                    EmitVisual(WorldVisualKind.Ember, target.X, target.Y, 1, b.Value.X, b.Value.Y);
+                    EmitVisual(WorldVisualKind.Ember, target.Value.X, target.Value.Y, 1, b.Value.X, b.Value.Y);
                     done = true;
                 }
 
@@ -557,8 +555,8 @@ public sealed partial class WorldEngine
                     .FirstOrDefault(i => CanRestoreTrees(Tiles[i].Value) && Tiles[i].Value.Plants.Trees < .7, -1);
                 if (ground < 0)
                     break;
-                person.Inventory = person.Inventory with { Water = person.Inventory.Water - .25 };
-                person.Mana -= 2;
+                person.Replace(person.Value.WithInventory(person.Value.Inventory with { Water = person.Value.Inventory.Water - .25 }));
+                person.Replace(person.Value.WithMana(person.Value.Mana - (2)));
                 var tile = Tiles[ground];
                 var plants = tile.Value.Plants;
                 plants = plants with { Trees = Math.Min(.7, plants.Trees + .02 * effort) };
@@ -593,7 +591,7 @@ public sealed partial class WorldEngine
         return done;
     }
 
-    private void SurveyFromOffice(Building b, ResidentCursor person)
+    private void SurveyFromOffice(Building b, StateReference<Resident> person)
     {
         var range = HasResearch(b.SettlementId, Advancement.Observation) ? 6 : 4;
         foreach (var town in Settlements)
@@ -649,49 +647,49 @@ public sealed partial class WorldEngine
         };
     }
 
-    private bool ExpansionJobHasNearbyWork(ResidentCursor person)
+    private bool ExpansionJobHasNearbyWork(StateReference<Resident> person)
     {
         IReadOnlyList<StateReference<Building>>? buildings = _localWorkQueriesActive
-            ? _localWorkBuildings.GetValueOrDefault(person.SettlementId)
+            ? _localWorkBuildings.GetValueOrDefault(person.Value.SettlementId)
             : Buildings;
         if (buildings is null)
             return false;
         foreach (var b in buildings)
-            if (b.Value.SettlementId == person.SettlementId && PreferredExpansionJob(b.Value.Kind) == person.Profession && b.Value.Enabled
-                && b.Value.IsCompleted && b.Value.Health >= 50 && !b.Value.IsUpgrading && Distance(person.X, person.Y, b.Value.X, b.Value.Y) <= 8
+            if (b.Value.SettlementId == person.Value.SettlementId && PreferredExpansionJob(b.Value.Kind) == person.Value.Profession && b.Value.Enabled
+                && b.Value.IsCompleted && b.Value.Health >= 50 && !b.Value.IsUpgrading && Distance(person.Value.X, person.Value.Y, b.Value.X, b.Value.Y) <= 8
                 && ExpansionFacilityHasWork(b.Value, person))
                 return true;
         return false;
     }
 
-    private bool ActOnBuildingRepair(ResidentCursor person, StateReference<Settlement> home)
+    private bool ActOnBuildingRepair(StateReference<Resident> person, StateReference<Settlement> home)
     {
-        if (person.Agent.Goal.Kind != AgentGoalKind.Work)
+        if (person.Value.Agent.Goal.Kind != AgentGoalKind.Work)
             return false;
-        var b = FindBuilding(person.Agent.Goal.TargetEntityId);
+        var b = FindBuilding(person.Value.Agent.Goal.TargetEntityId);
         if (b is null || b.Value.Health is <= 0 or >= 50 ||
-            person.Profession is not (Profession.Builder or Profession.Engineer or Profession.Firefighter))
+            person.Value.Profession is not (Profession.Builder or Profession.Engineer or Profession.Firefighter))
             return false;
-        if (person.Inventory.Stone < .5)
+        if (person.Value.Inventory.Stone < .5)
         {
-            if (Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1)
+            if (Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) > 1)
             {
                 MoveAgentTowards(person, home.Value.X, home.Value.Y);
                 return true;
             }
 
-            var take = Math.Min(home.Value.Resources.Stone, .5 - person.Inventory.Stone);
+            var take = Math.Min(home.Value.Resources.Stone, .5 - person.Value.Inventory.Stone);
             home.Replace(home.Value.WithResources(home.Value.Resources with { Stone = home.Value.Resources.Stone - take }));
-            person.Inventory = person.Inventory with { Stone = person.Inventory.Stone + take };
+            person.Replace(person.Value.WithInventory(person.Value.Inventory with { Stone = person.Value.Inventory.Stone + take }));
         }
 
-        if (Distance(person.X, person.Y, b.Value.X, b.Value.Y) > 1)
+        if (Distance(person.Value.X, person.Value.Y, b.Value.X, b.Value.Y) > 1)
         {
             MoveAgentTowards(person, b.Value.X, b.Value.Y);
             return true;
         }
 
-        if (person.Inventory.Stone >= .5 && Tiles[Index(b.Value.X, b.Value.Y)].Value.FireTicks == 0)
+        if (person.Value.Inventory.Stone >= .5 && Tiles[Index(b.Value.X, b.Value.Y)].Value.FireTicks == 0)
             TryWorkAtBuilding(person);
         return true;
     }
@@ -710,9 +708,9 @@ public sealed partial class WorldEngine
         };
     }
 
-    private bool ActOnExpansionFacility(ResidentCursor person, StateReference<Settlement> home)
+    private bool ActOnExpansionFacility(StateReference<Resident> person, StateReference<Settlement> home)
     {
-        var goal = person.Agent.Goal;
+        var goal = person.Value.Agent.Goal;
         if (goal.Kind != AgentGoalKind.Work)
             return false;
         var b = FindBuilding(goal.TargetEntityId);
@@ -721,45 +719,45 @@ public sealed partial class WorldEngine
             return false;
         if (!ExpansionFacilityHasWork(b.Value, person))
         {
-            person.Agent = person.Agent with { NextThinkTick = SimulationTick };
+            person.Replace(person.Value.WithAgent(person.Value.Agent with { NextThinkTick = SimulationTick }));
             return true;
         }
 
         if (b.Value.Kind == BuildingKind.FireStation && RepairTargetForStation(b.Value) is { } repair
-                                               && (person.Inventory.Stone >= .5 || home.Value.Resources.Stone >= .5))
+                                               && (person.Value.Inventory.Stone >= .5 || home.Value.Resources.Stone >= .5))
         {
-            if (person.Inventory.Stone < .5)
+            if (person.Value.Inventory.Stone < .5)
             {
-                person.Agent = person.Agent.WithGoal(goal = goal with
+                person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(goal = goal with
                 {
                     TargetX = home.Value.X, TargetY = home.Value.Y, Reason = "返仓领取实际石材，运至受损设施维修",
-                });
-                if (Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1)
+                })));
+                if (Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) > 1)
                 {
                     MoveAgentTowards(person, home.Value.X, home.Value.Y);
                     return true;
                 }
 
-                var take = Math.Min(home.Value.Resources.Stone, 1 - person.Inventory.Stone);
+                var take = Math.Min(home.Value.Resources.Stone, 1 - person.Value.Inventory.Stone);
                 home.Replace(home.Value.WithResources(home.Value.Resources with { Stone = home.Value.Resources.Stone - take }));
-                person.Inventory = person.Inventory with { Stone = person.Inventory.Stone + take };
+                person.Replace(person.Value.WithInventory(person.Value.Inventory with { Stone = person.Value.Inventory.Stone + take }));
             }
 
-            person.Agent = person.Agent.WithGoal(goal = goal with
+            person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(goal = goal with
             {
                 TargetX = repair.Value.X,
                 TargetY = repair.Value.Y,
                 Reason = "携带石材，步行至消防站附近的受损设施维修",
-            });
-            if (Distance(person.X, person.Y, repair.Value.X, repair.Value.Y) > 1)
+            })));
+            if (Distance(person.Value.X, person.Value.Y, repair.Value.X, repair.Value.Y) > 1)
             {
                 MoveAgentTowards(person, repair.Value.X, repair.Value.Y);
                 return true;
             }
 
-            if (SimulationTick - person.MoveStartedTick < person.MoveDurationTicks)
+            if (SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks)
                 return true;
-            RepairBuilding(person.Id, repair.Value.Id);
+            RepairBuilding(person.Value.Id, repair.Value.Id);
             if (repair.Value.Id != b.Value.Id)
             {
                 b.Replace(b.Value with
@@ -769,7 +767,7 @@ public sealed partial class WorldEngine
                 });
             }
 
-            person.Activity = ResidentActivity.Working;
+            person.Replace(person.Value.WithActivity(ResidentActivity.Working));
             return true;
         }
 
@@ -783,41 +781,41 @@ public sealed partial class WorldEngine
             BuildingKind.GroveSanctuary => .75,
             _ => 0,
         };
-        if (ExpansionSupply(b.Value.Kind) is { } supply && person.Inventory.Get(supply.Kind) + .000001 < minimum)
+        if (ExpansionSupply(b.Value.Kind) is { } supply && person.Value.Inventory.Get(supply.Kind) + .000001 < minimum)
         {
-            person.Agent = person.Agent.WithGoal(goal = goal with
+            person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(goal = goal with
             {
                 TargetX = home.Value.X,
                 TargetY = home.Value.Y,
                 Reason = "亲自返仓领取" + ResourceStock.Name(supply.Kind) + "，运至" + BuildingName(b.Value.Kind),
-            });
-            if (Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1)
+            })));
+            if (Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) > 1)
             {
                 MoveAgentTowards(person, home.Value.X, home.Value.Y);
                 return true;
             }
 
             var take = Math.Min(home.Value.Resources.Get(supply.Kind),
-                Math.Max(0, supply.Amount - person.Inventory.Get(supply.Kind)));
+                Math.Max(0, supply.Amount - person.Value.Inventory.Get(supply.Kind)));
             home.Replace(home.Value.WithResources(home.Value.Resources.WithAmount(supply.Kind, home.Value.Resources.Get(supply.Kind) - take)));
-            person.Inventory = person.Inventory.WithAmount(supply.Kind, person.Inventory.Get(supply.Kind) + take);
+            person.Replace(person.Value.WithInventory(person.Value.Inventory.WithAmount(supply.Kind, person.Value.Inventory.Get(supply.Kind) + take)));
         }
 
-        person.Agent = person.Agent.WithGoal(goal = goal with
+        person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(goal = goal with
         {
             TargetX = b.Value.X,
             TargetY = b.Value.Y,
             Reason = "携带补给，在" + BuildingName(b.Value.Kind) + "提供现场服务",
-        });
-        if (Distance(person.X, person.Y, b.Value.X, b.Value.Y) > 0)
+        })));
+        if (Distance(person.Value.X, person.Value.Y, b.Value.X, b.Value.Y) > 0)
         {
             MoveAgentTowards(person, b.Value.X, b.Value.Y);
             return true;
         }
 
         TryWorkAtBuilding(person);
-        person.Activity = ResidentActivity.Working;
-        if (b.Value.Kind == BuildingKind.Reservoir && person.Inventory.Water >= 3)
+        person.Replace(person.Value.WithActivity(ResidentActivity.Working));
+        if (b.Value.Kind == BuildingKind.Reservoir && person.Value.Inventory.Water >= 3)
         {
             var returning = new AgentGoal
             {
@@ -828,10 +826,10 @@ public sealed partial class WorldEngine
                 StartedTick = SimulationTick,
                 Reason = "蓄水站取水后亲自运回粮仓",
             };
-            ChangeWorkReservation(person.Agent.Goal, returning);
+            ChangeWorkReservation(person.Value.Agent.Goal, returning);
             person.Replace(person.Value with
             {
-                Agent = person.Agent with { Goal = returning, NextThinkTick = SimulationTick + 30 },
+                Agent = person.Value.Agent with { Goal = returning, NextThinkTick = SimulationTick + 30 },
             });
         }
 

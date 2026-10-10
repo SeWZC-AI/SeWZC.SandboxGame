@@ -69,11 +69,11 @@ public sealed partial class WorldEngine
         return kind != WildlifeKind.None && WildlifeHarvestEfficiency(tile, kind) >= .25;
     }
 
-    private bool WildlifeGoalProductive(ResidentCursor person)
+    private bool WildlifeGoalProductive(StateReference<Resident> person)
     {
-        var source = person.Agent.Goal.TargetEntityId - 1;
+        var source = person.Value.Agent.Goal.TargetEntityId - 1;
         return source >= 0 && source < Tiles.Count
                            && WildlifeSiteProductive(Tiles[source],
-                               person.Agent.Goal.Kind == AgentGoalKind.Fish);
+                               person.Value.Agent.Goal.Kind == AgentGoalKind.Fish);
     }
 }

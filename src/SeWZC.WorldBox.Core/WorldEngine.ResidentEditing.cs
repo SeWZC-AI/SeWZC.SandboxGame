@@ -10,22 +10,22 @@ public sealed partial class WorldEngine
     /// <param name="id">居民的稳定 ID。</param>
     public Resident? GetResident(int id)
     {
-        return (Residents.FirstOrDefault(r => r.Id == id) ??
-                ArchivedResidents.FirstOrDefault(r => r.Id == id))?.Value;
+        return (Residents.FirstOrDefault(r => r.Value.Id == id) ??
+                ArchivedResidents.FirstOrDefault(r => r.Value.Id == id))?.Value;
     }
 
     /// <summary>将指定居民的认知与行动状态序列化为 JSON。</summary>
     /// <param name="id">居民的稳定 ID。</param>
     public string ExportResidentMind(int id)
     {
-        return JsonSerializer.Serialize(RequireResident(id).Agent, WorldJsonContext.Default.AgentState);
+        return JsonSerializer.Serialize(RequireResident(id).Value.Agent, WorldJsonContext.Default.AgentState);
     }
 
     /// <summary>将指定居民的经历记录序列化为 JSON。</summary>
     /// <param name="id">居民的稳定 ID。</param>
     public string ExportResidentHistory(int id)
     {
-        return JsonSerializer.Serialize(RequireResident(id).History.ToList(),
+        return JsonSerializer.Serialize(RequireResident(id).Value.History.ToList(),
             WorldJsonContext.Default.ListResidentHistoryEntry);
     }
 
@@ -73,10 +73,10 @@ public sealed partial class WorldEngine
         }
     }
 
-    internal ResidentCursor RequireResident(int id)
+    internal StateReference<Resident> RequireResident(int id)
     {
-        return Residents.FirstOrDefault(r => r.Id == id) ??
-               ArchivedResidents.FirstOrDefault(r => r.Id == id) ??
+        return Residents.FirstOrDefault(r => r.Value.Id == id) ??
+               ArchivedResidents.FirstOrDefault(r => r.Value.Id == id) ??
                throw new ArgumentException("居民不存在。", nameof(id));
     }
 
@@ -101,7 +101,7 @@ public sealed partial class WorldEngine
         var isLive = liveIndex >= 0;
         var (candidate, startMission, nextId) = PrepareResidentEdit(original.Value, patch, isLive, State);
         NextId = nextId;
-        var edited = new ResidentCursor(candidate);
+        var edited = new StateReference<Resident>(candidate);
         if (isLive)
             Residents[liveIndex] = edited;
         else

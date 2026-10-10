@@ -4,19 +4,19 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private void RecordLife(ResidentCursor person, string text, WorldEvent? entry = null,
+    private void RecordLife(StateReference<Resident> person, string text, WorldEvent? entry = null,
         PersonalExperienceKind experience = PersonalExperienceKind.Neutral,
         EventImportance importance = EventImportance.Notable)
     {
-        var history = person.History.Add(new ResidentHistoryEntry
+        var history = person.Value.History.Add(new ResidentHistoryEntry
         {
             Tick = SimulationTick,
             Text = text,
             Importance = importance,
             EventId = entry?.Id ?? 0,
             EvidenceFactId = entry?.EvidenceFactId ?? 0,
-            SettlementId = person.SettlementId,
-            NationId = person.NationId,
+            SettlementId = person.Value.SettlementId,
+            NationId = person.Value.NationId,
             Experience = experience,
         });
         while (history.Count > 24)

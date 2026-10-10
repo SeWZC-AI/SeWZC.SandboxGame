@@ -147,8 +147,8 @@ public sealed partial class WorldEngine
             previousNation.Replace(previousNation.Value with { CapitalId = remainingHome?.Value.Id ?? 0 });
         if (remainingHome is not null)
         {
-            foreach (var resident in Residents.Where(r => r.SettlementId == town.Value.Id))
-                if (resident.ArmyId != 0)
+            foreach (var resident in Residents.Where(r => r.Value.SettlementId == town.Value.Id))
+                if (resident.Value.ArmyId != 0)
                     resident.Replace(resident.Value with { SettlementId = remainingHome.Value.Id });
                 else
                     resident.Replace(resident.Value with { NationId = targetNationId });
@@ -157,7 +157,7 @@ public sealed partial class WorldEngine
         {
             foreach (var army in Armies.Where(a => a.Value.NationId == previousId).ToArray())
                 DisbandArmy(army);
-            foreach (var resident in Residents.Where(r => r.SettlementId == town.Value.Id))
+            foreach (var resident in Residents.Where(r => r.Value.SettlementId == town.Value.Id))
                 resident.Replace(resident.Value with { NationId = targetNationId });
         }
     }

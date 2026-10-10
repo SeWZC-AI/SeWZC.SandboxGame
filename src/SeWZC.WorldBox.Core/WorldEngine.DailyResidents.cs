@@ -10,6 +10,7 @@ public sealed partial class WorldEngine
         internal Resident Person { get; init; }
         internal AgentState Agent { get; init; }
         internal ResourceStock Inventory { get; init; }
+        internal TravelMode TravelMode { get; init; }
         internal Tile Tile { get; init; }
         internal Profession Profession { get; init; }
         internal int InfectionDuration { get; init; }
@@ -19,11 +20,11 @@ public sealed partial class WorldEngine
         internal double DeliveredWater { get; init; }
         internal int ArrivedTile { get; init; }
 
-        internal Resident.DailyState Advance(WorldRules rules, long tick)
+        internal Resident Advance(WorldRules rules, long tick)
         {
             return Person.CalculateDay(rules, Tile, tick,
                 Profession, InfectionDuration, ManaRecovery, ConsumeNeeds, SocialGrowth, DeliveredWater, ArrivedTile,
-                Inventory, Agent, 1d / SimulationTime.TicksPerDay);
+                Inventory, Agent, 1d / SimulationTime.TicksPerDay).Apply(Person, TravelMode);
         }
     }
 }

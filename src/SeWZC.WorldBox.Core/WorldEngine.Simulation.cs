@@ -74,7 +74,7 @@ public sealed partial class WorldEngine
         var tick = SimulationTick;
         var tiles = Tiles;
         // 先保存现有病例的位置，避免新感染在同一天沿居民遍历顺序连锁传播。
-        var infected = new HashSet<int>(Residents.Where(r => r.SicknessTicks > 0).Select(r => Index(r.X, r.Y)));
+        var infected = new HashSet<int>(Residents.Where(r => r.Value.SicknessTicks > 0).Select(r => Index(r.Value.X, r.Value.Y)));
         BeginDailyDrinking();
         // 库存只在本阶段按居民顺序记账，阶段结束显式提交聚落。
         var warehouses = new ResourceStock[Settlements.Count];
@@ -85,8 +85,8 @@ public sealed partial class WorldEngine
             var count = Residents.Count;
             if (count < 4096 || Environment.ProcessorCount <= 1 || OperatingSystem.IsBrowser())
             {
-                foreach (var cursor in Residents)
-                    cursor.ApplyDay(Prepare(cursor).Advance(rules, tick));
+                foreach (var reference in Residents)
+                    reference.Replace(Prepare(reference).Advance(rules, tick));
             }
             else
             {
@@ -99,7 +99,7 @@ public sealed partial class WorldEngine
                     _dailyResidentInputs[index] = Prepare(Residents[index]);
                 // 整批输入已固定；纯身体转换直接按顺序提交，不必暂存另一份输出数组。
                 for (var index = 0; index < count; index++)
-                    Residents[index].ApplyDay(_dailyResidentInputs[index].Advance(rules, tick));
+                    Residents[index].Replace(_dailyResidentInputs[index].Advance(rules, tick));
                 Array.Clear(_dailyResidentInputs, 0, count);
             }
         }
@@ -112,23 +112,29 @@ public sealed partial class WorldEngine
 
         ArchiveDeadResidents();
 
-        DailyResidentInput Prepare(ResidentCursor cursor)
+        DailyResidentInput Prepare(StateReference<Resident> reference)
         {
-            InitializeAgent(cursor);
-            // 返仓只转换库存、认知及出行方式；将前两项直接交给纯结算，避免先冻结一份中间居民。
-            var person = cursor.Value;
-            var inventory = cursor.Inventory;
-            if (cursor.Health > 0 && cursor.ArmyId == 0
-                                  && _settlements.TryGetValue(cursor.SettlementId, out var home)
-                                  && Distance(cursor.X, cursor.Y, home.Value.X, home.Value.Y) <= 1
-                                  && Walkable(cursor.X, cursor.Y, cursor.Race)
-                                  && tick - cursor.MoveStartedTick >= cursor.MoveDurationTicks
-                                  && !(cursor.TravelMode == TravelMode.Boat &&
-                                       cursor.Agent.Goal.Kind == AgentGoalKind.Fish))
+            InitializeAgent(reference);
+            // 返仓结果直接交给纯结算，身体、补给与出行方式共同生成一份居民。
+            var person = reference.Value;
+            var inventory = person.Inventory;
+            var carriedWater = inventory.Water;
+            var agent = person.Agent;
+            var travelMode = person.TravelMode;
+            if (person.Health > 0 && person.ArmyId == 0
+                                  && _settlements.TryGetValue(person.SettlementId, out var home)
+                                  && Distance(person.X, person.Y, home.Value.X, home.Value.Y) <= 1
+                                  && Walkable(person.X, person.Y, person.Race)
+                                  && tick - person.MoveStartedTick >= person.MoveDurationTicks
+                                  && !(person.TravelMode == TravelMode.Boat &&
+                                       person.Agent.Goal.Kind == AgentGoalKind.Fish))
             {
-                var warehouse = UnloadAtHome(cursor, home.Value.Id, warehouses[home.Position]);
-                var supplied = ProvisionAtHome(cursor, home.Value, warehouse);
+                var unloaded = UnloadAtHome(person, home.Value.Id, warehouses[home.Position]);
+                var supplied = ProvisionAtHome(person, unloaded.Inventory, home.Value, unloaded.Warehouse);
                 inventory = supplied.Inventory;
+                carriedWater = unloaded.Inventory.Water;
+                agent = unloaded.Agent;
+                travelMode = unloaded.TravelMode;
                 warehouses[home.Position] = supplied.Warehouse;
             }
 
@@ -164,13 +170,14 @@ public sealed partial class WorldEngine
             var water = hasHome && person.ArmyId == 0 && person.Health > 0 && rules.Thirst
                         && inventory.Water < waterUse
                 ? WithdrawWater(person.X, person.Y, person.MoveStartedTick, person.MoveDurationTicks,
-                    cursor.Inventory.Water, Index(person.X, person.Y), waterUse - inventory.Water)
+                    carriedWater, Index(person.X, person.Y), waterUse - inventory.Water)
                 : 0;
             return new DailyResidentInput
             {
                 Person = person,
-                Agent = cursor.Agent,
+                Agent = agent,
                 Inventory = inventory,
+                TravelMode = travelMode,
                 Tile = tile.Value,
                 Profession = profession,
                 InfectionDuration = infectionDuration,
@@ -223,14 +230,14 @@ public sealed partial class WorldEngine
             }
 
             var adults = citizens.Where(p =>
-                    p.Age >= 18 && p.Age < (p.Race == RaceKind.Elf ? 100 : 55) && p.Health >= 60
-                    && p.Hunger < 30 && (!Rules.Thirst || p.Thirst < 30) && p.SicknessTicks == 0
-                    && p.ArmyId == 0 && p.Agent.DestinationSettlementId == 0
-                    && Distance(p.X, p.Y, town.Value.X, town.Value.Y) <= 1 && Walkable(p.X, p.Y, p.Race)
-                    && SimulationTick - p.MoveStartedTick >= p.MoveDurationTicks)
+                    p.Value.Age >= 18 && p.Value.Age < (p.Value.Race == RaceKind.Elf ? 100 : 55) && p.Value.Health >= 60
+                    && p.Value.Hunger < 30 && (!Rules.Thirst || p.Value.Thirst < 30) && p.Value.SicknessTicks == 0
+                    && p.Value.ArmyId == 0 && p.Value.Agent.DestinationSettlementId == 0
+                    && Distance(p.Value.X, p.Value.Y, town.Value.X, town.Value.Y) <= 1 && Walkable(p.Value.X, p.Value.Y, p.Value.Race)
+                    && SimulationTick - p.Value.MoveStartedTick >= p.Value.MoveDurationTicks)
                 .ToArray();
             // 已返家的家庭可用随身口粮抚育下一代；不要求所有食物先积存在公共仓库，也不读取远处背包。
-            var familyFood = town.Value.Resources.Food + adults.Sum(p => Math.Max(0, p.Inventory.Food - FoodUse(p) * 2));
+            var familyFood = town.Value.Resources.Food + adults.Sum(p => Math.Max(0, p.Value.Inventory.Food - FoodUse(p) * 2));
             var dailyFood = citizens.Sum(p => FoodUse(p));
             if (Rules.Births && adults.Length >= 6 &&
                 familyFood > dailyFood * 4 + .6 && Residents.Count < MaxPopulation)
@@ -253,16 +260,16 @@ public sealed partial class WorldEngine
                     {
                         if (remaining <= .000001)
                             break;
-                        var supplied = Math.Min(remaining, Math.Max(0, parent.Inventory.Food - FoodUse(parent) * 2));
-                        parent.Inventory = parent.Inventory with { Food = parent.Inventory.Food - supplied };
+                        var supplied = Math.Min(remaining, Math.Max(0, parent.Value.Inventory.Food - FoodUse(parent) * 2));
+                        parent.Replace(parent.Value.WithInventory(parent.Value.Inventory with { Food = parent.Value.Inventory.Food - supplied }));
                         remaining -= supplied;
                     }
 
-                    var child = NewResident(town, adults[RandomInt(adults.Length)].Race, 0,
+                    var child = NewResident(town, adults[RandomInt(adults.Length)].Value.Race, 0,
                         usedNames ??= CollectResidentNames());
-                    child.Inventory = new ResourceStock { Food = .6 - remaining };
+                    child.Replace(child.Value.WithInventory(new ResourceStock { Food = .6 - remaining }));
                     Residents.Add(child);
-                    usedNames.Add(child.Name);
+                    usedNames.Add(child.Value.Name);
                     citizens.Add(child);
                 }
 
@@ -279,12 +286,12 @@ public sealed partial class WorldEngine
         }
     }
 
-    private void ExpandSettlement(StateReference<Settlement> origin, List<ResidentCursor> citizens)
+    private void ExpandSettlement(StateReference<Settlement> origin, List<StateReference<Resident>> citizens)
     {
-        var pioneers = citizens.Where(p => p.ArmyId == 0 && p.Age >= 16 && p.Health >= 60
-                                           && p.Agent.DestinationSettlementId == 0 &&
-                                           Distance(p.X, p.Y, origin.Value.X, origin.Value.Y) <= 3)
-            .OrderByDescending(p => p.Agent.Personality.Ambition).ThenBy(p => p.Id).Take(12).ToArray();
+        var pioneers = citizens.Where(p => p.Value.ArmyId == 0 && p.Value.Age >= 16 && p.Value.Health >= 60
+                                           && p.Value.Agent.DestinationSettlementId == 0 &&
+                                           Distance(p.Value.X, p.Value.Y, origin.Value.X, origin.Value.Y) <= 3)
+            .OrderByDescending(p => p.Value.Agent.Personality.Ambition).ThenBy(p => p.Value.Id).Take(12).ToArray();
         if (pioneers.Length < 6 || MissingResources(origin.Value.Resources, VillageFoundingCost) is not null)
             return;
         // 建村地点须在出发前报告给原聚落，避免迁徙队伍使用未送达的信息。
@@ -296,7 +303,7 @@ public sealed partial class WorldEngine
                                                          InBounds(f.X, f.Y))
             .Select(f => Index(f.X, f.Y)).Where(i => !IsWaterTerrain(Tiles[i].Value.Terrain)
                                                      && pioneers.All(p =>
-                                                         RaceTerrainRules.CanWalk(Tiles[i].Value, p.Race)) &&
+                                                         RaceTerrainRules.CanWalk(Tiles[i].Value, p.Value.Race)) &&
                                                      Tiles[i].Value.FireTicks == 0
                                                      && !Buildings.Any(b =>
                                                          b.Value.X == i % Width && b.Value.Y == i / Width)
@@ -305,7 +312,7 @@ public sealed partial class WorldEngine
                                                       Tiles[i].Value.NationId == origin.Value.NationId)
                                                      && Tiles[i].Value.ClaimedSettlementId == 0
                                                      && FoundingSiteSuitable(i,
-                                                         pioneers.Select(p => p.Race).Distinct().ToArray())
+                                                         pioneers.Select(p => p.Value.Race).Distinct().ToArray())
                                                      && Distance(i % Width, i / Width, origin.Value.X,
                                                          origin.Value.Y) >= MinimumSettlementDistance
                                                      && Settlements.All(t =>
@@ -334,8 +341,8 @@ public sealed partial class WorldEngine
         foreach (var pioneer in pioneers)
         {
             foreach (var resource in ResourceStock.Kinds)
-                pioneer.Inventory = pioneer.Inventory.WithAmount(resource,
-                    pioneer.Inventory.Get(resource) + VillageFoundingCost.Get(resource) / pioneers.Length);
+                pioneer.Replace(pioneer.Value.WithInventory(pioneer.Value.Inventory.WithAmount(resource,
+                    pioneer.Value.Inventory.Get(resource) + VillageFoundingCost.Get(resource) / pioneers.Length)));
             pioneer.Replace(pioneer.Value with { SettlementId = town.Value.Id });
             var address = new AgentFact
             {
@@ -347,13 +354,13 @@ public sealed partial class WorldEngine
                 Value = town.Value.NationId,
                 ObservedTick = SimulationTick,
                 LearnedTick = SimulationTick,
-                OriginResidentId = pioneer.Id,
-                OriginProfession = pioneer.Profession,
-                SourceResidentId = pioneer.Id,
+                OriginResidentId = pioneer.Value.Id,
+                OriginProfession = pioneer.Value.Profession,
+                SourceResidentId = pioneer.Value.Id,
                 Text = "拓荒队商定的新家园，物资必须亲自带到",
             };
             RememberAgentFact(pioneer, address);
-            pioneer.Agent = pioneer.Agent.WithGoal(new AgentGoal
+            pioneer.Replace(pioneer.Value.WithAgent(pioneer.Value.Agent.WithGoal(new AgentGoal
             {
                 Kind = AgentGoalKind.ReturnHome,
                 TargetX = x,
@@ -364,7 +371,7 @@ public sealed partial class WorldEngine
                     $"原聚落人口 {citizens.Count}，为拓荒扩展家园；已收到建村勘察报告，选址 {x}, {y} 肥力 {Tiles[location].Value.Fertility}/100，周围有可登记陆地，背负粮木石步行建立新家园",
                 PlayerDirected = true,
                 ReviewTick = SimulationTick + 150,
-            });
+            })));
             citizens.Remove(pioneer);
             _citizens[town.Value.Id].Add(pioneer);
         }
@@ -451,7 +458,7 @@ public sealed partial class WorldEngine
             Residents.Count > 0)
         {
             var person = Residents[RandomInt(Residents.Count)];
-            TriggerDisaster(person.X, person.Y, (DisasterKind)RandomInt(Rules.Disease ? 3 : 2),
+            TriggerDisaster(person.Value.X, person.Value.Y, (DisasterKind)RandomInt(Rules.Disease ? 3 : 2),
                 2 + Rules.DisasterStrength * 2);
         }
     }

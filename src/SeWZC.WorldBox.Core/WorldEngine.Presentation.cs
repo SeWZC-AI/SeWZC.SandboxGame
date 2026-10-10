@@ -39,29 +39,29 @@ public sealed partial class WorldEngine
     /// <param name="steps">最多预览的步数，计算时限制在 0 至 64。</param>
     public IReadOnlyList<RoutePoint> PreviewResidentRoute(int residentId, int steps = 24)
     {
-        var person = Residents.FirstOrDefault(r => r.Id == residentId);
-        if (person is null || person.ArmyId != 0 || person.Agent.Goal.Kind == AgentGoalKind.Idle)
+        var person = Residents.FirstOrDefault(r => r.Value.Id == residentId);
+        if (person is null || person.Value.ArmyId != 0 || person.Value.Agent.Goal.Kind == AgentGoalKind.Idle)
             return [];
-        var goal = person.Agent.Goal;
+        var goal = person.Value.Agent.Goal;
         if (!InBounds(goal.TargetX, goal.TargetY))
             return [];
         var targetX = goal.TargetX;
         var targetY = goal.TargetY;
         var factory = goal.Kind == AgentGoalKind.Work
             ? Buildings.FirstOrDefault(b =>
-                b.Value.Id == goal.TargetEntityId && b.Value.SettlementId == person.SettlementId && b.Value.IsCompleted)
+                b.Value.Id == goal.TargetEntityId && b.Value.SettlementId == person.Value.SettlementId && b.Value.IsCompleted)
             : null;
         var production = factory is null ? null : ProductionRules.For(factory.Value.Kind);
-        if (production is not null && _settlements.TryGetValue(person.SettlementId, out var home))
+        if (production is not null && _settlements.TryGetValue(person.Value.SettlementId, out var home))
         {
-            var needsInputs = MissingResources(person.Inventory, production.Input) is not null;
+            var needsInputs = MissingResources(person.Value.Inventory, production.Input) is not null;
             targetX = needsInputs ? home.Value.X : factory!.Value.X;
             targetY = needsInputs ? home.Value.Y : factory!.Value.Y;
         }
 
-        var cursor = new ResidentCursor(person.Value);
-        var route = new List<RoutePoint> { new(cursor.X, cursor.Y) };
-        var visited = new HashSet<int> { Index(cursor.X, cursor.Y) };
+        var cursor = new StateReference<Resident>(person.Value);
+        var route = new List<RoutePoint> { new(cursor.Value.X, cursor.Value.Y) };
+        var visited = new HashSet<int> { Index(cursor.Value.X, cursor.Value.Y) };
         for (var i = 0; i < Math.Clamp(steps, 0, 64); i++)
         {
             var interactionRange = production is not null || goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest
@@ -74,18 +74,18 @@ public sealed partial class WorldEngine
                                                                    IsWaterfrontBuilding(b.Value.Kind))))
                 ? 1
                 : 0;
-            if (Distance(cursor.X, cursor.Y, targetX, targetY) <= interactionRange &&
-                Walkable(cursor.X, cursor.Y, cursor.Race))
+            if (Distance(cursor.Value.X, cursor.Value.Y, targetX, targetY) <= interactionRange &&
+                Walkable(cursor.Value.X, cursor.Value.Y, cursor.Value.Race))
                 break;
             var next = SelectAgentStep(cursor, targetX, targetY, out var navigation);
-            cursor.Agent = cursor.Agent.WithGoal(navigation);
+            cursor.Replace(cursor.Value.WithAgent(cursor.Value.Agent.WithGoal(navigation)));
             if (next < 0 || !visited.Add(next))
                 break;
             cursor.Replace(cursor.Value with
             {
-                FromX = cursor.X, FromY = cursor.Y, X = next % Width, Y = next / Width,
+                FromX = cursor.Value.X, FromY = cursor.Value.Y, X = next % Width, Y = next / Width,
             });
-            route.Add(new RoutePoint(cursor.X, cursor.Y));
+            route.Add(new RoutePoint(cursor.Value.X, cursor.Value.Y));
         }
 
         return route;

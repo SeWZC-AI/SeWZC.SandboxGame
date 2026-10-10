@@ -32,25 +32,25 @@ public sealed class ResidentBehaviorTests
                 WildlifePopulation = 0,
                 OtherWildlife = new WildlifePopulations(),
             });
-        fixture.Resident.Inventory = new ResourceStock { Water = 10 };
-        fixture.Resident.Hunger = 90;
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Water = 10 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithHunger(90));
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = 100 });
         fixture.Engine.Step();
-        Assert.Equal(AgentGoalKind.Explore, fixture.Resident.Agent.Goal.Kind);
+        Assert.Equal(AgentGoalKind.Explore, fixture.Resident.Value.Agent.Goal.Kind);
         var source = fixture.Engine.Tiles[16 * 32 + 19];
         source.Replace(source.Value with { Wildlife = WildlifeKind.Rabbit, WildlifePopulation = 20 });
-        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = new AgentGoal() };
-        fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = 0 };
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Goal = new AgentGoal() }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = 0 }));
         fixture.Engine.Step(4);
-        Assert.Equal(AgentGoalKind.Hunt, fixture.Resident.Agent.Goal.Kind);
-        Assert.Equal(19, fixture.Resident.Agent.Goal.TargetX);
+        Assert.Equal(AgentGoalKind.Hunt, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Equal(19, fixture.Resident.Value.Agent.Goal.TargetX);
         source.Replace(source.Value with { WildlifePopulation = 0 });
-        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = new AgentGoal() };
-        fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = 0 };
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Goal = new AgentGoal() }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = 0 }));
 
         fixture.Engine.Step(4);
 
-        Assert.NotEqual(AgentGoalKind.Hunt, fixture.Resident.Agent.Goal.Kind);
+        Assert.NotEqual(AgentGoalKind.Hunt, fixture.Resident.Value.Agent.Goal.Kind);
     }
 
     /// <summary>已找到的采集点被新山障或火场隔断后，下次安排不能沿旧可达性继续派工。</summary>
@@ -78,23 +78,23 @@ public sealed class ResidentBehaviorTests
         {
             ResourceAmount = 100, Fertility = 100, Plants = new PlantCoverage { Grass = 1 },
         });
-        fixture.Resident.Inventory = new ResourceStock { Water = 10 };
-        fixture.Resident.Hunger = 90;
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Water = 10 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithHunger(90));
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = 100 });
         fixture.Engine.Step();
-        Assert.Equal(AgentGoalKind.Gather, fixture.Resident.Agent.Goal.Kind);
-        Assert.Equal(20, fixture.Resident.Agent.Goal.TargetX);
+        Assert.Equal(AgentGoalKind.Gather, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Equal(20, fixture.Resident.Value.Agent.Goal.TargetX);
         var blocked = fixture.Engine.Tiles[16 * 32 + 18];
         if (fire)
             blocked.Replace(blocked.Value.WithFireTicks(12));
         else
             blocked.Replace(blocked.Value.WithTerrain(TerrainType.Mountain));
-        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = new AgentGoal() };
-        fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = 0 };
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Goal = new AgentGoal() }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = 0 }));
 
         fixture.Engine.Step(4);
 
-        Assert.NotEqual(AgentGoalKind.Gather, fixture.Resident.Agent.Goal.Kind);
+        Assert.NotEqual(AgentGoalKind.Gather, fixture.Resident.Value.Agent.Goal.Kind);
     }
 
     /// <summary>同样的土地按同样速率恢复，地图变大不能令该地格的恢复量降低。</summary>
@@ -135,19 +135,19 @@ public sealed class ResidentBehaviorTests
                 WildlifePopulation = 0,
                 OtherWildlife = new WildlifePopulations(),
             });
-        fixture.Resident.Inventory = new ResourceStock { Water = 10 };
-        fixture.Resident.Hunger = 90;
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Water = 10 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithHunger(90));
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = 100 });
 
         fixture.Engine.Step();
 
-        Assert.Equal(AgentGoalKind.Explore, fixture.Resident.Agent.Goal.Kind);
-        var target = fixture.Resident.Agent.Goal;
+        Assert.Equal(AgentGoalKind.Explore, fixture.Resident.Value.Agent.Goal.Kind);
+        var target = fixture.Resident.Value.Agent.Goal;
         Assert.InRange(Math.Abs(target.TargetX - 16) + Math.Abs(target.TargetY - 16), 1, 6);
         Assert.True(RaceTerrainRules.CanWalk(fixture.Engine.State.Tiles[target.TargetY * 32 + target.TargetX],
             RaceKind.Human));
-        Assert.Equal(0, fixture.Resident.Inventory.Food);
-        Assert.True(fixture.Resident.Hunger > 90);
+        Assert.Equal(0, fixture.Resident.Value.Inventory.Food);
+        Assert.True(fixture.Resident.Value.Hunger > 90);
     }
 
     /// <summary>已查过的可采食地点变成贫瘠地、裸地或旱地后，下一次决策读取实际变化。</summary>
@@ -172,14 +172,14 @@ public sealed class ResidentBehaviorTests
             Fertility = 50,
             Improvement = LandImprovement.None,
         });
-        fixture.Resident.Inventory = new ResourceStock { Water = 10 };
-        fixture.Resident.Hunger = 90;
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Water = 10 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithHunger(90));
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = 100 });
-        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = new AgentGoal() };
-        fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = 0 };
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Goal = new AgentGoal() }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = 0 }));
         fixture.Engine.Step();
-        Assert.Equal(AgentGoalKind.Gather, fixture.Resident.Agent.Goal.Kind);
-        Assert.Equal(17, fixture.Resident.Agent.Goal.TargetX);
+        Assert.Equal(AgentGoalKind.Gather, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Equal(17, fixture.Resident.Value.Agent.Goal.TargetX);
 
         source.Replace(change switch
         {
@@ -189,11 +189,11 @@ public sealed class ResidentBehaviorTests
             "drought" => source.Value with { DroughtTicks = 12 },
             _ => source.Value with { Terrain = TerrainType.Mountain },
         });
-        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = new AgentGoal() };
-        fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = 0 };
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Goal = new AgentGoal() }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = 0 }));
         fixture.Engine.Step(4);
 
-        Assert.NotEqual(AgentGoalKind.Gather, fixture.Resident.Agent.Goal.Kind);
+        Assert.NotEqual(AgentGoalKind.Gather, fixture.Resident.Value.Agent.Goal.Kind);
     }
 
     /// <summary>短路线来自原有视野，抵达后继续使用；存档恢复保持路线与下一步一致。</summary>
@@ -203,17 +203,17 @@ public sealed class ResidentBehaviorTests
         var fixture = Prepare();
         SetJourney(fixture, 10, 10, 15, 10);
         fixture.Engine.Step();
-        var goal = fixture.Resident.Agent.Goal;
+        var goal = fixture.Resident.Value.Agent.Goal;
         Assert.InRange(goal.NavigationRoute.Length, 2, 7);
         Assert.All(goal.NavigationRoute, index =>
             Assert.InRange(Math.Abs(index % 32 - 10) + Math.Abs(index / 32 - 10), 0, 6));
         var restored = WorldEngine.ImportJson(fixture.Engine.ExportJson());
         var next = goal.NavigationRoute[goal.NavigationRouteOffset];
 
-        fixture.Engine.Step(fixture.Resident.MoveDurationTicks);
+        fixture.Engine.Step(fixture.Resident.Value.MoveDurationTicks);
         restored.Step(restored.State.Residents[0].MoveDurationTicks);
 
-        Assert.Equal(next, fixture.Resident.Y * 32 + fixture.Resident.X);
+        Assert.Equal(next, fixture.Resident.Value.Y * 32 + fixture.Resident.Value.X);
         Assert.Equal(fixture.Engine.ExportJson(), restored.ExportJson());
         Assert.Equal(2, goal.NavigationRouteOffset);
     }
@@ -225,15 +225,15 @@ public sealed class ResidentBehaviorTests
         var fixture = Prepare();
         SetJourney(fixture, 10, 10, 15, 10);
         fixture.Engine.Step();
-        var goal = fixture.Resident.Agent.Goal;
+        var goal = fixture.Resident.Value.Agent.Goal;
         var blocked = goal.NavigationRoute[goal.NavigationRouteOffset];
         fixture.Engine.Tiles[blocked].Replace(fixture.Engine.Tiles[blocked].Value.WithTerrain(TerrainType.Mountain));
 
-        fixture.Engine.Step(fixture.Resident.MoveDurationTicks);
+        fixture.Engine.Step(fixture.Resident.Value.MoveDurationTicks);
 
-        Assert.NotEqual(blocked, fixture.Resident.Y * 32 + fixture.Resident.X);
-        Assert.True(RaceTerrainRules.CanWalk(fixture.Engine.State.Tiles[fixture.Resident.Y * 32 + fixture.Resident.X],
-            fixture.Resident.Race));
+        Assert.NotEqual(blocked, fixture.Resident.Value.Y * 32 + fixture.Resident.Value.X);
+        Assert.True(RaceTerrainRules.CanWalk(fixture.Engine.State.Tiles[fixture.Resident.Value.Y * 32 + fixture.Resident.Value.X],
+            fixture.Resident.Value.Race));
     }
 
     /// <summary>目标在视野内外时均比较可见道路，允许先偏离目标方向再沿更快的路前进。</summary>
@@ -249,9 +249,9 @@ public sealed class ResidentBehaviorTests
 
         fixture.Engine.Step();
 
-        Assert.Equal(10, fixture.Resident.X);
-        Assert.Equal(11, fixture.Resident.Y);
-        Assert.Equal(1, fixture.Resident.MoveDurationTicks);
+        Assert.Equal(10, fixture.Resident.Value.X);
+        Assert.Equal(11, fixture.Resident.Value.Y);
+        Assert.Equal(1, fixture.Resident.Value.MoveDurationTicks);
     }
 
     /// <summary>目标在视野内外时，耗时相近均更愿意走本人记得的路线。</summary>
@@ -262,12 +262,12 @@ public sealed class ResidentBehaviorTests
     {
         var fixture = Prepare();
         SetJourney(fixture, 10, 10, target, target);
-        fixture.Resident.Agent = fixture.Resident.Agent with { FamiliarTiles = [11 * 32 + 10] };
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { FamiliarTiles = [11 * 32 + 10] }));
 
         fixture.Engine.Step();
 
-        Assert.Equal(10, fixture.Resident.X);
-        Assert.Equal(11, fixture.Resident.Y);
+        Assert.Equal(10, fixture.Resident.Value.X);
+        Assert.Equal(11, fixture.Resident.Value.Y);
     }
 
     /// <summary>熟路被地形编辑切断后使用当前可行路径，不能盲从记忆。</summary>
@@ -276,13 +276,13 @@ public sealed class ResidentBehaviorTests
     {
         var fixture = Prepare();
         SetJourney(fixture, 10, 10, 12, 12);
-        fixture.Resident.Agent = fixture.Resident.Agent with { FamiliarTiles = [11 * 32 + 10] };
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { FamiliarTiles = [11 * 32 + 10] }));
         fixture.Engine.Tiles[11 * 32 + 10].Replace(fixture.Engine.Tiles[11 * 32 + 10].Value.WithTerrain(TerrainType.Mountain));
 
         fixture.Engine.Step();
 
-        Assert.Equal(11, fixture.Resident.X);
-        Assert.Equal(10, fixture.Resident.Y);
+        Assert.Equal(11, fixture.Resident.Value.X);
+        Assert.Equal(10, fixture.Resident.Value.Y);
     }
 
     /// <summary>实际抵达前只记住出发地，不把逻辑目的地提前当作熟路。</summary>
@@ -294,10 +294,10 @@ public sealed class ResidentBehaviorTests
 
         fixture.Engine.Step();
 
-        Assert.Contains(10 * 32 + 10, fixture.Resident.Agent.FamiliarTiles);
-        Assert.DoesNotContain(10 * 32 + 11, fixture.Resident.Agent.FamiliarTiles);
-        fixture.Engine.Step(fixture.Resident.MoveDurationTicks);
-        Assert.Contains(10 * 32 + 11, fixture.Resident.Agent.FamiliarTiles);
+        Assert.Contains(10 * 32 + 10, fixture.Resident.Value.Agent.FamiliarTiles);
+        Assert.DoesNotContain(10 * 32 + 11, fixture.Resident.Value.Agent.FamiliarTiles);
+        fixture.Engine.Step(fixture.Resident.Value.MoveDurationTicks);
+        Assert.Contains(10 * 32 + 11, fixture.Resident.Value.Agent.FamiliarTiles);
     }
 
     /// <summary>日常补水优先选择可达河岸，不依赖最近的零散陆地供水。</summary>
@@ -305,18 +305,18 @@ public sealed class ResidentBehaviorTests
     public void Ordinary_water_collection_prefers_a_reliable_river()
     {
         var fixture = Prepare(true);
-        fixture.Resident.Inventory = new ResourceStock { Food = 10 };
-        fixture.Resident.Thirst = 20;
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Food = 10 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithThirst(20));
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.SimulationTick + 2 });
         fixture.Engine.Tiles[16 * 32 + 17].Replace(fixture.Engine.Tiles[16 * 32 + 17].Value.WithNaturalWaterYield(.08));
         fixture.Engine.Tiles[16 * 32 + 19].Replace(fixture.Engine.Tiles[16 * 32 + 19].Value.WithTerrain(TerrainType.River));
 
         fixture.Engine.Step();
 
-        Assert.Equal(AgentGoalKind.FetchWater, fixture.Resident.Agent.Goal.Kind);
-        Assert.Equal(16 * 32 + 19 + 1, fixture.Resident.Agent.Goal.TargetEntityId);
-        Assert.Equal(18, fixture.Resident.Agent.Goal.TargetX);
-        Assert.Equal(16, fixture.Resident.Agent.Goal.TargetY);
+        Assert.Equal(AgentGoalKind.FetchWater, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Equal(16 * 32 + 19 + 1, fixture.Resident.Value.Agent.Goal.TargetEntityId);
+        Assert.Equal(18, fixture.Resident.Value.Agent.Goal.TargetX);
+        Assert.Equal(16, fixture.Resident.Value.Agent.Goal.TargetY);
     }
 
     /// <summary>近处自然供水充足时，仍比较评分更高的远处河岸。</summary>
@@ -324,16 +324,16 @@ public sealed class ResidentBehaviorTests
     public void Water_collection_compares_a_farther_river_with_abundant_groundwater()
     {
         var fixture = Prepare(true);
-        fixture.Resident.Inventory = new ResourceStock { Food = 10 };
-        fixture.Resident.Thirst = 20;
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Food = 10 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithThirst(20));
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.SimulationTick + 2 });
         fixture.Engine.Tiles[16 * 32 + 17].Replace(fixture.Engine.Tiles[16 * 32 + 17].Value.WithNaturalWaterYield(1));
         fixture.Engine.Tiles[16 * 32 + 20].Replace(fixture.Engine.Tiles[16 * 32 + 20].Value.WithTerrain(TerrainType.River));
 
         fixture.Engine.Step();
 
-        Assert.Equal(16 * 32 + 20 + 1, fixture.Resident.Agent.Goal.TargetEntityId);
-        Assert.Equal(19, fixture.Resident.Agent.Goal.TargetX);
+        Assert.Equal(16 * 32 + 20 + 1, fixture.Resident.Value.Agent.Goal.TargetEntityId);
+        Assert.Equal(19, fixture.Resident.Value.Agent.Goal.TargetX);
     }
 
     /// <summary>严重缺水时近处不足一天的水不能排除远处足量水源。</summary>
@@ -341,15 +341,15 @@ public sealed class ResidentBehaviorTests
     public void Critical_water_collection_does_not_stop_at_an_insufficient_nearby_source()
     {
         var fixture = Prepare(true);
-        fixture.Resident.Inventory = new ResourceStock { Food = 10 };
-        fixture.Resident.Thirst = 90;
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Food = 10 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithThirst(90));
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.SimulationTick + 2 });
         fixture.Engine.Tiles[16 * 32 + 17].Replace(fixture.Engine.Tiles[16 * 32 + 17].Value.WithNaturalWaterYield(.01));
         fixture.Engine.Tiles[16 * 32 + 21].Replace(fixture.Engine.Tiles[16 * 32 + 21].Value.WithTerrain(TerrainType.River));
 
         fixture.Engine.Step();
 
-        Assert.Equal(16 * 32 + 21 + 1, fixture.Resident.Agent.Goal.TargetEntityId);
+        Assert.Equal(16 * 32 + 21 + 1, fixture.Resident.Value.Agent.Goal.TargetEntityId);
     }
 
     /// <summary>严重脱水时先去最近的运营水井，不能为惯常河岸延误补水。</summary>
@@ -357,15 +357,15 @@ public sealed class ResidentBehaviorTests
     public void Critical_thirst_prefers_nearby_sufficient_water()
     {
         var fixture = Prepare(true);
-        fixture.Resident.Inventory = new ResourceStock { Food = 10 };
-        fixture.Resident.Thirst = 90;
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Food = 10 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithThirst(90));
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.SimulationTick + 2 });
         fixture.AddWell(17, 16, .1);
         fixture.Engine.Tiles[16 * 32 + 21].Replace(fixture.Engine.Tiles[16 * 32 + 21].Value.WithTerrain(TerrainType.River));
 
         fixture.Engine.Step();
 
-        Assert.Equal(16 * 32 + 17 + 1, fixture.Resident.Agent.Goal.TargetEntityId);
+        Assert.Equal(16 * 32 + 17 + 1, fixture.Resident.Value.Agent.Goal.TargetEntityId);
     }
 
     /// <summary>日常取水选择实际运营水井，停用后只能转向河湖，不能打取普通地块供水。</summary>
@@ -375,8 +375,8 @@ public sealed class ResidentBehaviorTests
     public void Water_collection_accounts_for_well_operation(bool enabled, int expectedX)
     {
         var fixture = Prepare(true);
-        fixture.Resident.Inventory = new ResourceStock { Food = 10 };
-        fixture.Resident.Thirst = 20;
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Food = 10 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithThirst(20));
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.SimulationTick + 2 });
         for (var x = 17; x <= 18; x++)
         {
@@ -393,7 +393,7 @@ public sealed class ResidentBehaviorTests
 
         fixture.Engine.Step();
 
-        Assert.Equal(16 * 32 + expectedX + 1, fixture.Resident.Agent.Goal.TargetEntityId);
+        Assert.Equal(16 * 32 + expectedX + 1, fixture.Resident.Value.Agent.Goal.TargetEntityId);
     }
 
     /// <summary>视野内的淡水也必须有可达取水位置，隔山的河流不能成为目标。</summary>
@@ -401,8 +401,8 @@ public sealed class ResidentBehaviorTests
     public void Water_collection_rejects_an_inaccessible_river()
     {
         var fixture = Prepare(true);
-        fixture.Resident.Inventory = new ResourceStock { Food = 10 };
-        fixture.Resident.Thirst = 20;
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Food = 10 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithThirst(20));
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.SimulationTick + 2 });
         for (var y = 0; y < 32; y++)
             fixture.Engine.Tiles[y * 32 + 18].Replace(fixture.Engine.Tiles[y * 32 + 18].Value.WithTerrain(TerrainType.Mountain));
@@ -411,7 +411,7 @@ public sealed class ResidentBehaviorTests
 
         fixture.Engine.Step();
 
-        Assert.Equal(16 * 32 + 17 + 1, fixture.Resident.Agent.Goal.TargetEntityId);
+        Assert.Equal(16 * 32 + 17 + 1, fixture.Resident.Value.Agent.Goal.TargetEntityId);
     }
 
     /// <summary>剩余几天饮水时主动补水，不等到口渴或脱水才安排。</summary>
@@ -419,16 +419,16 @@ public sealed class ResidentBehaviorTests
     public void Water_collection_replenishes_a_low_reserve_before_thirst()
     {
         var fixture = Prepare(true);
-        fixture.Resident.Inventory = new ResourceStock { Food = 10, Water = .08 };
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Food = 10, Water = .08 }));
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.SimulationTick + 2 });
         fixture.Engine.Tiles[16 * 32 + 16].Replace(fixture.Engine.Tiles[16 * 32 + 16].Value.WithNaturalWaterYield(.03));
         fixture.Engine.Tiles[16 * 32 + 19].Replace(fixture.Engine.Tiles[16 * 32 + 19].Value.WithTerrain(TerrainType.River));
 
         fixture.Engine.Step();
 
-        Assert.Equal(0, fixture.Resident.Thirst);
-        Assert.Equal(AgentGoalKind.FetchWater, fixture.Resident.Agent.Goal.Kind);
-        Assert.Equal(16 * 32 + 19 + 1, fixture.Resident.Agent.Goal.TargetEntityId);
+        Assert.Equal(0, fixture.Resident.Value.Thirst);
+        Assert.Equal(AgentGoalKind.FetchWater, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Equal(16 * 32 + 19 + 1, fixture.Resident.Value.Agent.Goal.TargetEntityId);
     }
 
     /// <summary>普通陆地的环境供水不能装进背包，失效的取水任务立即请求重选。</summary>
@@ -437,20 +437,20 @@ public sealed class ResidentBehaviorTests
     {
         var fixture = Prepare(true);
         fixture.Engine.Tiles[16 * 32 + 16].Replace(fixture.Engine.Tiles[16 * 32 + 16].Value.WithNaturalWaterYield(.08));
-        fixture.Resident.Inventory = new ResourceStock { Food = 10, Water = .03 };
-        fixture.Resident.Agent = fixture.Resident.Agent with
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Food = 10, Water = .03 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Goal = new AgentGoal
             {
                 Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 16, TargetEntityId = 16 * 32 + 16 + 1,
             },
-        };
+        }));
 
         Assert.False(fixture.Engine.TryFetchWater(fixture.Resident.Value));
 
-        Assert.Equal(.03, fixture.Resident.Inventory.Water, 6);
-        Assert.Equal(AgentGoalKind.Idle, fixture.Resident.Agent.Goal.Kind);
-        Assert.Equal(fixture.Engine.SimulationTick, fixture.Resident.Agent.NextThinkTick);
+        Assert.Equal(.03, fixture.Resident.Value.Inventory.Water, 6);
+        Assert.Equal(AgentGoalKind.Idle, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Equal(fixture.Engine.SimulationTick, fixture.Resident.Value.Agent.NextThinkTick);
         Assert.Equal(0, fixture.Engine.AvailableWater(16, 16));
         Assert.Equal(0, fixture.Engine.GetDailyWaterCapacity(16, 16));
         Assert.Equal(0, fixture.Town.Value.Resources.Water);
@@ -466,23 +466,23 @@ public sealed class ResidentBehaviorTests
         var wellId = fixture.AddWell(16, 17, .101);
         fixture.Engine.Buildings.Single(building => building.Value.Id == wellId).Replace(fixture.Engine.Buildings.Single(building => building.Value.Id == wellId).Value with { Enabled = enabled });
         fixture.Engine.Tiles[17 * 32 + 16].Replace(fixture.Engine.Tiles[17 * 32 + 16].Value.WithDroughtTicks(drought));
-        fixture.Resident.X = fixture.Resident.FromX = 16;
-        fixture.Resident.Y = fixture.Resident.FromY = 17;
-        fixture.Resident.Inventory = new ResourceStock();
-        fixture.Resident.Agent = fixture.Resident.Agent with { NextThinkTick = fixture.Engine.SimulationTick + 100 };
-        fixture.Resident.Agent = fixture.Resident.Agent with
+        fixture.Resident.Replace(fixture.Resident.Value with { FromX = 16, X = 16 });
+        fixture.Resident.Replace(fixture.Resident.Value with { FromY = 17, Y = 17 });
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock()));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = fixture.Engine.SimulationTick + 100 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Goal = new AgentGoal
             {
                 Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 17, TargetEntityId = 17 * 32 + 16 + 1,
             },
-        };
+        }));
 
         Assert.False(fixture.Engine.TryFetchWater(fixture.Resident.Value));
 
-        Assert.Equal(AgentGoalKind.Idle, fixture.Resident.Agent.Goal.Kind);
-        Assert.Equal(fixture.Engine.SimulationTick, fixture.Resident.Agent.NextThinkTick);
-        Assert.Equal(0, fixture.Resident.Inventory.Water);
+        Assert.Equal(AgentGoalKind.Idle, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Equal(fixture.Engine.SimulationTick, fixture.Resident.Value.Agent.NextThinkTick);
+        Assert.Equal(0, fixture.Resident.Value.Inventory.Water);
         Assert.True(WorldEngine.DailyWaterYield(fixture.Engine.State.Tiles[17 * 32 + 16]) > 0);
     }
 
@@ -546,9 +546,9 @@ public sealed class ResidentBehaviorTests
 
         fixture.Engine.Step();
 
-        Assert.Equal(AgentGoalKind.Flee, fixture.Resident.Agent.Goal.Kind);
-        Assert.Equal(17, fixture.Resident.Agent.Goal.TargetX);
-        Assert.Equal(16, fixture.Resident.Agent.Goal.TargetY);
+        Assert.Equal(AgentGoalKind.Flee, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Equal(17, fixture.Resident.Value.Agent.Goal.TargetX);
+        Assert.Equal(16, fixture.Resident.Value.Agent.Goal.TargetY);
     }
 
     /// <summary>病伤者不因扑火优先级高于普通工作而再次参与危险劳动。</summary>
@@ -558,13 +558,13 @@ public sealed class ResidentBehaviorTests
     public void Poor_health_does_not_volunteer_for_firefighting(double health, int sickness)
     {
         var fixture = Prepare();
-        fixture.Resident.Health = health;
-        fixture.Resident.SicknessTicks = sickness;
+        fixture.Resident.Replace(fixture.Resident.Value.WithHealth(health));
+        fixture.Resident.Replace(fixture.Resident.Value.WithSicknessTicks(sickness));
         fixture.Engine.TriggerDisaster(18, 16, DisasterKind.Fire, 1);
 
         fixture.Engine.Step();
 
-        Assert.Equal(AgentGoalKind.Rest, fixture.Resident.Agent.Goal.Kind);
+        Assert.Equal(AgentGoalKind.Rest, fixture.Resident.Value.Agent.Goal.Kind);
     }
 
     /// <summary>火场虽在视野内，隔山无法到达安全边缘时不能接下扑火任务。</summary>
@@ -578,7 +578,7 @@ public sealed class ResidentBehaviorTests
 
         fixture.Engine.Step();
 
-        Assert.NotEqual(AgentGoalKind.ExtinguishFire, fixture.Resident.Agent.Goal.Kind);
+        Assert.NotEqual(AgentGoalKind.ExtinguishFire, fixture.Resident.Value.Agent.Goal.Kind);
     }
 
     /// <summary>患病或重伤打断普通工作，自主选择休养。</summary>
@@ -588,20 +588,20 @@ public sealed class ResidentBehaviorTests
     public void Poor_health_interrupts_ordinary_work(double health, int sickness)
     {
         var fixture = Prepare();
-        fixture.Resident.Health = health;
-        fixture.Resident.SicknessTicks = sickness;
-        fixture.Resident.Agent = fixture.Resident.Agent with
+        fixture.Resident.Replace(fixture.Resident.Value.WithHealth(health));
+        fixture.Resident.Replace(fixture.Resident.Value.WithSicknessTicks(sickness));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Goal = new AgentGoal
             {
                 Kind = AgentGoalKind.Gather, TargetX = 16, TargetY = 16, ReviewTick = 0,
             },
-        };
+        }));
 
         fixture.Engine.Step();
 
-        Assert.Equal(AgentGoalKind.Rest, fixture.Resident.Agent.Goal.Kind);
-        Assert.Equal(ResidentActivity.Resting, fixture.Resident.Activity);
+        Assert.Equal(AgentGoalKind.Rest, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Equal(ResidentActivity.Resting, fixture.Resident.Value.Activity);
     }
 
     /// <summary>患者前往眼前运营的医疗点，医疗点停用时改回家休养。</summary>
@@ -621,7 +621,7 @@ public sealed class ResidentBehaviorTests
 
         var clinicId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Infirmary, 14, 16);
         var clinic = fixture.Engine.Buildings.Single(building => building.Value.Id == clinicId);
-        var worker = fixture.Engine.Residents.Single(person => person.Id != fixture.ResidentId);
+        var worker = fixture.Engine.Residents.Single(person => person.Value.Id != fixture.ResidentId);
         worker.Replace(worker.Value with
         {
             Age = 25,
@@ -630,7 +630,7 @@ public sealed class ResidentBehaviorTests
             Y = 16,
             FromX = 14,
             FromY = 16,
-            Agent = worker.Agent with
+            Agent = worker.Value.Agent with
             {
                 Initialized = true,
                 NextThinkTick = 100,
@@ -639,14 +639,14 @@ public sealed class ResidentBehaviorTests
         });
         clinic.Replace(clinic.Value with { Enabled = enabled });
         clinic.Replace(clinic.Value with { LastWorkedTick = fixture.Engine.SimulationTick });
-        clinic.Replace(clinic.Value with { Workers = clinic.Value.Workers.Add(worker.Id) });
-        fixture.Resident.Health = 30;
+        clinic.Replace(clinic.Value with { Workers = clinic.Value.Workers.Add(worker.Value.Id) });
+        fixture.Resident.Replace(fixture.Resident.Value.WithHealth(30));
 
         fixture.Engine.Step();
 
-        Assert.Equal(AgentGoalKind.Rest, fixture.Resident.Agent.Goal.Kind);
-        Assert.Equal(enabled ? clinicId : 0, fixture.Resident.Agent.Goal.TargetEntityId);
-        Assert.Equal(enabled ? 14 : 16, fixture.Resident.Agent.Goal.TargetX);
+        Assert.Equal(AgentGoalKind.Rest, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Equal(enabled ? clinicId : 0, fixture.Resident.Value.Agent.Goal.TargetEntityId);
+        Assert.Equal(enabled ? 14 : 16, fixture.Resident.Value.Agent.Goal.TargetX);
     }
 
     /// <summary>养伤期间保持休养，身体恢复到安全水平后才重新安排工作。</summary>
@@ -656,15 +656,15 @@ public sealed class ResidentBehaviorTests
     public void Recovery_has_a_higher_release_threshold(double health, bool shouldRest)
     {
         var fixture = Prepare();
-        fixture.Resident.Health = health;
-        fixture.Resident.Agent = fixture.Resident.Agent with
+        fixture.Resident.Replace(fixture.Resident.Value.WithHealth(health));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = 16, TargetY = 16 },
-        };
+        }));
 
         fixture.Engine.Step();
 
-        Assert.Equal(shouldRest, fixture.Resident.Agent.Goal.Kind == AgentGoalKind.Rest);
+        Assert.Equal(shouldRest, fixture.Resident.Value.Agent.Goal.Kind == AgentGoalKind.Rest);
     }
 
     /// <summary>邻山采矿须开采已选中的山体，不能因脚下草地也有少量石头而长期采不到矿石。</summary>
@@ -677,7 +677,7 @@ public sealed class ResidentBehaviorTests
         var mountain = fixture.Engine.Tiles[16 * 32 + 17];
         mountain.Replace(mountain.Value with { Terrain = TerrainType.Mountain, ResourceAmount = 100 });
         fixture.Resident.Replace(fixture.Resident.Value with { Profession = Profession.Miner });
-        fixture.Resident.Agent = fixture.Resident.Agent with
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Goal = new AgentGoal
             {
@@ -687,11 +687,11 @@ public sealed class ResidentBehaviorTests
                 PlayerDirected = true,
                 ReviewTick = fixture.Engine.SimulationTick + 100,
             },
-        };
+        }));
 
         fixture.Engine.Step();
 
-        Assert.True(fixture.Resident.Inventory.Ore > 0);
+        Assert.True(fixture.Resident.Value.Inventory.Ore > 0);
         Assert.True(mountain.Value.ResourceAmount < 100);
         Assert.Equal(100, ground.Value.ResourceAmount);
     }
@@ -707,8 +707,8 @@ public sealed class ResidentBehaviorTests
 
         fixture.Engine.Step();
 
-        Assert.Equal(ResourceKind.Stone, fixture.Resident.Agent.MaterialPriority);
-        Assert.Equal(AgentGoalKind.Work, fixture.Resident.Agent.Goal.Kind);
+        Assert.Equal(ResourceKind.Stone, fixture.Resident.Value.Agent.MaterialPriority);
+        Assert.Equal(AgentGoalKind.Work, fixture.Resident.Value.Agent.Goal.Kind);
     }
 
     private static WorldFixture Prepare(bool thirst = false)
@@ -744,7 +744,7 @@ public sealed class ResidentBehaviorTests
             FromX = 16,
             FromY = 16,
             Inventory = new ResourceStock { Food = 10, Water = 10 },
-            Agent = fixture.Resident.Agent with { Initialized = true, NextThinkTick = 0, Goal = new AgentGoal() },
+            Agent = fixture.Resident.Value.Agent with { Initialized = true, NextThinkTick = 0, Goal = new AgentGoal() },
         });
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock { Food = 40 }));
         return fixture;
@@ -758,7 +758,7 @@ public sealed class ResidentBehaviorTests
             Y = y,
             FromX = x,
             FromY = y,
-            Agent = fixture.Resident.Agent with
+            Agent = fixture.Resident.Value.Agent with
             {
                 NextThinkTick = 100,
                 Goal = new AgentGoal

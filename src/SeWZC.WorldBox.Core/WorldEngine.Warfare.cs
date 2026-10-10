@@ -4,16 +4,16 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private bool IsKnownHostile(ResidentCursor resident, int targetNationId)
+    private bool IsKnownHostile(StateReference<Resident> resident, int targetNationId)
     {
-        var order = resident.Agent.Memory.Where(f =>
-                (f.TargetNationId == 0 || f.TargetNationId == resident.NationId) && f.SubjectId == targetNationId &&
+        var order = resident.Value.Agent.Memory.Where(f =>
+                (f.TargetNationId == 0 || f.TargetNationId == resident.Value.NationId) && f.SubjectId == targetNationId &&
                 f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
             .OrderByDescending(f => f.ObservedTick).ThenByDescending(f => f.Id).FirstOrDefault();
         if (order is not null)
             return order.Kind == AgentFactKind.WarOrder;
         return Armies.Any(a =>
-            a.Value.Id == resident.ArmyId && a.Value.TargetNationId == targetNationId && a.Value.KnownDiplomacy == DiplomaticStatus.War);
+            a.Value.Id == resident.Value.ArmyId && a.Value.TargetNationId == targetNationId && a.Value.KnownDiplomacy == DiplomaticStatus.War);
     }
 
     private void PublishDiplomaticOrder(int nationId, int enemyId, DiplomaticStatus status, int? knownX = null,
@@ -33,7 +33,7 @@ public sealed partial class WorldEngine
 
         var witness =
             Residents.FirstOrDefault(r =>
-                r.NationId == nationId && Distance(r.X, r.Y, capital.Value.X, capital.Value.Y) <= 4);
+                r.Value.NationId == nationId && Distance(r.Value.X, r.Value.Y, capital.Value.X, capital.Value.Y) <= 4);
         var fact = new AgentFact
         {
             Id = NewId(),
@@ -48,8 +48,8 @@ public sealed partial class WorldEngine
             Value = targetSettlementId > 0 ? targetSettlementId : knownX.HasValue ? 0 : enemyCapital.Value.Id,
             ObservedTick = observedTick ?? SimulationTick,
             LearnedTick = SimulationTick,
-            OriginResidentId = witness?.Id ?? 0,
-            SourceResidentId = witness?.Id ?? 0,
+            OriginResidentId = witness?.Value.Id ?? 0,
+            SourceResidentId = witness?.Value.Id ?? 0,
             Text = status == DiplomaticStatus.War ? "首都宣布开战，征召当地志愿者" : "首都宣布停止敌对，前线须等待消息送达",
         };
         if (status == DiplomaticStatus.War)
@@ -89,7 +89,7 @@ public sealed partial class WorldEngine
         if (capital.Value.PublicKnowledge.Count > 24)
             capital.Replace(capital.Value with { PublicKnowledge = capital.Value.PublicKnowledge.RemoveAt(0) });
         foreach (var person in Residents.Where(r =>
-                     r.NationId == nationId && Distance(r.X, r.Y, capital.Value.X, capital.Value.Y) <= 4))
+                     r.Value.NationId == nationId && Distance(r.Value.X, r.Value.Y, capital.Value.X, capital.Value.Y) <= 4))
             RememberAgentFact(person, fact);
     }
 
@@ -115,9 +115,9 @@ public sealed partial class WorldEngine
                         SimulationTick < nation.Value.Military.RecoveryUntilTick))
                     continue;
                 var recruits = Residents.Where(r =>
-                    r.NationId == nation.Value.Id && r.ArmyId == 0 && r.Age >= 16 && r.Health > 50 &&
-                    r.TravelMode == TravelMode.Foot
-                    && Distance(r.X, r.Y, capital.Value.X, capital.Value.Y) <= 5).ToArray();
+                    r.Value.NationId == nation.Value.Id && r.Value.ArmyId == 0 && r.Value.Age >= 16 && r.Value.Health > 50 &&
+                    r.Value.TravelMode == TravelMode.Foot
+                    && Distance(r.Value.X, r.Value.Y, capital.Value.X, capital.Value.Y) <= 5).ToArray();
                 var count = Math.Min(40, recruits.Length / 2);
                 if (count < 3)
                 {
@@ -149,7 +149,7 @@ public sealed partial class WorldEngine
                     Soldiers = count,
                     Supplies = provisions,
                     WaterSupplies = waterProvisions,
-                    CommanderId = recruits[0].Id,
+                    CommanderId = recruits[0].Value.Id,
                     LastOrderTick = order.ObservedTick,
                     LastOrderFactId = order.Id,
                 });
@@ -157,16 +157,16 @@ public sealed partial class WorldEngine
                 foreach (var resident in recruits.Take(count))
                 {
                     resident.Replace(resident.Value with { ArmyId = army.Value.Id });
-                    if (resident.Profession is not (Profession.Ranger or Profession.Battlemage))
+                    if (resident.Value.Profession is not (Profession.Ranger or Profession.Battlemage))
                         resident.Replace(resident.Value with { Profession = Profession.Soldier });
-                    resident.Agent = resident.Agent.WithGoal(new AgentGoal
+                    resident.Replace(resident.Value.WithAgent(resident.Value.Agent.WithGoal(new AgentGoal
                     {
                         Kind = AgentGoalKind.March,
                         TargetX = capital.Value.X,
                         TargetY = capital.Value.Y,
                         StartedTick = SimulationTick,
                         Reason = "听到当地征召，步行前往集结点",
-                    });
+                    })));
                     RememberAgentFact(resident, order);
                 }
 
@@ -184,7 +184,7 @@ public sealed partial class WorldEngine
         {
             if (!Armies.Contains(army))
                 continue;
-            var soldiers = Residents.Where(r => r.ArmyId == army.Value.Id && r.Health > 0).ToArray();
+            var soldiers = Residents.Where(r => r.Value.ArmyId == army.Value.Id && r.Value.Health > 0).ToArray();
             army.Replace(army.Value with { Soldiers = soldiers.Length });
             if (soldiers.Length == 0)
             {
@@ -192,10 +192,10 @@ public sealed partial class WorldEngine
                 continue;
             }
 
-            var commander = soldiers.FirstOrDefault(r => r.Id == army.Value.CommanderId) ?? soldiers[0];
-            army.Replace(army.Value with { CommanderId = commander.Id });
+            var commander = soldiers.FirstOrDefault(r => r.Value.Id == army.Value.CommanderId) ?? soldiers[0];
+            army.Replace(army.Value with { CommanderId = commander.Value.Id });
             // 离队士兵携带的军令须通过本地通信传给指挥官，避免军队即时共享信息。
-            var received = commander.Agent.Memory
+            var received = commander.Value.Agent.Memory
                 .Where(f => (f.TargetNationId == 0 || f.TargetNationId == army.Value.NationId) &&
                             f.SubjectId == army.Value.TargetNationId &&
                             f.Kind is AgentFactKind.WarOrder or AgentFactKind.PeaceOrder)
@@ -236,38 +236,38 @@ public sealed partial class WorldEngine
 
             foreach (var soldier in soldiers)
             {
-                if (Rules.Thirst && Distance(soldier.X, soldier.Y, army.Value.X, army.Value.Y) <= 2 &&
-                    soldier.Inventory.Water < .025)
+                if (Rules.Thirst && Distance(soldier.Value.X, soldier.Value.Y, army.Value.X, army.Value.Y) <= 2 &&
+                    soldier.Value.Inventory.Water < .025)
                 {
                     var water = Math.Min(army.Value.WaterSupplies, .125);
                     army.Replace(army.Value with { WaterSupplies = army.Value.WaterSupplies - (water) });
-                    soldier.Inventory = soldier.Inventory with { Water = soldier.Inventory.Water + water };
+                    soldier.Replace(soldier.Value.WithInventory(soldier.Value.Inventory with { Water = soldier.Value.Inventory.Water + water }));
                 }
 
                 DrinkCarriedWater(soldier);
                 if (!Rules.Hunger)
-                    soldier.Hunger = 0;
-                else if (Distance(soldier.X, soldier.Y, army.Value.X, army.Value.Y) <= 2 &&
+                    soldier.Replace(soldier.Value.WithHunger(0));
+                else if (Distance(soldier.Value.X, soldier.Value.Y, army.Value.X, army.Value.Y) <= 2 &&
                          army.Value.Supplies >= 0.06 / SimulationTime.TicksPerDay)
                 {
                     army.Replace(army.Value with { Supplies = army.Value.Supplies - (0.06 / SimulationTime.TicksPerDay) });
-                    soldier.Hunger = Math.Max(0, soldier.Hunger - 3d / SimulationTime.TicksPerDay);
+                    soldier.Replace(soldier.Value.WithHunger(Math.Max(0, soldier.Value.Hunger - 3d / SimulationTime.TicksPerDay)));
                 }
-                else if (soldier.Inventory.Food >= 0.05 / SimulationTime.TicksPerDay)
+                else if (soldier.Value.Inventory.Food >= 0.05 / SimulationTime.TicksPerDay)
                 {
                     soldier.Replace(soldier.Value with
                     {
-                        Inventory = soldier.Inventory with
+                        Inventory = soldier.Value.Inventory with
                         {
-                            Food = soldier.Inventory.Food - 0.05 / SimulationTime.TicksPerDay,
+                            Food = soldier.Value.Inventory.Food - 0.05 / SimulationTime.TicksPerDay,
                         },
-                        Hunger = Math.Max(0, soldier.Hunger - 3d / SimulationTime.TicksPerDay),
+                        Hunger = Math.Max(0, soldier.Value.Hunger - 3d / SimulationTime.TicksPerDay),
                     });
                 }
                 else
-                    soldier.Hunger = Math.Min(100, soldier.Hunger + .8 / SimulationTime.TicksPerDay);
+                    soldier.Replace(soldier.Value.WithHunger(Math.Min(100, soldier.Value.Hunger + .8 / SimulationTime.TicksPerDay)));
 
-                if (Rules.Hunger && soldier.Hunger > 80)
+                if (Rules.Hunger && soldier.Value.Hunger > 80)
                     DamageResident(soldier, .30 / SimulationTime.TicksPerDay, DeathCause.Starvation);
             }
 
@@ -296,9 +296,9 @@ public sealed partial class WorldEngine
             {
                 if (army.Value.InitialSoldiers > 0 && soldiers.Length * 5 <= army.Value.InitialSoldiers * 3)
                     EndCampaign(army, WarOutcome.HeavyLosses, soldiers);
-                else if ((Rules.Thirst && army.Value.WaterSupplies <= 0 && soldiers.Average(r => r.Thirst) > 60) ||
+                else if ((Rules.Thirst && army.Value.WaterSupplies <= 0 && soldiers.Average(r => r.Value.Thirst) > 60) ||
                          army.Value.Morale < 15 ||
-                         (Rules.Hunger && army.Value.Supplies <= 0 && soldiers.Average(r => r.Hunger) > 40))
+                         (Rules.Hunger && army.Value.Supplies <= 0 && soldiers.Average(r => r.Value.Hunger) > 40))
                     EndCampaign(army, WarOutcome.SupplyShortage, soldiers);
                 else if (army.Value.BlockedTicks >= 5 * SimulationTime.TicksPerDay)
                     EndCampaign(army, WarOutcome.RouteBlocked, soldiers);
@@ -308,15 +308,14 @@ public sealed partial class WorldEngine
 
             var time = SimulationTime.TimeOfDay(SimulationTick);
             if ((time < SimulationTime.WakeTick || time >= SimulationTime.SleepTick)
-                && !soldiers.Any(r => Tiles[Index(r.X, r.Y)].Value.FireTicks > 0)
+                && !soldiers.Any(r => Tiles[Index(r.Value.X, r.Value.Y)].Value.FireTicks > 0)
                 && !Armies.Any(a => a.Value.Id != army.Value.Id && a.Value.NationId == army.Value.TargetNationId
                                                             && Distance(army.Value.X, army.Value.Y, a.Value.X, a.Value.Y) <= 2))
             {
                 army.Replace(army.Value with { Status = "夜间宿营休息" });
                 foreach (var soldier in soldiers)
                 {
-                    soldier.Activity = ResidentActivity.Sleeping;
-                    soldier.Agent = soldier.Agent with { Fatigue = Math.Max(0, soldier.Agent.Fatigue - 2.2) };
+                    soldier.Replace(soldier.Value.WithAction(soldier.Value.Agent with { Fatigue = Math.Max(0, soldier.Value.Agent.Fatigue - 2.2) }, ResidentActivity.Sleeping));
                 }
 
                 continue;
@@ -327,7 +326,7 @@ public sealed partial class WorldEngine
                 foreach (var soldier in soldiers)
                     MoveAgentTowards(soldier, army.Value.X, army.Value.Y);
                 army.Replace(army.Value with { Status = "实地集结" });
-                if (soldiers.Count(r => Distance(r.X, r.Y, army.Value.X, army.Value.Y) <= 1) >=
+                if (soldiers.Count(r => Distance(r.Value.X, r.Value.Y, army.Value.X, army.Value.Y) <= 1) >=
                     Math.Max(2, soldiers.Length * 3 / 4))
                     army.Replace(army.Value with { Gathering = false });
                 continue;
@@ -335,7 +334,7 @@ public sealed partial class WorldEngine
 
             if (army.Value.Retreating)
             {
-                var home = _settlements.GetValueOrDefault(commander.SettlementId);
+                var home = _settlements.GetValueOrDefault(commander.Value.SettlementId);
                 if (home is null)
                 {
                     DisbandArmy(army);
@@ -343,7 +342,7 @@ public sealed partial class WorldEngine
                 }
 
                 army.Replace(army.Value with { Status = OutcomeName(army.Value.Outcome) + "，正在返乡" });
-                if (Distance(commander.X, commander.Y, home.Value.X, home.Value.Y) <= 1)
+                if (Distance(commander.Value.X, commander.Value.Y, home.Value.X, home.Value.Y) <= 1)
                 {
                     DisbandArmy(army);
                     continue;
@@ -355,18 +354,18 @@ public sealed partial class WorldEngine
 
             var opponent = Armies.FirstOrDefault(a =>
                 a.Value.Id != army.Value.Id && a.Value.NationId == army.Value.TargetNationId && Distance(army.Value.X, army.Value.Y, a.Value.X, a.Value.Y) <= 2);
-            foreach (var ranger in soldiers.Where(p => p.Profession == Profession.Ranger))
+            foreach (var ranger in soldiers.Where(p => p.Value.Profession == Profession.Ranger))
             {
-                if (depot is not null && Distance(ranger.X, ranger.Y, depot.Value.X, depot.Value.Y) <= 1)
+                if (depot is not null && Distance(ranger.Value.X, ranger.Value.Y, depot.Value.X, depot.Value.Y) <= 1)
                 {
-                    var ammo = Math.Min(depot.Value.Resources.Ammunition, Math.Max(0, 8 - ranger.Inventory.Ammunition));
+                    var ammo = Math.Min(depot.Value.Resources.Ammunition, Math.Max(0, 8 - ranger.Value.Inventory.Ammunition));
                     depot.Replace(depot.Value.WithResources(depot.Value.Resources with { Ammunition = depot.Value.Resources.Ammunition - ammo }));
-                    ranger.Inventory = ranger.Inventory with { Ammunition = ranger.Inventory.Ammunition + ammo };
+                    ranger.Replace(ranger.Value.WithInventory(ranger.Value.Inventory with { Ammunition = ranger.Value.Inventory.Ammunition + ammo }));
                 }
 
-                var enemy = LocalHostile(ranger, ranger.X, ranger.Y, 4);
-                if (enemy is not null && RangedAttackError(ranger.Id, enemy.Id) is null)
-                    RangedAttack(ranger.Id, enemy.Id);
+                var enemy = LocalHostile(ranger, ranger.Value.X, ranger.Value.Y, 4);
+                if (enemy is not null && RangedAttackError(ranger.Value.Id, enemy.Value.Id) is null)
+                    RangedAttack(ranger.Value.Id, enemy.Value.Id);
             }
 
             if (opponent is not null)
@@ -377,8 +376,8 @@ public sealed partial class WorldEngine
                 {
                     ApplyDamage(
                         Residents.Where(r =>
-                            r.ArmyId == opponent.Value.Id && r.Health > 0 && Distance(r.X, r.Y, army.Value.X, army.Value.Y) <= 3),
-                        soldiers.Count(r => Distance(r.X, r.Y, army.Value.X, army.Value.Y) <= 2) * 5 * army.Value.Morale / 100);
+                            r.Value.ArmyId == opponent.Value.Id && r.Value.Health > 0 && Distance(r.Value.X, r.Value.Y, army.Value.X, army.Value.Y) <= 3),
+                        soldiers.Count(r => Distance(r.Value.X, r.Value.Y, army.Value.X, army.Value.Y) <= 2) * 5 * army.Value.Morale / 100);
                 }
 
                 continue;
@@ -415,7 +414,7 @@ public sealed partial class WorldEngine
                     TargetSettlementId = visibleTarget.Value.Id, Status = "围攻既定目标 " + visibleTarget.Value.Name,
                 });
                 if (SimulationTick % 3 == 0)
-                    Siege(army, visibleTarget, soldiers.Where(r => Distance(r.X, r.Y, army.Value.X, army.Value.Y) <= 2).ToArray());
+                    Siege(army, visibleTarget, soldiers.Where(r => Distance(r.Value.X, r.Value.Y, army.Value.X, army.Value.Y) <= 2).ToArray());
                 continue;
             }
 
@@ -424,29 +423,29 @@ public sealed partial class WorldEngine
         }
     }
 
-    private void MoveArmy(StateReference<Army> army, ResidentCursor commander, ResidentCursor[] soldiers, int x, int y)
+    private void MoveArmy(StateReference<Army> army, StateReference<Resident> commander, StateReference<Resident>[] soldiers, int x, int y)
     {
-        var previousX = commander.X;
-        var previousY = commander.Y;
+        var previousX = commander.Value.X;
+        var previousY = commander.Value.Y;
         MoveAgentTowards(commander, x, y);
         army.Replace(army.Value with
         {
-            BlockedTicks = commander.X == previousX && commander.Y == previousY ? army.Value.BlockedTicks + 1 : 0,
-            FromX = commander.FromX,
-            FromY = commander.FromY,
-            X = commander.X,
-            Y = commander.Y,
-            MoveStartedTick = commander.MoveStartedTick,
-            MoveDurationTicks = commander.MoveDurationTicks,
+            BlockedTicks = commander.Value.X == previousX && commander.Value.Y == previousY ? army.Value.BlockedTicks + 1 : 0,
+            FromX = commander.Value.FromX,
+            FromY = commander.Value.FromY,
+            X = commander.Value.X,
+            Y = commander.Value.Y,
+            MoveStartedTick = commander.Value.MoveStartedTick,
+            MoveDurationTicks = commander.Value.MoveDurationTicks,
         });
         foreach (var soldier in soldiers)
         {
-            if (soldier.Id != commander.Id)
-                MoveAgentTowards(soldier, commander.X, commander.Y);
+            if (soldier.Value.Id != commander.Value.Id)
+                MoveAgentTowards(soldier, commander.Value.X, commander.Value.Y);
             soldier.Replace(soldier.Value with
             {
                 Activity = ResidentActivity.Marching,
-                Agent = soldier.Agent.WithGoal(soldier.Agent.Goal with
+                Agent = soldier.Value.Agent.WithGoal(soldier.Value.Agent.Goal with
                 {
                     Kind = AgentGoalKind.March,
                     TargetX = x,
@@ -457,13 +456,13 @@ public sealed partial class WorldEngine
         }
     }
 
-    private void ApplyDamage(IEnumerable<ResidentCursor> residents, double damage)
+    private void ApplyDamage(IEnumerable<StateReference<Resident>> residents, double damage)
     {
         damage *= Rules.CombatDamageRate;
         foreach (var resident in residents)
         {
-            EmitVisual(WorldVisualKind.Battle, resident.X, resident.Y);
-            var incoming = Math.Min(resident.Health, damage);
+            EmitVisual(WorldVisualKind.Battle, resident.Value.X, resident.Value.Y);
+            var incoming = Math.Min(resident.Value.Health, damage);
             var dealt = TryAbsorbShieldDamage(resident, incoming);
             DamageResident(resident, dealt, DeathCause.Battle);
             damage -= incoming;
@@ -472,11 +471,11 @@ public sealed partial class WorldEngine
         }
     }
 
-    private void Siege(StateReference<Army> army, StateReference<Settlement> target, ResidentCursor[] soldiers)
+    private void Siege(StateReference<Army> army, StateReference<Settlement> target, StateReference<Resident>[] soldiers)
     {
         var defenders = Residents.Where(r =>
-            r.SettlementId == target.Value.Id && r.ArmyId == 0 && r.Age >= 14 && r.Health > 0 &&
-            Distance(r.X, r.Y, target.Value.X, target.Value.Y) <= 5).ToArray();
+            r.Value.SettlementId == target.Value.Id && r.Value.ArmyId == 0 && r.Value.Age >= 14 && r.Value.Health > 0 &&
+            Distance(r.Value.X, r.Value.Y, target.Value.X, target.Value.Y) <= 5).ToArray();
         if (defenders.Length == 0)
         {
             CaptureSettlement(army, target);
@@ -489,7 +488,7 @@ public sealed partial class WorldEngine
         ApplyDamage(defenders, attack);
         ApplyDamage(soldiers, defense);
         army.Replace(army.Value with { Morale = Math.Max(0, army.Value.Morale - 0.2) });
-        if (defenders.Count(r => r.Health > 0) < Math.Max(2, soldiers.Length / 3))
+        if (defenders.Count(r => r.Value.Health > 0) < Math.Max(2, soldiers.Length / 3))
             CaptureSettlement(army, target);
     }
 
@@ -509,14 +508,14 @@ public sealed partial class WorldEngine
             town.Value.Id, causeEventId: army.Value.LastEventId);
         occupationEvent = PublishEvent(occupationEvent with { SecondNationId = previous });
         EndCampaign(army, WarOutcome.ObjectiveReached,
-            Residents.Where(r => r.ArmyId == army.Value.Id && r.Health > 0).ToArray(), occupationEvent.Id);
+            Residents.Where(r => r.Value.ArmyId == army.Value.Id && r.Value.Health > 0).ToArray(), occupationEvent.Id);
         Reindex();
         RemoveEmptyNations();
     }
 
     private void DisbandArmy(StateReference<Army> army)
     {
-        var veterans = Residents.Where(r => r.ArmyId == army.Value.Id).ToArray();
+        var veterans = Residents.Where(r => r.Value.ArmyId == army.Value.Id).ToArray();
         var localDepot =
             Settlements.FirstOrDefault(s =>
                 s.Value.NationId == army.Value.NationId && Distance(s.Value.X, s.Value.Y, army.Value.X, army.Value.Y) <= 1);
@@ -527,19 +526,19 @@ public sealed partial class WorldEngine
                 Food = localDepot.Value.Resources.Food + army.Value.Supplies,
                 Water = localDepot.Value.Resources.Water + army.Value.WaterSupplies,
             }));
-            foreach (var veteran in veterans.Where(r => Distance(r.X, r.Y, localDepot.Value.X, localDepot.Value.Y) <= 2))
-            foreach (var report in veteran.Agent.Memory.Where(f => f.Kind == AgentFactKind.WarReport).ToArray())
+            foreach (var veteran in veterans.Where(r => Distance(r.Value.X, r.Value.Y, localDepot.Value.X, localDepot.Value.Y) <= 2))
+            foreach (var report in veteran.Value.Agent.Memory.Where(f => f.Kind == AgentFactKind.WarReport).ToArray())
                 ReceiveWarReport(localDepot, report);
         }
         else
         {
-            var nearby = veterans.Where(r => Distance(r.X, r.Y, army.Value.X, army.Value.Y) <= 2).ToArray();
+            var nearby = veterans.Where(r => Distance(r.Value.X, r.Value.Y, army.Value.X, army.Value.Y) <= 2).ToArray();
             foreach (var veteran in nearby)
-                veteran.Inventory = veteran.Inventory with
+                veteran.Replace(veteran.Value.WithInventory(veteran.Value.Inventory with
                 {
-                    Food = Math.Min(1_000_000, veteran.Inventory.Food + army.Value.Supplies / nearby.Length),
-                    Water = Math.Min(1_000_000, veteran.Inventory.Water + army.Value.WaterSupplies / nearby.Length),
-                };
+                    Food = Math.Min(1_000_000, veteran.Value.Inventory.Food + army.Value.Supplies / nearby.Length),
+                    Water = Math.Min(1_000_000, veteran.Value.Inventory.Water + army.Value.WaterSupplies / nearby.Length),
+                }));
         }
 
         army.Replace(army.Value with { Supplies = 0, WaterSupplies = 0 });
@@ -556,11 +555,11 @@ public sealed partial class WorldEngine
         {
             RecordLife(soldier, "结束军旅任务，恢复平民生活。", homecoming);
             soldier.Replace(soldier.Value with { ArmyId = 0 });
-            if (soldier.Profession is not (Profession.Ranger or Profession.Battlemage))
+            if (soldier.Value.Profession is not (Profession.Ranger or Profession.Battlemage))
                 soldier.Replace(soldier.Value with { Profession = AssignProfession() });
-            if (_settlements.TryGetValue(soldier.SettlementId, out var home))
+            if (_settlements.TryGetValue(soldier.Value.SettlementId, out var home))
             {
-                soldier.Agent = soldier.Agent.WithGoal(new AgentGoal
+                soldier.Replace(soldier.Value.WithAgent(soldier.Value.Agent.WithGoal(new AgentGoal
                 {
                     Kind = AgentGoalKind.ReturnHome,
                     TargetX = home.Value.X,
@@ -570,7 +569,7 @@ public sealed partial class WorldEngine
                     ReviewTick = SimulationTick + 200,
                     PlayerDirected = true,
                     Reason = "退伍后步行返回家园",
-                });
+                })));
             }
         }
 
@@ -582,7 +581,7 @@ public sealed partial class WorldEngine
         AddEvent(WorldEventKind.Death, $"{settlement.Value.Name}：{reason}。", settlement.Value.X, settlement.Value.Y);
         var destination =
             Settlements.FirstOrDefault(s => s.Value.Id != settlement.Value.Id && s.Value.NationId == settlement.Value.NationId);
-        foreach (var resident in Residents.Where(r => r.SettlementId == settlement.Value.Id).ToArray())
+        foreach (var resident in Residents.Where(r => r.Value.SettlementId == settlement.Value.Id).ToArray())
         {
             if (destination is null)
             {

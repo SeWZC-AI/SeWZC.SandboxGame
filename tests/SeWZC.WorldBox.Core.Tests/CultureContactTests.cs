@@ -23,7 +23,7 @@ public sealed class CultureContactTests
             Research = false,
             Wars = false,
         }, false, false);
-        var ownCulture = fixture.Resident.CultureId;
+        var ownCulture = fixture.Resident.Value.CultureId;
         var foreign = engine.Society.Cultures.First() with { Id = engine.NextId++, Name = "邻村文化" };
         var initialExposure = convert ? 9d : 1;
         engine.Society = engine.Society with
@@ -45,12 +45,12 @@ public sealed class CultureContactTests
             ],
         };
         engine.SimulationTick = SimulationTime.WakeTick;
-        fixture.Resident.X = fixture.Resident.Y = 16;
+        fixture.Resident.Replace(fixture.Resident.Value with { Y = 16, X = 16 });
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = 10 });
-        fixture.Resident.Agent = fixture.Resident.Agent with
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
-            NextThinkTick = 100, Personality = fixture.Resident.Agent.Personality with { Sociability = .75 },
-        };
+            NextThinkTick = 100, Personality = fixture.Resident.Value.Agent.Personality with { Sociability = .75 },
+        }));
         engine.PendingMessages = engine.PendingMessages.Add(new PendingMessage
         {
             SenderId = fixture.ResidentId,
@@ -63,8 +63,8 @@ public sealed class CultureContactTests
         engine.Step();
 
         var contacts = engine.State.Society.CulturalContacts;
-        Assert.Equal(convert ? foreign.Id : ownCulture, fixture.Resident.CultureId);
-        Assert.Equal(convert ? 0 : initialExposure + .5 + fixture.Resident.Agent.Personality.Sociability,
+        Assert.Equal(convert ? foreign.Id : ownCulture, fixture.Resident.Value.CultureId);
+        Assert.Equal(convert ? 0 : initialExposure + .5 + fixture.Resident.Value.Agent.Personality.Sociability,
             contacts[0].Exposure, 8);
         Assert.Equal(convert ? 0 : 3, contacts[1].Exposure);
         Assert.Equal(SimulationTime.WakeTick + 1, contacts[0].LastContactTick);
@@ -85,7 +85,7 @@ public sealed class CultureContactTests
                 LearnedTick = SimulationTime.WakeTick,
                 OriginResidentId = fixture.ResidentId,
                 SourceResidentId = fixture.ResidentId,
-                OriginProfession = fixture.Resident.Profession,
+                OriginProfession = fixture.Resident.Value.Profession,
             };
         }
     }

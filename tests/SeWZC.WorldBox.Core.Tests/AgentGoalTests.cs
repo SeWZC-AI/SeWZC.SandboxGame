@@ -73,14 +73,14 @@ public sealed class AgentGoalTests
             Migration = false,
             Secession = false,
         }, false, false);
-        fixture.Resident.X = fixture.Town.Value.X;
-        fixture.Resident.Y = fixture.Town.Value.Y;
-        fixture.Resident.FromX = fixture.Town.Value.X;
-        fixture.Resident.FromY = fixture.Town.Value.Y;
-        fixture.Resident.MoveDurationTicks = frozen ? 1 : 3;
-        fixture.Resident.MoveStartedTick = 0;
+        fixture.Resident.Replace(fixture.Resident.Value with { X = fixture.Town.Value.X });
+        fixture.Resident.Replace(fixture.Resident.Value with { Y = fixture.Town.Value.Y });
+        fixture.Resident.Replace(fixture.Resident.Value with { FromX = fixture.Town.Value.X });
+        fixture.Resident.Replace(fixture.Resident.Value with { FromY = fixture.Town.Value.Y });
+        fixture.Resident.Replace(fixture.Resident.Value with { MoveDurationTicks = frozen ? 1 : 3 });
+        fixture.Resident.Replace(fixture.Resident.Value with { MoveStartedTick = 0 });
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = frozen ? 3 : 0 });
-        fixture.Resident.Agent = fixture.Resident.Agent with
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Goal = new AgentGoal
             {
@@ -91,13 +91,13 @@ public sealed class AgentGoalTests
                 PlayerDirected = true,
                 ReviewTick = 100,
             },
-        };
+        }));
 
         fixture.Engine.Step();
-        Assert.Equal(0, fixture.Resident.Agent.Goal.WorkTicks);
+        Assert.Equal(0, fixture.Resident.Value.Agent.Goal.WorkTicks);
 
         fixture.Engine.Step(2);
-        Assert.Equal(1, fixture.Resident.Agent.Goal.WorkTicks);
+        Assert.Equal(1, fixture.Resident.Value.Agent.Goal.WorkTicks);
     }
 
     /// <summary>普通自主移动同时保留出发点、路线、疲劳和途中状态，旧快照保持未出发。</summary>
@@ -114,11 +114,11 @@ public sealed class AgentGoalTests
             Migration = false,
             Secession = false,
         }, false, false);
-        fixture.Resident.X = 16;
-        fixture.Resident.Y = 16;
-        fixture.Resident.FromX = 16;
-        fixture.Resident.FromY = 16;
-        fixture.Resident.Agent = fixture.Resident.Agent with
+        fixture.Resident.Replace(fixture.Resident.Value with { X = 16 });
+        fixture.Resident.Replace(fixture.Resident.Value with { Y = 16 });
+        fixture.Resident.Replace(fixture.Resident.Value with { FromX = 16 });
+        fixture.Resident.Replace(fixture.Resident.Value with { FromY = 16 });
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Goal = new AgentGoal
             {
@@ -128,7 +128,7 @@ public sealed class AgentGoalTests
                 PlayerDirected = true,
                 ReviewTick = 100,
             },
-        };
+        }));
         var before = fixture.Engine.State.Residents[0];
 
         fixture.Engine.Step();

@@ -89,19 +89,19 @@ public sealed partial class WorldEngine
         return TryExtinguishFire(RequireResident(person.Id));
     }
 
-    private bool TryExtinguishFire(ResidentCursor person)
+    private bool TryExtinguishFire(StateReference<Resident> person)
     {
-        var goal = person.Agent.Goal;
-        if (person.Health <= 0 || person.Age < 14 || goal.Kind != AgentGoalKind.ExtinguishFire
-            || !InBounds(goal.TargetX, goal.TargetY) || Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > 1
-            || SimulationTick - person.MoveStartedTick < person.MoveDurationTicks || !Walkable(person.X, person.Y)
-            || Tiles[Index(person.X, person.Y)].Value.FireTicks > 0 || person.Inventory.Water < .1)
+        var goal = person.Value.Agent.Goal;
+        if (person.Value.Health <= 0 || person.Value.Age < 14 || goal.Kind != AgentGoalKind.ExtinguishFire
+            || !InBounds(goal.TargetX, goal.TargetY) || Distance(person.Value.X, person.Value.Y, goal.TargetX, goal.TargetY) > 1
+            || SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks || !Walkable(person.Value.X, person.Value.Y)
+            || Tiles[Index(person.Value.X, person.Value.Y)].Value.FireTicks > 0 || person.Value.Inventory.Water < .1)
             return false;
         var index = Index(goal.TargetX, goal.TargetY);
         var tile = Tiles[index];
         if (tile.Value.FireTicks <= 0)
         {
-            person.Agent = person.Agent with { NextThinkTick = SimulationTick };
+            person.Replace(person.Value.WithAgent(person.Value.Agent with { NextThinkTick = SimulationTick }));
             return false;
         }
 
@@ -112,36 +112,35 @@ public sealed partial class WorldEngine
         var reduction = Math.Min(2 - tile.Value.FireSuppressed, tile.Value.FireTicks);
         if (reduction <= 0)
             return false;
-        person.Inventory = person.Inventory with { Water = person.Inventory.Water - .1 };
+        person.Replace(person.Value.WithInventory(person.Value.Inventory with { Water = person.Value.Inventory.Water - .1 }));
         tile.Replace(tile.Value with
         {
             FireSuppressed = tile.Value.FireSuppressed + reduction,
             FireTicks = tile.Value.FireTicks - reduction,
         });
-        person.Agent = person.Agent with { Fatigue = Math.Min(100, person.Agent.Fatigue + .3) };
-        person.Activity = ResidentActivity.Working;
+        person.Replace(person.Value.WithAction(person.Value.Agent with { Fatigue = Math.Min(100, person.Value.Agent.Fatigue + .3) }, ResidentActivity.Working));
         if (tile.Value.FireTicks == 0)
             EndFire(index, false);
         return true;
     }
 
-    private void AddFirefightingChoice(ResidentCursor person, List<GoalChoice> choices)
+    private void AddFirefightingChoice(StateReference<Resident> person, List<GoalChoice> choices)
     {
-        if (_burningTiles.Count == 0 || person.Age < 14 || person.Inventory.Water < .1
-            || person.SicknessTicks > 0 || person.Health < 40
-            || person.Hunger >= 60 || person.Thirst >= 60 ||
-            Tiles[Index(person.X, person.Y)].Value.FireTicks > 0)
+        if (_burningTiles.Count == 0 || person.Value.Age < 14 || person.Value.Inventory.Water < .1
+            || person.Value.SicknessTicks > 0 || person.Value.Health < 40
+            || person.Value.Hunger >= 60 || person.Value.Thirst >= 60 ||
+            Tiles[Index(person.Value.X, person.Value.Y)].Value.FireTicks > 0)
             return;
         var reachable = 0;
         foreach (var offset in VisibleResourceOffsets)
         {
-            var x = person.X + offset.X;
-            var y = person.Y + offset.Y;
+            var x = person.Value.X + offset.X;
+            var y = person.Value.Y + offset.Y;
             if (!InBounds(x, y) || Tiles[Index(x, y)].Value.FireTicks <= 0)
                 continue;
             var safeEdge = false;
             foreach (var (dx, dy) in Directions)
-                if (Walkable(x + dx, y + dy, person.Race)
+                if (Walkable(x + dx, y + dy, person.Value.Race)
                     && Tiles[Index(x + dx, y + dy)].Value.FireTicks == 0
                     && VisibleSiteReachable(person, Index(x + dx, y + dy), ref reachable))
                 {

@@ -12,9 +12,9 @@ public sealed partial class WorldEngine
         var residents = _localWorkQueriesActive
             ? _localWorkResidents.GetValueOrDefault(town.Value.Id)
             : _citizens.GetValueOrDefault(town.Value.Id);
-        var adults = residents?.Where(p => p.SettlementId == town.Value.Id && p.Age >= 14 && p.Health > 0 && p.ArmyId == 0
-                                           && Distance(p.X, p.Y, town.Value.X, town.Value.Y) <= 6).ToArray() ?? [];
-        var defense = GetLocalPolicy(town.Value.Id) == PolicyKind.Defense || adults.Any(p => p.Agent.Memory.Any(f =>
+        var adults = residents?.Where(p => p.Value.SettlementId == town.Value.Id && p.Value.Age >= 14 && p.Value.Health > 0 && p.Value.ArmyId == 0
+                                           && Distance(p.Value.X, p.Value.Y, town.Value.X, town.Value.Y) <= 6).ToArray() ?? [];
+        var defense = GetLocalPolicy(town.Value.Id) == PolicyKind.Defense || adults.Any(p => p.Value.Agent.Memory.Any(f =>
             f.Kind is AgentFactKind.Danger or AgentFactKind.WarOrder
             && f.Value > 0 && SimulationTick - f.ObservedTick < SimulationTime.TicksPerYear &&
             f.ReliabilityAt(SimulationTick) >= .5));
@@ -36,14 +36,14 @@ public sealed partial class WorldEngine
                 break;
         }
 
-        return new LocalDemand(town, adults, buildings, defense, adults.Any(p => p.Health < 90 || p.SicknessTicks > 0),
+        return new LocalDemand(town, adults, buildings, defense, adults.Any(p => p.Value.Health < 90 || p.Value.SicknessTicks > 0),
             Rules.Thirst && (town.Value.Resources.Water < Math.Max(2, town.Value.Population * .5) ||
-                                     adults.Any(p => p.Thirst > 20)),
+                                     adults.Any(p => p.Value.Thirst > 20)),
             coast, timber, stone,
-            adults.Any(p => p.Agent.Memory.Any(f =>
+            adults.Any(p => p.Value.Agent.Memory.Any(f =>
                 f.Kind == AgentFactKind.SettlementLocation && f.SubjectId != town.Value.Id &&
                 f.ReliabilityAt(SimulationTick) >= .5)),
-            adults.Any(p => p.MagicTalent >= 35), roads);
+            adults.Any(p => p.Value.MagicTalent >= 35), roads);
     }
 
     private bool FacilityNeeded(LocalDemand demand, BuildingKind kind)
@@ -66,12 +66,12 @@ public sealed partial class WorldEngine
             BuildingKind.Infirmary => demand.Patients && !Has(BuildingKind.Hospital),
             BuildingKind.MountainPass or BuildingKind.Bridge => false,
             BuildingKind.Dock or BuildingKind.Shipyard => demand.Coast && stock.Boats < 2 && demand.Adults.Any(p =>
-                p.Profession is Profession.Trader or Profession.Messenger or Profession.Fisher),
-            BuildingKind.LumberCamp => demand.Timber && demand.Adults.Any(p => p.Profession == Profession.Lumberjack) &&
+                p.Value.Profession is Profession.Trader or Profession.Messenger or Profession.Fisher),
+            BuildingKind.LumberCamp => demand.Timber && demand.Adults.Any(p => p.Value.Profession == Profession.Lumberjack) &&
                                        stock.Wood < 40,
             BuildingKind.Quarry or BuildingKind.MiningHall => demand.Stone &&
                                                               demand.Adults.Any(p =>
-                                                                  p.Profession == Profession.Miner) &&
+                                                                  p.Value.Profession == Profession.Miner) &&
                                                               stock.Stone + stock.Ore < 60,
             BuildingKind.Well => demand.Water && !Has(BuildingKind.Reservoir),
             BuildingKind.Granary => town.Value.Population >= 60 && stock.Food >= town.Value.Population,
@@ -80,7 +80,7 @@ public sealed partial class WorldEngine
                 or BuildingKind.StormSpire => demand.Defense,
             BuildingKind.AssemblyHall => town.Value.Population >= 40,
             BuildingKind.HerbGarden => demand.Patients,
-            BuildingKind.HuntingCamp => stock.Food < town.Value.Population && demand.Adults.Any(p => p.Race == RaceKind.Orc),
+            BuildingKind.HuntingCamp => stock.Food < town.Value.Population && demand.Adults.Any(p => p.Value.Race == RaceKind.Orc),
             BuildingKind.Reservoir => demand.Water,
             BuildingKind.Hospital => demand.Patients &&
                                      (stock.Medicine >= .25 || Has(BuildingKind.Apothecary) ||
@@ -90,22 +90,22 @@ public sealed partial class WorldEngine
                                                                       town.Value.Population >= 60)),
             BuildingKind.FireStation => demand.Buildings.Any(b => b.Value.Health is > 0 and < 90)
                                         || (NaturalDisasters && town.Value.Population >= 60) || demand.Adults.Any(p =>
-                                            p.Agent.Memory.Any(f =>
+                                            p.Value.Agent.Memory.Any(f =>
                                                 f.Kind == AgentFactKind.Danger && f.Value > 0 &&
                                                 SimulationTick - f.ObservedTick < 24)),
             BuildingKind.Library => Society.Research.First(r => r.SettlementId == town.Value.Id).Completed.Count >= 3,
             BuildingKind.SurveyOffice => Rules.Expansion || demand.Adults.Any(p =>
-                p.Profession is Profession.Miner or Profession.Trader or Profession.Messenger),
+                p.Value.Profession is Profession.Miner or Profession.Trader or Profession.Messenger),
             BuildingKind.MachineWorkshop => stock.Tools < 8 &&
                                             demand.Adults.Any(p =>
-                                                p.Profession is Profession.Builder or Profession.Engineer),
+                                                p.Value.Profession is Profession.Builder or Profession.Engineer),
             BuildingKind.Arsenal => demand.Defense && stock.Ammunition < 24,
             BuildingKind.GroveSanctuary => demand.MagicTalent && !demand.Timber &&
-                                           demand.Adults.Any(p => p.Profession == Profession.Lumberjack),
+                                           demand.Adults.Any(p => p.Value.Profession == Profession.Lumberjack),
             BuildingKind.Waygate => demand.Contacts && demand.MagicTalent && Settlements.Any(t =>
                 t.Value.Id != town.Value.Id && t.Value.NationId == town.Value.NationId && Distance(t.Value.X, t.Value.Y, town.Value.X, town.Value.Y) <= 24),
             BuildingKind.Pasture => stock.Food < town.Value.Population * 2 && demand.Adults.Any(p =>
-                                                                         p.Profession == Profession.Farmer)
+                                                                         p.Value.Profession == Profession.Farmer)
                                                                      && Circle(town.Value.X, town.Value.Y, 6).Any(i =>
                                                                          HusbandryStockAt(i % Width,
                                                                              i / Width, false).Source >= 0),
@@ -137,7 +137,7 @@ public sealed partial class WorldEngine
                                                             NaturalDisasters,
             _ when research == Advancement.Observation || research == Advancement.SignalNetwork => demand.Contacts ||
                 demand.Adults.Any(p =>
-                    p.Profession == Profession.Miner),
+                    p.Value.Profession == Profession.Miner),
             _ when research == Advancement.EfficientSmelting => demand.Buildings.Any(b =>
                 b.Value.Kind is BuildingKind.Foundry or BuildingKind.DwarvenForge),
             _ when research == Advancement.EnergyRecycling => demand.Buildings.Any(b =>
@@ -177,7 +177,7 @@ public sealed partial class WorldEngine
     /// <param name="Roads">是否具有道路和交通发展需求。</param>
     private sealed record LocalDemand(
         StateReference<Settlement> Town,
-        ResidentCursor[] Adults,
+        StateReference<Resident>[] Adults,
         IReadOnlyList<StateReference<Building>> Buildings,
         bool Defense,
         bool Patients,
