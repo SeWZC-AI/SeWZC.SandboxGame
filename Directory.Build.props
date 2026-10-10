@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <WarningsAsErrors>$(WarningsAsErrors);CS1591</WarningsAsErrors>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
     <Version>0.0.1-alpha.1.1</Version>
   </PropertyGroup>
 </Project>
