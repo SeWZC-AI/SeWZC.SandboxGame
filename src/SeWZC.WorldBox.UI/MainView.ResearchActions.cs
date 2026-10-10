@@ -106,7 +106,7 @@ public sealed partial class MainView
                     return;
                 }
 
-                var modal = ModalPanel("游击射手射击", "需要随身弹药 1，目标在 4 格内且视线畅通，本人已收到交战军令。射击间隔至少 3 tick。");
+                var modal = ModalPanel("游击射手射击", "需要随身弹药 1，目标在 4 格内且视线畅通，本人已收到交战军令。射击间隔至少 3 刻。");
                 var target = ObjectField(modal, "目标", targets.Select(r => (r.Id, r.Name)), targets[0].Id,
                     "ranged-target");
                 var requirements = Named(Paragraph(""), "ranged-requirements");

@@ -45,6 +45,7 @@ public sealed partial class MainView : UserControl
     private readonly List<Button> _categoryButtons = [];
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly TextBlock _date = Text("");
+    private readonly TextBlock _compactDate = Named(Text("", 11, Mint), "compact-world-date");
     private readonly TextBlock _eventText = Text("选择一个文明，观察它的发展", 11, Mint);
     private readonly StackPanel _headerActions;
     private readonly Control _headerStats;
@@ -156,7 +157,9 @@ public sealed partial class MainView : UserControl
 
         var header = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Margin = new Thickness(8, 0),
+            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
+            RowDefinitions = new RowDefinitions("48,Auto"),
+            Margin = new Thickness(8, 0),
         };
         var brand = new StackPanel
         {
@@ -217,6 +220,11 @@ public sealed partial class MainView : UserControl
         actions.Children.Add(Named(Button("规则", ShowRules), "header-rules"));
         Grid.SetColumn(actions, 2);
         header.Children.Add(actions);
+        _compactDate.HorizontalAlignment = HorizontalAlignment.Center;
+        _compactDate.Margin = new Thickness(0, 0, 0, 6);
+        Grid.SetRow(_compactDate, 1);
+        Grid.SetColumnSpan(_compactDate, 3);
+        header.Children.Add(_compactDate);
 
         _body.ColumnDefinitions = new ColumnDefinitions("0,*,0");
         var mapLayer = new Grid { ClipToBounds = true, Background = Brush.Parse("#122D3D") };
@@ -514,7 +522,7 @@ public sealed partial class MainView : UserControl
         _version.VerticalAlignment = VerticalAlignment.Center;
         Grid.SetColumn(_version, 1);
         footer.Children.Add(_version);
-        var shell = new Grid { RowDefinitions = new RowDefinitions("48,*,22") };
+        var shell = new Grid { RowDefinitions = new RowDefinitions("Auto,*,22") };
         shell.Children.Add(new Border
         {
             Child = header, BorderBrush = Line, BorderThickness = new Thickness(0, 0, 0, 1),
@@ -748,6 +756,7 @@ public sealed partial class MainView : UserControl
         _brandCaption.IsVisible = false;
         _version.IsVisible = Bounds.Width >= 600;
         _headerStats.IsVisible = Bounds.Width >= 760;
+        _compactDate.IsVisible = Bounds.Width < 760;
         _headerActions.Spacing = Bounds.Width < 600 ? 3 : 7;
         _rail.IsVisible = false;
         _body.ColumnDefinitions = new ColumnDefinitions(_mobilePanel && !_isCompact
@@ -809,6 +818,7 @@ public sealed partial class MainView : UserControl
         RefreshPerformanceStats();
         var state = _engine.State;
         _date.Text = DateLabel(state.Tick);
+        _compactDate.Text = _date.Text;
         _population.Text = $"居民 {state.Population:N0}    国家 {state.Nations.Count}";
         _worldSubtitle.Text = $"地图：{state.Width} × {state.Height}\n种子：{state.Seed}\n文明演化";
         _play.Content = _paused ? "继续" : "暂停";

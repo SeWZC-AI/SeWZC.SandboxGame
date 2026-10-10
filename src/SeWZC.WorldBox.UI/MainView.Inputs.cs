@@ -153,7 +153,7 @@ public sealed partial class MainView
         panel.Children.Add(Text(label, 12, Muted));
         var ratio = label.EndsWith("0–1") || label.Contains("0 至 1");
         var impact = label.Contains("−1");
-        var integer = label.Contains("tick 序") || label.Contains("次数") || label.Contains("编号") ||
+        var integer = label.Contains("刻序") || label.Contains("次数") || label.Contains("编号") ||
                       label.EndsWith(" X") ||
                       label.EndsWith(" Y");
         var maximum = maximumOverride ?? (ratio || impact ? 1
@@ -163,7 +163,7 @@ public sealed partial class MainView
             : label.EndsWith(" X") ? _engine.State.Width - 1
             : label.EndsWith(" Y") ? _engine.State.Height - 1
             : label.Contains("保持日数") ? 100_000d / SimulationTime.TicksPerDay
-            : label.Contains("tick 序") ? _engine.State.Tick : 1_000_000);
+            : label.Contains("刻序") ? _engine.State.Tick : 1_000_000);
         var box = Named(new NumericUpDown
         {
             Minimum = impact ? -1 : 0,

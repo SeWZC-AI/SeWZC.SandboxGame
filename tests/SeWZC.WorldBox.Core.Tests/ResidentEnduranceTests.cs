@@ -209,6 +209,8 @@ public sealed class ResidentEnduranceTests
         Assert.Equal(ResidentActivity.Resting, fixture.Resident.Value.Activity);
         Assert.True(fixture.Resident.Value.Agent.Sleep < 60);
         Assert.Equal(AgentGoalKind.Gather, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Contains("正在休息", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
+        Assert.DoesNotContain("正在采集", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
     }
 
     /// <summary>一方昏迷后停止现场争夺；双方昏迷也不能新建争执。</summary>

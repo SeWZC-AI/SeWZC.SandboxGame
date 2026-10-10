@@ -82,6 +82,306 @@ public sealed class SimulationTimeTests
         Assert.InRange(fixture.Resident.Value.X, 21, 22);
         Assert.NotEqual(ResidentActivity.Sleeping, fixture.Resident.Value.Activity);
         Assert.Equal(SimulationTime.ReturnHomeTick, fixture.Resident.Value.MoveStartedTick);
+        Assert.Contains("正在返家", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
+        Assert.DoesNotContain("到场后开始劳动", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
+    }
+
+    /// <summary>傍晚在家普通休息仅恢复体力，显示等待入睡且睡眠值仍消耗。</summary>
+    [Fact]
+    public void Evening_rest_shows_waiting_for_sleep_and_does_not_restore_sleep()
+    {
+        var fixture = Prepare(SimulationTime.ReturnHomeTick - 1);
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Sleep = 60, Fatigue = 40 }));
+
+        fixture.Engine.Step();
+
+        Assert.Equal(ResidentActivity.Resting, fixture.Resident.Value.Activity);
+        Assert.True(fixture.Resident.Value.Agent.Sleep < 60);
+        Assert.True(fixture.Resident.Value.Agent.Fatigue < 40);
+        Assert.Contains("等待入睡", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
+        Assert.Contains("睡眠", fixture.Engine.GetResidentTaskSummary(fixture.ResidentId));
+    }
+
+    /// <summary>休息目标可因睡眠不足而实际补觉，显示须区分普通休息和睡眠。</summary>
+    [Theory]
+    [InlineData(80, ResidentActivity.Resting)]
+    [InlineData(25, ResidentActivity.Sleeping)]
+    public void Rest_goal_reports_the_actual_recovery_activity(double sleep, ResidentActivity activity)
+    {
+        var fixture = Prepare(SimulationTime.WakeTick);
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
+        {
+            Sleep = sleep,
+            Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.Rest, TargetX = 16, TargetY = 16,
+                PlayerDirected = true, ReviewTick = SimulationTime.TicksPerYear,
+            },
+        }));
+
+        fixture.Engine.Step();
+
+        Assert.Equal(activity, fixture.Resident.Value.Activity);
+        Assert.Equal(AgentGoalKind.Rest, fixture.Resident.Value.Agent.Goal.Kind);
+        if (activity == ResidentActivity.Sleeping)
+        {
+            Assert.True(fixture.Resident.Value.Agent.Sleep > sleep);
+            Assert.Contains("正在睡眠", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
+        }
+        else
+        {
+            Assert.True(fixture.Resident.Value.Agent.Sleep < sleep);
+            Assert.Contains("正在休息", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
+            Assert.DoesNotContain("正在睡眠", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
+        }
+    }
+
+    /// <summary>前往医疗点的居民夜间睡眠，说明须区分到场与途中宿营。</summary>
+    [Theory]
+    [InlineData(14, false)]
+    [InlineData(15, false)]
+    [InlineData(22, true)]
+    public void Medical_sleep_summary_uses_the_actual_location(int x, bool camping)
+    {
+        var fixture = Prepare(SimulationTime.SleepTick - 1);
+        var ground = fixture.Engine.Tiles[16 * 32 + 14];
+        ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+        var clinicId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Infirmary, 14, 16);
+        fixture.Resident.Replace(fixture.Resident.Value with { FromX = x, X = x, Health = 50 });
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
+        {
+            Sleep = 50,
+            Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.Rest, TargetEntityId = clinicId, TargetX = 14, TargetY = 16,
+                ReviewTick = SimulationTime.TicksPerYear,
+            },
+        }));
+
+        fixture.Engine.Step();
+
+        Assert.Equal(ResidentActivity.Sleeping, fixture.Resident.Value.Activity);
+        Assert.Contains(WorldEngine.BuildingName(BuildingKind.Infirmary), fixture.Engine.GetResidentTaskSummary(fixture.ResidentId));
+        var summary = fixture.Engine.GetResidentActionSummary(fixture.ResidentId);
+        Assert.Contains("正在睡眠", summary);
+        Assert.Contains("伤病恢复", summary);
+        if (camping)
+        {
+            Assert.Contains("途中宿营", summary);
+            Assert.DoesNotContain("在" + WorldEngine.BuildingName(BuildingKind.Infirmary) + "休息", summary);
+        }
+        else
+            Assert.Contains("在" + WorldEngine.BuildingName(BuildingKind.Infirmary) + "休息", summary);
+    }
+
+    /// <summary>白天赴医疗点是休养，不显示返家、劳动或工作人员受阻。</summary>
+    [Theory]
+    [InlineData(14, false)]
+    [InlineData(22, true)]
+    public void Medical_rest_summary_describes_recovery_instead_of_work(int x, bool travelling)
+    {
+        var fixture = Prepare(SimulationTime.WakeTick);
+        var ground = fixture.Engine.Tiles[16 * 32 + 14];
+        ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+        var clinicId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Infirmary, 14, 16);
+        fixture.Resident.Replace(fixture.Resident.Value with { FromX = x, X = x, Health = 50 });
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
+        {
+            Sleep = 100, Fatigue = 0, NextThinkTick = 0,
+            Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.Rest, TargetEntityId = clinicId, TargetX = 14, TargetY = 16,
+                ReviewTick = fixture.Engine.State.Tick,
+            },
+        }));
+
+        fixture.Engine.Step();
+
+        Assert.Equal(AgentGoalKind.Rest, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.True(fixture.Resident.Value.Health < 70);
+        var clinicName = WorldEngine.BuildingName(BuildingKind.Infirmary);
+        Assert.Contains(clinicName, fixture.Engine.GetResidentTaskSummary(fixture.ResidentId));
+        var summary = fixture.Engine.GetResidentActionSummary(fixture.ResidentId);
+        Assert.Contains(travelling ? "前往" + clinicName + "休息" : "正在休息", summary);
+        Assert.DoesNotContain("返回家园", summary);
+        Assert.DoesNotContain("到场后开始劳动", summary);
+        Assert.DoesNotContain("现场劳动受阻", summary);
+        Assert.Contains("伤病恢复", summary);
+    }
+
+    /// <summary>玩家可指定家园外的休息或睡眠地点，说明不能误报返家或自主作息。</summary>
+    [Theory]
+    [InlineData(AgentGoalKind.Rest, false, false)]
+    [InlineData(AgentGoalKind.Rest, true, false)]
+    [InlineData(AgentGoalKind.Rest, false, true)]
+    [InlineData(AgentGoalKind.Rest, true, true)]
+    [InlineData(AgentGoalKind.Sleep, false, false)]
+    [InlineData(AgentGoalKind.Sleep, true, false)]
+    public void Directed_recovery_summary_respects_the_selected_place_and_schedule(AgentGoalKind kind, bool arrived, bool retargeted)
+    {
+        var fixture = Prepare(SimulationTime.WakeTick);
+        var clinicId = 0;
+        if (retargeted)
+        {
+            var ground = fixture.Engine.Tiles[16 * 32 + 14];
+            ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+            clinicId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Infirmary, 14, 16);
+        }
+        if (arrived)
+            fixture.Resident.Replace(fixture.Resident.Value with { X = 24, FromX = 24 });
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
+        {
+            Sleep = 80, Fatigue = 40,
+            Goal = new AgentGoal
+            {
+                Kind = kind, TargetX = 24, TargetY = 16, TargetSettlementId = fixture.Town.Value.Id, TargetEntityId = clinicId,
+                PlayerDirected = true, ReviewTick = SimulationTime.TicksPerYear,
+            },
+        }));
+
+        fixture.Engine.Step();
+
+        var task = fixture.Engine.GetResidentTaskSummary(fixture.ResidentId);
+        var summary = fixture.Engine.GetResidentActionSummary(fixture.ResidentId);
+        Assert.DoesNotContain("返家", task + summary);
+        Assert.DoesNotContain("返回家园", task + summary);
+        Assert.DoesNotContain("清晨", summary);
+        Assert.Contains("指定地点", task);
+        if (retargeted)
+            Assert.DoesNotContain("医疗休养", summary);
+        if (!arrived)
+            Assert.Contains("前往指定地点", summary);
+        else
+            Assert.Contains(kind == AgentGoalKind.Sleep ? "正在睡眠" : "正在休息", summary);
+    }
+
+    /// <summary>暂停时指定恢复目标只安排下一步，不能把当前劳动显示为已开始休息。</summary>
+    [Theory]
+    [InlineData(AgentGoalKind.Rest, 16, 16)]
+    [InlineData(AgentGoalKind.Rest, 24, 24)]
+    [InlineData(AgentGoalKind.Rest, 16, 24)]
+    [InlineData(AgentGoalKind.Sleep, 16, 16)]
+    [InlineData(AgentGoalKind.Sleep, 24, 24)]
+    [InlineData(AgentGoalKind.Sleep, 16, 24)]
+    public void Recovery_summary_does_not_claim_rest_started_before_the_next_step(AgentGoalKind kind, int x, int targetX)
+    {
+        var fixture = Prepare(SimulationTime.WakeTick);
+        fixture.Resident.Replace(fixture.Resident.Value with
+        {
+            X = x, FromX = x, Activity = ResidentActivity.Working,
+            Agent = fixture.Resident.Value.Agent with
+            {
+                Goal = new AgentGoal
+                {
+                    Kind = kind, TargetX = targetX, TargetY = 16,
+                    PlayerDirected = true, ReviewTick = SimulationTime.TicksPerYear,
+                },
+            },
+        });
+        var before = fixture.Resident.Value;
+
+        var summary = fixture.Engine.GetResidentActionSummary(fixture.ResidentId);
+
+        Assert.Contains(kind == AgentGoalKind.Sleep ? "已安排睡眠" : "已安排休息", summary);
+        Assert.DoesNotContain("正在家园休息", summary);
+        Assert.DoesNotContain("正在休息恢复体力", summary);
+        Assert.DoesNotContain("正在前往", summary);
+        Assert.DoesNotContain("正在返家", summary);
+        Assert.Equal(before, fixture.Resident.Value);
+    }
+
+    /// <summary>指定睡眠到期后重新按自主作息返家，说明不能沿用旧地点与安排。</summary>
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, true)]
+    public void Sleep_summary_uses_only_the_active_player_schedule(int remaining, bool directed)
+    {
+        var fixture = Prepare(SimulationTime.SleepTick - 1);
+        fixture.Resident.Replace(fixture.Resident.Value with { X = 22, FromX = 22 });
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
+        {
+            Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.Sleep, TargetX = 24, TargetY = 16,
+                PlayerDirected = true, ReviewTick = SimulationTime.SleepTick + remaining,
+            },
+        }));
+
+        fixture.Engine.Step();
+
+        var summary = fixture.Engine.GetResidentActionSummary(fixture.ResidentId);
+        if (directed)
+        {
+            Assert.True(fixture.Resident.Value.X > 22);
+            Assert.Contains("前往指定地点", summary);
+            Assert.DoesNotContain("清晨", summary);
+        }
+        else
+        {
+            Assert.True(fixture.Resident.Value.X < 22);
+            Assert.Contains("正在返家", summary);
+            Assert.Contains("清晨", summary);
+            Assert.DoesNotContain("指定地点", summary);
+            Assert.DoesNotContain("玩家安排", summary);
+        }
+    }
+
+    /// <summary>指定睡眠在移动中到期时，先完成区段，实际转向后才显示返家。</summary>
+    [Fact]
+    public void Expired_sleep_summary_waits_for_the_current_movement_before_reporting_return_home()
+    {
+        var fixture = Prepare(SimulationTime.SleepTick - 1);
+        fixture.Resident.Replace(fixture.Resident.Value with
+        {
+            X = 23, FromX = 22, MoveStartedTick = SimulationTime.SleepTick - 1, MoveDurationTicks = 2,
+            Activity = ResidentActivity.Wandering,
+            Agent = fixture.Resident.Value.Agent with
+            {
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Sleep, TargetX = 24, TargetY = 16,
+                    PlayerDirected = true, ReviewTick = SimulationTime.SleepTick,
+                },
+            },
+        });
+
+        fixture.Engine.Step();
+
+        Assert.Equal(23, fixture.Resident.Value.X);
+        var summary = fixture.Engine.GetResidentActionSummary(fixture.ResidentId);
+        Assert.Contains("正在完成当前移动", summary);
+        Assert.DoesNotContain("正在返家", summary);
+
+        fixture.Engine.Step();
+
+        Assert.True(fixture.Resident.Value.X < 23);
+        Assert.Contains("正在返家", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
+    }
+
+    /// <summary>被冻结的居民尚未抵达指定休息点时，不能显示已在指定地点休息。</summary>
+    [Fact]
+    public void Recovery_summary_does_not_claim_arrival_while_frozen_in_transit()
+    {
+        var fixture = Prepare(SimulationTime.SleepTick - 1);
+        fixture.Resident.Replace(fixture.Resident.Value with
+        {
+            X = 22, FromX = 22, FrozenUntilTick = SimulationTime.SleepTick + 1,
+        });
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
+        {
+            Goal = new AgentGoal
+            {
+                Kind = AgentGoalKind.Rest, TargetX = 24, TargetY = 16,
+                PlayerDirected = true, ReviewTick = SimulationTime.SleepTick,
+            },
+        }));
+
+        fixture.Engine.Step();
+
+        Assert.Equal(ResidentActivity.Resting, fixture.Resident.Value.Activity);
+        var summary = fixture.Engine.GetResidentActionSummary(fixture.ResidentId);
+        Assert.Contains("原地休息", summary);
+        Assert.DoesNotContain("在指定地点休息", summary);
     }
 
     /// <summary>夜间在家睡眠仍按日内份额消耗口粮和衰老，晨起清除暂存目标。</summary>
@@ -95,6 +395,9 @@ public sealed class SimulationTimeTests
         fixture.Engine.Step();
 
         Assert.Equal(ResidentActivity.Sleeping, fixture.Resident.Value.Activity);
+        Assert.Contains("睡眠", fixture.Engine.GetResidentTaskSummary(fixture.ResidentId));
+        Assert.Contains("正在睡眠", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
+        Assert.Contains("在家", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
         Assert.Equal(before.Age + 1d / SimulationTime.TicksPerYear, fixture.Resident.Value.Age, 10);
         Assert.Equal(foodBefore - WorldEngine.FoodUse(before) / SimulationTime.TicksPerDay,
             fixture.Resident.Value.Inventory.Food + fixture.Town.Value.Resources.Food, 10);
@@ -158,6 +461,7 @@ public sealed class SimulationTimeTests
         fixture.Resident.Replace(fixture.Resident.Value with { FromX = 22, X = 22 });
         var goal = new AgentGoal { Kind = kind, TargetX = 22, TargetY = 16, ReviewTick = SimulationTime.TicksPerYear };
         fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Goal = goal }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Sleep = 50 }));
 
         fixture.Engine.Step();
 
@@ -165,6 +469,10 @@ public sealed class SimulationTimeTests
         Assert.Equal(goal, fixture.Resident.Value.Agent.Goal);
         Assert.Equal(22, fixture.Resident.Value.X);
         Assert.Null(fixture.Resident.Value.Agent.DaytimeGoal);
+        Assert.True(fixture.Resident.Value.Agent.Sleep > 50);
+        Assert.Contains("正在睡眠", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
+        Assert.Contains("途中宿营", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
+        Assert.DoesNotContain("当前劳作：正在采", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
     }
 
     /// <summary>远处取水在傍晚到场后仍可完成，不被返家规则截断成每日空走。</summary>
@@ -228,6 +536,11 @@ public sealed class SimulationTimeTests
         Assert.NotNull(fixture.Resident.Value.Agent.DaytimeGoal);
         Assert.InRange(fixture.Resident.Value.X, 21, 22);
         Assert.NotEqual(ResidentActivity.Sleeping, fixture.Resident.Value.Activity);
+        var summary = fixture.Engine.GetResidentActionSummary(fixture.ResidentId);
+        Assert.Contains("恢复白天活动", summary);
+        Assert.DoesNotContain("按作息入睡", summary);
+        Assert.DoesNotContain("清晨醒来", summary);
+        Assert.DoesNotContain("休息与睡眠", summary);
     }
 
     /// <summary>玩家仍在指挥时可覆盖作息；命令到期后恢复自主睡眠。</summary>
