@@ -48,6 +48,7 @@ public sealed partial class WorldEngine
                 if (SimulationTick % SimulationTime.TicksPerMonth == 0)
                     RefreshTerritoryClaims();
                 UpdateArmies();
+                UpdateResidentNeeds();
                 ArchiveDeadResidents();
                 Reindex();
                 foreach (var settlement in Settlements.Where(s => _citizens[s.Value.Id].Count == 0).ToArray())
@@ -128,7 +129,7 @@ public sealed partial class WorldEngine
             }
 
             var age = rules.Aging ? Math.Min(1000, person.Age + 1d / SimulationTime.TicksPerYear) : person.Age;
-            var profession = person.Profession == Profession.Child && age >= 14
+            var profession = person.Profession == Profession.Child && age >= ResidentNeedsRules.MinimumWorkAge
                 ? AssignProfession()
                 : person.Profession;
             var infectionDuration = 0;

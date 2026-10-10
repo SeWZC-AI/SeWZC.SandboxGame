@@ -193,7 +193,7 @@ public sealed partial class WorldMapControl
         var phase = ((int)(_renderFrameTime * (moving ? 6 : 4)) + resident.Id) % 2;
         var pose = moving
             ? 1 + phase
-            : resident.Activity is ResidentActivity.Sick or ResidentActivity.Resting or ResidentActivity.Sleeping
+            : resident.Activity is ResidentActivity.Sick or ResidentActivity.Resting or ResidentActivity.Sleeping or ResidentActivity.Unconscious
                 ? 5
                 : resident.Activity is ResidentActivity.Working or ResidentActivity.Studying or ResidentActivity.Casting
                     ? 3 + phase

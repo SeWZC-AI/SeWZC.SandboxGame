@@ -184,7 +184,7 @@ public sealed partial class WorldEngine
             };
         }
 
-        candidate = candidate with { Agent = patch.Agent ?? agent };
+        candidate = candidate.WithAgent(patch.Agent ?? agent);
 
         ValidateResidentV2(candidate, state.Tick, state.Width, state.Height);
         ValidateStoryReferences(candidate, state.NextId);

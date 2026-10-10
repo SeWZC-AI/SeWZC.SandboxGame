@@ -18,7 +18,7 @@ public sealed partial class WorldEngine
         };
     }
 
-    /// <summary>判断聚落是否具有建造该种族设施所需的成年居民。</summary>
+    /// <summary>判断聚落是否具有建造该种族设施所需的达到劳动年龄的居民。</summary>
     /// <param name="settlementId">聚落 ID。</param>
     /// <param name="kind">设施类别。</param>
     public bool CanBuildRacialFacility(int settlementId, BuildingKind kind)
@@ -31,7 +31,7 @@ public sealed partial class WorldEngine
         for (var index = 0; index < residents.Count; index++)
         {
             var resident = residents[index];
-            if (resident.Value.SettlementId == settlementId && resident.Value.Race == race && resident.Value.Health > 0 && resident.Value.Age >= 14)
+            if (resident.Value.SettlementId == settlementId && resident.Value.Race == race && resident.Value.Health > 0 && resident.Value.Age >= ResidentNeedsRules.MinimumWorkAge)
                 return true;
         }
 
@@ -47,7 +47,7 @@ public sealed partial class WorldEngine
 
     private bool RacialBuildingHasWork(Building building, StateReference<Resident> person)
     {
-        if (person.Value.Age < 14 || BuildingRace(building.Kind) != person.Value.Race ||
+        if (person.Value.Age < ResidentNeedsRules.MinimumWorkAge || BuildingRace(building.Kind) != person.Value.Race ||
             !CanBuildRacialFacility(building.SettlementId, building.Kind))
             return false;
         if (building.Kind == BuildingKind.SacredGrove &&
@@ -165,7 +165,8 @@ public sealed partial class WorldEngine
                 if (patient is null)
                     return false;
                 patient.Replace(patient.Value.WithHealth(Math.Min(100, patient.Value.Health + .6 * effort)));
-                patient.Replace(patient.Value.WithSicknessTicks(Math.Max(0, patient.Value.SicknessTicks - SimulationTime.TicksPerDay)));
+                patient.Replace(patient.Value.WithSicknessTicks(Math.Max(0, patient.Value.SicknessTicks
+                    - ServiceDurationTicks(person.Value, building.Value, SimulationTime.TicksPerDay))));
                 return true;
             case BuildingKind.MiningHall:
                 var source = FindWorkshopResource(building.Value, Profession.Miner);

@@ -18,11 +18,15 @@ public sealed partial record Building
     [JsonRequired]
     public int ProductionBatches { get; init; }
 
+    /// <summary>尚未完成一轮加工或离散服务的实际劳动进度。</summary>
+    [JsonRequired]
+    public double ProductionProgress { get; init; }
+
     /// <summary>设施已经完成的服务次数。</summary>
     [JsonRequired]
     public int ServiceActions { get; init; }
 
-    /// <summary>最近一次提供服务的模拟 tick 序。</summary>
+    /// <summary>最近一次进行服务劳动的模拟 tick 序。</summary>
     [JsonRequired]
     public long LastServiceTick { get; init; } = -100;
 

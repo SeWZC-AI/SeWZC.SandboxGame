@@ -36,7 +36,7 @@ public sealed partial class WorldEngine
                 if (Distance(person.Value.X, person.Value.Y, town.Value.X, town.Value.Y) <= 6
                     && (person.Value.Health < 90 || person.Value.SicknessTicks > 0))
                     patients++;
-                if (person.Value.Age < 16 || person.Value.ArmyId != 0)
+                if (person.Value.Age < ResidentNeedsRules.MinimumWorkAge || person.Value.ArmyId != 0)
                     continue;
                 adults.Add(person);
                 counts[(int)person.Value.Profession]++;

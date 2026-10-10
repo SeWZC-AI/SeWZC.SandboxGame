@@ -125,7 +125,7 @@ public sealed partial class WorldEngine
 
     private void PlanVisibleCrossing(StateReference<Resident> person, int targetX, int targetY)
     {
-        if (!Rules.Construction || person.Value.TravelMode != TravelMode.Foot || person.Value.ArmyId != 0 || person.Value.Age < 14
+        if (!Rules.Construction || person.Value.TravelMode != TravelMode.Foot || person.Value.ArmyId != 0 || person.Value.Age < ResidentNeedsRules.MinimumWorkAge
             || !HasResearch(person.Value.SettlementId, Advancement.Logistics)
             || person.Value.Agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Explore or AgentGoalKind.FetchWater
             || (person.Value.Agent.Goal.TargetSettlementId == 0 && person.Value.Agent.Goal.TargetEntityId == 0))
@@ -341,7 +341,7 @@ public sealed partial class WorldEngine
             var amount = Math.Min(tile.Value.DepositAmount,
                 WorkInterval(person) / (double)SimulationTime.TicksPerDay * .4 * Rules.GatheringRate *
                 GatheringCondition(person.Value.SicknessTicks, person.Value.Hunger, person.Value.Thirst) *
-                GatheringTerritoryMultiplier(person.Value.SettlementId, person.Value.NationId, tile.Value) *
+                ResidentNeedsRules.WorkEfficiency(person.Value) * GatheringTerritoryMultiplier(person.Value.SettlementId, person.Value.NationId, tile.Value) *
                 (HasResearch(person.Value.SettlementId, Advancement.Forestry) ? 1.25 : 1));
             amount = Math.Min(amount, 1_000_000 - person.Value.Inventory.Get(kind));
             tile.Replace(tile.Value.WithDepositAmount(tile.Value.DepositAmount - (amount)));
@@ -350,8 +350,7 @@ public sealed partial class WorldEngine
             person.Replace(person.Value.WithActivity(ResidentActivity.Working));
             person.Replace(person.Value.WithAgent(person.Value.Agent with
             {
-                Fatigue = Math.Min(100,
-                    person.Value.Agent.Fatigue + .45 * WorkInterval(person) / SimulationTime.TicksPerDay),
+                Fatigue = ResidentNeedsRules.ExertionFatigue(person.Value, ResidentNeedsRules.PhysicalWorkCostPerTick * WorkInterval(person)),
             }));
             return amount > 0;
         }

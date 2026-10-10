@@ -179,7 +179,7 @@ public sealed partial class WorldEngine
             .Where(i => FacilityPlacementError(town.Value.Id, kind, i % Width, i / Width, founding,
                             founding: founding) is null
                         && (founding || (AutomaticSiteUseful(kind, i) && _citizens[town.Value.Id].Any(p => p.Value.Health > 0 &&
-                            p.Value.Age >= 14 && p.Value.ArmyId == 0
+                            p.Value.Age >= ResidentNeedsRules.MinimumWorkAge && p.Value.ArmyId == 0
                             && Distance(p.Value.X, p.Value.Y, i % Width, i / Width) <= 6
                             && VisibleWorkSiteReachable(p, i % Width, i / Width, true)))))
             .OrderByDescending(i => BuildingSiteScore(town.Value.Id, kind, i % Width, i / Width))

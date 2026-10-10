@@ -91,6 +91,23 @@ public sealed partial class WorldEngine
                 var observe = (SimulationTick + observerIndex++) % observationInterval == 0;
                 if (person.Health <= 0 || !_settlements.TryGetValue(person.SettlementId, out var home))
                     continue;
+                if (ResidentNeedsRules.IsUnconscious(person))
+                {
+                    reference.Replace(person.WithActivity(ResidentActivity.Unconscious));
+                    continue;
+                }
+                if (person.Activity == ResidentActivity.Unconscious)
+                {
+                    reference.Replace(person.WithAction(person.Agent with { NextThinkTick = SimulationTick }, ResidentActivity.Resting));
+                    person = reference.Value;
+                }
+                if (person.Age < ResidentNeedsRules.MinimumOutdoorAge)
+                {
+                    var time = SimulationTime.TimeOfDay(SimulationTick);
+                    reference.Replace(person.WithActivity(time >= SimulationTime.SleepTick || time < SimulationTime.WakeTick
+                        ? ResidentActivity.Sleeping : ResidentActivity.Resting));
+                    continue;
+                }
                 if (person.ArmyId != 0)
                 {
                     if (observe)
@@ -524,14 +541,15 @@ public sealed partial class WorldEngine
                 "递送已结束或中止，带着剩余物资亲自返乡", null, home.Value.Id));
         }
 
-        if (person.Value.Agent.Fatigue > 35)
+        if (person.Value.Agent.Fatigue > (1 - ResidentNeedsRules.FullEfficiencyThreshold) * ResidentNeedsRules.MaximumPercent
+            || person.Value.Agent.Sleep < ResidentNeedsRules.FullEfficiencyThreshold * ResidentNeedsRules.MaximumPercent)
         {
-            choices.Add(new GoalChoice(AgentGoalKind.Rest, home.Value.X, home.Value.Y, person.Value.Agent.Fatigue * 1.15,
-                $"疲劳达到 {person.Value.Agent.Fatigue:0}，回家休息", null, home.Value.Id));
+            choices.Add(new GoalChoice(AgentGoalKind.Rest, home.Value.X, home.Value.Y, Math.Max(person.Value.Agent.Fatigue, ResidentNeedsRules.MaximumPercent - person.Value.Agent.Sleep) * 1.15,
+                $"体力剩余 {ResidentNeedsRules.MaximumPercent - person.Value.Agent.Fatigue:0}%，睡眠剩余 {person.Value.Agent.Sleep:0}%，回家休息", null, home.Value.Id));
         }
 
         var depositSite = LocalMaterialsNeeded(person, home) ? VisibleDepositSite(person) : -1;
-        if (person.Value.Age >= 14 && depositSite >= 0)
+        if (person.Value.Age >= ResidentNeedsRules.MinimumWorkAge && depositSite >= 0)
         {
             choices.Add(new GoalChoice(AgentGoalKind.Work, depositSite % Width, depositSite / Width,
                 65, "掌握勘探知识后在眼前发现矿藏，实地开采并运回"));
@@ -559,7 +577,7 @@ public sealed partial class WorldEngine
             return;
         }
 
-        if (Rules.Hunger && person.Value.Age >= 14 && person.Value.Hunger > 20 && person.Value.Inventory.Food < .3
+        if (Rules.Hunger && person.Value.Age >= ResidentNeedsRules.MinimumWorkAge && person.Value.Hunger > 20 && person.Value.Inventory.Food < .3
             && !choices.Any(choice =>
                 choice.Kind is AgentGoalKind.Gather or AgentGoalKind.Hunt or AgentGoalKind.Fish or AgentGoalKind.Eat))
         {
@@ -572,7 +590,7 @@ public sealed partial class WorldEngine
         }
 
         int? materialSite = null;
-        if (person.Value.Age >= 14 && person.Value.Profession is Profession.Lumberjack or Profession.Miner
+        if (person.Value.Age >= ResidentNeedsRules.MinimumWorkAge && person.Value.Profession is Profession.Lumberjack or Profession.Miner
                              && LocalMaterialsNeeded(person, home))
         {
             var site = FindVisibleResourceSite(person, person.Value.Profession);
@@ -585,8 +603,8 @@ public sealed partial class WorldEngine
             }
         }
 
-        var workTarget = person.Value.Age >= 14 ? FindLocalWorkTarget(person) : null;
-        if (person.Value.Age >= 14 && (person.Value.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner
+        var workTarget = person.Value.Age >= ResidentNeedsRules.MinimumWorkAge ? FindLocalWorkTarget(person) : null;
+        if (person.Value.Age >= ResidentNeedsRules.MinimumWorkAge && (person.Value.Profession is Profession.Farmer or Profession.Lumberjack or Profession.Miner
                                      or Profession.Builder or Profession.Scholar or Profession.Mage
                                      or Profession.Fisher ||
                                  person.Value.Profession >= Profession.Engineer)
@@ -607,7 +625,7 @@ public sealed partial class WorldEngine
                 kind == AgentGoalKind.TrainMagic ? "附近有可训练的魔法设施" : "附近有实际施工或生产工作", EntityId: work.Value.Id));
         }
 
-        if (person.Value.Age >= 14 && person.Value.Profession is Profession.Lumberjack or Profession.Miner
+        if (person.Value.Age >= ResidentNeedsRules.MinimumWorkAge && person.Value.Profession is Profession.Lumberjack or Profession.Miner
                              && (person.Value.Profession == Profession.Lumberjack
                                  ? (materialSite ?? FindVisibleResourceSite(person, Profession.Lumberjack)) < 0
                                  : depositSite < 0 &&
@@ -650,7 +668,7 @@ public sealed partial class WorldEngine
                 person.Value.Agent.SocialNeed * (0.6 + personality.Sociability * 0.5), "社交需求较高，去聚落与人交流", null, home.Value.Id));
         }
 
-        if (person.Value.Age >= 14 && person.Value.ArmyId == 0 && workTarget is { } useful
+        if (person.Value.Age >= ResidentNeedsRules.MinimumWorkAge && person.Value.ArmyId == 0 && workTarget is { } useful
             && !choices.Any(c => c.EntityId == useful.Value.Id))
         {
             choices.Add(new GoalChoice(AgentGoalKind.Work, useful.Value.X, useful.Value.Y, 25 + personality.Diligence * 8,
@@ -746,6 +764,8 @@ public sealed partial class WorldEngine
     private void CommitAgentChoice(StateReference<Resident> person, StateReference<Settlement> home, List<GoalChoice> choices,
         bool interrupted, bool activeMission)
     {
+        if (person.Value.Age < ResidentNeedsRules.MinimumWorkAge)
+            choices.RemoveAll(choice => IsLaborGoal(choice.Kind));
         if (SimulationTick < person.Value.Agent.Goal.NavigationRetryTick)
             choices.RemoveAll(c => Index(c.X, c.Y) == person.Value.Agent.Goal.NavigationTarget);
         choices.Add(new GoalChoice(AgentGoalKind.ReturnHome, home.Value.X, home.Value.Y, 5, "当前看不到合适资源，回到已知家园", null, home.Value.Id));
@@ -1037,6 +1057,11 @@ public sealed partial class WorldEngine
 
     private void ActOnAgentGoal(StateReference<Resident> person, StateReference<Settlement> home)
     {
+        if (IsLaborGoal(person.Value.Agent.Goal.Kind) && !ResidentNeedsRules.CanWork(person.Value))
+        {
+            person.Replace(person.Value.WithActivity(ResidentActivity.Resting));
+            return;
+        }
         var goal = person.Value.Agent.Goal;
         if (goal.Kind == AgentGoalKind.Migrate)
         {
@@ -1105,25 +1130,19 @@ public sealed partial class WorldEngine
                     person.Replace(person.Value.WithAgent(person.Value.Agent with { NextThinkTick = SimulationTick + 1 }));
                 break;
             case AgentGoalKind.Rest:
-                if (person.Value.Agent.Fatigue == 0 && person.Value.Activity == ResidentActivity.Resting)
-                    break;
-                person.Replace(person.Value.WithAction(person.Value.Agent with
-                {
-                    Goal = goal, Fatigue = Math.Max(0, person.Value.Agent.Fatigue - 2.2 * HomeRestMultiplier(person.Value.SettlementId, person.Value.X, person.Value.Y)),
-                }, ResidentActivity.Resting));
+                var recoverSleep = person.Value.Agent.Sleep < ResidentNeedsRules.FullEfficiencyThreshold * ResidentNeedsRules.MaximumPercent
+                    || (person.Value.Activity == ResidentActivity.Sleeping && person.Value.Agent.Sleep < ResidentNeedsRules.MaximumPercent);
+                person.Replace(person.Value.WithAction(person.Value.Agent with { Goal = goal },
+                    recoverSleep ? ResidentActivity.Sleeping : ResidentActivity.Resting));
                 break;
             case AgentGoalKind.Sleep:
-                person.Replace(person.Value.WithAction(person.Value.Agent.Fatigue > 0
-                    ? person.Value.Agent with { Fatigue = Math.Max(0, person.Value.Agent.Fatigue - 2.2) }
-                    : person.Value.Agent, ResidentActivity.Sleeping));
+                person.Replace(person.Value.WithActivity(ResidentActivity.Sleeping));
                 break;
             case AgentGoalKind.Flee:
                 person.Replace(person.Value.WithAction(person.Value.Agent with { Goal = goal, NextThinkTick = SimulationTick + 1 }, ResidentActivity.Fleeing));
                 break;
             case AgentGoalKind.Socialize:
-                if (person.Value.Agent.Fatigue == 0 && person.Value.Activity == ResidentActivity.Talking)
-                    break;
-                person.Replace(person.Value.WithAction(person.Value.Agent with { Goal = goal, Fatigue = Math.Max(0, person.Value.Agent.Fatigue - .4) }, ResidentActivity.Talking));
+                person.Replace(person.Value.WithAction(person.Value.Agent with { Goal = goal }, ResidentActivity.Talking));
                 break;
             case AgentGoalKind.Study:
             case AgentGoalKind.TrainMagic:
@@ -1137,14 +1156,13 @@ public sealed partial class WorldEngine
                 person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(goal)));
                 TransferPersonalProduction(person, home);
                 FinishFoundation(person, home);
-                var fatigue = Math.Max(0, person.Value.Agent.Fatigue - .8 * HomeRestMultiplier(person.Value.SettlementId, person.Value.X, person.Value.Y));
                 var nextReview = goal.WorkTicks == 1
                     ? SimulationTick + (home.Value.FoundationPending ? 4 : GoalReviewInterval(person))
                     : person.Value.Agent.NextThinkTick;
-                if (person.Value.Activity != ResidentActivity.Resting || fatigue != person.Value.Agent.Fatigue
+                if (person.Value.Activity != ResidentActivity.Resting
                                                                 || nextReview != person.Value.Agent.NextThinkTick)
                 {
-                    person.Replace(person.Value.WithAction(person.Value.Agent with { Fatigue = fatigue, NextThinkTick = nextReview }, ResidentActivity.Resting));
+                    person.Replace(person.Value.WithAction(person.Value.Agent with { NextThinkTick = nextReview }, ResidentActivity.Resting));
                 }
 
                 break;
@@ -1207,7 +1225,7 @@ public sealed partial class WorldEngine
 
     private void GatherActualResources(StateReference<Resident> person, Profession profession)
     {
-        if (!IsWorkDay(person))
+        if (!ResidentNeedsRules.CanWork(person.Value) || !IsWorkDay(person))
             return;
         if (profession == Profession.Miner && TryGatherDeposit(person))
             return;
@@ -1276,7 +1294,7 @@ public sealed partial class WorldEngine
             : agent.NextThinkTick;
         person.Replace(person.Value.WithAction(inventory, agent with
         {
-            Fatigue = Math.Min(100, agent.Fatigue + 0.30 * WorkInterval(person) / SimulationTime.TicksPerDay),
+            Fatigue = ResidentNeedsRules.ExertionFatigue(person.Value, ResidentNeedsRules.PhysicalWorkCostPerTick * WorkInterval(person)),
             NextThinkTick = nextThink,
         }, ResidentActivity.Working));
     }
@@ -1289,7 +1307,8 @@ public sealed partial class WorldEngine
     private bool MoveAgentTowards(StateReference<Resident> person, int targetX, int targetY,
         ResidentActivity? walkingActivity = null)
     {
-        if (person.Value.FrozenUntilTick > SimulationTick || !InBounds(targetX, targetY) ||
+        if (person.Value.Age < ResidentNeedsRules.MinimumOutdoorAge || ResidentNeedsRules.IsUnconscious(person.Value)
+            || person.Value.FrozenUntilTick > SimulationTick || !InBounds(targetX, targetY) ||
             (person.Value.X == targetX && person.Value.Y == targetY))
             return false;
         if (SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks)
@@ -1344,7 +1363,7 @@ public sealed partial class WorldEngine
         var agent = person.Value.Agent.RememberRouteTile(Index(person.Value.X, person.Value.Y)) with
         {
             Goal = goal,
-            Fatigue = walkingActivity.HasValue ? Math.Min(100, person.Value.Agent.Fatigue + .15) : person.Value.Agent.Fatigue,
+            Fatigue = ResidentNeedsRules.ExertionFatigue(person.Value, ResidentNeedsRules.WalkingCost),
         };
         person.Replace(person.Value.BeginMove(xNext, yNext, SimulationTick, duration,
             walkingActivity ?? (person.Value.ArmyId != 0 ? ResidentActivity.Marching : ResidentActivity.Wandering), agent));

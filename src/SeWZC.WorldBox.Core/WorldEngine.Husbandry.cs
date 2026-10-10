@@ -147,6 +147,8 @@ public sealed partial class WorldEngine
             var stock = HusbandryStockAt(b.Value.X, b.Value.Y, b.Value.Kind == BuildingKind.Aquaculture);
             if (stock.Source < 0)
                 return false;
+            if (!CompleteBuildingWorkCycle(b, person, true))
+                return true;
             var tile = Tiles[stock.Source];
             var take = Math.Min(1, tile.Value.AnimalPopulation(stock.Kind) * .5);
             tile.Replace(tile.Value.WithAnimalPopulation(stock.Kind, tile.Value.AnimalPopulation(stock.Kind) - take));

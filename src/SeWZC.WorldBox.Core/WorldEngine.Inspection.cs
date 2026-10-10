@@ -299,6 +299,8 @@ public sealed partial class WorldEngine
         var person = GetResident(id);
         if (person is null || person.Health <= 0)
             return "已离世，保留生平记录";
+        if (ResidentNeedsRules.IsUnconscious(person))
+            return $"睡眠或体力耗尽，强制昏迷\n睡眠与体力均恢复到 {ResidentNeedsRules.ConsciousRecoveryThreshold:P0} 后恢复行动";
         var cursor = RequireResident(id);
         var goal = person.Agent.Goal;
         var task = GetResidentTaskSummary(id);

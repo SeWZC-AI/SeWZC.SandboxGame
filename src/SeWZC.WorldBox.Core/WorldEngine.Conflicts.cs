@@ -30,7 +30,9 @@ public sealed partial class WorldEngine
                            second.Value.SettlementId == conflict.SettlementId
                            && Distance(first.Value.X, first.Value.Y, second.Value.X, second.Value.Y) <= 2
                            && Distance(first.Value.X, first.Value.Y, conflict.X, conflict.Y) <= 2;
-            var pressured = together && HasResourcePressure(first!) &&
+            var pressured = together && !ResidentNeedsRules.IsUnconscious(first!.Value)
+                            && !ResidentNeedsRules.IsUnconscious(residents[conflict.SecondResidentId].Value)
+                            && HasResourcePressure(first!) &&
                             HasResourcePressure(residents[conflict.SecondResidentId]);
             conflict = PublishConflict(conflict with
             {
@@ -62,6 +64,7 @@ public sealed partial class WorldEngine
             if (pressured && SimulationTick - conflict.StartedTick >= 72 && conflict.Participants.Count < 16)
             {
                 var witness = _citizens[conflict.SettlementId].Where(r => r.Value.Age >= 14 && r.Value.ArmyId == 0
+                    && !ResidentNeedsRules.IsUnconscious(r.Value)
                     && !conflict.Participants.Contains(r.Value.Id) && HasResourcePressure(r)
                     && Distance(r.Value.X, r.Value.Y, conflict.X, conflict.Y) <= 2).OrderBy(r => r.Value.Id).FirstOrDefault();
                 if (witness is not null)
@@ -89,7 +92,8 @@ public sealed partial class WorldEngine
                                                                                  SimulationTick - c.LastChangedTick <
                                                                                  120)))
                 continue;
-            var candidates = _citizens[town.Value.Id].Where(r => r.Value.Age >= 14 && r.Value.ArmyId == 0 && HasResourcePressure(r))
+            var candidates = _citizens[town.Value.Id].Where(r => r.Value.Age >= 14 && r.Value.ArmyId == 0
+                && !ResidentNeedsRules.IsUnconscious(r.Value) && HasResourcePressure(r))
                 .OrderBy(r => r.Value.Id).Take(32).ToArray();
             for (var i = 0; i < candidates.Length; i++)
             {

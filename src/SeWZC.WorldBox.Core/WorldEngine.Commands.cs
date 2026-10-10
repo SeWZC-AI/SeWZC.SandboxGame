@@ -196,7 +196,7 @@ public sealed partial class WorldEngine
             CultureId = settlement.Value.CultureId,
             NationId = settlement.Value.NationId,
             SettlementId = settlement.Value.Id,
-            Profession = age < 14 ? Profession.Child : AssignProfession(),
+            Profession = age < ResidentNeedsRules.MinimumWorkAge ? Profession.Child : AssignProfession(),
             MagicTalent = (race == RaceKind.Elf ? 45 : race == RaceKind.Dwarf ? 23 : race == RaceKind.Orc ? 28 : 32) +
                           unchecked(((uint)id * 2654435761u) ^ (uint)Seed) % 36,
             Trait = new[] { "勤劳", "勇敢", "好奇", "坚韧", "温和" }[RandomInt(5)],
@@ -454,7 +454,7 @@ public sealed partial class WorldEngine
             if ((center.Value.IsWalkable && !IsWaterTerrain(center.Value.Terrain)) || (center.Value.Terrain == TerrainType.Mountain
                                                                            && _citizens.GetValueOrDefault(settlement.Value.Id)
                                                                                ?.Any(p => p.Value.Race == RaceKind.Dwarf &&
-                                                                                   p.Value.Health > 0 && p.Value.Age >= 14) ==
+                                                                                   p.Value.Health > 0 && p.Value.Age >= ResidentNeedsRules.MinimumWorkAge) ==
                                                                            true))
             {
                 ClaimTerritory(settlement, 6);

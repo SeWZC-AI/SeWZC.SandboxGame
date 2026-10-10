@@ -1680,6 +1680,7 @@ public sealed partial class MainView : UserControl
             ResidentActivity.Sick => "正在养病",
             ResidentActivity.Eating => "正在进食",
             ResidentActivity.Sleeping => "正在睡觉",
+            ResidentActivity.Unconscious => "睡眠或体力耗尽，正在昏迷",
             ResidentActivity.Resting => "正在休息",
             ResidentActivity.Talking => "交换消息",
             ResidentActivity.Delivering => "执行运输",

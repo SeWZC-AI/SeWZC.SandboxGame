@@ -20,8 +20,12 @@ public sealed partial record AgentState
         }
     }
 
-    /// <summary>疲劳程度，越高表示越需要休息。</summary>
+    /// <summary>已消耗体力的百分比，越高表示越需要休息。</summary>
     public double Fatigue { get; init; }
+
+    /// <summary>剩余睡眠储备的百分比，清醒和睡眠期间均持续消耗。</summary>
+    [JsonRequired]
+    public double Sleep { get; init; } = ResidentNeedsRules.MaximumPercent;
 
     /// <summary>社交需求程度，越高表示越需要交流。</summary>
     public double SocialNeed { get; init; }
