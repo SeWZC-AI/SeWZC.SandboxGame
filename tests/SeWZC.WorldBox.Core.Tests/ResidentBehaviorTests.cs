@@ -424,7 +424,7 @@ public sealed class ResidentBehaviorTests
 
         fixture.Engine.Step();
 
-        Assert.Equal(0, fixture.Resident.Value.Thirst);
+        Assert.InRange(fixture.Resident.Value.Thirst, 0, ResidentNeedsRules.DrinkThreshold);
         Assert.Equal(AgentGoalKind.FetchWater, fixture.Resident.Value.Agent.Goal.Kind);
         Assert.Equal(16 * 32 + 19 + 1, fixture.Resident.Value.Agent.Goal.TargetEntityId);
     }

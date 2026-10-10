@@ -317,10 +317,12 @@ public sealed partial class WorldEngine
         if (person is null || person.Health <= 0)
             return "已离世，保留生平记录";
         if (ResidentNeedsRules.IsUnconscious(person))
-            return $"睡眠或体力耗尽，强制昏迷\n" +
+            return $"饮食、睡眠或体力储备耗尽，强制昏迷\n" +
                    (person.CarriedByResidentId != 0 ? "正由" + (GetResident(person.CarriedByResidentId)?.Name ?? "其他居民") + "携带，等待进入住宅或安全落地"
                        : person.BedRestAfterRescue ? "已获救并在住宅床位休养" : "以低质量睡眠缓慢恢复") +
-                   $"\n睡眠与体力均恢复到 {ResidentNeedsRules.ConsciousRecoveryThreshold:P0} 后恢复行动";
+                   $"\n睡眠与体力均恢复到 {ResidentNeedsRules.ConsciousRecoveryThreshold:P0}，饥饿与口渴不高于 {1 - ResidentNeedsRules.ConsciousRecoveryThreshold:P0} 后恢复行动";
+        if (person.Activity == ResidentActivity.Eating && person.Agent.Goal.Kind != AgentGoalKind.Eat)
+            return "暂停当前行动，吃随身口粮或喝实际携带的水";
         var goal = person.Agent.Goal;
         var directed = goal.PlayerDirected && SimulationTick < goal.ReviewTick;
         var finishingSleepMove = goal.Kind == AgentGoalKind.Sleep && goal.PlayerDirected && !directed

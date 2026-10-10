@@ -42,6 +42,6 @@ public enum ResidentActivity
     /// <summary>睡眠。</summary>
     Sleeping,
 
-    /// <summary>睡眠或体力耗尽导致的强制昏迷。</summary>
+    /// <summary>饮食、睡眠或体力耗尽导致的强制昏迷。</summary>
     Unconscious,
 }

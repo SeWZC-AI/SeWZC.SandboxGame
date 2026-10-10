@@ -54,7 +54,7 @@ public sealed partial class WorldEngine
                     homeQuality.Add(person.SettlementId, quality);
                 }
             }
-            reference.Replace(person.WithAgent(ResidentNeedsRules.Advance(person, quality)));
+            reference.Replace(person.AdvanceRecovery(Rules, SimulationTick, quality));
         }
     }
 

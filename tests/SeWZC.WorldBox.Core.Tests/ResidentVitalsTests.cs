@@ -89,8 +89,8 @@ public sealed class ResidentVitalsTests
         var after = before.AdvanceDay(new WorldRules(), new Tile { FireTicks = lethalFire ? 1 : 0 },
             1, Profession.Farmer, 0, 0, true, suppliedInventory: supplies);
 
-        Assert.Equal(lethalFire ? 1 : .96, after.Inventory.Food, 10);
-        Assert.Equal(lethalFire ? 1 : .975, after.Inventory.Water, 10);
+        Assert.Equal(lethalFire ? 1 : .98, after.Inventory.Food, 10);
+        Assert.Equal(lethalFire ? 1 : 1 - .0125 / 3, after.Inventory.Water, 10);
         Assert.Equal(2, after.Inventory.Medicine);
         Assert.Equal(0, before.Inventory.Food);
         Assert.Equal(0, before.Inventory.Medicine);
@@ -119,7 +119,7 @@ public sealed class ResidentVitalsTests
         Assert.Equal(0, after.Agent.MissionOriginSettlementId);
         Assert.Equal(AgentGoalKind.ReturnHome, after.Agent.Goal.Kind);
         Assert.Equal<int>([5, 6], after.Agent.FamiliarTiles);
-        Assert.Equal(consumeNeeds ? .96 : 1, after.Inventory.Food, 10);
+        Assert.Equal(consumeNeeds ? .98 : 1, after.Inventory.Food, 10);
         Assert.Equal(2, after.Inventory.Medicine);
         Assert.Equal(7, before.Agent.MissionOriginSettlementId);
         Assert.Equal(TravelMode.Boat, before.TravelMode);
@@ -175,14 +175,15 @@ public sealed class ResidentVitalsTests
     [Fact]
     public void Delivered_water_is_consumed_by_the_day_transition()
     {
-        var before = new Resident { Age = 20, Thirst = 10, Inventory = new ResourceStock { Food = 1 } };
+        var before = new Resident { Age = 20, Thirst = 20, Inventory = new ResourceStock { Food = 1 } };
 
-        var after = before.AdvanceDay(new WorldRules(), new Tile(), 1, Profession.Farmer, 0, 0, true,
-            deliveredWater: .025);
+        var after = before.CalculateDay(new WorldRules(), new Tile { NaturalWaterYield = .1 }, 1,
+            Profession.Farmer, 0, 0, true, deliveredWater: .001,
+            elapsedDays: 1d / SimulationTime.TicksPerDay).Apply(before);
 
-        Assert.Equal(7, after.Thirst);
+        Assert.Equal(20 + 50d / 24 - 4, after.Thirst, 10);
         Assert.Equal(0, after.Inventory.Water);
-        Assert.Equal(10, before.Thirst);
+        Assert.Equal(20, before.Thirst);
         Assert.Equal(0, before.Inventory.Water);
     }
 

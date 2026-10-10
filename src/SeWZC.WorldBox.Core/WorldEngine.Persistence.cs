@@ -119,7 +119,7 @@ public sealed partial class WorldEngine
         }
 
         Require(state.FormatVersion == 24, "不支持该存档版本，请为本版新建世界。");
-        Require(state.SimulationVersion == 28, "不支持该模拟版本，请为本版新建世界。");
+        Require(state.SimulationVersion == 29, "不支持该模拟版本，请为本版新建世界。");
         Require(state.Width is >= 32 and <= 256 && state.Height is >= 32 and <= 256, "地图尺寸超出范围。");
         Require(
             state.Tick is >= 0 and <= 120_000_000 && state.RandomState != 0 && state.NextId is > 0 and < 2_000_000_000,

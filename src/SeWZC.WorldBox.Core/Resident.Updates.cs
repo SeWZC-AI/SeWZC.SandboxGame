@@ -24,7 +24,7 @@ public sealed partial record Resident
 
     internal Resident WithAgent(AgentState value)
     {
-        var activity = Health > 0 && ResidentNeedsRules.IsUnconscious(value, Activity) ? ResidentActivity.Unconscious : Activity;
+        var activity = Health > 0 && ResidentNeedsRules.IsUnconscious(value, Activity, Hunger, Thirst) ? ResidentActivity.Unconscious : Activity;
         var credit = TravelActivity(activity) ? MovementCredit : 0;
         return ReferenceEquals(Agent, value) && Activity == activity && credit == MovementCredit ? this
             : this with { Agent = value, Activity = activity, MovementCredit = credit };
@@ -35,7 +35,7 @@ public sealed partial record Resident
     // 认知、库存与活动共同构成一次动作，源居民及其身体、移动和身份值保持不变。
     internal Resident WithAction(AgentState agent, ResidentActivity activity)
     {
-        if (Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity))
+        if (Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity, Hunger, Thirst))
             activity = ResidentActivity.Unconscious;
         var credit = TravelActivity(activity) ? MovementCredit : 0;
         if (ReferenceEquals(Agent, agent) && Activity == activity && credit == MovementCredit)
@@ -45,7 +45,7 @@ public sealed partial record Resident
 
     internal Resident WithAction(in ResourceStock inventory, AgentState agent, ResidentActivity activity)
     {
-        if (Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity))
+        if (Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity, Hunger, Thirst))
             activity = ResidentActivity.Unconscious;
         var credit = TravelActivity(activity) ? MovementCredit : 0;
         if (Inventory == inventory && ReferenceEquals(Agent, agent) && Activity == activity && credit == MovementCredit)
@@ -75,7 +75,7 @@ public sealed partial record Resident
         {
             MovementState = _movement with { X = x, FromX = x, Y = y, FromY = y, Route = [], Credit = 0 },
             Agent = agent ?? Agent,
-            Activity = agent is not null && Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity)
+            Activity = agent is not null && Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity, Hunger, Thirst)
                 ? ResidentActivity.Unconscious : Activity,
             IsInsideHome = false,
             BedRestAfterRescue = false,
@@ -89,7 +89,7 @@ public sealed partial record Resident
     internal Resident BeginMove(int x, int y, long tick, int duration, ResidentActivity activity, AgentState agent,
         System.Collections.Immutable.ImmutableArray<int> route = default)
     {
-        if (Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity))
+        if (Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity, Hunger, Thirst))
             activity = ResidentActivity.Unconscious;
         return this with
         {

@@ -23,7 +23,7 @@ public sealed partial record Resident
         int infectionDuration,
         double manaRecovery, bool consumeNeeds, double socialGrowth = .07, double deliveredWater = 0,
         int arrivedTile = -1, ResourceStock? suppliedInventory = null, AgentState? suppliedAgent = null,
-        double elapsedDays = 1)
+        double elapsedDays = 1, bool assistedFeeding = false)
     {
         var vitals = CalculateVitals(rules, tile, tick, profession, infectionDuration, manaRecovery, elapsedDays);
         var agent = suppliedAgent ?? Agent;
@@ -33,7 +33,7 @@ public sealed partial record Resident
         var arrivedAgent = arrivedTile >= 0 ? agent.RememberRouteTile(arrivedTile) : agent;
         var next = consumeNeeds && vitals.Health > 0
             ? CalculateNeeds(rules, tick, vitals, socialGrowth, deliveredWater, arrivedAgent, suppliedInventory, tile,
-                elapsedDays)
+                elapsedDays, assistedFeeding)
             : CalculateDailyVitals(vitals, vitals.Health > 0 ? socialGrowth : 0, deliveredWater, arrivedAgent,
                 suppliedInventory);
         if (consumeNeeds && vitals.Health > 0 && !agent.Goal.PlayerDirected
@@ -90,7 +90,7 @@ public sealed partial record Resident
             sickness = infectionDuration;
 
         var activity = health > 0 && ResidentNeedsRules.IsUnconscious(this) ? ResidentActivity.Unconscious
-            : health > 0 && sickness > 0 ? ResidentActivity.Sick : Activity;
+            : health > 0 && sickness > 0 && Activity != ResidentActivity.Sleeping ? ResidentActivity.Sick : Activity;
         var mana = health > 0 ? Math.Min(100, Mana + manaRecovery) : Mana;
         return new VitalState(age, profession, health, sickness, immunity, deathCause, deathTick, activity, mana);
     }

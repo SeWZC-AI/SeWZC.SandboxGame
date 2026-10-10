@@ -11,13 +11,13 @@ public sealed class LocalConflictTests
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         fixture.Engine.ConfigureWorld(new WorldRules
         {
-            Aging = false, Hunger = false, Thirst = false, Disease = false, Births = false,
+            Aging = false, Hunger = true, Thirst = false, Disease = false, Births = false,
             Construction = false, Expansion = false, Research = false, Migration = false, Secession = false,
         }, false, false);
         foreach (var person in fixture.Engine.Residents)
             person.Replace(person.Value with
             {
-                Age = 25, Hunger = 60, Inventory = new ResourceStock(), FrozenUntilTick = 100,
+                Age = 25, Hunger = 50, Inventory = new ResourceStock(), FrozenUntilTick = 100,
                 Agent = new AgentState
                 {
                     Initialized = true, NextThinkTick = 100, Goal = new AgentGoal { ReviewTick = 100 },

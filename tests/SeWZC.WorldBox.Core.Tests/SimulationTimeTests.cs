@@ -383,7 +383,7 @@ public sealed class SimulationTimeTests
         Assert.DoesNotContain("在指定地点休息", summary);
     }
 
-    /// <summary>夜间在家睡眠仍按日内份额消耗口粮和衰老，晨起清除暂存目标。</summary>
+    /// <summary>夜间在家睡眠仍增加饥渴和年龄，晨起清除暂存目标。</summary>
     [Fact]
     public void Sleeping_consumes_fractional_needs_and_ends_at_morning()
     {
@@ -400,7 +400,8 @@ public sealed class SimulationTimeTests
         Assert.Contains("正在睡眠", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
         Assert.Contains("在家", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
         Assert.Equal(before.Age + 1d / SimulationTime.TicksPerYear, fixture.Resident.Value.Age, 10);
-        Assert.Equal(foodBefore - WorldEngine.FoodUse(before) / SimulationTime.TicksPerDay,
+        Assert.True(fixture.Resident.Value.Hunger > before.Hunger);
+        Assert.Equal(foodBefore,
             fixture.Resident.Value.Inventory.Food + fixture.Town.Value.Resources.Food, 10);
         var restored = WorldEngine.ImportJson(fixture.Engine.ExportJson());
         var untilMorning = SimulationTime.TicksPerDay - SimulationTime.SleepTick + SimulationTime.WakeTick;
