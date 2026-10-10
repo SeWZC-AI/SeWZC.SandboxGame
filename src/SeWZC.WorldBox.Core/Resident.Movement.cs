@@ -17,7 +17,11 @@ public sealed partial record Resident
     public double MovementCredit
     {
         get => _movement.Credit;
-        init => _movement = _movement with { Credit = value };
+        init
+        {
+            if (BitConverter.DoubleToInt64Bits(_movement.Credit) != BitConverter.DoubleToInt64Bits(value))
+                _movement = _movement with { Credit = value };
+        }
     }
     // 相应字段以不可变记录共享，一次动作或结算只复制发生变化的这一组。
     private readonly Movement _movement = Movement.Default;

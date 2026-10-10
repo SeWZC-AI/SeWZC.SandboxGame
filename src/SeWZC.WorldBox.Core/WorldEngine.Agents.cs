@@ -1421,7 +1421,7 @@ public sealed partial class WorldEngine
                         ? navigation.NavigationVisited : navigation.NavigationVisited.Add(Index(preview.Value.X, preview.Value.Y)),
                 };
             var mind = preview.Value.Agent with { Goal = goal };
-            preview.Replace(preview.Value.WithPosition(xNext, yNext).WithAgent(mind));
+            preview.Replace(preview.Value.WithPosition(xNext, yNext, mind));
             route.Add(bestStep);
             if (remaining <= interactionRange || elapsed >= budget - .000000001
                 || ResidentNeedsRules.ExertionFatigue(origin, ResidentNeedsRules.WalkingCost * (route.Count - 1)) >= ResidentNeedsRules.MaximumPercent)
@@ -1445,6 +1445,10 @@ public sealed partial class WorldEngine
 
     // 选路与实际移动共用耗时，舟船、信使和种族设施的修正不能只影响其中一端。
     private double AgentMoveCost(StateReference<Resident> person, int index)
+        => AgentMoveCost(person, index,
+            ResidentMovementRules.ConditionMultiplier(person.Value, IsCarryingResident(person.Value.Id)));
+
+    private double AgentMoveCost(StateReference<Resident> person, int index, double conditionMultiplier)
     {
         var terrain = Tiles[index].Value;
         var x = index % Width;
@@ -1457,7 +1461,7 @@ public sealed partial class WorldEngine
                     ? 1 / TerrainMoveCost(terrain, person.Value.Race)
                     : MessageTravelMultiplier(x, y, person.Value.NationId, person.Value.Race);
         speed *= ResidentMovementRules.BaseTilesPerTick * RacialTravelBonus(person, x, y)
-                 * ResidentMovementRules.ConditionMultiplier(person.Value, IsCarryingResident(person.Value.Id));
+                 * conditionMultiplier;
         return Math.Clamp(1 / Math.Max(.1, speed), 1d / ResidentMovementRules.MaximumTilesPerTick,
             ResidentMovementRules.MaximumTicksPerTile);
     }
@@ -1563,6 +1567,7 @@ public sealed partial class WorldEngine
         // 视野内按实际成本加剩余距离下界出队，仍依据实际耗时选择最短路。
         var targetVisible = Distance(originX, originY, targetX, targetY) <= 6;
         var minimumTargetDistance = Math.Max(0, Distance(originX, originY, targetX, targetY) - 6);
+        var conditionMultiplier = ResidentMovementRules.ConditionMultiplier(person.Value, IsCarryingResident(person.Value.Id));
         var upperCost = targetVisible
             ? Math.Min(DirectCost(true, flags, entryCosts), DirectCost(false, flags, entryCosts))
             : double.PositiveInfinity;
@@ -1600,7 +1605,7 @@ public sealed partial class WorldEngine
             return cost;
         }
 
-        double EntryDuration(int index, Tile tile) => AgentMoveCost(person, index);
+        double EntryDuration(int index, Tile tile) => AgentMoveCost(person, index, conditionMultiplier);
 
         flags[6 * diameter + 6] |= 16;
         pathCosts[6 * diameter + 6] = 0;
