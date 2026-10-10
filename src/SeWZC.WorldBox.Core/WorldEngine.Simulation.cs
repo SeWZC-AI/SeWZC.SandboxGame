@@ -74,7 +74,13 @@ public sealed partial class WorldEngine
         var tick = SimulationTick;
         var tiles = Tiles;
         // 先保存现有病例的位置，避免新感染在同一天沿居民遍历顺序连锁传播。
-        var infected = new HashSet<int>(Residents.Where(r => r.Value.SicknessTicks > 0).Select(r => Index(r.Value.X, r.Value.Y)));
+        var infected = new HashSet<int>();
+        foreach (var reference in Residents)
+        {
+            var person = reference.Value;
+            if (person.SicknessTicks > 0)
+                infected.Add(Index(person.X, person.Y));
+        }
         BeginDailyDrinking();
         // 库存只在本阶段按居民顺序记账，阶段结束显式提交聚落。
         var warehouses = new ResourceStock[Settlements.Count];
@@ -82,26 +88,9 @@ public sealed partial class WorldEngine
             warehouses[town.Position] = town.Value.Resources;
         try
         {
-            var count = Residents.Count;
-            if (count < 4096 || Environment.ProcessorCount <= 1 || OperatingSystem.IsBrowser())
-            {
-                foreach (var reference in Residents)
-                    reference.Replace(Prepare(reference).Advance(rules, tick));
-            }
-            else
-            {
-                if (_dailyResidentInputs.Length < count)
-                {
-                    _dailyResidentInputs = new DailyResidentInput[count];
-                }
-
-                for (var index = 0; index < count; index++)
-                    _dailyResidentInputs[index] = Prepare(Residents[index]);
-                // 整批输入已固定；纯身体转换直接按顺序提交，不必暂存另一份输出数组。
-                for (var index = 0; index < count; index++)
-                    Residents[index].Replace(_dailyResidentInputs[index].Advance(rules, tick));
-                Array.Clear(_dailyResidentInputs, 0, count);
-            }
+            // 传播位置已固定，公共库存及取水仍按居民顺序记账；个人转换不读取其他居民。
+            foreach (var reference in Residents)
+                reference.Replace(Advance(reference));
         }
         finally
         {
@@ -112,7 +101,7 @@ public sealed partial class WorldEngine
 
         ArchiveDeadResidents();
 
-        DailyResidentInput Prepare(StateReference<Resident> reference)
+        Resident Advance(StateReference<Resident> reference)
         {
             InitializeAgent(reference);
             // 返仓结果直接交给纯结算，身体、补给与出行方式共同生成一份居民。
@@ -172,26 +161,15 @@ public sealed partial class WorldEngine
                 ? WithdrawWater(person.X, person.Y, person.MoveStartedTick, person.MoveDurationTicks,
                     carriedWater, Index(person.X, person.Y), waterUse - inventory.Water)
                 : 0;
-            return new DailyResidentInput
-            {
-                Person = person,
-                Agent = agent,
-                Inventory = inventory,
-                TravelMode = travelMode,
-                Tile = tile.Value,
-                Profession = profession,
-                InfectionDuration = infectionDuration,
-                ManaRecovery = manaRecovery / SimulationTime.TicksPerDay,
-                ConsumeNeeds =
-                    person.ArmyId == 0 && hasHome,
-                SocialGrowth = hasHome && (tick + person.Id) % SimulationTime.TicksPerDay == 0 ? .07 : 0,
-                DeliveredWater = water,
-                ArrivedTile =
-                    hasHome && person.ArmyId == 0 && person.Health > 0
-                    && tick - person.MoveStartedTick == person.MoveDurationTicks
-                        ? Index(person.X, person.Y)
-                        : -1,
-            };
+            var consumeNeeds = person.ArmyId == 0 && hasHome;
+            var socialGrowth = hasHome && (tick + person.Id) % SimulationTime.TicksPerDay == 0 ? .07 : 0;
+            var arrivedTile = hasHome && person.ArmyId == 0 && person.Health > 0
+                              && tick - person.MoveStartedTick == person.MoveDurationTicks
+                ? Index(person.X, person.Y)
+                : -1;
+            return person.CalculateDay(rules, tile.Value, tick, profession, infectionDuration,
+                manaRecovery / SimulationTime.TicksPerDay, consumeNeeds, socialGrowth, water, arrivedTile,
+                inventory, agent, 1d / SimulationTime.TicksPerDay).Apply(person, travelMode);
         }
     }
 

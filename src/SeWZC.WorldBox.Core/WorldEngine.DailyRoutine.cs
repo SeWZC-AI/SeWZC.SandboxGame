@@ -81,17 +81,17 @@ public sealed partial class WorldEngine
             };
             ChangeWorkReservation(agent.Goal, sleep);
             agent = agent with { Goal = sleep, DaytimeGoal = agent.Goal, NextThinkTick = morning };
-            person.Replace(person.Value.WithAgent(agent));
         }
 
         if (Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) > 1
             || !Walkable(person.Value.X, person.Value.Y, person.Value.Race))
         {
+            person.Replace(person.Value.WithAgent(agent));
             MoveAgentTowards(person, home.Value.X, home.Value.Y, ResidentActivity.Wandering);
             return true;
         }
 
-        var restingAgent = person.Value.Agent;
+        var restingAgent = agent;
         if (restingAgent.Fatigue > 0)
         {
             restingAgent = restingAgent with

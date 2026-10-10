@@ -5,6 +5,28 @@ namespace SeWZC.WorldBox.Core.Tests;
 /// <summary>每日死亡归档与现场医疗劳动的衔接。</summary>
 public sealed class MedicalWorkTests
 {
+    /// <summary>同一步多名死者按居民顺序记录死亡，存活者和原快照保留。</summary>
+    [Fact]
+    public void Multiple_deaths_preserve_archival_and_event_order()
+    {
+        var fixture = new WorldFixture();
+        fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 2);
+        var first = fixture.Engine.Residents[0];
+        var second = fixture.Engine.Residents[1];
+        first.Replace(first.Value with { Health = 0 });
+        second.Replace(second.Value with { Health = 0 });
+        var before = fixture.Engine.State;
+
+        fixture.Engine.Step();
+
+        Assert.Equal<int>([first.Value.Id, second.Value.Id], fixture.Engine.State.ArchivedResidents.Select(person => person.Id));
+        Assert.Equal<int>([first.Value.Id, second.Value.Id], fixture.Engine.State.Events
+            .Where(entry => entry.Kind == WorldEventKind.Death).Select(entry => entry.ResidentId));
+        Assert.Single(fixture.Engine.Residents);
+        Assert.Empty(before.ArchivedResidents);
+        Assert.All(before.Residents, person => Assert.Equal(DeathCause.None, person.DeathCause));
+    }
+
     /// <summary>当天病死者退出医疗候选，诊所继续治疗仍存活的患者。</summary>
     [Fact]
     public void Medical_work_treats_the_living_patient_after_daily_death()
