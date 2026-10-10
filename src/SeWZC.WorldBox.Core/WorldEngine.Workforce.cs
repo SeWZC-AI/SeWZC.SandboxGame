@@ -221,7 +221,7 @@ public sealed partial class WorldEngine
         };
     }
 
-    private void ChangeLocalProfession(StateReference<Resident> person, Profession job)
+    private void ChangeLocalProfession(StateReference<Resident> person, Profession job, string? reason = null)
     {
         person.Replace(person.Value with
         {
@@ -233,12 +233,13 @@ public sealed partial class WorldEngine
                 WorkAreaIndex = -1,
                 NextThinkTick = SimulationTick,
                 DaytimeGoal = null,
+                DailyPlan = null,
                 Goal = new AgentGoal
                 {
                     Kind = AgentGoalKind.Idle,
                     TargetX = person.Value.X,
                     TargetY = person.Value.Y,
-                    Reason = $"因本地供给缺口和可用工位，接受{ProfessionName(job)}分工",
+                    Reason = reason ?? $"因本地供给缺口和可用工位，接受{ProfessionName(job)}分工",
                 },
             },
         });

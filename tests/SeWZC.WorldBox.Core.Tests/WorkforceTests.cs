@@ -393,13 +393,78 @@ public sealed class WorkforceTests
         Assert.Equal(0, fixture.Town.Value.Resources.Ore);
     }
 
+    /// <summary>已有住宅满员后继续扩建，计入在建床位以免重复立项。</summary>
+    [Theory]
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(1, true)]
+    public void Housing_expands_after_existing_beds_fill(int level, bool pending)
+    {
+        var fixture = Prepare();
+        var id = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Housing, 17, 16);
+        var house = fixture.Engine.Buildings.Single(building => building.Value.Id == id);
+        house.Replace(house.Value with { Level = level });
+        if (pending)
+        {
+            var ground = fixture.Engine.Tiles[17 * 32 + 16];
+            ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+            var plannedId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Housing, 16, 17);
+            var planned = fixture.Engine.Buildings.Single(building => building.Value.Id == plannedId);
+            planned.Replace(planned.Value with { ConstructionProgress = 0 });
+        }
+        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Construction = true }, false, false);
+        fixture.Town.Replace(fixture.Town.Value with { Population = level * WorldEngine.HousingCapacityPerLevel + 1 });
+        fixture.Engine.SimulationTick =
+            2 * SimulationTime.TicksPerMonth - fixture.Town.Value.Id % (2 * SimulationTime.TicksPerMonth);
+
+        fixture.Engine.TickSociety();
+
+        Assert.Equal(2, fixture.Engine.State.Society.Buildings.Count(building => building.Kind == BuildingKind.Housing));
+    }
+
+    /// <summary>公开职业分配与自动岗位调整均使旧日工作计划失效。</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Profession_assignment_invalidates_previous_daily_work(bool automatic)
+    {
+        var fixture = Prepare();
+        var worker = fixture.Engine.Residents.First(person => person.Value.Id != fixture.ResidentId);
+        worker.Replace(worker.Value with
+        {
+            Profession = Profession.Laborer,
+            Agent = worker.Value.Agent with
+            {
+                DailyPlan = new ResidentDailyPlan { WorkGoal = new AgentGoal { Kind = AgentGoalKind.Gather } },
+                Personality = worker.Value.Agent.Personality with { Diligence = 1 },
+            },
+        });
+        if (automatic)
+        {
+            foreach (var patient in fixture.Engine.Residents.Where(person => person.Value.Id != fixture.ResidentId && person.Value.Id != worker.Value.Id))
+                patient.Replace(patient.Value with { Age = 10, Profession = Profession.Child, SicknessTicks = 20 });
+            GrantResearch(fixture, Advancement.Sanitation);
+            fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Hospital, 17, 16);
+            fixture.Engine.SimulationTick = SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
+            fixture.Engine.TickSociety();
+        }
+        else
+        {
+            GrantResearch(fixture, ResearchRules.Unlocking(Profession.Physician)!);
+            fixture.Engine.AssignResearchProfession(worker.Value.Id, Profession.Physician);
+        }
+
+        Assert.NotEqual(Profession.Laborer, worker.Value.Profession);
+        Assert.Null(worker.Value.Agent.DailyPlan);
+    }
+
     /// <summary>住房不足压低出生率，粮食充足且有健康成年人时仍能延续下一代。</summary>
     [Fact]
     public void Overcrowding_slows_births_without_stopping_generation_replacement()
     {
         var fixture = Prepare();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Births = true }, false, false);
-        fixture.Town.Replace(fixture.Town.Value with { Housing = 0 });
+        fixture.Engine.Buildings.RemoveAll(building => building.Value.Kind == BuildingKind.Housing);
         fixture.Engine.SimulationTick = SimulationTime.TicksPerYear / 10 - 1;
         var before = fixture.Engine.State.Population;
 
@@ -434,6 +499,39 @@ public sealed class WorkforceTests
         Assert.Equal(.6, Assert.Single(after.Residents, person => person.Age == 0).Inventory.Food, 8);
         Assert.Equal(before.Residents.Sum(person => person.Inventory.Food) + before.Settlements[0].Resources.Food,
             after.Residents.Sum(person => person.Inventory.Food) + after.Settlements[0].Resources.Food, 8);
+    }
+
+    /// <summary>已住进远离中心的实际住宅的家庭仍能抚育新生儿。</summary>
+    [Fact]
+    public void A_family_inside_real_housing_can_support_a_birth()
+    {
+        var fixture = Prepare();
+        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Births = true, Hunger = false, Thirst = false, Aging = false }, false, false);
+        for (var x = 17; x <= 18; x++)
+        {
+            var ground = fixture.Engine.Tiles[16 * 32 + x];
+            ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+        }
+        var homeId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Housing, 18, 16);
+        fixture.Engine.SimulationTick = SimulationTime.TicksPerYear / 10 - 1;
+        fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock()));
+        foreach (var person in fixture.Engine.Residents)
+            person.Replace(person.Value.WithPosition(18, 16) with
+            {
+                HomeBuildingId = homeId, IsInsideHome = true,
+                Inventory = new ResourceStock { Food = .8, Water = 1 },
+                FrozenUntilTick = fixture.Engine.SimulationTick + 2,
+            });
+        var before = fixture.Engine.State;
+
+        fixture.Engine.Step();
+
+        var after = fixture.Engine.State;
+        Assert.Equal(before.Population + 1, after.Population);
+        var newborn = Assert.Single(after.Residents, person => person.Age == 0);
+        Assert.True(newborn.IsInsideHome);
+        Assert.Equal(homeId, newborn.HomeBuildingId);
+        Assert.Equal(before.Residents.Sum(person => person.Inventory.Food), after.Residents.Sum(person => person.Inventory.Food), 8);
     }
 
     /// <summary>尚未返家的家庭携带粮食不能隔空支付家园新生儿的补给。</summary>

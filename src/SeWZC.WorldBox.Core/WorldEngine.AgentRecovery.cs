@@ -38,7 +38,8 @@ public sealed partial class WorldEngine
         return (person.Value.Agent.Fatigue > 8 || person.Value.Agent.Sleep < ResidentNeedsRules.FullEfficiencyThreshold * ResidentNeedsRules.MaximumPercent
                 || person.Value.SicknessTicks > 0 || person.Value.Health < 70)
                && (person.Value.Agent.Goal.TargetEntityId == 0
-                   || (FindBuilding(person.Value.Agent.Goal.TargetEntityId) is { } clinic && IsBuildingOperational(clinic.Value)));
+                   || (FindBuilding(person.Value.Agent.Goal.TargetEntityId) is { } clinic
+                       && (clinic.Value.Kind == BuildingKind.Housing ? ResidentHome(person.Value) == clinic : IsBuildingOperational(clinic.Value))));
     }
 
     private void AddRecoveryChoice(StateReference<Resident> person, StateReference<Settlement> home, List<GoalChoice> choices)
@@ -69,11 +70,12 @@ public sealed partial class WorldEngine
             }
         }
 
-        choices.Add(new GoalChoice(AgentGoalKind.Rest, selected?.Value.X ?? home.Value.X, selected?.Value.Y ?? home.Value.Y,
+        var resting = RestDestination(person.Value);
+        choices.Add(new GoalChoice(AgentGoalKind.Rest, selected?.Value.X ?? resting.X, selected?.Value.Y ?? resting.Y,
             105 + (100 - person.Value.Health) * .4,
             selected is null
                 ? "患病或伤势尚未恢复，回家休养，暂缓普通劳动"
                 : "患病或伤势尚未恢复，前往眼前可达的医疗设施休养并等待现场治疗",
-            SettlementId: home.Value.Id, EntityId: selected?.Value.Id ?? 0));
+            SettlementId: home.Value.Id, EntityId: selected?.Value.Id ?? person.Value.HomeBuildingId));
     }
 }

@@ -56,6 +56,10 @@ public sealed partial class MainView
         panel.Children.Add(LiveText(() =>
             $"生命 {Current().Health:0} / 100   体力 {ResidentNeedsRules.StaminaValue(Current()):0.#} / {ResidentNeedsRules.StaminaCapacity(Current()):0.#}   睡眠 {ResidentNeedsRules.SleepValue(Current()):0.#} / {ResidentNeedsRules.SleepCapacity(Current()):0.#}   饥饿 {Current().Hunger:0}%   口渴 {Current().Thirst:0}%"));
         panel.Children.Add(LiveText(() => _engine.GetResidentActionSummary(id)));
+        panel.Children.Add(LiveText(() => _engine.GetResidentHome(id) is { } dwelling
+            ? $"住所：住宅（{dwelling.X}，{dwelling.Y}），入住 {_engine.GetHousingOccupancy(dwelling.Id)} 人；{(Current().IsInsideHome ? "在家" : "外出")}" : "暂无空余住所"));
+        panel.Children.Add(LiveText(() => Current().Agent.DailyPlan is { } plan
+            ? $"今日预计返家：{DateLabel(plan.ReturnHomeTick)}" : ""));
         panel.Children.Add(LiveText(() =>
         {
             var agent = Current().Agent;

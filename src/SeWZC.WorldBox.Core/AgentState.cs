@@ -48,6 +48,10 @@ public sealed partial record AgentState
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public AgentGoal? DaytimeGoal { get; init; }
 
+    /// <summary>当日预先安排的需求复评与返家时间。</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ResidentDailyPlan? DailyPlan { get; init; }
+
     /// <summary>居民自己观察或收到的信息，可能已经过时。</summary>
     public ImmutableArray<AgentFact> Memory { get; init; } = [];
 

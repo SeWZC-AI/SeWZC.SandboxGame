@@ -27,6 +27,9 @@ public sealed partial record Resident
     {
         var vitals = CalculateVitals(rules, tile, tick, profession, infectionDuration, manaRecovery, elapsedDays);
         var agent = suppliedAgent ?? Agent;
+        if (arrivedTile >= 0)
+            foreach (var traversed in MovementRoute)
+                agent = agent.RememberRouteTile(traversed);
         var arrivedAgent = arrivedTile >= 0 ? agent.RememberRouteTile(arrivedTile) : agent;
         var next = consumeNeeds && vitals.Health > 0
             ? CalculateNeeds(rules, tick, vitals, socialGrowth, deliveredWater, arrivedAgent, suppliedInventory, tile,

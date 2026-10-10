@@ -27,9 +27,6 @@ public sealed partial record Settlement
     /// <summary>归属本聚落的存活居民数量。</summary>
     public int Population { get; init; }
 
-    /// <summary>本聚落的基础住房容量，不含已运营住宅的额外容量。</summary>
-    public int Housing { get; init; } = 40;
-
     /// <summary>建村材料是否仍在运输、尚未完成交付。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool FoundationPending { get; init; }

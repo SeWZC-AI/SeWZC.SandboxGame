@@ -103,6 +103,7 @@ public sealed partial class WorldEngine
             {
                 AddFoundingFacility(town, BuildingKind.Farm);
                 AddFoundingFacility(town, BuildingKind.Workshop);
+                AddFoundingFacility(town, BuildingKind.Housing);
             }
         }
 
@@ -736,7 +737,8 @@ public sealed partial class WorldEngine
                 research = PublishResearch(research.AddWork(resident.Value.Id, progress));
                 if (research.Progress >= 8 && resident.Value.Profession == Profession.Builder &&
                     !HasTwoLocalWorkers(town.Value.Id, Profession.Scholar))
-                    resident.Replace(resident.Value with { Profession = Profession.Scholar });
+                    resident.Replace(resident.Value with { Profession = Profession.Scholar,
+                        Agent = resident.Value.Agent with { DailyPlan = null, DaytimeGoal = null } });
                 if (research.Progress >= research.RequiredProgress)
                 {
                     var completed = research.ActiveProject!;
@@ -780,7 +782,8 @@ public sealed partial class WorldEngine
                     (HasResearch(town.Value.Id, Advancement.ArcaneScholarship) ? 1.5 : 1)) });
                 if (resident.Value.MagicTraining >= 8 && resident.Value.Profession is Profession.Builder or Profession.Scholar &&
                     !HasTwoLocalWorkers(town.Value.Id, Profession.Mage))
-                    resident.Replace(resident.Value with { Profession = Profession.Mage });
+                    resident.Replace(resident.Value with { Profession = Profession.Mage,
+                        Agent = resident.Value.Agent with { DailyPlan = null, DaytimeGoal = null } });
                 resident.Replace(resident.Value.WithMana(Math.Min(100,
                     resident.Value.Mana + 0.15 * effort * (HasResearch(town.Value.Id, Advancement.ManaAttunement) ? 1.5 : 1))));
                 return true;
@@ -1595,6 +1598,8 @@ public sealed partial class WorldEngine
         };
         foreach (var building in Buildings)
             building.Replace(building.Value with { Workers = building.Value.Workers.RemoveAll(id => !people.Contains(id)) });
+        AssignResidentHomes();
+        SynchronizeResidentRescues();
     }
 
     /// <summary>推进当前模拟 tick的社会发展。</summary>
@@ -1671,6 +1676,7 @@ public sealed partial class WorldEngine
         }
 
         EnsureTownCenters();
+        AssignResidentHomes();
         foreach (var town in Settlements)
         {
             if (town.Value.FertilityBoostTicks > 0)
@@ -1791,7 +1797,7 @@ public sealed partial class WorldEngine
                 representative.Replace(representative.Value with
                 {
                     Profession = Profession.Representative,
-                    Agent = representative.Value.Agent with { JobChangedTick = SimulationTick },
+                    Agent = representative.Value.Agent with { JobChangedTick = SimulationTick, DailyPlan = null, DaytimeGoal = null },
                 });
             }
         }
@@ -1874,9 +1880,16 @@ public sealed partial class WorldEngine
 
         bool PlanBuilding(BuildingKind kind)
         {
+            if (kind == BuildingKind.Housing)
+            {
+                var plannedCapacity = buildings.Where(b => b.Value.Kind == BuildingKind.Housing
+                    && b.Value.Enabled && b.Value.Health > 0 && !IsFacilityOperating(b.Value))
+                    .Sum(b => b.Value.Level * HousingCapacityPerLevel);
+                if (town.Value.Population <= GetHousingCapacity(town.Value.Id) + plannedCapacity)
+                    return false;
+            }
             var desired = kind == BuildingKind.Farm ? Math.Clamp((town.Value.Population + 39) / 40, 1, 32)
-                : kind == BuildingKind.Housing ? Math.Clamp(
-                    (town.Value.Population - town.Value.Housing + HousingCapacityPerLevel - 1) / HousingCapacityPerLevel, 1, 30)
+                : kind == BuildingKind.Housing ? 30
                 : 1;
             if (buildings.Count(b => b.Value.Kind == kind && (b.Value.Health > 0 || !b.Value.Enabled)) >= desired)
                 return false;

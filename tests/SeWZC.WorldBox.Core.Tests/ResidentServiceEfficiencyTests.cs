@@ -110,6 +110,7 @@ public sealed class ResidentServiceEfficiencyTests
     {
         var fixture = new WorldFixture();
         fixture.Engine.Buildings.RemoveAll(b => b.Value.Kind != BuildingKind.TownCenter);
+        fixture.Resident.Replace(fixture.Resident.Value with { HomeBuildingId = 0, IsInsideHome = false });
         fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Alloy = 4 }));
         if (ResearchRules.Unlocking(kind) is { } research)
             GrantResearch(fixture, research);

@@ -43,16 +43,15 @@ public sealed partial class WorldEngine
             var person = reference.Value;
             if (person.Health <= 0)
                 continue;
-            var quality = 1d;
+            var quality = ResidentNeedsRules.OutdoorRestQuality;
             if (person.Activity is ResidentActivity.Resting or ResidentActivity.Sleeping or ResidentActivity.Unconscious
                     or ResidentActivity.Talking or ResidentActivity.Eating
-                && _settlements.TryGetValue(person.SettlementId, out var home)
-                && Distance(person.X, person.Y, home.Value.X, home.Value.Y) <= 1)
+                && person.IsInsideHome && ResidentHome(person) is { } dwelling)
             {
-                if (!homeQuality.TryGetValue(home.Value.Id, out quality))
+                if (!homeQuality.TryGetValue(person.SettlementId, out quality))
                 {
-                    quality = HomeRestMultiplier(home.Value.Id, home.Value.X, home.Value.Y);
-                    homeQuality.Add(home.Value.Id, quality);
+                    quality = HomeRestMultiplier(person.SettlementId, dwelling.Value.X, dwelling.Value.Y);
+                    homeQuality.Add(person.SettlementId, quality);
                 }
             }
             reference.Replace(person.WithAgent(ResidentNeedsRules.Advance(person, quality)));
@@ -62,7 +61,7 @@ public sealed partial class WorldEngine
     private static bool IsLaborGoal(AgentGoalKind kind) => kind is AgentGoalKind.Gather or AgentGoalKind.Work
         or AgentGoalKind.Study or AgentGoalKind.TrainMagic or AgentGoalKind.ClaimLand or AgentGoalKind.FetchWater
         or AgentGoalKind.Hunt or AgentGoalKind.Fish or AgentGoalKind.ExtinguishFire or AgentGoalKind.DeliverMessage
-        or AgentGoalKind.Trade or AgentGoalKind.Petition;
+        or AgentGoalKind.Trade or AgentGoalKind.Petition or AgentGoalKind.Rescue;
 
     private static bool IsMentalWork(Building building) => building.IsCompleted && !building.IsUpgrading && building.Health >= 50
         && building.Kind is BuildingKind.Academy or BuildingKind.Waystation or BuildingKind.SignalTower

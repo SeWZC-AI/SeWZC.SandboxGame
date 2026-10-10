@@ -22,8 +22,7 @@ public sealed partial class WorldEngine
 
     private double HomeRestMultiplier(int settlementId, int x, int y)
     {
-        if (!_settlements.TryGetValue(settlementId, out var home) ||
-            Distance(x, y, home.Value.X, home.Value.Y) > 1)
+        if (!_settlements.TryGetValue(settlementId, out var home))
             return 1;
         IEnumerable<StateReference<Building>>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(home.Value.Id)
@@ -95,9 +94,13 @@ public sealed partial class WorldEngine
             }
         }
 
-        var resting = HomeRestMultiplier(person.SettlementId, person.X, person.Y);
+        var resting = person.IsInsideHome && ResidentHome(person) is not null
+            ? HomeRestMultiplier(person.SettlementId, person.X, person.Y) : 1;
         if (resting > 1)
-            effects.Add(new EffectInfo("家园休息", $"附近返乡休息恢复 ×{resting:0.00}", "家园的城镇等级、城镇中心与运作粮仓"));
+            effects.Add(new EffectInfo("住宅休息", $"住宅床位休息恢复 ×{resting:0.00}", "家园的城镇等级、城镇中心与运作粮仓"));
+        if (ResidentNeedsRules.IsUnconscious(person) && !person.BedRestAfterRescue)
+            effects.Add(new EffectInfo("昏迷恢复", $"睡眠恢复质量 ×{ResidentNeedsRules.UnconsciousRecoveryQuality:0.00}", "未经救助的昏迷"));
+        effects.Add(new EffectInfo("移动速度", $"基础每刻 {ResidentMovementRules.BaseTilesPerTick} 格；体力倍率 ×{ResidentMovementRules.StaminaMultiplier(person):0.00}，负重倍率 ×{ResidentMovementRules.LoadMultiplier(person, IsCarryingResident(person.Id)):0.00}", "体力与实际随身物资"));
         return effects;
     }
 
@@ -131,13 +134,13 @@ public sealed partial class WorldEngine
                 $"仅沿{BridgeDirectionName(building.Value.Direction)}通行，步行耗时系数 {1.2 / factor:0.00}；离自然岸最多 {BridgeShoreLimit(building.Value.Level)} 格",
             BuildingKind.Dock => $"同国舟船 3 格内水上速度 ×{1 + .15 * building.Value.Level:0.00}；多个码头取最高倍率，由相邻岸边的居民值守",
             BuildingKind.TownCenter => "家园仓库与城镇扩充施工地点；居民领取补给、交付物资、交流消息" +
-                                       (factor > 1 ? $"；同聚落居民在 1 格内返乡休息恢复 ×{factor:0.00}" : ""),
+                                       (factor > 1 ? $"；同聚落居民在住宅内休息恢复 ×{factor:0.00}" : ""),
             BuildingKind.LumberCamp => "伐木工采收邻格木材，携带返仓" + (factor > 1 ? $"；等级产量倍率 ×{factor:0.00}" : ""),
             BuildingKind.Quarry => "矿工采收邻格石材与矿石，携带返仓" + (factor > 1 ? $"；等级产量倍率 ×{factor:0.00}" : ""),
             BuildingKind.Well => $"每日可打水量 {WellWaterYield(ground.Value):0.###}"
                                  + "\n每次取水至多 1，所有取水者共享水井日额度，装入随身库存后运回",
-            BuildingKind.Granary => $"本聚落居民在中心 1 格内返乡休息恢复 ×{1 + .1 * building.Value.Level:0.00}；多个粮仓取最高倍率",
-            BuildingKind.Housing => $"提供 {HousingCapacityPerLevel * building.Value.Level} 人住房",
+            BuildingKind.Granary => $"本聚落居民在住宅内休息恢复 ×{1 + .1 * building.Value.Level:0.00}；多个粮仓取最高倍率",
+            BuildingKind.Housing => $"入住 {GetHousingOccupancy(id)} / {HousingCapacityPerLevel * building.Value.Level} 人",
             BuildingKind.Market => "值守时，集市 3 格内居民可与相距 3 格的人交换已有消息；每次值守消耗仓库粮食 0.01",
             BuildingKind.Watchtower => $"塔 2 格内的同聚落居民，观察火灾范围 3 至 {3 + building.Value.Level} 格；无需工作人员",
             BuildingKind.AssemblyHall => $"人类值守，每单位劳动缓解 2 格内同聚落居民社交需求 {factor:0.00}；3 格内居民交谈距离增至 3 格",

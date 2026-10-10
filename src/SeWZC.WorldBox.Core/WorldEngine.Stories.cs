@@ -97,6 +97,8 @@ public sealed partial class WorldEngine
         CheckV2(Valid(person.Agent.Goal.EvidenceFactId) && Valid(person.Agent.Goal.CauseEventId), "目标证据引用无效。");
         if (person.Agent.DaytimeGoal is { } daytime)
             CheckV2(Valid(daytime.EvidenceFactId) && Valid(daytime.CauseEventId), "暂存白天目标的证据引用无效。");
+        if (person.Agent.DailyPlan?.WorkGoal is { } work)
+            CheckV2(Valid(work.EvidenceFactId) && Valid(work.CauseEventId), "日程工作目标的证据引用无效。");
         foreach (var fact in person.Agent.Memory.Concat(person.Agent.CarriedMessages))
             CheckV2(Valid(fact.EventId) && Valid(fact.CampaignEventId), "消息事件引用无效。");
         foreach (var entry in person.History)

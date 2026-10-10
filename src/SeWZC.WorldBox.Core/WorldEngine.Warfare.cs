@@ -156,7 +156,8 @@ public sealed partial class WorldEngine
                 Armies.Add(army);
                 foreach (var resident in recruits.Take(count))
                 {
-                    resident.Replace(resident.Value with { ArmyId = army.Value.Id });
+                    resident.Replace(resident.Value with { ArmyId = army.Value.Id,
+                        Agent = resident.Value.Agent with { DailyPlan = null, DaytimeGoal = null } });
                     if (resident.Value.Profession is not (Profession.Ranger or Profession.Battlemage))
                         resident.Replace(resident.Value with { Profession = Profession.Soldier });
                     resident.Replace(resident.Value.WithAgent(resident.Value.Agent.WithGoal(new AgentGoal
@@ -567,7 +568,8 @@ public sealed partial class WorldEngine
         foreach (var soldier in veterans)
         {
             RecordLife(soldier, "结束军旅任务，恢复平民生活。", homecoming);
-            soldier.Replace(soldier.Value with { ArmyId = 0 });
+            soldier.Replace(soldier.Value with { ArmyId = 0,
+                Agent = soldier.Value.Agent with { DailyPlan = null, DaytimeGoal = null } });
             if (soldier.Value.Profession is not (Profession.Ranger or Profession.Battlemage))
                 soldier.Replace(soldier.Value with { Profession = AssignProfession() });
             if (_settlements.TryGetValue(soldier.Value.SettlementId, out var home))
@@ -603,7 +605,11 @@ public sealed partial class WorldEngine
             }
 
             resident.Replace(
-                resident.Value with { SettlementId = destination.Value.Id, X = destination.Value.X, Y = destination.Value.Y });
+                resident.Value.WithPosition(destination.Value.X, destination.Value.Y) with
+                {
+                    SettlementId = destination.Value.Id, HomeBuildingId = 0,
+                    Agent = resident.Value.Agent with { DailyPlan = null, DaytimeGoal = null, NextThinkTick = SimulationTick },
+                });
         }
 
         var tile = Tiles[Index(settlement.Value.X, settlement.Value.Y)];

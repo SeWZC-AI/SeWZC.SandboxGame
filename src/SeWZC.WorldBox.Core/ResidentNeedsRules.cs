@@ -31,6 +31,10 @@ public static class ResidentNeedsRules
     public const double StaminaRecoveryPerTick = BaseStaminaCapacity * (1 - FullEfficiencyThreshold) / NormalSleepTicks;
     /// <summary>交谈休息相对于普通休息的恢复比例。</summary>
     public const double SocialRestRecoveryRatio = .5;
+    /// <summary>未经救助卧床的昏迷恢复质量。</summary>
+    public const double UnconsciousRecoveryQuality = .5;
+    /// <summary>未进入住宅时的睡眠和休息质量。</summary>
+    public const double OutdoorRestQuality = .75;
     /// <summary>步行一步消耗的体力。</summary>
     public const double WalkingCost = .15;
     /// <summary>睡眠耗尽时体力劳动效率的降低比例。</summary>
@@ -102,6 +106,8 @@ public static class ResidentNeedsRules
     /// <param name="quality">睡眠或休息质量，普通质量为一。</param>
     internal static AgentState Advance(Resident person, double quality)
     {
+        if (person.Activity == ResidentActivity.Unconscious && !person.BedRestAfterRescue)
+            quality *= UnconsciousRecoveryQuality;
         var consumption = SleepConsumptionPerTick * MetabolismFactor(person);
         var recovery = person.Activity is ResidentActivity.Sleeping or ResidentActivity.Unconscious
             ? Math.Max(consumption, SleepRecoveryPerTick * RecoveryFactor(person) * quality) : 0;
