@@ -629,8 +629,8 @@ public sealed partial class MainView
         UpdateSubject();
         var x = Field(panel, "地点 X", fact.X, "memory-x");
         var y = Field(panel, "地点 Y", fact.Y, "memory-y");
-        var observed = Field(panel, "观察 tick 序（0 起）", fact.ObservedTick, "memory-observed");
-        var learned = Field(panel, "获知 tick 序（0 起）", fact.LearnedTick, "memory-learned");
+        var observed = Field(panel, "观察刻序（0 起）", fact.ObservedTick, "memory-observed");
+        var learned = Field(panel, "获知刻序（0 起）", fact.LearnedTick, "memory-learned");
         AddDatePreview(panel, observed, "观察时间");
         AddDatePreview(panel, learned, "获知时间");
         var origin = ObjectField(panel, "最初观察者",
@@ -743,7 +743,7 @@ public sealed partial class MainView
         if (!adding)
             panel.Children.Add(Paragraph(entry.Text));
         panel.Children.Add(Paragraph("选择经历类型和强度，会直接调整今后的性格倾向。"));
-        var tick = Field(panel, "发生 tick 序（0 起）", entry.Tick, "history-entry-tick");
+        var tick = Field(panel, "发生刻序（0 起）", entry.Tick, "history-entry-tick");
         AddDatePreview(panel, tick, "发生时间");
         var importance = EnumField(panel, "重要程度", entry.Importance, ImportanceName, "history-entry-importance");
         var experience = EnumField(panel, "经历类型", entry.Experience, ExperienceName, "history-entry-experience");
@@ -880,7 +880,7 @@ public sealed partial class MainView
         {
             preview.Text = long.TryParse(input.Text, out var tick) && tick >= 0
                 ? $"{label}：{DateLabel(tick)}"
-                : $"{label}：请输入非负 tick 序";
+                : $"{label}：请输入非负刻序";
         }
 
         input.TextChanged += (_, _) => Update();

@@ -322,7 +322,7 @@ public sealed partial class MainView
     {
         return tick < 0
             ? "尚无记录"
-            : $"第 {1 + tick / SimulationTime.TicksPerYear} 年 {1 + tick / SimulationTime.TicksPerMonth % SimulationTime.MonthsPerYear} 月 {1 + tick / SimulationTime.TicksPerDay % SimulationTime.DaysPerMonth} 日   tick {SimulationTime.TimeOfDay(tick)}";
+            : $"第 {1 + tick / SimulationTime.TicksPerYear} 年 {1 + tick / SimulationTime.TicksPerMonth % SimulationTime.MonthsPerYear} 月 {1 + tick / SimulationTime.TicksPerDay % SimulationTime.DaysPerMonth} 日   第 {SimulationTime.TimeOfDay(tick)} 刻";
     }
 
     private static string StockLabel(ResourceStock stock)
@@ -787,7 +787,7 @@ public sealed partial class MainView
             AgentGoalKind.FetchWater => "打水或寻找水源",
             AgentGoalKind.Hunt => "狩猎",
             AgentGoalKind.Fish => "捕鱼",
-            AgentGoalKind.Sleep => "夜间返家睡眠",
+            AgentGoalKind.Sleep => "睡眠",
             AgentGoalKind.ExtinguishFire => "用水扑救火灾",
             _ => "返回家园",
         };

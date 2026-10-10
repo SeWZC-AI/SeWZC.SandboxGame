@@ -227,6 +227,7 @@ public sealed partial class WorldEngine
             ? FindBuilding(goal.TargetEntityId)
             : null;
         var home = _settlements.GetValueOrDefault(person.SettlementId);
+        var homeTarget = home is not null && goal.TargetX == home.Value.X && goal.TargetY == home.Value.Y;
         var destination = _settlements.GetValueOrDefault(goal.TargetSettlementId)?.Value.Name ?? "目标聚落";
         if (building is not null)
         {
@@ -268,7 +269,10 @@ public sealed partial class WorldEngine
             AgentGoalKind.Gather => "采集浆果、草籽或嫩叶并带回家园",
             AgentGoalKind.Work => person.Profession == Profession.Lumberjack ? "采伐木材并带回家园" :
                 person.Profession == Profession.Miner ? "开采石矿或已发现矿藏并带回家园" : "采收粮食并带回家园",
-            AgentGoalKind.Rest => "返回家园休息恢复体力",
+            AgentGoalKind.Rest => FindBuilding(goal.TargetEntityId) is { } restFacility
+                && goal.TargetX == restFacility.Value.X && goal.TargetY == restFacility.Value.Y
+                ? "前往" + BuildingName(restFacility.Value.Kind) + "休养"
+                : homeTarget ? "返回家园休息恢复体力" : "前往指定地点休息恢复体力",
             AgentGoalKind.Flee => "离开附近危险区域",
             AgentGoalKind.Socialize => "在家园与居民当面交流消息",
             AgentGoalKind.DeliverMessage => "将携带的消息实际送达" + destination,
@@ -288,6 +292,9 @@ public sealed partial class WorldEngine
             AgentGoalKind.Hunt => "狩猎可食动物并带回家园",
             AgentGoalKind.Fish => person.TravelMode == TravelMode.Boat ? "乘舟捕鱼并带回鱼获与舟船" : "到鱼群附近捕鱼并带回家园",
             AgentGoalKind.ExtinguishFire => "携带实际饮水扑灭附近火势",
+            AgentGoalKind.Sleep => goal.PlayerDirected && SimulationTick < goal.ReviewTick
+                ? homeTarget ? "在家按玩家安排睡眠" : "前往指定地点按玩家安排睡眠"
+                : ReturningHomeAfterDawn(goal) ? "返回家园并恢复白天活动" : "返回家园并按作息睡眠",
             _ => "评估需求与附近可执行工作",
         };
     }
@@ -301,16 +308,61 @@ public sealed partial class WorldEngine
             return "已离世，保留生平记录";
         if (ResidentNeedsRules.IsUnconscious(person))
             return $"睡眠或体力耗尽，强制昏迷\n睡眠与体力均恢复到 {ResidentNeedsRules.ConsciousRecoveryThreshold:P0} 后恢复行动";
-        var cursor = RequireResident(id);
         var goal = person.Agent.Goal;
+        var directed = goal.PlayerDirected && SimulationTick < goal.ReviewTick;
+        var finishingSleepMove = goal.Kind == AgentGoalKind.Sleep && goal.PlayerDirected && !directed
+                                 && person.MoveStartedTick < goal.ReviewTick
+                                 && person.MoveStartedTick + person.MoveDurationTicks > SimulationTick;
+        var restingHome = _settlements.GetValueOrDefault(person.SettlementId);
+        // 自主睡眠按家园移动，不沿用已到期的指定地点。
+        if (goal.Kind == AgentGoalKind.Sleep && !directed && restingHome is not null)
+            goal = goal with { TargetX = restingHome.Value.X, TargetY = restingHome.Value.Y, TargetSettlementId = restingHome.Value.Id };
         var task = GetResidentTaskSummary(id);
         var taskHeader = $"当前任务：{task}\n";
+        var facility = goal.Kind is AgentGoalKind.Work or AgentGoalKind.Rest or AgentGoalKind.Study or AgentGoalKind.TrainMagic
+            ? FindBuilding(goal.TargetEntityId)
+            : null;
+        var homeTarget = restingHome is not null && goal.TargetX == restingHome.Value.X && goal.TargetY == restingHome.Value.Y;
+        var targetFacility = facility is not null && goal.TargetX == facility.Value.X && goal.TargetY == facility.Value.Y ? facility : null;
+        var returningAfterDawn = ReturningHomeAfterDawn(goal);
+        var sleepPurpose = returningAfterDawn ? "恢复白天活动" : "休息与睡眠";
+        var sleepNext = directed ? "继续执行玩家指定的睡眠安排"
+            : returningAfterDawn ? "抵达家园后恢复白天活动" : "清晨醒来后恢复白天活动";
+        var recoveryNext = targetFacility?.Value.Kind is BuildingKind.Infirmary or BuildingKind.HerbGarden or BuildingKind.Hospital
+            ? "继续医疗休养，等待现场治疗与伤病恢复；按需休息或补觉"
+            : "按需休息或补觉，随后按当前安排行动";
+        if (person.Activity is ResidentActivity.Resting or ResidentActivity.Sleeping)
+        {
+            var atHome = restingHome is not null && Distance(person.X, person.Y, restingHome.Value.X, restingHome.Value.Y) <= 1;
+            var location = goal.Kind == AgentGoalKind.Rest && facility is not null
+                    && Distance(person.X, person.Y, facility.Value.X, facility.Value.Y) <= AgentInteractionRange(goal, false)
+                    && person.MoveStartedTick + person.MoveDurationTicks <= SimulationTick
+                ? "在" + BuildingName(facility.Value.Kind) + "休息"
+                : atHome ? "在家休息"
+                : directed && goal.Kind is AgentGoalKind.Rest or AgentGoalKind.Sleep
+                    && Distance(person.X, person.Y, goal.TargetX, goal.TargetY) <= AgentInteractionRange(goal, false)
+                    && person.MoveStartedTick + person.MoveDurationTicks <= SimulationTick ? "在指定地点休息"
+                : person.Activity == ResidentActivity.Sleeping ? "途中宿营" : "原地休息";
+            if (person.Activity == ResidentActivity.Sleeping)
+            {
+                var afterSleep = goal.Kind == AgentGoalKind.Sleep ? sleepNext
+                    : goal.Kind == AgentGoalKind.Rest ? recoveryNext
+                    : "醒来后继续当前任务";
+                return taskHeader + $"当前活动：正在睡眠（{location}），恢复睡眠与体力\n后续：{afterSleep}\n行动依据：{goal.Reason}";
+            }
+
+            var resting = goal.Kind == AgentGoalKind.Sleep && atHome && !returningAfterDawn
+                ? "正在家园休息，等待入睡" : $"正在休息恢复体力（{location}）";
+            var afterRest = goal.Kind == AgentGoalKind.Sleep
+                ? directed || returningAfterDawn ? sleepNext : (atHome ? "按作息入睡，" : "返家后按作息入睡，") + sleepNext
+                : goal.Kind == AgentGoalKind.Rest ? recoveryNext : "休息后继续当前任务";
+            return taskHeader + $"当前活动：{resting}\n后续：{afterRest}\n行动依据：{goal.Reason}";
+        }
+
+        var cursor = RequireResident(id);
         var exploringRoutes = goal.Kind == AgentGoalKind.Explore &&
                               person.Profession is Profession.Trader or Profession.Messenger
                                   or Profession.Representative;
-        var facility = goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic
-            ? Buildings.FirstOrDefault(b => b.Value.Id == goal.TargetEntityId)
-            : null;
         if (goal.Kind == AgentGoalKind.Work && facility?.Value is { IsCompleted: true } &&
             facility.Value.SettlementId == person.SettlementId
             && ProductionRules.For(facility.Value.Kind) is { } recipe &&
@@ -329,14 +381,28 @@ public sealed partial class WorldEngine
                    $"将{ResourceStock.Name(recipe.Output)}亲自运回家园入库\n行动依据：{goal.Reason}";
         }
 
-        var destination = facility is not null
-            ? BuildingName(facility.Value.Kind)
+        var destination = goal.Kind is AgentGoalKind.Rest or AgentGoalKind.Sleep
+            ? targetFacility is not null
+                ? BuildingName(targetFacility.Value.Kind)
+                : homeTarget ? restingHome!.Value.Name : $"指定地点（{goal.TargetX}，{goal.TargetY}）"
+            : facility is not null ? BuildingName(facility.Value.Kind)
             : _settlements.GetValueOrDefault(goal.TargetSettlementId)?.Value.Name ?? "目标地块";
         var workingRange = AgentInteractionRange(goal, _settlements.GetValueOrDefault(person.SettlementId)?.Value.FoundationPending == true);
-        var moving = person.MoveStartedTick + person.MoveDurationTicks > SimulationTick
-                     || Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > workingRange;
-        var current = SimulationTick < goal.NavigationRetryTick ? "路线受阻，正在等待通道或重新选择任务" :
-            moving ? $"正在前往{destination}执行“{task}”（{TravelModeName(person.TravelMode)}），到场后开始劳动" : goal.Kind switch
+        var moveInProgress = person.MoveStartedTick + person.MoveDurationTicks > SimulationTick;
+        var moving = moveInProgress || Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > workingRange;
+        var current = finishingSleepMove ? $"正在完成当前移动（{TravelModeName(person.TravelMode)}），随后返家{sleepPurpose}" :
+            SimulationTick < goal.NavigationRetryTick ? "路线受阻，正在等待通道或重新选择任务" :
+            goal.Kind is AgentGoalKind.Rest or AgentGoalKind.Sleep && !moveInProgress
+                ? goal.Kind == AgentGoalKind.Rest ? "已安排休息，尚未开始休息"
+                : returningAfterDawn ? "等待恢复白天活动" : "已安排睡眠，尚未开始休息" :
+            moving ? goal.Kind switch
+            {
+                AgentGoalKind.Rest => $"正在前往{destination}休息（{TravelModeName(person.TravelMode)}）",
+                AgentGoalKind.Sleep => homeTarget
+                    ? $"正在返家，前往{destination}{sleepPurpose}（{TravelModeName(person.TravelMode)}）"
+                    : $"正在前往{destination}睡眠（{TravelModeName(person.TravelMode)}）",
+                _ => $"正在前往{destination}执行“{task}”（{TravelModeName(person.TravelMode)}），到场后开始劳动",
+            } : goal.Kind switch
             {
                 AgentGoalKind.Eat => "正在家园领取口粮",
                 AgentGoalKind.Gather => "正在采集可食资源",
@@ -344,7 +410,6 @@ public sealed partial class WorldEngine
                     ? person.Profession == Profession.Lumberjack ? "正在采伐木材" :
                     person.Profession == Profession.Miner ? "正在采收石材与矿石或已发现矿藏" : "正在采收粮食"
                     : "正在" + task,
-                AgentGoalKind.Rest => "正在休息恢复体力",
                 AgentGoalKind.Flee => "正在离开危险区域",
                 AgentGoalKind.Socialize => "正在与附近居民交流消息",
                 AgentGoalKind.DeliverMessage or AgentGoalKind.Petition => "正在递送消息或诉求",
@@ -362,7 +427,7 @@ public sealed partial class WorldEngine
                 AgentGoalKind.ExtinguishFire => "正在火场边缘持续用水扑救",
                 _ => "正在重新选择可执行任务",
             };
-        if (!moving && facility is not null && !BuildingHasWork(facility.Value, cursor))
+        if (!moving && facility is not null && goal.Kind != AgentGoalKind.Rest && !BuildingHasWork(facility.Value, cursor))
         {
             current = "现场劳动受阻：" + (GetBuildingDetailStatus(facility.Value.Id) is { Length: > 0 } status
                 ? status
@@ -372,15 +437,23 @@ public sealed partial class WorldEngine
         var next = goal.Kind switch
         {
             AgentGoalKind.Gather or AgentGoalKind.Work => "完成现场劳动后，将采收物资带回家园；疲劳或饥饿时先休息、进食",
-            AgentGoalKind.Rest => "恢复体力后重新评估可执行工作",
+            AgentGoalKind.Rest => recoveryNext,
             AgentGoalKind.DeliverMessage or AgentGoalKind.Petition => "送达消息后返回出发聚落",
             AgentGoalKind.Trade => "完成交易后携带实际收到的货物返乡",
             AgentGoalKind.Migrate => "抵达并确认接纳后改变家园归属",
             AgentGoalKind.Explore => exploringRoutes
                 ? "发现聚落后记下实际位置，再按已知消息选择拜访或运输；口粮不足时返乡补给"
                 : "看到材料后实地采集；勘察距离达到补给范围时先返乡",
+            AgentGoalKind.Sleep => directed || returningAfterDawn ? sleepNext : "返家后按作息入睡，" + sleepNext,
             _ => "完成当前任务后，按自身需求、可见岗位与已知消息重新选择",
         };
         return taskHeader + $"当前劳作：{current}\n后续：{next}\n行动依据：{goal.Reason}";
+    }
+
+    private bool ReturningHomeAfterDawn(AgentGoal goal)
+    {
+        var time = SimulationTime.TimeOfDay(SimulationTick);
+        return goal.Kind == AgentGoalKind.Sleep && !(goal.PlayerDirected && SimulationTick < goal.ReviewTick)
+               && time >= SimulationTime.WakeTick && time < SimulationTime.ReturnHomeTick;
     }
 }

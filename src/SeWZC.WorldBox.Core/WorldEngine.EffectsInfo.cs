@@ -176,7 +176,7 @@ public sealed partial class WorldEngine
                 Active: IsBuildingOperational(building.Value)));
         }
 
-        effects.Add(new EffectInfo("建筑耐火", $"着火时每 tick 损失生命 {1.5 * BuildingFlammability(building.Value):0.00}"
+        effects.Add(new EffectInfo("建筑耐火", $"着火时每刻损失生命 {1.5 * BuildingFlammability(building.Value):0.00}"
                                            + (building.Value.Level < 3 && BuildingFlammability(building.Value) > 0
                                                ? $"；升至 {building.Value.Level + 1} 级后为 {1.5 * BuildingFlammability(building.Value) * .75:0.00}"
                                                : ""), source));
@@ -282,7 +282,7 @@ public sealed partial class WorldEngine
         var tile = Tiles[Index(x, y)];
         effects.Add(new EffectInfo("地形可燃性", $"{TerrainFlammability(tile.Value):0.00} / 1；受植被、剩余资源、供水与干旱影响", "当地地形；建筑可燃性另计"));
         if (tile.Value.FireTicks > 0)
-            effects.Add(new EffectInfo("燃烧", "停止生产与取水，居民每 tick 灼伤 4", "", tile.Value.FireTicks));
+            effects.Add(new EffectInfo("燃烧", "停止生产与取水，居民每刻灼伤 4", "", tile.Value.FireTicks));
         if (tile.Value.DroughtTicks > 0)
         {
             effects.Add(new EffectInfo("干旱", "野外食物产出 ×0.15   农场粮食 ×0.18"
