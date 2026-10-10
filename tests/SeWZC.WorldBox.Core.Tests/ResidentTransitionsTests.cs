@@ -39,4 +39,32 @@ public sealed class ResidentTransitionsTests
         Assert.Equal(TravelMode.Boat, positioned.TravelMode);
         Assert.Equal(42, positioned.Age);
     }
+
+    /// <summary>导航预演同时更新位置与认知，保留源快照并在需求耗尽时昏迷。</summary>
+    [Theory]
+    [InlineData(100, ResidentActivity.Wandering)]
+    [InlineData(0, ResidentActivity.Unconscious)]
+    public void A_navigation_step_updates_position_and_mind_together(double sleep, ResidentActivity activity)
+    {
+        var initial = new Resident
+        {
+            X = 3, Y = 4, FromX = 2, FromY = 4, MovementRoute = [130, 131], MovementCredit = .5,
+            IsInsideHome = true, BedRestAfterRescue = true, CarriedByResidentId = 2,
+        };
+        var agent = initial.Agent with { Sleep = sleep };
+
+        var result = initial.WithPosition(5, 6, agent);
+
+        Assert.Equal((5, 6, 5, 6), (result.X, result.Y, result.FromX, result.FromY));
+        Assert.Same(agent, result.Agent);
+        Assert.Equal(activity, result.Activity);
+        Assert.Empty(result.MovementRoute);
+        Assert.Equal(0, result.MovementCredit);
+        Assert.False(result.IsInsideHome);
+        Assert.False(result.BedRestAfterRescue);
+        Assert.Equal(0, result.CarriedByResidentId);
+        Assert.Equal((3, 4, 2, 4), (initial.X, initial.Y, initial.FromX, initial.FromY));
+        Assert.Equal(.5, initial.MovementCredit);
+        Assert.Equal(100, initial.Agent.Sleep);
+    }
 }

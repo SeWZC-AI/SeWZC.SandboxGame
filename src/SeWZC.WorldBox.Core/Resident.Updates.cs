@@ -67,13 +67,16 @@ public sealed partial record Resident
         return this with { Inventory = inventory, Agent = agent, TravelMode = travelMode };
     }
 
-    internal Resident WithPosition(int x, int y)
+    internal Resident WithPosition(int x, int y, AgentState? agent = null)
     {
         if (X == x && FromX == x && Y == y && FromY == y)
-            return this;
+            return agent is null ? this : WithAgent(agent);
         return this with
         {
             MovementState = _movement with { X = x, FromX = x, Y = y, FromY = y, Route = [], Credit = 0 },
+            Agent = agent ?? Agent,
+            Activity = agent is not null && Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity)
+                ? ResidentActivity.Unconscious : Activity,
             IsInsideHome = false,
             BedRestAfterRescue = false,
             CarriedByResidentId = 0,
