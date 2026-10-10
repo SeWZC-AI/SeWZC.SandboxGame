@@ -8,31 +8,7 @@ namespace SeWZC.WorldBox.UI;
 
 public sealed partial class MainView
 {
-    private readonly Border _selectionBar = new()
-    {
-        IsVisible = false, Background = Panel, Padding = new Thickness(6, 2), CornerRadius = new CornerRadius(7),
-    };
-
-    private readonly TextBlock _selectionText = Named(Text("", 12, Mint), "selection-name");
     private bool _expandedInspector;
-    private string? _mapSelectionKind;
-    private int _selectedBuildingId;
-
-    private Control BuildSelectionBar()
-    {
-        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = 4 };
-        _selectionText.TextTrimming = TextTrimming.CharacterEllipsis;
-        _selectionText.VerticalAlignment = VerticalAlignment.Center;
-        row.Children.Add(_selectionText);
-        var view = Named(Button("查看", ViewMapSelection, minWidth: 52), "selection-view");
-        Grid.SetColumn(view, 1);
-        row.Children.Add(view);
-        var close = IconButton("close", ClearMapSelection, "取消选择", "selection-clear");
-        Grid.SetColumn(close, 2);
-        row.Children.Add(close);
-        _selectionBar.Child = row;
-        return Named(_selectionBar, "selection-summary");
-    }
 
     private void SelectMapObject(string kind, int id = 0, int x = 0, int y = 0)
     {
@@ -49,33 +25,8 @@ public sealed partial class MainView
 
     private void RefreshSelectionSummary()
     {
-        var resident = _mapSelectionKind == "resident"
-            ? _engine.State.Residents.FirstOrDefault(r => r.Id == _selectedResidentId)
-            : null;
-        var building = _mapSelectionKind == "building"
-            ? _engine.State.Society.Buildings.FirstOrDefault(b => b.Id == _selectedBuildingId)
-            : null;
-        if ((_mapSelectionKind == "resident" && resident is null) ||
-            (_mapSelectionKind == "building" && building is null))
-        {
+        if (!_viewModel.RefreshSelection() && _mapSelectionKind is not null)
             ClearMapSelection();
-            return;
-        }
-
-        _selectionBar.IsVisible = _mapPick is null && _mapSelectionKind is not null && !_mobilePanel && !_toolsOpen;
-        _selectionText.Text = resident is not null
-            ? $"{resident.Name}（{resident.Health:0.#}/100）   {ProfessionName(resident.Profession)}\n{ResidentTask(resident)}"
-            : building is not null
-                ? $"{WorldEngine.BuildingName(building.Kind)}（{building.Health:0.#}/100）\n{BuildingTask(building)}"
-                : _selectedTile is { } p
-                    ? TileSelectionLabel(_engine.State.Tiles[p.Y * _engine.State.Width + p.X])
-                    : "";
-    }
-
-    private static string TileSelectionLabel(Tile tile)
-    {
-        return
-            $"{TerrainName(tile.Terrain)}（{tile.ResourceAmount:0.#}/{WorldEngine.NaturalResourceCapacity(tile):0.#}）";
     }
 
     private void ViewMapSelection()
@@ -103,7 +54,7 @@ public sealed partial class MainView
 
         _mapSelectionKind = null;
         _selectedBuildingId = 0;
-        _selectionBar.IsVisible = false;
+        _viewModel.RefreshSelection();
         if (!_mobilePanel)
         {
             _selectedResidentId = 0;

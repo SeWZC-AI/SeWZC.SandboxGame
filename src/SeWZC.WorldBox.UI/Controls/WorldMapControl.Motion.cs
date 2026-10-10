@@ -160,17 +160,19 @@ public sealed partial class WorldMapControl
 
     /// <summary>选择居民并将其插值显示位置移到镜头中心。</summary>
     /// <param name="residentId">居民 ID。</param>
-    public void FocusResident(int residentId)
+    /// <returns>有可定位的地图轨迹时为真，否则保留当前镜头与选择。</returns>
+    public bool FocusResident(int residentId)
     {
         if (!_residentMotion.TryGetValue(residentId, out var motion))
-            return;
-        SelectResident(residentId, FollowSelectedResident);
+            return false;
+        SelectResident(residentId, SelectedResidentId == residentId && FollowSelectedResident);
         var position = motion.Position(MotionTime);
         _zoom = Math.Max(_zoom, 2.4);
         _origin = new Point(Bounds.Width / 2 - (position.X + .5) * TilePixels * _zoom,
             Bounds.Height / 2 - (position.Y + .5) * TilePixels * _zoom);
         _cameraReady = true;
         InvalidateVisual();
+        return true;
     }
 
     /// <summary>清除居民选择并停止跟随镜头。</summary>

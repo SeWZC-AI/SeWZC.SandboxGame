@@ -22,7 +22,7 @@
         <Style Selector="Button">
             <Setter Property="FontFamily"
                     Value="avares://SeWZC.WorldBox.UI/Assets/Fonts/NotoSansSC.otf#Noto Sans CJK SC" />
-            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="CornerRadius" Value="4" />
             <Setter Property="Background" Value="#213240" />
             <Setter Property="Foreground" Value="#DDE8E1" />
             <Setter Property="BorderThickness" Value="0" />

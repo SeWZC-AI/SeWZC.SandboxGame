@@ -23,12 +23,15 @@ public sealed partial class MainView : UserControl
     private static readonly IBrush Muted = Brush.Parse("#8FA8AE");
     private static readonly IBrush Mint = Brush.Parse("#B8E9BC");
     private readonly Grid _body = new();
-    private readonly TextBlock _brandCaption = Text("众生与山海  /  ANCIENT WORLDS", 9, Muted);
-    private readonly TextBlock _brandName = Text("SeWZC. WORLDBOX", 15, null, true);
-
-    private readonly StackPanel _bridgeSettings = new()
+    private readonly StackPanel _cameraBar = new()
     {
-        Orientation = Orientation.Horizontal, Spacing = 8, IsVisible = false,
+        Spacing = 4, HorizontalAlignment = HorizontalAlignment.Right,
+        VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(10, 54, 10, 10),
+    };
+
+    private readonly WrapPanel _bridgeSettings = new()
+    {
+        Orientation = Orientation.Horizontal, IsVisible = false,
     };
 
     private readonly ComboBox _brushPicker = new() { Width = 100, MinHeight = 36, FontSize = 11 };
@@ -44,11 +47,6 @@ public sealed partial class MainView : UserControl
 
     private readonly List<Button> _categoryButtons = [];
     private readonly Stopwatch _clock = Stopwatch.StartNew();
-    private readonly TextBlock _date = Text("");
-    private readonly TextBlock _compactDate = Named(Text("", 11, Mint), "compact-world-date");
-    private readonly TextBlock _eventText = Text("选择一个文明，观察它的发展", 11, Mint);
-    private readonly StackPanel _headerActions;
-    private readonly Control _headerStats;
     private readonly Border _inspector = new();
     private readonly StackPanel _inspectorNavigation = new() { Margin = new Thickness(8, 4), Spacing = 4 };
     private readonly ScrollViewer _inspectorScroll = new();
@@ -56,23 +54,23 @@ public sealed partial class MainView : UserControl
     private readonly Border _mapPickBar = new() { IsVisible = false };
     private readonly Border _modal = new() { IsVisible = false, Background = Brush.Parse("#BD071118"), ZIndex = 100 };
     private readonly Stack<InspectorLocation> _navigation = new();
-    private readonly Border _performancePanel;
+    private readonly Border _performancePanel = new();
     private readonly TextBlock _performanceText = Named(Text("FPS 0\n0 日/秒", 10, Mint), "performance-stats");
     private readonly Border _placementBar = new();
     private readonly TextBlock _placementText = Text("", 12);
-    private readonly Button _play;
-    private readonly TextBlock _population = Text("", 13, Mint);
-    private readonly Border _rail = new();
     private readonly SemaphoreSlim _saveGate = new(1, 1);
-    private readonly Control? _shell;
+    private readonly Grid _shell = new();
+    private readonly Views.GameHud _hud = new();
+    private readonly ViewModels.MainViewModel _viewModel;
     private readonly RecentActivityCounter _simulationDays = new();
-    private readonly TextBlock _simulationStatus = Text("世界正在演化", 11, Mint);
     private readonly MapTool?[] _slotTools = new MapTool?[8];
-    private readonly List<(int Speed, Button Button)> _speeds = [];
-    private readonly TextBlock _status = Text("正在唤醒世界…", 11, Muted);
-    private readonly Border _timeStatus = new();
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(50) };
     private readonly Border _toolBar = new();
+    private readonly ScrollViewer _toolScroll = new()
+    {
+        HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+        VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+    };
     private readonly UniformGrid _toolChoices = new() { Columns = 8, Rows = 1 };
     private readonly ComboBox _toolContext = new() { Width = 112, MinHeight = 36, FontSize = 10 };
     private readonly TextBlock _toolHint = Text("选择一种地形，在世界上绘制", 11, Muted);
@@ -81,37 +79,28 @@ public sealed partial class MainView : UserControl
     private readonly Border[] _toolSwatches = new Border[8];
     private readonly TextBlock _toolTitle = Text("塑造山海", 13, Mint);
     private readonly List<(MapTool Tool, Button Button)> _tools = [];
-    private readonly Button _undo;
-    private readonly TextBlock _version = Text("众生纪元  alpha", 10, Muted);
-    private readonly TextBlock _worldSubtitle = Text("", 11, Muted);
-    private readonly TextBlock _worldTitle = Text("晨曦群岛", 22);
     private bool _allowAutosave = true;
     private ToolCategory _category = ToolCategory.Terrain;
     private WorldState? _checkpoint;
     private int[] _constructionTowns = [];
-    private WorldEngine _engine;
     private int _focusedEventId;
     private Task? _initialization;
-    private string _inspectorMode = "overview";
     private bool _isCompact;
     private long _lastSaveYield;
     private double _lastStepMilliseconds, _lastMapRefreshMilliseconds;
     private TextBlock? _modalFeedback;
     private int _modalGeneration;
     private bool _modalHasPrimary;
-    private bool _paused, _ready, _saving, _wasBackground, _mobilePanel;
+    private bool _ready, _saving, _wasBackground;
     private Task? _prepareEditTask;
     private double _previousTime, _accumulator, _lastUi, _lastSave, _lastPerformanceUpdate;
     private CancellationTokenSource? _saveCapture;
     private WorldEngine? _savedSource;
-    private (int X, int Y)? _selectedTile;
-    private int _speed = 1, _selectedNationId, _selectedResidentId;
 
     private ImmutableVector<WorldEvent>? _spotlightEvents;
     private EventGroup? _spotlightGroup;
     private (int LastId, int Count, int Watches) _spotlightRevision;
     private Button? _storageUndo;
-    private bool _toolsOpen;
     private bool _updatingToolContext;
     private long _worldEditRevision, _savedEditRevision = -1, _savedTick = -1;
 
@@ -124,7 +113,27 @@ public sealed partial class MainView : UserControl
     /// <param name="engine">初始世界引擎，空值时创建默认示例世界。</param>
     public MainView(WorldEngine? engine)
     {
-        _engine = engine ?? WorldEngine.Create(73921);
+        _viewModel = new ViewModels.MainViewModel(engine ?? WorldEngine.Create(73921));
+        DataContext = _viewModel;
+        _viewModel.ViewRequested += HandleViewRequest;
+        _viewModel.PauseChanged += () =>
+        {
+            if (!_paused)
+                _checkpoint = null;
+            _map.IsSimulationPaused = WorldTimeStopped;
+            RefreshUi(true);
+        };
+        _viewModel.SpeedChanged += (previous, speed) =>
+        {
+            if (previous == UnlimitedSpeed || speed == UnlimitedSpeed)
+            {
+                _accumulator = 0;
+                _previousTime = _clock.Elapsed.TotalSeconds;
+            }
+            _map.SimulationTickDurationSeconds = speed == UnlimitedSpeed ? .016 : SimulationTickSeconds / speed;
+            UpdateSpeedButtons();
+            RefreshTimeState();
+        };
         Background = Ink;
         Focusable = true;
         _map.Engine = _engine;
@@ -155,388 +164,7 @@ public sealed partial class MainView : UserControl
         };
         _map.ToolError += message => SetStatus("工具未应用：" + message);
 
-        var header = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"),
-            RowDefinitions = new RowDefinitions("48,Auto"),
-            Margin = new Thickness(8, 0),
-        };
-        var brand = new StackPanel
-        {
-            Orientation = Orientation.Horizontal, Spacing = 12, VerticalAlignment = VerticalAlignment.Center,
-        };
-        var logo = new Grid
-        {
-            Width = 28,
-            Height = 28,
-            ColumnDefinitions = new ColumnDefinitions("*,*"),
-            RowDefinitions = new RowDefinitions("*,*"),
-        };
-        var colors = new[] { "#B8E9BC", "#E4C889", "#558F88", "#88BBA0" };
-        for (var i = 0; i < 4; i++)
-        {
-            var square = new Border { Background = Brush.Parse(colors[i]), Margin = new Thickness(1) };
-            Grid.SetColumn(square, i % 2);
-            Grid.SetRow(square, i / 2);
-            logo.Children.Add(square);
-        }
-
-        brand.Children.Add(logo);
-        var brandText = new StackPanel { Spacing = 1 };
-        brandText.Children.Add(_brandName);
-        brandText.Children.Add(_brandCaption);
-        brand.Children.Add(brandText);
-        header.Children.Add(brand);
-        var stats = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 10,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        stats.Children.Add(_date);
-        stats.Children.Add(_population);
-        _headerStats = stats;
-        Grid.SetColumn(stats, 1);
-        header.Children.Add(stats);
-        var actions = new StackPanel
-        {
-            Orientation = Orientation.Horizontal, Spacing = 7, VerticalAlignment = VerticalAlignment.Center,
-        };
-        _headerActions = actions;
-        actions.Children.Add(Button("新世界", ShowNewWorld, "创建一片新的大陆"));
-        actions.Children.Add(Button("存档", ShowStorage, "保存、导出或导入世界"));
-        _undo = IconButton("undo", RestoreCheckpoint, "撤销本轮编辑", "world-undo");
-        actions.Children.Add(_undo);
-        actions.Children.Add(Button("概览", () =>
-        {
-            if (_mapPick is not null)
-                return;
-            if (_mobilePanel && _inspectorMode == "overview")
-                CloseInspector();
-            else
-                OpenInspector("overview");
-        }));
-        actions.Children.Add(Named(Button("规则", ShowRules), "header-rules"));
-        Grid.SetColumn(actions, 2);
-        header.Children.Add(actions);
-        _compactDate.HorizontalAlignment = HorizontalAlignment.Center;
-        _compactDate.Margin = new Thickness(0, 0, 0, 6);
-        Grid.SetRow(_compactDate, 1);
-        Grid.SetColumnSpan(_compactDate, 3);
-        header.Children.Add(_compactDate);
-
-        _body.ColumnDefinitions = new ColumnDefinitions("0,*,0");
-        var mapLayer = new Grid { ClipToBounds = true, Background = Brush.Parse("#122D3D") };
-        mapLayer.Children.Add(_map);
-        _performancePanel = new Border
-        {
-            Child = _performanceText,
-            Width = 76,
-            Height = 36,
-            Padding = new Thickness(5, 3),
-            Margin = new Thickness(6),
-            Background = Panel,
-            CornerRadius = new CornerRadius(4),
-            HorizontalAlignment = HorizontalAlignment.Left,
-            VerticalAlignment = VerticalAlignment.Top,
-            IsHitTestVisible = false,
-        };
-        mapLayer.Children.Add(_performancePanel);
-        var camera = new StackPanel
-        {
-            Spacing = 3,
-            HorizontalAlignment = HorizontalAlignment.Right,
-            VerticalAlignment = VerticalAlignment.Top,
-            Margin = new Thickness(6),
-        };
-        camera.Children.Add(IconButton("plus", () => _map.ZoomIn(), "放大地图", "map-zoom-in"));
-        camera.Children.Add(IconButton("minus", () => _map.ZoomOut(), "缩小地图", "map-zoom-out"));
-        camera.Children.Add(Named(Button("全图", () => _map.FitWorld(), "显示整个世界", 40), "map-fit"));
-        mapLayer.Children.Add(camera);
-        var bottom = new StackPanel
-        {
-            Spacing = 4,
-            VerticalAlignment = VerticalAlignment.Bottom,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            Margin = new Thickness(6, 4),
-        };
-        var toolsPanel = new StackPanel { Spacing = 4 };
-        var categories = new UniformGrid { Columns = 4, Rows = 1 };
-        foreach (var (label, category) in new[]
-                 {
-                     ("山海", ToolCategory.Terrain), ("众生", ToolCategory.Life), ("天灾", ToolCategory.Disaster),
-                     ("建设", ToolCategory.Build),
-                 })
-        {
-            var categoryButton = Named(Button(label, () => SetCategory(category)), "tool-category-" + category.Id);
-            categoryButton.Tag = category;
-            categoryButton.Padding = new Thickness(3, 3);
-            categoryButton.Margin = new Thickness(2, 0);
-            _categoryButtons.Add(categoryButton);
-            categories.Children.Add(categoryButton);
-        }
-
-        Named(_brushPicker, "brush-size");
-        _brushPicker.SelectionChanged += (_, _) =>
-        {
-            var index = Math.Max(0, _brushPicker.SelectedIndex);
-            _category.SetBrush(_map, index);
-        };
-        Named(_buildMode, "build-mode");
-        _buildMode.SelectionChanged += (_, _) => _map.GiftBuildings = _buildMode.SelectedIndex == 0;
-        toolsPanel.Children.Add(categories);
-        for (var i = 0; i < 8; i++)
-        {
-            var slot = i;
-            var swatch = new Border
-            {
-                Width = 22,
-                Height = 15,
-                CornerRadius = new CornerRadius(3),
-                HorizontalAlignment = HorizontalAlignment.Center,
-            };
-            var label = Text("—", 10);
-            label.HorizontalAlignment = HorizontalAlignment.Center;
-            var content = new StackPanel { Spacing = 3 };
-            content.Children.Add(swatch);
-            content.Children.Add(label);
-            var button =
-                Named(
-                    new Button
-                    {
-                        Content = content,
-                        HorizontalAlignment = HorizontalAlignment.Stretch,
-                        Height = 44,
-                        Padding = new Thickness(3, 3),
-                        Margin = new Thickness(2),
-                        BorderThickness = new Thickness(1),
-                        CornerRadius = new CornerRadius(6),
-                        HorizontalContentAlignment = HorizontalAlignment.Center,
-                    }, $"tool-slot-{i}");
-            button.Click += (_, _) =>
-            {
-                if (_slotTools[slot] is { } tool)
-                    SelectTool(tool);
-            };
-            _toolSlots[i] = button;
-            _toolSwatches[i] = swatch;
-            _toolLabels[i] = label;
-            _toolChoices.Children.Add(button);
-        }
-
-        toolsPanel.Children.Add(_toolChoices);
-        var pagination = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 10,
-            Height = 32,
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        _toolPrevious = Named(Button("上一页", () =>
-        {
-            _toolPage--;
-            SetCategory(_category);
-        }), "tool-page-prev");
-        _toolNext = Named(Button("下一页", () =>
-        {
-            _toolPage++;
-            SetCategory(_category);
-        }), "tool-page-next");
-        pagination.Children.Add(_toolPrevious);
-        pagination.Children.Add(_toolPageLabel);
-        pagination.Children.Add(_toolNext);
-        toolsPanel.Children.Add(pagination);
-        var settings = new Grid
-        {
-            ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = 5, Height = 36,
-        };
-        Named(_toolContext, "tool-context");
-        _toolContext.SelectionChanged += (_, _) => OnToolContextChanged();
-        var hint = new StackPanel { Spacing = 2 };
-        hint.Children.Add(_toolTitle);
-        hint.Children.Add(_toolHint);
-        settings.Children.Add(hint);
-        Grid.SetColumn(_toolContext, 1);
-        settings.Children.Add(_toolContext);
-        Grid.SetColumn(_brushPicker, 2);
-        settings.Children.Add(_brushPicker);
-        Grid.SetColumn(_buildMode, 2);
-        settings.Children.Add(_buildMode);
-        toolsPanel.Children.Add(settings);
-        var bridgeDirection = Named(new ComboBox { ItemsSource = new[] { "左右", "上下" }, SelectedIndex = 0, Width = 105 },
-            "bridge-direction");
-        var bridgeLevel =
-            Named(
-                new ComboBox
-                {
-                    ItemsSource = new[] { "1 级：离岸 2 格", "2 级：离岸 4 格", "3 级：离岸 6 格" },
-                    SelectedIndex = 0,
-                    Width = 165,
-                }, "bridge-level");
-        bridgeDirection.SelectionChanged += (_, _) =>
-        {
-            _map.ConstructionBridgeDirection = (BridgeDirection)Math.Max(0, bridgeDirection.SelectedIndex);
-            _map.CancelPlacement();
-        };
-        bridgeLevel.SelectionChanged += (_, _) =>
-        {
-            _map.ConstructionBridgeLevel = Math.Max(1, bridgeLevel.SelectedIndex + 1);
-            _map.CancelPlacement();
-        };
-        _bridgeSettings.Children.Add(Text("桥梁", 12));
-        _bridgeSettings.Children.Add(bridgeDirection);
-        _bridgeSettings.Children.Add(bridgeLevel);
-        toolsPanel.Children.Add(_bridgeSettings);
-        var toolBox = _toolBar;
-        toolBox.Child = toolsPanel;
-        toolBox.Background = Brush.Parse("#F0172632");
-        toolBox.BorderBrush = Line;
-        toolBox.BorderThickness = new Thickness(1);
-        toolBox.CornerRadius = new CornerRadius(12);
-        toolBox.Padding = new Thickness(6);
-        toolBox.Width = 650;
-        bottom.Children.Add(toolBox);
-        var placement = new StackPanel { Spacing = 4 };
-        _placementText.TextWrapping = TextWrapping.Wrap;
-        placement.Children.Add(_placementText);
-        var placementActions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        placementActions.Children.Add(Named(Button("确认放置", () => _map.ConfirmPlacement()), "placement-confirm"));
-        placementActions.Children.Add(Named(Button("取消", () => _map.CancelPlacement()), "placement-cancel"));
-        placement.Children.Add(placementActions);
-        _placementBar.Child = placement;
-        _placementBar.Background = Panel;
-        _placementBar.Padding = new Thickness(8);
-        _placementBar.IsVisible = false;
-        _placementBar.VerticalAlignment = VerticalAlignment.Top;
-        _placementBar.HorizontalAlignment = HorizontalAlignment.Left;
-        _placementBar.Margin = new Thickness(8);
-        _placementBar.MaxWidth = 240;
-        _placementBar.CornerRadius = new CornerRadius(8);
-        mapLayer.Children.Add(_placementBar);
-        var mapPickPrompt = new StackPanel { Spacing = 4 };
-        mapPickPrompt.Children.Add(Text("点选目标地格", 12, Mint));
-        mapPickPrompt.Children.Add(Paragraph("时间暂时停止，选点后返回原表单。"));
-        mapPickPrompt.Children.Add(Named(Button("返回表单", () => FinishMapPick(), "保留原坐标并返回编辑窗口"), "map-pick-return"));
-        _mapPickBar.Child = mapPickPrompt;
-        _mapPickBar.Background = Panel;
-        _mapPickBar.Padding = new Thickness(8);
-        _mapPickBar.VerticalAlignment = VerticalAlignment.Top;
-        _mapPickBar.HorizontalAlignment = HorizontalAlignment.Left;
-        _mapPickBar.Margin = new Thickness(8, 48, 8, 8);
-        _mapPickBar.MaxWidth = 240;
-        _mapPickBar.CornerRadius = new CornerRadius(8);
-        _mapPickBar.ZIndex = 30;
-        Named(_mapPickBar, "map-pick-prompt");
-        mapLayer.Children.Add(_mapPickBar);
-        _map.PlacementChanged += message =>
-        {
-            _placementText.Text = message;
-            _placementBar.IsVisible = _map.HasPendingPlacement;
-            placementActions.IsVisible = _map.HasPendingPlacement;
-        };
-        var eventButton = Named(new Button
-        {
-            Content = _eventText,
-            Padding = new Thickness(8, 3),
-            MinHeight = 28,
-            HorizontalAlignment = HorizontalAlignment.Stretch,
-            Background = Panel,
-        }, "event-spotlight");
-        _eventText.TextTrimming = TextTrimming.CharacterEllipsis;
-        eventButton.Click += (_, _) =>
-        {
-            if (_mapPick is not null)
-                return;
-            if (_engine.State.Events.FirstOrDefault(e => e.Id == _focusedEventId) is { } entry)
-                FocusEvent(entry);
-            else
-                OpenInspector("overview");
-        };
-        bottom.Children.Add(BuildSelectionBar());
-        bottom.Children.Add(eventButton);
-        var timeControls = new StackPanel
-        {
-            Orientation = Orientation.Horizontal, Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center,
-        };
-        timeControls.Children.Add(Named(Button("工具", ToggleTools, "展开或收起地图工具", 48), "tools-toggle"));
-        timeControls.Children.Add(Named(Button("漫游", SuspendTool, "停用当前工具并移动地图", 48), "tool-suspend"));
-        _play = Named(Button("暂停", TogglePause, "空格：暂停或继续", 64), "time-toggle");
-        _play.Background = Mint;
-        _play.Foreground = Ink;
-        _play.Width = 64;
-        timeControls.Children.Add(_play);
-        foreach (var speed in new[] { 1, 2, 5, UnlimitedSpeed })
-        {
-            var unlimited = speed == UnlimitedSpeed;
-            var width = unlimited ? 56 : 42;
-            var b = Named(Button(unlimited ? "不限制" : $"{speed}倍", () =>
-                {
-                    if (_speed == UnlimitedSpeed || unlimited)
-                    {
-                        _accumulator = 0;
-                        _previousTime = _clock.Elapsed.TotalSeconds;
-                    }
-
-                    _speed = speed;
-                    _map.SimulationTickDurationSeconds = unlimited ? .016 : SimulationTickSeconds / speed;
-                    UpdateSpeedButtons();
-                }, unlimited ? "按设备能力尽快推进模拟" : null),
-                unlimited ? "time-speed-unlimited" : $"time-speed-{speed}");
-            b.Width = width;
-            b.Padding = new Thickness(3, 3);
-            b.Margin = new Thickness(0);
-            _speeds.Add((speed, b));
-            timeControls.Children.Add(b);
-        }
-
-        _timeStatus.Child = _simulationStatus;
-        _timeStatus.Width = 170;
-        _timeStatus.Padding = new Thickness(10, 8);
-        _timeStatus.Background = Brush.Parse("#E3172632");
-        _timeStatus.CornerRadius = new CornerRadius(7);
-        _timeStatus.VerticalAlignment = VerticalAlignment.Center;
-        timeControls.Children.Add(_timeStatus);
-        bottom.Children.Add(timeControls);
-        mapLayer.Children.Add(bottom);
-        Grid.SetColumn(mapLayer, 1);
-        _body.Children.Add(mapLayer);
-
-        Named(_inspector, "inspector-panel");
-        Named(_inspectorScroll, "inspector-scroll");
-        _inspectorScroll.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
-        var inspectorLayout = new DockPanel();
-        DockPanel.SetDock(_inspectorNavigation, Dock.Top);
-        inspectorLayout.Children.Add(_inspectorNavigation);
-        inspectorLayout.Children.Add(_inspectorScroll);
-        _inspector.Child = inspectorLayout;
-        _inspector.Background = Panel;
-        _inspector.BorderBrush = Line;
-        _inspector.BorderThickness = new Thickness(1, 0, 0, 0);
-        Grid.SetColumn(_inspector, 2);
-        _body.Children.Add(_inspector);
-        var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(8, 0) };
-        _status.VerticalAlignment = VerticalAlignment.Center;
-        _status.TextTrimming = TextTrimming.CharacterEllipsis;
-        footer.Children.Add(_status);
-        _version.VerticalAlignment = VerticalAlignment.Center;
-        Grid.SetColumn(_version, 1);
-        footer.Children.Add(_version);
-        var shell = new Grid { RowDefinitions = new RowDefinitions("Auto,*,22") };
-        shell.Children.Add(new Border
-        {
-            Child = header, BorderBrush = Line, BorderThickness = new Thickness(0, 0, 0, 1),
-        });
-        Grid.SetRow(_body, 1);
-        shell.Children.Add(_body);
-        Grid.SetRow(footer, 2);
-        shell.Children.Add(footer);
-        _shell = shell;
-        shell.IsEnabled = false;
-        var root = new Grid();
-        root.Children.Add(shell);
-        root.Children.Add(_modal);
-        Content = root;
+        BuildMainLayout();
         SizeChanged += (_, _) => ApplyLayout();
         _body.SizeChanged += (_, _) => ApplyLayout();
         _map.SizeChanged += (_, _) => UpdateToolBarSize();
@@ -650,7 +278,7 @@ public sealed partial class MainView : UserControl
                 _lastMapRefreshMilliseconds = Stopwatch.GetElapsedTime(mapStarted).TotalMilliseconds;
             }
 
-            _simulationStatus.Text = _accumulator > .4 ? "设备限速，世界继续演化" : "世界正在演化";
+            RefreshTimeState();
         }
 
         if (now - _lastPerformanceUpdate >= .25)
@@ -689,11 +317,8 @@ public sealed partial class MainView : UserControl
     {
         if (EditCaptureActive || _modal.IsVisible || _mapPick is not null)
             return;
-        _paused = !_paused;
-        if (!_paused)
-            _checkpoint = null;
-        _map.IsSimulationPaused = WorldTimeStopped;
-        RefreshUi(true);
+        RefreshTimeState();
+        _viewModel.PauseCommand.Execute(null);
     }
 
     private void RestoreCheckpoint()
@@ -709,6 +334,8 @@ public sealed partial class MainView : UserControl
         _saveCapture?.Cancel();
         CloseModal();
         _engine = WorldEngine.FromSnapshot(_checkpoint.Value);
+        _viewModel.ResetWorldPresentation();
+        _returnViewport = null;
         _simulationDays.Clear();
         _checkpoint = null;
         _paused = true;
@@ -732,8 +359,7 @@ public sealed partial class MainView : UserControl
     private void UpdateUndoButtons()
     {
         var available = _checkpoint is not null && !EditCaptureActive && _mapPick is null;
-        _undo.IsEnabled = available;
-        ToolTip.SetTip(_undo, available ? "撤销本轮编辑：恢复到编辑之前；继续模拟后清除恢复点" : "撤销本轮编辑：暂无恢复点；应用修改后可用，继续模拟后清除恢复点");
+        _viewModel.CanUndo = available;
         if (_storageUndo is not null)
             _storageUndo.IsEnabled = available;
     }
@@ -741,49 +367,32 @@ public sealed partial class MainView : UserControl
     private void UpdateSpeedButtons()
     {
         ScheduleNextTick();
-        foreach (var (speed, button) in _speeds)
-        {
-            button.Background = speed == _speed ? Brush.Parse("#355347") : Panel;
-            button.Foreground = speed == _speed ? Mint : Brushes.White;
-        }
     }
 
     private void ApplyLayout()
     {
         _isCompact = Bounds.Width < 980;
-        _brandName.Text = Bounds.Width < 600 ? "众生纪" : "WORLDBOX";
-        _brandName.FontSize = Bounds.Width < 600 ? 11 : 15;
-        _brandCaption.IsVisible = false;
-        _version.IsVisible = Bounds.Width >= 600;
-        _headerStats.IsVisible = Bounds.Width >= 760;
-        _compactDate.IsVisible = Bounds.Width < 760;
-        _headerActions.Spacing = Bounds.Width < 600 ? 3 : 7;
-        _rail.IsVisible = false;
-        _body.ColumnDefinitions = new ColumnDefinitions(_mobilePanel && !_isCompact
-            ? _inspectorMode == "research" && _researchExpanded ? "0,0,*" : "0,*,320"
-            : "0,*,0");
+        _viewModel.IsCompactHud = _isCompact;
+        _viewModel.IsShortHud = Bounds.Height < 540;
+        var stackedDock = Views.GameHud.HasStackedDock(Bounds.Width);
+        _map.ScaleBottomInset = stackedDock ? 138 : 88;
+        _hud.Resize(Bounds.Width, _mobilePanel || _toolsOpen);
+        _cameraBar.Orientation = _mobilePanel || _toolsOpen ? Orientation.Horizontal : Orientation.Vertical;
         _inspector.IsVisible = _mobilePanel;
-        Grid.SetColumn(_inspector, _isCompact ? 1 : 2);
-        _inspector.Width = _isCompact ? Math.Max(280, Bounds.Width - 12) : double.NaN;
-        var inspectorSpace = Math.Max(140, _body.Bounds.Height - 92);
-        _inspector.MaxHeight = _isCompact
-            ? _expandedInspector ? inspectorSpace : Math.Min(430, inspectorSpace * .48)
-            : double.PositiveInfinity;
-        _inspector.Height = _isCompact && _expandedInspector ? inspectorSpace : double.NaN;
-        _inspector.VerticalAlignment = _isCompact ? VerticalAlignment.Bottom : VerticalAlignment.Stretch;
-        _inspector.Margin = _isCompact ? new Thickness(6, 6, 6, 80) : new Thickness(0);
-        _inspector.HorizontalAlignment = _isCompact ? HorizontalAlignment.Right : HorizontalAlignment.Stretch;
+        _inspector.Width = _isCompact ? Math.Max(280, Bounds.Width - 20)
+            : _inspectorMode == "research" && _researchExpanded ? Math.Max(360, Bounds.Width - 20) : 360;
+        var inspectorTop = _isCompact && _viewModel.CanReturnObservation ? 130 : 90;
+        var inspectorBottom = stackedDock ? 126 : 90;
+        var inspectorSpace = Math.Max(0, Bounds.Height - inspectorTop - inspectorBottom);
+        _inspector.MaxHeight = _isCompact && !_expandedInspector
+            ? Math.Min(inspectorSpace, Math.Clamp(inspectorSpace * .7, 140, 430)) : inspectorSpace;
+        _inspector.Height = _expandedInspector ? inspectorSpace : double.NaN;
+        _inspector.VerticalAlignment = _isCompact ? VerticalAlignment.Bottom : VerticalAlignment.Top;
+        _inspector.HorizontalAlignment = HorizontalAlignment.Right;
+        _inspector.Margin = new Thickness(10, inspectorTop, 10, inspectorBottom);
         _inspector.ZIndex = 20;
-        _toolBar.IsVisible = _toolsOpen;
         _mapPickBar.IsVisible = _mapPick is not null;
         _toolHint.IsVisible = Bounds.Width > 600;
-        _timeStatus.IsVisible = Bounds.Width > 760;
-        foreach (var (speed, button) in _speeds)
-            button.Width = speed == UnlimitedSpeed
-                ? Bounds.Width < 420 ? 50 : 56
-                : Bounds.Width < 420
-                    ? 34
-                    : 42;
         UpdateToolBarSize();
         UpdateModalBounds();
         RefreshSelectionSummary();
@@ -794,12 +403,14 @@ public sealed partial class MainView : UserControl
         var compact = Bounds.Width < 700;
         _toolChoices.Columns = compact ? 4 : 8;
         _toolChoices.Rows = compact ? 2 : 1;
-        _toolBar.Width = Math.Max(280, Math.Min(650, _map.Bounds.Width - 12));
-        _selectionBar.Width = Math.Max(260, Math.Min(480, _map.Bounds.Width - 12));
-        _placementBar.MaxWidth = Math.Max(120, Math.Min(240, _map.Bounds.Width - 60));
-        _eventText.MaxWidth = Math.Max(240, Math.Min(620, _map.Bounds.Width - 32));
+        _toolScroll.Width = Math.Max(280, Math.Min(650, _map.Bounds.Width - 20));
+        var hudSpace = Views.GameHud.HasStackedDock(Bounds.Width) ? 240 : 180;
+        if (_viewModel.CanReturnObservation)
+            hudSpace += 40;
+        _toolScroll.MaxHeight = Math.Max(80, Bounds.Height - hudSpace);
+        _placementBar.MaxWidth = Math.Max(120, Math.Min(280, _map.Bounds.Width - 60));
         _toolContext.Width = compact ? 108 : 132;
-        _toolTitle.FontSize = compact ? 11 : 13;
+        _toolTitle.FontSize = compact ? 12 : 13;
     }
 
     private void RefreshPerformanceStats()
@@ -817,19 +428,9 @@ public sealed partial class MainView : UserControl
     {
         RefreshPerformanceStats();
         var state = _engine.State;
-        _date.Text = DateLabel(state.Tick);
-        _compactDate.Text = _date.Text;
-        _population.Text = $"居民 {state.Population:N0}    国家 {state.Nations.Count}";
-        _worldSubtitle.Text = $"地图：{state.Width} × {state.Height}\n种子：{state.Seed}\n文明演化";
-        _play.Content = _paused ? "继续" : "暂停";
-        _play.IsEnabled = _mapPick is null && !EditCaptureActive;
+        _viewModel.RefreshWorld();
+        RefreshTimeState();
         UpdateUndoButtons();
-        if (_paused)
-            _simulationStatus.Text = "时间已暂停";
-        else if (_modal.IsVisible || _mapPick is not null || EditCaptureActive)
-            _simulationStatus.Text = "窗口操作中，时间暂时停止";
-        else
-            _simulationStatus.Text = _accumulator > .4 ? "设备限速，世界继续演化" : "世界正在演化";
         var watchHash = 17;
         foreach (var watch in _watched)
             watchHash = unchecked(watchHash * 31 + watch.GetHashCode());
@@ -849,12 +450,7 @@ public sealed partial class MainView : UserControl
 
         var spotlight = _spotlightGroup;
         _focusedEventId = spotlight?.Latest.Id ?? 0;
-        var spotlightText = spotlight is null
-            ? "选择国家、聚落或居民，关注它的故事"
-            : $"{DateLabel(spotlight.Latest.Tick)}\n{spotlight.Latest.Message}" +
-              (spotlight.Count > 1 ? $"（同类 {spotlight.Count} 次）" : "");
-        if (_eventText.Text != spotlightText)
-            _eventText.Text = spotlightText;
+        _viewModel.ShowEvent(spotlight);
         if (_mobilePanel || force)
             RefreshInspector(force);
         RefreshSelectionSummary();
@@ -1031,7 +627,7 @@ public sealed partial class MainView : UserControl
             _saveCapture = capture;
             _lastSaveYield = Stopwatch.GetTimestamp();
             _map.IsSimulationPaused = true;
-            _simulationStatus.Text = "正在保存，模拟短暂停留";
+            RefreshTimeState();
             var chunks = await source.ExportJsonChunksAsync(YieldDuringSave, capture.Token);
             capture.Token.ThrowIfCancellationRequested();
             FinishSaveCapture(capture);
@@ -1092,7 +688,7 @@ public sealed partial class MainView : UserControl
         _saveCapture = null;
         _previousTime = _clock.Elapsed.TotalSeconds;
         _map.IsSimulationPaused = WorldTimeStopped;
-        _simulationStatus.Text = "世界正在演化";
+        RefreshTimeState();
     }
 
     private void ShowNewWorld()
@@ -1154,6 +750,8 @@ public sealed partial class MainView : UserControl
         ResetInfrastructureFilters();
         _checkpoint ??= _engine.State;
         _engine = engine;
+        _viewModel.ResetWorldPresentation();
+        _returnViewport = null;
         _simulationDays.Clear();
         _paused = true;
         _accumulator = 0;
@@ -1534,7 +1132,7 @@ public sealed partial class MainView : UserControl
 
     private void SetStatus(string text)
     {
-        _status.Text = text;
+        _viewModel.Feedback = text;
         if (_modal.IsVisible && _modalFeedback is not null)
             _modalFeedback.Text = text;
     }
@@ -1644,35 +1242,7 @@ public sealed partial class MainView : UserControl
         };
     }
 
-    private static string TerrainName(TerrainType terrain)
-    {
-        return terrain switch
-        {
-            TerrainType.DeepWater => "深海",
-            TerrainType.Water => "浅海",
-            TerrainType.Sand => "沙地",
-            TerrainType.Grass => "草地",
-            TerrainType.Forest => "森林",
-            TerrainType.Mountain => "山脉",
-            TerrainType.Snow => "雪原",
-            TerrainType.Hills => "丘陵",
-            TerrainType.Wetland => "湿地",
-            TerrainType.Desert => "荒漠",
-            TerrainType.River => "河流",
-            TerrainType.Lake => "湖泊",
-            TerrainType.DryFertile => "旱原",
-            TerrainType.Stream => "小溪",
-            TerrainType.LargeRiver => "江",
-            TerrainType.Meadow => "草甸",
-            TerrainType.Woodland => "疏林",
-            TerrainType.Rainforest => "雨林",
-            TerrainType.Savanna => "稀树草原",
-            TerrainType.Scrub => "灌丛",
-            TerrainType.Floodplain => "河漫滩",
-            TerrainType.AlpineMeadow => "高山草甸",
-            _ => "苔原",
-        };
-    }
+    private static string TerrainName(TerrainType terrain) => GameText.Terrain(terrain);
 
     private static string ProfessionName(Profession job)
     {

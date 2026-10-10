@@ -99,7 +99,7 @@ public sealed partial class MainView
         actions.Children.Add(Named(Button("定位建筑", () =>
         {
             if (Current() is { } b)
-                _map.FocusTile(b.X, b.Y);
+                FocusMapTile(b.X, b.Y);
             CloseInspector();
         }), "building-locate"));
         actions.Children.Add(Named(Button("修复建筑", () => RunEdit(() => _engine.RestoreBuilding(id), "建筑已修复")),

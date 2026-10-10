@@ -108,9 +108,9 @@ public sealed partial class MainView
 
                 if (_inspectorMode is "overview" or "residents" or "nations" or "settlements" or "history"
                     or "structures" or "watched")
-                    _inspectorNavigation.Children.Add(navigation);
+                    content.Children.Add(navigation);
                 if (_inspectorMode is "settlement" or "infrastructure" or "research" or "communication")
-                    BuildSettlementNavigation(_inspectorNavigation);
+                    BuildSettlementNavigation(content);
                 switch (_inspectorMode)
                 {
                     case "guide":
@@ -318,12 +318,7 @@ public sealed partial class MainView
         return _engine.State.Settlements.FirstOrDefault(t => t.Id == id)?.Name ?? (id == 0 ? "无" : $"聚落 #{id}");
     }
 
-    private static string DateLabel(long tick)
-    {
-        return tick < 0
-            ? "尚无记录"
-            : $"第 {1 + tick / SimulationTime.TicksPerYear} 年 {1 + tick / SimulationTime.TicksPerMonth % SimulationTime.MonthsPerYear} 月 {1 + tick / SimulationTime.TicksPerDay % SimulationTime.DaysPerMonth} 日   第 {SimulationTime.TimeOfDay(tick)} 刻";
-    }
+    private static string DateLabel(long tick) => GameText.Date(tick);
 
     private static string StockLabel(ResourceStock stock)
     {
@@ -669,9 +664,9 @@ public sealed partial class MainView
         panel.Children.Add(Named(Button("定位事件", () =>
         {
             if (item.X >= 0)
-                _map.FocusTile(item.X, item.Y);
-            else if (item.ResidentId > 0)
-                _map.FocusResident(item.ResidentId);
+                FocusMapTile(item.X, item.Y);
+            else if (item.ResidentId > 0 && !FocusMapResident(item.ResidentId))
+                return;
             CloseInspector();
         }), "event-locate"));
     }

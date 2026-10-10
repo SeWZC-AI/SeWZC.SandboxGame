@@ -162,6 +162,6 @@ public sealed partial class MainView
         LiveRows(panel, () => _engine.State.Armies.Where(a => a.NationId == nation.Id), a => a.Id.ToString(),
             a =>
                 $"作战目标：{WorldEngine.ObjectiveName(a.Objective)}\n行动状态：{a.Status}\n目标聚落：{TownName(a.TargetSettlementId)}\n部队：{a.Soldiers}/{a.InitialSoldiers} 人\n实有军粮：{a.Supplies:F1}\n实有饮水：{a.WaterSupplies:F1}\n士气：{a.Morale:F0}\n{WorldEngine.OutcomeName(a.Outcome)}",
-            a => _map.FocusTile(a.X, a.Y));
+            a => FocusMapTile(a.X, a.Y));
     }
 }

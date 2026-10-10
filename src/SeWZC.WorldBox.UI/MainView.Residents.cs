@@ -106,8 +106,7 @@ public sealed partial class MainView
         var actions = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = 5 };
         var locate = Named(Button("定位", () =>
         {
-            _map.FocusResident(id);
-            if (_isCompact)
+            if (FocusMapResident(id) && _isCompact)
                 CloseInspector();
         }), "resident-locate");
         actions.Children.Add(locate);
@@ -118,9 +117,13 @@ public sealed partial class MainView
         {
             if (syncingFollow)
                 return;
-            _map.SelectResident(id, follow.IsChecked == true);
             if (follow.IsChecked == true)
-                _map.FocusResident(id);
+            {
+                if (FocusMapResident(id))
+                    _map.SelectResident(id, true);
+            }
+            else
+                _map.SelectResident(id);
         };
         _inspectorUpdates.Add(() =>
         {

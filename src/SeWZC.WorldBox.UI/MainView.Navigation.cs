@@ -9,6 +9,66 @@ namespace SeWZC.WorldBox.UI;
 public sealed partial class MainView
 {
     private int _inspectorNavigationGeneration;
+    private WorldMapControl.ViewportState? _returnViewport;
+    private WorldMapControl.MapSelectionState _returnSelection;
+
+    private void RememberObservation()
+    {
+        RememberObservation(_map.CaptureViewport(), _map.CaptureMapSelection());
+    }
+
+    private void RememberObservation(WorldMapControl.ViewportState viewport, WorldMapControl.MapSelectionState selection)
+    {
+        if (_returnViewport is not null)
+            return;
+        _returnViewport = viewport;
+        _returnSelection = selection;
+        _viewModel.CanReturnObservation = true;
+        ApplyLayout();
+    }
+
+    private void FocusMapTile(int x, int y)
+    {
+        RememberObservation();
+        _map.FocusTile(x, y);
+        SetStatus($"已定位地格（{x}, {y}），可返回观察位置");
+    }
+
+    private bool FocusMapResident(int id)
+    {
+        var viewport = _map.CaptureViewport();
+        var selection = _map.CaptureMapSelection();
+        if (!_map.FocusResident(id))
+        {
+            SetStatus("这位居民已不在地图上，无法定位");
+            return false;
+        }
+        _selectedResidentId = id;
+        _selectedBuildingId = 0;
+        _selectedTile = null;
+        _mapSelectionKind = "resident";
+        RememberObservation(viewport, selection);
+        RefreshSelectionSummary();
+        SetStatus("已定位居民，可返回观察位置");
+        return true;
+    }
+
+    private void ReturnToObservation()
+    {
+        if (_returnViewport is not { } viewport)
+            return;
+        CloseInspector();
+        _map.RestoreObservationSelection(_returnSelection);
+        _map.RestoreViewport(viewport);
+        _selectedResidentId = _returnSelection.ResidentId ?? 0;
+        _selectedBuildingId = _returnSelection.BuildingId ?? 0;
+        _selectedTile = _returnSelection.Tile;
+        _mapSelectionKind = _returnSelection.ResidentId is not null ? "resident"
+            : _returnSelection.BuildingId is not null ? "building" : _returnSelection.Tile is not null ? "tile" : null;
+        _returnViewport = null;
+        _viewModel.CanReturnObservation = false;
+        ApplyLayout();
+    }
 
     private string InspectorKey()
     {
@@ -23,7 +83,7 @@ public sealed partial class MainView
         var location = new InspectorLocation(_inspectorMode, _selectedNationId, _selectedResidentId,
             _inspectorSettlementId, _selectedTile, _selectedBuildingId, _eventDetailId,
             _inspectorScroll.Offset, _mapSelectionKind, _expandedInspector, _researchExpanded,
-            _map.CaptureMapSelection(), new Dictionary<string, bool>(_expandedDetails),
+            _map.CaptureMapSelection(), _map.CaptureViewport(), new Dictionary<string, bool>(_expandedDetails),
             new ResearchViewState(_selectedResearch, _researchRoute, _researchBranch,
                 _civilizationDetails, _inspectorMode == "research"
                     ? _inspectorScroll.GetVisualDescendants().OfType<ResearchGraphControl>().FirstOrDefault()
@@ -62,6 +122,7 @@ public sealed partial class MainView
         SynchronizeInspectorSelection();
         ApplyLayout();
         RefreshInspector(true);
+        Focus();
     }
 
     private void GoBack()
@@ -91,6 +152,7 @@ public sealed partial class MainView
         foreach (var detail in view.Details)
             _expandedDetails[detail.Key] = detail.Value;
         _map.RestoreMapSelection(view.MapSelection);
+        _map.RestoreViewport(view.Viewport);
         InvalidateInspector();
         OpenInspector(view.Mode, false);
         var generation = _inspectorNavigationGeneration;
@@ -151,6 +213,8 @@ public sealed partial class MainView
             return;
         if (_mobilePanel && _inspectorMode == "tile" && _selectedTile == (x, y))
             return;
+        if (locate)
+            RememberObservation();
         RememberLocation();
         _selectedTile = (x, y);
         _selectedResidentId = 0;
@@ -158,7 +222,7 @@ public sealed partial class MainView
         _mapSelectionKind = "tile";
         _map.SelectMapTile(x, y);
         if (locate)
-            _map.FocusTile(x, y);
+            FocusMapTile(x, y);
         OpenInspector("tile", false);
     }
 
@@ -202,6 +266,7 @@ public sealed partial class MainView
         bool Expanded,
         bool ResearchExpanded,
         WorldMapControl.MapSelectionState MapSelection,
+        WorldMapControl.ViewportState Viewport,
         Dictionary<string, bool> Details,
         ResearchViewState Research);
 

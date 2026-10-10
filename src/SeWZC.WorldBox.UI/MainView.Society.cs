@@ -107,7 +107,7 @@ public sealed partial class MainView
         {
             var town = _engine.State.Settlements.FirstOrDefault(t => t.Id == nation.CapitalId);
             if (town is not null)
-                _map.FocusTile(town.X, town.Y);
+                FocusMapTile(town.X, town.Y);
             CloseInspector();
         }));
     }
@@ -292,7 +292,7 @@ public sealed partial class MainView
             $"投入：{StockLabel(WorldEngine.VillageFoundingCost)}\n新村与其他城镇至少相距 {WorldEngine.MinimumSettlementDistance} 格。居民先勘察并带回报告，拓荒队再携物资抵达、驻留建村。"));
         panel.Children.Add(Named(Button("定位聚落", () =>
         {
-            _map.FocusTile(town.X, town.Y);
+            FocusMapTile(town.X, town.Y);
             CloseInspector();
         }), "settlement-locate"));
     }
@@ -317,7 +317,7 @@ public sealed partial class MainView
             {
                 _map.SelectedSettlementId = town.Id;
                 SetCategory(ToolCategory.Build);
-                _map.FocusTile(town.X, town.Y);
+                FocusMapTile(town.X, town.Y);
             }), "infrastructure-build"));
             actions.Children.Add(Named(Button("查看设施成本与建造", () => ShowBuildingEditor(town.Id)), "building-open"));
             panel.Children.Add(actions);

@@ -174,13 +174,20 @@ public sealed partial class WorldMapControl : Control
             _selection, FollowSelectedResident, SelectedNationId, SelectedSettlementId);
     }
 
-    /// <summary>恢复地图选择和跟随设置，优先恢复居民或建筑选择。</summary>
-    /// <param name="selection">此前捕获的地图选择和跟随设置。</param>
+    /// <summary>恢复地图选择、跟随设置及工具归属。</summary>
+    /// <param name="selection">此前捕获的地图选择、跟随设置及工具归属。</param>
     public void RestoreMapSelection(MapSelectionState selection)
     {
-        ClearMapSelection();
         SelectedNationId = selection.NationId;
         SelectedSettlementId = selection.SettlementId;
+        RestoreObservationSelection(selection);
+    }
+
+    /// <summary>恢复观察对象及跟随设置，保留当前工具和建设归属。</summary>
+    /// <param name="selection">此前捕获的观察对象及跟随设置。</param>
+    public void RestoreObservationSelection(MapSelectionState selection)
+    {
+        ClearMapSelection();
         if (selection.ResidentId is { } resident)
             SelectResident(resident, selection.Follow);
         else if (selection.BuildingId is { } building)
@@ -314,10 +321,29 @@ public sealed partial class WorldMapControl : Control
         _zoom = Math.Max(_zoom, 1.4);
         _origin = new Point(Bounds.Width / 2 - (x + .5) * TilePixels * _zoom,
             Bounds.Height / 2 - (y + .5) * TilePixels * _zoom);
-        _selection = (x, y);
         _cameraReady = true;
         InvalidateVisual();
     }
+
+    /// <summary>捕获观察位置和地图缩放，不读取或修改模拟状态。</summary>
+    public ViewportState CaptureViewport() => new(
+        new Point((Bounds.Width / 2 - _origin.X) / _zoom, (Bounds.Height / 2 - _origin.Y) / _zoom), _zoom);
+
+    /// <summary>恢复观察位置和缩放，在当前窗口尺寸下保持原世界中心。</summary>
+    /// <param name="viewport">此前捕获的观察视野。</param>
+    public void RestoreViewport(ViewportState viewport)
+    {
+        _zoom = viewport.Zoom;
+        _origin = new Point(Bounds.Width / 2 - viewport.Center.X * _zoom,
+            Bounds.Height / 2 - viewport.Center.Y * _zoom);
+        _cameraReady = true;
+        InvalidateVisual();
+    }
+
+    /// <summary>地图的观察中心和缩放。</summary>
+    /// <param name="Center">以未缩放地图像素计的世界中心。</param>
+    /// <param name="Zoom">地图缩放倍数。</param>
+    public readonly record struct ViewportState(Point Center, double Zoom);
 
     /// <summary>在控件尺寸变化时使地图视野缓存失效，并初始化镜头。</summary>
     /// <param name="change">发生变化的 Avalonia 属性及其新旧值。</param>
@@ -1055,12 +1081,15 @@ public sealed partial class WorldMapControl : Control
         context.DrawEllipse(previewFill, previewPen, point, radius, radius);
     }
 
+    /// <summary>地图比例尺距视图底部的像素距离，由 HUD 布局留出空间。</summary>
+    public double ScaleBottomInset { get; set; } = 22;
+
     private void DrawScale(DrawingContext context)
     {
         var tiles = _zoom > 1 ? 5 : _zoom > .3 ? 10 : 25;
         var length = tiles * TilePixels * _zoom;
         var x = 18.0;
-        var y = Bounds.Height - 22;
+        var y = Bounds.Height - ScaleBottomInset;
         context.DrawLine(ScalePen, new Point(x, y), new Point(x + length, y));
         context.DrawLine(ScalePen, new Point(x, y - 3), new Point(x, y + 3));
         context.DrawLine(ScalePen, new Point(x + length, y - 3), new Point(x + length, y + 3));

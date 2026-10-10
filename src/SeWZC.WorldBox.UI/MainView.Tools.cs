@@ -6,9 +6,9 @@ namespace SeWZC.WorldBox.UI;
 
 public sealed partial class MainView
 {
-    private readonly Button? _toolNext;
+    private Button? _toolNext;
     private readonly TextBlock _toolPageLabel = Text("", 11);
-    private readonly Button? _toolPrevious;
+    private Button? _toolPrevious;
 
     private int _toolPage;
 
@@ -194,6 +194,7 @@ public sealed partial class MainView
         _expandedInspector = false;
         _researchExpanded = false;
         ApplyLayout();
+        Focus();
     }
 
     private void ShowRules()

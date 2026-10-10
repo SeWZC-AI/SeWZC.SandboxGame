@@ -16,7 +16,7 @@ flowchart TD
     UITests[UI.Tests xUnit 逻辑测试] --> UI
 ```
 
-Core 不引用 Avalonia、平台 API 或文件系统。UI 协调模拟、编辑、呈现和保存，平台入口实现 `IWorldStorage`。浏览器模拟及界面使用单线程 WebAssembly，普通 JavaScript Worker 仅用于保存。原生大群体先按固定顺序结算随机事件、公共补给与取水，再顺序转换整批个人身体的不可变输入，避免每 tick 的线程调度，按居民顺序提交结果。
+Core 不引用 Avalonia、平台 API 或文件系统。主界面采用 MVVM：`ViewModels/MainViewModel.cs` 持有引擎引用、时间偏好、选择、面板与通知状态及 HUD 命令；`Views/GameHud.axaml` 使用编译绑定呈现。`MainView` 协调地图控件、详情表单、模拟调度、异步编辑和保存，平台入口实现 `IWorldStorage`。浏览器模拟及界面使用单线程 WebAssembly，普通 JavaScript Worker 仅用于保存。原生大群体先按固定顺序结算随机事件、公共补给与取水，再顺序转换整批个人身体的不可变输入，避免每 tick 的线程调度，按居民顺序提交结果。
 
 模拟按完整离散日推进，呈现时钟在真实移动起终点间插值。慢设备限制实际推进速度，不跳过劳动、运输、通信或生存步骤。暂停冻结显示，变速重锚时间，载入和编辑传送重置轨迹；命中、标记、选中圈和跟随共用显示位置。短暂动作通知只说明已执行结果，不保存为世界事实或分配实体 ID。
 
