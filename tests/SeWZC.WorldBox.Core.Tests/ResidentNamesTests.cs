@@ -16,7 +16,7 @@ public sealed class ResidentNamesTests
         if (archived)
         {
             fixture.Resident.Replace(original with { Name = "在世居民" });
-            fixture.Engine.ArchivedResidents.Add(new ResidentCursor(original with
+            fixture.Engine.ArchivedResidents.Add(new StateReference<Resident>(original with
             {
                 Id = original.Id + 1000,
                 Health = 0,
@@ -39,6 +39,6 @@ public sealed class ResidentNamesTests
         if (archived)
             Assert.Equal(original.Name, Assert.Single(fixture.Engine.State.ArchivedResidents).Name);
         else
-            Assert.Equal(original.Name, fixture.Resident.Name);
+            Assert.Equal(original.Name, fixture.Resident.Value.Name);
     }
 }

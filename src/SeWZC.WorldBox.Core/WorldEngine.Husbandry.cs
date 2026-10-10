@@ -58,13 +58,13 @@ public sealed partial class WorldEngine
         return .005 * Math.Min(6, b.LivestockPopulation);
     }
 
-    private bool HusbandryHasWork(Building b, ResidentCursor person)
+    private bool HusbandryHasWork(Building b, StateReference<Resident> person)
     {
         if (!HasResearch(b.SettlementId,
                 b.Kind == BuildingKind.Pasture ? Advancement.Agriculture : Advancement.Industry)
             || (b.Kind == BuildingKind.Aquaculture && !HasResearch(b.SettlementId, Advancement.Logistics)))
             return false;
-        if (person.Profession != (b.Kind == BuildingKind.Pasture ? Profession.Farmer : Profession.Fisher))
+        if (person.Value.Profession != (b.Kind == BuildingKind.Pasture ? Profession.Farmer : Profession.Fisher))
             return false;
         var tile = Tiles[Index(b.X, b.Y)];
         if (tile.Value.DroughtTicks > 0 || tile.Value.FireTicks > 0)
@@ -72,32 +72,32 @@ public sealed partial class WorldEngine
         if (b.LivestockPopulation < .01)
             return HusbandryStockAt(b.X, b.Y, b.Kind == BuildingKind.Aquaculture).Source >= 0;
         var home = RequireTown(b.SettlementId);
-        return (person.Inventory.Food >= LivestockFeed(b) || home.Value.Resources.Food >= LivestockFeed(b))
-               && (person.Inventory.Water >= .75 + LivestockWater(b) || home.Value.Resources.Water >= .08 ||
+        return (person.Value.Inventory.Food >= LivestockFeed(b) || home.Value.Resources.Food >= LivestockFeed(b))
+               && (person.Value.Inventory.Water >= .75 + LivestockWater(b) || home.Value.Resources.Water >= .08 ||
                    DailyWaterYield(tile.Value) >= .08)
                && (b.Kind == BuildingKind.Aquaculture || tile.Value.ResourceAmount >= .2);
     }
 
-    private bool ActOnHusbandry(ResidentCursor person, StateReference<Settlement> home)
+    private bool ActOnHusbandry(StateReference<Resident> person, StateReference<Settlement> home)
     {
-        var goal = person.Agent.Goal;
+        var goal = person.Value.Agent.Goal;
         if (goal.Kind != AgentGoalKind.Work || FindBuilding(goal.TargetEntityId) is not { } b || !IsHusbandry(b.Value.Kind)
             || !b.Value.IsCompleted || b.Value.IsUpgrading)
             return false;
         if (!HusbandryHasWork(b.Value, person))
         {
-            person.Agent = person.Agent with { NextThinkTick = SimulationTick };
+            person.Replace(person.Value.WithAgent(person.Value.Agent with { NextThinkTick = SimulationTick }));
             return true;
         }
 
-        if (b.Value.LivestockPopulation >= .01 && (person.Inventory.Food < LivestockFeed(b.Value) ||
-                                             person.Inventory.Water < .75 + LivestockWater(b.Value)))
+        if (b.Value.LivestockPopulation >= .01 && (person.Value.Inventory.Food < LivestockFeed(b.Value) ||
+                                             person.Value.Inventory.Water < .75 + LivestockWater(b.Value)))
         {
-            person.Agent = person.Agent.WithGoal(goal = goal with { TargetX = home.Value.X, TargetY = home.Value.Y });
-            if (Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1)
+            person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(goal = goal with { TargetX = home.Value.X, TargetY = home.Value.Y })));
+            if (Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) > 1)
             {
                 MoveAgentTowards(person, home.Value.X, home.Value.Y);
-                person.Activity = ResidentActivity.Delivering;
+                person.Replace(person.Value.WithActivity(ResidentActivity.Delivering));
                 return true;
             }
 
@@ -106,41 +106,41 @@ public sealed partial class WorldEngine
                          (ResourceKind.Food, TravelReserve(person) + 1), (ResourceKind.Water, 1.5),
                      })
             {
-                var take = Math.Min(home.Value.Resources.Get(kind), Math.Max(0, target - person.Inventory.Get(kind)));
+                var take = Math.Min(home.Value.Resources.Get(kind), Math.Max(0, target - person.Value.Inventory.Get(kind)));
                 home.Replace(home.Value.WithResources(home.Value.Resources.WithAmount(kind, home.Value.Resources.Get(kind) - take)));
-                person.Inventory = person.Inventory.WithAmount(kind, person.Inventory.Get(kind) + take);
+                person.Replace(person.Value.WithInventory(person.Value.Inventory.WithAmount(kind, person.Value.Inventory.Get(kind) + take)));
             }
 
-            DrawWater(person, Index(person.X, person.Y), Math.Max(0, 1.5 - person.Inventory.Water));
+            DrawWater(person, Index(person.Value.X, person.Value.Y), Math.Max(0, 1.5 - person.Value.Inventory.Water));
         }
 
-        person.Agent = person.Agent.WithGoal(goal = goal with { TargetX = b.Value.X, TargetY = b.Value.Y });
-        if (Distance(person.X, person.Y, b.Value.X, b.Value.Y) > 0)
+        person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(goal = goal with { TargetX = b.Value.X, TargetY = b.Value.Y })));
+        if (Distance(person.Value.X, person.Value.Y, b.Value.X, b.Value.Y) > 0)
         {
             MoveAgentTowards(person, b.Value.X, b.Value.Y);
-            person.Activity = ResidentActivity.Delivering;
+            person.Replace(person.Value.WithActivity(ResidentActivity.Delivering));
             return true;
         }
 
         if (TryWorkAtBuilding(person))
-            person.Activity = ResidentActivity.Working;
-        if (person.Inventory.Food >= TravelReserve(person) + 3)
+            person.Replace(person.Value.WithActivity(ResidentActivity.Working));
+        if (person.Value.Inventory.Food >= TravelReserve(person) + 3)
         {
-            var previous = person.Agent.Goal;
-            person.Agent = person.Agent.WithGoal(new AgentGoal
+            var previous = person.Value.Agent.Goal;
+            person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(new AgentGoal
             {
                 Kind = AgentGoalKind.ReturnHome, TargetX = home.Value.X, TargetY = home.Value.Y, StartedTick = SimulationTick,
-            });
-            ChangeWorkReservation(previous, person.Agent.Goal);
-            person.Agent = person.Agent with { NextThinkTick = SimulationTick };
+            })));
+            ChangeWorkReservation(previous, person.Value.Agent.Goal);
+            person.Replace(person.Value.WithAgent(person.Value.Agent with { NextThinkTick = SimulationTick }));
         }
 
         return true;
     }
 
-    private bool WorkHusbandry(StateReference<Building> b, ResidentCursor person, double effort)
+    private bool WorkHusbandry(StateReference<Building> b, StateReference<Resident> person, double effort)
     {
-        if (!HusbandryHasWork(b.Value, person) || person.X != b.Value.X || person.Y != b.Value.Y)
+        if (!HusbandryHasWork(b.Value, person) || person.Value.X != b.Value.X || person.Value.Y != b.Value.Y)
             return false;
         if (b.Value.LivestockPopulation < .01)
         {
@@ -154,13 +154,13 @@ public sealed partial class WorldEngine
         }
         else
         {
-            if (person.Inventory.Food < LivestockFeed(b.Value) || person.Inventory.Water < .75 + LivestockWater(b.Value))
+            if (person.Value.Inventory.Food < LivestockFeed(b.Value) || person.Value.Inventory.Water < .75 + LivestockWater(b.Value))
                 return false;
-            person.Inventory = person.Inventory with
+            person.Replace(person.Value.WithInventory(person.Value.Inventory with
             {
-                Food = person.Inventory.Food - LivestockFeed(b.Value),
-                Water = person.Inventory.Water - LivestockWater(b.Value),
-            };
+                Food = person.Value.Inventory.Food - LivestockFeed(b.Value),
+                Water = person.Value.Inventory.Water - LivestockWater(b.Value),
+            }));
             var tile = Tiles[Index(b.Value.X, b.Value.Y)];
             if (b.Value.Kind == BuildingKind.Pasture)
                 HarvestPlants(tile, .04 * Math.Min(6, b.Value.LivestockPopulation) * NaturalPlantHarvestEfficiency(tile));
@@ -175,10 +175,10 @@ public sealed partial class WorldEngine
             {
                 var harvest = Math.Min(b.Value.LivestockPopulation - 2, .04 * Math.Min(1.5, effort));
                 b.Replace(b.Value with { LivestockPopulation = b.Value.LivestockPopulation - (harvest) });
-                person.Inventory = person.Inventory with
+                person.Replace(person.Value.WithInventory(person.Value.Inventory with
                 {
-                    Food = person.Inventory.Food + harvest * (b.Value.Kind == BuildingKind.Pasture ? 8 : 9),
-                };
+                    Food = person.Value.Inventory.Food + harvest * (b.Value.Kind == BuildingKind.Pasture ? 8 : 9),
+                }));
                 b.Replace(b.Value with { ProductionBatches = Math.Min(1_000_000_000, b.Value.ProductionBatches + 1) });
             }
         }

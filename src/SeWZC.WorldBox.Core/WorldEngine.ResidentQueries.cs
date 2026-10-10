@@ -9,13 +9,13 @@ public sealed partial class WorldEngine
     private bool _nearbyResidentsActive;
 
     // 仅在通信之后、无人移动的社会阶段复用位置索引；其他阶段和外部命令读取实时位置。
-    private IEnumerable<ResidentCursor> NearbyResidents(int x, int y, int radius)
+    private IEnumerable<StateReference<Resident>> NearbyResidents(int x, int y, int radius)
     {
         if (!_nearbyResidentsActive || !_knowledgeQueriesActive || _nearbyResidentTick != SimulationTick
             || _nearbyResidentRevision != Residents.MembershipRevision)
         {
             foreach (var person in Residents)
-                if (Distance(person.X, person.Y, x, y) <= radius)
+                if (Distance(person.Value.X, person.Value.Y, x, y) <= radius)
                     yield return person;
             yield break;
         }

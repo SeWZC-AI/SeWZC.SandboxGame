@@ -24,22 +24,22 @@ public sealed partial class WorldEngine
             counts.Clear();
             targets.Clear();
             facilityTargets.Clear();
-            var adults = new List<ResidentCursor>();
+            var adults = new List<StateReference<Resident>>();
             var buildings = new List<StateReference<Building>>();
             var patients = 0;
             var dailyFood = 0d;
             foreach (var person in citizens)
             {
-                if (person.Health <= 0)
+                if (person.Value.Health <= 0)
                     continue;
                 dailyFood += FoodUse(person);
-                if (Distance(person.X, person.Y, town.Value.X, town.Value.Y) <= 6
-                    && (person.Health < 90 || person.SicknessTicks > 0))
+                if (Distance(person.Value.X, person.Value.Y, town.Value.X, town.Value.Y) <= 6
+                    && (person.Value.Health < 90 || person.Value.SicknessTicks > 0))
                     patients++;
-                if (person.Age < 16 || person.ArmyId != 0)
+                if (person.Value.Age < 16 || person.Value.ArmyId != 0)
                     continue;
                 adults.Add(person);
-                counts[(int)person.Profession]++;
+                counts[(int)person.Value.Profession]++;
             }
 
             if (adults.Count == 0)
@@ -51,7 +51,7 @@ public sealed partial class WorldEngine
             var fishingSites = 0;
             var fishingYield = 0d;
             var plots = new List<NaturalWorkPlot>();
-            var mountainWorkers = adults.Any(person => person.Race == RaceKind.Dwarf);
+            var mountainWorkers = adults.Any(person => person.Value.Race == RaceKind.Dwarf);
             foreach (var index in Circle(town.Value.X, town.Value.Y, 6))
             {
                 var tile = Tiles[index];
@@ -144,17 +144,17 @@ public sealed partial class WorldEngine
             foreach (var job in WorkforcePriorities)
                 while (counts[(int)job] < targets[(int)job])
                 {
-                    ResidentCursor? recruit = null;
+                    StateReference<Resident>? recruit = null;
                     var best = double.NegativeInfinity;
                     foreach (var person in adults)
                     {
-                        var oldJob = person.Profession;
+                        var oldJob = person.Value.Profession;
                         if (oldJob is Profession.Representative or Profession.Soldier || oldJob == job
                             || counts[(int)oldJob] <= targets[(int)oldJob]
                             || !AvailableForLocalAssignment(person, town) || !SuitableForProfession(person, job))
                             continue;
                         var fit = ProfessionSuitability(person, job);
-                        if (fit > best || (fit == best && person.Id < recruit!.Id))
+                        if (fit > best || (fit == best && person.Value.Id < recruit!.Value.Id))
                         {
                             recruit = person;
                             best = fit;
@@ -163,7 +163,7 @@ public sealed partial class WorldEngine
 
                     if (recruit is null)
                         break;
-                    counts[(int)recruit.Profession]--;
+                    counts[(int)recruit.Value.Profession]--;
                     counts[(int)job]++;
                     ChangeLocalProfession(recruit, job);
                 }
@@ -171,9 +171,9 @@ public sealed partial class WorldEngine
             // 没有专业工位的人参与临时劳动，不能把所有多余职业都改成农民。
             foreach (var person in adults)
             {
-                var job = person.Profession;
+                var job = person.Value.Profession;
                 if (job is Profession.Child or Profession.Laborer or Profession.Soldier
-                    || person.Id == town.Value.RepresentativeId || counts[(int)job] <= targets[(int)job]
+                    || person.Value.Id == town.Value.RepresentativeId || counts[(int)job] <= targets[(int)job]
                     || !AvailableForLocalAssignment(person, town))
                     continue;
                 counts[(int)job]--;
@@ -186,47 +186,47 @@ public sealed partial class WorldEngine
         }
     }
 
-    private bool AvailableForLocalAssignment(ResidentCursor person, StateReference<Settlement> town)
+    private bool AvailableForLocalAssignment(StateReference<Resident> person, StateReference<Settlement> town)
     {
-        return person.Health >= 60 && person.SicknessTicks == 0 && person.ArmyId == 0
-               && !person.Agent.Goal.PlayerDirected && person.Agent.DestinationSettlementId == 0
-               && person.TravelMode == TravelMode.Foot && Distance(person.X, person.Y, town.Value.X, town.Value.Y) <= 3
-               && SimulationTick - person.MoveStartedTick >= person.MoveDurationTicks
-               && (person.Profession == Profession.Laborer || SimulationTick == 0 ||
-                   SimulationTick - person.Agent.JobChangedTick >= SimulationTime.TicksPerYear);
+        return person.Value.Health >= 60 && person.Value.SicknessTicks == 0 && person.Value.ArmyId == 0
+               && !person.Value.Agent.Goal.PlayerDirected && person.Value.Agent.DestinationSettlementId == 0
+               && person.Value.TravelMode == TravelMode.Foot && Distance(person.Value.X, person.Value.Y, town.Value.X, town.Value.Y) <= 3
+               && SimulationTick - person.Value.MoveStartedTick >= person.Value.MoveDurationTicks
+               && (person.Value.Profession == Profession.Laborer || SimulationTick == 0 ||
+                   SimulationTick - person.Value.Agent.JobChangedTick >= SimulationTime.TicksPerYear);
     }
 
-    private static bool SuitableForProfession(ResidentCursor person, Profession job)
+    private static bool SuitableForProfession(StateReference<Resident> person, Profession job)
     {
-        return job is not (Profession.Mage or Profession.Battlemage or Profession.Gardener) || person.MagicTalent >= 35;
+        return job is not (Profession.Mage or Profession.Battlemage or Profession.Gardener) || person.Value.MagicTalent >= 35;
     }
 
-    private static double ProfessionSuitability(ResidentCursor person, Profession job)
+    private static double ProfessionSuitability(StateReference<Resident> person, Profession job)
     {
-        var personality = person.Agent.Personality;
+        var personality = person.Value.Agent.Personality;
         return job switch
         {
             Profession.Trader or Profession.Messenger => personality.Sociability * 2 + personality.Diligence,
-            Profession.Mage or Profession.Battlemage or Profession.Gardener => person.MagicTalent / 25
-                                                                               + person.MagicTraining / 10 +
+            Profession.Mage or Profession.Battlemage or Profession.Gardener => person.Value.MagicTalent / 25
+                                                                               + person.Value.MagicTraining / 10 +
                                                                                personality.Diligence,
             Profession.Firefighter or Profession.Ranger => personality.Courage + personality.Diligence
-                                                                               + person.Health / 100,
-            Profession.Lumberjack => personality.Diligence * 2 + (person.Race == RaceKind.Elf ? .5 : 0),
+                                                                               + person.Value.Health / 100,
+            Profession.Lumberjack => personality.Diligence * 2 + (person.Value.Race == RaceKind.Elf ? .5 : 0),
             Profession.Miner or Profession.Engineer => personality.Diligence * 2 +
-                                                       (person.Race == RaceKind.Dwarf ? .5 : 0),
+                                                       (person.Value.Race == RaceKind.Dwarf ? .5 : 0),
             Profession.Scholar or Profession.Archivist or Profession.Surveyor => personality.Diligence +
                 personality.Ambition,
-            _ => personality.Diligence * 2 + person.Health / 100,
+            _ => personality.Diligence * 2 + person.Value.Health / 100,
         };
     }
 
-    private void ChangeLocalProfession(ResidentCursor person, Profession job)
+    private void ChangeLocalProfession(StateReference<Resident> person, Profession job)
     {
         person.Replace(person.Value with
         {
             Profession = job,
-            Agent = person.Agent with
+            Agent = person.Value.Agent with
             {
                 JobChangedTick = SimulationTick,
                 WorkplaceId = 0,
@@ -236,8 +236,8 @@ public sealed partial class WorldEngine
                 Goal = new AgentGoal
                 {
                     Kind = AgentGoalKind.Idle,
-                    TargetX = person.X,
-                    TargetY = person.Y,
+                    TargetX = person.Value.X,
+                    TargetY = person.Value.Y,
                     Reason = $"因本地供给缺口和可用工位，接受{ProfessionName(job)}分工",
                 },
             },
@@ -260,22 +260,22 @@ public sealed partial class WorldEngine
         };
     }
 
-    private void AssignLocalWorkplaces(StateReference<Settlement> town, List<ResidentCursor> adults,
+    private void AssignLocalWorkplaces(StateReference<Settlement> town, List<StateReference<Resident>> adults,
         List<StateReference<Building>> buildings)
     {
         var occupied = new Dictionary<int, int>();
         foreach (var person in adults)
-            if (person.Agent.WorkplaceId != 0)
-                occupied[person.Agent.WorkplaceId] = occupied.GetValueOrDefault(person.Agent.WorkplaceId) + 1;
+            if (person.Value.Agent.WorkplaceId != 0)
+                occupied[person.Value.Agent.WorkplaceId] = occupied.GetValueOrDefault(person.Value.Agent.WorkplaceId) + 1;
         foreach (var person in adults)
         {
             // 工作地点稳定；旧岗位失效时只有本人回到家园，才重新接受当地安排。
-            if (person.Health < 60 || person.SicknessTicks > 0 || person.Agent.Goal.PlayerDirected
-                || person.Agent.DestinationSettlementId != 0 || Distance(person.X, person.Y, town.Value.X, town.Value.Y) > 3
-                || person.TravelMode != TravelMode.Foot ||
-                SimulationTick - person.MoveStartedTick < person.MoveDurationTicks)
+            if (person.Value.Health < 60 || person.Value.SicknessTicks > 0 || person.Value.Agent.Goal.PlayerDirected
+                || person.Value.Agent.DestinationSettlementId != 0 || Distance(person.Value.X, person.Value.Y, town.Value.X, town.Value.Y) > 3
+                || person.Value.TravelMode != TravelMode.Foot ||
+                SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks)
                 continue;
-            var previous = person.Agent.WorkplaceId;
+            var previous = person.Value.Agent.WorkplaceId;
             if (buildings.Any(b => b.Value.Id == previous && WorkplaceFits(b.Value, person)
                                                     && occupied.GetValueOrDefault(previous) <= b.Value.WorkSlots))
                 continue;
@@ -287,7 +287,7 @@ public sealed partial class WorldEngine
             {
                 if (!WorkplaceFits(building.Value, person) || occupied.GetValueOrDefault(building.Value.Id) >= building.Value.WorkSlots)
                     continue;
-                var distance = Distance(person.X, person.Y, building.Value.X, building.Value.Y);
+                var distance = Distance(person.Value.X, person.Value.Y, building.Value.X, building.Value.Y);
                 if (distance < bestDistance || (distance == bestDistance && building.Value.Id < selected!.Value.Id))
                 {
                     selected = building;
@@ -300,17 +300,17 @@ public sealed partial class WorldEngine
                 continue;
             if (next != 0)
                 occupied[next] = occupied.GetValueOrDefault(next) + 1;
-            if (person.Agent.WorkplaceId != next)
-                person.Agent = person.Agent with { WorkplaceId = next };
+            if (person.Value.Agent.WorkplaceId != next)
+                person.Replace(person.Value.WithAgent(person.Value.Agent with { WorkplaceId = next }));
         }
     }
 
-    private static bool WorkplaceFits(Building building, ResidentCursor person)
+    private static bool WorkplaceFits(Building building, StateReference<Resident> person)
     {
         return building.Enabled && building.Health > 0 &&
-               (BuildingRace(building.Kind) is not { } race || race == person.Race)
+               (BuildingRace(building.Kind) is not { } race || race == person.Value.Race)
                && (building.IsCompleted && !building.IsUpgrading && building.Health >= 50
-                   ? WorkplaceProfession(building.Kind) == person.Profession
-                   : person.Profession is Profession.Builder or Profession.Engineer);
+                   ? WorkplaceProfession(building.Kind) == person.Value.Profession
+                   : person.Value.Profession is Profession.Builder or Profession.Engineer);
     }
 }

@@ -24,7 +24,7 @@ public sealed class WorkReservationTests
                 FromX = 16,
                 FromY = 16,
                 Inventory = new ResourceStock { Stone = 1 },
-                Agent = person.Agent with
+                Agent = person.Value.Agent with
                 {
                     Goal = new AgentGoal
                     {
@@ -34,14 +34,14 @@ public sealed class WorkReservationTests
                     },
                 },
             });
-        var other = fixture.Engine.Residents.Single(person => person.Id != fixture.ResidentId);
+        var other = fixture.Engine.Residents.Single(person => person.Value.Id != fixture.ResidentId);
 
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
         var repairedHealth = building.Value.Health;
         Assert.False(fixture.Engine.TryWorkAtBuilding(other.Value));
 
         Assert.Equal(repairedHealth, building.Value.Health);
-        Assert.Equal(1, other.Inventory.Stone);
+        Assert.Equal(1, other.Value.Inventory.Stone);
         Assert.Equal(fixture.ResidentId, Assert.Single(building.Value.Workers));
     }
 
@@ -104,7 +104,7 @@ public sealed class WorkReservationTests
                 MoveStartedTick = 0,
                 MoveDurationTicks = 1,
                 Inventory = new ResourceStock { Food = 1, Water = 1 },
-                Agent = person.Agent with { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal() },
+                Agent = person.Value.Agent with { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal() },
             });
         var caster = fixture.Resident;
         caster.Replace(caster.Value with
@@ -116,7 +116,7 @@ public sealed class WorkReservationTests
             MagicTraining = 8,
             Mana = 100,
             Inventory = new ResourceStock { Food = 1, Water = 1, Crystals = 2 },
-            Agent = caster.Agent with
+            Agent = caster.Value.Agent with
             {
                 Goal = new AgentGoal
                 {
@@ -129,21 +129,21 @@ public sealed class WorkReservationTests
                 },
             },
         });
-        caster.Agent = caster.Agent with
+        caster.Replace(caster.Value.WithAgent(caster.Value.Agent with
         {
-            Memory = caster.Agent.Memory.Add(new AgentFact
+            Memory = caster.Value.Agent.Memory.Add(new AgentFact
             {
                 Id = 90_001,
                 Kind = AgentFactKind.WarOrder,
                 SubjectId = otherTown.Value.NationId,
-                TargetNationId = caster.NationId,
-                OriginResidentId = caster.Id,
-                SourceResidentId = caster.Id,
+                TargetNationId = caster.Value.NationId,
+                OriginResidentId = caster.Value.Id,
+                SourceResidentId = caster.Value.Id,
                 Value = 1,
                 Confidence = 1,
             }),
-        };
-        var otherResidents = fixture.Engine.Residents.Where(person => person.SettlementId == otherTown.Value.Id)
+        }));
+        var otherResidents = fixture.Engine.Residents.Where(person => person.Value.SettlementId == otherTown.Value.Id)
             .ToArray();
         var victim = otherResidents[0];
         victim.Replace(victim.Value with
@@ -151,7 +151,7 @@ public sealed class WorkReservationTests
             Health = .01,
             Armor = 0,
             PersonalWard = 0,
-            Agent = victim.Agent with
+            Agent = victim.Value.Agent with
             {
                 Goal = new AgentGoal
                 {
@@ -165,18 +165,18 @@ public sealed class WorkReservationTests
             },
         });
         var replacement = otherResidents[1];
-        replacement.Health = 50;
-        replacement.Agent = replacement.Agent with { NextThinkTick = 0 };
-        fixture.Engine.SimulationTick = 8 + (3 - replacement.Id % 4 + 4) % 4;
+        replacement.Replace(replacement.Value.WithHealth(50));
+        replacement.Replace(replacement.Value.WithAgent(replacement.Value.Agent with { NextThinkTick = 0 }));
+        fixture.Engine.SimulationTick = 8 + (3 - replacement.Value.Id % 4 + 4) % 4;
 
         fixture.Engine.Step();
 
         var deceased = Assert.Single(fixture.Engine.State.ArchivedResidents);
-        Assert.Equal(victim.Id, deceased.Id);
+        Assert.Equal(victim.Value.Id, deceased.Id);
         Assert.Equal(DeathCause.Magic, deceased.DeathCause);
         Assert.Equal(0, deceased.Health);
-        Assert.Contains(replacement.Id, clinic.Value.Workers);
-        Assert.True(replacement.Health > 50 + .15 / SimulationTime.TicksPerDay);
+        Assert.Contains(replacement.Value.Id, clinic.Value.Workers);
+        Assert.True(replacement.Value.Health > 50 + .15 / SimulationTime.TicksPerDay);
     }
 
     /// <summary>运回产物时释放设施预约，后续居民可在同日接手仍空闲的工位。</summary>
@@ -215,7 +215,7 @@ public sealed class WorkReservationTests
                 MoveStartedTick = 0,
                 MoveDurationTicks = 1,
                 Inventory = new ResourceStock { Food = 1, Water = 1 },
-                Agent = person.Agent with { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal() },
+                Agent = person.Value.Agent with { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal() },
             });
         for (var x = 14; x <= 15; x++)
         {
@@ -244,10 +244,10 @@ public sealed class WorkReservationTests
         building.Replace(building.Value with { WorkSlots = 1 });
         foreach (var other in fixture.Engine.Buildings.Where(candidate => candidate.Value.Id != buildingId))
             other.Replace(other.Value with { Enabled = false });
-        fixture.Resident.Inventory = kind == BuildingKind.Reservoir
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(kind == BuildingKind.Reservoir
             ? new ResourceStock { Food = 1, Water = 3 }
-            : new ResourceStock { Food = 3, Water = 1 };
-        fixture.Resident.Agent = fixture.Resident.Agent with
+            : new ResourceStock { Food = 3, Water = 1 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Goal = new AgentGoal
             {
@@ -257,17 +257,17 @@ public sealed class WorkReservationTests
                 TargetY = 16,
                 ReviewTick = 100,
             },
-        };
-        var replacement = fixture.Engine.Residents.Single(person => person.Id != fixture.ResidentId);
-        replacement.Agent = replacement.Agent with { NextThinkTick = 0 };
-        fixture.Engine.SimulationTick = 8 + (3 - replacement.Id % 4 + 4) % 4;
+        }));
+        var replacement = fixture.Engine.Residents.Single(person => person.Value.Id != fixture.ResidentId);
+        replacement.Replace(replacement.Value.WithAgent(replacement.Value.Agent with { NextThinkTick = 0 }));
+        fixture.Engine.SimulationTick = 8 + (3 - replacement.Value.Id % 4 + 4) % 4;
 
         fixture.Engine.Step();
 
-        Assert.Equal(AgentGoalKind.ReturnHome, fixture.Resident.Agent.Goal.Kind);
-        Assert.Contains(replacement.Id, building.Value.Workers);
+        Assert.Equal(AgentGoalKind.ReturnHome, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Contains(replacement.Value.Id, building.Value.Workers);
         Assert.DoesNotContain(fixture.ResidentId, building.Value.Workers);
-        Assert.Equal(AgentGoalKind.Work, Assert.Single(replacement.Agent.Decisions).Goal);
+        Assert.Equal(AgentGoalKind.Work, Assert.Single(replacement.Value.Agent.Decisions).Goal);
     }
 
     private static void GrantResearch(WorldFixture fixture, Advancement research)

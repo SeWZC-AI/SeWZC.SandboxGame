@@ -4,12 +4,12 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private bool HasResourcePressure(ResidentCursor person)
+    private bool HasResourcePressure(StateReference<Resident> person)
     {
-        return person.Hunger >= 40 && person.Inventory.Food < .5
-                                   && person.Agent.Memory.Any(f =>
+        return person.Value.Hunger >= 40 && person.Value.Inventory.Food < .5
+                                   && person.Value.Agent.Memory.Any(f =>
                                        f.Kind == AgentFactKind.FoodSupply && f.Value < 12 && f.Confidence >= .5 &&
-                                       f.SubjectId == person.SettlementId &&
+                                       f.SubjectId == person.Value.SettlementId &&
                                        SimulationTick - f.ObservedTick <= 2 * SimulationTime.TicksPerMonth);
     }
 
@@ -17,7 +17,7 @@ public sealed partial class WorldEngine
     {
         if (SimulationTick % 12 != 0)
             return;
-        var residents = Residents.ToDictionary(r => r.Id);
+        var residents = Residents.ToDictionary(r => r.Value.Id);
         Conflicts = Conflicts.RemoveAll(c =>
             (c.Stage == ConflictStage.Resolved && SimulationTick - c.LastChangedTick > 3 * SimulationTime.TicksPerYear)
             || !_settlements.ContainsKey(c.SettlementId));
@@ -26,10 +26,10 @@ public sealed partial class WorldEngine
             var conflict = previous;
             var together = residents.TryGetValue(conflict.FirstResidentId, out var first)
                            && residents.TryGetValue(conflict.SecondResidentId, out var second)
-                           && first.SettlementId == conflict.SettlementId &&
-                           second.SettlementId == conflict.SettlementId
-                           && Distance(first.X, first.Y, second.X, second.Y) <= 2
-                           && Distance(first.X, first.Y, conflict.X, conflict.Y) <= 2;
+                           && first.Value.SettlementId == conflict.SettlementId &&
+                           second.Value.SettlementId == conflict.SettlementId
+                           && Distance(first.Value.X, first.Value.Y, second.Value.X, second.Value.Y) <= 2
+                           && Distance(first.Value.X, first.Value.Y, conflict.X, conflict.Y) <= 2;
             var pressured = together && HasResourcePressure(first!) &&
                             HasResourcePressure(residents[conflict.SecondResidentId]);
             conflict = PublishConflict(conflict with
@@ -61,11 +61,11 @@ public sealed partial class WorldEngine
             // 其他居民须在本地目击持续争端后才参与，避免冲突隔空扩散。
             if (pressured && SimulationTick - conflict.StartedTick >= 72 && conflict.Participants.Count < 16)
             {
-                var witness = _citizens[conflict.SettlementId].Where(r => r.Age >= 14 && r.ArmyId == 0
-                    && !conflict.Participants.Contains(r.Id) && HasResourcePressure(r)
-                    && Distance(r.X, r.Y, conflict.X, conflict.Y) <= 2).OrderBy(r => r.Id).FirstOrDefault();
+                var witness = _citizens[conflict.SettlementId].Where(r => r.Value.Age >= 14 && r.Value.ArmyId == 0
+                    && !conflict.Participants.Contains(r.Value.Id) && HasResourcePressure(r)
+                    && Distance(r.Value.X, r.Value.Y, conflict.X, conflict.Y) <= 2).OrderBy(r => r.Value.Id).FirstOrDefault();
                 if (witness is not null)
-                    conflict = PublishConflict(conflict with { Participants = conflict.Participants.Add(witness.Id) });
+                    conflict = PublishConflict(conflict with { Participants = conflict.Participants.Add(witness.Value.Id) });
                 var scope = conflict.Participants.Count >= 8 &&
                             SimulationTick - conflict.StartedTick >= 2 * SimulationTime.TicksPerMonth
                     ? ConflictScope.Settlement
@@ -89,27 +89,27 @@ public sealed partial class WorldEngine
                                                                                  SimulationTick - c.LastChangedTick <
                                                                                  120)))
                 continue;
-            var candidates = _citizens[town.Value.Id].Where(r => r.Age >= 14 && r.ArmyId == 0 && HasResourcePressure(r))
-                .OrderBy(r => r.Id).Take(32).ToArray();
+            var candidates = _citizens[town.Value.Id].Where(r => r.Value.Age >= 14 && r.Value.ArmyId == 0 && HasResourcePressure(r))
+                .OrderBy(r => r.Value.Id).Take(32).ToArray();
             for (var i = 0; i < candidates.Length; i++)
             {
                 var first = candidates[i];
-                var second = candidates.Skip(i + 1).FirstOrDefault(r => Distance(r.X, r.Y, first.X, first.Y) <= 1);
+                var second = candidates.Skip(i + 1).FirstOrDefault(r => Distance(r.Value.X, r.Value.Y, first.Value.X, first.Value.Y) <= 1);
                 if (second is null)
                     continue;
                 var conflict = new LocalConflict
                 {
                     Id = NewId(),
-                    FirstResidentId = first.Id,
-                    SecondResidentId = second.Id,
+                    FirstResidentId = first.Value.Id,
+                    SecondResidentId = second.Value.Id,
                     SettlementId = town.Value.Id,
-                    X = first.X,
-                    Y = first.Y,
+                    X = first.Value.X,
+                    Y = first.Value.Y,
                     Tension = 16,
                     StartedTick = SimulationTick,
                     StageStartedTick = SimulationTick,
                     LastChangedTick = SimulationTick,
-                    Participants = [first.Id, second.Id],
+                    Participants = [first.Value.Id, second.Value.Id],
                 };
                 Conflicts = Conflicts.Add(conflict);
                 conflict = RecordConflictEvent(conflict, "两位缺粮居民在现场为有限的食物发生争执");
@@ -137,7 +137,7 @@ public sealed partial class WorldEngine
                 : EventImportance.Notable,
         });
         conflict = PublishConflict(conflict with { LastEventId = entry.Id });
-        foreach (var person in Residents.Where(r => conflict.Participants.Contains(r.Id)))
+        foreach (var person in Residents.Where(r => conflict.Participants.Contains(r.Value.Id)))
             RecordLife(person, reason, entry,
                 conflict.Stage == ConflictStage.Resolved
                     ? PersonalExperienceKind.Kindness

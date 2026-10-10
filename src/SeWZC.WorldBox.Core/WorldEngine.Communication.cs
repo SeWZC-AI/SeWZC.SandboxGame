@@ -12,9 +12,9 @@ public sealed partial class WorldEngine
     private readonly List<AgentFact> _observedReports = [];
     private readonly List<AgentFact> _receivedFacts = [];
     private int[] _conversationCounts = [], _conversationStarts = [], _conversationPositions = [];
-    private ResidentCursor[] _conversationResidents = [];
+    private StateReference<Resident>[] _conversationResidents = [];
 
-    private AgentFact MakeAgentFact(ResidentCursor observer, AgentFactKind kind, int subject, int x, int y,
+    private AgentFact MakeAgentFact(StateReference<Resident> observer, AgentFactKind kind, int subject, int x, int y,
         double value,
         string text)
     {
@@ -28,38 +28,38 @@ public sealed partial class WorldEngine
             Value = value,
             ObservedTick = SimulationTick,
             LearnedTick = SimulationTick,
-            OriginResidentId = observer.Id,
-            SourceResidentId = observer.Id,
-            OriginProfession = observer.Profession,
+            OriginResidentId = observer.Value.Id,
+            SourceResidentId = observer.Value.Id,
+            OriginProfession = observer.Value.Profession,
             Confidence = 1,
             Text = text,
         };
     }
 
-    private void RememberAgentFact(ResidentCursor person, AgentFact fact)
+    private void RememberAgentFact(StateReference<Resident> person, AgentFact fact)
     {
-        person.Agent = person.Agent.Remember(fact, person.SettlementId);
+        person.Replace(person.Value.WithAgent(person.Value.Agent.Remember(fact, person.Value.SettlementId)));
     }
 
     /// <summary>将附近的观察和可接触的公开报告记录到该居民自己的记忆中。</summary>
     /// <param name="person">观察信息的居民。</param>
-    private void ObserveAgentEnvironment(ResidentCursor person)
+    private void ObserveAgentEnvironment(StateReference<Resident> person)
     {
-        if (Rules.Expansion && person.Profession is Profession.Builder or Profession.Trader
+        if (Rules.Expansion && person.Value.Profession is Profession.Builder or Profession.Trader
                                         or Profession.Messenger
-                                    && _settlements.TryGetValue(person.SettlementId, out var camp) &&
+                                    && _settlements.TryGetValue(person.Value.SettlementId, out var camp) &&
                                     !camp.Value.FoundationPending
-                                    && Distance(person.X, person.Y, camp.Value.X, camp.Value.Y) >= MinimumSettlementDistance - 6
-                                    && !person.Agent.Memory.Any(f =>
+                                    && Distance(person.Value.X, person.Value.Y, camp.Value.X, camp.Value.Y) >= MinimumSettlementDistance - 6
+                                    && !person.Value.Agent.Memory.Any(f =>
                                         f.Kind == AgentFactKind.FoundingSite && SimulationTick - f.ObservedTick <
                                         SimulationTime.TicksPerYear))
         {
-            var site = Circle(person.X, person.Y, 3).Where(i => RaceTerrainRules.CanWalk(Tiles[i].Value, person.Race)
+            var site = Circle(person.Value.X, person.Value.Y, 3).Where(i => RaceTerrainRules.CanWalk(Tiles[i].Value, person.Value.Race)
                                                                 && !IsWaterTerrain(Tiles[i].Value.Terrain) &&
                                                                 Tiles[i].Value.Fertility >= 40
                                                                 && Tiles[i].Value.ClaimedSettlementId == 0 &&
                                                                 Tiles[i].Value.FireTicks == 0
-                                                                && FoundingSiteSuitable(i, [person.Race])
+                                                                && FoundingSiteSuitable(i, [person.Value.Race])
                                                                 && Settlements.All(t =>
                                                                     Distance(t.Value.X, t.Value.Y, i % Width,
                                                                         i / Width) >=
@@ -77,11 +77,11 @@ public sealed partial class WorldEngine
 
         foreach (var town in Settlements)
         {
-            if (Distance(person.X, person.Y, town.Value.X, town.Value.Y) > 3)
+            if (Distance(person.Value.X, person.Value.Y, town.Value.X, town.Value.Y) > 3)
                 continue;
             RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.SettlementLocation,
                 town.Value.Id, town.Value.X, town.Value.Y, town.Value.NationId, $"见到聚落 {town.Value.Name}"));
-            if (Distance(person.X, person.Y, town.Value.X, town.Value.Y) > 1)
+            if (Distance(person.Value.X, person.Value.Y, town.Value.X, town.Value.Y) > 1)
                 continue;
             RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.FoodSupply,
                 town.Value.Id, town.Value.X, town.Value.Y, town.Value.Resources.Food, $"在{town.Value.Name}粮仓见到 {town.Value.Resources.Food:0.0} 份粮食"));
@@ -120,21 +120,21 @@ public sealed partial class WorldEngine
                     ReceiveSocietyReport(town, person, learned);
             }
 
-            if (town.Value.Id == person.SettlementId && person.Hunger > 35 && town.Value.Resources.Food < 12)
+            if (town.Value.Id == person.Value.SettlementId && person.Value.Hunger > 35 && town.Value.Resources.Food < 12)
             {
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.ReliefRequest,
-                    town.Value.Id, town.Value.X, town.Value.Y, person.Hunger, $"亲历饥饿 {person.Hunger:0}，家园粮少，请求救济"));
+                    town.Value.Id, town.Value.X, town.Value.Y, person.Value.Hunger, $"亲历饥饿 {person.Value.Hunger:0}，家园粮少，请求救济"));
             }
         }
 
         var observationRadius = 3;
         foreach (var tower in Buildings)
-            if (tower.Value.SettlementId == person.SettlementId && tower.Value.Kind == BuildingKind.Watchtower &&
+            if (tower.Value.SettlementId == person.Value.SettlementId && tower.Value.Kind == BuildingKind.Watchtower &&
                 IsFacilityOperating(tower.Value)
-                && Distance(person.X, person.Y, tower.Value.X, tower.Value.Y) <= 2)
+                && Distance(person.Value.X, person.Value.Y, tower.Value.X, tower.Value.Y) <= 2)
                 observationRadius = Math.Max(observationRadius, 3 + tower.Value.Level);
-        var dangerIndex = Circle(person.X, person.Y, observationRadius).Where(i => Tiles[i].Value.FireTicks > 0)
-            .OrderBy(i => Distance(person.X, person.Y, i % Width, i / Width)).FirstOrDefault(-1);
+        var dangerIndex = Circle(person.Value.X, person.Value.Y, observationRadius).Where(i => Tiles[i].Value.FireTicks > 0)
+            .OrderBy(i => Distance(person.Value.X, person.Value.Y, i % Width, i / Width)).FirstOrDefault(-1);
         if (dangerIndex >= 0)
         {
             RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.Danger,
@@ -143,7 +143,7 @@ public sealed partial class WorldEngine
         }
 
         foreach (var army in Armies)
-            if (army.Value.NationId != person.NationId && Distance(person.X, person.Y, army.Value.X, army.Value.Y) <= 4)
+            if (army.Value.NationId != person.Value.NationId && Distance(person.Value.X, person.Value.Y, army.Value.X, army.Value.Y) <= 4)
             {
                 RememberAgentFact(person, MakeAgentFact(person, AgentFactKind.Danger,
                     army.Value.Id, army.Value.X, army.Value.Y, army.Value.Soldiers, "亲眼看见附近有外来军队"));
@@ -169,12 +169,12 @@ public sealed partial class WorldEngine
                 continue;
             if (message.TargetSettlementId != 0
                 && (!_settlements.TryGetValue(message.TargetSettlementId, out var endpoint)
-                    || Distance(recipient.X, recipient.Y, endpoint.Value.X, endpoint.Value.Y) > 2
+                    || Distance(recipient.Value.X, recipient.Value.Y, endpoint.Value.X, endpoint.Value.Y) > 2
                     || FindLiveResident(message.SenderId) is not { } stationSender
-                    || !CanRelayInformation(stationSender.SettlementId, endpoint.Value.Id, out _)))
+                    || !CanRelayInformation(stationSender.Value.SettlementId, endpoint.Value.Id, out _)))
                 continue;
             _receivedFacts.Clear();
-            var agent = recipient.Agent;
+            var agent = recipient.Value.Agent;
             foreach (var fact in message.Facts)
             {
                 var received = fact with
@@ -184,15 +184,15 @@ public sealed partial class WorldEngine
                     Hops = Math.Min(32, fact.Hops + 1),
                     Confidence = fact.Confidence * 0.96,
                 };
-                agent = agent.Remember(received, recipient.SettlementId);
+                agent = agent.Remember(received, recipient.Value.SettlementId);
                 _receivedFacts.Add(received);
             }
 
-            recipient.Agent = agent;
+            recipient.Replace(recipient.Value.WithAgent(agent));
             foreach (var received in _receivedFacts)
-                if (_settlements.TryGetValue(recipient.SettlementId, out var home)
-                    && Distance(recipient.X, recipient.Y, home.Value.X, home.Value.Y) <= 1
-                    && (recipient.Profession == Profession.Representative || home.Value.RepresentativeId == recipient.Id
+                if (_settlements.TryGetValue(recipient.Value.SettlementId, out var home)
+                    && Distance(recipient.Value.X, recipient.Value.Y, home.Value.X, home.Value.Y) <= 1
+                    && (recipient.Value.Profession == Profession.Representative || home.Value.RepresentativeId == recipient.Value.Id
                                                                           || received.Kind is AgentFactKind.Policy
                                                                               or AgentFactKind.Culture
                                                                               or AgentFactKind.Research))
@@ -216,15 +216,19 @@ public sealed partial class WorldEngine
         if (_conversationPositions.Length < Residents.Count)
         {
             _conversationPositions = new int[MaxPopulation];
-            _conversationResidents = new ResidentCursor[MaxPopulation];
+            _conversationResidents = new StateReference<Resident>[MaxPopulation];
         }
 
         for (var i = 0; i < Residents.Count; i++)
         {
             var resident = Residents[i];
-            if (resident.Health <= 0)
+            if (resident.Value.Health <= 0)
+            {
+                _conversationPositions[i] = -1;
                 continue;
-            var tile = Index(resident.X, resident.Y);
+            }
+            var tile = Index(resident.Value.X, resident.Value.Y);
+            _conversationPositions[i] = tile;
             if (_conversationCounts[tile]++ == 0)
                 _conversationTiles.Add(tile);
         }
@@ -239,13 +243,13 @@ public sealed partial class WorldEngine
 
         for (var i = 0; i < Residents.Count; i++)
         {
-            var resident = Residents[i];
-            if (resident.Health <= 0)
+            // 首遍的地格序号在此转换为分区位置，复用已有缓冲并避免再次读取居民及移动区段。
+            var tile = _conversationPositions[i];
+            if (tile < 0)
                 continue;
-            var tile = Index(resident.X, resident.Y);
             var position = _conversationStarts[tile] + _conversationCounts[tile]++;
             _conversationPositions[i] = position;
-            _conversationResidents[position] = resident;
+            _conversationResidents[position] = Residents[i];
         }
 
         Span<int> nearby = stackalloc int[29];
@@ -255,15 +259,15 @@ public sealed partial class WorldEngine
         {
             var sender = Residents[senderIndex];
             if ((SimulationTick + senderIndex) % conversationInterval != 0 || SimulationTick -
-                                                                         sender.Agent.LastConversationTick < 6
-                                                                         || sender.Health <= 0 ||
-                                                                         sender.Activity == ResidentActivity.Sleeping)
+                                                                         sender.Value.Agent.LastConversationTick < 6
+                                                                         || sender.Value.Health <= 0 ||
+                                                                         sender.Value.Activity == ResidentActivity.Sleeping)
                 continue;
             var conversationRadius = 2;
             foreach (var building in Buildings)
                 if (building.Value.Kind is BuildingKind.Market or BuildingKind.AssemblyHall or BuildingKind.TradeGuild
                     && IsFacilityOperating(building.Value)
-                    && Distance(sender.X, sender.Y, building.Value.X, building.Value.Y) <= 3)
+                    && Distance(sender.Value.X, sender.Value.Y, building.Value.X, building.Value.Y) <= 3)
                 {
                     conversationRadius = 3;
                     break;
@@ -271,8 +275,8 @@ public sealed partial class WorldEngine
 
             var count = 0;
             var cells = 0;
-            var ownTile = Index(sender.X, sender.Y);
-            foreach (var tile in Circle(sender.X, sender.Y, conversationRadius))
+            var ownTile = Index(sender.Value.X, sender.Value.Y);
+            foreach (var tile in Circle(sender.Value.X, sender.Value.Y, conversationRadius))
             {
                 var local = _conversationCounts[tile] - (tile == ownTile ? 1 : 0);
                 if (local == 0)
@@ -284,8 +288,8 @@ public sealed partial class WorldEngine
             if (count == 0)
                 continue;
             // 先按各格人数定位接收者，再直接读取格内位置；人群再密集也无需枚举整群。
-            var rank = (int)((SimulationTick / conversationInterval + sender.Id) % count);
-            ResidentCursor? recipient = null;
+            var rank = (int)((SimulationTick / conversationInterval + sender.Value.Id) % count);
+            StateReference<Resident>? recipient = null;
             foreach (var tile in nearby[..cells])
             {
                 var local = _conversationCounts[tile] - (tile == ownTile ? 1 : 0);
@@ -302,28 +306,28 @@ public sealed partial class WorldEngine
                 break;
             }
 
-            if (recipient is null || recipient.Activity == ResidentActivity.Sleeping)
+            if (recipient is null || recipient.Value.Activity == ResidentActivity.Sleeping)
                 continue;
             var facts = SelectMessageFacts(sender, false);
             if (facts.Count > 0 && PendingMessages.Count < MaxPopulation * 2)
             {
                 PendingMessages = PendingMessages.Add(new PendingMessage
                 {
-                    SenderId = sender.Id,
-                    RecipientId = recipient.Id,
+                    SenderId = sender.Value.Id,
+                    RecipientId = recipient.Value.Id,
                     DeliverTick = SimulationTick + 1,
                     Facts = facts.ToImmutableArray(),
                 });
             }
 
-            sender.Agent = sender.Agent with
+            sender.Replace(sender.Value.WithAgent(sender.Value.Agent with
             {
-                LastConversationTick = SimulationTick, SocialNeed = Math.Max(0, sender.Agent.SocialNeed - 14),
-            };
-            recipient.Agent = recipient.Agent with { SocialNeed = Math.Max(0, recipient.Agent.SocialNeed - 10) };
+                LastConversationTick = SimulationTick, SocialNeed = Math.Max(0, sender.Value.Agent.SocialNeed - 14),
+            }));
+            recipient.Replace(recipient.Value.WithAgent(recipient.Value.Agent with { SocialNeed = Math.Max(0, recipient.Value.Agent.SocialNeed - 10) }));
             ExchangeCulture(sender, recipient);
-            if (sender.Agent.Goal.Kind == AgentGoalKind.Socialize)
-                sender.Activity = ResidentActivity.Talking;
+            if (sender.Value.Agent.Goal.Kind == AgentGoalKind.Socialize)
+                sender.Replace(sender.Value.WithActivity(ResidentActivity.Talking));
         }
 
         RelayKnownAgentMessages();
@@ -342,12 +346,12 @@ public sealed partial class WorldEngine
     {
         foreach (var sender in Residents)
         {
-            if (sender.Profession is not Profession.Messenger and not Profession.Representative
-                || (SimulationTick + sender.Id) % 24 != 0 || !_settlements.TryGetValue(sender.SettlementId, out var home)
-                || Distance(sender.X, sender.Y, home.Value.X, home.Value.Y) > 1)
+            if (sender.Value.Profession is not Profession.Messenger and not Profession.Representative
+                || (SimulationTick + sender.Value.Id) % 24 != 0 || !_settlements.TryGetValue(sender.Value.SettlementId, out var home)
+                || Distance(sender.Value.X, sender.Value.Y, home.Value.X, home.Value.Y) > 1)
                 continue;
             var addresses = 0;
-            foreach (var address in sender.Agent.Memory)
+            foreach (var address in sender.Value.Agent.Memory)
             {
                 if (address.Kind != AgentFactKind.SettlementLocation || address.SubjectId == home.Value.Id
                                                                      || address.LearnedTick >= SimulationTick)
@@ -357,19 +361,19 @@ public sealed partial class WorldEngine
                 if (!CanRelayInformation(home.Value.Id, address.SubjectId, out var travelTicks)
                     || !_settlements.TryGetValue(address.SubjectId, out var destination))
                     continue;
-                ResidentCursor? recipient = null;
+                StateReference<Resident>? recipient = null;
                 foreach (var resident in Residents)
                 {
-                    if (resident.SettlementId != destination.Value.Id
-                        || Distance(resident.X, resident.Y, destination.Value.X, destination.Value.Y) > 2)
+                    if (resident.Value.SettlementId != destination.Value.Id
+                        || Distance(resident.Value.X, resident.Value.Y, destination.Value.X, destination.Value.Y) > 2)
                         continue;
-                    if (resident.Id == destination.Value.RepresentativeId)
+                    if (resident.Value.Id == destination.Value.RepresentativeId)
                     {
                         recipient = resident;
                         break;
                     }
 
-                    if (recipient is null || resident.Id < recipient.Id)
+                    if (recipient is null || resident.Value.Id < recipient.Value.Id)
                         recipient = resident;
                 }
 
@@ -380,8 +384,8 @@ public sealed partial class WorldEngine
                     continue;
                 PendingMessages = PendingMessages.Add(new PendingMessage
                 {
-                    SenderId = sender.Id,
-                    RecipientId = recipient.Id,
+                    SenderId = sender.Value.Id,
+                    RecipientId = recipient.Value.Id,
                     TargetSettlementId = destination.Value.Id,
                     DeliverTick = SimulationTick + Math.Max(1, travelTicks),
                     Facts = facts.ToImmutableArray(),
@@ -390,15 +394,15 @@ public sealed partial class WorldEngine
         }
     }
 
-    private List<AgentFact> SelectMessageFacts(ResidentCursor sender, bool relay)
+    private List<AgentFact> SelectMessageFacts(StateReference<Resident> sender, bool relay)
     {
-        var rank = _settlements.TryGetValue(sender.SettlementId, out var home) &&
-                   Distance(sender.X, sender.Y, home.Value.X, home.Value.Y) <= 3
+        var rank = _settlements.TryGetValue(sender.Value.SettlementId, out var home) &&
+                   Distance(sender.Value.X, sender.Value.Y, home.Value.X, home.Value.Y) <= 3
             ? EffectiveSettlementRank(home)
             : 0;
         var capacity = relay ? 3 : 3 + rank * 2;
         var selected = new List<AgentFact>(capacity);
-        foreach (var fact in sender.Agent.Memory)
+        foreach (var fact in sender.Value.Agent.Memory)
         {
             if (fact.LearnedTick >= SimulationTick || fact.Confidence <= (relay ? 0.25 : 0.15) ||
                 (!relay && fact.Hops >= 12))
@@ -423,10 +427,10 @@ public sealed partial class WorldEngine
         return candidatePriority != currentPriority ? candidatePriority : candidate.ObservedTick > current.ObservedTick;
     }
 
-    private void AddAgentMissionChoices(ResidentCursor person, StateReference<Settlement> home, List<GoalChoice> choices)
+    private void AddAgentMissionChoices(StateReference<Resident> person, StateReference<Settlement> home, List<GoalChoice> choices)
     {
-        var agent = person.Agent;
-        if (person.Age < 16 || SimulationTick < agent.MissionRetryTick)
+        var agent = person.Value.Agent;
+        if (person.Value.Age < 16 || SimulationTick < agent.MissionRetryTick)
             return;
         if (agent.DestinationSettlementId != 0 &&
             SimulationTick - agent.MissionStartedTick < 3 * SimulationTime.TicksPerYear)
@@ -445,7 +449,7 @@ public sealed partial class WorldEngine
         if (relief is not null)
         {
             var destination = home.Value.Id;
-            if (_nations.TryGetValue(person.NationId, out var nation)
+            if (_nations.TryGetValue(person.Value.NationId, out var nation)
                 && agent.Memory.Any(f => f.Kind == AgentFactKind.SettlementLocation && f.SubjectId == nation.Value.CapitalId))
                 destination = nation.Value.CapitalId;
             var address = agent.Memory.FirstOrDefault(f =>
@@ -453,13 +457,13 @@ public sealed partial class WorldEngine
             if (address is not null)
             {
                 choices.Add(new GoalChoice(AgentGoalKind.Petition, address.X, address.Y,
-                    (person.Profession == Profession.Representative ? 88 : 35 + agent.Personality.Courage * 20) *
+                    (person.Value.Profession == Profession.Representative ? 88 : 35 + agent.Personality.Courage * 20) *
                     relief.ReliabilityAt(SimulationTick),
                     "带着已收到且可信的缺粮报告，去向本地代表请求救济", relief, destination));
             }
         }
 
-        if (person.Profession is Profession.Trader or Profession.Messenger)
+        if (person.Value.Profession is Profession.Trader or Profession.Messenger)
         {
             var addresses = _missionAddresses;
             addresses.Clear();
@@ -468,10 +472,10 @@ public sealed partial class WorldEngine
                 if (fact.Kind != AgentFactKind.SettlementLocation || fact.SubjectId == home.Value.Id ||
                     SimulationTick - fact.ObservedTick >= 10 * SimulationTime.TicksPerYear)
                     continue;
-                var distance = Distance(person.X, person.Y, fact.X, fact.Y);
+                var distance = Distance(person.Value.X, person.Value.Y, fact.X, fact.Y);
                 var at = 0;
                 while (at < addresses.Count &&
-                       Distance(person.X, person.Y, addresses[at].X, addresses[at].Y) <= distance)
+                       Distance(person.Value.X, person.Value.Y, addresses[at].X, addresses[at].Y) <= distance)
                     at++;
                 addresses.Insert(at, fact);
             }
@@ -479,7 +483,7 @@ public sealed partial class WorldEngine
             for (var i = 0; i < Math.Min(3, addresses.Count); i++)
             {
                 var address = addresses[i];
-                if (person.Profession == Profession.Trader)
+                if (person.Value.Profession == Profession.Trader)
                 {
                     if (!Rules.Trade)
                         continue;
@@ -517,16 +521,16 @@ public sealed partial class WorldEngine
                 }
             }
 
-            if (addresses.Count == 0 && person.Inventory.Food >= 2 && agent.Fatigue < 35
-                && Distance(person.X, person.Y, home.Value.X, home.Value.Y) < 18)
+            if (addresses.Count == 0 && person.Value.Inventory.Food >= 2 && agent.Fatigue < 35
+                && Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) < 18)
             {
                 var heading =
                     Directions[
-                        (person.Id + (int)(SimulationTick / (3 * SimulationTime.TicksPerYear))) % Directions.Length];
-                var frontier = Circle(person.X, person.Y, 6)
+                        (person.Value.Id + (int)(SimulationTick / (3 * SimulationTime.TicksPerYear))) % Directions.Length];
+                var frontier = Circle(person.Value.X, person.Value.Y, 6)
                     .Where(i => Tiles[i].Value.IsWalkable && Tiles[i].Value.FireTicks == 0)
                     .OrderByDescending(i =>
-                        (i % Width - person.X) * heading.X + (i / Width - person.Y) * heading.Y)
+                        (i % Width - person.Value.X) * heading.X + (i / Width - person.Value.Y) * heading.Y)
                     .ThenByDescending(i => Distance(i % Width, i / Width, home.Value.X, home.Value.Y))
                     .FirstOrDefault(-1);
                 if (frontier >= 0)
@@ -539,28 +543,28 @@ public sealed partial class WorldEngine
         }
     }
 
-    private void BeginAgentMission(ResidentCursor person, StateReference<Settlement> home)
+    private void BeginAgentMission(StateReference<Resident> person, StateReference<Settlement> home)
     {
-        person.Agent = person.Agent.BeginMission(home.Value.Id, SimulationTick);
-        if (person.Agent.Goal.Kind != AgentGoalKind.Trade)
+        person.Replace(person.Value.WithAgent(person.Value.Agent.BeginMission(home.Value.Id, SimulationTick)));
+        if (person.Value.Agent.Goal.Kind != AgentGoalKind.Trade)
         {
-            if (Distance(person.X, person.Y, home.Value.X, home.Value.Y) <= 1)
+            if (Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) <= 1)
             {
                 var ration = Math.Min(home.Value.Resources.Food, Math.Max(0,
-                    1.2 + Distance(home.Value.X, home.Value.Y, person.Agent.Goal.TargetX, person.Agent.Goal.TargetY) * 0.22 -
-                    person.Inventory.Food));
+                    1.2 + Distance(home.Value.X, home.Value.Y, person.Value.Agent.Goal.TargetX, person.Value.Agent.Goal.TargetY) * 0.22 -
+                    person.Value.Inventory.Food));
                 home.Replace(home.Value.WithResources(home.Value.Resources with { Food = home.Value.Resources.Food - ration }));
-                person.Inventory = person.Inventory with { Food = person.Inventory.Food + ration };
+                person.Replace(person.Value.WithInventory(person.Value.Inventory with { Food = person.Value.Inventory.Food + ration }));
             }
         }
     }
 
-    private void ActOnAgentMission(ResidentCursor person, StateReference<Settlement> home)
+    private void ActOnAgentMission(StateReference<Resident> person, StateReference<Settlement> home)
     {
-        var goal = person.Agent.Goal;
-        var address = person.Agent.Memory.FirstOrDefault(f =>
-            f.Kind == AgentFactKind.SettlementLocation && f.SubjectId == person.Agent.DestinationSettlementId);
-        if (address is null || SimulationTick - person.Agent.MissionStartedTick >= 3 * SimulationTime.TicksPerYear)
+        var goal = person.Value.Agent.Goal;
+        var address = person.Value.Agent.Memory.FirstOrDefault(f =>
+            f.Kind == AgentFactKind.SettlementLocation && f.SubjectId == person.Value.Agent.DestinationSettlementId);
+        if (address is null || SimulationTick - person.Value.Agent.MissionStartedTick >= 3 * SimulationTime.TicksPerYear)
         {
             FinishAgentMission(person, address is null ? "缺少可靠目的地地址，暂缓递送" : "长时间未能到达，暂缓递送并返乡补给");
             return;
@@ -573,19 +577,19 @@ public sealed partial class WorldEngine
             return;
         }
 
-        if (goal.Kind == AgentGoalKind.Trade && person.Agent.CarriedMessages.Count == 0)
+        if (goal.Kind == AgentGoalKind.Trade && person.Value.Agent.CarriedMessages.Count == 0)
         {
-            if (Distance(person.X, person.Y, home.Value.X, home.Value.Y) > 1)
+            if (Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) > 1)
             {
                 MoveAgentTowards(person, home.Value.X, home.Value.Y);
-                person.Activity = ResidentActivity.Delivering;
+                person.Replace(person.Value.WithActivity(ResidentActivity.Delivering));
                 return;
             }
 
             var distance = Distance(home.Value.X, home.Value.Y, address.X, address.Y);
             // 抵达后重新核对库存，旧余粮报告和先到商人可能已改变供给，同时保留本地基本口粮。
             var surplus = Math.Max(0, home.Value.Resources.Food - Math.Max(12, home.Value.Population));
-            var cargo = Math.Min(surplus, Math.Max(0, Math.Min(40, 8 + distance * 0.22) - person.Inventory.Food));
+            var cargo = Math.Min(surplus, Math.Max(0, Math.Min(40, 8 + distance * 0.22) - person.Value.Inventory.Food));
             if (cargo <= 1)
             {
                 FinishAgentMission(person, "抵达粮仓后发现没有可装运余粮，取消交易");
@@ -593,32 +597,31 @@ public sealed partial class WorldEngine
             }
 
             home.Replace(home.Value.WithResources(home.Value.Resources with { Food = home.Value.Resources.Food - cargo }));
-            person.Inventory = person.Inventory with { Food = person.Inventory.Food + cargo };
-            person.Agent = person.Agent with
+            person.Replace(person.Value.WithAction(person.Value.Inventory with { Food = person.Value.Inventory.Food + cargo }, person.Value.Agent with
             {
-                CarriedMessages = person.Agent.Memory.OrderByDescending(f => f.ObservedTick).Take(8)
+                CarriedMessages = person.Value.Agent.Memory.OrderByDescending(f => f.ObservedTick).Take(8)
                     .ToImmutableList(),
-            };
-            person.Agent = person.Agent.WithGoal(goal = goal with { TargetX = address.X, TargetY = address.Y });
+            }, person.Value.Activity));
+            person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(goal = goal with { TargetX = address.X, TargetY = address.Y })));
         }
 
         PrepareJourneyTransport(person, home);
-        if (Distance(person.X, person.Y, goal.TargetX, goal.TargetY) > 1 || !Walkable(person.X, person.Y))
+        if (Distance(person.Value.X, person.Value.Y, goal.TargetX, goal.TargetY) > 1 || !Walkable(person.Value.X, person.Value.Y))
         {
             MoveAgentTowards(person, goal.TargetX, goal.TargetY);
-            person.Activity = ResidentActivity.Delivering;
+            person.Replace(person.Value.WithActivity(ResidentActivity.Delivering));
             return;
         }
 
-        if (!_settlements.TryGetValue(person.Agent.DestinationSettlementId, out var destination)
-            || Distance(person.X, person.Y, destination.Value.X, destination.Value.Y) > 1)
+        if (!_settlements.TryGetValue(person.Value.Agent.DestinationSettlementId, out var destination)
+            || Distance(person.Value.X, person.Value.Y, destination.Value.X, destination.Value.Y) > 1)
         {
-            var agent = person.Agent;
-            person.Agent = agent with
+            var agent = person.Value.Agent;
+            person.Replace(person.Value.WithAgent(agent with
             {
                 Memory = agent.Memory.RemoveAll(f =>
                     f.Kind == AgentFactKind.SettlementLocation && f.SubjectId == agent.DestinationSettlementId),
-            };
+            }));
             FinishAgentMission(person, "抵达记忆中的地址，却未见原聚落");
             return;
         }
@@ -630,10 +633,10 @@ public sealed partial class WorldEngine
             return;
         }
 
-        person.Agent = person.Agent.WithGoal(goal = goal.Attend());
+        person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(goal = goal.Attend())));
         if (goal.WorkTicks < 3)
         {
-            person.Activity = ResidentActivity.Talking;
+            person.Replace(person.Value.WithActivity(ResidentActivity.Talking));
             return;
         }
 
@@ -643,29 +646,29 @@ public sealed partial class WorldEngine
         {
             const double woodPerFood = 0.4;
             var reserve = 1.2 + Distance(destination.Value.X, destination.Value.Y, home.Value.X, home.Value.Y) * 0.11;
-            var availableFood = Math.Max(0, person.Inventory.Food - reserve);
+            var availableFood = Math.Max(0, person.Value.Inventory.Food - reserve);
             var food = Math.Min(availableFood, Math.Min(destination.Value.Resources.Wood / woodPerFood,
                 Math.Min(Math.Max(0, 1_000_000 - destination.Value.Resources.Food),
-                    Math.Max(0, 1_000_000 - person.Inventory.Wood) / woodPerFood)));
+                    Math.Max(0, 1_000_000 - person.Value.Inventory.Wood) / woodPerFood)));
             var payment = food * woodPerFood;
-            person.Inventory = person.Inventory with { Food = person.Inventory.Food - food };
+            person.Replace(person.Value.WithInventory(person.Value.Inventory with { Food = person.Value.Inventory.Food - food }));
             destination.Replace(destination.Value.WithResources(destination.Value.Resources with
             {
                 Food = destination.Value.Resources.Food + food, Wood = Math.Max(0, destination.Value.Resources.Wood - payment),
             }));
-            person.Inventory = person.Inventory with { Wood = person.Inventory.Wood + payment };
+            person.Replace(person.Value.WithInventory(person.Value.Inventory with { Wood = person.Value.Inventory.Wood + payment }));
             if (food > 0)
             {
                 tradeEvent = AddEvent(WorldEventKind.Trade,
-                    $"{person.Name}抵达{destination.Value.Name}，交付 {food:0.0} 份粮食，携带 {payment:0.0} 份木材返乡。", destination.Value.X,
-                    destination.Value.Y, EventAction.Delivery, destination.Value.Id, person.Id);
+                    $"{person.Value.Name}抵达{destination.Value.Name}，交付 {food:0.0} 份粮食，携带 {payment:0.0} 份木材返乡。", destination.Value.X,
+                    destination.Value.Y, EventAction.Delivery, destination.Value.Id, person.Value.Id);
             }
 
             if (tradeEvent is not null)
             {
                 tradeEvent = PublishEvent(tradeEvent with
                 {
-                    SecondNationId = person.NationId, SecondSettlementId = home.Value.Id,
+                    SecondNationId = person.Value.NationId, SecondSettlementId = home.Value.Id,
                 });
             }
 
@@ -678,9 +681,9 @@ public sealed partial class WorldEngine
                         : "当地粮仓或随身木材已达容量上限，保留货物返乡";
         }
 
-        if (tradeEvent is not null && destination.Value.NationId != person.NationId)
+        if (tradeEvent is not null && destination.Value.NationId != person.Value.NationId)
         {
-            var outbound = MakeAgentFact(person, AgentFactKind.TradeExchange, person.NationId, destination.Value.X,
+            var outbound = MakeAgentFact(person, AgentFactKind.TradeExchange, person.Value.NationId, destination.Value.X,
                 destination.Value.Y, 1, "商旅实际抵达并完成粮木交换");
             outbound = outbound with { EventId = tradeEvent.Id };
             AddPublicFact(destination, outbound);
@@ -690,12 +693,12 @@ public sealed partial class WorldEngine
             RememberAgentFact(person, inbound);
         }
 
-        foreach (var fact in person.Agent.CarriedMessages.ToArray())
+        foreach (var fact in person.Value.Agent.CarriedMessages.ToArray())
         {
             var delivered = fact with
             {
                 LearnedTick = SimulationTick,
-                SourceResidentId = person.Id,
+                SourceResidentId = person.Value.Id,
                 Hops = Math.Min(32, fact.Hops + 1),
                 Confidence = fact.Confidence * 0.98,
             };
@@ -712,9 +715,9 @@ public sealed partial class WorldEngine
         FinishAgentMission(person, completionReason);
     }
 
-    private void FinishAgentMission(ResidentCursor person, string reason)
+    private void FinishAgentMission(StateReference<Resident> person, string reason)
     {
-        var goal = _settlements.TryGetValue(person.SettlementId, out var home)
+        var goal = _settlements.TryGetValue(person.Value.SettlementId, out var home)
             ? new AgentGoal
             {
                 Kind = AgentGoalKind.ReturnHome,
@@ -725,7 +728,7 @@ public sealed partial class WorldEngine
                 ReviewTick = SimulationTick + 12,
                 Reason = reason,
             }
-            : person.Agent.Goal with { Kind = AgentGoalKind.Idle, WorkTicks = 0 };
-        person.Agent = person.Agent.FinishMission(goal, reason, SimulationTick, person.Id);
+            : person.Value.Agent.Goal with { Kind = AgentGoalKind.Idle, WorkTicks = 0 };
+        person.Replace(person.Value.WithAgent(person.Value.Agent.FinishMission(goal, reason, SimulationTick, person.Value.Id)));
     }
 }

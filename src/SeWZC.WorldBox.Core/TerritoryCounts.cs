@@ -8,7 +8,7 @@ internal sealed class TerritoryCounts
     private readonly Dictionary<int, int> _counts = [];
     private readonly HashSet<int> _owned = [];
     private long _membershipRevision = -1;
-    private EntityListCursor<Tile, StateReference<Tile>>? _tiles;
+    private EntityStore<Tile>? _tiles;
     private long _traversalFloor;
     private long[] _traversalRegions = [];
     private int _traversalWidth, _regionColumns;
@@ -69,7 +69,7 @@ internal sealed class TerritoryCounts
 
     /// <summary>将归属变化通知绑定到引擎定位索引；更换索引时重建计数。</summary>
     /// <param name="tiles">要绑定归属变更通知的地格索引。</param>
-    public void Bind(EntityListCursor<Tile, StateReference<Tile>> tiles)
+    public void Bind(EntityStore<Tile> tiles)
     {
         if (ReferenceEquals(_tiles, tiles) && _membershipRevision == tiles.MembershipRevision)
             return;

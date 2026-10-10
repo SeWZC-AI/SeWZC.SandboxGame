@@ -28,7 +28,7 @@ public sealed partial class WorldEngine
         };
     }
 
-    private void EndCampaign(StateReference<Army> army, WarOutcome outcome, ResidentCursor[] soldiers, int cause = 0)
+    private void EndCampaign(StateReference<Army> army, WarOutcome outcome, StateReference<Resident>[] soldiers, int cause = 0)
     {
         if (army.Value.Outcome != WarOutcome.None)
             return;
@@ -44,10 +44,10 @@ public sealed partial class WorldEngine
         entry = PublishEvent(entry with { NationId = army.Value.NationId, SecondNationId = army.Value.TargetNationId });
         army.Replace(army.Value with { LastEventId = entry.Id });
         // 编年史记录世界事实，但战报只能由实际目击者获得。
-        var witnesses = soldiers.Where(r => r.Health > 0 && Distance(r.X, r.Y, army.Value.X, army.Value.Y) <= 3).ToArray();
+        var witnesses = soldiers.Where(r => r.Value.Health > 0 && Distance(r.Value.X, r.Value.Y, army.Value.X, army.Value.Y) <= 3).ToArray();
         if (witnesses.Length == 0)
             return;
-        var witness = witnesses.FirstOrDefault(r => r.Id == army.Value.CommanderId) ?? witnesses[0];
+        var witness = witnesses.FirstOrDefault(r => r.Value.Id == army.Value.CommanderId) ?? witnesses[0];
         var report = MakeAgentFact(witness, AgentFactKind.WarReport, army.Value.TargetNationId, army.Value.X, army.Value.Y, (int)outcome,
             $"{ObjectiveName(army.Value.Objective)}：{OutcomeName(outcome)}；在场部队剩余 {soldiers.Length}/{army.Value.InitialSoldiers} 人");
         report = report with
@@ -67,8 +67,8 @@ public sealed partial class WorldEngine
         }
     }
 
-    private void RecordBattle(StateReference<Army> army, IEnumerable<ResidentCursor> soldiers,
-        IEnumerable<ResidentCursor>? defenders = null)
+    private void RecordBattle(StateReference<Army> army, IEnumerable<StateReference<Resident>> soldiers,
+        IEnumerable<StateReference<Resident>>? defenders = null)
     {
         if (army.Value.BattleRecorded)
             return;
@@ -78,7 +78,7 @@ public sealed partial class WorldEngine
         entry = PublishEvent(entry with { NationId = army.Value.NationId, SecondNationId = army.Value.TargetNationId });
         army.Replace(army.Value with { LastEventId = entry.Id });
         foreach (var person in soldiers.Concat(defenders ?? [])
-                     .Where(r => r.Health > 0 && Distance(r.X, r.Y, army.Value.X, army.Value.Y) <= 5))
+                     .Where(r => r.Value.Health > 0 && Distance(r.Value.X, r.Value.Y, army.Value.X, army.Value.Y) <= 5))
             RecordLife(person, "亲历交战，战斗结果见关联世界事件。", entry, PersonalExperienceKind.Hardship, EventImportance.Major);
     }
 

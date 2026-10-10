@@ -15,11 +15,11 @@ public sealed class ResidentEditingTests
 
         fixture.Engine.EditResident(fixture.ResidentId, new ResidentEdit { Name = "  新姓名  " });
 
-        Assert.Equal("新姓名", fixture.Resident.Name);
-        Assert.Equal(before.Age, fixture.Resident.Age);
-        Assert.Equal(before.Profession, fixture.Resident.Profession);
-        Assert.Equal(before.SettlementId, fixture.Resident.SettlementId);
-        Assert.Equal(before.Health, fixture.Resident.Health);
+        Assert.Equal("新姓名", fixture.Resident.Value.Name);
+        Assert.Equal(before.Value.Age, fixture.Resident.Value.Age);
+        Assert.Equal(before.Value.Profession, fixture.Resident.Value.Profession);
+        Assert.Equal(before.Value.SettlementId, fixture.Resident.Value.SettlementId);
+        Assert.Equal(before.Value.Health, fixture.Resident.Value.Health);
     }
 
     /// <summary>显式零值不能被当作未指定。</summary>
@@ -40,13 +40,13 @@ public sealed class ResidentEditingTests
         });
 
         var resident = fixture.Resident;
-        Assert.Equal(0, resident.Age);
-        Assert.Equal(0, resident.Health);
-        Assert.Equal(0, resident.Hunger);
-        Assert.Equal(0, resident.Thirst);
-        Assert.Equal(0, resident.Mana);
-        Assert.Equal(0, resident.MagicTalent);
-        Assert.Equal(0, resident.MagicTraining);
+        Assert.Equal(0, resident.Value.Age);
+        Assert.Equal(0, resident.Value.Health);
+        Assert.Equal(0, resident.Value.Hunger);
+        Assert.Equal(0, resident.Value.Thirst);
+        Assert.Equal(0, resident.Value.Mana);
+        Assert.Equal(0, resident.Value.MagicTalent);
+        Assert.Equal(0, resident.Value.MagicTraining);
     }
 
     /// <summary>无效年龄不会连带提交同一次编辑中的姓名。</summary>
@@ -104,11 +104,11 @@ public sealed class ResidentEditingTests
 
         fixture.Engine.EditResident(fixture.ResidentId, new ResidentEdit { X = 10, Y = 11 });
 
-        Assert.Equal(10, fixture.Resident.X);
-        Assert.Equal(11, fixture.Resident.Y);
-        Assert.Equal(10, fixture.Resident.FromX);
-        Assert.Equal(11, fixture.Resident.FromY);
-        Assert.Equal(fixture.Engine.SimulationTick, fixture.Resident.MoveStartedTick);
+        Assert.Equal(10, fixture.Resident.Value.X);
+        Assert.Equal(11, fixture.Resident.Value.Y);
+        Assert.Equal(10, fixture.Resident.Value.FromX);
+        Assert.Equal(11, fixture.Resident.Value.FromY);
+        Assert.Equal(fixture.Engine.SimulationTick, fixture.Resident.Value.MoveStartedTick);
     }
 
     /// <summary>提交后的随身资源不再受编辑草稿修改影响。</summary>
@@ -121,7 +121,7 @@ public sealed class ResidentEditingTests
         fixture.Engine.EditResident(fixture.ResidentId, new ResidentEdit { Inventory = inventory });
         inventory = inventory with { Food = 100 };
 
-        Assert.Equal(3.5, fixture.Resident.Inventory.Food);
+        Assert.Equal(3.5, fixture.Resident.Value.Inventory.Food);
     }
 
     /// <summary>空或损坏的心智草稿不能改变世界。</summary>
@@ -159,7 +159,7 @@ public sealed class ResidentEditingTests
     public void History_changes_personality_without_rewriting_past_results()
     {
         var fixture = new WorldFixture();
-        var courage = fixture.Resident.Agent.Personality.Courage;
+        var courage = fixture.Resident.Value.Agent.Personality.Courage;
         var events = fixture.Engine.Events.Select(entry => JsonSerializer.Serialize(entry)).ToArray();
         var resources = JsonSerializer.Serialize(fixture.Town.Value.Resources);
         var history = new List<ResidentHistoryEntry>
@@ -169,7 +169,7 @@ public sealed class ResidentEditingTests
 
         fixture.Engine.EditResident(fixture.ResidentId, new ResidentEdit { History = history });
 
-        Assert.True(fixture.Resident.Agent.Personality.Courage < courage);
+        Assert.True(fixture.Resident.Value.Agent.Personality.Courage < courage);
         Assert.Equal(events, fixture.Engine.Events.Take(events.Length)
             .Select(entry => JsonSerializer.Serialize(entry)));
         Assert.Equal(resources, JsonSerializer.Serialize(fixture.Town.Value.Resources));
@@ -186,7 +186,7 @@ public sealed class ResidentEditingTests
         history[0] = history[0] with { Text = "外部修改" };
         history.Clear();
 
-        Assert.Equal("原记录", Assert.Single(fixture.Resident.History).Text);
+        Assert.Equal("原记录", Assert.Single(fixture.Resident.Value.History).Text);
     }
 
     /// <summary>编辑信息产生新身份，已公开的旧观察不被改写，决策依据同步修订。</summary>
@@ -194,22 +194,22 @@ public sealed class ResidentEditingTests
     public void Fact_revision_replaces_the_snapshot_and_updates_decision_evidence()
     {
         var fixture = new WorldFixture();
-        var prior = fixture.Resident.Agent.Memory.First();
+        var prior = fixture.Resident.Value.Agent.Memory.First();
         fixture.Town.Replace(fixture.Town.Value with { PublicKnowledge = fixture.Town.Value.PublicKnowledge.Add(prior) });
-        fixture.Resident.Agent = fixture.Resident.Agent with
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
-            Decisions = fixture.Resident.Agent.Decisions.Add(new AgentDecision { EvidenceFactId = prior.Id }),
-        };
+            Decisions = fixture.Resident.Value.Agent.Decisions.Add(new AgentDecision { EvidenceFactId = prior.Id }),
+        }));
         var mind = JsonNode.Parse(fixture.Engine.ExportResidentMind(fixture.ResidentId))!;
         var memory = mind["Memory"]!.AsArray();
         memory.First(node => node!["Id"]!.GetValue<int>() == prior.Id)!["Text"] = "新的观察描述";
 
         fixture.Engine.EditResidentMindJson(fixture.ResidentId, mind.ToJsonString());
 
-        var revised = fixture.Resident.Agent.Memory.First(fact => fact.Text == "新的观察描述");
+        var revised = fixture.Resident.Value.Agent.Memory.First(fact => fact.Text == "新的观察描述");
         Assert.NotEqual(prior.Id, revised.Id);
         Assert.Contains(prior, fixture.Town.Value.PublicKnowledge);
-        Assert.Equal(revised.Id, fixture.Resident.Agent.Decisions.Last().EvidenceFactId);
+        Assert.Equal(revised.Id, fixture.Resident.Value.Agent.Decisions.Last().EvidenceFactId);
         Assert.NotEqual("新的观察描述", prior.Text);
     }
 }

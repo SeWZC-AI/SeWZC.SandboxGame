@@ -12,13 +12,13 @@ internal sealed class WorldFixture
             tile.Replace(tile.Value.WithTerrain(TerrainType.Grass));
         Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         Town = Engine.Settlements.Single();
-        ResidentId = Engine.Residents.Single().Id;
+        ResidentId = Engine.Residents.Single().Value.Id;
     }
 
     internal WorldEngine Engine { get; }
     internal StateReference<Settlement> Town { get; }
     internal int ResidentId { get; }
-    internal ResidentCursor Resident => Engine.RequireResident(ResidentId)!;
+    internal StateReference<Resident> Resident => Engine.RequireResident(ResidentId)!;
 
     internal int AddWell(int x, int y, double naturalWater)
     {

@@ -26,16 +26,16 @@ public sealed partial class WorldEngine
         };
     }
 
-    private void DamageResident(ResidentCursor person, double damage, DeathCause cause)
+    private void DamageResident(StateReference<Resident> person, double damage, DeathCause cause)
     {
-        if (person.Health <= 0)
+        if (person.Value.Health <= 0)
             return;
-        var health = Math.Max(0, person.Health - damage);
+        var health = Math.Max(0, person.Value.Health - damage);
         person.Replace(person.Value with
         {
             Health = health,
-            DeathCause = health <= 0 ? cause : person.DeathCause,
-            DeathTick = health <= 0 ? SimulationTick : person.DeathTick,
+            DeathCause = health <= 0 ? cause : person.Value.DeathCause,
+            DeathTick = health <= 0 ? SimulationTick : person.Value.DeathTick,
         });
         if (health <= 0)
             RemoveLocalWorkResident(person);

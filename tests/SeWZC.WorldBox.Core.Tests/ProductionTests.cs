@@ -25,12 +25,12 @@ public sealed class ProductionTests
         ground.Replace(ground.Value.WithNationId(fixture.Town.Value.NationId));
         ground.Replace(ground.Value.WithClaimedSettlementId(fixture.Town.Value.Id));
         var worker = fixture.Resident;
-        worker.Age = 25;
+        worker.Replace(worker.Value with { Age = 25 });
         worker.Replace(worker.Value with { Profession = Profession.Builder });
-        worker.X = worker.FromX = 17;
-        worker.Y = worker.FromY = 16;
-        worker.Inventory = new ResourceStock { Coal = 1, Ore = 2 };
-        worker.Agent = worker.Agent with
+        worker.Replace(worker.Value with { FromX = 17, X = 17 });
+        worker.Replace(worker.Value with { FromY = 16, Y = 16 });
+        worker.Replace(worker.Value.WithInventory(new ResourceStock { Coal = 1, Ore = 2 }));
+        worker.Replace(worker.Value.WithAgent(worker.Value.Agent with
         {
             Goal = new AgentGoal
             {
@@ -39,7 +39,7 @@ public sealed class ProductionTests
                 TargetX = 17,
                 TargetY = 16,
             },
-        };
+        }));
         return (fixture, foundry);
     }
 
@@ -52,9 +52,9 @@ public sealed class ProductionTests
 
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
-        Assert.Equal(0, fixture.Resident.Inventory.Coal);
-        Assert.Equal(0, fixture.Resident.Inventory.Ore);
-        Assert.Equal(1, fixture.Resident.Inventory.Alloy);
+        Assert.Equal(0, fixture.Resident.Value.Inventory.Coal);
+        Assert.Equal(0, fixture.Resident.Value.Inventory.Ore);
+        Assert.Equal(1, fixture.Resident.Value.Inventory.Alloy);
         Assert.Equal(warehouseAlloy, fixture.Town.Value.Resources.Alloy);
         Assert.Equal(1, foundry.Value.ProductionBatches);
     }
@@ -64,13 +64,13 @@ public sealed class ProductionTests
     public void Missing_input_does_not_partially_consume_materials()
     {
         var (fixture, foundry) = FoundryWorld();
-        fixture.Resident.Inventory = fixture.Resident.Inventory with { Ore = 1 };
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(fixture.Resident.Value.Inventory with { Ore = 1 }));
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
-        Assert.Equal(1, fixture.Resident.Inventory.Coal);
-        Assert.Equal(1, fixture.Resident.Inventory.Ore);
-        Assert.Equal(0, fixture.Resident.Inventory.Alloy);
+        Assert.Equal(1, fixture.Resident.Value.Inventory.Coal);
+        Assert.Equal(1, fixture.Resident.Value.Inventory.Ore);
+        Assert.Equal(0, fixture.Resident.Value.Inventory.Alloy);
         Assert.Equal(0, foundry.Value.ProductionBatches);
     }
 
@@ -83,8 +83,8 @@ public sealed class ProductionTests
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
-        Assert.Equal(1, fixture.Resident.Inventory.Coal);
-        Assert.Equal(2, fixture.Resident.Inventory.Ore);
+        Assert.Equal(1, fixture.Resident.Value.Inventory.Coal);
+        Assert.Equal(2, fixture.Resident.Value.Inventory.Ore);
         Assert.Equal(0, foundry.Value.ProductionBatches);
     }
 
@@ -103,8 +103,8 @@ public sealed class ProductionTests
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
-        Assert.Equal(1, fixture.Resident.Inventory.Coal);
-        Assert.Equal(2, fixture.Resident.Inventory.Ore);
+        Assert.Equal(1, fixture.Resident.Value.Inventory.Coal);
+        Assert.Equal(2, fixture.Resident.Value.Inventory.Ore);
         Assert.Equal(0, foundry.Value.ProductionBatches);
     }
 
@@ -113,13 +113,13 @@ public sealed class ProductionTests
     public void Distant_worker_cannot_produce()
     {
         var (fixture, foundry) = FoundryWorld();
-        fixture.Resident.X = fixture.Resident.FromX = 10;
-        fixture.Resident.Y = fixture.Resident.FromY = 10;
+        fixture.Resident.Replace(fixture.Resident.Value with { FromX = 10, X = 10 });
+        fixture.Resident.Replace(fixture.Resident.Value with { FromY = 10, Y = 10 });
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
         Assert.Equal(0, foundry.Value.ProductionBatches);
-        Assert.Equal(2, fixture.Resident.Inventory.Ore);
+        Assert.Equal(2, fixture.Resident.Value.Inventory.Ore);
     }
 
     /// <summary>同一天重复工作不能重复结算加工。</summary>
@@ -127,16 +127,16 @@ public sealed class ProductionTests
     public void Worker_can_produce_only_once_per_day()
     {
         var (fixture, foundry) = FoundryWorld();
-        fixture.Resident.Inventory = fixture.Resident.Inventory with { Coal = 2, Ore = 4 };
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(fixture.Resident.Value.Inventory with { Coal = 2, Ore = 4 }));
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
         fixture.Engine.SimulationTick += 4;
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
-        Assert.Equal(1, fixture.Resident.Inventory.Alloy);
-        Assert.Equal(1, fixture.Resident.Inventory.Coal);
-        Assert.Equal(2, fixture.Resident.Inventory.Ore);
+        Assert.Equal(1, fixture.Resident.Value.Inventory.Alloy);
+        Assert.Equal(1, fixture.Resident.Value.Inventory.Coal);
+        Assert.Equal(2, fixture.Resident.Value.Inventory.Ore);
         Assert.Equal(1, foundry.Value.ProductionBatches);
         fixture.Engine.SimulationTick = SimulationTime.TicksPerDay;
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
@@ -151,10 +151,10 @@ public sealed class ProductionTests
         foundry.Replace(foundry.Value with { WorkSlots = 1 });
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
-        var other = fixture.Engine.Residents.Single(p => p.Id != fixture.ResidentId);
+        var other = fixture.Engine.Residents.Single(p => p.Value.Id != fixture.ResidentId);
         other.Replace(fixture.Resident.Value with
         {
-            Id = other.Id, Inventory = new ResourceStock { Coal = 1, Ore = 2 },
+            Id = other.Value.Id, Inventory = new ResourceStock { Coal = 1, Ore = 2 },
         });
         fixture.Engine.SimulationTick += 4;
 

@@ -48,9 +48,9 @@ public sealed partial class WorldEngine
         var names = new HashSet<string>(Residents.Count + ArchivedResidents.Count,
             StringComparer.Ordinal);
         foreach (var resident in Residents)
-            names.Add(resident.Name);
+            names.Add(resident.Value.Name);
         foreach (var resident in ArchivedResidents)
-            names.Add(resident.Name);
+            names.Add(resident.Value.Name);
         return names;
     }
 

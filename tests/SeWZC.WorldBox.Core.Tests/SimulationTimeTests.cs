@@ -13,9 +13,9 @@ public sealed class SimulationTimeTests
         var buildingId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Farm, 22, 16);
         fixture.Engine.Buildings.Single(b => b.Value.Id == buildingId).Replace(fixture.Engine.Buildings.Single(b => b.Value.Id == buildingId).Value with { Health = 10 });
         fixture.Resident.Replace(fixture.Resident.Value with { Profession = Profession.Builder });
-        fixture.Resident.Inventory = fixture.Resident.Inventory with { Stone = 1 };
-        fixture.Resident.Activity = ResidentActivity.Working;
-        fixture.Resident.Agent = fixture.Resident.Agent with
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(fixture.Resident.Value.Inventory with { Stone = 1 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithActivity(ResidentActivity.Working));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Goal = new AgentGoal
             {
@@ -25,12 +25,12 @@ public sealed class SimulationTimeTests
                 TargetY = 16,
                 ReviewTick = SimulationTime.TicksPerYear,
             },
-        };
+        }));
 
         fixture.Engine.Step();
 
-        Assert.Equal(fixture.Engine.State.Tick, fixture.Resident.MoveStartedTick);
-        Assert.Equal(ResidentActivity.Wandering, fixture.Resident.Activity);
+        Assert.Equal(fixture.Engine.State.Tick, fixture.Resident.Value.MoveStartedTick);
+        Assert.Equal(ResidentActivity.Wandering, fixture.Resident.Value.Activity);
         Assert.Equal(10, fixture.Engine.Buildings.Single(b => b.Value.Id == buildingId).Value.Health);
     }
 
@@ -40,11 +40,11 @@ public sealed class SimulationTimeTests
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = SimulationTime.SleepTick + 1 });
-        fixture.Resident.Activity = ResidentActivity.Working;
+        fixture.Resident.Replace(fixture.Resident.Value.WithActivity(ResidentActivity.Working));
 
         fixture.Engine.Step();
 
-        Assert.Equal(ResidentActivity.Resting, fixture.Resident.Activity);
+        Assert.Equal(ResidentActivity.Resting, fixture.Resident.Value.Activity);
     }
 
     /// <summary>月份、日期和日内步序在各单位边界同时进位。</summary>
@@ -72,16 +72,16 @@ public sealed class SimulationTimeTests
     public void Evening_stores_daytime_task_and_walks_home()
     {
         var fixture = Prepare(SimulationTime.ReturnHomeTick - 1);
-        fixture.Resident.X = fixture.Resident.FromX = 22;
-        var daytime = fixture.Resident.Agent.Goal;
+        fixture.Resident.Replace(fixture.Resident.Value with { FromX = 22, X = 22 });
+        var daytime = fixture.Resident.Value.Agent.Goal;
 
         fixture.Engine.Step();
 
-        Assert.Equal(AgentGoalKind.Sleep, fixture.Resident.Agent.Goal.Kind);
-        Assert.Equal(daytime, fixture.Resident.Agent.DaytimeGoal);
-        Assert.InRange(fixture.Resident.X, 21, 22);
-        Assert.NotEqual(ResidentActivity.Sleeping, fixture.Resident.Activity);
-        Assert.Equal(SimulationTime.ReturnHomeTick, fixture.Resident.MoveStartedTick);
+        Assert.Equal(AgentGoalKind.Sleep, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Equal(daytime, fixture.Resident.Value.Agent.DaytimeGoal);
+        Assert.InRange(fixture.Resident.Value.X, 21, 22);
+        Assert.NotEqual(ResidentActivity.Sleeping, fixture.Resident.Value.Activity);
+        Assert.Equal(SimulationTime.ReturnHomeTick, fixture.Resident.Value.MoveStartedTick);
     }
 
     /// <summary>夜间在家睡眠仍按日内份额消耗口粮和衰老，晨起清除暂存目标。</summary>
@@ -94,18 +94,18 @@ public sealed class SimulationTimeTests
 
         fixture.Engine.Step();
 
-        Assert.Equal(ResidentActivity.Sleeping, fixture.Resident.Activity);
-        Assert.Equal(before.Age + 1d / SimulationTime.TicksPerYear, fixture.Resident.Age, 10);
+        Assert.Equal(ResidentActivity.Sleeping, fixture.Resident.Value.Activity);
+        Assert.Equal(before.Age + 1d / SimulationTime.TicksPerYear, fixture.Resident.Value.Age, 10);
         Assert.Equal(foodBefore - WorldEngine.FoodUse(before) / SimulationTime.TicksPerDay,
-            fixture.Resident.Inventory.Food + fixture.Town.Value.Resources.Food, 10);
+            fixture.Resident.Value.Inventory.Food + fixture.Town.Value.Resources.Food, 10);
         var restored = WorldEngine.ImportJson(fixture.Engine.ExportJson());
         var untilMorning = SimulationTime.TicksPerDay - SimulationTime.SleepTick + SimulationTime.WakeTick;
         fixture.Engine.Step(untilMorning);
         restored.Step(untilMorning);
 
-        Assert.Null(fixture.Resident.Agent.DaytimeGoal);
-        Assert.NotEqual(AgentGoalKind.Sleep, fixture.Resident.Agent.Goal.Kind);
-        Assert.NotEqual(ResidentActivity.Sleeping, fixture.Resident.Activity);
+        Assert.Null(fixture.Resident.Value.Agent.DaytimeGoal);
+        Assert.NotEqual(AgentGoalKind.Sleep, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.NotEqual(ResidentActivity.Sleeping, fixture.Resident.Value.Activity);
         Assert.Equal(fixture.Engine.ExportJson(), restored.ExportJson());
     }
 
@@ -119,9 +119,9 @@ public sealed class SimulationTimeTests
 
         fixture.Engine.Step();
 
-        Assert.NotEqual(AgentGoalKind.Sleep, fixture.Resident.Agent.Goal.Kind);
-        Assert.Null(fixture.Resident.Agent.DaytimeGoal);
-        Assert.NotEqual(ResidentActivity.Sleeping, fixture.Resident.Activity);
+        Assert.NotEqual(AgentGoalKind.Sleep, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Null(fixture.Resident.Value.Agent.DaytimeGoal);
+        Assert.NotEqual(ResidentActivity.Sleeping, fixture.Resident.Value.Activity);
     }
 
     /// <summary>迁居者在途中休息，保存目的地与货物，不能夜间折返家园。</summary>
@@ -137,15 +137,15 @@ public sealed class SimulationTimeTests
             TargetSettlementId = fixture.Town.Value.Id,
             ReviewTick = SimulationTime.TicksPerYear,
         };
-        fixture.Resident.X = fixture.Resident.FromX = 22;
-        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = goal };
+        fixture.Resident.Replace(fixture.Resident.Value with { FromX = 22, X = 22 });
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Goal = goal }));
 
         fixture.Engine.Step();
 
-        Assert.Equal(ResidentActivity.Sleeping, fixture.Resident.Activity);
-        Assert.Equal(goal, fixture.Resident.Agent.Goal);
-        Assert.Equal(22, fixture.Resident.X);
-        Assert.Null(fixture.Resident.Agent.DaytimeGoal);
+        Assert.Equal(ResidentActivity.Sleeping, fixture.Resident.Value.Activity);
+        Assert.Equal(goal, fixture.Resident.Value.Agent.Goal);
+        Assert.Equal(22, fixture.Resident.Value.X);
+        Assert.Null(fixture.Resident.Value.Agent.DaytimeGoal);
     }
 
     /// <summary>远处劳动点的居民夜间宿营，次日继续劳动，避免每天往返占满整个白天。</summary>
@@ -155,16 +155,16 @@ public sealed class SimulationTimeTests
     public void Distant_workers_camp_without_repeating_the_daily_commute(AgentGoalKind kind)
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
-        fixture.Resident.X = fixture.Resident.FromX = 22;
+        fixture.Resident.Replace(fixture.Resident.Value with { FromX = 22, X = 22 });
         var goal = new AgentGoal { Kind = kind, TargetX = 22, TargetY = 16, ReviewTick = SimulationTime.TicksPerYear };
-        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = goal };
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Goal = goal }));
 
         fixture.Engine.Step();
 
-        Assert.Equal(ResidentActivity.Sleeping, fixture.Resident.Activity);
-        Assert.Equal(goal, fixture.Resident.Agent.Goal);
-        Assert.Equal(22, fixture.Resident.X);
-        Assert.Null(fixture.Resident.Agent.DaytimeGoal);
+        Assert.Equal(ResidentActivity.Sleeping, fixture.Resident.Value.Activity);
+        Assert.Equal(goal, fixture.Resident.Value.Agent.Goal);
+        Assert.Equal(22, fixture.Resident.Value.X);
+        Assert.Null(fixture.Resident.Value.Agent.DaytimeGoal);
     }
 
     /// <summary>远处取水在傍晚到场后仍可完成，不被返家规则截断成每日空走。</summary>
@@ -173,9 +173,9 @@ public sealed class SimulationTimeTests
     {
         var fixture = Prepare(SimulationTime.ReturnHomeTick - 1);
         fixture.Engine.Tiles[16 * 32 + 23].Replace(fixture.Engine.Tiles[16 * 32 + 23].Value.WithTerrain(TerrainType.River));
-        fixture.Resident.X = fixture.Resident.FromX = 22;
-        fixture.Resident.Inventory = new ResourceStock { Food = 1 };
-        fixture.Resident.Agent = fixture.Resident.Agent with
+        fixture.Resident.Replace(fixture.Resident.Value with { FromX = 22, X = 22 });
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Food = 1 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Goal = new AgentGoal
             {
@@ -185,13 +185,13 @@ public sealed class SimulationTimeTests
                 TargetEntityId = 16 * 32 + 23 + 1,
                 ReviewTick = SimulationTime.TicksPerYear,
             },
-        };
+        }));
 
         fixture.Engine.Step();
 
-        Assert.True(fixture.Resident.Inventory.Water > .3);
-        Assert.NotEqual(AgentGoalKind.Sleep, fixture.Resident.Agent.Goal.Kind);
-        Assert.Null(fixture.Resident.Agent.DaytimeGoal);
+        Assert.True(fixture.Resident.Value.Inventory.Water > .3);
+        Assert.NotEqual(AgentGoalKind.Sleep, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.Null(fixture.Resident.Value.Agent.DaytimeGoal);
     }
 
     /// <summary>寻水勘察在夜间宿营，保留目标，使次日能继续推进而非原路重走。</summary>
@@ -199,15 +199,15 @@ public sealed class SimulationTimeTests
     public void Water_survey_camps_without_restarting_the_route()
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
-        fixture.Resident.X = fixture.Resident.FromX = 22;
+        fixture.Resident.Replace(fixture.Resident.Value with { FromX = 22, X = 22 });
         var goal = new AgentGoal { Kind = AgentGoalKind.FetchWater, TargetX = 24, TargetY = 16 };
-        fixture.Resident.Agent = fixture.Resident.Agent with { Goal = goal };
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Goal = goal }));
 
         fixture.Engine.Step();
 
-        Assert.Equal(ResidentActivity.Sleeping, fixture.Resident.Activity);
-        Assert.Equal(goal, fixture.Resident.Agent.Goal);
-        Assert.Equal(22, fixture.Resident.X);
+        Assert.Equal(ResidentActivity.Sleeping, fixture.Resident.Value.Activity);
+        Assert.Equal(goal, fixture.Resident.Value.Agent.Goal);
+        Assert.Equal(22, fixture.Resident.Value.X);
     }
 
     /// <summary>返程跨过晨起时仍先走到家，不能立即转身重走昨天的路。</summary>
@@ -215,19 +215,19 @@ public sealed class SimulationTimeTests
     public void Unfinished_return_home_continues_after_dawn()
     {
         var fixture = Prepare(SimulationTime.WakeTick - 1);
-        fixture.Resident.X = fixture.Resident.FromX = 22;
-        fixture.Resident.Agent = fixture.Resident.Agent with
+        fixture.Resident.Replace(fixture.Resident.Value with { FromX = 22, X = 22 });
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
-            DaytimeGoal = fixture.Resident.Agent.Goal,
+            DaytimeGoal = fixture.Resident.Value.Agent.Goal,
             Goal = new AgentGoal { Kind = AgentGoalKind.Sleep, TargetX = 16, TargetY = 16 },
-        };
+        }));
 
         fixture.Engine.Step();
 
-        Assert.Equal(AgentGoalKind.Sleep, fixture.Resident.Agent.Goal.Kind);
-        Assert.NotNull(fixture.Resident.Agent.DaytimeGoal);
-        Assert.InRange(fixture.Resident.X, 21, 22);
-        Assert.NotEqual(ResidentActivity.Sleeping, fixture.Resident.Activity);
+        Assert.Equal(AgentGoalKind.Sleep, fixture.Resident.Value.Agent.Goal.Kind);
+        Assert.NotNull(fixture.Resident.Value.Agent.DaytimeGoal);
+        Assert.InRange(fixture.Resident.Value.X, 21, 22);
+        Assert.NotEqual(ResidentActivity.Sleeping, fixture.Resident.Value.Activity);
     }
 
     /// <summary>玩家仍在指挥时可覆盖作息；命令到期后恢复自主睡眠。</summary>
@@ -237,17 +237,17 @@ public sealed class SimulationTimeTests
     public void Player_order_overrides_routine_only_until_its_deadline(bool active)
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
-        fixture.Resident.Agent = fixture.Resident.Agent with
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
-            Goal = fixture.Resident.Agent.Goal with
+            Goal = fixture.Resident.Value.Agent.Goal with
             {
                 PlayerDirected = true, ReviewTick = SimulationTime.SleepTick + (active ? 1 : 0),
             },
-        };
+        }));
 
         fixture.Engine.Step();
 
-        Assert.Equal(!active, fixture.Resident.Activity == ResidentActivity.Sleeping);
+        Assert.Equal(!active, fixture.Resident.Value.Activity == ResidentActivity.Sleeping);
     }
 
     /// <summary>水井的共享额度日内不重置，下一日才恢复。</summary>
@@ -256,10 +256,10 @@ public sealed class SimulationTimeTests
     {
         var fixture = Prepare(SimulationTime.WakeTick);
         fixture.AddWell(16, 17, .025);
-        fixture.Resident.X = fixture.Resident.FromX = 16;
-        fixture.Resident.Y = fixture.Resident.FromY = 17;
-        fixture.Resident.Inventory = new ResourceStock();
-        fixture.Resident.Agent = fixture.Resident.Agent with
+        fixture.Resident.Replace(fixture.Resident.Value with { FromX = 16, X = 16 });
+        fixture.Resident.Replace(fixture.Resident.Value with { FromY = 17, Y = 17 });
+        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock()));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Goal = new AgentGoal
             {
@@ -269,15 +269,15 @@ public sealed class SimulationTimeTests
                 TargetEntityId = 17 * 32 + 16 + 1,
                 ReviewTick = SimulationTime.TicksPerYear,
             },
-        };
+        }));
         Assert.True(fixture.Engine.TryFetchWater(fixture.Resident.Value));
         fixture.Engine.SimulationTick++;
 
         Assert.False(fixture.Engine.TryFetchWater(fixture.Resident.Value));
-        Assert.Equal(.15, fixture.Resident.Inventory.Water, 8);
+        Assert.Equal(.15, fixture.Resident.Value.Inventory.Water, 8);
         fixture.Engine.SimulationTick = SimulationTime.TicksPerDay;
         Assert.True(fixture.Engine.TryFetchWater(fixture.Resident.Value));
-        Assert.Equal(.3, fixture.Resident.Inventory.Water, 8);
+        Assert.Equal(.3, fixture.Resident.Value.Inventory.Water, 8);
     }
 
     private static WorldFixture Prepare(int tick)
@@ -305,7 +305,7 @@ public sealed class SimulationTimeTests
             MoveStartedTick = 0,
             MoveDurationTicks = 1,
             Inventory = new ResourceStock { Food = 10, Water = 10 },
-            Agent = fixture.Resident.Agent with
+            Agent = fixture.Resident.Value.Agent with
             {
                 Initialized = true,
                 NextThinkTick = SimulationTime.TicksPerYear,

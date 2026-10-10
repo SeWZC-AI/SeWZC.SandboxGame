@@ -40,10 +40,26 @@ public sealed partial record Resident
     }
 
     /// <summary>所在地点的横向地格坐标。</summary>
-    public int X { get; init; }
+    public int X
+    {
+        get => _movement.X;
+        init
+        {
+            if (_movement.X != value)
+                _movement = _movement with { X = value };
+        }
+    }
 
     /// <summary>所在地点的纵向地格坐标。</summary>
-    public int Y { get; init; }
+    public int Y
+    {
+        get => _movement.Y;
+        init
+        {
+            if (_movement.Y != value)
+                _movement = _movement with { Y = value };
+        }
+    }
 
     /// <summary>年龄，以模拟年为单位，允许小数。</summary>
     public double Age { get; init; }
@@ -201,7 +217,15 @@ public sealed partial record Resident
 
     /// <summary>当前移动采用的交通方式。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public TravelMode TravelMode { get; init; }
+    public TravelMode TravelMode
+    {
+        get => _movement.TravelMode;
+        init
+        {
+            if (_movement.TravelMode != value)
+                _movement = _movement with { TravelMode = value };
+        }
+    }
 
     /// <summary>口渴程度，越高表示越缺水。</summary>
     [JsonRequired]
@@ -250,16 +274,48 @@ public sealed partial record Resident
     }
 
     /// <summary>当前移动区段起点的横向地格坐标。</summary>
-    public int FromX { get; init; }
+    public int FromX
+    {
+        get => _movement.FromX;
+        init
+        {
+            if (_movement.FromX != value)
+                _movement = _movement with { FromX = value };
+        }
+    }
 
     /// <summary>当前移动区段起点的纵向地格坐标。</summary>
-    public int FromY { get; init; }
+    public int FromY
+    {
+        get => _movement.FromY;
+        init
+        {
+            if (_movement.FromY != value)
+                _movement = _movement with { FromY = value };
+        }
+    }
 
     /// <summary>当前移动区段开始的模拟 tick 序。</summary>
-    public long MoveStartedTick { get; init; }
+    public long MoveStartedTick
+    {
+        get => _movement.MoveStartedTick;
+        init
+        {
+            if (_movement.MoveStartedTick != value)
+                _movement = _movement with { MoveStartedTick = value };
+        }
+    }
 
     /// <summary>当前移动区段所需的模拟 tick 数。</summary>
-    public int MoveDurationTicks { get; init; } = 1;
+    public int MoveDurationTicks
+    {
+        get => _movement.MoveDurationTicks;
+        init
+        {
+            if (_movement.MoveDurationTicks != value)
+                _movement = _movement with { MoveDurationTicks = value };
+        }
+    }
 
     /// <summary>容量受限的个人经历记录。</summary>
     public ImmutableList<ResidentHistoryEntry> History

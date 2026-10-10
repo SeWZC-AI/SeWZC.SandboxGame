@@ -36,27 +36,27 @@ public sealed partial class WorldEngine
         return false;
     }
 
-    private int VisibleClaimSite(ResidentCursor person, StateReference<Settlement> town)
+    private int VisibleClaimSite(StateReference<Resident> person, StateReference<Settlement> town)
     {
-        if (town.Value.FoundationPending || !Rules.Expansion || person.Age < 14 || person.ArmyId != 0
-            || person.Profession != Profession.Builder)
+        if (town.Value.FoundationPending || !Rules.Expansion || person.Value.Age < 14 || person.Value.ArmyId != 0
+            || person.Value.Profession != Profession.Builder)
             return -1;
         var active = 0;
         var reservedSite = -1;
         foreach (var resident in _citizens[town.Value.Id])
-            if (resident.Id != person.Id && resident.Agent.Goal.Kind == AgentGoalKind.ClaimLand)
+            if (resident.Value.Id != person.Value.Id && resident.Value.Agent.Goal.Kind == AgentGoalKind.ClaimLand)
             {
                 if (++active >= 2)
                     return -1;
-                reservedSite = Index(resident.Agent.Goal.TargetX, resident.Agent.Goal.TargetY);
+                reservedSite = Index(resident.Value.Agent.Goal.TargetX, resident.Value.Agent.Goal.TargetY);
             }
 
         var reachable = 0;
         foreach (var offset in VisibleResourceOffsets)
         {
-            var x = person.X + offset.X;
-            var y = person.Y + offset.Y;
-            if (InBounds(x, y) && Index(x, y) != reservedSite && CanClaimTile(town, Index(x, y), person.Race)
+            var x = person.Value.X + offset.X;
+            var y = person.Value.Y + offset.Y;
+            if (InBounds(x, y) && Index(x, y) != reservedSite && CanClaimTile(town, Index(x, y), person.Value.Race)
                 && VisibleSiteReachable(person, Index(x, y), ref reachable))
                 return Index(x, y);
         }
@@ -72,42 +72,42 @@ public sealed partial class WorldEngine
         return TryClaimLand(RequireResident(person.Id));
     }
 
-    private bool TryClaimLand(ResidentCursor person)
+    private bool TryClaimLand(StateReference<Resident> person)
     {
-        if (!_settlements.TryGetValue(person.SettlementId, out var town) || person.Age < 14 || person.ArmyId != 0
-            || person.Health <= 0 || person.Agent.Goal.Kind != AgentGoalKind.ClaimLand
-            || SimulationTick - person.MoveStartedTick < person.MoveDurationTicks
-            || person.X != person.Agent.Goal.TargetX || person.Y != person.Agent.Goal.TargetY)
+        if (!_settlements.TryGetValue(person.Value.SettlementId, out var town) || person.Value.Age < 14 || person.Value.ArmyId != 0
+            || person.Value.Health <= 0 || person.Value.Agent.Goal.Kind != AgentGoalKind.ClaimLand
+            || SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks
+            || person.Value.X != person.Value.Agent.Goal.TargetX || person.Value.Y != person.Value.Agent.Goal.TargetY)
             return false;
-        var index = Index(person.X, person.Y);
+        var index = Index(person.Value.X, person.Value.Y);
         if (Residents.Any(r =>
-                r.Id != person.Id && r.Health > 0 && r.SettlementId != town.Value.Id && r.X == person.X && r.Y == person.Y))
+                r.Value.Id != person.Value.Id && r.Value.Health > 0 && r.Value.SettlementId != town.Value.Id && r.Value.X == person.Value.X && r.Value.Y == person.Value.Y))
             return false;
-        if (!CanClaimTile(town, index, person.Race))
+        if (!CanClaimTile(town, index, person.Value.Race))
         {
-            person.Agent = person.Agent with { NextThinkTick = SimulationTick };
+            person.Replace(person.Value.WithAgent(person.Value.Agent with { NextThinkTick = SimulationTick }));
             return false;
         }
 
-        if (person.Agent.Goal.WorkTicks < 3)
+        if (person.Value.Agent.Goal.WorkTicks < 3)
             return true;
         var tile = Tiles[index];
         tile.Replace(tile.Value with { NationId = town.Value.NationId, ClaimedSettlementId = town.Value.Id });
-        person.Agent = person.Agent with { NextThinkTick = SimulationTick };
+        person.Replace(person.Value.WithAgent(person.Value.Agent with { NextThinkTick = SimulationTick }));
         if (SimulationTick % 12 == 0)
         {
-            AddEvent(WorldEventKind.Growth, $"{person.Name}实地为{town.Value.Name}登记新地盘。", person.X, person.Y,
-                EventAction.General, town.Value.Id, person.Id);
+            AddEvent(WorldEventKind.Growth, $"{person.Value.Name}实地为{town.Value.Name}登记新地盘。", person.Value.X, person.Value.Y,
+                EventAction.General, town.Value.Id, person.Value.Id);
         }
 
         return true;
     }
 
 
-    private void FinishFoundation(ResidentCursor person, StateReference<Settlement> town)
+    private void FinishFoundation(StateReference<Resident> person, StateReference<Settlement> town)
     {
-        if (!town.Value.FoundationPending || person.X != town.Value.X || person.Y != town.Value.Y ||
-            person.Agent.Goal.WorkTicks < 3)
+        if (!town.Value.FoundationPending || person.Value.X != town.Value.X || person.Value.Y != town.Value.Y ||
+            person.Value.Agent.Goal.WorkTicks < 3)
             return;
         if (town.Value.Resources.Wood + 1e-6 < VillageFoundingCost.Wood ||
             town.Value.Resources.Stone + 1e-6 < VillageFoundingCost.Stone)
@@ -124,8 +124,8 @@ public sealed partial class WorldEngine
         ClaimTerritory(town, 4);
         AddFoundingFacility(town, BuildingKind.Farm);
         AddFoundingFacility(town, BuildingKind.Workshop);
-        AddEvent(WorldEventKind.Founding, $"{person.Name}到场驻留后建立{town.Value.Name}，开始实地登记地盘。", town.Value.X, town.Value.Y,
-            EventAction.Completed, town.Value.Id, person.Id);
+        AddEvent(WorldEventKind.Founding, $"{person.Value.Name}到场驻留后建立{town.Value.Name}，开始实地登记地盘。", town.Value.X, town.Value.Y,
+            EventAction.Completed, town.Value.Id, person.Value.Id);
     }
 
     private void RegisterBuildingGround(Building building)

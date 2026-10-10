@@ -15,10 +15,10 @@ public sealed partial class WorldEngine
 
     private static readonly string[] RaceNames = ["人类", "精灵", "矮人", "兽人"];
     private readonly HashSet<int> _burningTiles = [];
-    private readonly Dictionary<int, List<ResidentCursor>> _citizens = [];
+    private readonly Dictionary<int, List<StateReference<Resident>>> _citizens = [];
     private readonly HashSet<int> _dryTiles = [];
     private readonly Dictionary<int, StateReference<Nation>> _nations = [];
-    private readonly Dictionary<int, ResidentCursor> _residentLookup = [];
+    private readonly Dictionary<int, StateReference<Resident>> _residentLookup = [];
     private readonly Dictionary<int, StateReference<Settlement>> _settlements = [];
     private readonly TerritoryCounts _territoryCounts = new();
 
@@ -144,7 +144,7 @@ public sealed partial class WorldEngine
         foreach (var nation in Nations)
             _nations[nation.Value.Id] = nation;
         foreach (var person in Residents)
-            if (_citizens.TryGetValue(person.SettlementId, out var list))
+            if (_citizens.TryGetValue(person.Value.SettlementId, out var list))
                 list.Add(person);
         _indexedPeople = people;
         _indexedTowns = towns;
@@ -155,13 +155,13 @@ public sealed partial class WorldEngine
         _indexedNationsRevision = nations.MembershipRevision;
     }
 
-    private ResidentCursor? FindLiveResident(int id)
+    private StateReference<Resident>? FindLiveResident(int id)
     {
         if (_residentLookupRevision != Residents.MembershipRevision)
         {
             _residentLookup.Clear();
             foreach (var resident in Residents)
-                _residentLookup.Add(resident.Id, resident);
+                _residentLookup.Add(resident.Value.Id, resident);
             _residentLookupRevision = Residents.MembershipRevision;
         }
 
@@ -262,10 +262,10 @@ public sealed partial class WorldEngine
 
     private void ArchiveDeadResidents()
     {
-        foreach (var resident in Residents.Where(r => r.Health <= 0).ToArray())
+        foreach (var resident in Residents.Where(r => r.Value.Health <= 0).ToArray())
         {
-            resident.Health = 0;
-            if (resident.DeathCause == DeathCause.None)
+            resident.Replace(resident.Value.WithHealth(0));
+            if (resident.Value.DeathCause == DeathCause.None)
             {
                 resident.Replace(resident.Value with
                 {
@@ -274,17 +274,17 @@ public sealed partial class WorldEngine
             }
 
             var death = AddEvent(WorldEventKind.Death,
-                $"{resident.Name}逝世：{DeathCauseName(resident.DeathCause)}，终年 {resident.Age:0.0} 岁。", resident.X,
-                resident.Y, residentId: resident.Id);
-            death = PublishEvent(death with { NationId = resident.NationId, SettlementId = resident.SettlementId });
-            RecordLife(resident, $"逝世原因：{DeathCauseName(resident.DeathCause)}，终年 {resident.Age:0.0} 岁。", death,
+                $"{resident.Value.Name}逝世：{DeathCauseName(resident.Value.DeathCause)}，终年 {resident.Value.Age:0.0} 岁。", resident.Value.X,
+                resident.Value.Y, residentId: resident.Value.Id);
+            death = PublishEvent(death with { NationId = resident.Value.NationId, SettlementId = resident.Value.SettlementId });
+            RecordLife(resident, $"逝世原因：{DeathCauseName(resident.Value.DeathCause)}，终年 {resident.Value.Age:0.0} 岁。", death,
                 importance: EventImportance.Major);
-            if (resident.History.Count > 24)
-                resident.Replace(resident.Value with { History = resident.History.RemoveAt(0) });
+            if (resident.Value.History.Count > 24)
+                resident.Replace(resident.Value with { History = resident.Value.History.RemoveAt(0) });
             RemoveLocalWorkResident(resident);
             Residents.Remove(resident);
             ArchivedResidents.Add(resident);
-            if (_citizens.TryGetValue(resident.SettlementId, out var citizens))
+            if (_citizens.TryGetValue(resident.Value.SettlementId, out var citizens))
                 citizens.Remove(resident);
         }
 

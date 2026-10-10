@@ -27,10 +27,10 @@ public sealed class ResidentVitalsTests
         var tile = new Tile { FireTicks = fire ? 1 : 0 };
         var fields = original.CalculateDay(rules, tile, 12, original.Profession, 0, .1, true);
         var immutable = original.AdvanceDay(rules, tile, 12, original.Profession, 0, .1, true);
-        fixture.Resident.ApplyDay(fields);
+        fixture.Resident.Replace((fields).Apply(fixture.Resident.Value));
         Assert.Equal(immutable, fixture.Resident.Value);
-        fixture.Resident.X = 15;
-        fixture.Resident.Agent = fixture.Resident.Agent with { Fatigue = 30 };
+        fixture.Resident.Replace(fixture.Resident.Value with { X = 15 });
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Fatigue = 30 }));
         Assert.Equal(immutable with { X = 15, Agent = immutable.Agent with { Fatigue = 30 } },
             fixture.Engine.State.Residents[0]);
         Assert.Equal(16, original.X);
@@ -64,7 +64,8 @@ public sealed class ResidentVitalsTests
     {
         var before = new Resident
         {
-            Age = 25, Agent = new AgentState { MissionOriginSettlementId = 7, FamiliarTiles = [5] },
+            Age = 25, TravelMode = TravelMode.Boat,
+            Agent = new AgentState { MissionOriginSettlementId = 7, FamiliarTiles = [5] },
         };
         var returned = before.Agent with
         {
@@ -73,7 +74,7 @@ public sealed class ResidentVitalsTests
         var supplies = new ResourceStock { Food = 1, Water = 1, Medicine = 2 };
 
         var after = before.CalculateDay(new WorldRules(), new Tile(), 1, Profession.Farmer, 0, 0,
-            consumeNeeds, arrivedTile: 6, suppliedInventory: supplies, suppliedAgent: returned).Apply(before);
+            consumeNeeds, arrivedTile: 6, suppliedInventory: supplies, suppliedAgent: returned).Apply(before, TravelMode.Foot);
 
         Assert.Equal(0, after.Agent.MissionOriginSettlementId);
         Assert.Equal(AgentGoalKind.ReturnHome, after.Agent.Goal.Kind);
@@ -81,6 +82,8 @@ public sealed class ResidentVitalsTests
         Assert.Equal(consumeNeeds ? .96 : 1, after.Inventory.Food, 10);
         Assert.Equal(2, after.Inventory.Medicine);
         Assert.Equal(7, before.Agent.MissionOriginSettlementId);
+        Assert.Equal(TravelMode.Boat, before.TravelMode);
+        Assert.Equal(TravelMode.Foot, after.TravelMode);
         Assert.Equal<int>([5], returned.FamiliarTiles);
         Assert.Equal(0, before.Inventory.Medicine);
     }

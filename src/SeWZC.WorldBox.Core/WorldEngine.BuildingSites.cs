@@ -7,7 +7,7 @@ public sealed partial class WorldEngine
     /// <summary>每级运营住宅提供的居民容量。</summary>
     public const int HousingCapacityPerLevel = 80;
 
-    private bool VisibleWorkSiteReachable(ResidentCursor person, int x, int y, bool adjacent)
+    private bool VisibleWorkSiteReachable(StateReference<Resident> person, int x, int y, bool adjacent)
     {
         var search = 0;
         if (VisibleSiteReachable(person, Index(x, y), ref search, TravelMode.Foot))
@@ -15,7 +15,7 @@ public sealed partial class WorldEngine
         if (!adjacent)
             return false;
         foreach (var (dx, dy) in Directions)
-            if (Walkable(x + dx, y + dy, person.Race) && !IsWaterTerrain(Tiles[Index(x + dx, y + dy)].Value.Terrain)
+            if (Walkable(x + dx, y + dy, person.Value.Race) && !IsWaterTerrain(Tiles[Index(x + dx, y + dy)].Value.Terrain)
                                                       && Tiles[Index(x + dx, y + dy)].Value.FireTicks == 0
                                                       && VisibleSiteReachable(person, Index(x + dx, y + dy), ref search,
                                                           TravelMode.Foot))
@@ -178,9 +178,9 @@ public sealed partial class WorldEngine
         return Circle(town.Value.X, town.Value.Y, radius)
             .Where(i => FacilityPlacementError(town.Value.Id, kind, i % Width, i / Width, founding,
                             founding: founding) is null
-                        && (founding || (AutomaticSiteUseful(kind, i) && _citizens[town.Value.Id].Any(p => p.Health > 0 &&
-                            p.Age >= 14 && p.ArmyId == 0
-                            && Distance(p.X, p.Y, i % Width, i / Width) <= 6
+                        && (founding || (AutomaticSiteUseful(kind, i) && _citizens[town.Value.Id].Any(p => p.Value.Health > 0 &&
+                            p.Value.Age >= 14 && p.Value.ArmyId == 0
+                            && Distance(p.Value.X, p.Value.Y, i % Width, i / Width) <= 6
                             && VisibleWorkSiteReachable(p, i % Width, i / Width, true)))))
             .OrderByDescending(i => BuildingSiteScore(town.Value.Id, kind, i % Width, i / Width))
             .ThenBy(i => i)

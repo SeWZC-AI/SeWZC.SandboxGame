@@ -7,12 +7,12 @@ public sealed partial class WorldEngine
     private VisibleWildlifeCache? _visibleWildlifeCache;
 
     // 只缓存视野内有可持续种群的地址；个人需求、领地效率和可达性仍在调用时判断。
-    private ReadOnlySpan<int> VisibleWildlifeSites(ResidentCursor person)
+    private ReadOnlySpan<int> VisibleWildlifeSites(StateReference<Resident> person)
     {
         _territoryCounts.Bind(Tiles);
         var width = Width;
-        var origin = Index(person.X, person.Y);
-        var revision = _territoryCounts.VisibleWildlifeRevision(person.X, person.Y, width);
+        var origin = Index(person.Value.X, person.Value.Y);
+        var revision = _territoryCounts.VisibleWildlifeRevision(person.Value.X, person.Value.Y, width);
         var cache = _visibleWildlifeCache ??= new VisibleWildlifeCache();
         var slot = cache.Slot(origin, width);
         if (cache.TryGet(slot, origin, revision, out var sites))
@@ -23,8 +23,8 @@ public sealed partial class WorldEngine
         {
             if (offset.Distance > 7)
                 break;
-            var x = person.X + offset.X;
-            var y = person.Y + offset.Y;
+            var x = person.Value.X + offset.X;
+            var y = person.Value.Y + offset.Y;
             if (!InBounds(x, y))
                 continue;
             var index = Index(x, y);
