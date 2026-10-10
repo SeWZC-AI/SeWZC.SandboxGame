@@ -5,7 +5,7 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    // 通信索引只在本阶段有效，不能替代世界中的权威居民状态。
+    // 通信索引只在本阶段有效。
     private readonly List<int> _conversationTiles = [];
     private readonly List<PendingMessage> _messagesToDeliver = [];
     private readonly List<AgentFact> _missionAddresses = [];
@@ -571,7 +571,7 @@ public sealed partial class WorldEngine
             return;
         }
 
-        // 远方宣战不等于商人已知；只有实际收到且对应记忆目的国家的军令才能中止旅程。
+        // 商人获知目的地国家敌对后中止交易。
         if (goal.Kind == AgentGoalKind.Trade && IsKnownHostile(person, (int)address.Value))
         {
             FinishAgentMission(person, "已获知目的地国家敌对，停止交易并携带现有物资返乡");

@@ -19,7 +19,7 @@ public sealed partial class WorldEngine
             TerrainType.Wetland when tile.DroughtTicks > 0 => .12,
             _ => 0,
         };
-        // 可通行不代表可燃，湿地须按实际燃料和供水判断点火条件。
+        // 湿地按实际燃料和供水判断可燃性。
         return Math.Clamp(fuel * (tile.DroughtTicks > 0 ? 1.5 : Math.Exp(-tile.NaturalWaterYield * 40)), 0, 1);
     }
 

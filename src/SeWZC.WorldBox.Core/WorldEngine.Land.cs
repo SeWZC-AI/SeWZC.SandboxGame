@@ -150,7 +150,7 @@ public sealed partial class WorldEngine
                     or TerrainType.Stream or TerrainType.LargeRiver) ||
                 first.Value.Improvement == LandImprovement.Bridge)
                 continue;
-            // 两岸及沿途桥段须在同一轴向可见且可用，异向桥段是障碍，不能据此横向接桥。
+            // 两岸及沿途桥段须沿同一轴向可见且可用，异向桥段按障碍处理。
             var farBank = false;
             var span = 0;
             var unfinished = 0;

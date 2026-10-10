@@ -29,7 +29,7 @@ public sealed partial class WorldEngine
         return (SimulationTick + person.Value.Id) % WorkInterval(person) == 0;
     }
 
-    // 自主劳动的日产量按白天班次折算，避免加入夜间睡眠后把原有日供给再减半。
+    // 自主劳动的日产量按白天班次折算。
     private double WorkDays(StateReference<Resident> person, bool mental = false)
     {
         return WorkInterval(person) / (double)(

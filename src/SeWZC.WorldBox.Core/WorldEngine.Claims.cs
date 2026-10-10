@@ -9,7 +9,7 @@ public sealed partial class WorldEngine
 
     private long _connectedClaimsRevision = -1;
 
-    // 建村只登记实际占据的地点；人口仅提高占地上限，不能自动取得周围领土。
+    // 建村登记实际占据的地点，人口决定占地上限。
     private void ClaimTerritory(StateReference<Settlement> town, int radius)
     {
         town.Replace(town.Value with { MaxClaimRadius = Math.Max(town.Value.MaxClaimRadius, Math.Clamp(radius, 1, 17)) });

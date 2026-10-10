@@ -41,4 +41,4 @@ cp -a artifacts/site/. artifacts/browser-preview/SeWZC.SandboxGame/
 python3 -m http.server 8080 --bind 127.0.0.1 --directory artifacts/browser-preview
 ```
 
-打开 `http://127.0.0.1:8080/SeWZC.SandboxGame/`。静态资源检查能够发现根路径引用与缺失文件，实际交互、存储、触控和浏览器兼容性仍需浏览器验证。
+打开 `http://127.0.0.1:8080/SeWZC.SandboxGame/`，检查裁剪产物启动、交互、导入导出及刷新后的存档恢复；输入和触控检查使用对应设备与浏览器，具体范围见 [开发约定](development.md#按改动选择验证)。

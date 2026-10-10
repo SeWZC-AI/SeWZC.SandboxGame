@@ -972,7 +972,7 @@ public sealed partial class WorldEngine
         return 0;
     }
 
-    // 评分和实地开采使用同一露头；脚下少量石材不能遮住居民已看见且可在邻格开采的山体。
+    // 评分和实地开采使用同一露头，比较脚下石材与邻格可开采山体。
     private int NaturalMiningSource(int index, bool requireOre)
     {
         var selected = -1;
@@ -1445,7 +1445,7 @@ public sealed partial class WorldEngine
         return true;
     }
 
-    // 选路与实际移动共用耗时，舟船、信使和种族设施的修正不能只影响其中一端。
+    // 选路与实际移动共用耗时及速度修正。
     private double AgentMoveCost(StateReference<Resident> person, int index)
         => AgentMoveCost(person, index,
             ResidentMovementRules.ConditionMultiplier(person.Value, IsCarryingResident(person.Value.Id)));
@@ -1541,7 +1541,7 @@ public sealed partial class WorldEngine
         var target = Index(targetX, targetY);
         var start = Index(originX, originY);
 
-        // 导航仅使用六格可见地形，桥梁轴向与实际移动及军队寻路共用规则，避免预览可走却无法通行。
+        // 导航使用六格可见地形，与实际移动及军队寻路共用通行规则。
         // 单次导航内的记忆标记和进入成本固定；栈上缓冲只覆盖六格视野，不跨居民或世界步骤复用。
         const int diameter = 13;
         Span<byte> flags = stackalloc byte[diameter * diameter];

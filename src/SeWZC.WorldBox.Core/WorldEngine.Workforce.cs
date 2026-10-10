@@ -168,7 +168,7 @@ public sealed partial class WorldEngine
                     ChangeLocalProfession(recruit, job);
                 }
 
-            // 没有专业工位的人参与临时劳动，不能把所有多余职业都改成农民。
+            // 没有专业工位的居民参与临时劳动。
             foreach (var person in adults)
             {
                 var job = person.Value.Profession;

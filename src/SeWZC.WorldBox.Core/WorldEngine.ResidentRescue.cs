@@ -201,7 +201,7 @@ public sealed partial class WorldEngine
             ArchiveDeadResidents();
     }
 
-    // 只能在当地落地或邻岸放下乘客；仍在水上时保留同舟关系，不能隔空送回住宅。
+    // 在当地落地或邻岸放下乘客；水上保留同舟关系。
     private bool ReleaseResidentPassenger(StateReference<Resident> passenger, [NotNullWhen(false)] StateReference<Resident>? carrier)
     {
         var person = passenger.Value;

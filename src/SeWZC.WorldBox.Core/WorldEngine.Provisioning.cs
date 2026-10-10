@@ -387,7 +387,7 @@ public sealed partial class WorldEngine
 
     private bool AddProvisionChoices(StateReference<Resident> person, StateReference<Settlement> home, List<GoalChoice> choices)
     {
-        // 已严重缺粮而每日仍喝得到水时，先找食物；不能为尚不需要的装瓶储备反复搜索。
+        // 严重缺粮且口渴较轻时优先找食物。
         var prioritizeFood = Rules.Hunger && person.Value.Hunger >= 60
                                                   && person.Value.Inventory.Food < .05 && person.Value.Thirst < 10;
         var needsWater = person.Value.Inventory.Water < .3

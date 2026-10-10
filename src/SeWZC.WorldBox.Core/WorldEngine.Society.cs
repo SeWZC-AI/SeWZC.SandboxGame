@@ -2148,8 +2148,7 @@ public sealed partial class WorldEngine
             ? _localWorkBuildings.GetValueOrDefault(town.Value.Id) ?? []
             : Buildings.Where(b => b.Value.SettlementId == town.Value.Id).ToArray();
         var project = FindSettlementResearch(town.Value.Id)!;
-        // 为下一项可执行的本地计划预留木石；缺矿可推迟魔法项目，但不能阻止基础运输发展。
-        // 只评估首个可选计划，并保留实时库存引用，使矿工在自己行动时仍能看到实际需求。
+        // 按首个可执行的本地计划预留材料，库存由各次取料实时核对。
         foreach (var plan in PendingLocalDevelopment(town, buildings, project))
             if (plan.Facility.HasValue ? Rules.Construction : Rules.Research)
                 return plan.Cost;

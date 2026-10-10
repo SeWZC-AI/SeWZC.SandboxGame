@@ -10,7 +10,7 @@ public sealed partial class WorldEngine
     /// <summary>未压缩存档的 UTF-8 字节数上限。</summary>
     public const int MaxSaveBytes = 64 * 1024 * 1024;
 
-    // 直接写入 UTF-8 中文，仍转义 HTML 敏感字符；无需为每个汉字写六字节的 Unicode 转义。
+    // 中文直接写入 UTF-8，HTML 敏感字符仍转义。
     private static readonly WorldJsonContext StorageJson = new(
         new JsonSerializerOptions(WorldJsonContext.Default.Options)
         {
