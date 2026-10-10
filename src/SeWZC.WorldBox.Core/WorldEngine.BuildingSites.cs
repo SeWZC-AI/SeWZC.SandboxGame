@@ -200,12 +200,12 @@ public sealed partial class WorldEngine
         return building.Kind is BuildingKind.Granary or BuildingKind.Housing or BuildingKind.Watchtower;
     }
 
-    /// <summary>计算本地基础住房与正在运营的住宅提供的总容量。</summary>
+    /// <summary>计算正在运营的住宅提供的总容量。</summary>
     /// <param name="settlementId">聚落 ID。</param>
     public int GetHousingCapacity(int settlementId)
     {
-        var town = RequireTown(settlementId);
-        return Math.Min(20_000, town.Value.Housing + Buildings
+        RequireTown(settlementId);
+        return Math.Min(20_000, Buildings
             .Where(b => b.Value.SettlementId == settlementId && b.Value.Kind == BuildingKind.Housing && IsFacilityOperating(b.Value))
             .Sum(b => b.Value.Level * HousingCapacityPerLevel));
     }

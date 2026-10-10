@@ -193,6 +193,11 @@ public sealed partial class WorldEngine
             throw new InvalidOperationException("城镇中心是公共家园，不能停用。");
         building.Replace(building.Value with { Enabled = enabled });
         building.Replace(building.Value with { Workers = building.Value.Workers.Clear() });
+        if (building.Value.Kind == BuildingKind.Housing)
+        {
+            AssignResidentHomes();
+            SynchronizeResidentRescues();
+        }
         AddEvent(WorldEventKind.Editor, $"玩家{(enabled ? "启用" : "停用")}{BuildingName(building.Value.Kind)}。", building.Value.X,
             building.Value.Y);
     }
@@ -213,6 +218,8 @@ public sealed partial class WorldEngine
 
         AddEvent(WorldEventKind.Editor, $"玩家{(finish ? "赐予完工" : "修复")}{BuildingName(building.Value.Kind)}。", building.Value.X,
             building.Value.Y);
+        if (building.Value.Kind == BuildingKind.Housing)
+            AssignResidentHomes();
     }
 
     /// <summary>返回居民当前任务的说明。</summary>
@@ -227,7 +234,8 @@ public sealed partial class WorldEngine
             ? FindBuilding(goal.TargetEntityId)
             : null;
         var home = _settlements.GetValueOrDefault(person.SettlementId);
-        var homeTarget = home is not null && goal.TargetX == home.Value.X && goal.TargetY == home.Value.Y;
+        var dwelling = ResidentHome(person);
+        var homeTarget = dwelling is not null && goal.TargetX == dwelling.Value.X && goal.TargetY == dwelling.Value.Y;
         var destination = _settlements.GetValueOrDefault(goal.TargetSettlementId)?.Value.Name ?? "目标聚落";
         if (building is not null)
         {
@@ -292,9 +300,11 @@ public sealed partial class WorldEngine
             AgentGoalKind.Hunt => "狩猎可食动物并带回家园",
             AgentGoalKind.Fish => person.TravelMode == TravelMode.Boat ? "乘舟捕鱼并带回鱼获与舟船" : "到鱼群附近捕鱼并带回家园",
             AgentGoalKind.ExtinguishFire => "携带实际饮水扑灭附近火势",
+            AgentGoalKind.Rescue => "将" + (GetResident(goal.TargetEntityId)?.Name ?? "需要帮助的居民") + "背负送回分配的住宅",
             AgentGoalKind.Sleep => goal.PlayerDirected && SimulationTick < goal.ReviewTick
                 ? homeTarget ? "在家按玩家安排睡眠" : "前往指定地点按玩家安排睡眠"
-                : ReturningHomeAfterDawn(goal) ? "返回家园并恢复白天活动" : "返回家园并按作息睡眠",
+                : dwelling is null ? "暂无住所，按作息休息与露宿"
+                : ReturningHomeAfterDawn(goal) ? "返回住宅并恢复白天活动" : "返回住宅并按作息睡眠",
             _ => "评估需求与附近可执行工作",
         };
     }
@@ -307,16 +317,20 @@ public sealed partial class WorldEngine
         if (person is null || person.Health <= 0)
             return "已离世，保留生平记录";
         if (ResidentNeedsRules.IsUnconscious(person))
-            return $"睡眠或体力耗尽，强制昏迷\n睡眠与体力均恢复到 {ResidentNeedsRules.ConsciousRecoveryThreshold:P0} 后恢复行动";
+            return $"睡眠或体力耗尽，强制昏迷\n" +
+                   (person.CarriedByResidentId != 0 ? "正由" + (GetResident(person.CarriedByResidentId)?.Name ?? "其他居民") + "携带，等待进入住宅或安全落地"
+                       : person.BedRestAfterRescue ? "已获救并在住宅床位休养" : "以低质量睡眠缓慢恢复") +
+                   $"\n睡眠与体力均恢复到 {ResidentNeedsRules.ConsciousRecoveryThreshold:P0} 后恢复行动";
         var goal = person.Agent.Goal;
         var directed = goal.PlayerDirected && SimulationTick < goal.ReviewTick;
         var finishingSleepMove = goal.Kind == AgentGoalKind.Sleep && goal.PlayerDirected && !directed
                                  && person.MoveStartedTick < goal.ReviewTick
                                  && person.MoveStartedTick + person.MoveDurationTicks > SimulationTick;
-        var restingHome = _settlements.GetValueOrDefault(person.SettlementId);
+        var restingHome = ResidentHome(person);
         // 自主睡眠按家园移动，不沿用已到期的指定地点。
         if (goal.Kind == AgentGoalKind.Sleep && !directed && restingHome is not null)
-            goal = goal with { TargetX = restingHome.Value.X, TargetY = restingHome.Value.Y, TargetSettlementId = restingHome.Value.Id };
+            goal = goal with { TargetX = restingHome.Value.X, TargetY = restingHome.Value.Y,
+                TargetEntityId = restingHome.Value.Id, TargetSettlementId = restingHome.Value.SettlementId };
         var task = GetResidentTaskSummary(id);
         var taskHeader = $"当前任务：{task}\n";
         var facility = goal.Kind is AgentGoalKind.Work or AgentGoalKind.Rest or AgentGoalKind.Study or AgentGoalKind.TrainMagic
@@ -333,7 +347,7 @@ public sealed partial class WorldEngine
             : "按需休息或补觉，随后按当前安排行动";
         if (person.Activity is ResidentActivity.Resting or ResidentActivity.Sleeping)
         {
-            var atHome = restingHome is not null && Distance(person.X, person.Y, restingHome.Value.X, restingHome.Value.Y) <= 1;
+            var atHome = person.IsInsideHome && restingHome is not null;
             var location = goal.Kind == AgentGoalKind.Rest && facility is not null
                     && Distance(person.X, person.Y, facility.Value.X, facility.Value.Y) <= AgentInteractionRange(goal, false)
                     && person.MoveStartedTick + person.MoveDurationTicks <= SimulationTick
@@ -384,7 +398,7 @@ public sealed partial class WorldEngine
         var destination = goal.Kind is AgentGoalKind.Rest or AgentGoalKind.Sleep
             ? targetFacility is not null
                 ? BuildingName(targetFacility.Value.Kind)
-                : homeTarget ? restingHome!.Value.Name : $"指定地点（{goal.TargetX}，{goal.TargetY}）"
+                : homeTarget ? "分配的住宅" : $"指定地点（{goal.TargetX}，{goal.TargetY}）"
             : facility is not null ? BuildingName(facility.Value.Kind)
             : _settlements.GetValueOrDefault(goal.TargetSettlementId)?.Value.Name ?? "目标地块";
         var workingRange = AgentInteractionRange(goal, _settlements.GetValueOrDefault(person.SettlementId)?.Value.FoundationPending == true);
@@ -401,6 +415,7 @@ public sealed partial class WorldEngine
                 AgentGoalKind.Sleep => homeTarget
                     ? $"正在返家，前往{destination}{sleepPurpose}（{TravelModeName(person.TravelMode)}）"
                     : $"正在前往{destination}睡眠（{TravelModeName(person.TravelMode)}）",
+                AgentGoalKind.Rescue => IsCarryingResident(person.Id) ? "正在背负居民返回住宅" : "正在前往需要帮助的居民身边",
                 _ => $"正在前往{destination}执行“{task}”（{TravelModeName(person.TravelMode)}），到场后开始劳动",
             } : goal.Kind switch
             {

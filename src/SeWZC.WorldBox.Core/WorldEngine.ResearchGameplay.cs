@@ -18,15 +18,7 @@ public sealed partial class WorldEngine
             throw new InvalidOperationException("只能分配当地达到劳动年龄、未出征且未在异地递送的居民");
         if (job is Profession.Battlemage or Profession.Gardener && person.Value.MagicTalent < 25)
             throw new InvalidOperationException("此岗位需要魔法天赋至少 25");
-        person.Replace(person.Value with
-        {
-            Profession = job,
-            Agent = person.Value.Agent with
-            {
-                JobChangedTick = SimulationTick, WorkplaceId = 0, WorkAreaIndex = -1, NextThinkTick = SimulationTick,
-            },
-        });
-        person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(new AgentGoal { Kind = AgentGoalKind.Idle, TargetX = person.Value.X, TargetY = person.Value.Y })));
+        ChangeLocalProfession(person, job, "根据已掌握的研究，接受" + ProfessionName(job) + "岗位");
         RecordLife(person, "根据已掌握的研究，接受" + ProfessionName(job) + "岗位。");
     }
 
@@ -311,11 +303,18 @@ public sealed partial class WorldEngine
         person.Replace(person.Value.WithInventory(person.Value.Inventory with { Crystals = person.Value.Inventory.Crystals - 2 }));
         person.Replace(person.Value.WithPosition(target.Value.X, target.Value.Y));
         person.Replace(person.Value with { MoveStartedTick = SimulationTick, MoveDurationTicks = 1 });
+        foreach (var passenger in Residents.Where(resident => resident.Value.CarriedByResidentId == residentId))
+            passenger.Replace(passenger.Value.WithPosition(target.Value.X, target.Value.Y) with
+            {
+                CarriedByResidentId = residentId,
+                Agent = passenger.Value.Agent with { DailyPlan = null },
+            });
         person.Replace(person.Value with
         {
             Agent = person.Value.Agent with
             {
                 DaytimeGoal = null,
+                DailyPlan = null,
                 Goal = new AgentGoal
                 {
                     Kind = AgentGoalKind.Idle,
@@ -326,6 +325,7 @@ public sealed partial class WorldEngine
                 NextThinkTick = SimulationTick + 1,
             },
         });
+        SynchronizeResidentRescues();
         source.Replace(source.Value with
         {
             ServiceActions = Math.Min(1_000_000_000, source.Value.ServiceActions + 1),

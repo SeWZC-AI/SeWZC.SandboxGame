@@ -483,12 +483,14 @@ public sealed partial class WorldEngine
 
         foreach (var resident in Residents)
         {
+            if (resident.Value.CarriedByResidentId != 0)
+                continue;
             if (CanTraverse(Tiles[Index(resident.Value.X, resident.Value.Y)].Value, resident.Value.TravelMode, resident.Value.Race))
                 continue;
             var position = FindWalkable(resident.Value.X, resident.Value.Y, 10, resident.Value.Race);
             if (position >= 0)
             {
-                resident.Replace(resident.Value with { X = position % Width, Y = position / Width });
+                resident.Replace(resident.Value.WithPosition(position % Width, position / Width));
                 DamageResident(resident, 15, DeathCause.TerrainChange);
             }
             else

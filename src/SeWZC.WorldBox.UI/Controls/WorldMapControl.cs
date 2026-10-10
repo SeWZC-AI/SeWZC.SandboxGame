@@ -395,9 +395,7 @@ public sealed partial class WorldMapControl : Control
                 DrawEffects(context);
                 foreach (var army in state.Armies)
                 {
-                    var position = _armyMotion.TryGetValue(army.Id, out var motion)
-                        ? motion.Position(_renderMotionTime)
-                        : new Point(army.X, army.Y);
+                    var position = ArmyPresentationPosition(army, _renderMotionTime);
                     var x = position.X * TilePixels + 4;
                     var y = position.Y * TilePixels;
                     if (!Visible(new Rect(x, y - 10, 9, 11)))
@@ -440,6 +438,7 @@ public sealed partial class WorldMapControl : Control
         _residentViewport = viewport;
         _residentIndex.Query(state.Residents, viewport.Left, viewport.Top, viewport.Right, viewport.Bottom,
             _visibleResidents);
+        _visibleResidents.RemoveAll(person => person.IsInsideHome || person.CarriedByResidentId != 0);
         return _visibleResidents;
     }
 

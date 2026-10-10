@@ -64,16 +64,8 @@ public sealed partial class WorldEngine
         var visited = new HashSet<int> { Index(cursor.Value.X, cursor.Value.Y) };
         for (var i = 0; i < Math.Clamp(steps, 0, 64); i++)
         {
-            var interactionRange = production is not null || goal.Kind is AgentGoalKind.Eat or AgentGoalKind.Rest
-                                                              or AgentGoalKind.Socialize or AgentGoalKind.ReturnHome
-                                                              or AgentGoalKind.Sleep
-                                                          || (goal.TargetEntityId != 0 &&
-                                                              Buildings.Any(b =>
-                                                                  b.Value.Id == goal.TargetEntityId &&
-                                                                  (!b.Value.IsCompleted || b.Value.IsUpgrading ||
-                                                                   IsWaterfrontBuilding(b.Value.Kind))))
-                ? 1
-                : 0;
+            var interactionRange = production is not null ? 1 : AgentInteractionRange(goal,
+                _settlements.GetValueOrDefault(person.Value.SettlementId)?.Value.FoundationPending == true);
             if (Distance(cursor.Value.X, cursor.Value.Y, targetX, targetY) <= interactionRange &&
                 Walkable(cursor.Value.X, cursor.Value.Y, cursor.Value.Race))
                 break;

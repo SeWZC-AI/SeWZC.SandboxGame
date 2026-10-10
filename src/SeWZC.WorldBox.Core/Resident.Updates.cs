@@ -8,7 +8,8 @@ public sealed partial record Resident
     {
         if (Health > 0 && ResidentNeedsRules.IsUnconscious(this))
             value = ResidentActivity.Unconscious;
-        return Activity == value ? this : this with { Activity = value };
+        var credit = TravelActivity(value) ? MovementCredit : 0;
+        return Activity == value && credit == MovementCredit ? this : this with { Activity = value, MovementCredit = credit };
     }
 
     internal Resident WithHealth(double value) => Health.Equals(value) ? this : this with { Health = value };
@@ -24,7 +25,9 @@ public sealed partial record Resident
     internal Resident WithAgent(AgentState value)
     {
         var activity = Health > 0 && ResidentNeedsRules.IsUnconscious(value, Activity) ? ResidentActivity.Unconscious : Activity;
-        return ReferenceEquals(Agent, value) && Activity == activity ? this : this with { Agent = value, Activity = activity };
+        var credit = TravelActivity(activity) ? MovementCredit : 0;
+        return ReferenceEquals(Agent, value) && Activity == activity && credit == MovementCredit ? this
+            : this with { Agent = value, Activity = activity, MovementCredit = credit };
     }
 
     internal Resident WithInventory(ResourceStock value) => Inventory == value ? this : this with { Inventory = value };
@@ -34,21 +37,24 @@ public sealed partial record Resident
     {
         if (Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity))
             activity = ResidentActivity.Unconscious;
-        if (ReferenceEquals(Agent, agent) && Activity == activity)
+        var credit = TravelActivity(activity) ? MovementCredit : 0;
+        if (ReferenceEquals(Agent, agent) && Activity == activity && credit == MovementCredit)
             return this;
-        return this with { Agent = agent, Activity = activity };
+        return this with { Agent = agent, Activity = activity, MovementCredit = credit };
     }
 
     internal Resident WithAction(in ResourceStock inventory, AgentState agent, ResidentActivity activity)
     {
         if (Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity))
             activity = ResidentActivity.Unconscious;
-        if (Inventory == inventory && ReferenceEquals(Agent, agent) && Activity == activity)
+        var credit = TravelActivity(activity) ? MovementCredit : 0;
+        if (Inventory == inventory && ReferenceEquals(Agent, agent) && Activity == activity && credit == MovementCredit)
             return this;
         return this with
         {
             Inventory = inventory, Agent = agent,
             Activity = activity,
+            MovementCredit = credit,
         };
     }
 
@@ -65,10 +71,20 @@ public sealed partial record Resident
     {
         if (X == x && FromX == x && Y == y && FromY == y)
             return this;
-        return this with { MovementState = _movement with { X = x, FromX = x, Y = y, FromY = y } };
+        return this with
+        {
+            MovementState = _movement with { X = x, FromX = x, Y = y, FromY = y, Route = [], Credit = 0 },
+            IsInsideHome = false,
+            BedRestAfterRescue = false,
+            CarriedByResidentId = 0,
+        };
     }
 
-    internal Resident BeginMove(int x, int y, long tick, int duration, ResidentActivity activity, AgentState agent)
+    private static bool TravelActivity(ResidentActivity activity) => activity is ResidentActivity.Wandering
+        or ResidentActivity.Marching or ResidentActivity.Delivering or ResidentActivity.Fleeing;
+
+    internal Resident BeginMove(int x, int y, long tick, int duration, ResidentActivity activity, AgentState agent,
+        System.Collections.Immutable.ImmutableArray<int> route = default)
     {
         if (Health > 0 && ResidentNeedsRules.IsUnconscious(agent, Activity))
             activity = ResidentActivity.Unconscious;
@@ -78,9 +94,11 @@ public sealed partial record Resident
             {
                 FromX = X, FromY = Y, X = x, Y = y, MoveStartedTick = tick,
                 MoveDurationTicks = duration, TravelMode = TravelMode,
+                Route = route.IsDefault ? [] : route,
             },
             Activity = activity,
             Agent = agent,
+            IsInsideHome = false,
         };
     }
 }

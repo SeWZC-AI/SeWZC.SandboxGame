@@ -6,6 +6,15 @@ namespace SeWZC.WorldBox.UI.Tests;
 /// <summary>实体显示轨迹的插值与立即定位检查。</summary>
 public sealed class EntityMotionTrackTests
 {
+    /// <summary>一刻走多格时沿相邻路线转弯，不穿过弯道内的障碍。</summary>
+    [Fact]
+    public void Multi_tile_motion_follows_the_committed_turn()
+    {
+        var track = new EntityMotionTrack(new Point(2, 2));
+        track.Update(new Point(2, 2), new Point(3, 3), 10, 1, false, [22, 23, 33], 10);
+        Assert.Equal(new Point(3, 2), track.Position(10.5));
+        Assert.Equal(new Point(3, 2.5), track.Position(10.75));
+    }
     /// <summary>未提交移动时保持初始位置。</summary>
     [Fact]
     public void New_track_stays_at_its_initial_position()

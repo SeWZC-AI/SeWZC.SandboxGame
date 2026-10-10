@@ -118,8 +118,8 @@ public sealed partial class WorldEngine
             return PositionValid(x, y) && state.Tiles[y * state.Width + x].IsWalkable;
         }
 
-        Require(state.FormatVersion == 23, "不支持该存档版本，请为本版新建世界。");
-        Require(state.SimulationVersion == 27, "不支持该模拟版本，请为本版新建世界。");
+        Require(state.FormatVersion == 24, "不支持该存档版本，请为本版新建世界。");
+        Require(state.SimulationVersion == 28, "不支持该模拟版本，请为本版新建世界。");
         Require(state.Width is >= 32 and <= 256 && state.Height is >= 32 and <= 256, "地图尺寸超出范围。");
         Require(
             state.Tick is >= 0 and <= 120_000_000 && state.RandomState != 0 && state.NextId is > 0 and < 2_000_000_000,
@@ -152,7 +152,6 @@ public sealed partial class WorldEngine
         foreach (var town in state.Settlements!)
             Require(
                 town is not null && IdValid(town.Id) && TextValid(town.Name, 80) && PositionValid(town.X, town.Y) &&
-                town.Housing is >= 0 and <= 20_000 &&
                 town.MaxClaimRadius is >= 1 and <= 17 && StockValid(town.Resources), "聚落数据无效。");
         foreach (var town in state.Settlements!)
             Require(Enum.IsDefined(town.Tier) && double.IsFinite(town.ExpansionRequired)
@@ -179,6 +178,9 @@ public sealed partial class WorldEngine
         var nations = state.Nations!.ToDictionary(n => n.Id);
         var towns = state.Settlements!.ToDictionary(s => s.Id);
         var armies = state.Armies!.ToDictionary(a => a.Id);
+        var living = state.Residents!.ToDictionary(person => person.Id);
+        var homeOccupancy = new Dictionary<int, int>();
+        var occupiedCarriers = new HashSet<int>();
         for (var i = 0; i < state.Tiles!.Count; i++)
         {
             var tile = state.Tiles[i];
@@ -226,6 +228,8 @@ public sealed partial class WorldEngine
                                            town.X == i % state.Width && town.Y == i / state.Width), "聚落地格引用无效。");
         }
 
+        ValidateSocietyState(state);
+        var residences = state.Society!.Buildings.ToDictionary(building => building.Id);
         foreach (var nation in state.Nations)
             Require(towns.TryGetValue(nation.CapitalId, out var capital) && capital.NationId == nation.Id, "国家首都引用无效。");
         foreach (var town in state.Settlements)
@@ -238,10 +242,32 @@ public sealed partial class WorldEngine
         foreach (var resident in state.Residents)
         {
             ValidateResidentV2(resident, state.Tick, state.Width, state.Height);
+            Building? residence = null;
+            Require(resident.HomeBuildingId == 0 || residences.TryGetValue(resident.HomeBuildingId, out residence)
+                    && residence.Kind == BuildingKind.Housing && residence.SettlementId == resident.SettlementId,
+                "居民住宅引用无效。");
+            if (residence is not null && resident.Health > 0)
+            {
+                homeOccupancy[residence.Id] = homeOccupancy.GetValueOrDefault(residence.Id) + 1;
+                Require(homeOccupancy[residence.Id] <= residence.Level * HousingCapacityPerLevel, "住宅入住人数超过容量。");
+            }
+            Require(!resident.IsInsideHome || residence is not null && resident.X == residence.X && resident.Y == residence.Y
+                    && ResidentHasArrived(resident, state.Tick)
+                    && resident.CarriedByResidentId == 0, "住宅内的位置或到达状态无效。");
+            Resident? carrier = null;
+            Require(resident.CarriedByResidentId == 0 || occupiedCarriers.Add(resident.CarriedByResidentId),
+                "一名居民不能同时背负多人。");
+            Require(resident.CarriedByResidentId == 0 || living.TryGetValue(resident.CarriedByResidentId, out carrier)
+                    && carrier.Health > 0
+                    && carrier.CarriedByResidentId == 0 && carrier.X == resident.X && carrier.Y == resident.Y
+                    && carrier.FromX == resident.FromX && carrier.FromY == resident.FromY
+                    && carrier.MoveStartedTick == resident.MoveStartedTick && carrier.MoveDurationTicks == resident.MoveDurationTicks
+                    && carrier.MovementRoute.SequenceEqual(resident.MovementRoute),
+                "背负救助关系或位置无效。");
             Require(
                 nations.ContainsKey(resident.NationId) && towns.TryGetValue(resident.SettlementId, out var home) &&
                 home.NationId == resident.NationId && CanTraverse(state.Tiles[IndexFor(resident.X, resident.Y)],
-                    resident.TravelMode, resident.Race), "居民归属或位置无效。");
+                    carrier?.TravelMode ?? resident.TravelMode, carrier?.Race ?? resident.Race), "居民归属或位置无效。");
             Require(
                 resident.ArmyId == 0 || (armies.TryGetValue(resident.ArmyId, out var army) &&
                                          army.NationId == resident.NationId), "居民军队引用无效。");
@@ -296,7 +322,6 @@ public sealed partial class WorldEngine
                 ValidateFactV2(fact, state.Tick, state.Width, state.Height);
         }
 
-        ValidateSocietyState(state);
         ValidateConflicts(state);
         foreach (var town in state.Settlements)
             Require(

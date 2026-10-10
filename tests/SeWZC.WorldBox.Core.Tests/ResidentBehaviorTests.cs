@@ -213,9 +213,9 @@ public sealed class ResidentBehaviorTests
         fixture.Engine.Step(fixture.Resident.Value.MoveDurationTicks);
         restored.Step(restored.State.Residents[0].MoveDurationTicks);
 
-        Assert.Equal(next, fixture.Resident.Value.Y * 32 + fixture.Resident.Value.X);
+        Assert.Contains(next, fixture.Resident.Value.MovementRoute);
         Assert.Equal(fixture.Engine.ExportJson(), restored.ExportJson());
-        Assert.Equal(2, goal.NavigationRouteOffset);
+        Assert.True(fixture.Resident.Value.Agent.Goal.NavigationRouteOffset > goal.NavigationRouteOffset);
     }
 
     /// <summary>已规划路线的下一格被切断后重新观察，不能穿过新障碍。</summary>
@@ -245,12 +245,11 @@ public sealed class ResidentBehaviorTests
         var fixture = Prepare();
         SetJourney(fixture, 10, 10, targetX, 10);
         for (var x = 10; x <= 15; x++)
-            fixture.Engine.Tiles[11 * 32 + x].Replace(fixture.Engine.Tiles[11 * 32 + x].Value.WithRoadLevel(1));
+            fixture.Engine.Tiles[11 * 32 + x].Replace(fixture.Engine.Tiles[11 * 32 + x].Value.WithRoadLevel(2));
 
         fixture.Engine.Step();
 
-        Assert.Equal(10, fixture.Resident.Value.X);
-        Assert.Equal(11, fixture.Resident.Value.Y);
+        Assert.Equal(11 * 32 + 10, fixture.Resident.Value.MovementRoute[1]);
         Assert.Equal(1, fixture.Resident.Value.MoveDurationTicks);
     }
 
@@ -266,8 +265,7 @@ public sealed class ResidentBehaviorTests
 
         fixture.Engine.Step();
 
-        Assert.Equal(10, fixture.Resident.Value.X);
-        Assert.Equal(11, fixture.Resident.Value.Y);
+        Assert.Equal(11 * 32 + 10, fixture.Resident.Value.MovementRoute[1]);
     }
 
     /// <summary>熟路被地形编辑切断后使用当前可行路径，不能盲从记忆。</summary>
@@ -281,8 +279,8 @@ public sealed class ResidentBehaviorTests
 
         fixture.Engine.Step();
 
-        Assert.Equal(11, fixture.Resident.Value.X);
-        Assert.Equal(10, fixture.Resident.Value.Y);
+        Assert.Equal(10 * 32 + 11, fixture.Resident.Value.MovementRoute[1]);
+        Assert.DoesNotContain(11 * 32 + 10, fixture.Resident.Value.MovementRoute);
     }
 
     /// <summary>实际抵达前只记住出发地，不把逻辑目的地提前当作熟路。</summary>
@@ -601,7 +599,8 @@ public sealed class ResidentBehaviorTests
         fixture.Engine.Step();
 
         Assert.Equal(AgentGoalKind.Rest, fixture.Resident.Value.Agent.Goal.Kind);
-        Assert.Equal(ResidentActivity.Resting, fixture.Resident.Value.Activity);
+        Assert.Equal(fixture.Engine.GetResidentHome(fixture.ResidentId)!.Id, fixture.Resident.Value.Agent.Goal.TargetEntityId);
+        Assert.NotEqual(ResidentActivity.Working, fixture.Resident.Value.Activity);
     }
 
     /// <summary>患者前往眼前运营的医疗点，医疗点停用时改回家休养。</summary>
@@ -645,8 +644,9 @@ public sealed class ResidentBehaviorTests
         fixture.Engine.Step();
 
         Assert.Equal(AgentGoalKind.Rest, fixture.Resident.Value.Agent.Goal.Kind);
-        Assert.Equal(enabled ? clinicId : 0, fixture.Resident.Value.Agent.Goal.TargetEntityId);
-        Assert.Equal(enabled ? 14 : 16, fixture.Resident.Value.Agent.Goal.TargetX);
+        var home = fixture.Engine.GetResidentHome(fixture.ResidentId)!;
+        Assert.Equal(enabled ? clinicId : home.Id, fixture.Resident.Value.Agent.Goal.TargetEntityId);
+        Assert.Equal(enabled ? 14 : home.X, fixture.Resident.Value.Agent.Goal.TargetX);
     }
 
     /// <summary>养伤期间保持休养，身体恢复到安全水平后才重新安排工作。</summary>

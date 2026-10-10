@@ -119,8 +119,10 @@ public sealed partial class WorldEngine
         var rules = Rules;
         if (!InventoryTransfer.HasSupplies(warehouse, person.Profession, rules.Hunger, rules.Thirst))
             return new InventoryTransfer(inventory, warehouse);
+        var household = HouseholdSupplyReserve(person);
         return InventoryTransfer.Provision(inventory, warehouse, home.Population, person.Profession,
-            rules.Hunger, rules.Thirst, TravelReserve(person), WaterReserve(person), FoodUse(person), WaterUse(person));
+            rules.Hunger, rules.Thirst, TravelReserve(person) + household.Food, WaterReserve(person) + household.Water,
+            FoodUse(person), WaterUse(person));
     }
 
     private void RefillDailyWater(StateReference<Resident> person)

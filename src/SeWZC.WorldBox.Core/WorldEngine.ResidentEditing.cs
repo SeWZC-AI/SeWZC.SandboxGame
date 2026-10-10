@@ -112,6 +112,7 @@ public sealed partial class WorldEngine
                 BeginAgentMission(edited, missionHome);
             Reindex();
             InitializeSociety();
+            SynchronizeResidentRescues();
             RefreshTotals();
         }
 
@@ -185,14 +186,24 @@ public sealed partial class WorldEngine
         }
 
         candidate = candidate.WithAgent(patch.Agent ?? agent);
+        if (candidate.X != original.X || candidate.Y != original.Y)
+        {
+            candidate = candidate with
+            {
+                FromX = candidate.X, FromY = candidate.Y, MoveStartedTick = state.Tick, MoveDurationTicks = 1,
+                MovementRoute = [], MovementCredit = 0, IsInsideHome = false, BedRestAfterRescue = false, CarriedByResidentId = 0,
+            };
+        }
 
         ValidateResidentV2(candidate, state.Tick, state.Width, state.Height);
         ValidateStoryReferences(candidate, state.NextId);
         if (isLive)
         {
+            var carrier = candidate.CarriedByResidentId == 0 ? null
+                : state.Residents.FirstOrDefault(person => person.Id == candidate.CarriedByResidentId);
             if (!Coordinates(candidate.X, candidate.Y, state.Width, state.Height) || !CanTraverse(
                     state.Tiles[candidate.Y * state.Width + candidate.X],
-                    candidate.TravelMode, candidate.Race))
+                    carrier?.TravelMode ?? candidate.TravelMode, carrier?.Race ?? candidate.Race))
                 throw new ArgumentException("居民必须位于可通行地格。");
             if (candidate.ArmyId != 0 &&
                 !state.Armies.Any(a => a.Id == candidate.ArmyId && a.NationId == candidate.NationId))
@@ -252,13 +263,12 @@ public sealed partial class WorldEngine
         }
 
         candidate = candidate with { Agent = candidate.Agent with { NextThinkTick = state.Tick } };
-        if (candidate.X != original.X || candidate.Y != original.Y)
-        {
-            candidate = candidate with
-            {
-                FromX = candidate.X, FromY = candidate.Y, MoveStartedTick = state.Tick, MoveDurationTicks = 1,
-            };
-        }
+        if (patch.Agent is not null || candidate.Profession != original.Profession
+            || candidate.SettlementId != original.SettlementId || candidate.X != original.X || candidate.Y != original.Y)
+            candidate = candidate with { Agent = candidate.Agent with { DailyPlan = null } };
+        if (candidate.SettlementId != original.SettlementId)
+            candidate = candidate with { HomeBuildingId = 0, IsInsideHome = false, BedRestAfterRescue = false, CarriedByResidentId = 0 };
+
 
         var startMission = isLive && patch.Agent is not null &&
                            candidate.Agent.Goal.Kind is AgentGoalKind.DeliverMessage or AgentGoalKind.Trade

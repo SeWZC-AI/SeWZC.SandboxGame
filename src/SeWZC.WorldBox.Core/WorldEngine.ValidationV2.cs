@@ -78,6 +78,27 @@ public sealed partial class WorldEngine
             Coordinates(person.X, person.Y, width, height) && Coordinates(person.FromX, person.FromY, width, height) &&
             person.MoveStartedTick >= 0 && person.MoveStartedTick <= tick &&
             person.MoveDurationTicks is >= 1 and <= 100, "移动位置或时间无效。");
+        CheckV2(Number(person.MovementCredit, 0, .999999999)
+                && !person.MovementRoute.IsDefault
+                && person.MovementRoute.Length <= ResidentMovementRules.MaximumTilesPerTick + 1
+                && person.MovementRoute.All(index => index >= 0 && index < width * height), "移动余量或路线无效。");
+        if (!person.MovementRoute.IsEmpty)
+        {
+            CheckV2(person.MovementRoute.Length >= 2 && person.MovementRoute[0] == person.FromY * width + person.FromX
+                    && person.MovementRoute[^1] == person.Y * width + person.X, "移动路线与起终点不一致。");
+            for (var position = 1; position < person.MovementRoute.Length; position++)
+            {
+                var before = person.MovementRoute[position - 1];
+                var after = person.MovementRoute[position];
+                CheckV2(Math.Abs(before % width - after % width) + Math.Abs(before / width - after / width) == 1,
+                    "移动路线必须经过相邻地格。");
+            }
+        }
+        CheckV2(person.HomeBuildingId is >= 0 and < 2_000_000_000
+                && person.CarriedByResidentId is >= 0 and < 2_000_000_000
+                && person.CarriedByResidentId != person.Id
+                && (!person.IsInsideHome || person.HomeBuildingId != 0)
+                && (!person.BedRestAfterRescue || person.IsInsideHome), "住所或救助状态无效。");
         CheckV2(
             ResourceStock.Kinds.All(kind => Number(person.Inventory.Get(kind), 0, 1_000_000)), "背包数值无效。");
         CheckV2(Enum.IsDefined(person.TravelMode) && (person.TravelMode != TravelMode.Aircraft ||
@@ -96,6 +117,20 @@ public sealed partial class WorldEngine
                 "白天目标只能在夜间作息中暂存。");
             ValidateResidentV2(person with { Agent = agent with { Goal = daytime, DaytimeGoal = null } }, tick, width,
                 height);
+        }
+        if (agent.DailyPlan is { } plan)
+        {
+            CheckV2(plan.PlannedTick >= 0 && plan.PlannedTick <= tick
+                    && plan.ReturnHomeTick >= 0 && plan.ReturnHomeTick <= tick + SimulationTime.TicksPerDay
+                    && plan.FoodReviewTick >= plan.PlannedTick && plan.FoodReviewTick <= tick + 2 * SimulationTime.TicksPerDay
+                    && plan.WaterReviewTick >= plan.PlannedTick && plan.WaterReviewTick <= tick + 2 * SimulationTime.TicksPerDay
+                    && plan.RestReviewTick >= plan.PlannedTick && plan.RestReviewTick <= tick + 2 * SimulationTime.TicksPerDay,
+                "日常安排时间无效。");
+            if (plan.WorkGoal is { } work)
+            {
+                CheckV2(DailyWorkGoal(work.Kind), "可重复任务必须是日常劳动。");
+                ValidateResidentV2(person with { Agent = agent with { Goal = work, DaytimeGoal = null, DailyPlan = null } }, tick, width, height);
+            }
         }
 
         CheckV2(!agent!.FamiliarTiles.IsDefault && agent.FamiliarTiles.Length <= AgentState.MaximumFamiliarTiles

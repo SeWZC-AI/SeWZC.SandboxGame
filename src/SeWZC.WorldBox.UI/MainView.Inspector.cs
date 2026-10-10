@@ -773,6 +773,7 @@ public sealed partial class MainView
             AgentGoalKind.Gather => "采集资源",
             AgentGoalKind.Work => "生产劳动",
             AgentGoalKind.Rest => "休息恢复",
+            AgentGoalKind.Rescue => "背负送回住宅救助",
             AgentGoalKind.Flee => "逃离危险",
             AgentGoalKind.Socialize => "交流消息",
             AgentGoalKind.DeliverMessage => "传递消息",

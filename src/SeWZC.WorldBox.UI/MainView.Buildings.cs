@@ -401,20 +401,25 @@ public sealed partial class MainView
             return;
         }
 
-        if (kind.HasValue && town is not null)
+        if (kind.HasValue && (town is not null || kind == AgentGoalKind.Rest))
         {
+            var dwelling = kind == AgentGoalKind.Rest ? _engine.GetResidentHome(id) : null;
             mind = mind with
             {
+                DaytimeGoal = null,
                 Goal = new AgentGoal
                 {
                     Kind = kind.Value,
-                    TargetX = town.X,
-                    TargetY = town.Y,
-                    TargetSettlementId = town.Id,
+                    TargetX = kind == AgentGoalKind.Rest ? dwelling?.X ?? person.X : town!.X,
+                    TargetY = kind == AgentGoalKind.Rest ? dwelling?.Y ?? person.Y : town!.Y,
+                    TargetEntityId = dwelling?.Id ?? 0,
+                    TargetSettlementId = person.SettlementId,
                     StartedTick = _engine.State.Tick,
                     ReviewTick = _engine.State.Tick + 48,
                     PlayerDirected = true,
-                    Reason = kind == AgentGoalKind.Rest ? "玩家安排返回家园休息" : "玩家安排返回家园交付物资",
+                    Reason = kind == AgentGoalKind.Rest
+                        ? dwelling is not null ? "玩家安排返回住宅休息" : "玩家安排在当地露宿休息"
+                        : "玩家安排返回家园交付物资",
                 },
             };
         }

@@ -80,13 +80,13 @@ public sealed class ImmutableWorldTests
         town.Replace(town.Value.WithResources(town.Value.Resources with { Food = 7, Water = 3 }));
         var middle = fixture.Engine.State;
         town.Replace(town.Value.WithResources(town.Value.Resources with { Food = 5 }));
-        town.Replace(town.Value with { Housing = 100 });
+        town.Replace(town.Value with { MaxClaimRadius = 10 });
         Assert.Equal(5, town.Value.Resources.Food);
         var current = fixture.Engine.Settlements.CaptureSnapshot().Single();
 
         Assert.Equal(7, middle.Settlements.Single().Resources.Food);
         Assert.Equal(5, current.Resources.Food);
-        Assert.Equal(100, current.Housing);
+        Assert.Equal(10, current.MaxClaimRadius);
         Assert.Equal(3, current.Resources.Water);
         Assert.Equal(5, fixture.Engine.State.Settlements.Single().Resources.Food);
         Assert.Equal(Serialize(before), Serialize(WorldEngine.FromSnapshot(before).State));

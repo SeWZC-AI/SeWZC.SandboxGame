@@ -130,7 +130,7 @@ public sealed class ResidentEnduranceTests
     /// <summary>六岁以下不能通过玩家探索命令出门，六岁可以实际移动。</summary>
     [Theory]
     [InlineData(5.99, 16)]
-    [InlineData(6, 17)]
+    [InlineData(6, 18)]
     public void Outdoor_age_limit_applies_to_actual_movement(double age, int expectedX)
     {
         var fixture = DirectedWorld(age, AgentGoalKind.Explore, 20, 16);

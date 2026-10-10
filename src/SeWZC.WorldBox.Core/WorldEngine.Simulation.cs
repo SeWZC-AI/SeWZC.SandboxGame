@@ -48,7 +48,9 @@ public sealed partial class WorldEngine
                 if (SimulationTick % SimulationTime.TicksPerMonth == 0)
                     RefreshTerritoryClaims();
                 UpdateArmies();
+                AssignResidentHomes();
                 UpdateResidentNeeds();
+                SynchronizeResidentRescues();
                 ArchiveDeadResidents();
                 Reindex();
                 foreach (var settlement in Settlements.Where(s => _citizens[s.Value.Id].Count == 0).ToArray())
@@ -71,6 +73,7 @@ public sealed partial class WorldEngine
 
     private void UpdateResidents()
     {
+        ShareHouseholdSupplies();
         var rules = Rules;
         var tick = SimulationTick;
         var tiles = Tiles;
@@ -212,7 +215,8 @@ public sealed partial class WorldEngine
                     p.Value.Age >= 18 && p.Value.Age < (p.Value.Race == RaceKind.Elf ? 100 : 55) && p.Value.Health >= 60
                     && p.Value.Hunger < 30 && (!Rules.Thirst || p.Value.Thirst < 30) && p.Value.SicknessTicks == 0
                     && p.Value.ArmyId == 0 && p.Value.Agent.DestinationSettlementId == 0
-                    && Distance(p.Value.X, p.Value.Y, town.Value.X, town.Value.Y) <= 1 && Walkable(p.Value.X, p.Value.Y, p.Value.Race)
+                    && (p.Value.IsInsideHome || Distance(p.Value.X, p.Value.Y, town.Value.X, town.Value.Y) <= 1)
+                    && Walkable(p.Value.X, p.Value.Y, p.Value.Race)
                     && SimulationTick - p.Value.MoveStartedTick >= p.Value.MoveDurationTicks)
                 .ToArray();
             // 已返家的家庭可用随身口粮抚育下一代；不要求所有食物先积存在公共仓库，也不读取远处背包。

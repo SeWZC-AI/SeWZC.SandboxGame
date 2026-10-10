@@ -137,22 +137,22 @@ public sealed class AgentGoalTests
         Assert.Equal(16, before.X);
         Assert.Empty(before.Agent.Goal.NavigationVisited);
         Assert.Equal(0, before.Agent.Fatigue);
-        Assert.Equal(17, moved.X);
+        Assert.Equal(18, moved.X);
         Assert.Equal(16, moved.Y);
         Assert.Equal(16, moved.FromX);
         Assert.Equal(16, moved.FromY);
         Assert.Equal(1, moved.MoveStartedTick);
-        Assert.Equal(2, moved.MoveDurationTicks);
-        Assert.Equal(2, moved.Agent.Goal.NavigationBestDistance);
+        Assert.Equal(1, moved.MoveDurationTicks);
+        Assert.Equal(1, moved.Agent.Goal.NavigationBestDistance);
         Assert.Empty(moved.Agent.Goal.NavigationVisited);
-        Assert.Equal(ResidentNeedsRules.WalkingCost, ResidentNeedsRules.StaminaValue(before) - ResidentNeedsRules.StaminaValue(moved), 10);
+        Assert.Equal(2 * ResidentNeedsRules.WalkingCost, ResidentNeedsRules.StaminaValue(before) - ResidentNeedsRules.StaminaValue(moved), 10);
         Assert.Equal(ResidentActivity.Wandering, moved.Activity);
 
         fixture.Engine.Step();
         var waiting = fixture.Engine.State.Residents[0];
-        Assert.Equal(moved.X, waiting.X);
-        Assert.Equal(moved.Agent.Goal, waiting.Agent.Goal);
-        Assert.Equal(moved.Agent.Fatigue, waiting.Agent.Fatigue);
+        Assert.True(waiting.X > moved.X);
+        Assert.Equal(moved.MoveStartedTick + moved.MoveDurationTicks, waiting.MoveStartedTick);
+        Assert.Equal(moved.X, waiting.FromX);
     }
 
     /// <summary>新目的地清除旧路线和受阻进度，但保留任务依据。</summary>

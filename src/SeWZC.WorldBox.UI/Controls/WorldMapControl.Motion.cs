@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Collections.Immutable;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -200,6 +201,9 @@ public sealed partial class WorldMapControl
         ClearMapSelection();
     }
 
+    internal Point ArmyPresentationPosition(Army army, double simulationTime) =>
+        _armyMotion.TryGetValue(army.Id, out var motion) ? motion.Position(simulationTime) : new Point(army.X, army.Y);
+
     private void CaptureMotionSnapshots()
     {
         if (Engine is null)
@@ -223,10 +227,17 @@ public sealed partial class WorldMapControl
         _motionRevision++;
         foreach (var resident in state.Residents)
             Capture(_residentMotion, resident.Id, resident.X, resident.Y,
-                resident.FromX, resident.FromY, resident.MoveStartedTick, resident.MoveDurationTicks);
+                resident.FromX, resident.FromY, resident.MoveStartedTick, resident.MoveDurationTicks, resident.MovementRoute);
         foreach (var army in state.Armies)
+        {
+            var commander = Engine.GetResident(army.CommanderId);
+            var route = commander is not null && commander.X == army.X && commander.Y == army.Y
+                && commander.FromX == army.FromX && commander.FromY == army.FromY
+                && commander.MoveStartedTick == army.MoveStartedTick && commander.MoveDurationTicks == army.MoveDurationTicks
+                ? commander.MovementRoute : default;
             Capture(_armyMotion, army.Id, army.X, army.Y,
-                army.FromX, army.FromY, army.MoveStartedTick, army.MoveDurationTicks);
+                army.FromX, army.FromY, army.MoveStartedTick, army.MoveDurationTicks, route);
+        }
         RemoveExpired(_residentMotion);
         RemoveExpired(_armyMotion);
         if (SelectedResidentId is { } selected && !_residentMotion.ContainsKey(selected))
@@ -237,20 +248,20 @@ public sealed partial class WorldMapControl
         RequestMotionFrame();
 
         void Capture(Dictionary<int, EntityMotionTrack> tracks, int id, int x, int y,
-            int fromX, int fromY, long moveStartedTick, int moveDurationTicks)
+            int fromX, int fromY, long moveStartedTick, int moveDurationTicks, ImmutableArray<int> route = default)
         {
             var target = new Point(x, y);
             if (!tracks.TryGetValue(id, out var track))
                 tracks[id] = track = new EntityMotionTrack(target);
             var displacement = Distance(track.Target, target);
             var editedPosition = sameTick && displacement > 0;
-            // 编辑传送须直接定位，避免人物横扫整张地图；仅对有界相邻移动插值。
-            var teleport = displacement > Math.Max(2, Math.Min(6, elapsedTicks * 2));
+            // 编辑传送直接定位；日常移动按提交的相邻地格轨迹插值。
+            var teleport = route.IsDefaultOrEmpty && displacement > Math.Max(2, Math.Min(6, elapsedTicks * 2));
             var remainingTicks = Math.Max(0, Math.Max(1, moveDurationTicks) - (state.Tick - moveStartedTick));
-            var committedStep = Math.Abs(x - fromX) + Math.Abs(y - fromY) == 1;
+            var committedStep = !route.IsDefaultOrEmpty || Math.Abs(x - fromX) + Math.Abs(y - fromY) == 1;
             track.Update(new Point(fromX, fromY), target, moveStartedTick, moveDurationTicks, reset || editedPosition ||
                 teleport ||
-                (displacement > 0 && (!committedStep || remainingTicks == 0)));
+                (displacement > 0 && (!committedStep || remainingTicks == 0)), route, state.Width);
             track.SeenRevision = _motionRevision;
         }
 
@@ -395,8 +406,15 @@ public sealed partial class WorldMapControl
 
     private void DrawResidentSelection(DrawingContext context)
     {
-        if (SelectedResidentId is not { } id || !TryGetResidentScreenPosition(id, out var point))
+        if (SelectedResidentId is not { } id)
             return;
+        if (!TryGetResidentScreenPosition(id, out var point))
+        {
+            if (Engine?.GetResident(id) is not { } person || (!person.IsInsideHome && person.CarriedByResidentId == 0))
+                return;
+            var position = ResidentMapPosition(id, person.X, person.Y);
+            point = ToScreen(position.X, position.Y);
+        }
         var radius = Math.Max(6, _zoom * 3.5);
         context.DrawEllipse(null, SelectionPen, point, radius, radius);
         context.DrawLine(SelectionPen, new Point(point.X, point.Y - radius - 5),

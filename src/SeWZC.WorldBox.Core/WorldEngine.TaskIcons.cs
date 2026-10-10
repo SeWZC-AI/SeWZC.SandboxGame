@@ -21,6 +21,7 @@ public sealed partial class WorldEngine
             AgentGoalKind.Gather => ResidentTaskIcon.Gather,
             AgentGoalKind.Work when facility is { IsUpgrading: true } => ResidentTaskIcon.Upgrade,
             AgentGoalKind.Rest or AgentGoalKind.Sleep => ResidentTaskIcon.Rest,
+            AgentGoalKind.Rescue => ResidentTaskIcon.Heal,
             AgentGoalKind.Flee => ResidentTaskIcon.Flee,
             AgentGoalKind.Socialize => ResidentTaskIcon.Talk,
             AgentGoalKind.DeliverMessage or AgentGoalKind.Petition => ResidentTaskIcon.Message,

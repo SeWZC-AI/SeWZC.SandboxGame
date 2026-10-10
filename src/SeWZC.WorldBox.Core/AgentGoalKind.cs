@@ -68,4 +68,7 @@ public enum AgentGoalKind
 
     /// <summary>夜间返家或在途中睡眠。</summary>
     Sleep,
+
+    /// <summary>把昏迷或尚不能自主出门的居民送回住所。</summary>
+    Rescue,
 }
