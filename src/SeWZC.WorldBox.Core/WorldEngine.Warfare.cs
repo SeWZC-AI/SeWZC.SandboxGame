@@ -235,43 +235,6 @@ public sealed partial class WorldEngine
                 }
             }
 
-            foreach (var soldier in soldiers)
-            {
-                if (Rules.Thirst && Distance(soldier.Value.X, soldier.Value.Y, army.Value.X, army.Value.Y) <= 2 &&
-                    soldier.Value.Inventory.Water < .025)
-                {
-                    var water = Math.Min(army.Value.WaterSupplies, .125);
-                    army.Replace(army.Value with { WaterSupplies = army.Value.WaterSupplies - (water) });
-                    soldier.Replace(soldier.Value.WithInventory(soldier.Value.Inventory with { Water = soldier.Value.Inventory.Water + water }));
-                }
-
-                DrinkCarriedWater(soldier);
-                if (!Rules.Hunger)
-                    soldier.Replace(soldier.Value.WithHunger(0));
-                else if (Distance(soldier.Value.X, soldier.Value.Y, army.Value.X, army.Value.Y) <= 2 &&
-                         army.Value.Supplies >= 0.06 / SimulationTime.TicksPerDay)
-                {
-                    army.Replace(army.Value with { Supplies = army.Value.Supplies - (0.06 / SimulationTime.TicksPerDay) });
-                    soldier.Replace(soldier.Value.WithHunger(Math.Max(0, soldier.Value.Hunger - 3d / SimulationTime.TicksPerDay)));
-                }
-                else if (soldier.Value.Inventory.Food >= 0.05 / SimulationTime.TicksPerDay)
-                {
-                    soldier.Replace(soldier.Value with
-                    {
-                        Inventory = soldier.Value.Inventory with
-                        {
-                            Food = soldier.Value.Inventory.Food - 0.05 / SimulationTime.TicksPerDay,
-                        },
-                        Hunger = Math.Max(0, soldier.Value.Hunger - 3d / SimulationTime.TicksPerDay),
-                    });
-                }
-                else
-                    soldier.Replace(soldier.Value.WithHunger(Math.Min(100, soldier.Value.Hunger + .8 / SimulationTime.TicksPerDay)));
-
-                if (Rules.Hunger && soldier.Value.Hunger > 80)
-                    DamageResident(soldier, .30 / SimulationTime.TicksPerDay, DeathCause.Starvation);
-            }
-
             var depot = Settlements.FirstOrDefault(s =>
                 s.Value.NationId == army.Value.NationId && Distance(s.Value.X, s.Value.Y, army.Value.X, army.Value.Y) <= 1);
             if (depot is not null && army.Value.Supplies < soldiers.Length * 5)
@@ -323,10 +286,12 @@ public sealed partial class WorldEngine
                 continue;
             }
 
-            soldiers = soldiers.Where(soldier => ResidentNeedsRules.CanWork(soldier.Value)).ToArray();
+            soldiers = soldiers.Where(soldier => ResidentNeedsRules.CanWork(soldier.Value)
+                                                     && soldier.Value.Activity != ResidentActivity.Eating).ToArray();
             if (soldiers.Length == 0)
             {
-                army.Replace(army.Value with { Status = "士兵昏迷，等待恢复行动" });
+                army.Replace(army.Value with { Status = Residents.Any(r => r.Value.ArmyId == army.Value.Id && r.Value.Activity == ResidentActivity.Eating)
+                    ? "士兵补充口粮和饮水" : "士兵昏迷，等待恢复行动" });
                 continue;
             }
             commander = soldiers.FirstOrDefault(soldier => soldier.Value.Id == army.Value.CommanderId) ?? soldiers[0];

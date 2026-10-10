@@ -5,6 +5,11 @@ namespace SeWZC.WorldBox.Core;
 public sealed partial class WorldEngine
 {
     private readonly Dictionary<int, (double Food, double Water, int Adults)> _householdSupplyNeeds = [];
+    private readonly Dictionary<int, List<StateReference<Resident>>> _householdCarers = [];
+
+    private bool HasHouseholdCarer(Resident person) => person.IsInsideHome
+        && _householdCarers.TryGetValue(person.HomeBuildingId, out var carers)
+        && carers.Any(carer => carer.Value.Health > 0 && !ResidentNeedsRules.IsUnconscious(carer.Value));
 
     private static bool NeedsHouseholdCare(Resident person) => person.Age < ResidentNeedsRules.MinimumOutdoorAge
         || ResidentNeedsRules.IsUnconscious(person);
@@ -12,7 +17,7 @@ public sealed partial class WorldEngine
     private void ShareHouseholdSupplies()
     {
         _householdSupplyNeeds.Clear();
-        var donors = new Dictionary<int, List<StateReference<Resident>>>();
+        _householdCarers.Clear();
         foreach (var reference in Residents)
         {
             var person = reference.Value;
@@ -26,8 +31,8 @@ public sealed partial class WorldEngine
                 need = (need.Food, need.Water, need.Adults + 1);
                 if (person.IsInsideHome)
                 {
-                    if (!donors.TryGetValue(person.HomeBuildingId, out var atHome))
-                        donors[person.HomeBuildingId] = atHome = [];
+                    if (!_householdCarers.TryGetValue(person.HomeBuildingId, out var atHome))
+                        _householdCarers[person.HomeBuildingId] = atHome = [];
                     atHome.Add(reference);
                 }
             }
@@ -37,7 +42,7 @@ public sealed partial class WorldEngine
         {
             var person = reference.Value;
             if (person.Health <= 0 || !person.IsInsideHome || !NeedsHouseholdCare(person)
-                || !donors.TryGetValue(person.HomeBuildingId, out var atHome))
+                || !_householdCarers.TryGetValue(person.HomeBuildingId, out var atHome))
                 continue;
             var inventory = person.Inventory;
             foreach (var donor in atHome)

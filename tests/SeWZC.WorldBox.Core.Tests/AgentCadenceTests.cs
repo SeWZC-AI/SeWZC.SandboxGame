@@ -212,7 +212,7 @@ public sealed class AgentCadenceTests
 
         fixture.Engine.Step();
 
-        Assert.Equal(0, fixture.Resident.Value.Thirst);
+        Assert.InRange(fixture.Resident.Value.Thirst, 0, ResidentNeedsRules.DrinkThreshold);
         Assert.Equal(0, fixture.Engine.AvailableWater(16, 16), 8);
         if (productive)
         {
@@ -411,7 +411,7 @@ public sealed class AgentCadenceTests
 
         fixture.Engine.Step();
 
-        Assert.Equal(.1 - .0125 / SimulationTime.TicksPerDay + (draws ? .3 : 0), fixture.Resident.Value.Inventory.Water, 8);
+        Assert.Equal(.1 + (draws ? .3 : 0), fixture.Resident.Value.Inventory.Water, 8);
         Assert.Equal(draws ? .3 : 0, fixture.Engine.Tiles[17 * 32 + 16].Value.WaterDrawn, 8);
     }
 

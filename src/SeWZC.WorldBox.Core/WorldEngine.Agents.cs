@@ -122,6 +122,8 @@ public sealed partial class WorldEngine
                         ObserveAgentEnvironment(reference);
                     continue;
                 }
+                if (person.Activity == ResidentActivity.Eating)
+                    continue;
 
                 var arrivedHome = Distance(person.X, person.Y, home.Value.X, home.Value.Y) <= 1
                                   && Walkable(person.X, person.Y, person.Race)

@@ -130,6 +130,21 @@ public sealed partial class WorldEngine
                 travelMode = unloaded.TravelMode;
                 warehouses[home.Position] = supplied.Warehouse;
             }
+            else if (person.Health > 0 && person.ArmyId != 0
+                     && tick - person.MoveStartedTick >= person.MoveDurationTicks
+                     && Armies.FirstOrDefault(a => a.Value.Id == person.ArmyId) is { } army
+                     && Distance(person.X, person.Y, army.Value.X, army.Value.Y) <= 2)
+            {
+                var food = rules.Hunger
+                    ? Math.Min(army.Value.Supplies, Math.Max(0, FoodUse(person) / ResidentNeedsRules.MealsPerDay - inventory.Food)) : 0;
+                var waterSupply = rules.Thirst
+                    ? Math.Min(army.Value.WaterSupplies, Math.Max(0, ResidentNeedsRules.WaterPerDrink(person.Age) - inventory.Water)) : 0;
+                inventory = inventory with { Food = inventory.Food + food, Water = inventory.Water + waterSupply };
+                army.Replace(army.Value with
+                {
+                    Supplies = army.Value.Supplies - food, WaterSupplies = army.Value.WaterSupplies - waterSupply,
+                });
+            }
 
             var age = rules.Aging ? Math.Min(1000, person.Age + 1d / SimulationTime.TicksPerYear) : person.Age;
             var profession = person.Profession == Profession.Child && age >= ResidentNeedsRules.MinimumWorkAge
@@ -159,21 +174,26 @@ public sealed partial class WorldEngine
                   * (.5 + person.MagicTalent / 100)
                   * (HasResearch(person.SettlementId, Advancement.ManaAttunement) ? 1.5 : 1);
             var hasHome = _settlements.ContainsKey(person.SettlementId);
-            var waterUse = WaterUse(age, tile.Value) / SimulationTime.TicksPerDay;
-            var water = hasHome && person.ArmyId == 0 && person.Health > 0 && rules.Thirst
-                        && inventory.Water < waterUse
+            var thirst = rules.Thirst
+                ? person.Thirst + ResidentNeedsRules.ThirstGrowthPerDay(age, tile.Value) / SimulationTime.TicksPerDay : 0;
+            var hunger = rules.Hunger ? person.Hunger + ResidentNeedsRules.HungerPerDay / SimulationTime.TicksPerDay : 0;
+            var assistedFeeding = HasHouseholdCarer(person);
+            var waterPerDrink = ResidentNeedsRules.WaterPerDrink(age);
+            var water = rules.Thirst && thirst >= ResidentNeedsRules.DrinkThreshold && inventory.Water < waterPerDrink
+                        && person.CanConsumeSupplies(tick, person.Activity, ResidentNeedsRules.IsUnconscious(person),
+                            assistedFeeding, hunger, thirst)
                 ? WithdrawWater(person.X, person.Y, person.MoveStartedTick, person.MoveDurationTicks,
-                    carriedWater, Index(person.X, person.Y), waterUse - inventory.Water)
+                    carriedWater, Index(person.X, person.Y), waterPerDrink - inventory.Water)
                 : 0;
-            var consumeNeeds = person.ArmyId == 0 && hasHome;
             var socialGrowth = hasHome && (tick + person.Id) % SimulationTime.TicksPerDay == 0 ? .07 : 0;
             var arrivedTile = hasHome && person.ArmyId == 0 && person.Health > 0
                               && tick - person.MoveStartedTick == person.MoveDurationTicks
                 ? Index(person.X, person.Y)
                 : -1;
             return person.CalculateDay(rules, tile.Value, tick, profession, infectionDuration,
-                manaRecovery / SimulationTime.TicksPerDay, consumeNeeds, socialGrowth, water, arrivedTile,
-                inventory, agent, 1d / SimulationTime.TicksPerDay).Apply(person, travelMode);
+                manaRecovery / SimulationTime.TicksPerDay, true, socialGrowth, water, arrivedTile,
+                inventory, agent, 1d / SimulationTime.TicksPerDay,
+                assistedFeeding).Apply(person, travelMode);
         }
     }
 

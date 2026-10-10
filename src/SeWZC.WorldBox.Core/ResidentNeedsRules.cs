@@ -1,17 +1,45 @@
 namespace SeWZC.WorldBox.Core;
 
-/// <summary>居民睡眠、体力及成长的可配置规则。</summary>
+/// <summary>居民饮食、睡眠、体力及成长的可配置规则。</summary>
 public static class ResidentNeedsRules
 {
     /// <summary>需求状态采用的百分比上限。</summary>
     public const double MaximumPercent = 100;
+    /// <summary>普通成年人断粮至失能的日数。</summary>
+    public const double FoodDeprivationDays = 5;
+    /// <summary>普通环境下成年人断水至失能的日数。</summary>
+    public const double WaterDeprivationDays = 2;
+    /// <summary>普通环境中仍需实际饮用的基础水量比例。</summary>
+    public const double NormalWaterRequirementRatio = .5;
+    /// <summary>每日正常进食次数。</summary>
+    public const int MealsPerDay = 2;
+    /// <summary>每日正常饮水次数。</summary>
+    public const int DrinksPerDay = 3;
+    /// <summary>每日基础饥饿增量。</summary>
+    public const double HungerPerDay = MaximumPercent / FoodDeprivationDays;
+    /// <summary>普通环境每日基础口渴增量。</summary>
+    public const double ThirstPerDay = MaximumPercent / WaterDeprivationDays;
+    /// <summary>开始进食的饥饿程度。</summary>
+    public const double MealThreshold = HungerPerDay / MealsPerDay;
+    /// <summary>开始饮水的口渴程度。</summary>
+    public const double DrinkThreshold = ThirstPerDay / DrinksPerDay;
+    /// <summary>饥渴严重时可中断睡眠补充物资的程度。</summary>
+    public const double UrgentNutritionThreshold = 60;
+    /// <summary>饥饿耗尽后每缺粮一日的生命损伤。</summary>
+    public const double StarvationDamagePerDay = MaximumPercent / 2;
+    /// <summary>口渴耗尽后每缺水一日的生命损伤。</summary>
+    public const double DehydrationDamagePerDay = MaximumPercent;
+    /// <summary>每恢复一点实际体力增加的饥饿百分比，暂定比例。</summary>
+    public const double RecoveryHungerPerStamina = .05;
+    /// <summary>每恢复一点实际体力增加的口渴百分比，暂定比例。</summary>
+    public const double RecoveryThirstPerStamina = .1;
     /// <summary>普通人类的睡眠上限。</summary>
     public const double BaseSleepCapacity = 100;
     /// <summary>普通人类的体力上限。</summary>
     public const double BaseStaminaCapacity = 100;
     /// <summary>维持正常劳动效率所需的最低需求比例。</summary>
     public const double FullEfficiencyThreshold = .5;
-    /// <summary>昏迷后恢复行动所需的睡眠与体力比例。</summary>
+    /// <summary>昏迷后恢复行动所需的饮食、睡眠与体力储备比例。</summary>
     public const double ConsciousRecoveryThreshold = FullEfficiencyThreshold;
     /// <summary>普通人类能维持正常效率的连续清醒 tick 数。</summary>
     public const int NormalAwakeTicks = 16;
@@ -60,6 +88,11 @@ public static class ResidentNeedsRules
     /// <summary>个人差异的取样档数。</summary>
     private const int IndividualSteps = 20;
 
+    internal static double ThirstGrowthPerDay(double age, Tile? tile) => ThirstPerDay * WorldEngine.WaterUse(age, tile)
+        / (WorldEngine.WaterUse(age) * NormalWaterRequirementRatio);
+
+    internal static double WaterPerDrink(double age) => WorldEngine.WaterUse(age) * NormalWaterRequirementRatio / DrinksPerDay;
+
     /// <summary>计算居民的睡眠上限。</summary>
     /// <param name="person">居民。</param>
     public static double SleepCapacity(Resident person) => BaseSleepCapacity * SleepRaceFactor(person.Race) * IndividualFactor(person.Id, 0);
@@ -88,14 +121,17 @@ public static class ResidentNeedsRules
         * NeedEfficiency(person.Agent.Sleep / MaximumPercent, mental ? SleepMentalReduction : SleepPhysicalReduction)
         * NeedEfficiency(1 - person.Agent.Fatigue / MaximumPercent, mental ? StaminaMentalReduction : StaminaPhysicalReduction);
 
-    /// <summary>判断居民是否因睡眠或体力耗尽而不能行动。</summary>
+    /// <summary>判断居民是否因饮食、睡眠或体力耗尽而不能行动。</summary>
     /// <param name="person">居民。</param>
-    public static bool IsUnconscious(Resident person) => IsUnconscious(person.Agent, person.Activity);
+    public static bool IsUnconscious(Resident person) => IsUnconscious(person.Agent, person.Activity, person.Hunger, person.Thirst);
 
-    internal static bool IsUnconscious(AgentState agent, ResidentActivity activity) => agent.Sleep <= 0 || agent.Fatigue >= MaximumPercent
+    internal static bool IsUnconscious(AgentState agent, ResidentActivity activity, double hunger, double thirst) => agent.Sleep <= 0 || agent.Fatigue >= MaximumPercent
+        || hunger >= MaximumPercent - .000001 || thirst >= MaximumPercent - .000001
         || (activity == ResidentActivity.Unconscious
             && (agent.Sleep < ConsciousRecoveryThreshold * MaximumPercent
-                || agent.Fatigue > (1 - ConsciousRecoveryThreshold) * MaximumPercent));
+                || agent.Fatigue > (1 - ConsciousRecoveryThreshold) * MaximumPercent
+                || hunger > (1 - ConsciousRecoveryThreshold) * MaximumPercent
+                || thirst > (1 - ConsciousRecoveryThreshold) * MaximumPercent));
 
     /// <summary>判断居民是否达到劳动年龄且能够行动。</summary>
     /// <param name="person">居民。</param>

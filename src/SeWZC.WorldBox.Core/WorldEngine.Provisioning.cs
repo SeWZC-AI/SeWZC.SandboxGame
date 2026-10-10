@@ -125,34 +125,6 @@ public sealed partial class WorldEngine
             FoodUse(person), WaterUse(person));
     }
 
-    private void RefillDailyWater(StateReference<Resident> person)
-    {
-        var use = LocalWaterUse(person) / SimulationTime.TicksPerDay;
-        if (Rules.Thirst && person.Value.Inventory.Water < use &&
-            SimulationTick - person.Value.MoveStartedTick >= person.Value.MoveDurationTicks)
-            DrawWater(person, Index(person.Value.X, person.Value.Y), use - person.Value.Inventory.Water);
-    }
-
-    private void DrinkCarriedWater(StateReference<Resident> person)
-    {
-        if (!Rules.Thirst)
-        {
-            person.Replace(person.Value.WithThirst(0));
-            return;
-        }
-
-        RefillDailyWater(person);
-        var use = LocalWaterUse(person) / SimulationTime.TicksPerDay;
-        var drink = Math.Min(use, person.Value.Inventory.Water);
-        person.Replace(person.Value.WithInventory(person.Value.Inventory with { Water = person.Value.Inventory.Water - drink }));
-        person.Replace(person.Value.WithThirst(Math.Clamp(
-                person.Value.Thirst + (drink >= use - .000001
-                    ? -3d / SimulationTime.TicksPerDay
-                    : .6 * (use - drink) / WaterUse(person)), 0, 100)));
-        if (person.Value.Thirst > 95)
-            DamageResident(person, .25 / SimulationTime.TicksPerDay, DeathCause.Dehydration);
-    }
-
     /// <summary>计算此格当日扣除已取水量后的可打水量；淡水水域可为正无穷，普通陆地为零。</summary>
     /// <param name="x">横向地格坐标。</param>
     /// <param name="y">纵向地格坐标。</param>
@@ -260,7 +232,7 @@ public sealed partial class WorldEngine
         amount = Math.Min(amount, 1_000_000 - carriedWater);
         if (amount <= 0)
             return 0;
-        // 身体结算只领取不足一天的饮水，同一水源按居民顺序扣额，最后统一提交地格。
+        // 身体结算按一次饮水量领取，同一水源按居民顺序扣额，最后统一提交地格。
         if (_dailyDrinking && !fresh)
         {
             if (_dailyWaterVisits[source] != _dailyWaterVisit)
