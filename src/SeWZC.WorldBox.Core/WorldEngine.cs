@@ -157,6 +157,11 @@ public sealed partial class WorldEngine
 
     private StateReference<Resident>? FindLiveResident(int id)
     {
+        return LiveResidentsById().GetValueOrDefault(id);
+    }
+
+    private Dictionary<int, StateReference<Resident>> LiveResidentsById()
+    {
         if (_residentLookupRevision != Residents.MembershipRevision)
         {
             _residentLookup.Clear();
@@ -165,7 +170,7 @@ public sealed partial class WorldEngine
             _residentLookupRevision = Residents.MembershipRevision;
         }
 
-        return _residentLookup.GetValueOrDefault(id);
+        return _residentLookup;
     }
 
     private uint RandomUInt()
@@ -262,7 +267,19 @@ public sealed partial class WorldEngine
 
     private void ArchiveDeadResidents()
     {
-        foreach (var resident in Residents.Where(r => r.Value.Health <= 0).ToArray())
+        List<StateReference<Resident>>? deceased = null;
+        foreach (var resident in Residents)
+            if (resident.Value.Health <= 0)
+                (deceased ??= []).Add(resident);
+        // 先固定死亡名单，再按原顺序归档，保留事件、编号及死亡时记录的因果顺序。
+        if (deceased is not null)
+            foreach (var resident in deceased)
+                ArchiveResident(resident);
+
+        while (ArchivedResidents.Count > 256)
+            ArchivedResidents.RemoveAt(0);
+
+        void ArchiveResident(StateReference<Resident> resident)
         {
             resident.Replace(resident.Value.WithHealth(0));
             if (resident.Value.DeathCause == DeathCause.None)
@@ -287,9 +304,6 @@ public sealed partial class WorldEngine
             if (_citizens.TryGetValue(resident.Value.SettlementId, out var citizens))
                 citizens.Remove(resident);
         }
-
-        while (ArchivedResidents.Count > 256)
-            ArchivedResidents.RemoveAt(0);
     }
 
     private int FindWalkable(int x, int y, int radius, RaceKind race = RaceKind.Human)

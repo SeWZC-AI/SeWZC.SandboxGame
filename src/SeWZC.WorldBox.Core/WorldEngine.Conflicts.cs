@@ -17,7 +17,7 @@ public sealed partial class WorldEngine
     {
         if (SimulationTick % 12 != 0)
             return;
-        var residents = Residents.ToDictionary(r => r.Value.Id);
+        var residents = LiveResidentsById();
         Conflicts = Conflicts.RemoveAll(c =>
             (c.Stage == ConflictStage.Resolved && SimulationTick - c.LastChangedTick > 3 * SimulationTime.TicksPerYear)
             || !_settlements.ContainsKey(c.SettlementId));

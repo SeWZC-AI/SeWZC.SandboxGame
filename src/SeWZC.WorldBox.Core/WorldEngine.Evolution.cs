@@ -260,8 +260,13 @@ public sealed partial class WorldEngine
         {
             if (site.Kind != AgentFactKind.FoundingSite || site.LearnedTick >= SimulationTick)
                 continue;
-            var prior = home.Value.PublicKnowledge.FirstOrDefault(f =>
-                f.Kind == AgentFactKind.FoundingSite && f.SubjectId == site.SubjectId);
+            AgentFact? prior = null;
+            foreach (var known in home.Value.PublicKnowledge)
+                if (known.Kind == AgentFactKind.FoundingSite && known.SubjectId == site.SubjectId)
+                {
+                    prior = known;
+                    break;
+                }
             if (prior is not null && prior.ObservedTick >= site.ObservedTick)
                 continue;
             var delivered = site with { LearnedTick = SimulationTick, SourceResidentId = person.Value.Id };
@@ -278,8 +283,13 @@ public sealed partial class WorldEngine
             if (fact.LearnedTick >= SimulationTick || fact.Kind is not (AgentFactKind.SettlementLocation
                     or AgentFactKind.TradeExchange or AgentFactKind.DiplomaticNotice))
                 continue;
-            var old = home.Value.PublicKnowledge.FirstOrDefault(f =>
-                f.Kind == fact.Kind && f.SubjectId == fact.SubjectId && f.TargetNationId == fact.TargetNationId);
+            AgentFact? old = null;
+            foreach (var known in home.Value.PublicKnowledge)
+                if (known.Kind == fact.Kind && known.SubjectId == fact.SubjectId && known.TargetNationId == fact.TargetNationId)
+                {
+                    old = known;
+                    break;
+                }
             if (old is not null && old.ObservedTick >= fact.ObservedTick)
                 continue;
             var delivered = fact with { LearnedTick = SimulationTick, SourceResidentId = person.Value.Id };

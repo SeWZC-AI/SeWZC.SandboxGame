@@ -1,8 +1,48 @@
+using SeWZC.WorldBox.Core.Runtime;
+
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>居民基础生命状态的纯转换及伤害次序。</summary>
 public sealed class ResidentVitalsTests
 {
+    /// <summary>本步新感染不会继续传给下一位邻居，交换遍历顺序也只暴露于开始时的病例。</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void New_infections_do_not_spread_again_in_the_same_tick(bool reverseOrder)
+    {
+        var fixture = new WorldFixture();
+        fixture.Engine.ConfigureWorld(new WorldRules
+        {
+            Aging = false, Hunger = false, Thirst = false, Births = false,
+            Construction = false, Expansion = false, Research = false,
+            Migration = false, Secession = false, Wars = false,
+        }, false, false);
+        var person = fixture.Resident.Value with
+        {
+            Age = 25, Profession = Profession.Farmer, X = 16, Y = 17, FromX = 16, FromY = 17,
+            DiseaseImmuneUntilTick = 0, FrozenUntilTick = 100,
+            Agent = new AgentState { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal { ReviewTick = 100 } },
+        };
+        fixture.Resident.Replace(person with { SicknessTicks = 100 });
+        var exposed = new StateReference<Resident>(person with { Id = 900, X = 17, FromX = 17 });
+        var nextNeighbor = new StateReference<Resident>(person with { Id = 906, X = 18, FromX = 18 });
+        fixture.Engine.Residents.Add(reverseOrder ? nextNeighbor : exposed);
+        fixture.Engine.Residents.Add(reverseOrder ? exposed : nextNeighbor);
+        fixture.Engine.NextId = 1000;
+        fixture.Engine.SimulationTick = 5;
+        // 下一次感染判定为 3/100，确保本步实际产生一名新病例。
+        fixture.Engine.RandomState = 30;
+        var before = fixture.Engine.State;
+
+        fixture.Engine.Step();
+
+        Assert.True(exposed.Value.SicknessTicks > 0);
+        Assert.Equal(0, nextNeighbor.Value.SicknessTicks);
+        Assert.Equal(100, before.Residents[0].SicknessTicks);
+        Assert.All(before.Residents.Skip(1), resident => Assert.Equal(0, resident.SicknessTicks));
+    }
+
     /// <summary>身体字段结果与不可变实体转换一致，并能与后续动作合并而保留旧快照。</summary>
     [Theory]
     [InlineData(false, false)]
