@@ -1,195 +1,22 @@
-<UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-             xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels"
-             xmlns:views="using:SeWZC.WorldBox.UI.Views"
-             xmlns:controls="using:SeWZC.WorldBox.UI.Controls"
-             x:Class="SeWZC.WorldBox.UI.MainView" x:DataType="vm:MainViewModel" x:CompileBindings="True"
-             Background="#111E29" Focusable="True" d:DesignWidth="1440" d:DesignHeight="920" d:DataContext="{x:Static vm:DesignData.Main}">
-    <UserControl.Styles>
-        <Style Selector="Button.action">
-            <Setter Property="FontSize" Value="12" />
-            <Setter Property="Margin" Value="2,0" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
-        </Style>
-        <Style Selector="Button.icon">
-            <Setter Property="Width" Value="30" />
-            <Setter Property="Height" Value="30" />
-            <Setter Property="Padding" Value="7" />
-            <Setter Property="Margin" Value="2,0" />
-        </Style>
-        <Style Selector="Button.icon Path">
-            <Setter Property="Stroke" Value="#B8E9BC" />
-            <Setter Property="StrokeThickness" Value="1.8" />
-            <Setter Property="Width" Value="14" />
-            <Setter Property="Height" Value="14" />
-            <Setter Property="Stretch" Value="Uniform" />
-        </Style>
-        <Style Selector="Button.category">
-            <Setter Property="Padding" Value="3" />
-        </Style>
-        <Style Selector="Button.tool-slot">
-            <Setter Property="HorizontalAlignment" Value="Stretch" />
-            <Setter Property="Height" Value="44" />
-            <Setter Property="Padding" Value="3" />
-            <Setter Property="Margin" Value="2" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="6" />
-        </Style>
-    </UserControl.Styles>
-    <UserControl.Resources>
-        <Flyout x:Key="WorldMenuFlyout">
-            <StackPanel Spacing="6" MinWidth="180">
-                <Button Classes="action" Content="世界概览" Tag="overview" Click="OnWorldMenuClick" AutomationProperties.AutomationId="menu-overview" />
-                <Button Classes="action" Content="居民" Tag="residents" Click="OnWorldMenuClick" AutomationProperties.AutomationId="menu-residents" />
-                <Button Classes="action" Content="国家" Tag="nations" Click="OnWorldMenuClick" AutomationProperties.AutomationId="menu-nations" />
-                <Button Classes="action" Content="聚落" Tag="settlements" Click="OnWorldMenuClick" AutomationProperties.AutomationId="menu-settlements" />
-                <Button Classes="action" Content="玩法说明" Tag="guide" Click="OnWorldMenuClick" AutomationProperties.AutomationId="menu-guide" />
-                <Separator />
-                <Button Classes="action" Content="存档" Tag="storage" Click="OnWorldMenuClick" AutomationProperties.AutomationId="header-storage" />
-                <Button Classes="action" Content="规则" Tag="rules" Click="OnWorldMenuClick" AutomationProperties.AutomationId="header-rules" />
-                <Button Classes="action" Content="新世界" Tag="new-world" Click="OnWorldMenuClick" AutomationProperties.AutomationId="header-new-world" />
-            </StackPanel>
-        </Flyout>
-    </UserControl.Resources>
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels"
+             xmlns:views="using:SeWZC.WorldBox.UI.Views" xmlns:controls="using:SeWZC.WorldBox.UI.Controls"
+             x:Class="SeWZC.WorldBox.UI.MainView" x:DataType="vm:GameSessionViewModel" x:CompileBindings="True"
+             Background="#111E29" Focusable="True" d:DesignWidth="1440" d:DesignHeight="920" d:DataContext="{x:Static vm:DesignData.Session}">
     <Grid>
-        <Grid x:Name="Shell" IsEnabled="False">
-            <Grid x:Name="Body">
-                <Grid ClipToBounds="True" Background="#122D3D">
-                    <controls:WorldMapControl x:Name="Map" />
-                    <StackPanel x:Name="CameraBar" Spacing="4" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10,54,10,10">
-                        <Button Classes="icon" Click="OnZoomIn" ToolTip.Tip="放大地图" AutomationProperties.Name="放大地图" AutomationProperties.AutomationId="map-zoom-in">
-                            <Path Data="M 3,8 L 13,8 M 8,3 L 8,13" />
-                        </Button>
-                        <Button Classes="icon" Click="OnZoomOut" ToolTip.Tip="缩小地图" AutomationProperties.Name="缩小地图" AutomationProperties.AutomationId="map-zoom-out">
-                            <Path Data="M 3,7.8 L 13,7.8 L 13,8.2 L 3,8.2 Z" />
-                        </Button>
-                        <Button Classes="action" Content="全图" MinWidth="40" Click="OnFitWorld" ToolTip.Tip="显示整个世界" AutomationProperties.AutomationId="map-fit" />
-                    </StackPanel>
-                    <Border x:Name="PlacementBar" Background="#172632" Padding="8" IsVisible="False" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="10,112,10,10" MaxWidth="240" CornerRadius="8" ZIndex="30">
-                        <StackPanel Spacing="4">
-                            <TextBlock x:Name="PlacementText" FontSize="12" TextWrapping="Wrap" />
-                            <StackPanel Orientation="Horizontal" Spacing="6">
-                                <Button Classes="action" Content="确认放置" Click="OnConfirmPlacement" AutomationProperties.AutomationId="placement-confirm" />
-                                <Button Classes="action" Content="取消" Click="OnCancelPlacement" AutomationProperties.AutomationId="placement-cancel" />
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                    <Border x:Name="MapPickBar" Background="#172632" Padding="8" IsVisible="False" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="10,112,10,10" MaxWidth="240" CornerRadius="8" ZIndex="30" AutomationProperties.AutomationId="map-pick-prompt">
-                        <StackPanel Spacing="4">
-                            <TextBlock Text="点选目标地格" FontSize="12" Foreground="#B8E9BC" />
-                            <TextBlock Text="时间暂时停止，选点后返回原表单。" FontSize="12" Foreground="#8FA8AE" TextWrapping="Wrap" LineHeight="16" />
-                            <Button Classes="action" Content="返回表单" Click="OnReturnToForm" ToolTip.Tip="保留原坐标并返回编辑窗口" AutomationProperties.AutomationId="map-pick-return" />
-                        </StackPanel>
-                    </Border>
-                    <views:GameHud x:Name="Hud">
-                        <views:GameHud.ToolContent>
-                            <ScrollViewer x:Name="ToolScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                                <Border x:Name="ToolBar" Background="#F0172632" BorderBrush="#2A3C46" BorderThickness="1" CornerRadius="4" Padding="6">
-                                    <StackPanel Spacing="4">
-                                        <UniformGrid Columns="4" Rows="1">
-                                            <Button x:Name="TerrainCategory" Classes="action category" Content="山海" Tag="{x:Static controls:ToolCategory.Terrain}" />
-                                            <Button x:Name="LifeCategory" Classes="action category" Content="众生" Tag="{x:Static controls:ToolCategory.Life}" />
-                                            <Button x:Name="DisasterCategory" Classes="action category" Content="天灾" Tag="{x:Static controls:ToolCategory.Disaster}" />
-                                            <Button x:Name="BuildCategory" Classes="action category" Content="建设" Tag="{x:Static controls:ToolCategory.Build}" />
-                                        </UniformGrid>
-                                        <UniformGrid x:Name="ToolChoices" Columns="8" Rows="1">
-                                <Button x:Name="ToolSlot0" Classes="tool-slot" AutomationProperties.AutomationId="tool-slot-0">
-                                    <StackPanel Spacing="3">
-                                        <Border x:Name="ToolSwatch0" Width="22" Height="15" CornerRadius="3" HorizontalAlignment="Center" />
-                                        <TextBlock x:Name="ToolLabel0" Text="—" FontSize="10" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="ToolSlot1" Classes="tool-slot" AutomationProperties.AutomationId="tool-slot-1">
-                                    <StackPanel Spacing="3">
-                                        <Border x:Name="ToolSwatch1" Width="22" Height="15" CornerRadius="3" HorizontalAlignment="Center" />
-                                        <TextBlock x:Name="ToolLabel1" Text="—" FontSize="10" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="ToolSlot2" Classes="tool-slot" AutomationProperties.AutomationId="tool-slot-2">
-                                    <StackPanel Spacing="3">
-                                        <Border x:Name="ToolSwatch2" Width="22" Height="15" CornerRadius="3" HorizontalAlignment="Center" />
-                                        <TextBlock x:Name="ToolLabel2" Text="—" FontSize="10" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="ToolSlot3" Classes="tool-slot" AutomationProperties.AutomationId="tool-slot-3">
-                                    <StackPanel Spacing="3">
-                                        <Border x:Name="ToolSwatch3" Width="22" Height="15" CornerRadius="3" HorizontalAlignment="Center" />
-                                        <TextBlock x:Name="ToolLabel3" Text="—" FontSize="10" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="ToolSlot4" Classes="tool-slot" AutomationProperties.AutomationId="tool-slot-4">
-                                    <StackPanel Spacing="3">
-                                        <Border x:Name="ToolSwatch4" Width="22" Height="15" CornerRadius="3" HorizontalAlignment="Center" />
-                                        <TextBlock x:Name="ToolLabel4" Text="—" FontSize="10" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="ToolSlot5" Classes="tool-slot" AutomationProperties.AutomationId="tool-slot-5">
-                                    <StackPanel Spacing="3">
-                                        <Border x:Name="ToolSwatch5" Width="22" Height="15" CornerRadius="3" HorizontalAlignment="Center" />
-                                        <TextBlock x:Name="ToolLabel5" Text="—" FontSize="10" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="ToolSlot6" Classes="tool-slot" AutomationProperties.AutomationId="tool-slot-6">
-                                    <StackPanel Spacing="3">
-                                        <Border x:Name="ToolSwatch6" Width="22" Height="15" CornerRadius="3" HorizontalAlignment="Center" />
-                                        <TextBlock x:Name="ToolLabel6" Text="—" FontSize="10" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                <Button x:Name="ToolSlot7" Classes="tool-slot" AutomationProperties.AutomationId="tool-slot-7">
-                                    <StackPanel Spacing="3">
-                                        <Border x:Name="ToolSwatch7" Width="22" Height="15" CornerRadius="3" HorizontalAlignment="Center" />
-                                        <TextBlock x:Name="ToolLabel7" Text="—" FontSize="10" HorizontalAlignment="Center" />
-                                    </StackPanel>
-                                </Button>
-                                        </UniformGrid>
-                                        <StackPanel Orientation="Horizontal" Spacing="10" Height="32" HorizontalAlignment="Center">
-                                            <Button x:Name="ToolPrevious" Classes="action" Content="上一页" Click="OnPreviousToolPage" AutomationProperties.AutomationId="tool-page-prev" />
-                                            <TextBlock x:Name="ToolPageLabel" FontSize="11" VerticalAlignment="Center" />
-                                            <Button x:Name="ToolNext" Classes="action" Content="下一页" Click="OnNextToolPage" AutomationProperties.AutomationId="tool-page-next" />
-                                        </StackPanel>
-                                        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="5" Height="36">
-                                            <StackPanel Spacing="2">
-                                                <TextBlock x:Name="ToolTitle" Text="塑造山海" FontSize="13" Foreground="#B8E9BC" VerticalAlignment="Center" />
-                                                <TextBlock x:Name="ToolHint" Text="选择一种地形，在世界上绘制" FontSize="11" Foreground="#8FA8AE" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                            <ComboBox x:Name="ToolContext" Grid.Column="1" Width="112" MinHeight="36" FontSize="10" AutomationProperties.AutomationId="tool-context" />
-                                            <ComboBox x:Name="BrushPicker" Grid.Column="2" Width="100" MinHeight="36" FontSize="11" AutomationProperties.AutomationId="brush-size" />
-                                            <ComboBox x:Name="BuildMode" Grid.Column="2" Width="132" MinHeight="36" FontSize="11" SelectedIndex="0" AutomationProperties.AutomationId="build-mode">
-                                                <x:String>直接赐予</x:String><x:String>居民施工</x:String>
-                                            </ComboBox>
-                                        </Grid>
-                                        <WrapPanel x:Name="BridgeSettings" Orientation="Horizontal" IsVisible="False">
-                                            <TextBlock Text="桥梁" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,4" />
-                                            <ComboBox x:Name="BridgeDirectionPicker" Width="105" SelectedIndex="0" Margin="0,0,8,4" AutomationProperties.AutomationId="bridge-direction">
-                                                <x:String>左右</x:String><x:String>上下</x:String>
-                                            </ComboBox>
-                                            <ComboBox x:Name="BridgeLevelPicker" Width="165" SelectedIndex="0" Margin="0,0,0,4" AutomationProperties.AutomationId="bridge-level">
-                                                <x:String>1 级：离岸 2 格</x:String><x:String>2 级：离岸 4 格</x:String><x:String>3 级：离岸 6 格</x:String>
-                                            </ComboBox>
-                                        </WrapPanel>
-                                    </StackPanel>
-                                </Border>
-                            </ScrollViewer>
-                        </views:GameHud.ToolContent>
-                    </views:GameHud>
-                </Grid>
-                <Border x:Name="Inspector" Background="#172632" BorderBrush="#2A3C46" BorderThickness="1" CornerRadius="4" AutomationProperties.AutomationId="inspector-panel">
-                    <DockPanel>
-                        <Grid DockPanel.Dock="Top" Margin="8,4" ColumnDefinitions="*,Auto,Auto,Auto">
-                            <TextBlock Text="{Binding InspectorTitle}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" AutomationProperties.AutomationId="inspector-title" />
-                            <Button Grid.Column="1" Classes="icon" Click="OnInspectorBack" ToolTip.Tip="返回上一处" AutomationProperties.Name="返回上一处" AutomationProperties.AutomationId="inspector-back">
-                                <Path Data="M 10,3 L 5,8 L 10,13" />
-                            </Button>
-                            <Button Grid.Column="2" Classes="action" Content="{Binding InspectorExpandLabel}" IsVisible="{Binding IsCompactHud}" FontSize="11" Click="OnInspectorExpand" AutomationProperties.AutomationId="inspector-expand" />
-                            <Button Grid.Column="3" Classes="icon" Click="OnInspectorClose" ToolTip.Tip="关闭详情，返回地图" AutomationProperties.Name="关闭详情，返回地图" AutomationProperties.AutomationId="inspector-close">
-                                <Path Data="M 4,4 L 12,12 M 12,4 L 4,12" />
-                            </Button>
-                        </Grid>
-                        <ScrollViewer x:Name="InspectorScroll" HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="inspector-scroll"><views:DetailView DataContext="{Binding InspectorContent}" /></ScrollViewer>
-                    </DockPanel>
-                </Border>
+        <Grid IsEnabled="{Binding IsReady}">
+            <Grid ClipToBounds="True" Background="#122D3D">
+                <controls:WorldMapControl x:Name="Map" />
+                <views:CameraControls HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10,54,10,10" />
+                <views:MapInteractionView DataContext="{Binding Interaction}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,112,10,10" ZIndex="30" />
+                <views:GameHud x:Name="Hud">
+                    <views:GameHud.ToolContent><views:ToolPaletteView DataContext="{Binding Tools}" /></views:GameHud.ToolContent>
+                </views:GameHud>
             </Grid>
+            <views:InspectorPanel DataContext="{Binding Navigation}" IsVisible="{Binding State.InspectorVisible}"
+                                  Width="{Binding Layout.InspectorWidth}" MaxHeight="{Binding Layout.InspectorMaxHeight}" Height="{Binding Layout.InspectorHeight}"
+                                  HorizontalAlignment="Right" VerticalAlignment="{Binding Layout.InspectorAlignment}" Margin="{Binding Layout.InspectorMargin}" ZIndex="20" />
         </Grid>
-        <Border x:Name="Modal" IsVisible="False" Background="#BD071118" ZIndex="100" />
+        <views:ModalHost IsVisible="{Binding IsVisible}" DataContext="{Binding Dialogs}" ZIndex="100" />
     </Grid>
 </UserControl>

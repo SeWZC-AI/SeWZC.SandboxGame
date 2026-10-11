@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using Avalonia.Interactivity;
+using SeWZC.WorldBox.UI.ViewModels;
 using Avalonia.Markup.Xaml;
 
 namespace SeWZC.WorldBox.UI.Views;
@@ -12,6 +14,14 @@ public sealed partial class GameHud : UserControl
     public GameHud()
     {
         AvaloniaXamlLoader.Load(this);
+        SizeChanged += (_, _) => Resize();
+        DataContextChanged += (_, _) =>
+        {
+            if (_session is not null) _session.State.PropertyChanged -= OnStateChanged;
+            _session = DataContext as GameSessionViewModel;
+            if (_session is not null) _session.State.PropertyChanged += OnStateChanged;
+            Resize();
+        };
     }
 
     /// <summary>地图工具面板的 XAML 内容。</summary>
@@ -20,11 +30,22 @@ public sealed partial class GameHud : UserControl
     /// <summary>地图工具面板的 XAML 内容。</summary>
     public Control? ToolContent { get => GetValue(ToolContentProperty); set => SetValue(ToolContentProperty, value); }
 
-    internal static bool HasStackedDock(double width) => width < 600;
+    private GameSessionViewModel? _session;
+    private void OnStateChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(MainViewModel.InspectorVisible) or nameof(MainViewModel.ToolsVisible)) Resize();
+    }
+    private void Resize() => Resize(Bounds.Width, _session?.State.InspectorVisible == true || _session?.State.ToolsVisible == true);
+    internal void ShowWorldMenu() => ((Flyout)Resources["WorldMenuFlyout"]!).ShowAt(this.FindControl<Button>("WorldMenu")!);
+    private void OnWorldMenuClick(object? sender, RoutedEventArgs args)
+    {
+        ((Flyout)Resources["WorldMenuFlyout"]!).Hide();
+        _session?.State.NavigateCommand.Execute(((Button)sender!).Tag);
+    }
 
     internal void Resize(double width, bool horizontalCamera)
     {
-        var compact = HasStackedDock(width);
+        var compact = ShellLayoutViewModel.HasStackedDock(width);
         var dock = this.FindControl<Grid>("Dock")!;
         var observation = this.FindControl<Border>("ObservationDock")!;
         var time = this.FindControl<Border>("TimeDock")!;

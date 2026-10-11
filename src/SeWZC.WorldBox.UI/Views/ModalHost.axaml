@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels"
+             xmlns:details="using:SeWZC.WorldBox.UI.ViewModels.Details" xmlns:views="using:SeWZC.WorldBox.UI.Views"
+             x:Class="SeWZC.WorldBox.UI.Views.ModalHost" x:DataType="vm:DialogHostViewModel" x:CompileBindings="True"
+             d:DesignWidth="900" d:DesignHeight="800" d:DataContext="{x:Static vm:DesignData.Dialogs}">
+    <Border IsVisible="{Binding IsVisible}" Background="#BD071118">
+        <ContentControl Content="{Binding Content}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+            <ContentControl.DataTemplates>
+                <DataTemplate DataType="vm:ModalViewModel"><views:ModalDialog /></DataTemplate>
+            </ContentControl.DataTemplates>
+        </ContentControl>
+    </Border>
+</UserControl>

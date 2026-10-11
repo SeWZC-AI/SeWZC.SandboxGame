@@ -8,13 +8,43 @@ namespace SeWZC.WorldBox.UI.ViewModels;
 /// <summary>为 XAML 设计器提供示例数据。</summary>
 internal static class DesignData
 {
+    private static readonly Lazy<DialogHostViewModel> DialogHostSample = new(CreateDialogHost);
+    private static readonly Lazy<MapInteractionViewModel> InteractionSample = new(CreateInteraction);
+    private static readonly Lazy<GameSessionViewModel> SessionSample = new(CreateSession);
     private static readonly Lazy<MainViewModel> MainSample = new(CreateMain);
     private static readonly Lazy<ResearchGraphViewModel> GraphSample = new(CreateGraph);
+    public static GameSessionViewModel Session => SessionSample.Value;
+    public static ToolPaletteViewModel Tools => Session.Tools;
+    public static InspectorNavigationViewModel Navigation => Session.Navigation;
+    public static MapInteractionViewModel Interaction => InteractionSample.Value;
+    public static DialogHostViewModel Dialogs => DialogHostSample.Value;
     public static MainViewModel Main => MainSample.Value;
     public static StackNode Details => CreateDetails();
     public static ModalViewModel Dialog => CreateDialog();
     public static ResearchGraphViewModel Graph => GraphSample.Value;
 
+    private static DialogHostViewModel CreateDialogHost()
+    {
+        var session = new GameSessionViewModel(new MainViewModel(WorldEngine.Create(42, 32, 32, false)), new DesignMap(), () => null);
+        session.Dialogs.OpenModal(CreateDetails());
+        return session.Dialogs;
+    }
+    private static MapInteractionViewModel CreateInteraction()
+    {
+        var session = new GameSessionViewModel(new MainViewModel(WorldEngine.Create(42, 32, 32, false)), new DesignMap(), () => null);
+        session.Interaction.PlacementChanged("将投放 12 位居民，确认后生效");
+        session.State.PlacementPending = true;
+        return session.Interaction;
+    }
+    private static GameSessionViewModel CreateSession()
+    {
+        var session = new GameSessionViewModel(Main, new DesignMap(), () => null) { IsReady = true };
+        session.State.InspectorTitle = "居民档案（示例）";
+        session.State.InspectorContent = CreateDetails();
+        session.State.InspectorVisible = true;
+        session.Layout.Resize(1440, 920, 1440);
+        return session;
+    }
     private static StackNode CreateDetails()
     {
         var content = new StackNode { Spacing = 6, Margin = new Thickness(6) };

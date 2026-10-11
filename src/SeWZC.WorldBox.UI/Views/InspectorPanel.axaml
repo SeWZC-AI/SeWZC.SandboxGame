@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels"
+             xmlns:details="using:SeWZC.WorldBox.UI.ViewModels.Details" xmlns:views="using:SeWZC.WorldBox.UI.Views"
+             x:Class="SeWZC.WorldBox.UI.Views.InspectorPanel" x:DataType="vm:InspectorNavigationViewModel" x:CompileBindings="True"
+             d:DesignWidth="360" d:DesignHeight="650" d:DataContext="{x:Static vm:DesignData.Navigation}">
+    <UserControl.Styles>
+        <StyleInclude Source="/Styles/GameStyles.axaml" />
+    </UserControl.Styles>
+    <Border Background="#172632" BorderBrush="#2A3C46" BorderThickness="1" CornerRadius="4" AutomationProperties.AutomationId="inspector-panel">
+        <DockPanel>
+            <Grid DockPanel.Dock="Top" Margin="8,4" ColumnDefinitions="*,Auto,Auto,Auto">
+                <TextBlock Text="{Binding State.InspectorTitle}" FontSize="17" FontWeight="SemiBold" VerticalAlignment="Center" AutomationProperties.AutomationId="inspector-title" />
+                <Button Grid.Column="1" Classes="icon" Command="{Binding BackCommand}" ToolTip.Tip="返回上一处" AutomationProperties.Name="返回上一处" AutomationProperties.AutomationId="inspector-back">
+                    <Path Data="M 10,3 L 5,8 L 10,13" />
+                </Button>
+                <Button Grid.Column="2" Classes="action" Content="{Binding State.InspectorExpandLabel}" IsVisible="{Binding State.IsCompactHud}" FontSize="11" Command="{Binding ExpandCommand}" AutomationProperties.AutomationId="inspector-expand" />
+                <Button Grid.Column="3" Classes="icon" Command="{Binding CloseCommand}" ToolTip.Tip="关闭详情，返回地图" AutomationProperties.Name="关闭详情，返回地图" AutomationProperties.AutomationId="inspector-close">
+                    <Path Data="M 4,4 L 12,12 M 12,4 L 4,12" />
+                </Button>
+            </Grid>
+            <ScrollViewer Offset="{Binding ScrollOffset, Mode=TwoWay}" HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="inspector-scroll">
+                <views:DetailView DataContext="{Binding State.InspectorContent}" />
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</UserControl>

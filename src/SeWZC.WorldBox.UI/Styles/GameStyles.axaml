@@ -1,0 +1,31 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style Selector="Button.action">
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Margin" Value="2,0" />
+        <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="Button.icon">
+        <Setter Property="Width" Value="30" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="Padding" Value="7" />
+        <Setter Property="Margin" Value="2,0" />
+    </Style>
+    <Style Selector="Button.icon Path">
+        <Setter Property="Stroke" Value="#B8E9BC" />
+        <Setter Property="StrokeThickness" Value="1.8" />
+        <Setter Property="Width" Value="14" />
+        <Setter Property="Height" Value="14" />
+        <Setter Property="Stretch" Value="Uniform" />
+    </Style>
+    <Style Selector="Button.category">
+        <Setter Property="Padding" Value="3" />
+    </Style>
+    <Style Selector="Button.tool-slot">
+        <Setter Property="HorizontalAlignment" Value="Stretch" />
+        <Setter Property="Height" Value="44" />
+        <Setter Property="Padding" Value="3" />
+        <Setter Property="Margin" Value="2" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="6" />
+    </Style>
+</Styles>

@@ -1,0 +1,27 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels"
+             xmlns:details="using:SeWZC.WorldBox.UI.ViewModels.Details" xmlns:views="using:SeWZC.WorldBox.UI.Views"
+             x:Class="SeWZC.WorldBox.UI.Views.MapInteractionView" x:DataType="vm:MapInteractionViewModel" x:CompileBindings="True"
+             d:DesignWidth="280" d:DesignHeight="150" d:DataContext="{x:Static vm:DesignData.Interaction}">
+    <UserControl.Styles>
+        <StyleInclude Source="/Styles/GameStyles.axaml" />
+    </UserControl.Styles>
+    <Grid>
+        <Border Background="#172632" Padding="8" IsVisible="{Binding State.PlacementPending}" MaxWidth="{Binding Layout.PlacementMaxWidth}" CornerRadius="8">
+            <StackPanel Spacing="4">
+                <TextBlock Text="{Binding PlacementText}" FontSize="12" TextWrapping="Wrap" />
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Button Classes="action" Content="确认放置" Command="{Binding ConfirmPlacementCommand}" AutomationProperties.AutomationId="placement-confirm" />
+                    <Button Classes="action" Content="取消" Command="{Binding CancelPlacementCommand}" AutomationProperties.AutomationId="placement-cancel" />
+                </StackPanel>
+            </StackPanel>
+        </Border>
+        <Border Background="#172632" Padding="8" IsVisible="{Binding IsPickingLocation}" MaxWidth="240" CornerRadius="8" AutomationProperties.AutomationId="map-pick-prompt">
+            <StackPanel Spacing="4">
+                <TextBlock Text="点选目标地格" FontSize="12" Foreground="#B8E9BC" />
+                <TextBlock Text="时间暂时停止，选点后返回原表单。" FontSize="12" Foreground="#8FA8AE" TextWrapping="Wrap" LineHeight="16" />
+                <Button Classes="action" Content="返回表单" Command="{Binding ReturnToFormCommand}" ToolTip.Tip="保留原坐标并返回编辑窗口" AutomationProperties.AutomationId="map-pick-return" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

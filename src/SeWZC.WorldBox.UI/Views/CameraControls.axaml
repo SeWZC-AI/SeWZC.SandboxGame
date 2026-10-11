@@ -1,0 +1,18 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels"
+             xmlns:details="using:SeWZC.WorldBox.UI.ViewModels.Details" xmlns:views="using:SeWZC.WorldBox.UI.Views"
+             x:Class="SeWZC.WorldBox.UI.Views.CameraControls" x:DataType="vm:GameSessionViewModel" x:CompileBindings="True"
+             d:DesignWidth="150" d:DesignHeight="45" d:DataContext="{x:Static vm:DesignData.Session}">
+    <UserControl.Styles>
+        <StyleInclude Source="/Styles/GameStyles.axaml" />
+    </UserControl.Styles>
+    <StackPanel Spacing="4" Orientation="{Binding Layout.CameraOrientation}">
+        <Button Classes="icon" Command="{Binding ZoomInCommand}" ToolTip.Tip="放大地图" AutomationProperties.Name="放大地图" AutomationProperties.AutomationId="map-zoom-in">
+            <Path Data="M 3,8 L 13,8 M 8,3 L 8,13" />
+        </Button>
+        <Button Classes="icon" Command="{Binding ZoomOutCommand}" ToolTip.Tip="缩小地图" AutomationProperties.Name="缩小地图" AutomationProperties.AutomationId="map-zoom-out">
+            <Path Data="M 3,7.8 L 13,7.8 L 13,8.2 L 3,8.2 Z" />
+        </Button>
+        <Button Classes="action" Content="全图" MinWidth="40" Command="{Binding FitWorldCommand}" ToolTip.Tip="显示整个世界" AutomationProperties.AutomationId="map-fit" />
+    </StackPanel>
+</UserControl>

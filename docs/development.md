@@ -19,7 +19,7 @@ dotnet run --project src/SeWZC.WorldBox.Browser
 
 ## AXAML 设计时数据
 
-使用 Avalonia IDE 插件预览 `.axaml`，将 `SeWZC.WorldBox.Desktop` 选为预览启动项目；浏览器项目不作为设计器宿主。视图按 [Avalonia 官方文档](https://docs.avaloniaui.net/docs/app-development/xaml-preview-and-design-settings) 声明 `xmlns:d="http://schemas.microsoft.com/expression/blend/2008"`、`d:DesignWidth`、`d:DesignHeight` 和 `d:DataContext="{x:Static vm:DesignData.Main}"`。详情、操作窗口和研究树分别使用 `DesignData.Details`、`DesignData.Dialog`、`DesignData.Graph`，`x:DataType` 仍声明实际展示模型类型，供编译绑定校验。
+使用 Avalonia IDE 插件预览 `.axaml`，将 `SeWZC.WorldBox.Desktop` 选为预览启动项目；浏览器项目不作为设计器宿主。视图按 [Avalonia 官方文档](https://docs.avaloniaui.net/docs/app-development/xaml-preview-and-design-settings) 声明 `xmlns:d="http://schemas.microsoft.com/expression/blend/2008"`、`d:DesignWidth`、`d:DesignHeight` 和 `d:DataContext="{x:Static vm:DesignData.Session}"`。主界面与 HUD 使用 `DesignData.Session`，各子视图使用 `DesignData.Tools`、`Navigation`、`Interaction`、`Dialogs`；详情、操作窗口和研究树分别使用 `DesignData.Details`、`DesignData.Dialog`、`DesignData.Graph`，`x:DataType` 仍声明实际展示模型类型，供编译绑定校验。
 
 `ViewModels/DesignData.cs` 按设计器访问创建示例数据，不访问存档或启动模拟。视图构造函数不覆盖 AXAML 的设计时上下文；运行时由组合入口注入实际模型，主界面在设计模式下跳过存档初始化和计时器启动。编译通过只能证明 AXAML 及绑定合法，预览效果仍需在 IDE 中核对。
 

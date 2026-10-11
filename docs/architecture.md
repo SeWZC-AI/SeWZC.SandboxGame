@@ -16,7 +16,7 @@ flowchart TD
     UITests[UI.Tests xUnit 逻辑测试] --> UI
 ```
 
-Core 不引用 Avalonia、平台 API 或文件系统。主界面采用 MVVM：`MainViewModel` 持有引擎引用、时间偏好、选择、面板与通知状态及 HUD 命令；`InspectorViewModel` 管理详情列表、关注、研究和折叠状态；`WorldEditorViewModel` 管理编辑草稿与提交命令；`ResearchGraphViewModel` 管理研究节点布局、缩放与滚动状态。`ViewModels/Details` 提供可观察字段，`MainView.axaml`、`Views/GameHud.axaml`、`Views/DetailView.axaml`、`Views/ModalDialog.axaml` 和 `Controls/ResearchGraphControl.axaml` 定义布局及编译模板。`MainView` 接入地图、窗口、导航、输入和界面计时器；`PresentationRequests` 与 `IMapPresentation` 传递展示请求，不将控件交给展示模型。`Services/SimulationScheduler`、`WorldEditCoordinator`、`WorldSaveCoordinator` 分别承担模拟预算、编辑事务和存档协调，平台入口实现 `IWorldStorage`。设计器配置见 [开发指南](development.md#axaml-设计时数据)。浏览器模拟及界面使用单线程 WebAssembly，普通 JavaScript Worker 仅用于保存。原生大群体先按固定顺序结算随机事件、公共补给与取水，再顺序转换整批个人身体的不可变输入，避免每 tick 的线程调度，按居民顺序提交结果。
+Core 不引用 Avalonia、平台 API 或文件系统。主界面采用 MVVM：`MainViewModel` 持有引擎引用、时间偏好、选择、面板与通知状态及 HUD 命令；`InspectorViewModel` 管理详情列表、关注、研究和折叠状态；`WorldEditorViewModel` 管理编辑草稿与提交命令；`ResearchGraphViewModel` 管理研究节点布局、缩放与滚动状态。`ViewModels/Details` 提供可观察字段，`MainView.axaml`、`Views/GameHud.axaml`、`Views/DetailView.axaml`、`Views/ModalDialog.axaml` 和 `Controls/ResearchGraphControl.axaml` 定义布局及编译模板。`GameSessionViewModel` 组合这些模型并协调模拟推进、保存与世界替换；`InspectorNavigationViewModel` 管理详情历史、地图选择和观察位置；`ToolPaletteViewModel` 管理工具与建设参数；`MapInteractionViewModel` 管理放置及表单取点；`DialogHostViewModel` 管理窗口和提交状态；`ShellLayoutViewModel` 计算区域布局。对应的 `Views/InspectorPanel.axaml`、`ToolPaletteView.axaml`、`MapInteractionView.axaml`、`ModalHost.axaml` 和 `CameraControls.axaml` 绑定各区域模型。`MainView` 只组合子视图并接入图形生命周期、键盘焦点和界面计时器；`PresentationRequests` 与 `IGameMap` 传递展示请求，`MapPresentationAdapter` 接入实际地图控件，不将控件交给展示模型。`Services/SimulationScheduler`、`WorldEditCoordinator`、`WorldSaveCoordinator` 分别承担模拟预算、编辑事务和存档协调，平台入口实现 `IWorldStorage`。设计器配置见 [开发指南](development.md#axaml-设计时数据)。浏览器模拟及界面使用单线程 WebAssembly，普通 JavaScript Worker 仅用于保存。原生大群体先按固定顺序结算随机事件、公共补给与取水，再顺序转换整批个人身体的不可变输入，避免每 tick 的线程调度，按居民顺序提交结果。
 
 模拟按完整离散日推进，呈现时钟在真实移动起终点间插值。慢设备限制实际推进速度，不跳过劳动、运输、通信或生存步骤。暂停冻结显示，变速重锚时间，载入和编辑传送重置轨迹；命中、标记、选中圈和跟随共用显示位置。短暂动作通知只说明已执行结果，不保存为世界事实或分配实体 ID。
 
@@ -61,7 +61,7 @@ Core 不引用 Avalonia、平台 API 或文件系统。主界面采用 MVVM：`M
 | 战争与灾害 | Core `WorldEngine.Warfare.cs`、`WorldEngine.Campaigns.cs`、`WorldEngine.Conflicts.cs`、`WorldEngine.Fire.cs`、`WorldEngine.Mortality.cs` |
 | 观察与故事 | Core `WorldEngine.Inspection.cs`、`WorldEngine.EffectsInfo.cs`、`WorldEngine.TaskIcons.cs`、`WorldEngine.Presentation.cs`、`WorldEngine.Stories.cs`；UI `ViewModels/InspectorViewModel.Stories.cs` |
 | 编辑与存档 | Core `WorldEngine.Commands.cs`、`WorldEngine.ResidentEditing.cs`、`WorldEngine.NationEditing.cs`、`WorldEngine.Persistence.cs`、`WorldEngine.ValidationV2.cs`、`WorldJsonContext.cs` |
-| 详情与异步提交 | UI `ViewModels/InspectorViewModel.*.cs`、`ViewModels/WorldEditorViewModel.*.cs`、`Services/WorldEditCoordinator.cs`；视图 `MainView.Navigation.cs`、`MainView.AsyncEdits.cs`、`MainView.Inputs.cs` |
+| 详情与异步提交 | UI `ViewModels/InspectorViewModel.*.cs`、`ViewModels/WorldEditorViewModel.*.cs`、`Services/WorldEditCoordinator.cs`；UI `ViewModels/InspectorNavigationViewModel.cs`、`ViewModels/DialogHostViewModel.cs`、`ViewModels/MapInteractionViewModel.cs` |
 | 科技树 | UI `ViewModels/InspectorViewModel.Research.cs`、`ViewModels/ResearchGraphViewModel.cs`、`ViewModels/WorldEditorViewModel.ResearchActions.cs`；Controls `ResearchTreeLayout.cs`、`ResearchGraphControl.axaml`、`ResearchGraphControl.axaml.cs` |
 | 地图与输入 | Controls `WorldMapControl.*.cs`、`EntityMotionTrack.cs`；Browser `wwwroot/text-input.js`、`touch-gestures.js` |
 | 平台保存 | [BrowserWorldStorage](../src/SeWZC.WorldBox.Browser/BrowserWorldStorage.cs)、`storage.js`、`storage-worker.js`；[DesktopWorldStorage](../src/SeWZC.WorldBox.Desktop/DesktopWorldStorage.cs) |
@@ -93,7 +93,7 @@ JSON 使用源生成上下文，中文直接写入 UTF-8，仍转义 HTML 敏感
 
 ### 编辑与保存协调
 
-`MainView.Navigation.cs` 保存最近 32 处 UI 历史，`WorldEditCoordinator` 将提交绑定原世界、窗口世代和导航会话，`MainView.AsyncEdits.cs` 仅适配控件锁定与地图工具有效性。对象跳转先记录当前位置；窗口和地图取点仅临时停表。恢复点准备期间锁定原输入并可取消，失效任务不得修改新世界或关闭新窗口。
+`InspectorNavigationViewModel` 保存最近 32 处 UI 历史，`WorldEditCoordinator` 将提交绑定原世界、窗口世代和导航会话，`GameSessionViewModel` 校验地图工具有效性，`ModalViewModel.IsSubmitting` 通过 AXAML 锁定表单和提交区域，保留取消操作。对象跳转先记录当前位置；窗口和地图取点仅临时停表。恢复点准备期间锁定原输入并可取消，失效任务不得修改新世界或关闭新窗口。
 
 有效编辑先取得整轮世界快照，再提交并保持暂停；命令部分成功后报错仍保留撤销点，完全未变的失败恢复原运行偏好。继续模拟清除这一轮恢复点，历史记录编辑不回算客观世界。
 
