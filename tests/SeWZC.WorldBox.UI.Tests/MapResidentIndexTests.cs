@@ -7,7 +7,7 @@ namespace SeWZC.WorldBox.UI.Tests;
 public sealed class MapResidentIndexTests
 {
     /// <summary>跨分区的移动区段在起点、中间和终点均可查询，且不重复返回居民。</summary>
-    [Theory]
+    [Theory(DisplayName = "跨分区的移动区段在起点、中间和终点均可查询，且不重复返回居民")]
     [InlineData(14, 15)]
     [InlineData(16, 16)]
     [InlineData(17, 19)]
@@ -31,7 +31,7 @@ public sealed class MapResidentIndexTests
     }
 
     /// <summary>只返回与查询区域相交的居民，不包含同一分区内的远处对象。</summary>
-    [Fact]
+    [Fact(DisplayName = "只返回与查询区域相交的居民，不包含同一分区内的远处对象")]
     public void Query_excludes_residents_outside_the_viewport()
     {
         var resident = new Resident
@@ -50,7 +50,7 @@ public sealed class MapResidentIndexTests
     }
 
     /// <summary>同日编辑产生新快照时立即替换旧的地点和对象引用。</summary>
-    [Fact]
+    [Fact(DisplayName = "同日编辑产生新快照时立即替换旧的地点和对象引用")]
     public void New_snapshot_replaces_cached_positions()
     {
         var index = new MapResidentIndex();
@@ -73,7 +73,7 @@ public sealed class MapResidentIndexTests
     }
 
     /// <summary>清理后不会将旧世界居民带入新世界。</summary>
-    [Fact]
+    [Fact(DisplayName = "清理后不会将旧世界居民带入新世界")]
     public void Clearing_index_removes_previous_world()
     {
         var index = new MapResidentIndex();

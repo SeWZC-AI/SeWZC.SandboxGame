@@ -7,7 +7,7 @@ namespace SeWZC.WorldBox.UI.Tests;
 public sealed class SimulationSchedulerTests
 {
     /// <summary>不足一刻时不提前推进，下一次调用使用积累时间。</summary>
-    [Fact]
+    [Fact(DisplayName = "不足一刻时不提前推进，下一次调用使用积累时间")]
     public void Accumulated_time_advances_only_when_a_tick_is_due()
     {
         var engine = WorldEngine.Create(42, 32, 32, false);
@@ -20,7 +20,7 @@ public sealed class SimulationSchedulerTests
     }
 
     /// <summary>上一帧地图刷新很慢时仍推进首刻，不限速也会让出线程。</summary>
-    [Theory]
+    [Theory(DisplayName = "上一帧地图刷新很慢时仍推进首刻，不限速也会让出线程")]
     [InlineData(5, .25)]
     [InlineData(0, 0)]
     public void Expensive_map_refresh_keeps_progress_and_yields(int speed, double elapsed)
@@ -33,7 +33,7 @@ public sealed class SimulationSchedulerTests
     }
 
     /// <summary>切换不限速档清除欠账，重新开始世界时同时清除速率统计。</summary>
-    [Fact]
+    [Fact(DisplayName = "切换不限速档清除欠账，重新开始世界时同时清除速率统计")]
     public void Clearing_pending_time_does_not_replay_old_elapsed_time()
     {
         var engine = WorldEngine.Create(42, 32, 32, false);

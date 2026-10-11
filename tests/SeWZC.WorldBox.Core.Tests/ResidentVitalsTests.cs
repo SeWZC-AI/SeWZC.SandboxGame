@@ -6,7 +6,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class ResidentVitalsTests
 {
     /// <summary>本步新感染不会继续传给下一位邻居，交换遍历顺序也只暴露于开始时的病例。</summary>
-    [Theory]
+    [Theory(DisplayName = "本步新感染不会继续传给下一位邻居，交换遍历顺序也只暴露于开始时的病例")]
     [InlineData(false)]
     [InlineData(true)]
     public void New_infections_do_not_spread_again_in_the_same_tick(bool reverseOrder)
@@ -60,7 +60,7 @@ public sealed class ResidentVitalsTests
     }
 
     /// <summary>身体字段结果与不可变实体转换一致，并能与后续动作合并而保留旧快照。</summary>
-    [Theory]
+    [Theory(DisplayName = "身体字段结果与不可变实体转换一致，并能与后续动作合并而保留旧快照")]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(true, true)]
@@ -94,7 +94,7 @@ public sealed class ResidentVitalsTests
     }
 
     /// <summary>实际补给在一次日转换中消费，专业用品和死亡时未消费的补给仍保留。</summary>
-    [Theory]
+    [Theory(DisplayName = "实际补给在一次日转换中消费，专业用品和死亡时未消费的补给仍保留")]
     [InlineData(false)]
     [InlineData(true)]
     public void Home_supplies_are_merged_with_the_day_transition(bool lethalFire)
@@ -113,7 +113,7 @@ public sealed class ResidentVitalsTests
     }
 
     /// <summary>返仓后的认知和补给直接进入日结算，不恢复旧任务，也不修改输入认知。</summary>
-    [Theory]
+    [Theory(DisplayName = "返仓后的认知和补给直接进入日结算，不恢复旧任务，也不修改输入认知")]
     [InlineData(false)]
     [InlineData(true)]
     public void Day_transition_preserves_the_supplied_return_state(bool consumeNeeds)
@@ -147,7 +147,7 @@ public sealed class ResidentVitalsTests
     }
 
     /// <summary>健康危机按实际传入的任务区分玩家安排与自主安排，不读取较早的任务快照。</summary>
-    [Theory]
+    [Theory(DisplayName = "健康危机按实际传入的任务区分玩家安排与自主安排，不读取较早的任务快照")]
     [InlineData(false)]
     [InlineData(true)]
     public void Illness_review_uses_the_supplied_goal(bool playerDirected)
@@ -171,7 +171,7 @@ public sealed class ResidentVitalsTests
     }
 
     /// <summary>新发疫病及时请求自主复评，不等远期工作安排到期。</summary>
-    [Fact]
+    [Fact(DisplayName = "新发疫病及时请求自主复评，不等远期工作安排到期")]
     public void New_illness_requests_a_recovery_review()
     {
         var before = new Resident
@@ -190,7 +190,7 @@ public sealed class ResidentVitalsTests
     }
 
     /// <summary>现场取得的日常饮水直接进入结算，不凭空留下额外瓶装库存。</summary>
-    [Fact]
+    [Fact(DisplayName = "现场取得的日常饮水直接进入结算，不凭空留下额外瓶装库存")]
     public void Delivered_water_is_consumed_by_the_day_transition()
     {
         var before = new Resident { Age = 20, Thirst = 20, Inventory = new ResourceStock { Food = 1 } };
@@ -206,7 +206,7 @@ public sealed class ResidentVitalsTests
     }
 
     /// <summary>合并日结算仍包含年龄、疫病、魔力和真实粮水消费，保留源值。</summary>
-    [Fact]
+    [Fact(DisplayName = "合并日结算仍包含年龄、疫病、魔力和真实粮水消费，保留源值")]
     public void Combined_day_matches_body_then_needs_for_a_living_adult()
     {
         var before = new Resident
@@ -226,7 +226,7 @@ public sealed class ResidentVitalsTests
     }
 
     /// <summary>身体伤害当天致死时不再消耗已携带粮水。</summary>
-    [Fact]
+    [Fact(DisplayName = "身体伤害当天致死时不再消耗已携带粮水")]
     public void Lethal_fire_prevents_consuming_supplies()
     {
         var before = new Resident { Age = 20, Health = 1, Inventory = new ResourceStock { Food = 1, Water = 1 } };
@@ -240,7 +240,7 @@ public sealed class ResidentVitalsTests
     }
 
     /// <summary>老龄、火灾与疾病连续伤害保留首先致死的原因。</summary>
-    [Fact]
+    [Fact(DisplayName = "老龄、火灾与疾病连续伤害保留首先致死的原因")]
     public void Vitals_preserve_the_first_lethal_damage_and_the_source()
     {
         var before = new Resident { Age = 999, Health = .4, SicknessTicks = 1 };
@@ -257,7 +257,7 @@ public sealed class ResidentVitalsTests
     }
 
     /// <summary>传入新的感染时记录病程并进入生病活动，旧居民保持健康。</summary>
-    [Fact]
+    [Fact(DisplayName = "传入新的感染时记录病程并进入生病活动，旧居民保持健康")]
     public void Infection_is_an_explicit_input_to_the_transition()
     {
         var before = new Resident { Age = 20, Profession = Profession.Farmer };
@@ -270,7 +270,7 @@ public sealed class ResidentVitalsTests
     }
 
     /// <summary>关闭衰老不增加年龄，传入的职业仍用于成年转换。</summary>
-    [Fact]
+    [Fact(DisplayName = "关闭衰老不增加年龄，传入的职业仍用于成年转换")]
     public void Disabled_aging_preserves_age()
     {
         var before = new Resident { Age = 14, Health = 50, Profession = Profession.Child };
@@ -284,7 +284,7 @@ public sealed class ResidentVitalsTests
     }
 
     /// <summary>身体和需求均未变化时，实际抵达仍须记入熟路，并保留输入快照。</summary>
-    [Fact]
+    [Fact(DisplayName = "身体和需求均未变化时，实际抵达仍须记入熟路，并保留输入快照")]
     public void Arrival_is_remembered_when_vitals_and_needs_do_not_change()
     {
         var before = new Resident { Age = 20, Health = 100, Mana = 100 };

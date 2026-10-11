@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class ResearchActionTests
 {
     /// <summary>铁路入口保留当前聚落上下文。</summary>
-    [Fact]
+    [Fact(DisplayName = "铁路入口保留当前聚落上下文")]
     public void Rail_passes_the_settlement_to_the_rail_editor()
     {
         var handler = new RecordingHandler();
@@ -16,7 +16,7 @@ public sealed class ResearchActionTests
     }
 
     /// <summary>折跃入口只打开对应编辑器。</summary>
-    [Fact]
+    [Fact(DisplayName = "折跃入口只打开对应编辑器")]
     public void Waygate_opens_only_the_waygate_editor()
     {
         var handler = new RecordingHandler();

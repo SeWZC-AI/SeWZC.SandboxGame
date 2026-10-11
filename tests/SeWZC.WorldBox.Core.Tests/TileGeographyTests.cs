@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class TileGeographyTests
 {
     /// <summary>开局栖息地同时返回地形与水文，保留原地格并清除离开河道后的宽度。</summary>
-    [Fact]
+    [Fact(DisplayName = "开局栖息地同时返回地形与水文，保留原地格并清除离开河道后的宽度")]
     public void Demo_biome_returns_complete_hydrology_without_mutating_source()
     {
         var before = new Tile

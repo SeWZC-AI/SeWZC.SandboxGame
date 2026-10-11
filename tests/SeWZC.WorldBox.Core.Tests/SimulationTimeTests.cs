@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class SimulationTimeTests
 {
     /// <summary>离开工位走向维修目标后，活动立即表示移动，不沿用上一刻的劳动状态。</summary>
-    [Fact]
+    [Fact(DisplayName = "离开工位走向维修目标后，活动立即表示移动，不沿用上一刻的劳动状态")]
     public void Worker_in_transit_does_not_keep_the_previous_working_activity()
     {
         var fixture = Prepare(12);
@@ -40,7 +40,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>夜间冰冻不能保留此前的劳动标记，也不能产生劳动量。</summary>
-    [Fact]
+    [Fact(DisplayName = "夜间冰冻不能保留此前的劳动标记，也不能产生劳动量")]
     public void Frozen_worker_rests_instead_of_showing_night_work()
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
@@ -53,7 +53,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>月份、日期和日内步序在各单位边界同时进位。</summary>
-    [Theory]
+    [Theory(DisplayName = "月份、日期和日内步序在各单位边界同时进位")]
     [InlineData(0, 1, 1, 1, 0)]
     [InlineData(SimulationTime.TicksPerDay - 1, 1, 1, 1, SimulationTime.TicksPerDay - 1)]
     [InlineData(SimulationTime.TicksPerDay, 1, 1, 2, 0)]
@@ -73,7 +73,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>傍晚暂存工作目标并沿真实路径返家，不能直接出现在家园。</summary>
-    [Fact]
+    [Fact(DisplayName = "傍晚暂存工作目标并沿真实路径返家，不能直接出现在家园")]
     public void Evening_stores_daytime_task_and_walks_home()
     {
         var fixture = Prepare(SimulationTime.ReturnHomeTick - 1);
@@ -92,7 +92,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>傍晚在家普通休息仅恢复体力，显示等待入睡且睡眠值仍消耗。</summary>
-    [Fact]
+    [Fact(DisplayName = "傍晚在家普通休息仅恢复体力，显示等待入睡且睡眠值仍消耗")]
     public void Evening_rest_shows_waiting_for_sleep_and_does_not_restore_sleep()
     {
         var fixture = Prepare(SimulationTime.ReturnHomeTick - 1);
@@ -111,7 +111,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>休息目标可因睡眠不足而实际补觉，显示须区分普通休息和睡眠。</summary>
-    [Theory]
+    [Theory(DisplayName = "休息目标可因睡眠不足而实际补觉，显示须区分普通休息和睡眠")]
     [InlineData(80, ResidentActivity.Resting)]
     [InlineData(25, ResidentActivity.Sleeping)]
     public void Rest_goal_reports_the_actual_recovery_activity(double sleep, ResidentActivity activity)
@@ -148,7 +148,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>夜间暂存医疗休养任务并返回住宅，不在医疗点门口或途中自动入睡。</summary>
-    [Theory]
+    [Theory(DisplayName = "夜间暂存医疗休养任务并返回住宅，不在医疗点门口或途中自动入睡")]
     [InlineData(14)]
     [InlineData(15)]
     [InlineData(22)]
@@ -186,7 +186,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>白天赴医疗点是休养，不显示返家、劳动或工作人员受阻。</summary>
-    [Theory]
+    [Theory(DisplayName = "白天赴医疗点是休养，不显示返家、劳动或工作人员受阻")]
     [InlineData(14, false)]
     [InlineData(22, true)]
     public void Medical_rest_summary_describes_recovery_instead_of_work(int x, bool travelling)
@@ -229,7 +229,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>玩家可指定家园外的休息或睡眠地点，说明不能误报返家或自主作息。</summary>
-    [Theory]
+    [Theory(DisplayName = "玩家可指定家园外的休息或睡眠地点，说明不能误报返家或自主作息")]
     [InlineData(AgentGoalKind.Rest, false, false)]
     [InlineData(AgentGoalKind.Rest, true, false)]
     [InlineData(AgentGoalKind.Rest, false, true)]
@@ -286,7 +286,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>暂停时指定恢复目标只安排下一步，不能把当前劳动显示为已开始休息。</summary>
-    [Theory]
+    [Theory(DisplayName = "暂停时指定恢复目标只安排下一步，不能把当前劳动显示为已开始休息")]
     [InlineData(AgentGoalKind.Rest, 16, 16)]
     [InlineData(AgentGoalKind.Rest, 24, 24)]
     [InlineData(AgentGoalKind.Rest, 16, 24)]
@@ -327,7 +327,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>指定睡眠到期后重新按自主作息返家，说明不能沿用旧地点与安排。</summary>
-    [Theory]
+    [Theory(DisplayName = "指定睡眠到期后重新按自主作息返家，说明不能沿用旧地点与安排")]
     [InlineData(0, false)]
     [InlineData(1, true)]
     public void Sleep_summary_uses_only_the_active_player_schedule(int remaining, bool directed)
@@ -368,7 +368,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>指定睡眠在移动中到期时，先完成区段，实际转向后才显示返家。</summary>
-    [Fact]
+    [Fact(DisplayName = "指定睡眠在移动中到期时，先完成区段，实际转向后才显示返家")]
     public void Expired_sleep_summary_waits_for_the_current_movement_before_reporting_return_home()
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
@@ -408,7 +408,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>被冻结的居民尚未抵达指定休息点时，不能显示已在指定地点休息。</summary>
-    [Fact]
+    [Fact(DisplayName = "被冻结的居民尚未抵达指定休息点时，不能显示已在指定地点休息")]
     public void Recovery_summary_does_not_claim_arrival_while_frozen_in_transit()
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
@@ -437,7 +437,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>夜间在家睡眠仍增加饥渴和年龄，晨起清除暂存目标。</summary>
-    [Fact]
+    [Fact(DisplayName = "夜间在家睡眠仍增加饥渴和年龄，晨起清除暂存目标")]
     public void Sleeping_consumes_fractional_needs_and_ends_at_morning()
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
@@ -468,7 +468,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>所在地起火立即打断睡眠，不能等到晨起才处理。</summary>
-    [Fact]
+    [Fact(DisplayName = "所在地起火立即打断睡眠，不能等到晨起才处理")]
     public void Fire_interrupts_sleep_immediately()
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
@@ -487,7 +487,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>迁居者在途中休息，保存目的地与货物，不能夜间折返家园。</summary>
-    [Fact]
+    [Fact(DisplayName = "迁居者在途中休息，保存目的地与货物，不能夜间折返家园")]
     public void Journey_sleeps_in_place_without_losing_its_goal()
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
@@ -511,7 +511,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>远处劳动点的居民夜间宿营，次日继续劳动，避免每天往返占满整个白天。</summary>
-    [Theory]
+    [Theory(DisplayName = "远处劳动点的居民夜间宿营，次日继续劳动，避免每天往返占满整个白天")]
     [InlineData(AgentGoalKind.Gather)]
     [InlineData(AgentGoalKind.Work)]
     public void Distant_workers_return_to_their_assigned_house(AgentGoalKind kind)
@@ -532,7 +532,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>远处取水在傍晚到场后仍可完成，不被返家规则截断成每日空走。</summary>
-    [Fact]
+    [Fact(DisplayName = "远处取水在傍晚到场后仍可完成，不被返家规则截断成每日空走")]
     public void Water_trip_can_collect_after_arriving_in_the_evening()
     {
         var fixture = Prepare(SimulationTime.ReturnHomeTick - 1);
@@ -560,7 +560,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>寻水勘察在夜间返家，暂存勘察目标供次日继续。</summary>
-    [Fact]
+    [Fact(DisplayName = "寻水勘察在夜间返家，暂存勘察目标供次日继续")]
     public void Water_survey_is_saved_before_returning_home()
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
@@ -576,7 +576,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>返程跨过晨起时仍先走到家，不能立即转身重走昨天的路。</summary>
-    [Fact]
+    [Fact(DisplayName = "返程跨过晨起时仍先走到家，不能立即转身重走昨天的路")]
     public void Unfinished_return_home_continues_after_dawn()
     {
         var fixture = Prepare(SimulationTime.WakeTick - 1);
@@ -601,7 +601,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>玩家仍在指挥时可覆盖作息；命令到期后恢复自主睡眠。</summary>
-    [Theory]
+    [Theory(DisplayName = "玩家仍在指挥时可覆盖作息；命令到期后恢复自主睡眠")]
     [InlineData(true)]
     [InlineData(false)]
     public void Player_order_overrides_routine_only_until_its_deadline(bool active)
@@ -623,7 +623,7 @@ public sealed class SimulationTimeTests
     }
 
     /// <summary>水井的共享额度日内不重置，下一日才恢复。</summary>
-    [Fact]
+    [Fact(DisplayName = "水井的共享额度日内不重置，下一日才恢复")]
     public void Well_quota_resets_at_day_boundary_instead_of_each_tick()
     {
         var fixture = Prepare(SimulationTime.WakeTick);

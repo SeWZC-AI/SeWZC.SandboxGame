@@ -5,7 +5,7 @@ public sealed class WorkforceTests
 {
     /// <summary>儿童病患也产生医师需求，能够保留现有医师或从临时劳工中补招。</summary>
     /// <param name="initialProfession">健康候选人的初始职业。</param>
-    [Theory]
+    [Theory(DisplayName = "儿童病患也产生医师需求，能够保留现有医师或从临时劳工中补招")]
     [InlineData(Profession.Physician)]
     [InlineData(Profession.Laborer)]
     public void A_sick_child_keeps_or_creates_a_local_physician_job(Profession initialProfession)
@@ -38,7 +38,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>人类能够在天然山地邻格开采矿石，石材充足不能抵消矿石缺口。</summary>
-    [Fact]
+    [Fact(DisplayName = "人类能够在天然山地邻格开采矿石，石材充足不能抵消矿石缺口")]
     public void A_mountain_edge_provides_mining_jobs_when_only_ore_is_missing()
     {
         var fixture = Prepare();
@@ -66,7 +66,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>矮人已有的天然山地工作点可继续使用，不因普通种族的通行限制被撤销。</summary>
-    [Fact]
+    [Fact(DisplayName = "矮人已有的天然山地工作点可继续使用，不因普通种族的通行限制被撤销")]
     public void A_dwarf_keeps_a_work_area_on_a_natural_mountain()
     {
         var fixture = Prepare();
@@ -92,7 +92,7 @@ public sealed class WorkforceTests
     /// <summary>已解锁且已发现的阶段矿藏短缺仍需要矿工，安排岗位本身不能发现未知矿藏。</summary>
     /// <param name="kind">待补充的阶段矿藏资源。</param>
     /// <param name="discovered">本地是否已发现该矿藏。</param>
-    [Theory]
+    [Theory(DisplayName = "已解锁且已发现的阶段矿藏短缺仍需要矿工，安排岗位本身不能发现未知矿藏")]
     [InlineData(ResourceKind.Coal, true)]
     [InlineData(ResourceKind.Oil, true)]
     [InlineData(ResourceKind.RareEarth, true)]
@@ -130,7 +130,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>容量减少后，多余的本地专业工人可以等待换岗，但不能共同保留同一个容量不足的固定岗位。</summary>
-    [Fact]
+    [Fact(DisplayName = "容量减少后，多余的本地专业工人可以等待换岗，但不能共同保留同一个容量不足的固定岗位")]
     public void Reduced_workplace_capacity_releases_excess_assignments_even_during_a_career_cooldown()
     {
         var fixture = Prepare();
@@ -165,7 +165,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>临时劳工可接受新出现的工位，已有专业分工仍受换岗间隔约束。</summary>
-    [Fact]
+    [Fact(DisplayName = "临时劳工可接受新出现的工位，已有专业分工仍受换岗间隔约束")]
     public void An_unassigned_laborer_can_take_a_new_job_without_waiting_a_year()
     {
         var fixture = Prepare();
@@ -189,7 +189,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>没有可耕地的沿水聚落仍能根据粮食缺口和鱼群产量安排渔民。</summary>
-    [Fact]
+    [Fact(DisplayName = "没有可耕地的沿水聚落仍能根据粮食缺口和鱼群产量安排渔民")]
     public void A_fishing_job_does_not_require_a_farming_plot()
     {
         var fixture = Prepare();
@@ -218,7 +218,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>缺粮也不能凭空增加农田岗位，多余人力可以临时劳动而不是全部变成农民。</summary>
-    [Fact]
+    [Fact(DisplayName = "缺粮也不能凭空增加农田岗位，多余人力可以临时劳动而不是全部变成农民")]
     public void Farming_jobs_are_bounded_by_known_usable_plots()
     {
         var fixture = Prepare();
@@ -247,7 +247,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>没有研究工位时减少学者，但不能改派远方、在途、受伤或受玩家指挥的人。</summary>
-    [Fact]
+    [Fact(DisplayName = "没有研究工位时减少学者，但不能改派远方、在途、受伤或受玩家指挥的人")]
     public void Surplus_professions_are_adjusted_only_when_people_can_accept_local_work()
     {
         var fixture = Prepare();
@@ -273,7 +273,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>按木材缺口挑选适合的工人，固定工位不超过容量，也不会被更近的新设施反复吸走。</summary>
-    [Fact]
+    [Fact(DisplayName = "按木材缺口挑选适合的工人，固定工位不超过容量，也不会被更近的新设施反复吸走")]
     public void Local_work_uses_suitable_people_and_keeps_a_bounded_workplace()
     {
         var fixture = Prepare();
@@ -334,7 +334,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>缺石材且只有低产露头时仍安排真实开采岗位，不能把少量可用石材视为不存在。</summary>
-    [Fact]
+    [Fact(DisplayName = "缺石材且只有低产露头时仍安排真实开采岗位，不能把少量可用石材视为不存在")]
     public void A_low_yield_stone_plot_can_supply_a_mining_job()
     {
         var fixture = Prepare();
@@ -355,7 +355,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>人口超过住房时仍先建立唯一研究岗位，避免连续补住宅耗尽学舍材料。</summary>
-    [Fact]
+    [Fact(DisplayName = "人口超过住房时仍先建立唯一研究岗位，避免连续补住宅耗尽学舍材料")]
     public void An_overcrowded_town_builds_its_first_academy_before_more_housing()
     {
         var fixture = Prepare();
@@ -376,7 +376,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>住宅不消耗矿石，后续奥术研究缺矿不能阻止已可支付的住宅建设。</summary>
-    [Fact]
+    [Fact(DisplayName = "住宅不消耗矿石，后续奥术研究缺矿不能阻止已可支付的住宅建设")]
     public void Housing_is_not_blocked_by_unshared_research_materials()
     {
         var fixture = Prepare();
@@ -407,7 +407,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>已有住宅满员后继续扩建，计入在建床位以免重复立项。</summary>
-    [Theory]
+    [Theory(DisplayName = "已有住宅满员后继续扩建，计入在建床位以免重复立项")]
     [InlineData(1, false)]
     [InlineData(2, false)]
     [InlineData(1, true)]
@@ -441,7 +441,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>公开职业分配与自动岗位调整均使旧日工作计划失效。</summary>
-    [Theory]
+    [Theory(DisplayName = "公开职业分配与自动岗位调整均使旧日工作计划失效")]
     [InlineData(false)]
     [InlineData(true)]
     public void Profession_assignment_invalidates_previous_daily_work(bool automatic)
@@ -479,7 +479,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>住房不足压低出生率，粮食充足且有健康成年人时仍能延续下一代。</summary>
-    [Fact]
+    [Fact(DisplayName = "住房不足压低出生率，粮食充足且有健康成年人时仍能延续下一代")]
     public void Overcrowding_slows_births_without_stopping_generation_replacement()
     {
         var fixture = Prepare();
@@ -496,7 +496,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>已返家的家庭有实物口粮时，空公共仓库不能阻止下一代；新生儿口粮由家庭支付。</summary>
-    [Fact]
+    [Fact(DisplayName = "已返家的家庭有实物口粮时，空公共仓库不能阻止下一代；新生儿口粮由家庭支付")]
     public void Fed_households_can_support_a_child_without_a_full_public_warehouse()
     {
         var fixture = Prepare();
@@ -522,7 +522,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>已住进远离中心的实际住宅的家庭仍能抚育新生儿。</summary>
-    [Fact]
+    [Fact(DisplayName = "已住进远离中心的实际住宅的家庭仍能抚育新生儿")]
     public void A_family_inside_real_housing_can_support_a_birth()
     {
         var fixture = Prepare();
@@ -563,7 +563,7 @@ public sealed class WorkforceTests
     }
 
     /// <summary>尚未返家的家庭携带粮食不能隔空支付家园新生儿的补给。</summary>
-    [Fact]
+    [Fact(DisplayName = "尚未返家的家庭携带粮食不能隔空支付家园新生儿的补给")]
     public void Food_away_from_home_cannot_support_a_local_birth()
     {
         var fixture = Prepare();

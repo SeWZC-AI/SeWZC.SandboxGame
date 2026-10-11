@@ -7,7 +7,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class ImmutableWorldTests
 {
     /// <summary>显式替换与整批地格转换都立即使聚落登记面积查询失效。</summary>
-    [Theory]
+    [Theory(DisplayName = "显式替换与整批地格转换都立即使聚落登记面积查询失效")]
     [InlineData(false)]
     [InlineData(true)]
     public void Tile_replacement_and_transform_invalidate_claim_queries(bool transform)
@@ -29,7 +29,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>读取世界快照时，国家、建筑及军队的批次更新完整提交，后续更新不修改已取得的快照。</summary>
-    [Fact]
+    [Fact(DisplayName = "读取世界快照时，国家、建筑及军队的批次更新完整提交，后续更新不修改已取得的快照")]
     public void Snapshot_includes_batched_nations_buildings_and_armies()
     {
         var current = new WorldEngine(new WorldState
@@ -70,7 +70,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>日内仓库连续记账即时供后续居民读取，快照冻结合并库存并保留此前世界。</summary>
-    [Fact]
+    [Fact(DisplayName = "日内仓库连续记账即时供后续居民读取，快照冻结合并库存并保留此前世界")]
     public void Warehouse_batches_preserve_snapshots_and_other_settlement_updates()
     {
         var fixture = new WorldFixture();
@@ -93,7 +93,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>身份状态拆分后，日常更新、迁居与训练仍保持旧快照、值相等和原有平面存档。</summary>
-    [Fact]
+    [Fact(DisplayName = "身份状态拆分后，日常更新、迁居与训练仍保持旧快照、值相等和原有平面存档")]
     public void Resident_identity_remains_immutable_and_roundtrips_as_flat_fields()
     {
         var before = new Resident
@@ -128,7 +128,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>日常认知转换共享性格，性格修改保留旧快照，存档仍使用原有字段。</summary>
-    [Fact]
+    [Fact(DisplayName = "日常认知转换共享性格，性格修改保留旧快照，存档仍使用原有字段")]
     public void Agent_personality_remains_immutable_and_roundtrips_as_flat_fields()
     {
         var before = new AgentState { Personality = new PersonalityProfile { Diligence = .8 } };
@@ -155,7 +155,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>日内死亡、生成及位置改写合并冻结；中途读取的人口和快照仍准确。</summary>
-    [Fact]
+    [Fact(DisplayName = "日内死亡、生成及位置改写合并冻结；中途读取的人口和快照仍准确")]
     public void Membership_changes_preserve_body_and_agent_values()
     {
         var fixture = new WorldFixture();
@@ -188,7 +188,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>连续动作显式提交新值，取得的实体及世界快照不受后续更改影响。</summary>
-    [Fact]
+    [Fact(DisplayName = "连续动作显式提交新值，取得的实体及世界快照不受后续更改影响")]
     public void Resident_transitions_preserve_agent_and_body_snapshots()
     {
         var fixture = new WorldFixture();
@@ -225,7 +225,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>共享种群存储不改变旧地格、值比较或平面存档；其他地格更新保留动物数量。</summary>
-    [Fact]
+    [Fact(DisplayName = "共享种群存储不改变旧地格、值比较或平面存档；其他地格更新保留动物数量")]
     public void Tile_wildlife_storage_preserves_snapshots_and_serialization()
     {
         var before = new Tile
@@ -252,7 +252,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>稀疏种群冻结后不持有可变生态缓冲，覆盖最高物种位和负零的值比较。</summary>
-    [Fact]
+    [Fact(DisplayName = "稀疏种群冻结后不持有可变生态缓冲，覆盖最高物种位和负零的值比较")]
     public void Sparse_animal_populations_own_their_buffer_and_preserve_all_species()
     {
         var populations = new double[32];
@@ -279,7 +279,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>引擎当前标量在捕获时与实体组合，后续变化不修改已取得的快照。</summary>
-    [Fact]
+    [Fact(DisplayName = "引擎当前标量在捕获时与实体组合，后续变化不修改已取得的快照")]
     public void Engine_scalars_are_captured_together_with_entity_changes()
     {
         var fixture = new WorldFixture();
@@ -309,7 +309,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>低频任务状态共享后仍按值比较，并使用原有平面存档字段。</summary>
-    [Fact]
+    [Fact(DisplayName = "低频任务状态共享后仍按值比较，并使用原有平面存档字段")]
     public void Agent_identity_preserves_equality_and_flat_serialization()
     {
         var before = new AgentState
@@ -344,7 +344,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>低频身体状态仍按值比较并保存为原有平面字段，日常更新保留此前状态。</summary>
-    [Fact]
+    [Fact(DisplayName = "低频身体状态仍按值比较并保存为原有平面字段，日常更新保留此前状态")]
     public void Resident_effects_preserve_value_equality_and_flat_serialization()
     {
         var before = new Resident
@@ -376,7 +376,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>低频双精度状态仍保留负零及 NaN 的输入位模式。</summary>
-    [Fact]
+    [Fact(DisplayName = "低频双精度状态仍保留负零及 NaN 的输入位模式")]
     public void Resident_effects_preserve_double_bit_patterns()
     {
         var nanBits = 0x7ff8000000000001L;
@@ -391,7 +391,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>日内更新立即用于后续劳动和查询，读取世界时冻结完整快照，继续更新不污染旧版本。</summary>
-    [Fact]
+    [Fact(DisplayName = "日内更新立即用于后续劳动和查询，读取世界时冻结完整快照，继续更新不污染旧版本")]
     public void Deferred_updates_are_visible_and_snapshots_remain_independent()
     {
         var fixture = new WorldFixture();
@@ -424,7 +424,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>批量写入、身体转换、成员增删和嵌套范围共用最新状态，不能遗失待提交更新。</summary>
-    [Fact]
+    [Fact(DisplayName = "批量写入、身体转换、成员增删和嵌套范围共用最新状态，不能遗失待提交更新")]
     public void Deferred_updates_survive_transforms_and_membership_changes()
     {
         var fixture = new WorldFixture();
@@ -457,7 +457,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>退出失败的模拟范围仍提交已经发生的劳动，范围外继续写入正常发布。</summary>
-    [Fact]
+    [Fact(DisplayName = "退出失败的模拟范围仍提交已经发生的劳动，范围外继续写入正常发布")]
     public void Deferred_update_scope_flushes_on_exception()
     {
         var fixture = new WorldFixture();
@@ -477,7 +477,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>整批需求转换后显式更新当前认知，保留此前取得的认知值。</summary>
-    [Fact]
+    [Fact(DisplayName = "整批需求转换后显式更新当前认知，保留此前取得的认知值")]
     public void Batch_transition_preserves_previously_read_agent_values()
     {
         var fixture = new WorldFixture();
@@ -500,7 +500,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>移除后重新绑定归档集合的定位引用不会继续改写原集合。</summary>
-    [Fact]
+    [Fact(DisplayName = "移除后重新绑定归档集合的定位引用不会继续改写原集合")]
     public void Removed_reference_can_be_rebound_to_another_collection()
     {
         var fixture = new WorldFixture();
@@ -519,7 +519,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>直接恢复快照可共享不可变集合，两台引擎独立转换并得到相同的续演结果。</summary>
-    [Fact]
+    [Fact(DisplayName = "直接恢复快照可共享不可变集合，两台引擎独立转换并得到相同的续演结果")]
     public void Restoring_a_snapshot_shares_values_and_isolates_subsequent_transitions()
     {
         var fixture = new WorldFixture();
@@ -538,7 +538,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>直接恢复仍校验快照，拒绝无效地图并保留源世界。</summary>
-    [Fact]
+    [Fact(DisplayName = "直接恢复仍校验快照，拒绝无效地图并保留源世界")]
     public void Restoring_an_invalid_snapshot_is_rejected()
     {
         var fixture = new WorldFixture();
@@ -550,7 +550,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>一天模拟后，旧快照中的地格、居民认知、资源和集合均保持原值。</summary>
-    [Fact]
+    [Fact(DisplayName = "一天模拟后，旧快照中的地格、居民认知、资源和集合均保持原值")]
     public void Tick_preserves_the_entire_previous_snapshot()
     {
         var fixture = new WorldFixture();
@@ -565,7 +565,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>居民与世界编辑不能修改保留的旧实体和集合。</summary>
-    [Fact]
+    [Fact(DisplayName = "居民与世界编辑不能修改保留的旧实体和集合")]
     public void Commands_preserve_retained_entities_and_share_unchanged_tiles()
     {
         var fixture = new WorldFixture();
@@ -584,7 +584,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>日内每次转换立即产生独立状态，后续转换不会覆盖先前版本。</summary>
-    [Fact]
+    [Fact(DisplayName = "日内每次转换立即产生独立状态，后续转换不会覆盖先前版本")]
     public void Intra_day_updates_publish_independent_versions()
     {
         var fixture = new WorldFixture();
@@ -609,7 +609,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>父记录转换后读取新的认知值，旧认知值保持独立。</summary>
-    [Fact]
+    [Fact(DisplayName = "父记录转换后读取新的认知值，旧认知值保持独立")]
     public void Parent_transition_keeps_previously_read_agent_values_independent()
     {
         var fixture = new WorldFixture();
@@ -631,7 +631,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>不可变种群和地形转换保留原地格，离开河道时清除宽度。</summary>
-    [Fact]
+    [Fact(DisplayName = "不可变种群和地形转换保留原地格，离开河道时清除宽度")]
     public void Tile_transitions_preserve_the_source_value()
     {
         var before = new Tile { Terrain = TerrainType.River, RiverWidth = 3, Wildlife = WildlifeKind.None };
@@ -646,7 +646,7 @@ public sealed class ImmutableWorldTests
     }
 
     /// <summary>异步序列化期间发生编辑时，导出仍完整对应调用开始时的世界。</summary>
-    [Fact]
+    [Fact(DisplayName = "异步序列化期间发生编辑时，导出仍完整对应调用开始时的世界")]
     public async Task Async_save_uses_the_snapshot_captured_before_yielding()
     {
         var fixture = new WorldFixture();

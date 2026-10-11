@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class DamageProtectionTests
 {
     /// <summary>生命已归零的居民不能在归档前被治疗复生，死亡原因保持不变。</summary>
-    [Theory]
+    [Theory(DisplayName = "生命已归零的居民不能在归档前被治疗复生，死亡原因保持不变")]
     [InlineData(false)]
     [InlineData(true)]
     public void Healing_cannot_revive_a_resident_awaiting_archival(bool publicHealth)
@@ -43,7 +43,7 @@ public sealed class DamageProtectionTests
     }
 
     /// <summary>日内附近索引与直接施法都遵循实际位置，优先治疗生命最低的本国居民。</summary>
-    [Theory]
+    [Theory(DisplayName = "日内附近索引与直接施法都遵循实际位置，优先治疗生命最低的本国居民")]
     [InlineData(false)]
     [InlineData(true)]
     [InlineData(true, true)]
@@ -107,7 +107,7 @@ public sealed class DamageProtectionTests
     }
 
     /// <summary>个人结界仅消耗实际吸收的伤害。</summary>
-    [Theory]
+    [Theory(DisplayName = "个人结界仅消耗实际吸收的伤害")]
     [InlineData(3, 10, 0, 7)]
     [InlineData(15, 10, 5, 0)]
     public void Personal_ward_absorbs_damage_and_consumes_its_strength(
@@ -124,7 +124,7 @@ public sealed class DamageProtectionTests
     }
 
     /// <summary>护甲耗损量等于本次吸收的伤害。</summary>
-    [Fact]
+    [Fact(DisplayName = "护甲耗损量等于本次吸收的伤害")]
     public void Armor_consumes_only_the_damage_it_absorbs()
     {
         var fixture = new WorldFixture();
@@ -138,7 +138,7 @@ public sealed class DamageProtectionTests
     }
 
     /// <summary>负伤害不会反向增加结界或护甲。</summary>
-    [Fact]
+    [Fact(DisplayName = "负伤害不会反向增加结界或护甲")]
     public void Negative_damage_does_not_change_protection()
     {
         var fixture = new WorldFixture();
@@ -152,7 +152,7 @@ public sealed class DamageProtectionTests
     }
 
     /// <summary>城镇护盾只保护局部范围内的居民。</summary>
-    [Theory]
+    [Theory(DisplayName = "城镇护盾只保护局部范围内的居民")]
     [InlineData(21, 12)]
     [InlineData(22, 20)]
     public void Town_shield_applies_only_within_its_range(int x, double expectedDamage)

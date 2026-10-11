@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class ProjectObservationTests
 {
     /// <summary>登记劳动者保留原记录，并且不会重复登记。</summary>
-    [Fact]
+    [Fact(DisplayName = "登记劳动者保留原记录，并且不会重复登记")]
     public void Adding_contributor_preserves_the_previous_observation()
     {
         var original = new ProjectObservation();
@@ -17,7 +17,7 @@ public sealed class ProjectObservationTests
     }
 
     /// <summary>未到四日采样间隔时保留现有记录。</summary>
-    [Fact]
+    [Fact(DisplayName = "未到四日采样间隔时保留现有记录")]
     public void Observing_before_interval_returns_the_previous_observation()
     {
         var original = new ProjectObservation().Observe(12, 1, 3);
@@ -29,7 +29,7 @@ public sealed class ProjectObservationTests
     }
 
     /// <summary>倍率改变时，新快照重新采样，旧快照仍保留原记录。</summary>
-    [Fact]
+    [Fact(DisplayName = "倍率改变时，新快照重新采样，旧快照仍保留原记录")]
     public void Changing_rate_restarts_samples_without_mutating_old_observation()
     {
         var original = new ProjectObservation().Observe(12, 1, 3);
@@ -43,7 +43,7 @@ public sealed class ProjectObservationTests
     }
 
     /// <summary>第八条采样替换最旧样本，先前快照不被淘汰影响。</summary>
-    [Fact]
+    [Fact(DisplayName = "第八条采样替换最旧样本，先前快照不被淘汰影响")]
     public void Eighth_sample_evicts_the_oldest_from_the_new_snapshot()
     {
         var original = new ProjectObservation

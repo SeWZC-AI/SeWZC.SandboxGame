@@ -23,7 +23,7 @@ public sealed class ResearchCommandsTests
     }
 
     /// <summary>开始研究仅扣除一次成本，登记实际工作量。</summary>
-    [Fact]
+    [Fact(DisplayName = "开始研究仅扣除一次成本，登记实际工作量")]
     public void Start_spends_the_local_cost_and_creates_an_unfinished_project()
     {
         var fixture = ReadyWorld();
@@ -42,7 +42,7 @@ public sealed class ResearchCommandsTests
     }
 
     /// <summary>缺少完成的学舍时不扣费。</summary>
-    [Fact]
+    [Fact(DisplayName = "缺少完成的学舍时不扣费")]
     public void Start_requires_a_completed_academy()
     {
         var fixture = ReadyWorld();
@@ -56,7 +56,7 @@ public sealed class ResearchCommandsTests
     }
 
     /// <summary>没有前置知识的项目不能启动。</summary>
-    [Fact]
+    [Fact(DisplayName = "没有前置知识的项目不能启动")]
     public void Start_rejects_missing_prerequisites_without_spending()
     {
         var fixture = ReadyWorld();
@@ -69,7 +69,7 @@ public sealed class ResearchCommandsTests
     }
 
     /// <summary>材料不足时不会先扣除足够的其他材料。</summary>
-    [Fact]
+    [Fact(DisplayName = "材料不足时不会先扣除足够的其他材料")]
     public void Start_rejects_insufficient_materials_atomically()
     {
         var fixture = ReadyWorld();
@@ -83,7 +83,7 @@ public sealed class ResearchCommandsTests
     }
 
     /// <summary>已有项目时不能通过再次启动重复扣费。</summary>
-    [Fact]
+    [Fact(DisplayName = "已有项目时不能通过再次启动重复扣费")]
     public void Start_rejects_a_second_project_without_spending_again()
     {
         var fixture = ReadyWorld();
@@ -97,7 +97,7 @@ public sealed class ResearchCommandsTests
     }
 
     /// <summary>知识接收重复调用不会产生重复记录或事件。</summary>
-    [Fact]
+    [Fact(DisplayName = "知识接收重复调用不会产生重复记录或事件")]
     public void Receiving_the_same_knowledge_twice_is_idempotent()
     {
         var fixture = new WorldFixture();
@@ -111,7 +111,7 @@ public sealed class ResearchCommandsTests
     }
 
     /// <summary>查询不会授予知识、推进世界或消耗随机数。</summary>
-    [Fact]
+    [Fact(DisplayName = "查询不会授予知识、推进世界或消耗随机数")]
     public void HasResearch_is_read_only()
     {
         var fixture = new WorldFixture();

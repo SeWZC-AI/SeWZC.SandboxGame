@@ -8,7 +8,7 @@ namespace SeWZC.WorldBox.UI.Tests;
 public sealed class WorldEditCoordinatorTests
 {
     /// <summary>应用前校验失败时保留原世界和原来的运行选择。</summary>
-    [Fact]
+    [Fact(DisplayName = "应用前校验失败时保留原世界和原来的运行选择")]
     public async Task Rejected_command_does_not_publish_a_checkpoint_or_pause()
     {
         var state = CreateState();
@@ -28,7 +28,7 @@ public sealed class WorldEditCoordinatorTests
     }
 
     /// <summary>复合命令在部分改变世界后失败，仍可恢复编辑前的快照。</summary>
-    [Fact]
+    [Fact(DisplayName = "复合命令在部分改变世界后失败，仍可恢复编辑前的快照")]
     public async Task Partial_failure_preserves_original_world_for_undo()
     {
         var state = CreateState();
@@ -52,7 +52,7 @@ public sealed class WorldEditCoordinatorTests
     }
 
     /// <summary>锁定输入期间关闭窗口、跳转详情或替换世界时，原命令不得提交。</summary>
-    [Theory]
+    [Theory(DisplayName = "锁定输入期间关闭窗口、跳转详情或替换世界时，原命令不得提交")]
     [InlineData("close")]
     [InlineData("navigate")]
     [InlineData("world")]
@@ -95,7 +95,7 @@ public sealed class WorldEditCoordinatorTests
     }
 
     /// <summary>地图工具在准备期间失效时不得留下恢复点或暂停选择。</summary>
-    [Fact]
+    [Fact(DisplayName = "地图工具在准备期间失效时不得留下恢复点或暂停选择")]
     public async Task Invalidated_map_tool_cancels_capture()
     {
         var state = CreateState();

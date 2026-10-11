@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class ImmutableVectorTests
 {
     /// <summary>筛选保留未合并的差异、对象身份和原顺序；无变化时复用输入。</summary>
-    [Fact]
+    [Fact(DisplayName = "筛选保留未合并的差异、对象身份和原顺序；无变化时复用输入")]
     public void RemoveAll_preserves_pending_updates_and_retained_items()
     {
         var original = ImmutableVector<Item>.CreateRange(Enumerable.Range(0, 65).Select(id => new Item(id)));
@@ -24,7 +24,7 @@ public sealed class ImmutableVectorTests
     }
 
     /// <summary>筛选中途失败不能改变输入快照。</summary>
-    [Fact]
+    [Fact(DisplayName = "筛选中途失败不能改变输入快照")]
     public void Failing_filter_preserves_the_input()
     {
         ImmutableVector<Item> before = [new(1), new(2), new(3)];
@@ -36,7 +36,7 @@ public sealed class ImmutableVectorTests
     }
 
     /// <summary>局部可变更新读取原序列的差异，跨分支冻结后不能改写任何已返回的版本。</summary>
-    [Theory]
+    [Theory(DisplayName = "局部可变更新读取原序列的差异，跨分支冻结后不能改写任何已返回的版本")]
     [InlineData(9)]
     [InlineData(33)]
     [InlineData(65)]
@@ -69,7 +69,7 @@ public sealed class ImmutableVectorTests
     }
 
     /// <summary>无效的批量写入不污染已保留的有效更新。</summary>
-    [Fact]
+    [Fact(DisplayName = "无效的批量写入不污染已保留的有效更新")]
     public void Builder_rejects_invalid_indices_without_losing_valid_updates()
     {
         ImmutableVector<Item> before = [new(1)];
@@ -84,7 +84,7 @@ public sealed class ImmutableVectorTests
     }
 
     /// <summary>整批转换读取尚未合并的差异，并保留输入和未改变的对象。</summary>
-    [Theory]
+    [Theory(DisplayName = "整批转换读取尚未合并的差异，并保留输入和未改变的对象")]
     [InlineData(9)]
     [InlineData(65)]
     [InlineData(513)]
@@ -103,7 +103,7 @@ public sealed class ImmutableVectorTests
     }
 
     /// <summary>转换中途失败不会修改输入分支或已保留的差异。</summary>
-    [Fact]
+    [Fact(DisplayName = "转换中途失败不会修改输入分支或已保留的差异")]
     public void Failing_map_preserves_the_input()
     {
         var before = ImmutableVector<Item>.CreateRange(Enumerable.Range(0, 9).Select(id => new Item(id)))
@@ -117,7 +117,7 @@ public sealed class ImmutableVectorTests
     }
 
     /// <summary>跨越叶和分支边界的读取、枚举及追加保持输入顺序。</summary>
-    [Theory]
+    [Theory(DisplayName = "跨越叶和分支边界的读取、枚举及追加保持输入顺序")]
     [InlineData(0)]
     [InlineData(8)]
     [InlineData(32)]
@@ -142,7 +142,7 @@ public sealed class ImmutableVectorTests
     }
 
     /// <summary>路径更新隔离旧序列，并共享其他不可变对象。</summary>
-    [Fact]
+    [Fact(DisplayName = "路径更新隔离旧序列，并共享其他不可变对象")]
     public void SetItem_preserves_the_previous_version()
     {
         var before = ImmutableVector<Item>.CreateRange(Enumerable.Range(0, 65).Select(id => new Item(id)));
@@ -157,7 +157,7 @@ public sealed class ImmutableVectorTests
     }
 
     /// <summary>连续替换及切换目标索引不会改变任何中间版本，追加也保留最后的替换。</summary>
-    [Theory]
+    [Theory(DisplayName = "连续替换及切换目标索引不会改变任何中间版本，追加也保留最后的替换")]
     [InlineData(8)]
     [InlineData(64)]
     [InlineData(512)]
@@ -186,7 +186,7 @@ public sealed class ImmutableVectorTests
     }
 
     /// <summary>输入数组的后续替换不能改变持久化序列。</summary>
-    [Fact]
+    [Fact(DisplayName = "输入数组的后续替换不能改变持久化序列")]
     public void Construction_copies_the_input_buffer()
     {
         Item[] input = [new(1), new(2)];
@@ -198,7 +198,7 @@ public sealed class ImmutableVectorTests
     }
 
     /// <summary>删除保留其他项的顺序，并保持旧序列完整。</summary>
-    [Theory]
+    [Theory(DisplayName = "删除保留其他项的顺序，并保持旧序列完整")]
     [InlineData(0)]
     [InlineData(8)]
     [InlineData(16)]
@@ -213,7 +213,7 @@ public sealed class ImmutableVectorTests
     }
 
     /// <summary>越界更新不能创建无效序列或改变原值。</summary>
-    [Theory]
+    [Theory(DisplayName = "越界更新不能创建无效序列或改变原值")]
     [InlineData(-1)]
     [InlineData(1)]
     public void Invalid_index_is_rejected(int index)

@@ -6,7 +6,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class ResidentSnapshotTests
 {
     /// <summary>候选转换不改变引用，显式替换后读取不再触发其他提交。</summary>
-    [Fact]
+    [Fact(DisplayName = "候选转换不改变引用，显式替换后读取不再触发其他提交")]
     public void Reading_a_resident_does_not_commit_changes()
     {
         var initial = new Resident { Id = 1, Health = 100 };
@@ -26,7 +26,7 @@ public sealed class ResidentSnapshotTests
     }
 
     /// <summary>批次捕获后的快照不受后续纯转换与完整替换影响。</summary>
-    [Fact]
+    [Fact(DisplayName = "批次捕获后的快照不受后续纯转换与完整替换影响")]
     public void Replacing_a_resident_preserves_captured_values()
     {
         var initial = new Resident { Id = 1, Health = 100 };
@@ -45,7 +45,7 @@ public sealed class ResidentSnapshotTests
     }
 
     /// <summary>居民转入归档后，新集合提交后续转换，原集合快照保持独立。</summary>
-    [Fact]
+    [Fact(DisplayName = "居民转入归档后，新集合提交后续转换，原集合快照保持独立")]
     public void Rebinding_residents_preserves_new_collection_updates()
     {
         var initial = new Resident { Id = 1, Health = 100 };
@@ -65,7 +65,7 @@ public sealed class ResidentSnapshotTests
     }
 
     /// <summary>恢复原实体时，之前取得的候选仍保留其值。</summary>
-    [Fact]
+    [Fact(DisplayName = "恢复原实体时，之前取得的候选仍保留其值")]
     public void Replacing_with_the_original_value_preserves_previous_candidates()
     {
         var initial = new Resident { Id = 1, Health = 100 };

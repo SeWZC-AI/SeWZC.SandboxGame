@@ -6,7 +6,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class ResidentRoutineTests
 {
     /// <summary>心智重新初始化保留实际移动起点与整段路线。</summary>
-    [Fact]
+    [Fact(DisplayName = "心智重新初始化保留实际移动起点与整段路线")]
     public void Mind_reinitialization_keeps_the_completed_movement_route_valid()
     {
         var fixture = Prepare();
@@ -38,7 +38,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>眼前被山墙隔开的住房不能分配或继续占用，有床位时改住可达住宅。</summary>
-    [Theory]
+    [Theory(DisplayName = "眼前被山墙隔开的住房不能分配或继续占用，有床位时改住可达住宅")]
     [InlineData(false)]
     [InlineData(true)]
     public void Housing_assignment_uses_an_accessible_house(bool alreadyAssigned)
@@ -73,7 +73,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>住宅引用校验前仍先校验建筑集合，非法空元素返回参数错误。</summary>
-    [Fact]
+    [Fact(DisplayName = "住宅引用校验前仍先校验建筑集合，非法空元素返回参数错误")]
     public void Null_building_in_a_save_is_rejected_as_invalid_input()
     {
         var fixture = Prepare();
@@ -84,7 +84,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>聚落无法迁移而居民转入另一同国聚落时，清理原有移动与日程。</summary>
-    [Fact]
+    [Fact(DisplayName = "聚落无法迁移而居民转入另一同国聚落时，清理原有移动与日程")]
     public void Settlement_removal_clears_a_relocated_residents_route()
     {
         var fixture = Prepare();
@@ -118,7 +118,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>背负者的实际运输方式也用于患者普通编辑的位置校验。</summary>
-    [Fact]
+    [Fact(DisplayName = "背负者的实际运输方式也用于患者普通编辑的位置校验")]
     public void A_carried_passenger_can_be_renamed_on_water()
     {
         var fixture = Prepare();
@@ -150,7 +150,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>暂存日程也不能引用尚不存在的目标证据或事件。</summary>
-    [Theory]
+    [Theory(DisplayName = "暂存日程也不能引用尚不存在的目标证据或事件")]
     [InlineData("EvidenceFactId")]
     [InlineData("CauseEventId")]
     public void Daily_work_rejects_invalid_story_references(string field)
@@ -170,7 +170,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>昨天无法在清醒时段往返的远工作点不能把晨起后的整天锁在住宅。</summary>
-    [Fact]
+    [Fact(DisplayName = "昨天无法在清醒时段往返的远工作点不能把晨起后的整天锁在住宅")]
     public void Morning_reconsiders_a_previous_job_that_is_too_far_from_home()
     {
         var fixture = Prepare();
@@ -210,7 +210,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>折跃后只在患者可通行的位置放下，否则保留实际背负关系。</summary>
-    [Theory]
+    [Theory(DisplayName = "折跃后只在患者可通行的位置放下，否则保留实际背负关系")]
     [InlineData(false, false)]
     [InlineData(true, false)]
     [InlineData(true, true)]
@@ -296,7 +296,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>被背负者的住房通路使用救助者的种族通行能力。</summary>
-    [Fact]
+    [Fact(DisplayName = "被背负者的住房通路使用救助者的种族通行能力")]
     public void A_dwarf_can_carry_a_human_across_mountains_to_the_assigned_home()
     {
         var fixture = Prepare();
@@ -343,7 +343,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>体力降速在半体力以下连续变化，耗尽时最多减少一半。</summary>
-    [Theory]
+    [Theory(DisplayName = "体力降速在半体力以下连续变化，耗尽时最多减少一半")]
     [InlineData(0, 1)]
     [InlineData(50, 1)]
     [InlineData(75, .75)]
@@ -355,7 +355,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>平地一刻提交两格相邻路径，负重减少实际行走距离。</summary>
-    [Theory]
+    [Theory(DisplayName = "平地一刻提交两格相邻路径，负重减少实际行走距离")]
     [InlineData(0, 2)]
     [InlineData(65, 1)]
     public void Walking_speed_accounts_for_actual_load(double wood, int steps)
@@ -390,7 +390,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>住房只有实际容量，分配稳定且零刻存档可恢复。</summary>
-    [Fact]
+    [Fact(DisplayName = "住房只有实际容量，分配稳定且零刻存档可恢复")]
     public void Housing_assignment_never_exceeds_real_capacity()
     {
         var fixture = Prepare();
@@ -402,7 +402,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>在住宅内等待入睡，不把城镇中心当作睡眠地点。</summary>
-    [Fact]
+    [Fact(DisplayName = "在住宅内等待入睡，不把城镇中心当作睡眠地点")]
     public void Night_sleep_uses_the_assigned_house()
     {
         var fixture = Prepare();
@@ -417,7 +417,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>远处工作提前结束，普通刻复用当天计划而不重新作出完整决策。</summary>
-    [Fact]
+    [Fact(DisplayName = "远处工作提前结束，普通刻复用当天计划而不重新作出完整决策")]
     public void Daily_plan_is_reused_and_distant_work_returns_earlier()
     {
         var fixture = Prepare();
@@ -443,7 +443,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>昏迷在露天缓慢恢复，获救卧床后加快，但仍须达到苏醒门槛。</summary>
-    [Fact]
+    [Fact(DisplayName = "昏迷在露天缓慢恢复，获救卧床后加快，但仍须达到苏醒门槛")]
     public void Unconscious_recovery_is_slower_until_rescued_into_a_bed()
     {
         var person = new Resident
@@ -459,7 +459,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>救助者须到场背负，途中存档保留关系，实际入住房后才获得床位恢复。</summary>
-    [Fact]
+    [Fact(DisplayName = "救助者须到场背负，途中存档保留关系，实际入住房后才获得床位恢复")]
     public void Rescue_carries_a_person_home_and_resumes_from_a_mid_route_save()
     {
         var fixture = Prepare();
@@ -503,7 +503,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>复评时继续有效的救助，途中补觉不会把昏迷者放下。</summary>
-    [Fact]
+    [Fact(DisplayName = "复评时继续有效的救助，途中补觉不会把昏迷者放下")]
     public void Rescue_review_keeps_the_passenger_while_the_carrier_sleeps()
     {
         var fixture = Prepare();
@@ -569,7 +569,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>返家睡眠必须真正进入住宅，不能在邻格提前开始补觉。</summary>
-    [Fact]
+    [Fact(DisplayName = "返家睡眠必须真正进入住宅，不能在邻格提前开始补觉")]
     public void Recovery_walks_into_the_house_before_sleeping()
     {
         var fixture = Prepare();
@@ -600,7 +600,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>暂停时停用住宅立即解除入住，在地图重新出现且可保存。</summary>
-    [Fact]
+    [Fact(DisplayName = "暂停时停用住宅立即解除入住，在地图重新出现且可保存")]
     public void Disabling_a_home_releases_its_residents_immediately()
     {
         var fixture = Prepare();
@@ -614,7 +614,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>在途居民的位置编辑清除原来的移动路径，编辑后存档能够恢复。</summary>
-    [Fact]
+    [Fact(DisplayName = "在途居民的位置编辑清除原来的移动路径，编辑后存档能够恢复")]
     public void Position_edit_replaces_an_in_progress_multi_tile_route()
     {
         var fixture = Prepare();
@@ -643,7 +643,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>非法日程不能通过心智编辑改变世界或随机序列。</summary>
-    [Fact]
+    [Fact(DisplayName = "非法日程不能通过心智编辑改变世界或随机序列")]
     public void Invalid_daily_plan_edit_is_atomic()
     {
         var fixture = Prepare();
@@ -660,7 +660,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>地形编辑挪走在途居民时，旧路线不能残留在新位置的存档中。</summary>
-    [Fact]
+    [Fact(DisplayName = "地形编辑挪走在途居民时，旧路线不能残留在新位置的存档中")]
     public void Terrain_relocation_clears_the_old_movement_route()
     {
         var fixture = Prepare();
@@ -686,7 +686,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>被背负的人使用救助者的通行条件，不会因自己的步行状态被挪走。</summary>
-    [Fact]
+    [Fact(DisplayName = "被背负的人使用救助者的通行条件，不会因自己的步行状态被挪走")]
     public void A_carried_person_stays_with_a_boat_carrier_during_terrain_edits()
     {
         var fixture = Prepare();
@@ -724,7 +724,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>地形改变导致承载者归档时，乘客落地后仍可保存恢复。</summary>
-    [Fact]
+    [Fact(DisplayName = "地形改变导致承载者归档时，乘客落地后仍可保存恢复")]
     public void Terrain_changes_can_release_a_passenger_after_the_carrier_dies()
     {
         var fixture = Prepare();
@@ -758,7 +758,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>不能出门的孩子从实际回家的成年人处取得粮水，粮仓不会隔空补给。</summary>
-    [Theory]
+    [Theory(DisplayName = "不能出门的孩子从实际回家的成年人处取得粮水，粮仓不会隔空补给")]
     [InlineData(true)]
     [InlineData(false)]
     public void Children_share_only_supplies_that_have_reached_their_house(bool adultAtHome)
@@ -792,7 +792,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>指定救助也遵守十二岁以下不劳动的限制。</summary>
-    [Fact]
+    [Fact(DisplayName = "指定救助也遵守十二岁以下不劳动的限制")]
     public void A_child_cannot_carry_an_unconscious_adult()
     {
         var fixture = Prepare();
@@ -824,7 +824,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>低睡眠触发的重新安排真正停止原有采集，不被任务持续分支吞掉。</summary>
-    [Fact]
+    [Fact(DisplayName = "低睡眠触发的重新安排真正停止原有采集，不被任务持续分支吞掉")]
     public void Low_sleep_interrupts_an_otherwise_productive_daily_job()
     {
         var fixture = Prepare();
@@ -852,7 +852,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>每日安排只会因眼前已发现的设施失效而提前中断。</summary>
-    [Theory]
+    [Theory(DisplayName = "每日安排只会因眼前已发现的设施失效而提前中断")]
     [InlineData(4, true)]
     [InlineData(8, false)]
     public void Daily_work_does_not_remotely_detect_a_facility_fire(int distance, bool interrupted)
@@ -898,7 +898,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>多格移动在取水岸格停止，不能继续走回原地。</summary>
-    [Fact]
+    [Fact(DisplayName = "多格移动在取水岸格停止，不能继续走回原地")]
     public void Multi_tile_movement_stops_at_the_usable_shore()
     {
         var fixture = Prepare();
@@ -935,7 +935,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>自主救助沿用劳动年龄门槛，允许十二岁以上的居民参与。</summary>
-    [Theory]
+    [Theory(DisplayName = "自主救助沿用劳动年龄门槛，允许十二岁以上的居民参与")]
     [InlineData(11, false)]
     [InlineData(12, true)]
     [InlineData(17, true)]
@@ -960,7 +960,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>附近有人需要帮助时，不覆盖已经出发的异地递送使命。</summary>
-    [Fact]
+    [Fact(DisplayName = "附近有人需要帮助时，不覆盖已经出发的异地递送使命")]
     public void Automatic_rescue_preserves_an_existing_delivery_mission()
     {
         var fixture = Prepare();
@@ -994,7 +994,7 @@ public sealed class ResidentRoutineTests
     }
 
     /// <summary>没有邻岸时保留实际同舟关系；承载者死亡后将真实舟船转交给乘客。</summary>
-    [Theory]
+    [Theory(DisplayName = "没有邻岸时保留实际同舟关系；承载者死亡后将真实舟船转交给乘客")]
     [InlineData(false)]
     [InlineData(true)]
     public void A_passenger_remains_safe_when_rescue_ends_away_from_shore(bool carrierDies)

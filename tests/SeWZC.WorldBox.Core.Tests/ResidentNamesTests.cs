@@ -6,7 +6,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class ResidentNamesTests
 {
     /// <summary>候选名字重复时，批量投放仍保留原名并为新居民选择不同名字。</summary>
-    [Theory]
+    [Theory(DisplayName = "候选名字重复时，批量投放仍保留原名并为新居民选择不同名字")]
     [InlineData(false)]
     [InlineData(true)]
     public void Spawned_names_avoid_existing_and_archived_names(bool archived)

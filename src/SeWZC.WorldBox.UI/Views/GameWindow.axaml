@@ -1,5 +1,8 @@
 <Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels"
         xmlns:game="using:SeWZC.WorldBox.UI" x:Class="SeWZC.WorldBox.UI.Views.GameWindow"
-        Title="SeWZC.WorldBox：众生与山海" Width="1440" Height="920" MinWidth="390" MinHeight="640" Background="#101C27">
+        Title="SeWZC.WorldBox：众生与山海" Width="1440" Height="920" MinWidth="390" MinHeight="640" Background="#101C27"
+        d:DesignWidth="1440" d:DesignHeight="920" d:DataContext="{x:Static vm:DesignData.Session}">
     <game:MainView />
 </Window>

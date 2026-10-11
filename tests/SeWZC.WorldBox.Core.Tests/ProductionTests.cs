@@ -41,7 +41,7 @@ public sealed class ProductionTests
     }
 
     /// <summary>一次加工从随身原料生成随身产物，尚未递送至仓库。</summary>
-    [Fact]
+    [Fact(DisplayName = "一次加工从随身原料生成随身产物，尚未递送至仓库")]
     public void Work_consumes_carried_inputs_and_keeps_output_with_the_worker()
     {
         var (fixture, foundry) = FoundryWorld();
@@ -57,7 +57,7 @@ public sealed class ProductionTests
     }
 
     /// <summary>睡眠不足按比例累计加工进度，保存恢复后完成一批才扣料和产出。</summary>
-    [Fact]
+    [Fact(DisplayName = "睡眠不足按比例累计加工进度，保存恢复后完成一批才扣料和产出")]
     public void Reduced_efficiency_accumulates_saved_progress_before_consuming_a_batch()
     {
         var (fixture, foundry) = FoundryWorld();
@@ -82,7 +82,7 @@ public sealed class ProductionTests
     }
 
     /// <summary>体力耗尽时现场加工立即停止且不消耗原料。</summary>
-    [Fact]
+    [Fact(DisplayName = "体力耗尽时现场加工立即停止且不消耗原料")]
     public void Exhausted_worker_cannot_process_carried_materials()
     {
         var (fixture, foundry) = FoundryWorld();
@@ -94,7 +94,7 @@ public sealed class ProductionTests
     }
 
     /// <summary>实际劳动耗尽体力时在命令返回前进入昏迷。</summary>
-    [Fact]
+    [Fact(DisplayName = "实际劳动耗尽体力时在命令返回前进入昏迷")]
     public void Work_that_exhausts_stamina_marks_unconsciousness_immediately()
     {
         var (fixture, foundry) = FoundryWorld();
@@ -106,7 +106,7 @@ public sealed class ProductionTests
     }
 
     /// <summary>加工缺料不会消耗已有原料。</summary>
-    [Fact]
+    [Fact(DisplayName = "加工缺料不会消耗已有原料")]
     public void Missing_input_does_not_partially_consume_materials()
     {
         var (fixture, foundry) = FoundryWorld();
@@ -122,7 +122,7 @@ public sealed class ProductionTests
     }
 
     /// <summary>停用设施不消耗居民随身原料。</summary>
-    [Fact]
+    [Fact(DisplayName = "停用设施不消耗居民随身原料")]
     public void Disabled_facility_does_not_produce()
     {
         var (fixture, foundry) = FoundryWorld();
@@ -136,7 +136,7 @@ public sealed class ProductionTests
     }
 
     /// <summary>知道项目却缺少运行前置知识时不能加工。</summary>
-    [Fact]
+    [Fact(DisplayName = "知道项目却缺少运行前置知识时不能加工")]
     public void Missing_operating_prerequisite_prevents_production()
     {
         var (fixture, foundry) = FoundryWorld();
@@ -156,7 +156,7 @@ public sealed class ProductionTests
     }
 
     /// <summary>居民必须实际到场才能加工。</summary>
-    [Fact]
+    [Fact(DisplayName = "居民必须实际到场才能加工")]
     public void Distant_worker_cannot_produce()
     {
         var (fixture, foundry) = FoundryWorld();
@@ -170,7 +170,7 @@ public sealed class ProductionTests
     }
 
     /// <summary>同一天重复工作不能重复结算加工。</summary>
-    [Fact]
+    [Fact(DisplayName = "同一天重复工作不能重复结算加工")]
     public void Worker_can_produce_only_once_per_day()
     {
         var (fixture, foundry) = FoundryWorld();
@@ -192,7 +192,7 @@ public sealed class ProductionTests
     }
 
     /// <summary>日内换班不会突破加工设施的当日批次工位上限。</summary>
-    [Fact]
+    [Fact(DisplayName = "日内换班不会突破加工设施的当日批次工位上限")]
     public void Production_capacity_is_shared_across_ticks_of_the_same_day()
     {
         var (fixture, foundry) = FoundryWorld();

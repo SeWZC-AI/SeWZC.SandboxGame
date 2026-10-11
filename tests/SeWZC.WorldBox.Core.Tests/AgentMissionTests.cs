@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class AgentMissionTests
 {
     /// <summary>开始递送优先选择紧急消息，同级消息按观察时间排序并保留原记忆。</summary>
-    [Fact]
+    [Fact(DisplayName = "开始递送优先选择紧急消息，同级消息按观察时间排序并保留原记忆")]
     public void Delivery_selects_up_to_eight_messages_without_changing_input()
     {
         var routine = Enumerable.Range(1, 9).Select(tick => new AgentFact
@@ -32,7 +32,7 @@ public sealed class AgentMissionTests
     }
 
     /// <summary>贸易先清空携带消息，到场装货后才选择新消息。</summary>
-    [Fact]
+    [Fact(DisplayName = "贸易先清空携带消息，到场装货后才选择新消息")]
     public void Trade_starts_with_empty_messages_and_preserves_the_old_mission()
     {
         var fact = new AgentFact { Kind = AgentFactKind.FoodSupply };
@@ -51,7 +51,7 @@ public sealed class AgentMissionTests
     }
 
     /// <summary>结束任务一次转换返乡状态并淘汰最早决策，原认知仍可独立读取。</summary>
-    [Fact]
+    [Fact(DisplayName = "结束任务一次转换返乡状态并淘汰最早决策，原认知仍可独立读取")]
     public void Completion_clears_the_mission_and_retains_the_latest_six_decisions()
     {
         var history = Enumerable.Range(1, 6).Select(tick => new AgentDecision { Tick = tick }).ToArray();

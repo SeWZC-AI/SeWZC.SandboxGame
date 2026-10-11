@@ -6,7 +6,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class ResidentEnduranceTests
 {
     /// <summary>普通人类清醒十六 tick 保持一半睡眠，再睡八 tick 回到满值。</summary>
-    [Fact]
+    [Fact(DisplayName = "普通人类清醒十六 tick 保持一半睡眠，再睡八 tick 回到满值")]
     public void Normal_human_balances_sixteen_awake_and_eight_sleep_ticks()
     {
         var person = new Resident { Age = 18, Activity = ResidentActivity.Working };
@@ -24,7 +24,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>睡眠恢复抵扣持续消耗，普通休息只恢复体力。</summary>
-    [Theory]
+    [Theory(DisplayName = "睡眠恢复抵扣持续消耗，普通休息只恢复体力")]
     [InlineData(ResidentActivity.Sleeping, 1, 56.25, 43.75)]
     [InlineData(ResidentActivity.Resting, 1, 46.875, 43.75)]
     [InlineData(ResidentActivity.Sleeping, 2, 65.625, 37.5)]
@@ -43,7 +43,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>睡眠与体力不足对两类劳动的降幅相反，并只在一半以下降效。</summary>
-    [Theory]
+    [Theory(DisplayName = "睡眠与体力不足对两类劳动的降幅相反，并只在一半以下降效")]
     [InlineData(50, 50, 1, 1)]
     [InlineData(25, 0, .75, .5)]
     [InlineData(0, 0, .5, 0)]
@@ -59,7 +59,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>刚达到劳动年龄时为两成效率，十八岁达到完整效率。</summary>
-    [Theory]
+    [Theory(DisplayName = "刚达到劳动年龄时为两成效率，十八岁达到完整效率")]
     [InlineData(11.99, 0)]
     [InlineData(12, .2)]
     [InlineData(15, .6)]
@@ -71,7 +71,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>普通人类体力劳动十二 tick 消耗一半体力，脑力劳动消耗较少。</summary>
-    [Fact]
+    [Fact(DisplayName = "普通人类体力劳动十二 tick 消耗一半体力，脑力劳动消耗较少")]
     public void Physical_work_consumes_more_stamina_than_mental_work()
     {
         var person = new Resident { Age = 18 };
@@ -83,7 +83,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>种族与个人需求上限存在小幅差异。</summary>
-    [Fact]
+    [Fact(DisplayName = "种族与个人需求上限存在小幅差异")]
     public void Capacities_vary_by_race_and_person()
     {
         var human = new Resident();
@@ -97,7 +97,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>昏迷持续到两项需求均恢复至门槛，不被玩家探索指令打断。</summary>
-    [Theory]
+    [Theory(DisplayName = "昏迷持续到两项需求均恢复至门槛，不被玩家探索指令打断")]
     [InlineData(0, 0)]
     [InlineData(100, 100)]
     public void Exhaustion_forces_unconsciousness_and_blocks_directed_movement(double sleep, double fatigue)
@@ -116,7 +116,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>持续消耗在本 tick 耗尽睡眠时即进入昏迷。</summary>
-    [Fact]
+    [Fact(DisplayName = "持续消耗在本 tick 耗尽睡眠时即进入昏迷")]
     public void Sleep_exhaustion_marks_unconsciousness_in_the_same_tick()
     {
         var fixture = DirectedWorld(25, AgentGoalKind.Socialize, 16, 16);
@@ -127,7 +127,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>昏迷苏醒同时核对睡眠与体力，并包含恰好到达门槛的边界。</summary>
-    [Theory]
+    [Theory(DisplayName = "昏迷苏醒同时核对睡眠与体力，并包含恰好到达门槛的边界")]
     [InlineData(49.9, 0, true)]
     [InlineData(100, 50.1, true)]
     [InlineData(50, 50, false)]
@@ -141,7 +141,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>六岁以下不能通过玩家探索命令出门，六岁可以实际移动。</summary>
-    [Theory]
+    [Theory(DisplayName = "六岁以下不能通过玩家探索命令出门，六岁可以实际移动")]
     [InlineData(5.99, 16)]
     [InlineData(6, 18)]
     public void Outdoor_age_limit_applies_to_actual_movement(double age, int expectedX)
@@ -152,7 +152,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>十二岁以下即使被指定采集也不会劳动或消耗体力。</summary>
-    [Fact]
+    [Fact(DisplayName = "十二岁以下即使被指定采集也不会劳动或消耗体力")]
     public void Children_cannot_execute_directed_gathering()
     {
         var fixture = DirectedWorld(11.99, AgentGoalKind.Gather, 16, 16);
@@ -164,7 +164,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>睡眠字段越界的编辑失败且不改变世界。</summary>
-    [Theory]
+    [Theory(DisplayName = "睡眠字段越界的编辑失败且不改变世界")]
     [InlineData(-1)]
     [InlineData(101)]
     [InlineData(double.NaN)]
@@ -178,7 +178,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>当前存档不能用缺失的睡眠值替代真实状态。</summary>
-    [Fact]
+    [Fact(DisplayName = "当前存档不能用缺失的睡眠值替代真实状态")]
     public void Save_requires_sleep_state()
     {
         var fixture = new WorldFixture();
@@ -188,7 +188,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>昏迷途中保存恢复后继续产生相同结果。</summary>
-    [Fact]
+    [Fact(DisplayName = "昏迷途中保存恢复后继续产生相同结果")]
     public void Unconscious_recovery_survives_save_and_resume()
     {
         var fixture = DirectedWorld(25, AgentGoalKind.Explore, 20, 16);
@@ -202,7 +202,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>远途宿营晨起时，即使采集错峰尚未到期也要停止睡眠恢复。</summary>
-    [Fact]
+    [Fact(DisplayName = "远途宿营晨起时，即使采集错峰尚未到期也要停止睡眠恢复")]
     public void Camping_gatherer_wakes_before_the_next_work_tick()
     {
         var fixture = DirectedWorld(25, AgentGoalKind.Gather, 24, 16);
@@ -231,7 +231,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>一方昏迷后停止现场争夺；双方昏迷也不能新建争执。</summary>
-    [Theory]
+    [Theory(DisplayName = "一方昏迷后停止现场争夺；双方昏迷也不能新建争执")]
     [InlineData(false)]
     [InlineData(true)]
     public void Unconscious_residents_cannot_participate_in_local_conflicts(bool existingViolence)
@@ -296,7 +296,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>已运营的信号路径允许清醒信使转述，但昏迷信使不能主动发信。</summary>
-    [Theory]
+    [Theory(DisplayName = "已运营的信号路径允许清醒信使转述，但昏迷信使不能主动发信")]
     [InlineData(100, true)]
     [InlineData(0, false)]
     public void Message_relay_requires_a_conscious_messenger(double sleep, bool sends)
@@ -354,7 +354,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>祈雨的干旱与火势抵扣量都随脑力劳动效率缩减。</summary>
-    [Theory]
+    [Theory(DisplayName = "祈雨的干旱与火势抵扣量都随脑力劳动效率缩减")]
     [InlineData(18, 100, 1)]
     [InlineData(18, 25, .5)]
     [InlineData(12, 100, .2)]
@@ -380,7 +380,7 @@ public sealed class ResidentEnduranceTests
     }
 
     /// <summary>治疗的减病时间与冰箭冻结时间也遵循施法者脑力劳动效率。</summary>
-    [Theory]
+    [Theory(DisplayName = "治疗的减病时间与冰箭冻结时间也遵循施法者脑力劳动效率")]
     [InlineData(SpellKind.Heal, 18, 100, 1)]
     [InlineData(SpellKind.Heal, 18, 25, .5)]
     [InlineData(SpellKind.Heal, 12, 100, .2)]

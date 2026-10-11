@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class AgentGoalTests
 {
     /// <summary>相同目标复用原认知，改变目标时保留原状态及其记忆。</summary>
-    [Fact]
+    [Fact(DisplayName = "相同目标复用原认知，改变目标时保留原状态及其记忆")]
     public void Unchanged_goal_reuses_agent_state_and_changed_goal_preserves_the_input()
     {
         var goal = new AgentGoal { Kind = AgentGoalKind.Work };
@@ -21,7 +21,7 @@ public sealed class AgentGoalTests
     }
 
     /// <summary>需要等待的任务逐日到场登记，在三日后保留已完成的进度。</summary>
-    [Theory]
+    [Theory(DisplayName = "需要等待的任务逐日到场登记，在三日后保留已完成的进度")]
     [InlineData(AgentGoalKind.ReturnHome)]
     [InlineData(AgentGoalKind.ClaimLand)]
     [InlineData(AgentGoalKind.FetchWater)]
@@ -44,7 +44,7 @@ public sealed class AgentGoalTests
     }
 
     /// <summary>普通劳动与休息不产生无用途的驻留计数。</summary>
-    [Theory]
+    [Theory(DisplayName = "普通劳动与休息不产生无用途的驻留计数")]
     [InlineData(AgentGoalKind.Gather)]
     [InlineData(AgentGoalKind.Work)]
     [InlineData(AgentGoalKind.Rest)]
@@ -58,7 +58,7 @@ public sealed class AgentGoalTests
     }
 
     /// <summary>尚在路上或被冻结时不登记驻留，到达且解冻后才记第一日。</summary>
-    [Theory]
+    [Theory(DisplayName = "尚在路上或被冻结时不登记驻留，到达且解冻后才记第一日")]
     [InlineData(false)]
     [InlineData(true)]
     public void Residence_starts_after_arrival_and_thaw(bool frozen)
@@ -101,7 +101,7 @@ public sealed class AgentGoalTests
     }
 
     /// <summary>普通自主移动同时保留出发点、路线、疲劳和途中状态，旧快照保持未出发。</summary>
-    [Fact]
+    [Fact(DisplayName = "普通自主移动同时保留出发点、路线、疲劳和途中状态，旧快照保持未出发")]
     public void Movement_preserves_navigation_and_waits_for_arrival()
     {
         var fixture = new WorldFixture();
@@ -157,7 +157,7 @@ public sealed class AgentGoalTests
     }
 
     /// <summary>新目的地清除旧路线和受阻进度，但保留任务依据。</summary>
-    [Fact]
+    [Fact(DisplayName = "新目的地清除旧路线和受阻进度，但保留任务依据")]
     public void New_destination_starts_navigation_without_changing_the_old_goal()
     {
         var goal = new AgentGoal
@@ -185,7 +185,7 @@ public sealed class AgentGoalTests
     }
 
     /// <summary>路径追加只生成新目标，重复访问不会增加记录。</summary>
-    [Fact]
+    [Fact(DisplayName = "路径追加只生成新目标，重复访问不会增加记录")]
     public void Visiting_a_tile_preserves_previous_navigation_versions()
     {
         var goal = new AgentGoal { NavigationVisited = [1] };
@@ -198,7 +198,7 @@ public sealed class AgentGoalTests
     }
 
     /// <summary>受阻重试保留当前任务及最佳距离，清除路线与等待。</summary>
-    [Fact]
+    [Fact(DisplayName = "受阻重试保留当前任务及最佳距离，清除路线与等待")]
     public void Retrying_navigation_preserves_the_mission()
     {
         var goal = new AgentGoal

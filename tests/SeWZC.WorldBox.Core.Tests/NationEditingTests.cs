@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class NationEditingTests
 {
     /// <summary>资源编辑写入聚落仓库并更新国家汇总。</summary>
-    [Fact]
+    [Fact(DisplayName = "资源编辑写入聚落仓库并更新国家汇总")]
     public void Resources_update_the_warehouse_and_nation_total()
     {
         var fixture = new WorldFixture();
@@ -18,7 +18,7 @@ public sealed class NationEditingTests
     }
 
     /// <summary>零库存是合法编辑值。</summary>
-    [Fact]
+    [Fact(DisplayName = "零库存是合法编辑值")]
     public void Resources_accept_zero()
     {
         var fixture = new WorldFixture();
@@ -30,7 +30,7 @@ public sealed class NationEditingTests
     }
 
     /// <summary>非法金额不会先提交其他合法资源。</summary>
-    [Theory]
+    [Theory(DisplayName = "非法金额不会先提交其他合法资源")]
     [InlineData(-1)]
     [InlineData(1_000_001)]
     [InlineData(double.NaN)]
@@ -47,7 +47,7 @@ public sealed class NationEditingTests
     }
 
     /// <summary>国家名称去除输入两端空白。</summary>
-    [Fact]
+    [Fact(DisplayName = "国家名称去除输入两端空白")]
     public void Rename_trims_the_name()
     {
         var fixture = new WorldFixture();
@@ -58,7 +58,7 @@ public sealed class NationEditingTests
     }
 
     /// <summary>非法国名不会修改世界。</summary>
-    [Theory]
+    [Theory(DisplayName = "非法国名不会修改世界")]
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("名称\n内嵌换行")]
@@ -74,7 +74,7 @@ public sealed class NationEditingTests
     }
 
     /// <summary>古代工具等级编辑不授予聚落研究知识。</summary>
-    [Fact]
+    [Fact(DisplayName = "古代工具等级编辑不授予聚落研究知识")]
     public void Basic_technology_does_not_grant_research()
     {
         var fixture = new WorldFixture();
@@ -87,7 +87,7 @@ public sealed class NationEditingTests
     }
 
     /// <summary>等级范围外的编辑不会提交。</summary>
-    [Theory]
+    [Theory(DisplayName = "等级范围外的编辑不会提交")]
     [InlineData(0)]
     [InlineData(6)]
     public void Basic_technology_rejects_out_of_range_levels(int level)

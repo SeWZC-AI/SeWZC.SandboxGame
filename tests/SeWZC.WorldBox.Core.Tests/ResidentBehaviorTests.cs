@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class ResidentBehaviorTests
 {
     /// <summary>初始日可直接更新社会状态，尚无经过的日数时不提前累计自然资源恢复。</summary>
-    [Fact]
+    [Fact(DisplayName = "初始日可直接更新社会状态，尚无经过的日数时不提前累计自然资源恢复")]
     public void Initial_society_update_does_not_index_a_negative_recovery_band()
     {
         var engine = WorldEngine.Create(42, 32, 32, false);
@@ -18,7 +18,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>实地猎物出现或被采空后，觅食安排反映最新种群，不沿用旧的空猎场或旧猎物地址。</summary>
-    [Fact]
+    [Fact(DisplayName = "实地猎物出现或被采空后，觅食安排反映最新种群，不沿用旧的空猎场或旧猎物地址")]
     public void Wildlife_choices_follow_the_actual_population_after_an_empty_search()
     {
         var fixture = Prepare();
@@ -58,7 +58,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>已找到的采集点被新山障或火场隔断后，下次安排不能沿旧可达性继续派工。</summary>
-    [Theory]
+    [Theory(DisplayName = "已找到的采集点被新山障或火场隔断后，下次安排不能沿旧可达性继续派工")]
     [InlineData(false)]
     [InlineData(true)]
     public void Resource_work_is_reconsidered_when_its_access_is_cut_off(bool fire)
@@ -105,7 +105,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>同样的土地按同样速率恢复，地图变大不能令该地格的恢复量降低。</summary>
-    [Fact]
+    [Fact(DisplayName = "同样的土地按同样速率恢复，地图变大不能令该地格的恢复量降低")]
     public void Natural_resource_recovery_does_not_slow_down_on_larger_maps()
     {
         double Recover(int size)
@@ -128,7 +128,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>已亲眼看到空仓且附近无粮食时沿实际可通行土地继续觅食，不反复回空仓。</summary>
-    [Fact]
+    [Fact(DisplayName = "已亲眼看到空仓且附近无粮食时沿实际可通行土地继续觅食，不反复回空仓")]
     public void Hungry_resident_explores_when_home_and_visible_sources_are_empty()
     {
         var fixture = Prepare();
@@ -158,7 +158,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>已查过的可采食地点变成贫瘠地、裸地或旱地后，下一次决策读取实际变化。</summary>
-    [Theory]
+    [Theory(DisplayName = "已查过的可采食地点变成贫瘠地、裸地或旱地后，下一次决策读取实际变化")]
     [InlineData("stock")]
     [InlineData("plants")]
     [InlineData("fertility")]
@@ -208,7 +208,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>短路线来自原有视野，抵达后继续使用；存档恢复保持路线与下一步一致。</summary>
-    [Fact]
+    [Fact(DisplayName = "短路线来自原有视野，抵达后继续使用；存档恢复保持路线与下一步一致")]
     public void Navigation_keeps_a_visible_route_across_save_and_arrival()
     {
         var fixture = Prepare();
@@ -230,7 +230,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>已规划路线的下一格被切断后重新观察，不能穿过新障碍。</summary>
-    [Fact]
+    [Fact(DisplayName = "已规划路线的下一格被切断后重新观察，不能穿过新障碍")]
     public void Navigation_replans_when_the_cached_next_step_is_blocked()
     {
         var fixture = Prepare();
@@ -249,7 +249,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>目标在视野内外时均比较可见道路，允许先偏离目标方向再沿更快的路前进。</summary>
-    [Theory]
+    [Theory(DisplayName = "目标在视野内外时均比较可见道路，允许先偏离目标方向再沿更快的路前进")]
     [InlineData(14)]
     [InlineData(22)]
     public void Navigation_prefers_a_faster_road_detour(int targetX)
@@ -266,7 +266,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>目标在视野内外时，耗时相近均更愿意走本人记得的路线。</summary>
-    [Theory]
+    [Theory(DisplayName = "目标在视野内外时，耗时相近均更愿意走本人记得的路线")]
     [InlineData(12)]
     [InlineData(22)]
     public void Navigation_prefers_familiar_places_when_costs_are_similar(int target)
@@ -284,7 +284,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>熟路被地形编辑切断后使用当前可行路径，不能盲从记忆。</summary>
-    [Fact]
+    [Fact(DisplayName = "熟路被地形编辑切断后使用当前可行路径，不能盲从记忆")]
     public void Navigation_does_not_follow_a_blocked_familiar_place()
     {
         var fixture = Prepare();
@@ -303,7 +303,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>实际抵达前只记住出发地，不把逻辑目的地提前当作熟路。</summary>
-    [Fact]
+    [Fact(DisplayName = "实际抵达前只记住出发地，不把逻辑目的地提前当作熟路")]
     public void Navigation_records_places_after_actual_arrival()
     {
         var fixture = Prepare();
@@ -318,7 +318,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>日常补水优先选择可达河岸，不依赖最近的零散陆地供水。</summary>
-    [Fact]
+    [Fact(DisplayName = "日常补水优先选择可达河岸，不依赖最近的零散陆地供水")]
     public void Ordinary_water_collection_prefers_a_reliable_river()
     {
         var fixture = Prepare(true);
@@ -338,7 +338,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>近处自然供水充足时，仍比较评分更高的远处河岸。</summary>
-    [Fact]
+    [Fact(DisplayName = "近处自然供水充足时，仍比较评分更高的远处河岸")]
     public void Water_collection_compares_a_farther_river_with_abundant_groundwater()
     {
         var fixture = Prepare(true);
@@ -356,7 +356,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>严重缺水时近处不足一天的水不能排除远处足量水源。</summary>
-    [Fact]
+    [Fact(DisplayName = "严重缺水时近处不足一天的水不能排除远处足量水源")]
     public void Critical_water_collection_does_not_stop_at_an_insufficient_nearby_source()
     {
         var fixture = Prepare(true);
@@ -373,7 +373,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>严重脱水时先去最近的运营水井，不能为惯常河岸延误补水。</summary>
-    [Fact]
+    [Fact(DisplayName = "严重脱水时先去最近的运营水井，不能为惯常河岸延误补水")]
     public void Critical_thirst_prefers_nearby_sufficient_water()
     {
         var fixture = Prepare(true);
@@ -390,7 +390,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>日常取水选择实际运营水井，停用后只能转向河湖，不能打取普通地块供水。</summary>
-    [Theory]
+    [Theory(DisplayName = "日常取水选择实际运营水井，停用后只能转向河湖，不能打取普通地块供水")]
     [InlineData(true, 18)]
     [InlineData(false, 20)]
     public void Water_collection_accounts_for_well_operation(bool enabled, int expectedX)
@@ -420,7 +420,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>视野内的淡水也必须有可达取水位置，隔山的河流不能成为目标。</summary>
-    [Fact]
+    [Fact(DisplayName = "视野内的淡水也必须有可达取水位置，隔山的河流不能成为目标")]
     public void Water_collection_rejects_an_inaccessible_river()
     {
         var fixture = Prepare(true);
@@ -440,7 +440,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>剩余几天饮水时主动补水，不等到口渴或脱水才安排。</summary>
-    [Fact]
+    [Fact(DisplayName = "剩余几天饮水时主动补水，不等到口渴或脱水才安排")]
     public void Water_collection_replenishes_a_low_reserve_before_thirst()
     {
         var fixture = Prepare(true);
@@ -458,7 +458,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>普通陆地的环境供水不能装进背包，失效的取水任务立即请求重选。</summary>
-    [Fact]
+    [Fact(DisplayName = "普通陆地的环境供水不能装进背包，失效的取水任务立即请求重选")]
     public void Ordinary_ground_does_not_supply_collectable_water()
     {
         var fixture = Prepare(true);
@@ -483,7 +483,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>水井停用或干旱导致产量过低时，取水任务立即结束，环境供水仍保留。</summary>
-    [Theory]
+    [Theory(DisplayName = "水井停用或干旱导致产量过低时，取水任务立即结束，环境供水仍保留")]
     [InlineData(false, 0)]
     [InlineData(true, 10)]
     public void Water_collection_abandons_a_well_that_cannot_build_reserves(bool enabled, int drought)
@@ -517,7 +517,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>地块环境供水独立展示，只有实际水井才显示每日可打水量，且不叠加环境值。</summary>
-    [Theory]
+    [Theory(DisplayName = "地块环境供水独立展示，只有实际水井才显示每日可打水量，且不叠加环境值")]
     [InlineData(false, false, 0)]
     [InlineData(true, false, 2.4)]
     [InlineData(true, true, .6)]
@@ -542,7 +542,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>淡水河湖保持无限可打水量，海水即使有环境供水值也不能打取饮水。</summary>
-    [Theory]
+    [Theory(DisplayName = "淡水河湖保持无限可打水量，海水即使有环境供水值也不能打取饮水")]
     [InlineData(TerrainType.River, true)]
     [InlineData(TerrainType.Lake, true)]
     [InlineData(TerrainType.Stream, true)]
@@ -563,7 +563,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>火场避险只使用眼前能实际走到的安全地格，不选择山墙外的远处。</summary>
-    [Fact]
+    [Fact(DisplayName = "火场避险只使用眼前能实际走到的安全地格，不选择山墙外的远处")]
     public void Fleeing_uses_a_reachable_safe_place()
     {
         var fixture = Prepare();
@@ -585,7 +585,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>病伤者不因扑火优先级高于普通工作而再次参与危险劳动。</summary>
-    [Theory]
+    [Theory(DisplayName = "病伤者不因扑火优先级高于普通工作而再次参与危险劳动")]
     [InlineData(100, 20)]
     [InlineData(30, 0)]
     public void Poor_health_does_not_volunteer_for_firefighting(double health, int sickness)
@@ -601,7 +601,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>火场虽在视野内，隔山无法到达安全边缘时不能接下扑火任务。</summary>
-    [Fact]
+    [Fact(DisplayName = "火场虽在视野内，隔山无法到达安全边缘时不能接下扑火任务")]
     public void Firefighting_requires_a_reachable_safe_edge()
     {
         var fixture = Prepare();
@@ -616,7 +616,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>患病或重伤打断普通工作，自主选择休养。</summary>
-    [Theory]
+    [Theory(DisplayName = "患病或重伤打断普通工作，自主选择休养")]
     [InlineData(100, 20)]
     [InlineData(30, 0)]
     public void Poor_health_interrupts_ordinary_work(double health, int sickness)
@@ -641,7 +641,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>患者前往眼前运营的医疗点，医疗点停用时改回家休养。</summary>
-    [Theory]
+    [Theory(DisplayName = "患者前往眼前运营的医疗点，医疗点停用时改回家休养")]
     [InlineData(true)]
     [InlineData(false)]
     public void Recovery_uses_an_operating_clinic_or_home(bool enabled)
@@ -687,7 +687,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>养伤期间保持休养，身体恢复到安全水平后才重新安排工作。</summary>
-    [Theory]
+    [Theory(DisplayName = "养伤期间保持休养，身体恢复到安全水平后才重新安排工作")]
     [InlineData(50, true)]
     [InlineData(80, false)]
     public void Recovery_has_a_higher_release_threshold(double health, bool shouldRest)
@@ -705,7 +705,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>邻山采矿须开采已选中的山体，不能因脚下草地也有少量石头而长期采不到矿石。</summary>
-    [Fact]
+    [Fact(DisplayName = "邻山采矿须开采已选中的山体，不能因脚下草地也有少量石头而长期采不到矿石")]
     public void Mining_at_a_mountain_edge_extracts_ore_from_the_mountain()
     {
         var fixture = Prepare();
@@ -734,7 +734,7 @@ public sealed class ResidentBehaviorTests
     }
 
     /// <summary>基础建设缺石材时，尚有矿石的居民先补石材，不因矿石未达到常备目标而拒绝纯石材地块。</summary>
-    [Fact]
+    [Fact(DisplayName = "基础建设缺石材时，尚有矿石的居民先补石材，不因矿石未达到常备目标而拒绝纯石材地块")]
     public void A_miner_prioritizes_the_larger_stone_shortage()
     {
         var fixture = Prepare();

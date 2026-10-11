@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class AgentCadenceTests
 {
     /// <summary>返乡休息和等粮不能在非评估日延后已到期的复评，下一错峰日仍会重新决策。</summary>
-    [Theory]
+    [Theory(DisplayName = "返乡休息和等粮不能在非评估日延后已到期的复评，下一错峰日仍会重新决策")]
     [InlineData(AgentGoalKind.ReturnHome, ResidentActivity.Resting)]
     [InlineData(AgentGoalKind.Eat, ResidentActivity.Eating)]
     public void Arrived_waiting_goal_keeps_its_due_review_until_the_scheduled_day(
@@ -39,7 +39,7 @@ public sealed class AgentCadenceTests
     }
 
     /// <summary>体力充足时仍持续消耗睡眠，原目标及其他认知保持不变。</summary>
-    [Theory]
+    [Theory(DisplayName = "体力充足时仍持续消耗睡眠，原目标及其他认知保持不变")]
     [InlineData(AgentGoalKind.Rest, ResidentActivity.Resting)]
     [InlineData(AgentGoalKind.Socialize, ResidentActivity.Talking)]
     public void Recovered_resident_consumes_sleep_without_changing_the_goal(AgentGoalKind kind,
@@ -71,7 +71,7 @@ public sealed class AgentCadenceTests
     }
 
     /// <summary>同格多人交谈只选择其他居民，且新消息必须等到下一日递送。</summary>
-    [Fact]
+    [Fact(DisplayName = "同格多人交谈只选择其他居民，且新消息必须等到下一日递送")]
     public void Crowded_cell_conversation_excludes_sender_and_delays_delivery()
     {
         var fixture = Prepare();
@@ -124,7 +124,7 @@ public sealed class AgentCadenceTests
     }
 
     /// <summary>持续缺粮时保留刚评估的寻粮目标，身体需求仍结算但不每天重新决策。</summary>
-    [Fact]
+    [Fact(DisplayName = "持续缺粮时保留刚评估的寻粮目标，身体需求仍结算但不每天重新决策")]
     public void Ongoing_crisis_preserves_a_recent_survival_review()
     {
         var fixture = Prepare();
@@ -152,7 +152,7 @@ public sealed class AgentCadenceTests
     }
 
     /// <summary>紧急判断立即执行，首次复评对齐个人四日错峰，保存恢复保留后续安排。</summary>
-    [Fact]
+    [Fact(DisplayName = "紧急判断立即执行，首次复评对齐个人四日错峰，保存恢复保留后续安排")]
     public void Survival_reviews_are_spread_without_delaying_the_initial_emergency()
     {
         var fixture = Prepare();
@@ -189,7 +189,7 @@ public sealed class AgentCadenceTests
     }
 
     /// <summary>已在有效采食且携水够用时，不将普通地块不能打水误判为新危机。</summary>
-    [Theory]
+    [Theory(DisplayName = "已在有效采食且携水够用时，不将普通地块不能打水误判为新危机")]
     [InlineData(100, true)]
     [InlineData(5, false)]
     public void Productive_food_task_continues_with_carried_water(byte fertility, bool productive)
@@ -236,7 +236,7 @@ public sealed class AgentCadenceTests
     }
 
     /// <summary>到场等粮的紧急任务也按个人日期复评，现场查看粮仓不能重新聚集评估日期。</summary>
-    [Theory]
+    [Theory(DisplayName = "到场等粮的紧急任务也按个人日期复评，现场查看粮仓不能重新聚集评估日期")]
     [InlineData(0)]
     [InlineData(1)]
     [InlineData(2)]
@@ -267,7 +267,7 @@ public sealed class AgentCadenceTests
     }
 
     /// <summary>非评估日的普通空闲居民继续结算需求，保留尚未评估的目标。</summary>
-    [Fact]
+    [Fact(DisplayName = "非评估日的普通空闲居民继续结算需求，保留尚未评估的目标")]
     public void Ordinary_idle_waits_for_its_review_day()
     {
         var fixture = Prepare();
@@ -282,7 +282,7 @@ public sealed class AgentCadenceTests
     }
 
     /// <summary>严重口渴立即选择实际可达水源，不等待普通评估日。</summary>
-    [Fact]
+    [Fact(DisplayName = "严重口渴立即选择实际可达水源，不等待普通评估日")]
     public void Critical_thirst_overrides_the_review_schedule()
     {
         var fixture = Prepare();
@@ -306,7 +306,7 @@ public sealed class AgentCadenceTests
     }
 
     /// <summary>每日额度耗尽时保留会恢复供水的已知水源，不转向或反复请求评估。</summary>
-    [Fact]
+    [Fact(DisplayName = "每日额度耗尽时保留会恢复供水的已知水源，不转向或反复请求评估")]
     public void Exhausted_daily_water_quota_preserves_the_known_source()
     {
         var fixture = new WorldFixture();
@@ -343,7 +343,7 @@ public sealed class AgentCadenceTests
     }
 
     /// <summary>补个人储备与公共运水的任务在装满后结束，后者需实际返仓。</summary>
-    [Theory]
+    [Theory(DisplayName = "补个人储备与公共运水的任务在装满后结束，后者需实际返仓")]
     [InlineData(101, .75, AgentGoalKind.Idle)]
     [InlineData(100, 3.75, AgentGoalKind.ReturnHome)]
     public void Water_collection_finishes_at_the_respective_carry_target(
@@ -388,7 +388,7 @@ public sealed class AgentCadenceTests
     }
 
     /// <summary>到场取水逐日结算，不受普通生产的四日轮班限制；在途仍不能取水。</summary>
-    [Theory]
+    [Theory(DisplayName = "到场取水逐日结算，不受普通生产的四日轮班限制；在途仍不能取水")]
     [InlineData(0, true)]
     [InlineData(1, false)]
     public void Water_collection_runs_daily_after_arrival(int movementStarted, bool draws)

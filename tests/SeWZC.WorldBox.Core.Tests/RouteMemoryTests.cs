@@ -7,7 +7,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class RouteMemoryTests
 {
     /// <summary>容量满后忘记最久未走的地格，旧快照保持原值。</summary>
-    [Fact]
+    [Fact(DisplayName = "容量满后忘记最久未走的地格，旧快照保持原值")]
     public void Familiar_places_evict_the_oldest_visit_without_mutating_the_source()
     {
         var before = new AgentState
@@ -24,7 +24,7 @@ public sealed class RouteMemoryTests
     }
 
     /// <summary>重走既有地格只刷新顺序，不复制地点。</summary>
-    [Fact]
+    [Fact(DisplayName = "重走既有地格只刷新顺序，不复制地点")]
     public void Revisiting_a_place_refreshes_recency_without_duplicates()
     {
         var before = new AgentState { FamiliarTiles = [1, 2, 3] };
@@ -37,7 +37,7 @@ public sealed class RouteMemoryTests
     }
 
     /// <summary>保存恢复保留个人熟路，观察效果不改变世界或消耗随机数。</summary>
-    [Fact]
+    [Fact(DisplayName = "保存恢复保留个人熟路，观察效果不改变世界或消耗随机数")]
     public void Saving_and_observing_preserve_familiar_places()
     {
         var fixture = new WorldFixture();
@@ -53,7 +53,7 @@ public sealed class RouteMemoryTests
     }
 
     /// <summary>缺失熟路字段不能静默丢失决定未来路线的因果状态。</summary>
-    [Fact]
+    [Fact(DisplayName = "缺失熟路字段不能静默丢失决定未来路线的因果状态")]
     public void Import_requires_familiar_places()
     {
         var fixture = new WorldFixture();
@@ -64,7 +64,7 @@ public sealed class RouteMemoryTests
     }
 
     /// <summary>拒绝重复、越界、超容量或空引用的熟路记录。</summary>
-    [Theory]
+    [Theory(DisplayName = "拒绝重复、越界、超容量或空引用的熟路记录")]
     [InlineData("[1,1]")]
     [InlineData("[-1]")]
     [InlineData("[1024]")]
@@ -82,7 +82,7 @@ public sealed class RouteMemoryTests
     }
 
     /// <summary>熟路容量约束同样校验快照恢复，不依赖 JSON 解析器。</summary>
-    [Fact]
+    [Fact(DisplayName = "熟路容量约束同样校验快照恢复，不依赖 JSON 解析器")]
     public void Snapshot_restore_rejects_oversized_familiar_places()
     {
         var fixture = new WorldFixture();

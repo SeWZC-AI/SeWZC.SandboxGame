@@ -7,7 +7,7 @@ namespace SeWZC.WorldBox.UI.Tests;
 public sealed class WorldMapControlViewportTests
 {
     /// <summary>定位改变镜头，返回时同时恢复原中心和缩放。</summary>
-    [Fact]
+    [Fact(DisplayName = "定位改变镜头，返回时同时恢复原中心和缩放")]
     public void Restoring_viewport_returns_to_the_previous_observation()
     {
         var map = new WorldMapControl { Engine = WorldEngine.Create(42, 32, 32, false) };
@@ -21,7 +21,7 @@ public sealed class WorldMapControlViewportTests
     }
 
     /// <summary>镜头恢复不改变当前选择或模拟快照。</summary>
-    [Fact]
+    [Fact(DisplayName = "镜头恢复不改变当前选择或模拟快照")]
     public void Restoring_camera_does_not_change_selection_or_world()
     {
         var engine = WorldEngine.Create(42, 32, 32, false);
@@ -39,7 +39,7 @@ public sealed class WorldMapControlViewportTests
     }
 
     /// <summary>定位后更换建设归属，返回观察时保持当前工具实际使用的归属。</summary>
-    [Fact]
+    [Fact(DisplayName = "定位后更换建设归属，返回观察时保持当前工具实际使用的归属")]
     public void Returning_to_observation_preserves_current_construction_context()
     {
         var map = new WorldMapControl { Engine = WorldEngine.Create(42, 32, 32, false) };
@@ -60,7 +60,7 @@ public sealed class WorldMapControlViewportTests
     }
 
     /// <summary>表单地图选点取消仍可恢复完整的工具归属。</summary>
-    [Fact]
+    [Fact(DisplayName = "表单地图选点取消仍可恢复完整的工具归属")]
     public void Restoring_full_map_selection_restores_tool_context()
     {
         var map = new WorldMapControl { Engine = WorldEngine.Create(42, 32, 32, false) };
@@ -77,7 +77,7 @@ public sealed class WorldMapControlViewportTests
     }
 
     /// <summary>定位地格只移动镜头，地图高亮仍与原对象摘要对应。</summary>
-    [Fact]
+    [Fact(DisplayName = "定位地格只移动镜头，地图高亮仍与原对象摘要对应")]
     public void Focusing_location_preserves_selection_and_tool_context()
     {
         var engine = WorldEngine.Create(42, 32, 32, false);
@@ -95,7 +95,7 @@ public sealed class WorldMapControlViewportTests
     }
 
     /// <summary>归档居民没有地图轨迹，定位失败时保留原镜头、选择和世界。</summary>
-    [Fact]
+    [Fact(DisplayName = "归档居民没有地图轨迹，定位失败时保留原镜头、选择和世界")]
     public void Focusing_archived_resident_reports_failure_without_changing_observation()
     {
         var engine = WorldEngine.Create(42, 32, 32, false);
@@ -122,7 +122,7 @@ public sealed class WorldMapControlViewportTests
     }
 
     /// <summary>定位在地图上的居民同步选择目标，不把其他居民的跟随状态带到目标。</summary>
-    [Fact]
+    [Fact(DisplayName = "定位在地图上的居民同步选择目标，不把其他居民的跟随状态带到目标")]
     public void Focusing_another_resident_selects_target_without_inheriting_follow()
     {
         var engine = WorldEngine.Create(42, 32, 32, false);

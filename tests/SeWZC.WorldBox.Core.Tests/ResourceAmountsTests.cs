@@ -27,7 +27,7 @@ public sealed class ResourceAmountsTests
     }
 
     /// <summary>费用读取对应的资源字段。</summary>
-    [Theory]
+    [Theory(DisplayName = "费用读取对应的资源字段")]
     [MemberData(nameof(ResourceStockTests.Resources), MemberType = typeof(ResourceStockTests))]
     public void Get_returns_the_selected_amount(ResourceKind kind, double expected)
     {
@@ -35,7 +35,7 @@ public sealed class ResourceAmountsTests
     }
 
     /// <summary>库存转换保留费用，替换库存不会修改目录中的金额。</summary>
-    [Theory]
+    [Theory(DisplayName = "库存转换保留费用，替换库存不会修改目录中的金额")]
     [MemberData(nameof(ResourceStockTests.Resources), MemberType = typeof(ResourceStockTests))]
     public void ToStock_preserves_the_immutable_recipe(ResourceKind kind, double expected)
     {
@@ -49,7 +49,7 @@ public sealed class ResourceAmountsTests
     }
 
     /// <summary>未知资源不能被当作合法费用读取。</summary>
-    [Fact]
+    [Fact(DisplayName = "未知资源不能被当作合法费用读取")]
     public void Get_rejects_an_unknown_resource()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => Amounts().Get((ResourceKind)(-1)));

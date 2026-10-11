@@ -10,7 +10,7 @@ namespace SeWZC.WorldBox.UI.Tests;
 public sealed class GameSessionViewModelTests
 {
     /// <summary>跨详情返回恢复原视野、选择、折叠及滚动，不改变世界快照。</summary>
-    [Fact]
+    [Fact(DisplayName = "跨详情返回恢复原视野、选择、折叠及滚动，不改变世界快照")]
     public void Back_restores_observation_and_detail_state_after_layout()
     {
         var (session, map) = CreateSession();
@@ -43,7 +43,7 @@ public sealed class GameSessionViewModelTests
     }
 
     /// <summary>布局等待期间又跳转时，旧返回动作不会覆盖新详情的滚动位置。</summary>
-    [Fact]
+    [Fact(DisplayName = "布局等待期间又跳转时，旧返回动作不会覆盖新详情的滚动位置")]
     public void Later_navigation_invalidates_queued_scroll_restoration()
     {
         var (session, _) = CreateSession();
@@ -61,7 +61,7 @@ public sealed class GameSessionViewModelTests
     }
 
     /// <summary>连续定位共用最初的观察位置，返回保留原选中对象。</summary>
-    [Fact]
+    [Fact(DisplayName = "连续定位共用最初的观察位置，返回保留原选中对象")]
     public void Repeated_location_returns_to_original_viewport_and_selection()
     {
         var (session, map) = CreateSession();
@@ -83,7 +83,7 @@ public sealed class GameSessionViewModelTests
     }
 
     /// <summary>地图取点保留原表单草稿，返回不改坐标，点选只更新草稿。</summary>
-    [Fact]
+    [Fact(DisplayName = "地图取点保留原表单草稿，返回不改坐标，点选只更新草稿")]
     public void Map_pick_restores_original_draft_and_pause_preference()
     {
         var (session, map) = CreateSession();
@@ -120,7 +120,7 @@ public sealed class GameSessionViewModelTests
     }
 
     /// <summary>提交准备过程中关闭并打开另一窗口时，取消原提交且只恢复原窗口锁定。</summary>
-    [Fact]
+    [Fact(DisplayName = "提交准备过程中关闭并打开另一窗口时，取消原提交且只恢复原窗口锁定")]
     public async Task Closing_during_submission_keeps_new_form_independent()
     {
         var (session, _) = CreateSession();
@@ -155,7 +155,7 @@ public sealed class GameSessionViewModelTests
     }
 
     /// <summary>分类切换重置笔刷和分页，空槽不可执行，分页不会推进世界。</summary>
-    [Fact]
+    [Fact(DisplayName = "分类切换重置笔刷和分页，空槽不可执行，分页不会推进世界")]
     public void Tool_category_and_page_apply_their_own_defaults()
     {
         var (session, map) = CreateSession();
@@ -175,6 +175,32 @@ public sealed class GameSessionViewModelTests
         Assert.Equal("第 1 / 1 页", session.Tools.PageLabel);
         Assert.Equal((ToolCategory.Disaster, 0), map.Brush);
         Assert.Equal(originalWorld, session.State.Engine.State);
+    }
+
+    /// <summary>世界菜单的观察入口打开对应详情，关闭后保留世界与运行偏好。</summary>
+    [Theory(DisplayName = "世界菜单的观察入口打开对应详情，关闭后保留世界与运行偏好")]
+    [InlineData("overview", "世界概览")]
+    [InlineData("residents", "居民列表")]
+    [InlineData("nations", "国家列表")]
+    [InlineData("settlements", "聚落列表")]
+    [InlineData("guide", "玩法说明")]
+    public void World_menu_observation_entries_open_their_details(string entry, string title)
+    {
+        var (session, _) = CreateSession();
+        session.State.IsPaused = false;
+        var original = session.State.Engine.State;
+
+        session.State.NavigateCommand.Execute(entry);
+
+        Assert.True(session.State.InspectorVisible);
+        Assert.Equal(entry, session.State.InspectorMode);
+        Assert.Equal(title, session.State.InspectorTitle);
+        Assert.NotNull(session.State.InspectorContent);
+        Assert.False(session.WorldTimeStopped);
+        session.Navigation.CloseCommand.Execute(null);
+        Assert.False(session.State.InspectorVisible);
+        Assert.False(session.State.IsPaused);
+        Assert.Equal(original, session.State.Engine.State);
     }
 
     private static (GameSessionViewModel Session, GameMapStub Map) CreateSession()

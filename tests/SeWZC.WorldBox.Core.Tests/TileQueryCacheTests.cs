@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class TileQueryCacheTests
 {
     /// <summary>动物耗尽后可食物种和采集效率都重新推导。</summary>
-    [Fact]
+    [Fact(DisplayName = "动物耗尽后可食物种和采集效率都重新推导")]
     public void Depleted_animals_invalidate_edible_species_and_harvest()
     {
         var before = new Tile
@@ -29,7 +29,7 @@ public sealed class TileQueryCacheTests
     }
 
     /// <summary>灾害和采收分别使栖息容量与植物产量失效。</summary>
-    [Fact]
+    [Fact(DisplayName = "灾害和采收分别使栖息容量与植物产量失效")]
     public void Fire_and_harvest_invalidate_habitat_and_plant_yield()
     {
         var before = new Tile
@@ -52,7 +52,7 @@ public sealed class TileQueryCacheTests
     }
 
     /// <summary>普通可食物种与限定水生物种的查询不串用缓存。</summary>
-    [Fact]
+    [Fact(DisplayName = "普通可食物种与限定水生物种的查询不串用缓存")]
     public void Aquatic_and_land_queries_use_separate_species()
     {
         var tile = new Tile { Wildlife = WildlifeKind.Deer, WildlifePopulation = 10 }

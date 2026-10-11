@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class PlantCoverageTests
 {
     /// <summary>植物份额读取对应类别。</summary>
-    [Theory]
+    [Theory(DisplayName = "植物份额读取对应类别")]
     [InlineData(PlantKind.Trees, .1)]
     [InlineData(PlantKind.Shrubs, .2)]
     [InlineData(PlantKind.Grass, .3)]
@@ -18,7 +18,7 @@ public sealed class PlantCoverageTests
     }
 
     /// <summary>作物不覆盖任何自然植物份额。</summary>
-    [Fact]
+    [Fact(DisplayName = "作物不覆盖任何自然植物份额")]
     public void WithCoverage_ignores_crops()
     {
         var coverage = new PlantCoverage { Trees = .1, Shrubs = .2, Grass = .3, Reeds = .4 };
@@ -30,7 +30,7 @@ public sealed class PlantCoverageTests
     }
 
     /// <summary>同一总量但组成不同的植物覆盖不相等。</summary>
-    [Fact]
+    [Fact(DisplayName = "同一总量但组成不同的植物覆盖不相等")]
     public void Equality_compares_composition_instead_of_total()
     {
         var trees = new PlantCoverage { Trees = .5 };
@@ -41,7 +41,7 @@ public sealed class PlantCoverageTests
     }
 
     /// <summary>替换自然植物份额产生新值，旧覆盖保留原组成。</summary>
-    [Fact]
+    [Fact(DisplayName = "替换自然植物份额产生新值，旧覆盖保留原组成")]
     public void WithCoverage_preserves_original_shares()
     {
         var original = new PlantCoverage { Trees = .1, Shrubs = .2 };

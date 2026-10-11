@@ -5,7 +5,7 @@ namespace SeWZC.WorldBox.UI.ViewModels.Details;
 /// <summary>可编辑数值及其范围。</summary>
 internal sealed class NumberNode : VisualNode
 {
-    private string? _formatString;
+    private string _formatString = "";
     private decimal _increment = 1;
     private decimal _maximum = decimal.MaxValue;
     private decimal _minimum = decimal.MinValue;
@@ -40,7 +40,7 @@ internal sealed class NumberNode : VisualNode
         set => Set(ref _increment, value);
     }
 
-    public string? FormatString
+    public string FormatString
     {
         get => _formatString;
         set => Set(ref _formatString, value);

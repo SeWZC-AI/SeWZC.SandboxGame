@@ -7,7 +7,7 @@ namespace SeWZC.WorldBox.UI.Tests;
 public sealed class MainViewModelTests
 {
     /// <summary>关闭操作窗口后保留玩家原来的暂停选择。</summary>
-    [Fact]
+    [Fact(DisplayName = "关闭操作窗口后保留玩家原来的暂停选择")]
     public void Closing_modal_preserves_explicit_pause()
     {
         var model = CreateModel();
@@ -24,7 +24,7 @@ public sealed class MainViewModelTests
     }
 
     /// <summary>暂停时选择速度不推进世界，也不自动恢复运行。</summary>
-    [Fact]
+    [Fact(DisplayName = "暂停时选择速度不推进世界，也不自动恢复运行")]
     public void Choosing_speed_while_paused_does_not_resume_world()
     {
         var model = CreateModel();
@@ -40,7 +40,7 @@ public sealed class MainViewModelTests
     }
 
     /// <summary>取点时隐藏选择并阻止导航，返回后原选择仍可见。</summary>
-    [Fact]
+    [Fact(DisplayName = "取点时隐藏选择并阻止导航，返回后原选择仍可见")]
     public void Map_picker_preserves_selection_without_allowing_navigation()
     {
         var model = CreateModel();
@@ -62,7 +62,7 @@ public sealed class MainViewModelTests
     }
 
     /// <summary>浏览选择和详情只更新展示，不消耗世界时间或随机状态。</summary>
-    [Fact]
+    [Fact(DisplayName = "浏览选择和详情只更新展示，不消耗世界时间或随机状态")]
     public void Observing_and_refreshing_preserves_world_snapshot()
     {
         var model = CreateModel();
@@ -82,7 +82,7 @@ public sealed class MainViewModelTests
     }
 
     /// <summary>收起的通知在周期刷新时保持收起，新事件仍显示。</summary>
-    [Fact]
+    [Fact(DisplayName = "收起的通知在周期刷新时保持收起，新事件仍显示")]
     public void Dismissed_event_stays_hidden_until_another_event_arrives()
     {
         var model = CreateModel();
@@ -99,7 +99,7 @@ public sealed class MainViewModelTests
     }
 
     /// <summary>换世界后不把旧通知的收起状态应用到复用编号的新事件。</summary>
-    [Fact]
+    [Fact(DisplayName = "换世界后不把旧通知的收起状态应用到复用编号的新事件")]
     public void Replacing_world_clears_presentation_bookmarks()
     {
         var model = CreateModel();
@@ -121,7 +121,7 @@ public sealed class MainViewModelTests
     }
 
     /// <summary>进食和昏迷会中断劳动，摘要显示实际行动而非保留的任务目标。</summary>
-    [Theory]
+    [Theory(DisplayName = "进食和昏迷会中断劳动，摘要显示实际行动而非保留的任务目标")]
     [InlineData(ResidentActivity.Eating, "吃随身口粮")]
     [InlineData(ResidentActivity.Unconscious, "强制昏迷")]
     [InlineData(ResidentActivity.Working, "当前劳作：正在前往")]
@@ -162,7 +162,7 @@ public sealed class MainViewModelTests
     }
 
     /// <summary>窄屏详情和工具隐藏通知，关闭后恢复未收起的原通知。</summary>
-    [Fact]
+    [Fact(DisplayName = "窄屏详情和工具隐藏通知，关闭后恢复未收起的原通知")]
     public void Compact_inspector_hides_notice_without_dismissing_it()
     {
         var model = CreateModel();
@@ -186,7 +186,7 @@ public sealed class MainViewModelTests
     }
 
     /// <summary>放置确认或表单选点使用提示区，结束后恢复原通知。</summary>
-    [Fact]
+    [Fact(DisplayName = "放置确认或表单选点使用提示区，结束后恢复原通知")]
     public void Placement_and_map_picker_hide_notice_without_dismissing_it()
     {
         var model = CreateModel();
@@ -210,7 +210,7 @@ public sealed class MainViewModelTests
     }
 
     /// <summary>短窗口保留操作空间，增加高度后仍能查看原通知。</summary>
-    [Fact]
+    [Fact(DisplayName = "短窗口保留操作空间，增加高度后仍能查看原通知")]
     public void Short_window_hides_notice_without_dismissing_it()
     {
         var model = CreateModel();

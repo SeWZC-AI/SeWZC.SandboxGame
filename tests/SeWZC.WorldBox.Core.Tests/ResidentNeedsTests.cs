@@ -6,7 +6,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class ResidentNeedsTests
 {
     /// <summary>普通环境的成年人断粮五日或断水两日时耗尽储备并失去行动能力。</summary>
-    [Theory]
+    [Theory(DisplayName = "普通环境的成年人断粮五日或断水两日时耗尽储备并失去行动能力")]
     [InlineData(true, 5)]
     [InlineData(false, 2)]
     public void Deprivation_exhausts_a_normal_adult_at_the_requested_deadline(bool food, int days)
@@ -26,7 +26,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>带着物资仍会逐渐饥渴，未到吃喝时刻不会每刻自动扣除背包。</summary>
-    [Fact]
+    [Fact(DisplayName = "带着物资仍会逐渐饥渴，未到吃喝时刻不会每刻自动扣除背包")]
     public void Carried_supplies_do_not_suppress_the_growth_of_needs()
     {
         var before = new Resident { Age = 25, Inventory = new ResourceStock { Food = 1, Water = 1 } };
@@ -39,7 +39,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>未完成移动区段时不能边赶路边自动进食。</summary>
-    [Fact]
+    [Fact(DisplayName = "未完成移动区段时不能边赶路边自动进食")]
     public void A_travelling_resident_waits_until_arrival_to_eat()
     {
         var before = new Resident
@@ -62,7 +62,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>吃喝按实际物资缓解饥渴，保留工作目标并暂停本刻劳动。</summary>
-    [Fact]
+    [Fact(DisplayName = "吃喝按实际物资缓解饥渴，保留工作目标并暂停本刻劳动")]
     public void A_meal_consumes_real_supplies_and_preserves_the_work_goal()
     {
         var before = new Resident
@@ -87,7 +87,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>空水背包的口渴居民先饮水，再实际装水，不被逐刻小口饮水锁在井边。</summary>
-    [Fact]
+    [Fact(DisplayName = "空水背包的口渴居民先饮水，再实际装水，不被逐刻小口饮水锁在井边")]
     public void A_thirsty_resident_at_a_well_continues_collecting_water_after_drinking()
     {
         var fixture = new WorldFixture();
@@ -133,7 +133,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>引擎中的进食刻停止现场劳动，并保留原工作目标。</summary>
-    [Fact]
+    [Fact(DisplayName = "引擎中的进食刻停止现场劳动，并保留原工作目标")]
     public void Eating_suspends_the_actual_labor_action()
     {
         var fixture = new WorldFixture();
@@ -180,7 +180,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>军人采用同一日内饥渴规则，实际领取军队补给但不再每刻自动吃喝。</summary>
-    [Fact]
+    [Fact(DisplayName = "军人采用同一日内饥渴规则，实际领取军队补给但不再每刻自动吃喝")]
     public void Soldiers_grow_hungry_and_thirsty_with_carried_supplies()
     {
         var fixture = new WorldFixture();
@@ -217,7 +217,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>睡眠期间需求继续增加，但普通饥渴不会让居民边睡边吃喝。</summary>
-    [Theory]
+    [Theory(DisplayName = "睡眠期间需求继续增加，但普通饥渴不会让居民边睡边吃喝")]
     [InlineData(false)]
     [InlineData(true)]
     public void Sleeping_increases_needs_without_consuming_carried_supplies(bool sick)
@@ -241,7 +241,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>体力恢复使饥渴跨过危机阈值时，也须立即请求重排远期任务。</summary>
-    [Theory]
+    [Theory(DisplayName = "体力恢复使饥渴跨过危机阈值时，也须立即请求重排远期任务")]
     [InlineData(true)]
     [InlineData(false)]
     public void Recovery_crossing_a_nutrition_crisis_requests_an_immediate_review(bool food)
@@ -295,7 +295,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>昏迷者不能自行吃喝，住宅内有人照料时才可实际喂食。</summary>
-    [Theory]
+    [Theory(DisplayName = "昏迷者不能自行吃喝，住宅内有人照料时才可实际喂食")]
     [InlineData(false)]
     [InlineData(true)]
     public void An_unconscious_resident_requires_assistance_to_consume_supplies(bool assisted)
@@ -319,7 +319,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>体力恢复带来的饥渴只按实际恢复量增加，满体力与零质量休息不产生额外需求。</summary>
-    [Theory]
+    [Theory(DisplayName = "体力恢复带来的饥渴只按实际恢复量增加，满体力与零质量休息不产生额外需求")]
     [InlineData(0, 1, 0)]
     [InlineData(1, 1, 1)]
     [InlineData(50, 1, 6.25)]
@@ -345,7 +345,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>恢复消耗也可能使饮食储备耗尽，在本刻立即昏迷。</summary>
-    [Fact]
+    [Fact(DisplayName = "恢复消耗也可能使饮食储备耗尽，在本刻立即昏迷")]
     public void Recovery_can_exhaust_nutrition_and_force_unconsciousness()
     {
         var before = new Resident
@@ -361,7 +361,7 @@ public sealed class ResidentNeedsTests
 
 
     /// <summary>环境供水减缓每位居民口渴，不共享打水额度、不产出库存，也不修改旧快照。</summary>
-    [Fact]
+    [Fact(DisplayName = "环境供水减缓每位居民口渴，不共享打水额度、不产出库存，也不修改旧快照")]
     public void Natural_water_reduces_thirst_without_drawing_a_shared_quota()
     {
         var fixture = new WorldFixture();
@@ -400,7 +400,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>环境最多抵扣一半饮水需求，干旱降低抵扣；儿童和成人均仍须饮水。</summary>
-    [Theory]
+    [Theory(DisplayName = "环境最多抵扣一半饮水需求，干旱降低抵扣；儿童和成人均仍须饮水")]
     [InlineData(20, 0, 0, 100)]
     [InlineData(20, .01, 0, 60)]
     [InlineData(20, .04, 0, 50)]
@@ -421,7 +421,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>水井日额度只含实际井水，日常饮用按居民顺序共享剩余额度，旧快照保持原值。</summary>
-    [Fact]
+    [Fact(DisplayName = "水井日额度只含实际井水，日常饮用按居民顺序共享剩余额度，旧快照保持原值")]
     public void Daily_drinking_shares_only_the_well_quota_in_resident_order()
     {
         var fixture = new WorldFixture();
@@ -460,7 +460,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>首次跨过严重饥饿阈值时立即请求复评，不能被原有远期安排延后。</summary>
-    [Fact]
+    [Fact(DisplayName = "首次跨过严重饥饿阈值时立即请求复评，不能被原有远期安排延后")]
     public void Crossing_critical_hunger_requests_an_immediate_review()
     {
         var before = new Resident
@@ -481,7 +481,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>脱水致死后不再消耗粮食，旧居民和库存保持原值。</summary>
-    [Fact]
+    [Fact(DisplayName = "脱水致死后不再消耗粮食，旧居民和库存保持原值")]
     public void Lethal_dehydration_prevents_eating()
     {
         var before = new Resident
@@ -507,7 +507,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>关闭需求规则不消费粮水，并清除已有饥渴。</summary>
-    [Fact]
+    [Fact(DisplayName = "关闭需求规则不消费粮水，并清除已有饥渴")]
     public void Disabled_needs_preserve_inventory()
     {
         var before = new Resident { Thirst = 80, Hunger = 7, Inventory = new ResourceStock { Food = 1, Water = 1 } };
@@ -522,7 +522,7 @@ public sealed class ResidentNeedsTests
     }
 
     /// <summary>正常饮水后饥饿致死的记录归于当天的饥饿伤害。</summary>
-    [Fact]
+    [Fact(DisplayName = "正常饮水后饥饿致死的记录归于当天的饥饿伤害")]
     public void Starvation_follows_water_consumption()
     {
         var before = new Resident

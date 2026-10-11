@@ -8,7 +8,7 @@ namespace SeWZC.WorldBox.UI.Tests;
 public sealed class WorldMapControlMotionTests
 {
     /// <summary>直行和转弯的一刻两格移动均在中点显示实际经过的地格。</summary>
-    [Fact]
+    [Fact(DisplayName = "直行和转弯的一刻两格移动均在中点显示实际经过的地格")]
     public void Army_marker_follows_the_commanders_multi_tile_route()
     {
         foreach (var turn in new[] { false, true })

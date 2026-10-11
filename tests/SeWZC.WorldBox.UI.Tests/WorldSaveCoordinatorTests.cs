@@ -8,7 +8,7 @@ namespace SeWZC.WorldBox.UI.Tests;
 public sealed class WorldSaveCoordinatorTests
 {
     /// <summary>没有推进世界时间的编辑也必须重新保存。</summary>
-    [Fact]
+    [Fact(DisplayName = "没有推进世界时间的编辑也必须重新保存")]
     public async Task Editing_same_tick_requires_a_new_save()
     {
         var engine = WorldEngine.Create(42, 32, 32, false);
@@ -29,7 +29,7 @@ public sealed class WorldSaveCoordinatorTests
     }
 
     /// <summary>导出排在保存之后，原窗口关闭时不得导出后来选择的世界。</summary>
-    [Fact]
+    [Fact(DisplayName = "导出排在保存之后，原窗口关闭时不得导出后来选择的世界")]
     public async Task Queued_export_is_discarded_when_original_window_closes()
     {
         var engine = WorldEngine.Create(42, 32, 32, false);
@@ -54,7 +54,7 @@ public sealed class WorldSaveCoordinatorTests
     }
 
     /// <summary>加载失败后暂停自动保存，成功的手动保存恢复自动保存。</summary>
-    [Fact]
+    [Fact(DisplayName = "加载失败后暂停自动保存，成功的手动保存恢复自动保存")]
     public async Task Manual_save_resumes_suspended_autosave()
     {
         var engine = WorldEngine.Create(42, 32, 32, false);

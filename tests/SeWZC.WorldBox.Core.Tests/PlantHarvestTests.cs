@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class PlantHarvestTests
 {
     /// <summary>野外采集至多取走目标植物一成，其他植物保留原有生物量。</summary>
-    [Theory]
+    [Theory(DisplayName = "野外采集至多取走目标植物一成，其他植物保留原有生物量")]
     [InlineData(true, 4)]
     [InlineData(false, 6)]
     public void Natural_harvest_preserves_other_plants_and_original_tile(bool wood, double expectedAmount)
@@ -36,7 +36,7 @@ public sealed class PlantHarvestTests
     }
 
     /// <summary>农田允许收获全部现存作物，耗尽后的采集返回原地格。</summary>
-    [Fact]
+    [Fact(DisplayName = "农田允许收获全部现存作物，耗尽后的采集返回原地格")]
     public void Farmland_harvest_is_limited_by_stock_and_empty_harvest_reuses_tile()
     {
         var original = new Tile { ResourceAmount = 20, Improvement = LandImprovement.Farmland };

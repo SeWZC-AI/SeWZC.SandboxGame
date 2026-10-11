@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class LocalConflictTests
 {
     /// <summary>参与者已死亡归档时，冲突剔除旧编号并降低紧张程度，不能继续使用旧引用产生压力。</summary>
-    [Fact]
+    [Fact(DisplayName = "参与者已死亡归档时，冲突剔除旧编号并降低紧张程度，不能继续使用旧引用产生压力")]
     public void An_archived_participant_is_removed_and_tension_falls()
     {
         var fixture = new WorldFixture();

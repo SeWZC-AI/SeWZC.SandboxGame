@@ -26,6 +26,26 @@
         </Style>
     </UserControl.Styles>
     <UserControl.Resources>
+        <Flyout x:Key="WorldMenuFlyout" Placement="BottomEdgeAlignedRight">
+            <StackPanel Spacing="4" MinWidth="150">
+                <Button Classes="action" Content="概览" Tag="overview" Click="OnWorldMenuClick"
+                        AutomationProperties.AutomationId="menu-overview" />
+                <Button Classes="action" Content="居民" Tag="residents" Click="OnWorldMenuClick"
+                        AutomationProperties.AutomationId="menu-residents" />
+                <Button Classes="action" Content="国家" Tag="nations" Click="OnWorldMenuClick"
+                        AutomationProperties.AutomationId="menu-nations" />
+                <Button Classes="action" Content="聚落" Tag="settlements" Click="OnWorldMenuClick"
+                        AutomationProperties.AutomationId="menu-settlements" />
+                <Button Classes="action" Content="玩法说明" Tag="guide" Click="OnWorldMenuClick"
+                        AutomationProperties.AutomationId="menu-guide" />
+                <Button Classes="action" Content="存档" Tag="storage" Click="OnWorldMenuClick"
+                        AutomationProperties.AutomationId="menu-storage" />
+                <Button Classes="action" Content="规则" Tag="rules" Click="OnWorldMenuClick"
+                        AutomationProperties.AutomationId="menu-rules" />
+                <Button Classes="action" Content="新世界" Tag="new-world" Click="OnWorldMenuClick"
+                        AutomationProperties.AutomationId="menu-new-world" />
+            </StackPanel>
+        </Flyout>
     </UserControl.Resources>
     <Grid RowDefinitions="Auto,*,Auto,Auto">
         <Grid Margin="10" ColumnDefinitions="*,Auto" ColumnSpacing="8">

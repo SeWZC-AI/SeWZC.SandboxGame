@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class InventoryTransferTests
 {
     /// <summary>卸货保留粮水和职业用品，各类资源总量保持一致且不修改旧库存。</summary>
-    [Theory]
+    [Theory(DisplayName = "卸货保留粮水和职业用品，各类资源总量保持一致且不修改旧库存")]
     [InlineData(Profession.Engineer, .5, 0, 0)]
     [InlineData(Profession.Builder, 0, 0, 0)]
     [InlineData(Profession.Physician, 0, 2, 0)]
@@ -31,7 +31,7 @@ public sealed class InventoryTransferTests
     }
 
     /// <summary>粮水低于保留量时不能从仓库额外领取或产生负卸货。</summary>
-    [Fact]
+    [Fact(DisplayName = "粮水低于保留量时不能从仓库额外领取或产生负卸货")]
     public void Unloading_does_not_replenish_insufficient_personal_reserves()
     {
         var inventory = new ResourceStock { Food = .1, Water = .2 };
@@ -44,7 +44,7 @@ public sealed class InventoryTransferTests
     }
 
     /// <summary>库存紧张时先保障当日需求，不让首位居民领走其他居民的公共口粮。</summary>
-    [Fact]
+    [Fact(DisplayName = "库存紧张时先保障当日需求，不让首位居民领走其他居民的公共口粮")]
     public void Provisioning_preserves_shared_daily_supplies()
     {
         var inventory = new ResourceStock();
@@ -65,7 +65,7 @@ public sealed class InventoryTransferTests
     }
 
     /// <summary>关闭饥渴时只领取相应职业用品，原库存保持独立。</summary>
-    [Theory]
+    [Theory(DisplayName = "关闭饥渴时只领取相应职业用品，原库存保持独立")]
     [InlineData(Profession.Engineer, ResourceKind.Tools, .5)]
     [InlineData(Profession.Physician, ResourceKind.Medicine, 2)]
     [InlineData(Profession.Ranger, ResourceKind.Ammunition, 8)]

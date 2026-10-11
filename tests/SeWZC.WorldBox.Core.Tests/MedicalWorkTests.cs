@@ -6,7 +6,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class MedicalWorkTests
 {
     /// <summary>同一步多名死者按居民顺序记录死亡，存活者和原快照保留。</summary>
-    [Fact]
+    [Fact(DisplayName = "同一步多名死者按居民顺序记录死亡，存活者和原快照保留")]
     public void Multiple_deaths_preserve_archival_and_event_order()
     {
         var fixture = new WorldFixture();
@@ -29,7 +29,7 @@ public sealed class MedicalWorkTests
     }
 
     /// <summary>当天病死者退出医疗候选，诊所继续治疗仍存活的患者。</summary>
-    [Fact]
+    [Fact(DisplayName = "当天病死者退出医疗候选，诊所继续治疗仍存活的患者")]
     public void Medical_work_treats_the_living_patient_after_daily_death()
     {
         var (fixture, clinic, worker) = PrepareClinic(3);
@@ -48,7 +48,7 @@ public sealed class MedicalWorkTests
     }
 
     /// <summary>附近只剩健康居民时，不为当天病死者消耗医疗物资。</summary>
-    [Fact]
+    [Fact(DisplayName = "附近只剩健康居民时，不为当天病死者消耗医疗物资")]
     public void Medical_work_does_not_spend_food_on_an_archived_patient()
     {
         var (fixture, clinic, _) = PrepareClinic(2);
@@ -61,7 +61,7 @@ public sealed class MedicalWorkTests
     }
 
     /// <summary>病死者预约的唯一工位当天释放，其他居民可自主接手医疗劳动。</summary>
-    [Fact]
+    [Fact(DisplayName = "病死者预约的唯一工位当天释放，其他居民可自主接手医疗劳动")]
     public void Daily_death_releases_the_reserved_work_slot()
     {
         var (fixture, clinic, worker) = PrepareClinic(3);

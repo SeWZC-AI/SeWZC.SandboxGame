@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class AgentMemoryTests
 {
     /// <summary>新观察替换同一主体的旧观察，并在新记忆末尾保留来源。</summary>
-    [Fact]
+    [Fact(DisplayName = "新观察替换同一主体的旧观察，并在新记忆末尾保留来源")]
     public void Newer_observation_replaces_the_subject_without_changing_the_source()
     {
         var old = new AgentFact { Kind = AgentFactKind.FoodSupply, SubjectId = 4, ObservedTick = 1 };
@@ -21,7 +21,7 @@ public sealed class AgentMemoryTests
     }
 
     /// <summary>仅获知时间较新不能覆盖观察更新且更可靠的现有记忆。</summary>
-    [Fact]
+    [Fact(DisplayName = "仅获知时间较新不能覆盖观察更新且更可靠的现有记忆")]
     public void Relayed_old_observation_does_not_replace_current_knowledge()
     {
         var current = new AgentFact { ObservedTick = 2, Confidence = 1 };
@@ -33,7 +33,7 @@ public sealed class AgentMemoryTests
     }
 
     /// <summary>容量已满时保留家园地址，并按原顺序淘汰最早的同优先级记忆。</summary>
-    [Fact]
+    [Fact(DisplayName = "容量已满时保留家园地址，并按原顺序淘汰最早的同优先级记忆")]
     public void Capacity_preserves_home_address_and_evicts_the_first_lowest_priority()
     {
         var home = new AgentFact { Kind = AgentFactKind.SettlementLocation, SubjectId = 4 };
@@ -52,7 +52,7 @@ public sealed class AgentMemoryTests
     }
 
     /// <summary>记忆转换在提交前不修改居民，后续转换保留此前的世界快照。</summary>
-    [Fact]
+    [Fact(DisplayName = "记忆转换在提交前不修改居民，后续转换保留此前的世界快照")]
     public void Memory_transition_is_local_until_explicitly_committed()
     {
         var fixture = new WorldFixture();

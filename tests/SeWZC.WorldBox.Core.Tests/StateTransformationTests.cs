@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class StateTransformationTests
 {
     /// <summary>启动及多人贡献研究时，每个保留版本的进度和参与者独立。</summary>
-    [Fact]
+    [Fact(DisplayName = "启动及多人贡献研究时，每个保留版本的进度和参与者独立")]
     public void Research_versions_preserve_progress_and_contributors()
     {
         var original = new SettlementResearch { SettlementId = 7 };
@@ -27,7 +27,7 @@ public sealed class StateTransformationTests
     }
 
     /// <summary>单方态度变化保留另一方态度，限制范围并按远离零的方向舍入展示均值。</summary>
-    [Theory]
+    [Theory(DisplayName = "单方态度变化保留另一方态度，限制范围并按远离零的方向舍入展示均值")]
     [InlineData(1, 200, 100, -3, 49)]
     [InlineData(2, -200, 4, -100, -48)]
     [InlineData(1, 0, 0, -3, -2)]
@@ -54,7 +54,7 @@ public sealed class StateTransformationTests
     }
 
     /// <summary>文化接触间隔不满足时复用输入，后续累计保留以前的接触记录。</summary>
-    [Fact]
+    [Fact(DisplayName = "文化接触间隔不满足时复用输入，后续累计保留以前的接触记录")]
     public void Cultural_contact_reuses_early_observations_and_preserves_previous_exposure()
     {
         var original = new CulturalContact { ResidentId = 1, CultureId = 2, Exposure = 3, LastContactTick = 12 };
@@ -69,7 +69,7 @@ public sealed class StateTransformationTests
     }
 
     /// <summary>政策命令显式提交新的制度及本地政策，旧 Society 及其嵌套值保持不变。</summary>
-    [Fact]
+    [Fact(DisplayName = "政策命令显式提交新的制度及本地政策，旧 Society 及其嵌套值保持不变")]
     public void Policy_commands_preserve_retained_society_values()
     {
         var fixture = new WorldFixture();

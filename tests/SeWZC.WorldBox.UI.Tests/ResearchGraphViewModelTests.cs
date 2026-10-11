@@ -8,7 +8,7 @@ namespace SeWZC.WorldBox.UI.Tests;
 public sealed class ResearchGraphViewModelTests
 {
     /// <summary>缩放保留观察中心对应的研究位置。</summary>
-    [Fact]
+    [Fact(DisplayName = "缩放保留观察中心对应的研究位置")]
     public void Zoom_keeps_same_logical_center()
     {
         var graph = new ResearchGraphViewModel { Viewport = new Size(300, 200), Offset = new Vector(200, 150) };
@@ -18,7 +18,7 @@ public sealed class ResearchGraphViewModelTests
     }
 
     /// <summary>路线跳转后恢复缩放、偏移和完整前置路径设置。</summary>
-    [Fact]
+    [Fact(DisplayName = "路线跳转后恢复缩放、偏移和完整前置路径设置")]
     public void Restoring_viewport_requests_a_layout_correction()
     {
         var graph = new ResearchGraphViewModel { Viewport = new Size(300, 200) };

@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class CultureContactTests
 {
     /// <summary>接触程度即时更新，转化后复评读取重置后的值，重复报告不能绕过冷却。</summary>
-    [Theory]
+    [Theory(DisplayName = "接触程度即时更新，转化后复评读取重置后的值，重复报告不能绕过冷却")]
     [InlineData(false)]
     [InlineData(true)]
     public void Received_reports_read_current_contact_after_update_or_conversion(bool convert)

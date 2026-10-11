@@ -10,7 +10,7 @@ public sealed class AdvancementTests
     public static TheoryData<int> ResearchIds => new(Advancement.All.Select(research => research.Id));
 
     /// <summary>目录能在首次访问时完成初始化。</summary>
-    [Fact]
+    [Fact(DisplayName = "目录能在首次访问时完成初始化")]
     public void Catalog_initializes_before_building_its_index()
     {
         Assert.NotEmpty(Advancement.All);
@@ -18,7 +18,7 @@ public sealed class AdvancementTests
     }
 
     /// <summary>编号查找返回目录共享对象。</summary>
-    [Theory]
+    [Theory(DisplayName = "编号查找返回目录共享对象")]
     [MemberData(nameof(ResearchIds))]
     public void Find_returns_the_catalog_instance(int id)
     {
@@ -26,7 +26,7 @@ public sealed class AdvancementTests
     }
 
     /// <summary>保存仅记录编号并恢复共享研究节点。</summary>
-    [Fact]
+    [Fact(DisplayName = "保存仅记录编号并恢复共享研究节点")]
     public void Serialization_restores_the_canonical_research_instance()
     {
         var research = Advancement.Electrification;
@@ -39,7 +39,7 @@ public sealed class AdvancementTests
     }
 
     /// <summary>非法编号或类型不能恢复为研究知识。</summary>
-    [Theory]
+    [Theory(DisplayName = "非法编号或类型不能恢复为研究知识")]
     [InlineData("-1")]
     [InlineData("2147483647")]
     [InlineData("1.5")]
@@ -52,7 +52,7 @@ public sealed class AdvancementTests
     }
 
     /// <summary>共同基础进入两条路线，专属知识只进入自己的路线。</summary>
-    [Theory]
+    [Theory(DisplayName = "共同基础进入两条路线，专属知识只进入自己的路线")]
     [InlineData("Agriculture", true, true, true)]
     [InlineData("Electrification", true, false, false)]
     [InlineData("SpatialMagic", false, true, false)]
@@ -66,7 +66,7 @@ public sealed class AdvancementTests
     }
 
     /// <summary>研究费用的可编辑副本不会污染共享目录。</summary>
-    [Fact]
+    [Fact(DisplayName = "研究费用的可编辑副本不会污染共享目录")]
     public void Editable_research_cost_is_isolated_from_the_catalog()
     {
         var cost = WorldEngine.GetResearchCost(Advancement.Agriculture);

@@ -7,14 +7,14 @@ namespace SeWZC.WorldBox.UI.Tests;
 public sealed class ResearchTreeLayoutTests
 {
     /// <summary>空集合没有可布局的节点。</summary>
-    [Fact]
+    [Fact(DisplayName = "空集合没有可布局的节点")]
     public void Constructor_rejects_an_empty_selection()
     {
         Assert.Throws<ArgumentException>(() => new ResearchTreeLayout([]));
     }
 
     /// <summary>输入中的实际前置关系产生一条连接。</summary>
-    [Fact]
+    [Fact(DisplayName = "输入中的实际前置关系产生一条连接")]
     public void Edges_connect_an_included_prerequisite_to_its_project()
     {
         var layout = new ResearchTreeLayout([Advancement.Agriculture, Advancement.Irrigation]);
@@ -25,7 +25,7 @@ public sealed class ResearchTreeLayoutTests
     }
 
     /// <summary>集合外前置不会生成虚构节点或悬空连线。</summary>
-    [Fact]
+    [Fact(DisplayName = "集合外前置不会生成虚构节点或悬空连线")]
     public void Edges_exclude_prerequisites_outside_the_selection()
     {
         var layout = new ResearchTreeLayout([Advancement.Irrigation]);
@@ -35,7 +35,7 @@ public sealed class ResearchTreeLayoutTests
     }
 
     /// <summary>缩小选择后布局压缩空列。</summary>
-    [Fact]
+    [Fact(DisplayName = "缩小选择后布局压缩空列")]
     public void Single_node_selection_does_not_keep_hidden_columns()
     {
         var layout = new ResearchTreeLayout([Advancement.SpatialMagic]);

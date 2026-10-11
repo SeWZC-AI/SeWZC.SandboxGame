@@ -7,7 +7,7 @@ namespace SeWZC.WorldBox.UI.Tests;
 public sealed class EntityMotionTrackTests
 {
     /// <summary>一刻走多格时沿相邻路线转弯，不穿过弯道内的障碍。</summary>
-    [Fact]
+    [Fact(DisplayName = "一刻走多格时沿相邻路线转弯，不穿过弯道内的障碍")]
     public void Multi_tile_motion_follows_the_committed_turn()
     {
         var track = new EntityMotionTrack(new Point(2, 2));
@@ -17,7 +17,7 @@ public sealed class EntityMotionTrackTests
     }
 
     /// <summary>未提交移动时保持初始位置。</summary>
-    [Fact]
+    [Fact(DisplayName = "未提交移动时保持初始位置")]
     public void New_track_stays_at_its_initial_position()
     {
         var track = new EntityMotionTrack(new Point(2, 3));
@@ -27,7 +27,7 @@ public sealed class EntityMotionTrackTests
     }
 
     /// <summary>插值受起止位置约束。</summary>
-    [Theory]
+    [Theory(DisplayName = "插值受起止位置约束")]
     [InlineData(8, 2, 4)]
     [InlineData(10, 2, 4)]
     [InlineData(11, 4, 5)]
@@ -43,7 +43,7 @@ public sealed class EntityMotionTrackTests
     }
 
     /// <summary>抵达终点时结束移动。</summary>
-    [Theory]
+    [Theory(DisplayName = "抵达终点时结束移动")]
     [InlineData(13.999, true)]
     [InlineData(14, false)]
     [InlineData(15, false)]
@@ -56,7 +56,7 @@ public sealed class EntityMotionTrackTests
     }
 
     /// <summary>重复快照不重置正在显示的轨迹。</summary>
-    [Fact]
+    [Fact(DisplayName = "重复快照不重置正在显示的轨迹")]
     public void Repeated_snapshot_does_not_restart_the_segment()
     {
         var track = new EntityMotionTrack(default);
@@ -68,7 +68,7 @@ public sealed class EntityMotionTrackTests
     }
 
     /// <summary>立即定位覆盖同一快照的插值。</summary>
-    [Fact]
+    [Fact(DisplayName = "立即定位覆盖同一快照的插值")]
     public void Snap_immediately_shows_the_target()
     {
         var track = new EntityMotionTrack(default);
@@ -81,7 +81,7 @@ public sealed class EntityMotionTrackTests
     }
 
     /// <summary>无效或零日数按一日显示。</summary>
-    [Theory]
+    [Theory(DisplayName = "无效或零日数按一日显示")]
     [InlineData(0)]
     [InlineData(-5)]
     public void Nonpositive_duration_uses_one_tick(int duration)
@@ -94,7 +94,7 @@ public sealed class EntityMotionTrackTests
     }
 
     /// <summary>后续移动即使终点相同，也采用新的区段。</summary>
-    [Fact]
+    [Fact(DisplayName = "后续移动即使终点相同，也采用新的区段")]
     public void New_start_tick_replaces_the_previous_segment()
     {
         var track = new EntityMotionTrack(default);

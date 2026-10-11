@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class AgentFactTests
 {
     /// <summary>观察时间决定衰减，转述时更新获知时间不能恢复信息时效。</summary>
-    [Theory]
+    [Theory(DisplayName = "观察时间决定衰减，转述时更新获知时间不能恢复信息时效")]
     [InlineData(AgentFactKind.FoodSupply, 2 * SimulationTime.TicksPerMonth)]
     [InlineData(AgentFactKind.Danger, SimulationTime.TicksPerDay)]
     [InlineData(AgentFactKind.SettlementLocation, 10 * SimulationTime.TicksPerYear)]
@@ -22,7 +22,7 @@ public sealed class AgentFactTests
     }
 
     /// <summary>地点性消息不合并不同位置，同一聚落的其他观察按主体合并。</summary>
-    [Theory]
+    [Theory(DisplayName = "地点性消息不合并不同位置，同一聚落的其他观察按主体合并")]
     [InlineData(AgentFactKind.Danger, false)]
     [InlineData(AgentFactKind.Personal, false)]
     [InlineData(AgentFactKind.FoodSupply, true)]

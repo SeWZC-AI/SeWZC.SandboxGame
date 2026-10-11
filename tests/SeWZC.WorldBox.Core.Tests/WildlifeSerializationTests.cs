@@ -10,7 +10,7 @@ public sealed class WildlifeSerializationTests
         Enum.GetValues<WildlifeKind>().Where(kind => kind != WildlifeKind.None));
 
     /// <summary>每种动物恢复到对应的物种字段。</summary>
-    [Theory]
+    [Theory(DisplayName = "每种动物恢复到对应的物种字段")]
     [MemberData(nameof(Species))]
     public void Read_assigns_the_count_to_the_requested_species(WildlifeKind species)
     {
@@ -22,7 +22,7 @@ public sealed class WildlifeSerializationTests
     }
 
     /// <summary>很小的非零种群也保持完整精度。</summary>
-    [Theory]
+    [Theory(DisplayName = "很小的非零种群也保持完整精度")]
     [InlineData(.000000001)]
     [InlineData(.125)]
     [InlineData(1000)]
@@ -37,14 +37,14 @@ public sealed class WildlifeSerializationTests
     }
 
     /// <summary>零种群不占用稀疏数组空间。</summary>
-    [Fact]
+    [Fact(DisplayName = "零种群不占用稀疏数组空间")]
     public void Write_omits_zero_populations()
     {
         Assert.Equal("[]", JsonSerializer.Serialize(new WildlifePopulations()));
     }
 
     /// <summary>稀疏输入拒绝无效物种、配对和数量。</summary>
-    [Theory]
+    [Theory(DisplayName = "稀疏输入拒绝无效物种、配对和数量")]
     [InlineData("{}")]
     [InlineData("[0,1]")]
     [InlineData("[-1,1]")]
@@ -65,7 +65,7 @@ public sealed class WildlifeSerializationTests
     }
 
     /// <summary>稀疏格式接受无种群的合法配对。</summary>
-    [Fact]
+    [Fact(DisplayName = "稀疏格式接受无种群的合法配对")]
     public void Read_accepts_an_explicit_zero_count()
     {
         var populations = JsonSerializer.Deserialize<WildlifePopulations>($"[{(int)WildlifeKind.Rabbit},0]");
@@ -74,7 +74,7 @@ public sealed class WildlifeSerializationTests
     }
 
     /// <summary>种群转换返回新值，原种群和其他物种数量保持不变。</summary>
-    [Fact]
+    [Fact(DisplayName = "种群转换返回新值，原种群和其他物种数量保持不变")]
     public void WithPopulation_preserves_the_original_and_other_species()
     {
         var original = new WildlifePopulations { Rabbit = 2, Wolf = .5 };

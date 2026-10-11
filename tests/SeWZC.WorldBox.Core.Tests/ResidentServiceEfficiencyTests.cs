@@ -6,7 +6,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class ResidentServiceEfficiencyTests
 {
     /// <summary>医馆、医院及草药园的病程抵扣量按劳动类型与年龄缩减。</summary>
-    [Theory]
+    [Theory(DisplayName = "医馆、医院及草药园的病程抵扣量按劳动类型与年龄缩减")]
     [InlineData(BuildingKind.Infirmary, 18, 100, 76)]
     [InlineData(BuildingKind.Infirmary, 18, 25, 88)]
     [InlineData(BuildingKind.Infirmary, 12, 100, 96)]
@@ -40,7 +40,7 @@ public sealed class ResidentServiceEfficiencyTests
     }
 
     /// <summary>两成效率的劳动者须累计五轮劳动才完成固定服务，材料在完成时消耗。</summary>
-    [Theory]
+    [Theory(DisplayName = "两成效率的劳动者须累计五轮劳动才完成固定服务，材料在完成时消耗")]
     [InlineData(BuildingKind.Library)]
     [InlineData(BuildingKind.SurveyOffice)]
     [InlineData(BuildingKind.Armory)]
@@ -93,7 +93,7 @@ public sealed class ResidentServiceEfficiencyTests
     }
 
     /// <summary>低睡眠的结界劳动需要两轮，每轮之间仍遵守原有服务间隔，进度可保存恢复。</summary>
-    [Fact]
+    [Fact(DisplayName = "低睡眠的结界劳动需要两轮，每轮之间仍遵守原有服务间隔，进度可保存恢复")]
     public void Ward_progress_and_service_cadence_survive_save_and_resume()
     {
         var (fixture, building) = ServiceWorld(BuildingKind.WardTower, 18, 25);

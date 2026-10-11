@@ -7,7 +7,7 @@ namespace SeWZC.WorldBox.UI.Tests;
 public sealed class DetailPresentationTests
 {
     /// <summary>中文标签只用于显示，读取字段仍得到实际枚举值。</summary>
-    [Fact]
+    [Fact(DisplayName = "中文标签只用于显示，读取字段仍得到实际枚举值")]
     public void Choosing_display_label_returns_original_enum_value()
     {
         var field = new ChoiceNode
@@ -23,7 +23,7 @@ public sealed class DetailPresentationTests
     }
 
     /// <summary>候选集合刷新后保留仍可选择的对象，失效对象不沿用旧索引。</summary>
-    [Fact]
+    [Fact(DisplayName = "候选集合刷新后保留仍可选择的对象，失效对象不沿用旧索引")]
     public void Refreshing_choices_preserves_available_selection_and_clears_removed_selection()
     {
         var field = new ChoiceNode { ItemsSource = new[] { 7, 9 }, SelectedItem = 9 };
@@ -37,7 +37,7 @@ public sealed class DetailPresentationTests
     }
 
     /// <summary>列表行重排保留原展示状态及通知订阅，不丢弃当前行。</summary>
-    [Fact]
+    [Fact(DisplayName = "列表行重排保留原展示状态及通知订阅，不丢弃当前行")]
     public void Reordering_live_rows_keeps_row_state_and_notifications()
     {
         var rows = new StackNode();

@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class ResidentTransitionsTests
 {
     /// <summary>一次动作共同转换认知、库存和活动，保留身体及真实移动区段。</summary>
-    [Fact]
+    [Fact(DisplayName = "一次动作共同转换认知、库存和活动，保留身体及真实移动区段")]
     public void An_action_preserves_its_source_and_unrelated_state()
     {
         var initial = new Resident
@@ -35,7 +35,7 @@ public sealed class ResidentTransitionsTests
     }
 
     /// <summary>新移动区段从当前坐标开始，后续位置转换不修改已取得的区段。</summary>
-    [Fact]
+    [Fact(DisplayName = "新移动区段从当前坐标开始，后续位置转换不修改已取得的区段")]
     public void Movement_returns_a_new_segment_without_changing_previous_snapshots()
     {
         var initial = new Resident { X = 3, Y = 4, TravelMode = TravelMode.Boat, Age = 42 };
@@ -50,7 +50,7 @@ public sealed class ResidentTransitionsTests
     }
 
     /// <summary>导航预演同时更新位置与认知，保留源快照并在需求耗尽时昏迷。</summary>
-    [Theory]
+    [Theory(DisplayName = "导航预演同时更新位置与认知，保留源快照并在需求耗尽时昏迷")]
     [InlineData(100, ResidentActivity.Wandering)]
     [InlineData(0, ResidentActivity.Unconscious)]
     public void A_navigation_step_updates_position_and_mind_together(double sleep, ResidentActivity activity)

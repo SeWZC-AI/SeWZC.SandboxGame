@@ -7,7 +7,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class ResidentEditingTests
 {
     /// <summary>只编辑姓名时保留其他状态。</summary>
-    [Fact]
+    [Fact(DisplayName = "只编辑姓名时保留其他状态")]
     public void Rename_trims_input_and_preserves_unspecified_fields()
     {
         var fixture = new WorldFixture();
@@ -23,7 +23,7 @@ public sealed class ResidentEditingTests
     }
 
     /// <summary>显式零值不能被当作未指定。</summary>
-    [Fact]
+    [Fact(DisplayName = "显式零值不能被当作未指定")]
     public void Edit_accepts_explicit_zero_values()
     {
         var fixture = new WorldFixture();
@@ -50,7 +50,7 @@ public sealed class ResidentEditingTests
     }
 
     /// <summary>无效年龄不会连带提交同一次编辑中的姓名。</summary>
-    [Theory]
+    [Theory(DisplayName = "无效年龄不会连带提交同一次编辑中的姓名")]
     [InlineData(-1)]
     [InlineData(double.NaN)]
     [InlineData(double.PositiveInfinity)]
@@ -66,7 +66,7 @@ public sealed class ResidentEditingTests
     }
 
     /// <summary>地图外的位置编辑不消耗编号或提交部分修改。</summary>
-    [Theory]
+    [Theory(DisplayName = "地图外的位置编辑不消耗编号或提交部分修改")]
     [InlineData(-1, 16)]
     [InlineData(32, 16)]
     [InlineData(16, -1)]
@@ -83,7 +83,7 @@ public sealed class ResidentEditingTests
     }
 
     /// <summary>移入不可步行的水格时拒绝整个编辑。</summary>
-    [Fact]
+    [Fact(DisplayName = "移入不可步行的水格时拒绝整个编辑")]
     public void Position_rejects_inaccessible_land()
     {
         var fixture = new WorldFixture();
@@ -98,7 +98,7 @@ public sealed class ResidentEditingTests
     }
 
     /// <summary>位置编辑同时重置呈现起点。</summary>
-    [Fact]
+    [Fact(DisplayName = "位置编辑同时重置呈现起点")]
     public void Position_resets_the_display_segment_to_the_new_location()
     {
         var fixture = new WorldFixture();
@@ -113,7 +113,7 @@ public sealed class ResidentEditingTests
     }
 
     /// <summary>提交后的随身资源不再受编辑草稿修改影响。</summary>
-    [Fact]
+    [Fact(DisplayName = "提交后的随身资源不再受编辑草稿修改影响")]
     public void Inventory_is_copied_before_commit()
     {
         var fixture = new WorldFixture();
@@ -126,7 +126,7 @@ public sealed class ResidentEditingTests
     }
 
     /// <summary>空或损坏的心智草稿不能改变世界。</summary>
-    [Theory]
+    [Theory(DisplayName = "空或损坏的心智草稿不能改变世界")]
     [InlineData("null")]
     [InlineData("{")]
     [InlineData("[]")]
@@ -141,7 +141,7 @@ public sealed class ResidentEditingTests
     }
 
     /// <summary>无效心智目标不能部分替换居民认知。</summary>
-    [Fact]
+    [Fact(DisplayName = "无效心智目标不能部分替换居民认知")]
     public void Mind_rejects_an_invalid_goal_before_commit()
     {
         var fixture = new WorldFixture();
@@ -156,7 +156,7 @@ public sealed class ResidentEditingTests
     }
 
     /// <summary>修改经历只改变当前认知，不回算既有世界结果。</summary>
-    [Fact]
+    [Fact(DisplayName = "修改经历只改变当前认知，不回算既有世界结果")]
     public void History_changes_personality_without_rewriting_past_results()
     {
         var fixture = new WorldFixture();
@@ -177,7 +177,7 @@ public sealed class ResidentEditingTests
     }
 
     /// <summary>经历草稿与提交后的记录互不影响。</summary>
-    [Fact]
+    [Fact(DisplayName = "经历草稿与提交后的记录互不影响")]
     public void History_is_copied_before_commit()
     {
         var fixture = new WorldFixture();
@@ -191,7 +191,7 @@ public sealed class ResidentEditingTests
     }
 
     /// <summary>编辑信息产生新身份，已公开的旧观察不被改写，决策依据同步修订。</summary>
-    [Fact]
+    [Fact(DisplayName = "编辑信息产生新身份，已公开的旧观察不被改写，决策依据同步修订")]
     public void Fact_revision_replaces_the_snapshot_and_updates_decision_evidence()
     {
         var fixture = new WorldFixture();

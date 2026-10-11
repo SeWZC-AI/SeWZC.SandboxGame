@@ -50,7 +50,7 @@ public sealed class ResourceStockTests
     }
 
     /// <summary>读取指定资源对应的字段。</summary>
-    [Theory]
+    [Theory(DisplayName = "读取指定资源对应的字段")]
     [MemberData(nameof(Resources))]
     public void Get_returns_the_selected_resource(ResourceKind kind, double expected)
     {
@@ -58,7 +58,7 @@ public sealed class ResourceStockTests
     }
 
     /// <summary>替换资源不会修改其他库存。</summary>
-    [Theory]
+    [Theory(DisplayName = "替换资源不会修改其他库存")]
     [MemberData(nameof(Resources))]
     public void WithAmount_changes_only_the_selected_resource(ResourceKind kind, double original)
     {
@@ -72,7 +72,7 @@ public sealed class ResourceStockTests
     }
 
     /// <summary>新库存独立于旧值，更新不能修改先前的库存。</summary>
-    [Theory]
+    [Theory(DisplayName = "新库存独立于旧值，更新不能修改先前的库存")]
     [MemberData(nameof(Resources))]
     public void Replacing_resources_preserves_the_original_stock(ResourceKind kind, double expected)
     {
@@ -86,7 +86,7 @@ public sealed class ResourceStockTests
     }
 
     /// <summary>未知资源读取拒绝而不返回其他字段。</summary>
-    [Theory]
+    [Theory(DisplayName = "未知资源读取拒绝而不返回其他字段")]
     [InlineData(-1)]
     [InlineData(int.MaxValue)]
     public void Get_rejects_unknown_resources(int kind)
@@ -95,7 +95,7 @@ public sealed class ResourceStockTests
     }
 
     /// <summary>未知资源写入不改变库存。</summary>
-    [Fact]
+    [Fact(DisplayName = "未知资源写入不改变库存")]
     public void WithAmount_rejects_unknown_resources_without_changing_stock()
     {
         var stock = Stock();
@@ -107,7 +107,7 @@ public sealed class ResourceStockTests
     }
 
     /// <summary>省略的资源字段恢复为零。</summary>
-    [Fact]
+    [Fact(DisplayName = "省略的资源字段恢复为零")]
     public void Missing_saved_resources_default_to_zero()
     {
         var stock = JsonSerializer.Deserialize<ResourceStock>("{\"Food\":2.5}")!;
@@ -118,14 +118,14 @@ public sealed class ResourceStockTests
     }
 
     /// <summary>空库存不写入冗余零字段。</summary>
-    [Fact]
+    [Fact(DisplayName = "空库存不写入冗余零字段")]
     public void Empty_stock_serializes_as_an_empty_object()
     {
         Assert.Equal("{}", JsonSerializer.Serialize(new ResourceStock()));
     }
 
     /// <summary>平铺存档恢复后的库存仍按所有资源金额比较及散列。</summary>
-    [Fact]
+    [Fact(DisplayName = "平铺存档恢复后的库存仍按所有资源金额比较及散列")]
     public void Saved_stock_preserves_flat_fields_and_value_equality()
     {
         var original = Stock();
@@ -142,7 +142,7 @@ public sealed class ResourceStockTests
     }
 
     /// <summary>清空资源后与缺省库存相等，保留的旧库存不受影响。</summary>
-    [Fact]
+    [Fact(DisplayName = "清空资源后与缺省库存相等，保留的旧库存不受影响")]
     public void Clearing_resources_restores_empty_value_equality()
     {
         var original = Stock();
@@ -157,7 +157,7 @@ public sealed class ResourceStockTests
     }
 
     /// <summary>负零金额保留位模式，同时遵守浮点值相等及散列约定。</summary>
-    [Fact]
+    [Fact(DisplayName = "负零金额保留位模式，同时遵守浮点值相等及散列约定")]
     public void Signed_zero_keeps_its_bits_and_numeric_equality()
     {
         var stock = new ResourceStock { Ore = -0d };
@@ -169,7 +169,7 @@ public sealed class ResourceStockTests
     }
 
     /// <summary>限制全部资源数量产生独立库存，粮水和其他资源使用相同边界。</summary>
-    [Fact]
+    [Fact(DisplayName = "限制全部资源数量产生独立库存，粮水和其他资源使用相同边界")]
     public void Clamp_limits_all_resources_and_preserves_original()
     {
         var original = Stock() with { Wood = -1 };
@@ -183,7 +183,7 @@ public sealed class ResourceStockTests
     }
 
     /// <summary>同时缩放各类资源，原库存保留所有原值。</summary>
-    [Theory]
+    [Theory(DisplayName = "同时缩放各类资源，原库存保留所有原值")]
     [MemberData(nameof(Resources))]
     public void Scale_transforms_every_resource_without_changing_original(ResourceKind kind, double expected)
     {

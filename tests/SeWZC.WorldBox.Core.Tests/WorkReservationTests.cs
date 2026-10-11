@@ -4,7 +4,7 @@ namespace SeWZC.WorldBox.Core.Tests;
 public sealed class WorkReservationTests
 {
     /// <summary>严重损坏设施的维修也受现场工位上限约束，满员后不扣第二人的石材。</summary>
-    [Fact]
+    [Fact(DisplayName = "严重损坏设施的维修也受现场工位上限约束，满员后不扣第二人的石材")]
     public void Repair_work_respects_the_daily_work_slot_limit()
     {
         var fixture = new WorldFixture();
@@ -44,7 +44,7 @@ public sealed class WorkReservationTests
     }
 
     /// <summary>现场致死伤害立即释放死者预约，后续居民无需等到日末归档才能接手医疗。</summary>
-    [Fact]
+    [Fact(DisplayName = "现场致死伤害立即释放死者预约，后续居民无需等到日末归档才能接手医疗")]
     public void Lethal_damage_during_actions_releases_the_work_slot()
     {
         var fixture = new WorldFixture();
@@ -181,7 +181,7 @@ public sealed class WorkReservationTests
     }
 
     /// <summary>运回产物时释放设施预约，后续居民可在同日接手仍空闲的工位。</summary>
-    [Theory]
+    [Theory(DisplayName = "运回产物时释放设施预约，后续居民可在同日接手仍空闲的工位")]
     [InlineData(BuildingKind.MiningHall, RaceKind.Dwarf)]
     [InlineData(BuildingKind.HuntingCamp, RaceKind.Orc)]
     [InlineData(BuildingKind.Reservoir, RaceKind.Human)]
