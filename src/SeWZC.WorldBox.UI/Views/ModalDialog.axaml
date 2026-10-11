@@ -1,17 +1,25 @@
-<Border xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+<Border xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels" xmlns:views="using:SeWZC.WorldBox.UI.Views"
         x:Class="SeWZC.WorldBox.UI.Views.ModalDialog" x:DataType="vm:ModalViewModel" x:CompileBindings="True"
-        Background="#172632" CornerRadius="8" BorderBrush="#2A3C46" BorderThickness="1" Padding="{Binding Padding}" Width="{Binding Width}" Height="{Binding Height}" MaxHeight="{Binding MaxHeight}" Margin="14" HorizontalAlignment="Center" VerticalAlignment="Center" d:DesignWidth="520" d:DesignHeight="560" d:DataContext="{x:Static vm:DesignData.Dialog}">
+        Background="#172632" CornerRadius="8" BorderBrush="#2A3C46" BorderThickness="1" Padding="{Binding Padding}"
+        Width="{Binding Width}" Height="{Binding Height}" MaxHeight="{Binding MaxHeight}" Margin="14"
+        HorizontalAlignment="Center" VerticalAlignment="Center" d:DesignWidth="520" d:DesignHeight="560"
+        d:DataContext="{x:Static vm:DesignData.Dialog}">
     <Grid RowDefinitions="Auto,*,Auto" RowSpacing="6">
         <views:DetailView DataContext="{Binding Header}" />
-        <ScrollViewer Grid.Row="1" IsEnabled="{Binding !IsSubmitting}" HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="modal-scroll">
+        <ScrollViewer Grid.Row="1" IsEnabled="{Binding !IsSubmitting}" HorizontalScrollBarVisibility="Disabled"
+                      AutomationProperties.AutomationId="modal-scroll">
             <views:DetailView DataContext="{Binding Content}" />
         </ScrollViewer>
         <StackPanel Grid.Row="2" Spacing="6">
             <views:DetailView DataContext="{Binding Feedback}" />
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8" IsVisible="{Binding HasPrimary}">
-                <Border IsEnabled="{Binding !IsSubmitting}"><views:DetailView DataContext="{Binding Primary}" /></Border>
-                <Button Grid.Column="1" Content="取消" Command="{Binding CloseCommand}" FontSize="12" Margin="2,0" HorizontalAlignment="Left" AutomationProperties.AutomationId="modal-cancel" />
+                <Border IsEnabled="{Binding !IsSubmitting}">
+                    <views:DetailView DataContext="{Binding Primary}" />
+                </Border>
+                <Button Grid.Column="1" Content="取消" Command="{Binding CloseCommand}" FontSize="12" Margin="2,0"
+                        HorizontalAlignment="Left" AutomationProperties.AutomationId="modal-cancel" />
             </Grid>
         </StackPanel>
     </Grid>

@@ -1,15 +1,22 @@
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Layout;
 using Avalonia.Interactivity;
-using SeWZC.WorldBox.UI.ViewModels;
+using Avalonia.Layout;
 using Avalonia.Markup.Xaml;
+using SeWZC.WorldBox.UI.ViewModels;
 
 namespace SeWZC.WorldBox.UI.Views;
 
 /// <summary>绑定主界面状态的地图边缘 HUD。</summary>
 public sealed partial class GameHud : UserControl
 {
+    /// <summary>地图工具面板的 XAML 内容。</summary>
+    public static readonly StyledProperty<Control?> ToolContentProperty =
+        AvaloniaProperty.Register<GameHud, Control?>(nameof(ToolContent));
+
+    private GameSessionViewModel? _session;
+
     /// <summary>加载时间、选择、动态和常用操作控件。</summary>
     public GameHud()
     {
@@ -17,26 +24,38 @@ public sealed partial class GameHud : UserControl
         SizeChanged += (_, _) => Resize();
         DataContextChanged += (_, _) =>
         {
-            if (_session is not null) _session.State.PropertyChanged -= OnStateChanged;
+            if (_session is not null)
+                _session.State.PropertyChanged -= OnStateChanged;
             _session = DataContext as GameSessionViewModel;
-            if (_session is not null) _session.State.PropertyChanged += OnStateChanged;
+            if (_session is not null)
+                _session.State.PropertyChanged += OnStateChanged;
             Resize();
         };
     }
 
     /// <summary>地图工具面板的 XAML 内容。</summary>
-    public static readonly StyledProperty<Control?> ToolContentProperty = AvaloniaProperty.Register<GameHud, Control?>(nameof(ToolContent));
-
-    /// <summary>地图工具面板的 XAML 内容。</summary>
-    public Control? ToolContent { get => GetValue(ToolContentProperty); set => SetValue(ToolContentProperty, value); }
-
-    private GameSessionViewModel? _session;
-    private void OnStateChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    public Control? ToolContent
     {
-        if (args.PropertyName is nameof(MainViewModel.InspectorVisible) or nameof(MainViewModel.ToolsVisible)) Resize();
+        get => GetValue(ToolContentProperty);
+        set => SetValue(ToolContentProperty, value);
     }
-    private void Resize() => Resize(Bounds.Width, _session?.State.InspectorVisible == true || _session?.State.ToolsVisible == true);
-    internal void ShowWorldMenu() => ((Flyout)Resources["WorldMenuFlyout"]!).ShowAt(this.FindControl<Button>("WorldMenu")!);
+
+    private void OnStateChanged(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName is nameof(MainViewModel.InspectorVisible) or nameof(MainViewModel.ToolsVisible))
+            Resize();
+    }
+
+    private void Resize()
+    {
+        Resize(Bounds.Width, _session?.State.InspectorVisible == true || _session?.State.ToolsVisible == true);
+    }
+
+    internal void ShowWorldMenu()
+    {
+        ((Flyout)Resources["WorldMenuFlyout"]!).ShowAt(this.FindControl<Button>("WorldMenu")!);
+    }
+
     private void OnWorldMenuClick(object? sender, RoutedEventArgs args)
     {
         ((Flyout)Resources["WorldMenuFlyout"]!).Hide();

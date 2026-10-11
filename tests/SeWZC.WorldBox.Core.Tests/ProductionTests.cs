@@ -34,10 +34,7 @@ public sealed class ProductionTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Work,
-                TargetEntityId = foundry.Value.Id,
-                TargetX = 17,
-                TargetY = 16,
+                Kind = AgentGoalKind.Work, TargetEntityId = foundry.Value.Id, TargetX = 17, TargetY = 16,
             },
         }));
         return (fixture, foundry);
@@ -64,7 +61,8 @@ public sealed class ProductionTests
     public void Reduced_efficiency_accumulates_saved_progress_before_consuming_a_batch()
     {
         var (fixture, foundry) = FoundryWorld();
-        fixture.Engine.Buildings.RemoveAll(building => building.Value.Id != foundry.Value.Id && building.Value.X == 17 && building.Value.Y == 16);
+        fixture.Engine.Buildings.RemoveAll(building =>
+            building.Value.Id != foundry.Value.Id && building.Value.X == 17 && building.Value.Y == 16);
         fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Sleep = 25 }));
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
         Assert.Equal(.75, foundry.Value.ProductionProgress);
@@ -75,8 +73,10 @@ public sealed class ProductionTests
 
         Assert.True(loaded.TryWorkAtBuilding(loaded.GetResident(fixture.ResidentId)!));
 
-        Assert.Equal(.5, loaded.State.Society.Buildings.Single(building => building.Id == foundry.Value.Id).ProductionProgress);
-        Assert.Equal(1, loaded.State.Society.Buildings.Single(building => building.Id == foundry.Value.Id).ProductionBatches);
+        Assert.Equal(.5,
+            loaded.State.Society.Buildings.Single(building => building.Id == foundry.Value.Id).ProductionProgress);
+        Assert.Equal(1,
+            loaded.State.Society.Buildings.Single(building => building.Id == foundry.Value.Id).ProductionBatches);
         Assert.Equal(0, loaded.GetResident(fixture.ResidentId)!.Inventory.Ore);
         Assert.Equal(1, loaded.GetResident(fixture.ResidentId)!.Inventory.Alloy);
     }
@@ -110,7 +110,8 @@ public sealed class ProductionTests
     public void Missing_input_does_not_partially_consume_materials()
     {
         var (fixture, foundry) = FoundryWorld();
-        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(fixture.Resident.Value.Inventory with { Ore = 1 }));
+        fixture.Resident.Replace(
+            fixture.Resident.Value.WithInventory(fixture.Resident.Value.Inventory with { Ore = 1 }));
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
@@ -173,7 +174,8 @@ public sealed class ProductionTests
     public void Worker_can_produce_only_once_per_day()
     {
         var (fixture, foundry) = FoundryWorld();
-        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(fixture.Resident.Value.Inventory with { Coal = 2, Ore = 4 }));
+        fixture.Resident.Replace(
+            fixture.Resident.Value.WithInventory(fixture.Resident.Value.Inventory with { Coal = 2, Ore = 4 }));
         Assert.True(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));
 
         Assert.False(fixture.Engine.TryWorkAtBuilding(fixture.Resident.Value));

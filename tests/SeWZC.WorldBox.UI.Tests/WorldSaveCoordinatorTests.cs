@@ -60,7 +60,9 @@ public sealed class WorldSaveCoordinatorTests
         var engine = WorldEngine.Create(42, 32, 32, false);
         var storage = new MemoryStorage();
         var coordinator = new WorldSaveCoordinator(() => engine, () => storage, () => 50)
-        { Ready = true, AllowAutosave = false };
+        {
+            Ready = true, AllowAutosave = false,
+        };
         await coordinator.SaveAsync(false);
         Assert.Equal(0, storage.Saves);
         await coordinator.SaveAsync(true);
@@ -70,21 +72,32 @@ public sealed class WorldSaveCoordinatorTests
 
     private sealed class MemoryStorage : IWorldStorage
     {
-        public bool IsBackground => false;
         internal string? Json { get; private set; }
         internal int Saves { get; private set; }
         internal int Exports { get; private set; }
         internal TaskCompletionSource? SaveStarted { get; init; }
         internal Task? SaveGate { get; init; }
+        public bool IsBackground => false;
+
         public async Task SaveChunksAsync(string[] chunks)
         {
             Saves++;
             SaveStarted?.SetResult();
-            if (SaveGate is not null) await SaveGate;
+            if (SaveGate is not null)
+                await SaveGate;
             Json = string.Concat(chunks);
         }
-        public Task<string?> LoadAsync() => Task.FromResult(Json);
-        public Task<string?> ImportAsync() => Task.FromResult(Json);
+
+        public Task<string?> LoadAsync()
+        {
+            return Task.FromResult(Json);
+        }
+
+        public Task<string?> ImportAsync()
+        {
+            return Task.FromResult(Json);
+        }
+
         public Task ExportAsync(string json, string fileName)
         {
             Exports++;

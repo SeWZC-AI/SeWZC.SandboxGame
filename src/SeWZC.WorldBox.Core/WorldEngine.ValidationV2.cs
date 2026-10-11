@@ -85,7 +85,8 @@ public sealed partial class WorldEngine
         if (!person.MovementRoute.IsEmpty)
         {
             CheckV2(person.MovementRoute.Length >= 2 && person.MovementRoute[0] == person.FromY * width + person.FromX
-                    && person.MovementRoute[^1] == person.Y * width + person.X, "移动路线与起终点不一致。");
+                                                     && person.MovementRoute[^1] == person.Y * width + person.X,
+                "移动路线与起终点不一致。");
             for (var position = 1; position < person.MovementRoute.Length; position++)
             {
                 var before = person.MovementRoute[position - 1];
@@ -94,6 +95,7 @@ public sealed partial class WorldEngine
                     "移动路线必须经过相邻地格。");
             }
         }
+
         CheckV2(person.HomeBuildingId is >= 0 and < 2_000_000_000
                 && person.CarriedByResidentId is >= 0 and < 2_000_000_000
                 && person.CarriedByResidentId != person.Id
@@ -118,18 +120,25 @@ public sealed partial class WorldEngine
             ValidateResidentV2(person with { Agent = agent with { Goal = daytime, DaytimeGoal = null } }, tick, width,
                 height);
         }
+
         if (agent.DailyPlan is { } plan)
         {
             CheckV2(plan.PlannedTick >= 0 && plan.PlannedTick <= tick
-                    && plan.ReturnHomeTick >= 0 && plan.ReturnHomeTick <= tick + SimulationTime.TicksPerDay
-                    && plan.FoodReviewTick >= plan.PlannedTick && plan.FoodReviewTick <= tick + 2 * SimulationTime.TicksPerDay
-                    && plan.WaterReviewTick >= plan.PlannedTick && plan.WaterReviewTick <= tick + 2 * SimulationTime.TicksPerDay
-                    && plan.RestReviewTick >= plan.PlannedTick && plan.RestReviewTick <= tick + 2 * SimulationTime.TicksPerDay,
+                                          && plan.ReturnHomeTick >= 0 &&
+                                          plan.ReturnHomeTick <= tick + SimulationTime.TicksPerDay
+                                          && plan.FoodReviewTick >= plan.PlannedTick && plan.FoodReviewTick <=
+                                          tick + 2 * SimulationTime.TicksPerDay
+                                          && plan.WaterReviewTick >= plan.PlannedTick && plan.WaterReviewTick <=
+                                          tick + 2 * SimulationTime.TicksPerDay
+                                          && plan.RestReviewTick >= plan.PlannedTick && plan.RestReviewTick <=
+                                          tick + 2 * SimulationTime.TicksPerDay,
                 "日常安排时间无效。");
             if (plan.WorkGoal is { } work)
             {
                 CheckV2(DailyWorkGoal(work.Kind), "可重复任务必须是日常劳动。");
-                ValidateResidentV2(person with { Agent = agent with { Goal = work, DaytimeGoal = null, DailyPlan = null } }, tick, width, height);
+                ValidateResidentV2(
+                    person with { Agent = agent with { Goal = work, DaytimeGoal = null, DailyPlan = null } }, tick,
+                    width, height);
             }
         }
 
@@ -142,7 +151,8 @@ public sealed partial class WorldEngine
         CheckV2(
             Number(personality.Courage, 0, 1) && Number(personality.Diligence, 0, 1) &&
             Number(personality.Sociability, 0, 1) && Number(personality.Ambition, 0, 1) &&
-            Number(agent.Fatigue, 0, ResidentNeedsRules.MaximumPercent) && Number(agent.Sleep, 0, ResidentNeedsRules.MaximumPercent)
+            Number(agent.Fatigue, 0, ResidentNeedsRules.MaximumPercent) &&
+            Number(agent.Sleep, 0, ResidentNeedsRules.MaximumPercent)
             && Number(agent.SocialNeed, 0, 100), "性格或需求超出范围。");
         CheckV2(agent.Goal is not null, "行动目标缺失。");
         var goal = agent.Goal!;

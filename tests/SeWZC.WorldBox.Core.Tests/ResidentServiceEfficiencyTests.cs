@@ -16,7 +16,8 @@ public sealed class ResidentServiceEfficiencyTests
     [InlineData(BuildingKind.HerbGarden, 18, 100, 76)]
     [InlineData(BuildingKind.HerbGarden, 18, 25, 82)]
     [InlineData(BuildingKind.HerbGarden, 12, 100, 96)]
-    public void Medical_work_scales_the_actual_disease_reduction(BuildingKind kind, double age, double sleep, int sickness)
+    public void Medical_work_scales_the_actual_disease_reduction(BuildingKind kind, double age, double sleep,
+        int sickness)
     {
         var (fixture, building) = ServiceWorld(kind, age, sleep);
         var worker = fixture.Resident.Value;
@@ -30,8 +31,12 @@ public sealed class ResidentServiceEfficiencyTests
         Assert.Equal(sickness, patient.Value.SicknessTicks);
         Assert.True(patient.Value.Health > 50);
         if (kind == BuildingKind.Hospital)
+        {
             Assert.Equal(fixture.Engine.SimulationTick + (int)(SimulationTime.TicksPerYear
-                * ResidentNeedsRules.WorkEfficiency(fixture.Resident.Value, true)), patient.Value.DiseaseImmuneUntilTick);
+                                                               * ResidentNeedsRules.WorkEfficiency(
+                                                                   fixture.Resident.Value, true)),
+                patient.Value.DiseaseImmuneUntilTick);
+        }
     }
 
     /// <summary>两成效率的劳动者须累计五轮劳动才完成固定服务，材料在完成时消耗。</summary>
@@ -106,7 +111,8 @@ public sealed class ResidentServiceEfficiencyTests
         Assert.Equal(1, loaded.State.Society.Buildings.Single(b => b.Id == building.Value.Id).ServiceActions);
     }
 
-    private static (WorldFixture Fixture, StateReference<Building> Building) ServiceWorld(BuildingKind kind, double age, double sleep)
+    private static (WorldFixture Fixture, StateReference<Building> Building) ServiceWorld(BuildingKind kind, double age,
+        double sleep)
     {
         var fixture = new WorldFixture();
         fixture.Engine.Buildings.RemoveAll(b => b.Value.Kind != BuildingKind.TownCenter);
@@ -119,20 +125,26 @@ public sealed class ResidentServiceEfficiencyTests
         var ground = fixture.Engine.Tiles[16 * 32 + 17];
         ground.Replace(ground.Value with
         {
-            Terrain = TerrainType.Grass, NationId = fixture.Town.Value.NationId,
+            Terrain = TerrainType.Grass,
+            NationId = fixture.Town.Value.NationId,
             ClaimedSettlementId = fixture.Town.Value.Id,
         });
         ground.Replace(ground.Value.WithAnimalPopulation(WildlifeKind.Goat, 4));
         var building = new StateReference<Building>(new Building
         {
-            Id = fixture.Engine.NextId++, SettlementId = fixture.Town.Value.Id, Kind = kind,
-            X = 17, Y = 16, ConstructionProgress = 30,
+            Id = fixture.Engine.NextId++,
+            SettlementId = fixture.Town.Value.Id,
+            Kind = kind,
+            X = 17,
+            Y = 16,
+            ConstructionProgress = 30,
         });
         fixture.Engine.Buildings.Add(building);
         fixture.Engine.SimulationTick = 12;
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            Age = age, Race = kind == BuildingKind.HerbGarden ? RaceKind.Elf : RaceKind.Human,
+            Age = age,
+            Race = kind == BuildingKind.HerbGarden ? RaceKind.Elf : RaceKind.Human,
             Profession = kind switch
             {
                 BuildingKind.Library => Profession.Archivist,
@@ -140,16 +152,35 @@ public sealed class ResidentServiceEfficiencyTests
                 BuildingKind.Pasture => Profession.Farmer,
                 _ => Profession.Physician,
             },
-            X = 17, Y = 16, FromX = 17, FromY = 16, Armor = 0, PersonalWard = 0,
-            MagicTalent = 60, MagicTraining = 20, Mana = 100,
-            Inventory = new ResourceStock { Food = 10, Water = 10, Medicine = 1, Alloy = 4, Crystals = 1 },
+            X = 17,
+            Y = 16,
+            FromX = 17,
+            FromY = 16,
+            Armor = 0,
+            PersonalWard = 0,
+            MagicTalent = 60,
+            MagicTraining = 20,
+            Mana = 100,
+            Inventory = new ResourceStock
+            {
+                Food = 10,
+                Water = 10,
+                Medicine = 1,
+                Alloy = 4,
+                Crystals = 1,
+            },
             Agent = new AgentState
             {
-                Initialized = true, Sleep = sleep,
+                Initialized = true,
+                Sleep = sleep,
                 Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.Work, TargetEntityId = building.Value.Id, TargetX = 17, TargetY = 16,
-                    PlayerDirected = true, ReviewTick = 100,
+                    Kind = AgentGoalKind.Work,
+                    TargetEntityId = building.Value.Id,
+                    TargetX = 17,
+                    TargetY = 16,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
                 },
             },
         });

@@ -33,9 +33,10 @@ public sealed partial class WorldEngine
     private double WorkDays(StateReference<Resident> person, bool mental = false)
     {
         return WorkInterval(person) / (double)(
-            person.Value.Agent.Goal.PlayerDirected
-                ? SimulationTime.TicksPerDay
-                : SimulationTime.ReturnHomeTick - SimulationTime.WakeTick) * ResidentNeedsRules.WorkEfficiency(person.Value, mental);
+                   person.Value.Agent.Goal.PlayerDirected
+                       ? SimulationTime.TicksPerDay
+                       : SimulationTime.ReturnHomeTick - SimulationTime.WakeTick) *
+               ResidentNeedsRules.WorkEfficiency(person.Value, mental);
     }
 
     private StateReference<Building>? FindBuilding(int id)
@@ -127,7 +128,8 @@ public sealed partial class WorldEngine
     private void UpdateLocalWorkMembership(StateReference<Resident> resident, int previousSettlementId)
     {
         if (resident.Value.Agent.WorkplaceId != 0 || resident.Value.Agent.WorkAreaIndex != -1)
-            resident.Replace(resident.Value.WithAgent(resident.Value.Agent with { WorkplaceId = 0, WorkAreaIndex = -1 }));
+            resident.Replace(
+                resident.Value.WithAgent(resident.Value.Agent with { WorkplaceId = 0, WorkAreaIndex = -1 }));
         if (!_localWorkQueriesActive)
             return;
         if (_localWorkResidents.TryGetValue(previousSettlementId, out var previous))
@@ -160,7 +162,8 @@ public sealed partial class WorldEngine
         return false;
     }
 
-    private StateReference<Building>? FindLocalWorkBuilding(StateReference<Resident> resident, int range, bool preferNearest,
+    private StateReference<Building>? FindLocalWorkBuilding(StateReference<Resident> resident, int range,
+        bool preferNearest,
         bool followTarget = false)
     {
         IReadOnlyList<StateReference<Building>>? buildings = _localWorkQueriesActive
@@ -188,16 +191,24 @@ public sealed partial class WorldEngine
                 continue;
             var distance = Distance(resident.Value.X, resident.Value.Y, building.Value.X, building.Value.Y);
             if (range == 1 && IsWaterfrontBuilding(building.Value.Kind) && (distance != 1
-                                                                      || !Tiles[Index(resident.Value.X, resident.Value.Y)].Value
-                                                                          .IsWalkable
-                                                                      || IsWaterTerrain(Tiles[Index(resident.Value.X, resident.Value.Y)].Value
-                                                                          .Terrain)))
+                                                                            || !Tiles[
+                                                                                    Index(resident.Value.X,
+                                                                                        resident.Value.Y)].Value
+                                                                                .IsWalkable
+                                                                            || IsWaterTerrain(
+                                                                                Tiles[
+                                                                                        Index(resident.Value.X,
+                                                                                            resident.Value.Y)].Value
+                                                                                    .Terrain)))
                 continue;
-            var workRange = range > 1 && building.Value.Kind is BuildingKind.MountainPass or BuildingKind.Bridge ? 24 : range;
+            var workRange = range > 1 && building.Value.Kind is BuildingKind.MountainPass or BuildingKind.Bridge
+                ? 24
+                : range;
             if (distance > workRange || !BuildingHasWork(building.Value, resident))
                 continue;
             if (range > 1 && distance <= 6 && !VisibleWorkSiteReachable(resident, building.Value.X, building.Value.Y,
-                    !building.Value.IsCompleted || building.Value.IsUpgrading || IsWaterfrontBuilding(building.Value.Kind) ||
+                    !building.Value.IsCompleted || building.Value.IsUpgrading ||
+                    IsWaterfrontBuilding(building.Value.Kind) ||
                     building.Value.Kind == BuildingKind.TownCenter))
                 continue;
             if (range > 1 && resident.Value.Agent.Goal.NavigationTarget == Index(building.Value.X, building.Value.Y) &&
@@ -230,8 +241,8 @@ public sealed partial class WorldEngine
             var patient = residents[index];
             var health = patient.Value.Health;
             if (health <= 0 || !(health < 99 || patient.Value.SicknessTicks > 0)
-                || patient.Value.SettlementId != building.SettlementId
-                || Distance(patient.Value.X, patient.Value.Y, building.X, building.Y) > 3)
+                            || patient.Value.SettlementId != building.SettlementId
+                            || Distance(patient.Value.X, patient.Value.Y, building.X, building.Y) > 3)
                 continue;
             if (firstOnly)
                 return patient;
@@ -255,6 +266,7 @@ public sealed partial class WorldEngine
             if (resident.Value.SettlementId == settlementId && resident.Value.Profession == profession && ++count == 2)
                 return true;
         }
+
         return false;
     }
 }

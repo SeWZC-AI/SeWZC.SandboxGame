@@ -1,13 +1,16 @@
 using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.UI.Controls;
+using SeWZC.WorldBox.UI.Services;
 using SeWZC.WorldBox.UI.ViewModels.Details;
+
 namespace SeWZC.WorldBox.UI.ViewModels;
+
 /// <summary>展示模型发出的导航、地图和窗口请求。</summary>
 internal sealed class PresentationRequests
 {
     internal required IMapPresentation Map { get; init; }
     internal required MainViewModel State { get; init; }
-    internal required Services.WorldSaveCoordinator Storage { get; init; }
+    internal required WorldSaveCoordinator Storage { get; init; }
     internal required Func<bool> CanSubmitEdit { get; init; }
     internal required Func<bool> ModalVisible { get; init; }
     internal required Func<bool> PickingLocation { get; init; }

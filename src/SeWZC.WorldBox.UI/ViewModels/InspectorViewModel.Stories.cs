@@ -1,7 +1,4 @@
-using Avalonia;
-using Avalonia.Media;
 using SeWZC.WorldBox.Core;
-using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI.ViewModels;
@@ -11,6 +8,10 @@ internal sealed partial class InspectorViewModel
     internal readonly HashSet<ObservedObject> _watched = [];
 
     internal bool _historyWatchedOnly;
+
+    private ImmutableVector<WorldEvent>? _spotlightEvents;
+    private EventGroup? _spotlightGroup;
+    private (int LastId, int Count, int Watches) _spotlightRevision;
 
     internal bool InvolvesObject(WorldEvent item, ObservedObject target)
     {
@@ -168,10 +169,6 @@ internal sealed partial class InspectorViewModel
                 $"作战目标：{WorldEngine.ObjectiveName(a.Objective)}\n行动状态：{a.Status}\n目标聚落：{TownName(a.TargetSettlementId)}\n部队：{a.Soldiers}/{a.InitialSoldiers} 人\n实有军粮：{a.Supplies:F1}\n实有饮水：{a.WaterSupplies:F1}\n士气：{a.Morale:F0}\n{WorldEngine.OutcomeName(a.Outcome)}",
             a => FocusMapTile(a.X, a.Y));
     }
-
-    private ImmutableVector<WorldEvent>? _spotlightEvents;
-    private EventGroup? _spotlightGroup;
-    private (int LastId, int Count, int Watches) _spotlightRevision;
 
     internal EventGroup? SelectSpotlight()
     {

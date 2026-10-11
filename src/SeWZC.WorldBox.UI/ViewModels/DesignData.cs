@@ -25,17 +25,21 @@ internal static class DesignData
 
     private static DialogHostViewModel CreateDialogHost()
     {
-        var session = new GameSessionViewModel(new MainViewModel(WorldEngine.Create(42, 32, 32, false)), new DesignMap(), () => null);
+        var session = new GameSessionViewModel(new MainViewModel(WorldEngine.Create(42, 32, 32, false)),
+            new DesignMap(), () => null);
         session.Dialogs.OpenModal(CreateDetails());
         return session.Dialogs;
     }
+
     private static MapInteractionViewModel CreateInteraction()
     {
-        var session = new GameSessionViewModel(new MainViewModel(WorldEngine.Create(42, 32, 32, false)), new DesignMap(), () => null);
+        var session = new GameSessionViewModel(new MainViewModel(WorldEngine.Create(42, 32, 32, false)),
+            new DesignMap(), () => null);
         session.Interaction.PlacementChanged("将投放 12 位居民，确认后生效");
         session.State.PlacementPending = true;
         return session.Interaction;
     }
+
     private static GameSessionViewModel CreateSession()
     {
         var session = new GameSessionViewModel(Main, new DesignMap(), () => null) { IsReady = true };
@@ -45,6 +49,7 @@ internal static class DesignData
         session.Layout.Resize(1440, 920, 1440);
         return session;
     }
+
     private static StackNode CreateDetails()
     {
         var content = new StackNode { Spacing = 6, Margin = new Thickness(6) };
@@ -52,15 +57,21 @@ internal static class DesignData
         content.Children.Add(new TextNode { Text = "当前活动：正在返回家园交付粮食", Foreground = Brush.Parse("#E9EFEB") });
         content.Children.Add(new TextInputNode { Text = "示例居民", MinHeight = 36 });
         content.Children.Add(new NumberNode { Value = 100, Minimum = 0, Maximum = 100, MinHeight = 36 });
-        content.Children.Add(new ChoiceNode { ItemsSource = new[] { "家园", "附近聚落" }, SelectedIndex = 0, MinHeight = 36 });
+        content.Children.Add(new ChoiceNode
+        {
+            ItemsSource = new[] { "家园", "附近聚落" }, SelectedIndex = 0, MinHeight = 36,
+        });
         content.Children.Add(new CheckNode { Content = "跟随居民", IsChecked = true });
         return content;
     }
 
-    private static ModalViewModel CreateDialog() => new(
-        new TextNode { Text = "编辑居民档案", FontSize = 17, Foreground = Brush.Parse("#E9EFEB") },
-        CreateDetails(), new ButtonNode { Content = "应用档案变更", Padding = new Thickness(8, 3), MinHeight = 30 },
-        new TextNode { Text = "修改将在暂停的世界中生效", Foreground = Brush.Parse("#E7BD87") }, () => { });
+    private static ModalViewModel CreateDialog()
+    {
+        return new ModalViewModel(
+            new TextNode { Text = "编辑居民档案", FontSize = 17, Foreground = Brush.Parse("#E9EFEB") },
+            CreateDetails(), new ButtonNode { Content = "应用档案变更", Padding = new Thickness(8, 3), MinHeight = 30 },
+            new TextNode { Text = "修改将在暂停的世界中生效", Foreground = Brush.Parse("#E7BD87") }, () => { });
+    }
 
     private static MainViewModel CreateMain()
     {
@@ -71,6 +82,7 @@ internal static class DesignData
         model.InspectorVisible = true;
         return model;
     }
+
     private static ResearchGraphViewModel CreateGraph()
     {
         var graph = new ResearchGraphViewModel { Selected = Advancement.Agriculture };
@@ -78,5 +90,4 @@ internal static class DesignData
             new ButtonNode { Content = new TextNode { Text = research.Name, Foreground = Brush.Parse("#E9EFEB") } }));
         return graph;
     }
-
 }

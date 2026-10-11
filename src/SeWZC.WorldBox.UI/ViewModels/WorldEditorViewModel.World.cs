@@ -1,10 +1,7 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using Avalonia;
 using Avalonia.Layout;
 using Avalonia.Media;
 using SeWZC.WorldBox.Core;
-using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI.ViewModels;
@@ -29,7 +26,8 @@ internal sealed partial class WorldEditorViewModel
 
             bool Current()
             {
-                return ReferenceEquals(source, _engine) && generation == _requests.ModalGeneration() && _requests.ModalVisible();
+                return ReferenceEquals(source, _engine) && generation == _requests.ModalGeneration() &&
+                       _requests.ModalVisible();
             }
 
             try
@@ -71,7 +69,8 @@ internal sealed partial class WorldEditorViewModel
 
             bool Current()
             {
-                return ReferenceEquals(source, _engine) && generation == _requests.ModalGeneration() && _requests.ModalVisible();
+                return ReferenceEquals(source, _engine) && generation == _requests.ModalGeneration() &&
+                       _requests.ModalVisible();
             }
 
             try
@@ -103,7 +102,7 @@ internal sealed partial class WorldEditorViewModel
         var panel = ModalPanel("让一个新世界诞生", "相同的种子生成相同的山海。当前世界会暂存为本次会话的恢复点。");
         panel.Children.Add(Text("世界种子", 12, Muted));
         var seed = Named(
-            new ViewModels.Details.NumberNode
+            new NumberNode
             {
                 Minimum = int.MinValue,
                 Maximum = int.MaxValue,
@@ -114,14 +113,14 @@ internal sealed partial class WorldEditorViewModel
         panel.Children.Add(seed);
         panel.Children.Add(Text("世界大小", 12, Muted));
         var size = Named(
-            new ViewModels.Details.ChoiceNode
+            new ChoiceNode
             {
                 ItemsSource = new[] { "小型世界（128 × 128）", "中型世界（256 × 256）" },
                 SelectedIndex = 1,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             }, "world-size");
         panel.Children.Add(size);
-        var life = Named(new ViewModels.Details.CheckNode { Content = Text("播下四个种族，立即开始观察", 12), IsChecked = true }, "world-initial-life");
+        var life = Named(new CheckNode { Content = Text("播下四个种族，立即开始观察", 12), IsChecked = true }, "world-initial-life");
         panel.Children.Add(life);
         var create = Button("创造世界", async () =>
         {
@@ -155,18 +154,18 @@ internal sealed partial class WorldEditorViewModel
         if (nation is null)
             return;
         var panel = ModalPanel("改写文明的方向", "编辑国家名称、库存与外交关系。变更将在暂停的世界中生效。");
-        var name = Named(new ViewModels.Details.TextInputNode { Text = nation.Name, MaxLength = 40 }, "nation-name");
+        var name = Named(new TextInputNode { Text = nation.Name, MaxLength = 40 }, "nation-name");
         panel.Children.Add(name);
         panel.Children.Add(Text("旗色", 12, Muted));
         var color = nation.ColorArgb;
-        var palette = new ViewModels.Details.StackNode { Orientation = Orientation.Horizontal, Spacing = 6 };
-        var swatches = new List<(uint Color, ViewModels.Details.ButtonNode Button)>();
+        var palette = new StackNode { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var swatches = new List<(uint Color, ButtonNode Button)>();
         foreach (var argb in new[]
                  {
                      0xFFE7AD62, 0xFF63CCA7, 0xFF8C9DEB, 0xFFE27A7C, 0xFFDFC16E, 0xFFB593DB, 0xFF74BBDC, 0xFFD294C8,
                  })
         {
-            var swatch = new ViewModels.Details.ButtonNode
+            var swatch = new ButtonNode
             {
                 Width = 34,
                 Height = 34,
@@ -190,7 +189,7 @@ internal sealed partial class WorldEditorViewModel
         panel.Children.Add(Text("古代发展水平（影响生产效率）", 12, Muted));
         var technology =
             Named(
-                new ViewModels.Details.ChoiceNode
+                new ChoiceNode
                 {
                     ItemsSource = new[] { "1  部落", "2  定居", "3  农业", "4  冶炼", "5  城邦" },
                     SelectedIndex = Math.Clamp(nation.Technology - 1, 0, 4),
@@ -199,7 +198,7 @@ internal sealed partial class WorldEditorViewModel
         panel.Children.Add(technology);
         panel.Children.Add(Text("自主发展方向", 12, Muted));
         var focus = Named(
-            new ViewModels.Details.ChoiceNode
+            new ChoiceNode
             {
                 ItemsSource = Enum.GetValues<DevelopmentFocus>().Select(WorldEngine.DevelopmentFocusName).ToArray(),
                 SelectedIndex = (int)nation.DevelopmentFocus,
@@ -207,7 +206,7 @@ internal sealed partial class WorldEditorViewModel
             }, "nation-development-focus");
         panel.Children.Add(focus);
         panel.Children.Add(Paragraph("科技优先工业与能源；法术传承依靠施法者与训练，不要求魔晶设施。魔法工艺与兼修路线才会自主建设魔晶生产链。"));
-        var fields = new List<ViewModels.Details.NumberNode>();
+        var fields = new List<NumberNode>();
         foreach (var kind in ResourceStock.Kinds)
         {
             var value = nation.Resources.Get(kind);
@@ -218,7 +217,7 @@ internal sealed partial class WorldEditorViewModel
 
         var others = _engine.State.Nations.Where(n => n.Id != nationId).ToList();
         var other = Named(
-            new ViewModels.Details.ChoiceNode
+            new ChoiceNode
             {
                 ItemsSource = others.Select(n => n.Name).ToArray(),
                 SelectedIndex = others.Count > 0 ? 0 : -1,
@@ -226,7 +225,7 @@ internal sealed partial class WorldEditorViewModel
             }, "nation-diplomacy-target");
         var diplomacy =
             Named(
-                new ViewModels.Details.ChoiceNode
+                new ChoiceNode
                 {
                     ItemsSource = new[] { "保持现有关系", "和平", "结盟", "宣战" },
                     SelectedIndex = 0,
@@ -301,7 +300,7 @@ internal sealed partial class WorldEditorViewModel
                 SetStatus("国家已更新");
             });
         }));
-        panel.Children.Add(new ViewModels.Details.BorderNode { Height = 1, Background = Line });
+        panel.Children.Add(new BorderNode { Height = 1, Background = Line });
         panel.Children.Add(Button("绘制这个国家的领土", async () =>
         {
             await SubmitEditAsync(() =>
@@ -311,7 +310,7 @@ internal sealed partial class WorldEditorViewModel
             });
         }));
         panel.Children.Add(Text("向首都添加居民（每次 12 人）", 12, Muted));
-        var people = new ViewModels.Details.StackNode { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var people = new StackNode { Orientation = Orientation.Horizontal, Spacing = 6 };
         foreach (var race in Enum.GetValues<RaceKind>())
             people.Children.Add(Button(RaceName(race), async () =>
             {
@@ -332,7 +331,7 @@ internal sealed partial class WorldEditorViewModel
         if (towns.Count >= 2)
         {
             panel.Children.Add(Text("选择一处聚落独立建国", 12, Muted));
-            var townPicker = new ViewModels.Details.ChoiceNode
+            var townPicker = new ChoiceNode
             {
                 ItemsSource = towns.Select(t => t.Name).ToArray(),
                 SelectedIndex = 0,
@@ -368,5 +367,4 @@ internal sealed partial class WorldEditorViewModel
 
         OpenModal(panel);
     }
-
 }

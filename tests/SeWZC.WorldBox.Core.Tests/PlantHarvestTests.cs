@@ -11,8 +11,7 @@ public sealed class PlantHarvestTests
     {
         var original = new Tile
         {
-            ResourceAmount = 100,
-            Plants = new PlantCoverage { Trees = .4, Shrubs = .2, Grass = .3, Reeds = .1 },
+            ResourceAmount = 100, Plants = new PlantCoverage { Trees = .4, Shrubs = .2, Grass = .3, Reeds = .1 },
         };
 
         var harvest = original.HarvestPlants(100, wood);

@@ -3,7 +3,6 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using SeWZC.WorldBox.Core;
-using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI.ViewModels;
@@ -302,7 +301,8 @@ internal sealed partial class InspectorViewModel : IResearchActionHandler
                 var button =
                     Named(
                         Button("建造 " + WorldEngine.BuildingName(kind),
-                            () => _requests.Editors.ShowBuildingSelectionEditor(town.Id, kind)), "research-build-" + kind);
+                            () => _requests.Editors.ShowBuildingSelectionEditor(town.Id, kind)),
+                        "research-build-" + kind);
                 button.IsEnabled = known;
                 unlocks.Children.Add(button);
             }
@@ -312,7 +312,9 @@ internal sealed partial class InspectorViewModel : IResearchActionHandler
                 unlocks.Children.Add(Paragraph(WorldEngine.ProfessionName(job) + "：" +
                                                WorldEngine.ProfessionDescription(job)));
                 var button =
-                    Named(Button("分配 " + WorldEngine.ProfessionName(job), () => _requests.Editors.ShowResearchJobEditor(town.Id, job)),
+                    Named(
+                        Button("分配 " + WorldEngine.ProfessionName(job),
+                            () => _requests.Editors.ShowResearchJobEditor(town.Id, job)),
                         "research-job-" + job);
                 button.IsEnabled = known;
                 unlocks.Children.Add(button);
@@ -323,7 +325,8 @@ internal sealed partial class InspectorViewModel : IResearchActionHandler
                 var button =
                     Named(
                         Button("施放 " + WorldEngine.SpellName(spell) + $"  魔力 {WorldEngine.SpellManaCost(spell):0}",
-                            () => _requests.Editors.ShowSpellSelectionEditor(spell, town.Id)), "research-spell-" + spell);
+                            () => _requests.Editors.ShowSpellSelectionEditor(spell, town.Id)),
+                        "research-spell-" + spell);
                 button.IsEnabled = known;
                 unlocks.Children.Add(button);
             }
@@ -345,5 +348,4 @@ internal sealed partial class InspectorViewModel : IResearchActionHandler
         panel.Children.Add(Card(detail));
         _inspectorUpdates.Add(() => start.IsEnabled = Blocker(_selectedResearch) is null);
     }
-
 }

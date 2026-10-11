@@ -3,10 +3,16 @@ using Avalonia.Media;
 using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels;
+
 namespace SeWZC.WorldBox.UI.Tests;
+
 /// <summary>界面流程测试使用的地图状态与事件端口。</summary>
 internal sealed class GameMapStub : IGameMap
 {
+    private int? _buildingId;
+    private (int X, int Y)? _tile;
+    internal WorldMapControl.ViewportState Viewport { get; set; } = new(new Point(128, 128), 1);
+    internal (ToolCategory Category, int Index)? Brush { get; private set; }
     public int InfrastructureTownId { get; set; }
     public int Overlay { get; set; }
     public int SelectedSettlementId { get; set; }
@@ -25,11 +31,33 @@ internal sealed class GameMapStub : IGameMap
     public HashSet<ResourceKind> VisibleResources { get; set; } = [];
     public void RefreshWorld(bool resetCamera = false, bool deferAnimation = false) { }
     public void InvalidateVisual() { }
-    public void SelectResident(int id, bool follow = false) { SelectedResidentId = id; FollowSelectedResident = follow; }
-    public IImage ActivityPreview(ResidentTaskIcon kind) => new DrawingImage();
-    public IImage ResidentPreview(RaceKind race, Profession profession) => new DrawingImage();
-    public IImage AnimalPreview(WildlifeKind kind) => new DrawingImage();
-    public IImage PlantPreview(PlantKind kind) => new DrawingImage();
+
+    public void SelectResident(int id, bool follow = false)
+    {
+        SelectedResidentId = id;
+        FollowSelectedResident = follow;
+    }
+
+    public IImage ActivityPreview(ResidentTaskIcon kind)
+    {
+        return new DrawingImage();
+    }
+
+    public IImage ResidentPreview(RaceKind race, Profession profession)
+    {
+        return new DrawingImage();
+    }
+
+    public IImage AnimalPreview(WildlifeKind kind)
+    {
+        return new DrawingImage();
+    }
+
+    public IImage PlantPreview(PlantKind kind)
+    {
+        return new DrawingImage();
+    }
+
     public WorldEngine? Engine { get; set; }
     public bool IsSimulationPaused { get; set; }
     public bool PickingLocation { get; set; }
@@ -42,37 +70,125 @@ internal sealed class GameMapStub : IGameMap
     public int? SelectedResidentId { get; set; }
     public bool HasPendingPlacement { get; set; }
     public Func<Task>? PrepareWorldEdit { get; set; }
-    public event EventHandler? WorldMutationStarting { add { } remove { } }
-    public event EventHandler? WorldEdited { add { } remove { } }
+
+    public event EventHandler? WorldMutationStarting
+    {
+        add { }
+        remove { }
+    }
+
+    public event EventHandler? WorldEdited
+    {
+        add { }
+        remove { }
+    }
+
     public event Action<int, int>? TileSelected;
-    internal void PickTile(int x, int y) => TileSelected?.Invoke(x, y);
-    public event Action<int>? ResidentSelected { add { } remove { } }
-    public event Action<int>? BuildingSelected { add { } remove { } }
-    public event Action<string>? ToolError { add { } remove { } }
-    public event Action<string>? PlacementChanged { add { } remove { } }
-    internal WorldMapControl.ViewportState Viewport { get; set; } = new(new Point(128, 128), 1);
-    private int? _buildingId;
-    private (int X, int Y)? _tile;
-    internal (ToolCategory Category, int Index)? Brush { get; private set; }
-    public WorldMapControl.ViewportState CaptureViewport() => Viewport;
-    public WorldMapControl.MapSelectionState CaptureMapSelection() => new(SelectedResidentId, _buildingId, _tile, FollowSelectedResident, SelectedNationId, SelectedSettlementId);
-    public void RestoreViewport(WorldMapControl.ViewportState viewport) { Viewport = viewport; }
+
+    public event Action<int>? ResidentSelected
+    {
+        add { }
+        remove { }
+    }
+
+    public event Action<int>? BuildingSelected
+    {
+        add { }
+        remove { }
+    }
+
+    public event Action<string>? ToolError
+    {
+        add { }
+        remove { }
+    }
+
+    public event Action<string>? PlacementChanged
+    {
+        add { }
+        remove { }
+    }
+
+    public WorldMapControl.ViewportState CaptureViewport()
+    {
+        return Viewport;
+    }
+
+    public WorldMapControl.MapSelectionState CaptureMapSelection()
+    {
+        return new WorldMapControl.MapSelectionState(SelectedResidentId, _buildingId, _tile, FollowSelectedResident,
+            SelectedNationId,
+            SelectedSettlementId);
+    }
+
+    public void RestoreViewport(WorldMapControl.ViewportState viewport)
+    {
+        Viewport = viewport;
+    }
+
     public void RestoreMapSelection(WorldMapControl.MapSelectionState selection)
     {
-        SelectedResidentId = selection.ResidentId; _buildingId = selection.BuildingId; _tile = selection.Tile;
-        FollowSelectedResident = selection.Follow; SelectedNationId = selection.NationId; SelectedSettlementId = selection.SettlementId;
+        SelectedResidentId = selection.ResidentId;
+        _buildingId = selection.BuildingId;
+        _tile = selection.Tile;
+        FollowSelectedResident = selection.Follow;
+        SelectedNationId = selection.NationId;
+        SelectedSettlementId = selection.SettlementId;
     }
-    public void RestoreObservationSelection(WorldMapControl.MapSelectionState selection) => RestoreMapSelection(selection);
-    public void SelectMapTile(int x, int y) { ClearMapSelection(); _tile = (x, y); }
-    public void SelectMapBuilding(int id) { ClearMapSelection(); _buildingId = id; }
-    public void ClearMapSelection() { SelectedResidentId = null; _buildingId = null; _tile = null; FollowSelectedResident = false; }
-    public void FocusTile(int x, int y) { Viewport = new(new Point(x, y), 1.4); }
-    public bool FocusResident(int id) => false;
+
+    public void RestoreObservationSelection(WorldMapControl.MapSelectionState selection)
+    {
+        RestoreMapSelection(selection);
+    }
+
+    public void SelectMapTile(int x, int y)
+    {
+        ClearMapSelection();
+        _tile = (x, y);
+    }
+
+    public void SelectMapBuilding(int id)
+    {
+        ClearMapSelection();
+        _buildingId = id;
+    }
+
+    public void ClearMapSelection()
+    {
+        SelectedResidentId = null;
+        _buildingId = null;
+        _tile = null;
+        FollowSelectedResident = false;
+    }
+
+    public void FocusTile(int x, int y)
+    {
+        Viewport = new WorldMapControl.ViewportState(new Point(x, y), 1.4);
+    }
+
+    public bool FocusResident(int id)
+    {
+        return false;
+    }
+
     public void ZoomIn() { }
     public void ZoomOut() { }
     public void FitWorld() { }
     public void ConfirmPlacement() { }
     public void CancelPlacement() { }
-    public int GetRecentFrameCount(long timestamp) => 0;
-    public void ApplyBrush(ToolCategory category, int index) { Brush = (category, index); }
+
+    public int GetRecentFrameCount(long timestamp)
+    {
+        return 0;
+    }
+
+    public void ApplyBrush(ToolCategory category, int index)
+    {
+        Brush = (category, index);
+    }
+
+    internal void PickTile(int x, int y)
+    {
+        TileSelected?.Invoke(x, y);
+    }
 }

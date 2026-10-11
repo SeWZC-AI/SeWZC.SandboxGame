@@ -118,8 +118,10 @@ internal static class SimulationAudit
                                                                                person.Y * snapshot.Width + person.X]
                                                                            .FireTicks == 0).Select(p => p.Id).ToArray();
             if (inappropriateWork.Length > 0)
+            {
                 throw new InvalidOperationException(
                     $"tick {snapshot.Tick}：夜间仍有普通劳动居民 {string.Join(',', inappropriateWork)}。");
+            }
 
             var restored = WorldEngine.ImportJson(json);
             var branch = WorldEngine.FromSnapshot(snapshot);

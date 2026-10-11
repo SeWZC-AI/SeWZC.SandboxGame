@@ -1,3 +1,5 @@
+using System.Text.Json.Nodes;
+
 namespace SeWZC.WorldBox.Core.Tests;
 
 /// <summary>移动速度、住宅分配、日程与背负救助的行为边界。</summary>
@@ -12,17 +14,22 @@ public sealed class ResidentRoutineTests
         {
             Agent = fixture.Resident.Value.Agent with
             {
-                Goal = new AgentGoal { Kind = AgentGoalKind.Explore, TargetX = 24, TargetY = 10, PlayerDirected = true, ReviewTick = 100 },
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Explore,
+                    TargetX = 24,
+                    TargetY = 10,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
+                },
             },
         });
         fixture.Engine.Step();
         Assert.NotEmpty(fixture.Resident.Value.MovementRoute);
         var route = fixture.Resident.Value.MovementRoute;
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.SimulationTick + 2 });
-        fixture.Engine.EditResident(fixture.ResidentId, new ResidentEdit
-        {
-            Agent = fixture.Resident.Value.Agent with { Initialized = false },
-        });
+        fixture.Engine.EditResident(fixture.ResidentId,
+            new ResidentEdit { Agent = fixture.Resident.Value.Agent with { Initialized = false } });
 
         fixture.Engine.Step();
 
@@ -41,11 +48,18 @@ public sealed class ResidentRoutineTests
         for (var x = 13; x <= 18; x++)
         {
             var tile = fixture.Engine.Tiles[16 * fixture.Engine.Width + x];
-            tile.Replace(tile.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+            tile.Replace(tile.Value with
+            {
+                ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId,
+            });
         }
+
         var blocked = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Housing, 18, 16);
         var reachable = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Housing, 13, 16);
-        fixture.Resident.Replace(fixture.Resident.Value.WithPosition(16, 16) with { HomeBuildingId = alreadyAssigned ? blocked : 0 });
+        fixture.Resident.Replace(fixture.Resident.Value.WithPosition(16, 16) with
+        {
+            HomeBuildingId = alreadyAssigned ? blocked : 0,
+        });
         for (var y = 0; y < fixture.Engine.Height; y++)
         {
             var tile = fixture.Engine.Tiles[y * fixture.Engine.Width + 17];
@@ -63,7 +77,7 @@ public sealed class ResidentRoutineTests
     public void Null_building_in_a_save_is_rejected_as_invalid_input()
     {
         var fixture = Prepare();
-        var state = System.Text.Json.Nodes.JsonNode.Parse(fixture.Engine.ExportJson())!;
+        var state = JsonNode.Parse(fixture.Engine.ExportJson())!;
         state["Society"]!["Buildings"]![0] = null;
 
         Assert.Throws<ArgumentException>(() => WorldEngine.ImportJson(state.ToJsonString()));
@@ -81,7 +95,14 @@ public sealed class ResidentRoutineTests
         {
             Agent = fixture.Resident.Value.Agent with
             {
-                Goal = new AgentGoal { Kind = AgentGoalKind.Explore, TargetX = 24, TargetY = 10, PlayerDirected = true, ReviewTick = 100 },
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Explore,
+                    TargetX = 24,
+                    TargetY = 10,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
+                },
             },
         });
         fixture.Engine.Step();
@@ -103,15 +124,22 @@ public sealed class ResidentRoutineTests
         var fixture = Prepare();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         var patient = fixture.Engine.Residents.Single(person => person.Value.Id != fixture.ResidentId);
-        fixture.Engine.Tiles[10 * 32 + 10].Replace(fixture.Engine.Tiles[10 * 32 + 10].Value.WithTerrain(TerrainType.Water));
+        fixture.Engine.Tiles[10 * 32 + 10]
+            .Replace(fixture.Engine.Tiles[10 * 32 + 10].Value.WithTerrain(TerrainType.Water));
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(10, 10) with
         {
-            TravelMode = TravelMode.Boat, Inventory = new ResourceStock { Boats = 1 },
-            Agent = fixture.Resident.Value.Agent with { Goal = new AgentGoal { Kind = AgentGoalKind.Rescue, TargetEntityId = patient.Value.Id } },
+            TravelMode = TravelMode.Boat,
+            Inventory = new ResourceStock { Boats = 1 },
+            Agent = fixture.Resident.Value.Agent with
+            {
+                Goal = new AgentGoal { Kind = AgentGoalKind.Rescue, TargetEntityId = patient.Value.Id },
+            },
         });
         patient.Replace(patient.Value.WithPosition(10, 10) with
         {
-            CarriedByResidentId = fixture.ResidentId, Age = 25, Activity = ResidentActivity.Unconscious,
+            CarriedByResidentId = fixture.ResidentId,
+            Age = 25,
+            Activity = ResidentActivity.Unconscious,
             Agent = patient.Value.Agent with { Sleep = 0 },
         });
 
@@ -130,9 +158,12 @@ public sealed class ResidentRoutineTests
         var fixture = Prepare();
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            Agent = fixture.Resident.Value.Agent with { DailyPlan = new ResidentDailyPlan { WorkGoal = new AgentGoal { Kind = AgentGoalKind.Gather } } },
+            Agent = fixture.Resident.Value.Agent with
+            {
+                DailyPlan = new ResidentDailyPlan { WorkGoal = new AgentGoal { Kind = AgentGoalKind.Gather } },
+            },
         });
-        var state = System.Text.Json.Nodes.JsonNode.Parse(fixture.Engine.ExportJson())!;
+        var state = JsonNode.Parse(fixture.Engine.ExportJson())!;
         state["Residents"]![0]!["Agent"]!["DailyPlan"]!["WorkGoal"]![field] = fixture.Engine.State.NextId;
 
         Assert.Throws<ArgumentException>(() => WorldEngine.ImportJson(state.ToJsonString()));
@@ -145,18 +176,28 @@ public sealed class ResidentRoutineTests
         var fixture = Prepare();
         var home = fixture.Engine.GetResidentHome(fixture.ResidentId)!;
         var ground = fixture.Engine.Tiles[home.Y * fixture.Engine.State.Width + home.X];
-        ground.Replace(ground.Value with { Terrain = TerrainType.Sand, RoadLevel = 0, Improvement = LandImprovement.None });
+        ground.Replace(ground.Value with
+        {
+            Terrain = TerrainType.Sand, RoadLevel = 0, Improvement = LandImprovement.None,
+        });
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(home.X, home.Y) with
         {
-            IsInsideHome = true, Activity = ResidentActivity.Sleeping,
+            IsInsideHome = true,
+            Activity = ResidentActivity.Sleeping,
             Agent = fixture.Resident.Value.Agent with
             {
-                Goal = new AgentGoal { Kind = AgentGoalKind.Sleep, TargetX = home.X, TargetY = home.Y, TargetEntityId = home.Id },
+                Goal =
+                new AgentGoal
+                {
+                    Kind = AgentGoalKind.Sleep, TargetX = home.X, TargetY = home.Y, TargetEntityId = home.Id,
+                },
                 DaytimeGoal = new AgentGoal
                 {
                     Kind = AgentGoalKind.Gather,
                     TargetX = home.X >= fixture.Engine.State.Width / 2 ? 0 : fixture.Engine.State.Width - 1,
-                    TargetY = home.Y >= fixture.Engine.State.Height / 2 ? 0 : fixture.Engine.State.Height - 1,
+                    TargetY = home.Y >= fixture.Engine.State.Height / 2
+                        ? 0
+                        : fixture.Engine.State.Height - 1,
                 },
             },
         });
@@ -183,32 +224,49 @@ public sealed class ResidentRoutineTests
         for (var x = 14; x <= 18; x++)
         {
             var ground = fixture.Engine.Tiles[16 * 32 + x];
-            ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+            ground.Replace(ground.Value with
+            {
+                ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId,
+            });
         }
+
         if (mountain)
         {
             var radius = surrounded ? 1 : 0;
             fixture.Engine.Buildings.RemoveAll(building => Math.Abs(building.Value.X - 18) <= radius
-                                                          && Math.Abs(building.Value.Y - 16) <= radius);
+                                                           && Math.Abs(building.Value.Y - 16) <= radius);
             for (var y = 16 - radius; y <= 16 + radius; y++)
             for (var x = 18 - radius; x <= 18 + radius; x++)
             {
                 var ground = fixture.Engine.Tiles[y * 32 + x];
-                ground.Replace(ground.Value.WithTerrain(TerrainType.Mountain) with { RoadLevel = 0, Improvement = LandImprovement.None });
+                ground.Replace(ground.Value.WithTerrain(TerrainType.Mountain) with
+                {
+                    RoadLevel = 0, Improvement = LandImprovement.None,
+                });
             }
+
             fixture.Resident.Replace(fixture.Resident.Value with { Race = RaceKind.Dwarf });
         }
+
         fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Waygate, 14, 16);
         var destination = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Waygate, 18, 16);
         fixture.Engine.SimulationTick = 1;
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(14, 16) with
         {
-            MagicTalent = 50, MagicTraining = 10, Mana = 100, Inventory = new ResourceStock { Crystals = 2 },
-            Agent = fixture.Resident.Value.Agent with { Goal = new AgentGoal { Kind = AgentGoalKind.Rescue, TargetEntityId = patient.Value.Id } },
+            MagicTalent = 50,
+            MagicTraining = 10,
+            Mana = 100,
+            Inventory = new ResourceStock { Crystals = 2 },
+            Agent = fixture.Resident.Value.Agent with
+            {
+                Goal = new AgentGoal { Kind = AgentGoalKind.Rescue, TargetEntityId = patient.Value.Id },
+            },
         });
         patient.Replace(patient.Value.WithPosition(14, 16) with
         {
-            CarriedByResidentId = fixture.ResidentId, Age = 25, Activity = ResidentActivity.Unconscious,
+            CarriedByResidentId = fixture.ResidentId,
+            Age = 25,
+            Activity = ResidentActivity.Unconscious,
             Agent = patient.Value.Agent with { Sleep = 0 },
         });
 
@@ -224,7 +282,8 @@ public sealed class ResidentRoutineTests
         else
         {
             Assert.True(Math.Abs(rescued.X - 18) + Math.Abs(rescued.Y - 16) <= 1);
-            Assert.True(WorldEngine.CanTraverse(fixture.Engine.State.Tiles[rescued.Y * 32 + rescued.X], rescued.TravelMode, rescued.Race));
+            Assert.True(WorldEngine.CanTraverse(fixture.Engine.State.Tiles[rescued.Y * 32 + rescued.X],
+                rescued.TravelMode, rescued.Race));
             Assert.Equal(0, rescued.CarriedByResidentId);
         }
 
@@ -247,22 +306,32 @@ public sealed class ResidentRoutineTests
         for (var x = 13; x <= 16; x++)
         {
             var tile = fixture.Engine.Tiles[16 * 32 + x];
-            tile.Replace(tile.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+            tile.Replace(tile.Value with
+            {
+                ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId,
+            });
         }
+
         var home = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Housing, 13, 16);
         for (var y = 0; y < 32; y++)
         {
             var tile = fixture.Engine.Tiles[y * 32 + 14];
             tile.Replace(tile.Value.WithTerrain(TerrainType.Mountain));
         }
+
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(15, 16) with
         {
             Race = RaceKind.Dwarf,
-            Agent = fixture.Resident.Value.Agent with { Goal = new AgentGoal { Kind = AgentGoalKind.Rescue, TargetEntityId = patient.Value.Id } },
+            Agent = fixture.Resident.Value.Agent with
+            {
+                Goal = new AgentGoal { Kind = AgentGoalKind.Rescue, TargetEntityId = patient.Value.Id },
+            },
         });
         patient.Replace(patient.Value.WithPosition(15, 16) with
         {
-            CarriedByResidentId = fixture.ResidentId, Age = 25, Activity = ResidentActivity.Unconscious,
+            CarriedByResidentId = fixture.ResidentId,
+            Age = 25,
+            Activity = ResidentActivity.Unconscious,
             Agent = patient.Value.Agent with { Sleep = 0 },
         });
 
@@ -297,7 +366,14 @@ public sealed class ResidentRoutineTests
             Inventory = new ResourceStock { Wood = wood },
             Agent = fixture.Resident.Value.Agent with
             {
-                Goal = new AgentGoal { Kind = AgentGoalKind.Explore, TargetX = 22, TargetY = 10, PlayerDirected = true, ReviewTick = 100 },
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Explore,
+                    TargetX = 22,
+                    TargetY = 10,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
+                },
             },
         });
         fixture.Engine.Step();
@@ -350,7 +426,10 @@ public sealed class ResidentRoutineTests
         {
             Agent = fixture.Resident.Value.Agent with
             {
-                Goal = new AgentGoal { Kind = AgentGoalKind.Gather, TargetX = 31, TargetY = 16, ReviewTick = 100 },
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Gather, TargetX = 31, TargetY = 16, ReviewTick = 100,
+                },
             },
         });
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock()));
@@ -367,7 +446,10 @@ public sealed class ResidentRoutineTests
     [Fact]
     public void Unconscious_recovery_is_slower_until_rescued_into_a_bed()
     {
-        var person = new Resident { Age = 25, Activity = ResidentActivity.Unconscious, Agent = new AgentState { Sleep = 0, Fatigue = 100 } };
+        var person = new Resident
+        {
+            Age = 25, Activity = ResidentActivity.Unconscious, Agent = new AgentState { Sleep = 0, Fatigue = 100 },
+        };
         var outdoor = ResidentNeedsRules.Advance(person, ResidentNeedsRules.OutdoorRestQuality);
         var bed = ResidentNeedsRules.Advance(person with { IsInsideHome = true, BedRestAfterRescue = true }, 1);
         Assert.True(outdoor.Sleep > 0);
@@ -386,14 +468,24 @@ public sealed class ResidentRoutineTests
         var house = fixture.Engine.GetResidentHome(patient.Value.Id)!;
         patient.Replace(patient.Value.WithPosition(22, 16) with
         {
-            Age = 25, Activity = ResidentActivity.Unconscious, Inventory = new ResourceStock { Food = 10, Water = 10 },
+            Age = 25,
+            Activity = ResidentActivity.Unconscious,
+            Inventory = new ResourceStock { Food = 10, Water = 10 },
             Agent = patient.Value.Agent with { Sleep = 0, Fatigue = 90 },
         });
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(22, 16) with
         {
             Agent = fixture.Resident.Value.Agent with
             {
-                Goal = new AgentGoal { Kind = AgentGoalKind.Rescue, TargetEntityId = patient.Value.Id, TargetX = 22, TargetY = 16, PlayerDirected = true, ReviewTick = 100 },
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Rescue,
+                    TargetEntityId = patient.Value.Id,
+                    TargetX = 22,
+                    TargetY = 16,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
+                },
             },
         });
         fixture.Engine.Step();
@@ -425,14 +517,24 @@ public sealed class ResidentRoutineTests
             Activity = ResidentActivity.Sleeping,
             Agent = fixture.Resident.Value.Agent with
             {
-                Fatigue = 70, Sleep = 50, NextThinkTick = SimulationTime.TicksPerDay,
-                Goal = new AgentGoal { Kind = AgentGoalKind.Rescue, TargetEntityId = patient.Value.Id,
-                    TargetX = 10, TargetY = 10, ReviewTick = SimulationTime.TicksPerDay },
+                Fatigue = 70,
+                Sleep = 50,
+                NextThinkTick = SimulationTime.TicksPerDay,
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Rescue,
+                    TargetEntityId = patient.Value.Id,
+                    TargetX = 10,
+                    TargetY = 10,
+                    ReviewTick = SimulationTime.TicksPerDay,
+                },
             },
         });
         patient.Replace(patient.Value.WithPosition(10, 10) with
         {
-            Age = 25, CarriedByResidentId = fixture.ResidentId, Activity = ResidentActivity.Unconscious,
+            Age = 25,
+            CarriedByResidentId = fixture.ResidentId,
+            Activity = ResidentActivity.Unconscious,
             Agent = patient.Value.Agent with { Sleep = 0, Fatigue = 90 },
         });
 
@@ -448,12 +550,19 @@ public sealed class ResidentRoutineTests
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with
         {
-            Births = false, Construction = false, Expansion = false, Wars = false, Secession = false,
-            Migration = false, Research = false, Disease = false,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Wars = false,
+            Secession = false,
+            Migration = false,
+            Research = false,
+            Disease = false,
         }, false, false);
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            Age = 25, Inventory = new ResourceStock { Food = 1, Water = 1 },
+            Age = 25,
+            Inventory = new ResourceStock { Food = 1, Water = 1 },
             Agent = fixture.Resident.Value.Agent with { Initialized = true, NextThinkTick = 100 },
         });
         return fixture;
@@ -470,8 +579,16 @@ public sealed class ResidentRoutineTests
         {
             Agent = fixture.Resident.Value.Agent with
             {
-                Sleep = 30, Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetEntityId = house.Id,
-                    TargetX = house.X, TargetY = house.Y, PlayerDirected = true, ReviewTick = 100 },
+                Sleep = 30,
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Rest,
+                    TargetEntityId = house.Id,
+                    TargetX = house.X,
+                    TargetY = house.Y,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
+                },
             },
         });
         fixture.Engine.Step();
@@ -505,7 +622,14 @@ public sealed class ResidentRoutineTests
         {
             Agent = fixture.Resident.Value.Agent with
             {
-                Goal = new AgentGoal { Kind = AgentGoalKind.Explore, TargetX = 24, TargetY = 10, PlayerDirected = true, ReviewTick = 100 },
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Explore,
+                    TargetX = 24,
+                    TargetY = 10,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
+                },
             },
         });
         fixture.Engine.Step();
@@ -524,10 +648,14 @@ public sealed class ResidentRoutineTests
     {
         var fixture = Prepare();
         var before = fixture.Engine.ExportJson();
-        Assert.Throws<ArgumentException>(() => fixture.Engine.EditResident(fixture.ResidentId, new ResidentEdit
-        {
-            Agent = fixture.Resident.Value.Agent with { DailyPlan = new ResidentDailyPlan { PlannedTick = -1 } },
-        }));
+        Assert.Throws<ArgumentException>(() => fixture.Engine.EditResident(fixture.ResidentId,
+            new ResidentEdit
+            {
+                Agent = fixture.Resident.Value.Agent with
+                {
+                    DailyPlan = new ResidentDailyPlan { PlannedTick = -1 },
+                },
+            }));
         Assert.Equal(before, fixture.Engine.ExportJson());
     }
 
@@ -540,7 +668,14 @@ public sealed class ResidentRoutineTests
         {
             Agent = fixture.Resident.Value.Agent with
             {
-                Goal = new AgentGoal { Kind = AgentGoalKind.Explore, TargetX = 24, TargetY = 10, PlayerDirected = true, ReviewTick = 100 },
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Explore,
+                    TargetX = 24,
+                    TargetY = 10,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
+                },
             },
         });
         fixture.Engine.Step();
@@ -557,18 +692,27 @@ public sealed class ResidentRoutineTests
         var fixture = Prepare();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         var patient = fixture.Engine.Residents.Single(r => r.Value.Id != fixture.ResidentId);
-        fixture.Engine.Tiles[10 * 32 + 10].Replace(fixture.Engine.Tiles[10 * 32 + 10].Value.WithTerrain(TerrainType.Water));
+        fixture.Engine.Tiles[10 * 32 + 10]
+            .Replace(fixture.Engine.Tiles[10 * 32 + 10].Value.WithTerrain(TerrainType.Water));
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(10, 10) with
         {
-            TravelMode = TravelMode.Boat, Inventory = new ResourceStock { Boats = 1 },
+            TravelMode = TravelMode.Boat,
+            Inventory = new ResourceStock { Boats = 1 },
             Agent = fixture.Resident.Value.Agent with
             {
-                Goal = new AgentGoal { Kind = AgentGoalKind.Rescue, TargetEntityId = patient.Value.Id, TargetX = 10, TargetY = 10 },
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Rescue,
+                    TargetEntityId = patient.Value.Id,
+                    TargetX = 10,
+                    TargetY = 10,
+                },
             },
         });
         patient.Replace(patient.Value.WithPosition(10, 10) with
         {
-            CarriedByResidentId = fixture.ResidentId, Activity = ResidentActivity.Unconscious,
+            CarriedByResidentId = fixture.ResidentId,
+            Activity = ResidentActivity.Unconscious,
             Agent = patient.Value.Agent with { Sleep = 0 },
         });
         fixture.Engine.PaintTerrain(2, 2, TerrainType.Grass, 0);
@@ -586,15 +730,23 @@ public sealed class ResidentRoutineTests
         var fixture = Prepare();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         var patient = fixture.Engine.Residents.Single(person => person.Value.Id != fixture.ResidentId);
-        fixture.Engine.Tiles[10 * 32 + 10].Replace(fixture.Engine.Tiles[10 * 32 + 10].Value.WithTerrain(TerrainType.Water));
+        fixture.Engine.Tiles[10 * 32 + 10]
+            .Replace(fixture.Engine.Tiles[10 * 32 + 10].Value.WithTerrain(TerrainType.Water));
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(10, 10) with
         {
-            Health = 10, TravelMode = TravelMode.Boat, Inventory = new ResourceStock { Boats = 1 },
-            Agent = fixture.Resident.Value.Agent with { Goal = new AgentGoal { Kind = AgentGoalKind.Rescue, TargetEntityId = patient.Value.Id } },
+            Health = 10,
+            TravelMode = TravelMode.Boat,
+            Inventory = new ResourceStock { Boats = 1 },
+            Agent = fixture.Resident.Value.Agent with
+            {
+                Goal = new AgentGoal { Kind = AgentGoalKind.Rescue, TargetEntityId = patient.Value.Id },
+            },
         });
         patient.Replace(patient.Value.WithPosition(10, 10) with
         {
-            CarriedByResidentId = fixture.ResidentId, Age = 25, Activity = ResidentActivity.Unconscious,
+            CarriedByResidentId = fixture.ResidentId,
+            Age = 25,
+            Activity = ResidentActivity.Unconscious,
             Agent = patient.Value.Agent with { Sleep = 0 },
         });
 
@@ -617,13 +769,21 @@ public sealed class ResidentRoutineTests
         var house = fixture.Engine.GetResidentHome(child.Value.Id)!;
         child.Replace(child.Value.WithPosition(house.X, house.Y) with
         {
-            Age = 4, IsInsideHome = true, Hunger = 40, Thirst = 40, Inventory = new ResourceStock(),
+            Age = 4,
+            IsInsideHome = true,
+            Hunger = 40,
+            Thirst = 40,
+            Inventory = new ResourceStock(),
         });
-        fixture.Resident.Replace(fixture.Resident.Value.WithPosition(adultAtHome ? house.X : 16, adultAtHome ? house.Y : 16) with
-        {
-            IsInsideHome = adultAtHome,
-            Agent = fixture.Resident.Value.Agent with { Goal = new AgentGoal { PlayerDirected = true, ReviewTick = 100 } },
-        });
+        fixture.Resident.Replace(
+            fixture.Resident.Value.WithPosition(adultAtHome ? house.X : 16, adultAtHome ? house.Y : 16) with
+            {
+                IsInsideHome = adultAtHome,
+                Agent = fixture.Resident.Value.Agent with
+                {
+                    Goal = new AgentGoal { PlayerDirected = true, ReviewTick = 100 },
+                },
+            });
         fixture.Engine.SimulationTick = SimulationTime.WakeTick;
         fixture.Engine.Step();
         var current = fixture.Engine.GetResident(child.Value.Id)!;
@@ -638,14 +798,24 @@ public sealed class ResidentRoutineTests
         var fixture = Prepare();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         var patient = fixture.Engine.Residents.Single(r => r.Value.Id != fixture.ResidentId);
-        patient.Replace(patient.Value.WithPosition(10, 10) with { Age = 25, Activity = ResidentActivity.Unconscious,
-            Agent = patient.Value.Agent with { Sleep = 0 } });
+        patient.Replace(patient.Value.WithPosition(10, 10) with
+        {
+            Age = 25, Activity = ResidentActivity.Unconscious, Agent = patient.Value.Agent with { Sleep = 0 },
+        });
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(10, 10) with
         {
-            Age = 11, Agent = fixture.Resident.Value.Agent with
+            Age = 11,
+            Agent = fixture.Resident.Value.Agent with
             {
-                Goal = new AgentGoal { Kind = AgentGoalKind.Rescue, TargetEntityId = patient.Value.Id, TargetX = 10,
-                    TargetY = 10, PlayerDirected = true, ReviewTick = 100 },
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Rescue,
+                    TargetEntityId = patient.Value.Id,
+                    TargetX = 10,
+                    TargetY = 10,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
+                },
             },
         });
         fixture.Engine.Step();
@@ -664,13 +834,19 @@ public sealed class ResidentRoutineTests
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock()));
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(10, 10) with
         {
-            Agent = fixture.Resident.Value.Agent with { Sleep = 40, Goal = new AgentGoal
+            Agent = fixture.Resident.Value.Agent with
             {
-                Kind = AgentGoalKind.Gather, TargetX = 10, TargetY = 10, ReviewTick = 100,
-            } },
+                Sleep = 40,
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Gather, TargetX = 10, TargetY = 10, ReviewTick = 100,
+                },
+            },
         });
         fixture.Engine.Tiles[10 * 32 + 10].Replace(fixture.Engine.Tiles[10 * 32 + 10].Value with
-            { ResourceAmount = 100, Fertility = 100, Plants = new PlantCoverage { Grass = 1 } });
+        {
+            ResourceAmount = 100, Fertility = 100, Plants = new PlantCoverage { Grass = 1 },
+        });
         fixture.Engine.Step();
         Assert.Equal(AgentGoalKind.Rest, fixture.Resident.Value.Agent.Goal.Kind);
     }
@@ -691,10 +867,18 @@ public sealed class ResidentRoutineTests
             fixture.Engine.SimulationTick++;
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(24 - distance, 16) with
         {
-            Agent = fixture.Resident.Value.Agent with { NextThinkTick = 100, Goal = new AgentGoal
+            Agent = fixture.Resident.Value.Agent with
             {
-                Kind = AgentGoalKind.Work, TargetEntityId = farm, TargetX = 24, TargetY = 16, ReviewTick = 100,
-            } },
+                NextThinkTick = 100,
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Work,
+                    TargetEntityId = farm,
+                    TargetX = 24,
+                    TargetY = 16,
+                    ReviewTick = 100,
+                },
+            },
         });
         var target = fixture.Engine.Tiles[16 * 32 + 24];
         target.Replace(target.Value with { FireTicks = 20 });
@@ -706,7 +890,10 @@ public sealed class ResidentRoutineTests
         void Claim(int x, int y)
         {
             var tile = fixture.Engine.Tiles[y * 32 + x];
-            tile.Replace(tile.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+            tile.Replace(tile.Value with
+            {
+                ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId,
+            });
         }
     }
 
@@ -717,19 +904,29 @@ public sealed class ResidentRoutineTests
         var fixture = Prepare();
         for (var y = 8; y <= 12; y++)
         for (var x = 8; x <= 15; x++)
-            fixture.Engine.Tiles[y * 32 + x].Replace(fixture.Engine.Tiles[y * 32 + x].Value.WithTerrain(TerrainType.Mountain));
+            fixture.Engine.Tiles[y * 32 + x]
+                .Replace(fixture.Engine.Tiles[y * 32 + x].Value.WithTerrain(TerrainType.Mountain));
         for (var x = 10; x <= 11; x++)
-            fixture.Engine.Tiles[10 * 32 + x].Replace(fixture.Engine.Tiles[10 * 32 + x].Value.WithTerrain(TerrainType.Grass));
-        fixture.Engine.Tiles[10 * 32 + 12].Replace(fixture.Engine.Tiles[10 * 32 + 12].Value.WithTerrain(TerrainType.River));
+            fixture.Engine.Tiles[10 * 32 + x]
+                .Replace(fixture.Engine.Tiles[10 * 32 + x].Value.WithTerrain(TerrainType.Grass));
+        fixture.Engine.Tiles[10 * 32 + 12]
+            .Replace(fixture.Engine.Tiles[10 * 32 + 12].Value.WithTerrain(TerrainType.River));
         fixture.Engine.SimulationTick = SimulationTime.WakeTick;
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(10, 10) with
         {
             Inventory = new ResourceStock { Food = 1 },
-            Agent = fixture.Resident.Value.Agent with { Goal = new AgentGoal
+            Agent = fixture.Resident.Value.Agent with
             {
-                Kind = AgentGoalKind.FetchWater, TargetX = 12, TargetY = 10, TargetEntityId = 10 * 32 + 12 + 1,
-                PlayerDirected = true, ReviewTick = 100,
-            } },
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.FetchWater,
+                    TargetX = 12,
+                    TargetY = 10,
+                    TargetEntityId = 10 * 32 + 12 + 1,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
+                },
+            },
         });
         fixture.Engine.Step();
         Assert.Equal((11, 10), (fixture.Resident.Value.X, fixture.Resident.Value.Y));
@@ -754,8 +951,7 @@ public sealed class ResidentRoutineTests
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(10, 10) with { Age = age });
         patient.Replace(patient.Value.WithPosition(10, 10) with
         {
-            Age = 25, Activity = ResidentActivity.Unconscious,
-            Agent = patient.Value.Agent with { Sleep = 0 },
+            Age = 25, Activity = ResidentActivity.Unconscious, Agent = patient.Value.Agent with { Sleep = 0 },
         });
 
         fixture.Engine.Step();
@@ -770,18 +966,27 @@ public sealed class ResidentRoutineTests
         var fixture = Prepare();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         var patient = fixture.Engine.Residents.Single(r => r.Value.Id != fixture.ResidentId);
-        patient.Replace(patient.Value.WithPosition(10, 10) with { Age = 25, Activity = ResidentActivity.Unconscious,
-            Agent = patient.Value.Agent with { Sleep = 0 } });
+        patient.Replace(patient.Value.WithPosition(10, 10) with
+        {
+            Age = 25, Activity = ResidentActivity.Unconscious, Agent = patient.Value.Agent with { Sleep = 0 },
+        });
         fixture.Engine.SimulationTick = SimulationTime.WakeTick;
         while ((fixture.Engine.SimulationTick + 1 + fixture.ResidentId) % 4 != 0)
             fixture.Engine.SimulationTick++;
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(10, 10) with
         {
-            Agent = fixture.Resident.Value.Agent with { DestinationSettlementId = fixture.Town.Value.Id, Goal = new AgentGoal
+            Agent = fixture.Resident.Value.Agent with
             {
-                Kind = AgentGoalKind.DeliverMessage, TargetSettlementId = fixture.Town.Value.Id,
-                TargetX = 16, TargetY = 16, ReviewTick = 100,
-            } },
+                DestinationSettlementId = fixture.Town.Value.Id,
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.DeliverMessage,
+                    TargetSettlementId = fixture.Town.Value.Id,
+                    TargetX = 16,
+                    TargetY = 16,
+                    ReviewTick = 100,
+                },
+            },
         });
         fixture.Engine.Step();
         Assert.Equal(AgentGoalKind.DeliverMessage, fixture.Resident.Value.Agent.Goal.Kind);
@@ -799,16 +1004,28 @@ public sealed class ResidentRoutineTests
         var patient = fixture.Engine.Residents.Single(r => r.Value.Id != fixture.ResidentId);
         for (var y = 9; y <= 11; y++)
         for (var x = 9; x <= 11; x++)
-            fixture.Engine.Tiles[y * 32 + x].Replace(fixture.Engine.Tiles[y * 32 + x].Value.WithTerrain(TerrainType.Water));
+            fixture.Engine.Tiles[y * 32 + x]
+                .Replace(fixture.Engine.Tiles[y * 32 + x].Value.WithTerrain(TerrainType.Water));
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(10, 10) with
         {
-            TravelMode = TravelMode.Boat, Inventory = new ResourceStock { Boats = 1 },
-            Agent = fixture.Resident.Value.Agent with { Goal = new AgentGoal { Kind = AgentGoalKind.Rescue,
-                TargetEntityId = patient.Value.Id, TargetX = 10, TargetY = 10 } },
+            TravelMode = TravelMode.Boat,
+            Inventory = new ResourceStock { Boats = 1 },
+            Agent = fixture.Resident.Value.Agent with
+            {
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Rescue,
+                    TargetEntityId = patient.Value.Id,
+                    TargetX = 10,
+                    TargetY = 10,
+                },
+            },
         });
         patient.Replace(patient.Value.WithPosition(10, 10) with
         {
-            CarriedByResidentId = fixture.ResidentId, Age = 25, Activity = ResidentActivity.Unconscious,
+            CarriedByResidentId = fixture.ResidentId,
+            Age = 25,
+            Activity = ResidentActivity.Unconscious,
             Agent = patient.Value.Agent with { Sleep = 0 },
         });
         if (carrierDies)
@@ -824,6 +1041,7 @@ public sealed class ResidentRoutineTests
             Assert.Equal(1, passenger.Inventory.Boats);
             Assert.Equal(0, fixture.Engine.GetResident(fixture.ResidentId)!.Inventory.Boats);
         }
+
         Assert.Equal(fixture.Engine.ExportJson(), WorldEngine.ImportJson(fixture.Engine.ExportJson()).ExportJson());
     }
 }

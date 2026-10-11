@@ -13,10 +13,10 @@ namespace SeWZC.WorldBox.UI.Controls;
 /// <summary>研究树的 AXAML 视图及指针拖动适配。</summary>
 public sealed partial class ResearchGraphControl : UserControl
 {
-    private readonly ScrollViewer _scroll;
     private readonly ResearchConnectionsControl _connections;
-    private ResearchGraphViewModel? _model;
+    private readonly ScrollViewer _scroll;
     private bool _dragging;
+    private ResearchGraphViewModel? _model;
     private Point? _press;
     private Vector _pressOffset;
 
@@ -39,7 +39,8 @@ public sealed partial class ResearchGraphControl : UserControl
         AddHandler(PointerReleasedEvent, EndDrag, RoutingStrategies.Tunnel);
         AddHandler(PointerCaptureLostEvent, (_, e) =>
         {
-            if (e.Source != this) return;
+            if (e.Source != this)
+                return;
             _press = null;
             _dragging = false;
         });
@@ -49,7 +50,8 @@ public sealed partial class ResearchGraphControl : UserControl
     {
         DisconnectModel();
         _model = DataContext as ResearchGraphViewModel;
-        if (_model is null) return;
+        if (_model is null)
+            return;
         _model.Viewport = _scroll.Viewport;
         _model.ConnectionsChanged += _connections.InvalidateVisual;
         _model.ViewportRestoreRequested += RestoreOffset;
@@ -57,7 +59,8 @@ public sealed partial class ResearchGraphControl : UserControl
 
     private void DisconnectModel()
     {
-        if (_model is null) return;
+        if (_model is null)
+            return;
         _model.ConnectionsChanged -= _connections.InvalidateVisual;
         _model.ViewportRestoreRequested -= RestoreOffset;
         _model = null;
@@ -111,5 +114,4 @@ public sealed partial class ResearchGraphControl : UserControl
         _press = null;
         _dragging = false;
     }
-
 }

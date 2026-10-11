@@ -60,7 +60,7 @@ public sealed partial class WorldEngine
         if (kind == WildlifeKind.None)
             return 0;
         var density = Math.Min(1, tile.Value.AnimalPopulation(kind)
-                                 / Math.Max(.05, AnimalRules.EnvironmentalCapacity(tile.Value, kind)));
+                                  / Math.Max(.05, AnimalRules.EnvironmentalCapacity(tile.Value, kind)));
         return density * density;
     }
 }

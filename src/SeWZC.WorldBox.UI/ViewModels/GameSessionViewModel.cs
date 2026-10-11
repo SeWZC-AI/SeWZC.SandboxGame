@@ -1,10 +1,12 @@
 using System.Diagnostics;
-using static SeWZC.WorldBox.UI.ViewModels.WorldPresentationModel;
 using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.Platform;
 using SeWZC.WorldBox.UI.Services;
+using static SeWZC.WorldBox.UI.ViewModels.WorldPresentationModel;
+
 namespace SeWZC.WorldBox.UI.ViewModels;
+
 /// <summary>组合各界面区域，协调模拟推进、保存和世界替换。</summary>
 internal sealed class GameSessionViewModel : ViewModelBase
 {
@@ -12,10 +14,11 @@ internal sealed class GameSessionViewModel : ViewModelBase
     private const int UnlimitedSpeed = SimulationScheduler.UnlimitedSpeed;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
     private readonly SimulationScheduler _simulation = new();
-    private bool _ready, _wasBackground;
-    private double _previousTime, _lastUi, _lastPerformanceUpdate;
     private int _focusedEventId;
     private Task? _initialization;
+    private double _previousTime, _lastUi, _lastPerformanceUpdate;
+    private bool _ready, _wasBackground;
+
     /// <summary>组合游戏的地图端口、状态和平台存储。</summary>
     /// <param name="state">当前世界及 HUD 状态。</param>
     /// <param name="map">地图显示与输入端口。</param>
@@ -24,33 +27,52 @@ internal sealed class GameSessionViewModel : ViewModelBase
     {
         State = state;
         Map = map;
-        Storage = new(() => State.Engine, storage, () => _clock.Elapsed.TotalSeconds);
-        Edits = new(State, Storage, CurrentEditSession);
-        Layout = new(this);
-        Navigation = new(this);
-        Tools = new(this);
-        Interaction = new(this);
-        Dialogs = new(this);
+        Storage = new WorldSaveCoordinator(() => State.Engine, storage, () => _clock.Elapsed.TotalSeconds);
+        Edits = new WorldEditCoordinator(State, Storage, CurrentEditSession);
+        Layout = new ShellLayoutViewModel(this);
+        Navigation = new InspectorNavigationViewModel(this);
+        Tools = new ToolPaletteViewModel(this);
+        Interaction = new MapInteractionViewModel(this);
+        Dialogs = new DialogHostViewModel(this);
         (Inspector, Editors) = CreatePresentationModels();
-        ZoomInCommand = new(_ => Map.ZoomIn());
-        ZoomOutCommand = new(_ => Map.ZoomOut());
-        FitWorldCommand = new(_ => Map.FitWorld());
-        Edits.StateChanged += () => { Map.IsSimulationPaused = WorldTimeStopped; UpdateUndoButtons(); };
-        Edits.Completed += () => { ResetTimeAnchor(); Map.IsSimulationPaused = WorldTimeStopped; RefreshUi(true); };
+        ZoomInCommand = new UiCommand(_ => Map.ZoomIn());
+        ZoomOutCommand = new UiCommand(_ => Map.ZoomOut());
+        FitWorldCommand = new UiCommand(_ => Map.FitWorld());
+        Edits.StateChanged += () =>
+        {
+            Map.IsSimulationPaused = WorldTimeStopped;
+            UpdateUndoButtons();
+        };
+        Edits.Completed += () =>
+        {
+            ResetTimeAnchor();
+            Map.IsSimulationPaused = WorldTimeStopped;
+            RefreshUi(true);
+        };
         Edits.Feedback += SetStatus;
         Storage.Feedback += SetStatus;
         Storage.TimeAnchorChanged += ResetTimeAnchor;
-        Storage.CaptureChanged += () => { Map.IsSimulationPaused = WorldTimeStopped; RefreshTimeState(); };
+        Storage.CaptureChanged += () =>
+        {
+            Map.IsSimulationPaused = WorldTimeStopped;
+            RefreshTimeState();
+        };
         State.ViewRequested += HandleViewRequest;
         State.PauseChanged += () =>
         {
-            if (!State.IsPaused) Edits.Checkpoint = null;
+            if (!State.IsPaused)
+                Edits.Checkpoint = null;
             Map.IsSimulationPaused = WorldTimeStopped;
             RefreshUi(true);
         };
         State.SpeedChanged += (previous, speed) =>
         {
-            if (previous == UnlimitedSpeed || speed == UnlimitedSpeed) { _simulation.ClearPendingTime(); ResetTimeAnchor(); }
+            if (previous == UnlimitedSpeed || speed == UnlimitedSpeed)
+            {
+                _simulation.ClearPendingTime();
+                ResetTimeAnchor();
+            }
+
             Map.SimulationTickDurationSeconds = speed == UnlimitedSpeed ? .016 : SimulationTickSeconds / speed;
             ScheduleNextTick();
             RefreshTimeState();
@@ -58,7 +80,11 @@ internal sealed class GameSessionViewModel : ViewModelBase
         Map.Engine = State.Engine;
         Map.GiftBuildings = true;
         Map.PrepareWorldEdit = PrepareEditAsync;
-        Map.WorldMutationStarting += (_, _) => { Storage.CancelCapture(); Storage.EditRevision++; };
+        Map.WorldMutationStarting += (_, _) =>
+        {
+            Storage.CancelCapture();
+            Storage.EditRevision++;
+        };
         Map.WorldEdited += (_, _) =>
         {
             Storage.DeferAutosaveAfterEdit();
@@ -67,8 +93,10 @@ internal sealed class GameSessionViewModel : ViewModelBase
         };
         Map.TileSelected += (x, y) =>
         {
-            if (Interaction.IsPickingLocation) Interaction.FinishMapPick(x, y);
-            else Navigation.SelectMapObject("tile", x: x, y: y);
+            if (Interaction.IsPickingLocation)
+                Interaction.FinishMapPick(x, y);
+            else
+                Navigation.SelectMapObject("tile", x: x, y: y);
         };
         Map.ResidentSelected += id => Navigation.SelectMapObject("resident", id);
         Map.BuildingSelected += id =>
@@ -83,13 +111,20 @@ internal sealed class GameSessionViewModel : ViewModelBase
         Layout.Resize(1440, 920, 1440);
         RefreshUi(true);
     }
+
     public MainViewModel State { get; }
     public InspectorNavigationViewModel Navigation { get; }
     public ToolPaletteViewModel Tools { get; }
     public MapInteractionViewModel Interaction { get; }
     public DialogHostViewModel Dialogs { get; }
     public ShellLayoutViewModel Layout { get; }
-    public bool IsReady { get => _ready; internal set => Set(ref _ready, value); }
+
+    public bool IsReady
+    {
+        get => _ready;
+        internal set => Set(ref _ready, value);
+    }
+
     public UiCommand ZoomInCommand { get; }
     public UiCommand ZoomOutCommand { get; }
     public UiCommand FitWorldCommand { get; }
@@ -98,55 +133,128 @@ internal sealed class GameSessionViewModel : ViewModelBase
     internal WorldEditCoordinator Edits { get; }
     internal InspectorViewModel Inspector { get; }
     internal WorldEditorViewModel Editors { get; }
+    internal bool EditCaptureActive => Edits.CaptureActive;
+
+    internal bool WorldTimeStopped => State.IsPaused || Dialogs.IsVisible || Interaction.IsPickingLocation ||
+                                      EditCaptureActive || Storage.Capture is not null || Storage.IsBackground;
+
+    // 回调结束后才等待，将本轮工作耗时计入下一模拟日的期限。
+    internal double NextDelayMilliseconds => _simulation.NextDelay(State.Speed,
+        !IsReady || WorldTimeStopped || _wasBackground, (_clock.Elapsed.TotalSeconds - _previousTime) * 1000);
+
     internal event Action? FocusRequested;
     internal event Action? WorldMenuRequested;
     internal event Action? ScheduleChanged;
     internal event Action<Action>? LayoutRestorationRequested;
-    internal bool EditCaptureActive => Edits.CaptureActive;
-    internal bool WorldTimeStopped => State.IsPaused || Dialogs.IsVisible || Interaction.IsPickingLocation ||
-        EditCaptureActive || Storage.Capture is not null || Storage.IsBackground;
-    private EditSession CurrentEditSession() => new(Dialogs.Generation, Dialogs.IsVisible, Navigation.Generation, Interaction.IsPickingLocation);
-    internal Task StartAsync() => _initialization ??= InitializeAsync();
-    internal void ResetTimeAnchor() => _previousTime = _clock.Elapsed.TotalSeconds;
-    internal void RequestFocus() => FocusRequested?.Invoke();
-    internal void AfterLayout(Action action) => LayoutRestorationRequested?.Invoke(action);
-    internal void SetStatus(string text) { State.Feedback = text; Dialogs.SetStatus(text); }
-    private void RefreshTimeState() => State.RefreshTime(Dialogs.IsVisible, Interaction.IsPickingLocation,
-        EditCaptureActive, Storage.Capture is not null, Storage.IsBackground, _simulation.IsCatchingUp);
+
+    private EditSession CurrentEditSession()
+    {
+        return new EditSession(Dialogs.Generation, Dialogs.IsVisible, Navigation.Generation,
+            Interaction.IsPickingLocation);
+    }
+
+    internal Task StartAsync()
+    {
+        return _initialization ??= InitializeAsync();
+    }
+
+    internal void ResetTimeAnchor()
+    {
+        _previousTime = _clock.Elapsed.TotalSeconds;
+    }
+
+    internal void RequestFocus()
+    {
+        FocusRequested?.Invoke();
+    }
+
+    internal void AfterLayout(Action action)
+    {
+        LayoutRestorationRequested?.Invoke(action);
+    }
+
+    internal void SetStatus(string text)
+    {
+        State.Feedback = text;
+        Dialogs.SetStatus(text);
+    }
+
+    private void RefreshTimeState()
+    {
+        State.RefreshTime(Dialogs.IsVisible, Interaction.IsPickingLocation,
+            EditCaptureActive, Storage.Capture is not null, Storage.IsBackground, _simulation.IsCatchingUp);
+    }
+
     private Task PrepareEditAsync()
     {
         var source = State.Engine;
         var tool = Map.ActiveTool;
         var generation = Dialogs.Generation;
         return Edits.PrepareMapEditAsync(() => ReferenceEquals(source, State.Engine) && tool == Map.ActiveTool &&
-            generation == Dialogs.Generation && !Dialogs.IsVisible && !Interaction.IsPickingLocation && !Map.PickingLocation);
+                                               generation == Dialogs.Generation && !Dialogs.IsVisible &&
+                                               !Interaction.IsPickingLocation && !Map.PickingLocation);
     }
-    internal Task<bool> SubmitEditAsync(Action command, bool replaceCheckpoint = false) =>
-        Edits.SubmitAsync(command, replaceCheckpoint, Dialogs.LockSubmissionInputs);
+
+    internal Task<bool> SubmitEditAsync(Action command, bool replaceCheckpoint = false)
+    {
+        return Edits.SubmitAsync(command, replaceCheckpoint, Dialogs.LockSubmissionInputs);
+    }
+
     private async void RunEdit(Action command, string message)
     {
-        await SubmitEditAsync(() => { command(); Map.RefreshWorld(); RefreshUi(true); SetStatus(message); });
+        await SubmitEditAsync(() =>
+        {
+            command();
+            Map.RefreshWorld();
+            RefreshUi(true);
+            SetStatus(message);
+        });
     }
+
     private void HandleViewRequest(string request)
     {
         switch (request)
         {
-            case "menu": WorldMenuRequested?.Invoke(); break;
-            case "tools": Tools.ToggleTools(); break;
-            case "pan": Tools.SuspendMapTool(true); break;
-            case "selection": Navigation.ViewMapSelection(); break;
-            case "clear": Navigation.ClearMapSelection(); break;
-            case "locate": Navigation.LocateMapSelection(); break;
-            case "return-observation": Navigation.ReturnToObservation(); break;
-            case "undo": RestoreCheckpoint(); break;
-            case "storage": Editors.ShowStorage(); break;
-            case "rules": Editors.ShowRules(); break;
-            case "new-world": Editors.ShowNewWorld(); break;
+            case "menu":
+                WorldMenuRequested?.Invoke();
+                break;
+            case "tools":
+                Tools.ToggleTools();
+                break;
+            case "pan":
+                Tools.SuspendMapTool(true);
+                break;
+            case "selection":
+                Navigation.ViewMapSelection();
+                break;
+            case "clear":
+                Navigation.ClearMapSelection();
+                break;
+            case "locate":
+                Navigation.LocateMapSelection();
+                break;
+            case "return-observation":
+                Navigation.ReturnToObservation();
+                break;
+            case "undo":
+                RestoreCheckpoint();
+                break;
+            case "storage":
+                Editors.ShowStorage();
+                break;
+            case "rules":
+                Editors.ShowRules();
+                break;
+            case "new-world":
+                Editors.ShowNewWorld();
+                break;
             case "event":
                 if (State.Engine.State.Events.FirstOrDefault(entry => entry.Id == _focusedEventId) is { } entry)
                     Navigation.FocusEvent(entry);
                 break;
-            default: Navigation.OpenInspector(request); break;
+            default:
+                Navigation.OpenInspector(request);
+                break;
         }
     }
 
@@ -230,7 +338,8 @@ internal sealed class GameSessionViewModel : ViewModelBase
             RefreshUi();
         }
 
-        if (now - Storage.LastSave > 30 && !Storage.IsSaving && !Dialogs.IsVisible && !Interaction.IsPickingLocation && !EditCaptureActive)
+        if (now - Storage.LastSave > 30 && !Storage.IsSaving && !Dialogs.IsVisible && !Interaction.IsPickingLocation &&
+            !EditCaptureActive)
         {
             Storage.LastSave = now;
             _ = Storage.SaveAsync(false);
@@ -239,10 +348,10 @@ internal sealed class GameSessionViewModel : ViewModelBase
         ScheduleNextTick();
     }
 
-    // 回调结束后才等待，将本轮工作耗时计入下一模拟日的期限。
-    internal double NextDelayMilliseconds => _simulation.NextDelay(State.Speed,
-        !IsReady || WorldTimeStopped || _wasBackground, (_clock.Elapsed.TotalSeconds - _previousTime) * 1000);
-    private void ScheduleNextTick() => ScheduleChanged?.Invoke();
+    private void ScheduleNextTick()
+    {
+        ScheduleChanged?.Invoke();
+    }
 
     internal void TogglePause()
     {
@@ -344,6 +453,7 @@ internal sealed class GameSessionViewModel : ViewModelBase
         Tools.UpdateToolContext();
         RefreshUi(true);
     }
+
     private (InspectorViewModel Inspector, WorldEditorViewModel Editors) CreatePresentationModels()
     {
         var requests = new PresentationRequests

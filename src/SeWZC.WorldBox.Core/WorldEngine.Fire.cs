@@ -92,9 +92,12 @@ public sealed partial class WorldEngine
     private bool TryExtinguishFire(StateReference<Resident> person)
     {
         var goal = person.Value.Agent.Goal;
-        if (person.Value.Health <= 0 || !ResidentNeedsRules.CanWork(person.Value) || goal.Kind != AgentGoalKind.ExtinguishFire
-            || !InBounds(goal.TargetX, goal.TargetY) || Distance(person.Value.X, person.Value.Y, goal.TargetX, goal.TargetY) > 1
-            || SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks || !Walkable(person.Value.X, person.Value.Y)
+        if (person.Value.Health <= 0 || !ResidentNeedsRules.CanWork(person.Value) ||
+            goal.Kind != AgentGoalKind.ExtinguishFire
+            || !InBounds(goal.TargetX, goal.TargetY) ||
+            Distance(person.Value.X, person.Value.Y, goal.TargetX, goal.TargetY) > 1
+            || SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks ||
+            !Walkable(person.Value.X, person.Value.Y)
             || Tiles[Index(person.Value.X, person.Value.Y)].Value.FireTicks > 0 || person.Value.Inventory.Water < .1)
             return false;
         var index = Index(goal.TargetX, goal.TargetY);
@@ -113,18 +116,22 @@ public sealed partial class WorldEngine
         if (reduction <= 0)
             return false;
         var progress = goal.LaborProgress + ResidentNeedsRules.WorkEfficiency(person.Value);
-        person.Replace(person.Value.WithAction(person.Value.Agent with
-        {
-            Goal = goal with { LaborProgress = progress < 1 ? progress : progress - 1 },
-            Fatigue = ResidentNeedsRules.ExertionFatigue(person.Value, ResidentNeedsRules.PhysicalWorkCostPerTick),
-        }, ResidentActivity.Working));
+        person.Replace(person.Value.WithAction(
+            person.Value.Agent with
+            {
+                Goal = goal with { LaborProgress = progress < 1 ? progress : progress - 1 },
+                Fatigue = ResidentNeedsRules.ExertionFatigue(person.Value,
+                    ResidentNeedsRules.PhysicalWorkCostPerTick),
+            }, ResidentActivity.Working));
         if (progress < 1)
             return true;
-        person.Replace(person.Value.WithInventory(person.Value.Inventory with { Water = person.Value.Inventory.Water - .1 }));
+        person.Replace(person.Value.WithInventory(person.Value.Inventory with
+        {
+            Water = person.Value.Inventory.Water - .1,
+        }));
         tile.Replace(tile.Value with
         {
-            FireSuppressed = tile.Value.FireSuppressed + reduction,
-            FireTicks = tile.Value.FireTicks - reduction,
+            FireSuppressed = tile.Value.FireSuppressed + reduction, FireTicks = tile.Value.FireTicks - reduction,
         });
         if (tile.Value.FireTicks == 0)
             EndFire(index, false);
@@ -133,7 +140,8 @@ public sealed partial class WorldEngine
 
     private void AddFirefightingChoice(StateReference<Resident> person, List<GoalChoice> choices)
     {
-        if (_burningTiles.Count == 0 || person.Value.Age < ResidentNeedsRules.MinimumWorkAge || person.Value.Inventory.Water < .1
+        if (_burningTiles.Count == 0 || person.Value.Age < ResidentNeedsRules.MinimumWorkAge ||
+            person.Value.Inventory.Water < .1
             || person.Value.SicknessTicks > 0 || person.Value.Health < 40
             || person.Value.Hunger >= 60 || person.Value.Thirst >= 60 ||
             Tiles[Index(person.Value.X, person.Value.Y)].Value.FireTicks > 0)

@@ -69,7 +69,8 @@ public sealed class InventoryTransferTests
     [InlineData(Profession.Engineer, ResourceKind.Tools, .5)]
     [InlineData(Profession.Physician, ResourceKind.Medicine, 2)]
     [InlineData(Profession.Ranger, ResourceKind.Ammunition, 8)]
-    public void Provisioning_disables_needs_but_retains_job_supplies(Profession profession, ResourceKind kind, double target)
+    public void Provisioning_disables_needs_but_retains_job_supplies(Profession profession, ResourceKind kind,
+        double target)
     {
         var inventory = new ResourceStock { Food = .1, Water = .2 };
         var warehouse = new ResourceStock { Food = 10, Water = 20 }.WithAmount(kind, target * 2);

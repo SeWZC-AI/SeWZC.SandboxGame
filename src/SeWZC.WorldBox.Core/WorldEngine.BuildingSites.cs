@@ -15,10 +15,12 @@ public sealed partial class WorldEngine
         if (!adjacent)
             return false;
         foreach (var (dx, dy) in Directions)
-            if (Walkable(x + dx, y + dy, person.Value.Race) && !IsWaterTerrain(Tiles[Index(x + dx, y + dy)].Value.Terrain)
-                                                      && Tiles[Index(x + dx, y + dy)].Value.FireTicks == 0
-                                                      && VisibleSiteReachable(person, Index(x + dx, y + dy), ref search,
-                                                          TravelMode.Foot))
+            if (Walkable(x + dx, y + dy, person.Value.Race) && !IsWaterTerrain(Tiles[Index(x + dx, y + dy)].Value
+                                                                .Terrain)
+                                                            && Tiles[Index(x + dx, y + dy)].Value.FireTicks == 0
+                                                            && VisibleSiteReachable(person, Index(x + dx, y + dy),
+                                                                ref search,
+                                                                TravelMode.Foot))
                 return true;
         return false;
     }
@@ -32,15 +34,21 @@ public sealed partial class WorldEngine
         if (IsMaterialFacility(kind) || kind == BuildingKind.MiningHall)
         {
             return Circle(index % Width, index / Width, 1).Any(i => i != index &&
-                Tiles[i].Value.ResourceAmount > 0
-                && (kind == BuildingKind.LumberCamp
-                    ? IsForestTerrain(Tiles[i].Value.Terrain)
-                    : kind is BuildingKind.Quarry or BuildingKind.MiningHall
-                        ? TerrainRules.For(Tiles[i].Value.Terrain).StoneYield +
-                        TerrainRules.For(Tiles[i].Value.Terrain).OreYield > 0
-                        : TerrainRules.For(Tiles[i].Value.Terrain).WoodYield +
-                        TerrainRules.For(Tiles[i].Value.Terrain).StoneYield +
-                        TerrainRules.For(Tiles[i].Value.Terrain).OreYield > 0));
+                                                                    Tiles[i].Value.ResourceAmount > 0
+                                                                    && (kind == BuildingKind.LumberCamp
+                                                                        ? IsForestTerrain(Tiles[i].Value.Terrain)
+                                                                        : kind is BuildingKind.Quarry
+                                                                            or BuildingKind.MiningHall
+                                                                            ? TerrainRules.For(Tiles[i].Value.Terrain)
+                                                                                .StoneYield +
+                                                                            TerrainRules.For(Tiles[i].Value.Terrain)
+                                                                                .OreYield > 0
+                                                                            : TerrainRules.For(Tiles[i].Value.Terrain)
+                                                                                .WoodYield +
+                                                                            TerrainRules.For(Tiles[i].Value.Terrain)
+                                                                                .StoneYield +
+                                                                            TerrainRules.For(Tiles[i].Value.Terrain)
+                                                                                .OreYield > 0));
         }
 
         if (IsHusbandry(kind))
@@ -178,7 +186,8 @@ public sealed partial class WorldEngine
         return Circle(town.Value.X, town.Value.Y, radius)
             .Where(i => FacilityPlacementError(town.Value.Id, kind, i % Width, i / Width, founding,
                             founding: founding) is null
-                        && (founding || (AutomaticSiteUseful(kind, i) && _citizens[town.Value.Id].Any(p => p.Value.Health > 0 &&
+                        && (founding || (AutomaticSiteUseful(kind, i) && _citizens[town.Value.Id].Any(p =>
+                            p.Value.Health > 0 &&
                             p.Value.Age >= ResidentNeedsRules.MinimumWorkAge && p.Value.ArmyId == 0
                             && Distance(p.Value.X, p.Value.Y, i % Width, i / Width) <= 6
                             && VisibleWorkSiteReachable(p, i % Width, i / Width, true)))))
@@ -206,7 +215,8 @@ public sealed partial class WorldEngine
     {
         RequireTown(settlementId);
         return Math.Min(20_000, Buildings
-            .Where(b => b.Value.SettlementId == settlementId && b.Value.Kind == BuildingKind.Housing && IsFacilityOperating(b.Value))
+            .Where(b => b.Value.SettlementId == settlementId && b.Value.Kind == BuildingKind.Housing &&
+                        IsFacilityOperating(b.Value))
             .Sum(b => b.Value.Level * HousingCapacityPerLevel));
     }
 

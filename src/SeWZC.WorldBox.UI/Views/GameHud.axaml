@@ -1,10 +1,12 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:views="using:SeWZC.WorldBox.UI.Views"
              xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels"
              x:Class="SeWZC.WorldBox.UI.Views.GameHud"
              x:DataType="vm:GameSessionViewModel"
-             x:CompileBindings="True" d:DesignWidth="1440" d:DesignHeight="920" d:DataContext="{x:Static vm:DesignData.Session}">
+             x:CompileBindings="True" d:DesignWidth="1440" d:DesignHeight="920"
+             d:DataContext="{x:Static vm:DesignData.Session}">
     <UserControl.Styles>
         <StyleInclude Source="/Styles/GameStyles.axaml" />
         <Style Selector="Border.hud">
@@ -24,37 +26,34 @@
         </Style>
     </UserControl.Styles>
     <UserControl.Resources>
-        <Flyout x:Key="WorldMenuFlyout">
-            <StackPanel Spacing="6" MinWidth="180">
-                <Button Classes="action" Content="世界概览" Tag="overview" Click="OnWorldMenuClick" AutomationProperties.AutomationId="menu-overview" />
-                <Button Classes="action" Content="居民" Tag="residents" Click="OnWorldMenuClick" AutomationProperties.AutomationId="menu-residents" />
-                <Button Classes="action" Content="国家" Tag="nations" Click="OnWorldMenuClick" AutomationProperties.AutomationId="menu-nations" />
-                <Button Classes="action" Content="聚落" Tag="settlements" Click="OnWorldMenuClick" AutomationProperties.AutomationId="menu-settlements" />
-                <Button Classes="action" Content="玩法说明" Tag="guide" Click="OnWorldMenuClick" AutomationProperties.AutomationId="menu-guide" />
-                <Separator />
-                <Button Classes="action" Content="存档" Tag="storage" Click="OnWorldMenuClick" AutomationProperties.AutomationId="header-storage" />
-                <Button Classes="action" Content="规则" Tag="rules" Click="OnWorldMenuClick" AutomationProperties.AutomationId="header-rules" />
-                <Button Classes="action" Content="新世界" Tag="new-world" Click="OnWorldMenuClick" AutomationProperties.AutomationId="header-new-world" />
-            </StackPanel>
-        </Flyout>
     </UserControl.Resources>
     <Grid RowDefinitions="Auto,*,Auto,Auto">
         <Grid Margin="10" ColumnDefinitions="*,Auto" ColumnSpacing="8">
             <Border x:Name="WorldReadout" Classes="hud" HorizontalAlignment="Left">
                 <StackPanel Spacing="4">
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
-                        <TextBlock Text="{Binding State.WorldDate}" FontSize="13" AutomationProperties.AutomationId="world-date" />
-                        <TextBlock Grid.Column="1" x:Name="ViewpointLabel" Text="{Binding State.Viewpoint}" FontSize="12" Foreground="#8FA8AE" />
+                        <TextBlock Text="{Binding State.WorldDate}" FontSize="13"
+                                   AutomationProperties.AutomationId="world-date" />
+                        <TextBlock Grid.Column="1" x:Name="ViewpointLabel" Text="{Binding State.Viewpoint}"
+                                   FontSize="12" Foreground="#8FA8AE" />
                     </Grid>
-                    <Button Content="返回观察位置" Command="{Binding State.NavigateCommand}" CommandParameter="return-observation"
-                            IsVisible="{Binding State.CanReturnObservation}" AutomationProperties.AutomationId="map-return-observation" />
+                    <Button Content="返回观察位置" Command="{Binding State.NavigateCommand}"
+                            CommandParameter="return-observation"
+                            IsVisible="{Binding State.CanReturnObservation}"
+                            AutomationProperties.AutomationId="map-return-observation" />
                     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                        <TextBlock Text="{Binding State.TimeState}" TextWrapping="Wrap" FontSize="13" Foreground="#B8E9BC" AutomationProperties.AutomationId="time-state" />
-                        <Border Grid.Column="1" Width="76" IsHitTestVisible="False" IsVisible="{Binding State.ShowPerformance}"><TextBlock Text="{Binding State.PerformanceText}" FontSize="10" Foreground="#B8E9BC" VerticalAlignment="Center" AutomationProperties.AutomationId="performance-stats" /></Border>
+                        <TextBlock Text="{Binding State.TimeState}" TextWrapping="Wrap" FontSize="13"
+                                   Foreground="#B8E9BC" AutomationProperties.AutomationId="time-state" />
+                        <Border Grid.Column="1" Width="76" IsHitTestVisible="False"
+                                IsVisible="{Binding State.ShowPerformance}">
+                            <TextBlock Text="{Binding State.PerformanceText}" FontSize="10" Foreground="#B8E9BC"
+                                       VerticalAlignment="Center" AutomationProperties.AutomationId="performance-stats" />
+                        </Border>
                     </Grid>
                 </StackPanel>
             </Border>
-            <Button Grid.Column="1" x:Name="WorldMenu" Content="世界" Command="{Binding State.NavigateCommand}" CommandParameter="menu"
+            <Button Grid.Column="1" x:Name="WorldMenu" Content="世界" Command="{Binding State.NavigateCommand}"
+                    CommandParameter="menu"
                     VerticalAlignment="Top" AutomationProperties.AutomationId="world-menu" />
         </Grid>
         <Border Grid.Row="1" x:Name="EventNotice" Classes="hud" Width="320" Margin="10,0,10,8"
@@ -63,26 +62,37 @@
                 <TextBlock Text="世界动态" FontSize="12" Foreground="#E4C889" />
                 <Button Grid.Column="1" Content="收起" Command="{Binding State.DismissEventCommand}"
                         AutomationProperties.AutomationId="event-dismiss" />
-                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding State.EventText}" TextWrapping="Wrap" MaxHeight="58" TextTrimming="CharacterEllipsis" FontSize="13" />
+                <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding State.EventText}" TextWrapping="Wrap"
+                           MaxHeight="58" TextTrimming="CharacterEllipsis" FontSize="13" />
                 <Grid Grid.Row="2" Grid.ColumnSpan="2" ColumnDefinitions="*,Auto" ColumnSpacing="8">
                     <TextBlock Text="{Binding State.EventTitle}" TextWrapping="Wrap" FontSize="11" Foreground="#8FA8AE" />
-                    <Button Grid.Column="1" Content="查看事件" Command="{Binding State.NavigateCommand}" CommandParameter="event"
+                    <Button Grid.Column="1" Content="查看事件" Command="{Binding State.NavigateCommand}"
+                            CommandParameter="event"
                             AutomationProperties.AutomationId="event-spotlight" />
                 </Grid>
             </Grid>
         </Border>
         <StackPanel Grid.Row="2" Margin="10,8" Spacing="8" HorizontalAlignment="Center">
-            <ContentControl x:Name="ToolHost" Content="{Binding $parent[views:GameHud].ToolContent}" IsVisible="{Binding State.ToolsVisible}" />
+            <ContentControl x:Name="ToolHost" Content="{Binding $parent[views:GameHud].ToolContent}"
+                            IsVisible="{Binding State.ToolsVisible}" />
             <Border x:Name="SelectionSummary" Classes="hud" IsVisible="{Binding State.SelectionVisible}"
                     AutomationProperties.AutomationId="selection-summary">
                 <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto" RowSpacing="5">
-                    <TextBlock Text="{Binding State.SelectionTitle}" FontSize="14" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" Foreground="#B8E9BC" AutomationProperties.AutomationId="selection-name" />
-                    <Button Grid.Column="1" Content="×" Command="{Binding State.NavigateCommand}" CommandParameter="clear"
-                            ToolTip.Tip="取消选择" AutomationProperties.Name="取消选择" AutomationProperties.AutomationId="selection-clear" />
-                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding State.SelectionDescription}" IsVisible="{Binding State.SelectionDescriptionVisible}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" FontSize="13" />
+                    <TextBlock Text="{Binding State.SelectionTitle}" FontSize="14" TextWrapping="Wrap" MaxLines="2"
+                               TextTrimming="CharacterEllipsis" Foreground="#B8E9BC"
+                               AutomationProperties.AutomationId="selection-name" />
+                    <Button Grid.Column="1" Content="×" Command="{Binding State.NavigateCommand}"
+                            CommandParameter="clear"
+                            ToolTip.Tip="取消选择" AutomationProperties.Name="取消选择"
+                            AutomationProperties.AutomationId="selection-clear" />
+                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding State.SelectionDescription}"
+                               IsVisible="{Binding State.SelectionDescriptionVisible}" TextWrapping="Wrap" MaxLines="2"
+                               TextTrimming="CharacterEllipsis" FontSize="13" />
                     <StackPanel Grid.Row="2" Grid.ColumnSpan="2" Orientation="Horizontal" Spacing="8">
-                        <Button Content="查看详情" Command="{Binding State.NavigateCommand}" CommandParameter="selection" AutomationProperties.AutomationId="selection-view" />
-                        <Button Content="定位" Command="{Binding State.NavigateCommand}" CommandParameter="locate" AutomationProperties.AutomationId="selection-locate" />
+                        <Button Content="查看详情" Command="{Binding State.NavigateCommand}" CommandParameter="selection"
+                                AutomationProperties.AutomationId="selection-view" />
+                        <Button Content="定位" Command="{Binding State.NavigateCommand}" CommandParameter="locate"
+                                AutomationProperties.AutomationId="selection-locate" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -91,25 +101,40 @@
             <Grid x:Name="Dock" ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" RowSpacing="6">
                 <Border x:Name="ObservationDock" Classes="hud" Grid.Column="0" Padding="5">
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Button Content="塑造世界" Command="{Binding State.NavigateCommand}" CommandParameter="tools" AutomationProperties.AutomationId="tools-toggle" />
-                        <Button Content="漫游" Command="{Binding State.NavigateCommand}" CommandParameter="pan" AutomationProperties.AutomationId="tool-suspend" />
-                        <Button Content="记录" Command="{Binding State.NavigateCommand}" CommandParameter="history" AutomationProperties.AutomationId="hud-history" />
-                        <Button Content="关注" Command="{Binding State.NavigateCommand}" CommandParameter="watched" AutomationProperties.AutomationId="hud-watched" />
-                        <Button Content="撤销" Command="{Binding State.UndoCommand}" ToolTip.Tip="{Binding State.UndoHint}" AutomationProperties.AutomationId="world-undo" />
+                        <Button Content="塑造世界" Command="{Binding State.NavigateCommand}" CommandParameter="tools"
+                                AutomationProperties.AutomationId="tools-toggle" />
+                        <Button Content="漫游" Command="{Binding State.NavigateCommand}" CommandParameter="pan"
+                                AutomationProperties.AutomationId="tool-suspend" />
+                        <Button Content="记录" Command="{Binding State.NavigateCommand}" CommandParameter="history"
+                                AutomationProperties.AutomationId="hud-history" />
+                        <Button Content="关注" Command="{Binding State.NavigateCommand}" CommandParameter="watched"
+                                AutomationProperties.AutomationId="hud-watched" />
+                        <Button Content="撤销" Command="{Binding State.UndoCommand}"
+                                ToolTip.Tip="{Binding State.UndoHint}" AutomationProperties.AutomationId="world-undo" />
                     </StackPanel>
                 </Border>
                 <Border x:Name="TimeDock" Classes="hud" Grid.Column="2" Padding="5" HorizontalAlignment="Right">
                     <StackPanel Orientation="Horizontal" Spacing="4">
-                        <Button Content="{Binding State.PauseLabel}" Command="{Binding State.PauseCommand}" Background="#B8E9BC" Foreground="#111E29" MinWidth="56"
+                        <Button Content="{Binding State.PauseLabel}" Command="{Binding State.PauseCommand}"
+                                Background="#B8E9BC" Foreground="#111E29" MinWidth="56"
                                 ToolTip.Tip="空格：暂停或继续" AutomationProperties.AutomationId="time-toggle" />
-                        <Button Content="1倍" Classes="speed" Classes.selected="{Binding State.IsNormalSpeed}" Command="{Binding State.SpeedCommand}" CommandParameter="1" AutomationProperties.AutomationId="time-speed-1" />
-                        <Button Content="2倍" Classes="speed" Classes.selected="{Binding State.IsDoubleSpeed}" Command="{Binding State.SpeedCommand}" CommandParameter="2" AutomationProperties.AutomationId="time-speed-2" />
-                        <Button Content="5倍" Classes="speed" Classes.selected="{Binding State.IsFastSpeed}" Command="{Binding State.SpeedCommand}" CommandParameter="5" AutomationProperties.AutomationId="time-speed-5" />
-                        <Button Content="不限速" Classes="speed" Classes.selected="{Binding State.IsUnlimitedSpeed}" Command="{Binding State.SpeedCommand}" CommandParameter="0" AutomationProperties.AutomationId="time-speed-unlimited" />
+                        <Button Content="1倍" Classes="speed" Classes.selected="{Binding State.IsNormalSpeed}"
+                                Command="{Binding State.SpeedCommand}" CommandParameter="1"
+                                AutomationProperties.AutomationId="time-speed-1" />
+                        <Button Content="2倍" Classes="speed" Classes.selected="{Binding State.IsDoubleSpeed}"
+                                Command="{Binding State.SpeedCommand}" CommandParameter="2"
+                                AutomationProperties.AutomationId="time-speed-2" />
+                        <Button Content="5倍" Classes="speed" Classes.selected="{Binding State.IsFastSpeed}"
+                                Command="{Binding State.SpeedCommand}" CommandParameter="5"
+                                AutomationProperties.AutomationId="time-speed-5" />
+                        <Button Content="不限速" Classes="speed" Classes.selected="{Binding State.IsUnlimitedSpeed}"
+                                Command="{Binding State.SpeedCommand}" CommandParameter="0"
+                                AutomationProperties.AutomationId="time-speed-unlimited" />
                     </StackPanel>
                 </Border>
             </Grid>
-            <TextBlock Grid.Row="1" Text="{Binding State.Feedback}" FontSize="11" Foreground="#E9EFEB" TextTrimming="CharacterEllipsis"
+            <TextBlock Grid.Row="1" Text="{Binding State.Feedback}" FontSize="11" Foreground="#E9EFEB"
+                       TextTrimming="CharacterEllipsis"
                        MaxLines="1" AutomationProperties.AutomationId="game-feedback" />
         </Grid>
     </Grid>

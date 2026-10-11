@@ -1,5 +1,5 @@
-using Avalonia;
 using System.Collections.Immutable;
+using Avalonia;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
@@ -9,9 +9,9 @@ internal sealed class EntityMotionTrack(Point position)
 {
     private double _duration;
     private Point _from = position;
-    private long _started = -1;
-    private ImmutableArray<int> _route = [];
     private int _mapWidth;
+    private ImmutableArray<int> _route = [];
+    private long _started = -1;
 
     /// <summary>当前已提交移动区段的终点，以地格坐标计。</summary>
     public Point Target { get; private set; } = position;
@@ -36,6 +36,7 @@ internal sealed class EntityMotionTrack(Point position)
             return new Point(first % _mapWidth + (second % _mapWidth - first % _mapWidth) * offset,
                 first / _mapWidth + (second / _mapWidth - first / _mapWidth) * offset);
         }
+
         return new Point(_from.X + (Target.X - _from.X) * fraction,
             _from.Y + (Target.Y - _from.Y) * fraction);
     }

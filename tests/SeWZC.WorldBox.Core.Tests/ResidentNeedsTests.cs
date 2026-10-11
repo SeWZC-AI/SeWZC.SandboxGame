@@ -44,8 +44,13 @@ public sealed class ResidentNeedsTests
     {
         var before = new Resident
         {
-            Age = 25, Hunger = 40, Thirst = 40, Activity = ResidentActivity.Wandering,
-            MoveStartedTick = 1, MoveDurationTicks = 2, Inventory = new ResourceStock { Food = 1, Water = 1 },
+            Age = 25,
+            Hunger = 40,
+            Thirst = 40,
+            Activity = ResidentActivity.Wandering,
+            MoveStartedTick = 1,
+            MoveDurationTicks = 2,
+            Inventory = new ResourceStock { Food = 1, Water = 1 },
         };
         var after = before.CalculateDay(new WorldRules { Aging = false }, new Tile { NaturalWaterYield = .1 },
             2, before.Profession, 0, 0, true, elapsedDays: 1d / SimulationTime.TicksPerDay).Apply(before);
@@ -62,7 +67,10 @@ public sealed class ResidentNeedsTests
     {
         var before = new Resident
         {
-            Age = 25, Hunger = 10, Thirst = 17, Activity = ResidentActivity.Working,
+            Age = 25,
+            Hunger = 10,
+            Thirst = 17,
+            Activity = ResidentActivity.Working,
             Inventory = new ResourceStock { Food = 1, Water = 1, Wood = 2 },
             Agent = new AgentState { Goal = new AgentGoal { Kind = AgentGoalKind.Work, TargetX = 5, TargetY = 5 } },
         };
@@ -85,19 +93,34 @@ public sealed class ResidentNeedsTests
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(new WorldRules
         {
-            Aging = false, Hunger = false, Births = false, Construction = false, Expansion = false, Research = false,
+            Aging = false,
+            Hunger = false,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Research = false,
         }, false, false);
         fixture.Engine.SimulationTick = SimulationTime.WakeTick;
         fixture.AddWell(16, 17, .025);
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock()));
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(16, 17) with
         {
-            Age = 25, Thirst = 20, Inventory = new ResourceStock(),
+            Age = 25,
+            Thirst = 20,
+            Inventory = new ResourceStock(),
             Agent = new AgentState
             {
-                Initialized = true, NextThinkTick = 100,
-                Goal = new AgentGoal { Kind = AgentGoalKind.FetchWater, TargetX = 16, TargetY = 17,
-                    TargetEntityId = 17 * 32 + 16 + 1, PlayerDirected = true, ReviewTick = 100 },
+                Initialized = true,
+                NextThinkTick = 100,
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.FetchWater,
+                    TargetX = 16,
+                    TargetY = 17,
+                    TargetEntityId = 17 * 32 + 16 + 1,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
+                },
             },
         });
 
@@ -116,19 +139,33 @@ public sealed class ResidentNeedsTests
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(new WorldRules
         {
-            Aging = false, Thirst = false, Births = false, Construction = false, Expansion = false,
-            Research = false, ResourceRegeneration = false,
+            Aging = false,
+            Thirst = false,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Research = false,
+            ResourceRegeneration = false,
         }, false, false);
         fixture.Engine.SimulationTick = SimulationTime.WakeTick;
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(10, 10) with
         {
-            Age = 25, Hunger = 10, Profession = Profession.Farmer,
+            Age = 25,
+            Hunger = 10,
+            Profession = Profession.Farmer,
             Inventory = new ResourceStock { Food = 1 },
             Agent = new AgentState
             {
-                Initialized = true, NextThinkTick = 100,
-                Goal = new AgentGoal { Kind = AgentGoalKind.Gather, TargetX = 10, TargetY = 10,
-                    PlayerDirected = true, ReviewTick = 100 },
+                Initialized = true,
+                NextThinkTick = 100,
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Gather,
+                    TargetX = 10,
+                    TargetY = 10,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
+                },
             },
         });
         var goal = fixture.Resident.Value.Agent.Goal;
@@ -149,18 +186,25 @@ public sealed class ResidentNeedsTests
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(new WorldRules
         {
-            Aging = false, Births = false, Construction = false, Expansion = false, Research = false,
+            Aging = false,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Research = false,
         }, false, false);
         var armyId = fixture.Engine.NextId++;
         fixture.Engine.Armies.Add(new StateReference<Army>(new Army
         {
-            Id = armyId, NationId = fixture.Town.Value.NationId, X = 10, Y = 10,
-            Supplies = 1, WaterSupplies = 1,
+            Id = armyId,
+            NationId = fixture.Town.Value.NationId,
+            X = 10,
+            Y = 10,
+            Supplies = 1,
+            WaterSupplies = 1,
         }));
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(10, 10) with
         {
-            Age = 25, ArmyId = armyId, Inventory = new ResourceStock(),
-            Agent = new AgentState { Initialized = true },
+            Age = 25, ArmyId = armyId, Inventory = new ResourceStock(), Agent = new AgentState { Initialized = true },
         });
 
         fixture.Engine.Step();
@@ -180,7 +224,10 @@ public sealed class ResidentNeedsTests
     {
         var before = new Resident
         {
-            Age = 25, Hunger = 20, Thirst = 20, Activity = ResidentActivity.Sleeping,
+            Age = 25,
+            Hunger = 20,
+            Thirst = 20,
+            Activity = ResidentActivity.Sleeping,
             SicknessTicks = sick ? 24 : 0,
             Inventory = new ResourceStock { Food = 1, Water = 1 },
         };
@@ -202,22 +249,41 @@ public sealed class ResidentNeedsTests
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(new WorldRules
         {
-            Aging = false, Hunger = food, Thirst = !food, Births = false, Construction = false,
-            Expansion = false, Research = false,
+            Aging = false,
+            Hunger = food,
+            Thirst = !food,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Research = false,
         }, false, false);
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock()));
         var house = fixture.Engine.GetResidentHome(fixture.ResidentId)!;
-        fixture.Engine.Tiles[house.Y * 32 + house.X].Replace(new Tile { Terrain = TerrainType.Grass, NaturalWaterYield = .1 });
+        fixture.Engine.Tiles[house.Y * 32 + house.X]
+            .Replace(new Tile { Terrain = TerrainType.Grass, NaturalWaterYield = .1 });
         fixture.Engine.SimulationTick = SimulationTime.WakeTick;
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(house.X, house.Y) with
         {
-            Age = 25, Hunger = food ? 59 : 0, Thirst = food ? 0 : 77.7, IsInsideHome = true,
-            Activity = ResidentActivity.Resting, Inventory = new ResourceStock(),
+            Age = 25,
+            Hunger = food ? 59 : 0,
+            Thirst = food ? 0 : 77.7,
+            IsInsideHome = true,
+            Activity = ResidentActivity.Resting,
+            Inventory = new ResourceStock(),
             Agent = new AgentState
             {
-                Initialized = true, Fatigue = 50, NextThinkTick = 100,
-                Goal = new AgentGoal { Kind = AgentGoalKind.Rest, TargetX = house.X, TargetY = house.Y,
-                    TargetEntityId = house.Id, PlayerDirected = true, ReviewTick = 100 },
+                Initialized = true,
+                Fatigue = 50,
+                NextThinkTick = 100,
+                Goal = new AgentGoal
+                {
+                    Kind = AgentGoalKind.Rest,
+                    TargetX = house.X,
+                    TargetY = house.Y,
+                    TargetEntityId = house.Id,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
+                },
             },
         });
 
@@ -236,11 +302,14 @@ public sealed class ResidentNeedsTests
     {
         var before = new Resident
         {
-            Age = 25, Hunger = 100, Thirst = 100, Activity = ResidentActivity.Unconscious,
+            Age = 25,
+            Hunger = 100,
+            Thirst = 100,
+            Activity = ResidentActivity.Unconscious,
             Inventory = new ResourceStock { Food = 1, Water = 1 },
         };
         var after = before.AdvanceNeeds(new WorldRules(), 1, new Tile { NaturalWaterYield = .1 }, 1d / 24,
-            assistedFeeding: assisted);
+            assisted);
 
         Assert.Equal(assisted, after.Hunger < 100);
         Assert.Equal(assisted, after.Thirst < 100);
@@ -256,11 +325,15 @@ public sealed class ResidentNeedsTests
     [InlineData(50, 1, 6.25)]
     [InlineData(50, .5, 3.125)]
     [InlineData(50, 0, 0)]
-    public void Stamina_recovery_charges_only_the_amount_actually_restored(double fatigue, double quality, double restored)
+    public void Stamina_recovery_charges_only_the_amount_actually_restored(double fatigue, double quality,
+        double restored)
     {
         var before = new Resident
         {
-            Age = 25, Hunger = 10, Thirst = 10, Activity = ResidentActivity.Resting,
+            Age = 25,
+            Hunger = 10,
+            Thirst = 10,
+            Activity = ResidentActivity.Resting,
             Agent = new AgentState { Fatigue = fatigue },
         };
         var after = before.AdvanceRecovery(new WorldRules(), 1, quality);
@@ -277,8 +350,7 @@ public sealed class ResidentNeedsTests
     {
         var before = new Resident
         {
-            Age = 25, Thirst = 99.9, Activity = ResidentActivity.Resting,
-            Agent = new AgentState { Fatigue = 50 },
+            Age = 25, Thirst = 99.9, Activity = ResidentActivity.Resting, Agent = new AgentState { Fatigue = 50 },
         };
         var after = before.AdvanceRecovery(new WorldRules(), 1, 1);
 
@@ -306,7 +378,10 @@ public sealed class ResidentNeedsTests
             Thirst = 10,
             FrozenUntilTick = 10,
         });
-        fixture.Engine.Residents.Add(new StateReference<Resident>(fixture.Resident.Value with { Id = 900, Name = "第二位居民" }));
+        fixture.Engine.Residents.Add(new StateReference<Resident>(fixture.Resident.Value with
+        {
+            Id = 900, Name = "第二位居民",
+        }));
         var source = fixture.Engine.Tiles[16 * 32 + 16];
         source.Replace(source.Value.WithNaturalWaterYield(.04));
         source.Replace(source.Value.WithDroughtTicks(0));
@@ -364,7 +439,10 @@ public sealed class ResidentNeedsTests
             Thirst = 20,
             FrozenUntilTick = 10,
         });
-        fixture.Engine.Residents.Add(new StateReference<Resident>(fixture.Resident.Value with { Id = 900, Name = "第二位居民" }));
+        fixture.Engine.Residents.Add(new StateReference<Resident>(fixture.Resident.Value with
+        {
+            Id = 900, Name = "第二位居民",
+        }));
         var source = fixture.Engine.Tiles[17 * 32 + 16];
         source.Replace(source.Value.WithWaterDrawTick(1));
         source.Replace(source.Value.WithWaterDrawn(.15 - .0125 / SimulationTime.TicksPerDay));

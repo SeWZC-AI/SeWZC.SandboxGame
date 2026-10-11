@@ -1,5 +1,3 @@
-using SeWZC.WorldBox.Core.Runtime;
-
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -86,7 +84,8 @@ public sealed partial class WorldEngine
 
             tile.Replace(tile.Value.WithPlants(plants));
             if (tile.Value.Terrain is TerrainType.Grass or TerrainType.DryFertile &&
-                plants.Trees * Math.Min(1, tile.Value.ResourceAmount / 100) >= .5 && tile.Value.ClaimedSettlementId == 0)
+                plants.Trees * Math.Min(1, tile.Value.ResourceAmount / 100) >= .5 &&
+                tile.Value.ClaimedSettlementId == 0)
                 tile.Replace(tile.Value.WithTerrain(TerrainType.Forest));
         }
 

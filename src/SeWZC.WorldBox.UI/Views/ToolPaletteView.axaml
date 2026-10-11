@@ -1,29 +1,45 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels"
-             xmlns:details="using:SeWZC.WorldBox.UI.ViewModels.Details" xmlns:views="using:SeWZC.WorldBox.UI.Views"
-             x:Class="SeWZC.WorldBox.UI.Views.ToolPaletteView" x:DataType="vm:ToolPaletteViewModel" x:CompileBindings="True"
+             xmlns:details="using:SeWZC.WorldBox.UI.ViewModels.Details"
+             x:Class="SeWZC.WorldBox.UI.Views.ToolPaletteView" x:DataType="vm:ToolPaletteViewModel"
+             x:CompileBindings="True"
              d:DesignWidth="650" d:DesignHeight="270" d:DataContext="{x:Static vm:DesignData.Tools}">
     <UserControl.Styles>
         <StyleInclude Source="/Styles/GameStyles.axaml" />
     </UserControl.Styles>
-    <ScrollViewer Width="{Binding Layout.ToolWidth}" MaxHeight="{Binding Layout.ToolMaxHeight}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <ScrollViewer Width="{Binding Layout.ToolWidth}" MaxHeight="{Binding Layout.ToolMaxHeight}"
+                  HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
         <Border Background="#F0172632" BorderBrush="#2A3C46" BorderThickness="1" CornerRadius="4" Padding="6">
             <StackPanel Spacing="4">
                 <ItemsControl ItemsSource="{Binding Categories}">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4" Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="4" Rows="1" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="details:ButtonNode">
-                            <Button Classes="action category" Content="{Binding Content}" Command="{Binding Command}" Background="{Binding Background}" AutomationProperties.AutomationId="{Binding AutomationId}" />
+                            <Button Classes="action category" Content="{Binding Content}" Command="{Binding Command}"
+                                    Background="{Binding Background}"
+                                    AutomationProperties.AutomationId="{Binding AutomationId}" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <ItemsControl ItemsSource="{Binding Slots}">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="{Binding Layout.ToolColumns}" Rows="{Binding Layout.ToolRows}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="{Binding Layout.ToolColumns}" Rows="{Binding Layout.ToolRows}" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:ToolSlotViewModel">
-                            <Button Classes="tool-slot" Command="{Binding SelectCommand}" IsEnabled="{Binding IsEnabled}" Background="{Binding Background}" BorderBrush="{Binding BorderBrush}" ToolTip.Tip="{Binding Hint}" AutomationProperties.AutomationId="{Binding AutomationId}">
+                            <Button Classes="tool-slot" Command="{Binding SelectCommand}"
+                                    IsEnabled="{Binding IsEnabled}" Background="{Binding Background}"
+                                    BorderBrush="{Binding BorderBrush}" ToolTip.Tip="{Binding Hint}"
+                                    AutomationProperties.AutomationId="{Binding AutomationId}">
                                 <StackPanel Spacing="3">
-                                    <Border Width="22" Height="15" CornerRadius="3" HorizontalAlignment="Center" Background="{Binding Swatch}" />
+                                    <Border Width="22" Height="15" CornerRadius="3" HorizontalAlignment="Center"
+                                            Background="{Binding Swatch}" />
                                     <TextBlock Text="{Binding Label}" FontSize="10" HorizontalAlignment="Center" />
                                 </StackPanel>
                             </Button>
@@ -31,27 +47,40 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <StackPanel Orientation="Horizontal" Spacing="10" Height="32" HorizontalAlignment="Center">
-                    <Button Classes="action" Content="上一页" Command="{Binding PreviousCommand}" AutomationProperties.AutomationId="tool-page-prev" />
+                    <Button Classes="action" Content="上一页" Command="{Binding PreviousCommand}"
+                            AutomationProperties.AutomationId="tool-page-prev" />
                     <TextBlock Text="{Binding PageLabel}" FontSize="11" VerticalAlignment="Center" />
-                    <Button Classes="action" Content="下一页" Command="{Binding NextCommand}" AutomationProperties.AutomationId="tool-page-next" />
+                    <Button Classes="action" Content="下一页" Command="{Binding NextCommand}"
+                            AutomationProperties.AutomationId="tool-page-next" />
                 </StackPanel>
                 <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="5" Height="36">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="{Binding Title}" FontSize="{Binding Layout.TitleSize}" Foreground="#B8E9BC" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding Hint}" IsVisible="{Binding Layout.ToolHintVisible}" FontSize="11" Foreground="#8FA8AE" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Title}" FontSize="{Binding Layout.TitleSize}" Foreground="#B8E9BC"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding Hint}" IsVisible="{Binding Layout.ToolHintVisible}" FontSize="11"
+                                   Foreground="#8FA8AE" VerticalAlignment="Center" />
                     </StackPanel>
-                    <ComboBox Grid.Column="1" Width="{Binding Layout.ContextWidth}" IsVisible="{Binding IsConstruction}" IsEnabled="{Binding HasTowns}" ItemsSource="{Binding TownNames}" SelectedIndex="{Binding TownIndex, Mode=TwoWay}" MinHeight="36" FontSize="10" AutomationProperties.AutomationId="tool-context" />
-                    <ComboBox Grid.Column="2" Width="100" IsVisible="{Binding HasBrush}" ItemsSource="{Binding BrushLabels}" SelectedIndex="{Binding BrushIndex, Mode=TwoWay}" MinHeight="36" FontSize="11" AutomationProperties.AutomationId="brush-size" />
-                    <ComboBox Grid.Column="2" Width="132" IsVisible="{Binding IsConstruction}" SelectedIndex="{Binding BuildModeIndex, Mode=TwoWay}" MinHeight="36" FontSize="11" AutomationProperties.AutomationId="build-mode">
+                    <ComboBox Grid.Column="1" Width="{Binding Layout.ContextWidth}"
+                              IsVisible="{Binding IsConstruction}" IsEnabled="{Binding HasTowns}"
+                              ItemsSource="{Binding TownNames}" SelectedIndex="{Binding TownIndex, Mode=TwoWay}"
+                              MinHeight="36" FontSize="10" AutomationProperties.AutomationId="tool-context" />
+                    <ComboBox Grid.Column="2" Width="100" IsVisible="{Binding HasBrush}"
+                              ItemsSource="{Binding BrushLabels}" SelectedIndex="{Binding BrushIndex, Mode=TwoWay}"
+                              MinHeight="36" FontSize="11" AutomationProperties.AutomationId="brush-size" />
+                    <ComboBox Grid.Column="2" Width="132" IsVisible="{Binding IsConstruction}"
+                              SelectedIndex="{Binding BuildModeIndex, Mode=TwoWay}" MinHeight="36" FontSize="11"
+                              AutomationProperties.AutomationId="build-mode">
                         <x:String>直接赐予</x:String><x:String>居民施工</x:String>
                     </ComboBox>
                 </Grid>
                 <WrapPanel Orientation="Horizontal" IsVisible="{Binding IsConstruction}">
                     <TextBlock Text="桥梁" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,4" />
-                    <ComboBox Width="105" SelectedIndex="{Binding BridgeDirectionIndex, Mode=TwoWay}" Margin="0,0,8,4" AutomationProperties.AutomationId="bridge-direction">
+                    <ComboBox Width="105" SelectedIndex="{Binding BridgeDirectionIndex, Mode=TwoWay}" Margin="0,0,8,4"
+                              AutomationProperties.AutomationId="bridge-direction">
                         <x:String>左右</x:String><x:String>上下</x:String>
                     </ComboBox>
-                    <ComboBox Width="165" SelectedIndex="{Binding BridgeLevelIndex, Mode=TwoWay}" Margin="0,0,0,4" AutomationProperties.AutomationId="bridge-level">
+                    <ComboBox Width="165" SelectedIndex="{Binding BridgeLevelIndex, Mode=TwoWay}" Margin="0,0,0,4"
+                              AutomationProperties.AutomationId="bridge-level">
                         <x:String>1 级：离岸 2 格</x:String><x:String>2 级：离岸 4 格</x:String><x:String>3 级：离岸 6 格</x:String>
                     </ComboBox>
                 </WrapPanel>

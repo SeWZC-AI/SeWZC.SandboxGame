@@ -1,6 +1,8 @@
 using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.UI.Controls;
+
 namespace SeWZC.WorldBox.UI.ViewModels;
+
 /// <summary>会话通过地图端口控制视野、选择及编辑，不依赖视图实例。</summary>
 internal interface IGameMap : IMapPresentation
 {

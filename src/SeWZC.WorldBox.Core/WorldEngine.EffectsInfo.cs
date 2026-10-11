@@ -31,7 +31,8 @@ public sealed partial class WorldEngine
         if (buildings is null)
             return bonus;
         foreach (var building in buildings)
-            if (building.Value.SettlementId == home.Value.Id && building.Value.Kind == BuildingKind.TownCenter && building.Value.Level > 1 &&
+            if (building.Value.SettlementId == home.Value.Id && building.Value.Kind == BuildingKind.TownCenter &&
+                building.Value.Level > 1 &&
                 IsSettlementActive(home.Value.Id) && IsFacilityOperating(building.Value))
                 return bonus * building.Value.Efficiency;
         return bonus;
@@ -45,7 +46,8 @@ public sealed partial class WorldEngine
         var effects = new List<EffectInfo>();
         if (person is null)
             return effects;
-        effects.Add(new EffectInfo("身体需求", $"体力劳动效率 ×{ResidentNeedsRules.WorkEfficiency(person):0.00}\n脑力劳动效率 ×{ResidentNeedsRules.WorkEfficiency(person, true):0.00}",
+        effects.Add(new EffectInfo("身体需求",
+            $"体力劳动效率 ×{ResidentNeedsRules.WorkEfficiency(person):0.00}\n脑力劳动效率 ×{ResidentNeedsRules.WorkEfficiency(person, true):0.00}",
             "睡眠、体力与年龄；任一需求耗尽时强制昏迷"));
         if (person.SicknessTicks > 0)
             effects.Add(new EffectInfo("疫病", "采集效率 ×0.40   施工与岗位劳动效率 ×0.45", "", person.SicknessTicks));
@@ -68,7 +70,8 @@ public sealed partial class WorldEngine
                 "本人的实际到访记录"));
         }
 
-        if (GatheringTerritoryMultiplier(person.SettlementId, person.NationId, Tiles[Index(person.X, person.Y)].Value) < 1)
+        if (GatheringTerritoryMultiplier(person.SettlementId, person.NationId, Tiles[Index(person.X, person.Y)].Value) <
+            1)
         {
             effects.Add(new EffectInfo("领地外采集", $"食物、木材、石矿、矿藏、狩猎、捕鱼与取水速度 ×{OutsideTerritoryGatheringMultiplier:0.00}",
                 "资源来源未登记给本城镇"));
@@ -89,18 +92,23 @@ public sealed partial class WorldEngine
             var instruction = LatestAgentFact(person.Agent.Memory, AgentFactKind.Policy, home.Value.Id);
             if (instruction?.Value == (int)PolicyKind.FoodSecurity)
             {
-                effects.Add(new EffectInfo("已获知粮食政策", $"个人粮食采集倍率 ×{AgentFoodPolicyMultiplier(person.Agent, person.SettlementId, person.X, person.Y):0.00}",
+                effects.Add(new EffectInfo("已获知粮食政策",
+                    $"个人粮食采集倍率 ×{AgentFoodPolicyMultiplier(person.Agent, person.SettlementId, person.X, person.Y):0.00}",
                     home.Value.Name + "实际收到的政策"));
             }
         }
 
         var resting = person.IsInsideHome && ResidentHome(person) is not null
-            ? HomeRestMultiplier(person.SettlementId, person.X, person.Y) : 1;
+            ? HomeRestMultiplier(person.SettlementId, person.X, person.Y)
+            : 1;
         if (resting > 1)
             effects.Add(new EffectInfo("住宅休息", $"住宅床位休息恢复 ×{resting:0.00}", "家园的城镇等级、城镇中心与运作粮仓"));
         if (ResidentNeedsRules.IsUnconscious(person) && !person.BedRestAfterRescue)
-            effects.Add(new EffectInfo("昏迷恢复", $"睡眠恢复质量 ×{ResidentNeedsRules.UnconsciousRecoveryQuality:0.00}", "未经救助的昏迷"));
-        effects.Add(new EffectInfo("移动速度", $"基础每刻 {ResidentMovementRules.BaseTilesPerTick} 格；体力倍率 ×{ResidentMovementRules.StaminaMultiplier(person):0.00}，负重倍率 ×{ResidentMovementRules.LoadMultiplier(person, IsCarryingResident(person.Id)):0.00}", "体力与实际随身物资"));
+            effects.Add(new EffectInfo("昏迷恢复", $"睡眠恢复质量 ×{ResidentNeedsRules.UnconsciousRecoveryQuality:0.00}",
+                "未经救助的昏迷"));
+        effects.Add(new EffectInfo("移动速度",
+            $"基础每刻 {ResidentMovementRules.BaseTilesPerTick} 格；体力倍率 ×{ResidentMovementRules.StaminaMultiplier(person):0.00}，负重倍率 ×{ResidentMovementRules.LoadMultiplier(person, IsCarryingResident(person.Id)):0.00}",
+            "体力与实际随身物资"));
         return effects;
     }
 
@@ -113,9 +121,11 @@ public sealed partial class WorldEngine
         if (building is null)
             return effects;
         var ground = Tiles[Index(building.Value.X, building.Value.Y)];
-        var active = building.Value.Kind == BuildingKind.Bridge ? ground.Value.Improvement == LandImprovement.Bridge
-            : building.Value.Kind == BuildingKind.MountainPass ? ground.Value.Improvement == LandImprovement.MountainPass
-            : IsBuildingOperational(building.Value);
+        var active = building.Value.Kind == BuildingKind.Bridge
+            ? ground.Value.Improvement == LandImprovement.Bridge
+            : building.Value.Kind == BuildingKind.MountainPass
+                ? ground.Value.Improvement == LandImprovement.MountainPass
+                : IsBuildingOperational(building.Value);
         var source = ""; // 标题已显示所选建筑及等级，效果来源无需重复。
         var factor = building.Value.Efficiency;
         var effect = building.Value.Kind switch
@@ -140,7 +150,8 @@ public sealed partial class WorldEngine
             BuildingKind.Well => $"每日可打水量 {WellWaterYield(ground.Value):0.###}"
                                  + "\n每次取水至多 1，所有取水者共享水井日额度，装入随身库存后运回",
             BuildingKind.Granary => $"本聚落居民在住宅内休息恢复 ×{1 + .1 * building.Value.Level:0.00}；多个粮仓取最高倍率",
-            BuildingKind.Housing => $"入住 {GetHousingOccupancy(id)} / {HousingCapacityPerLevel * building.Value.Level} 人",
+            BuildingKind.Housing =>
+                $"入住 {GetHousingOccupancy(id)} / {HousingCapacityPerLevel * building.Value.Level} 人",
             BuildingKind.Market => "值守时，集市 3 格内居民可与相距 3 格的人交换已有消息；每次值守消耗仓库粮食 0.01",
             BuildingKind.Watchtower => $"塔 2 格内的同聚落居民，观察火灾范围 3 至 {3 + building.Value.Level} 格；无需工作人员",
             BuildingKind.AssemblyHall => $"人类值守，每单位劳动缓解 2 格内同聚落居民社交需求 {factor:0.00}；3 格内居民交谈距离增至 3 格",
@@ -194,10 +205,12 @@ public sealed partial class WorldEngine
                 BuildingKind.Academy => $"研究效率 ×{1 + building.Value.Level * .25:0.00}，岗位增加 1",
                 BuildingKind.Waystation =>
                     $"信使速度 ×{1.25 + (building.Value.Level - 1) * .15:0.00} 至 ×{1.25 + building.Value.Level * .15:0.00}，岗位增加 1",
-                BuildingKind.SignalTower => $"信号接入 {12 + building.Value.Level * 4} 格，塔间 {24 + building.Value.Level * 8} 格，岗位增加 1",
+                BuildingKind.SignalTower =>
+                    $"信号接入 {12 + building.Value.Level * 4} 格，塔间 {24 + building.Value.Level * 8} 格，岗位增加 1",
                 BuildingKind.ArcaneSanctum or BuildingKind.SacredGrove =>
                     $"训练与魔力恢复倍率 ×{1 + building.Value.Level * .25:0.00}，岗位增加 1",
-                BuildingKind.Infirmary or BuildingKind.HerbGarden => $"治疗量倍率 ×{1 + building.Value.Level * .25:0.00}，岗位增加 1",
+                BuildingKind.Infirmary or BuildingKind.HerbGarden =>
+                    $"治疗量倍率 ×{1 + building.Value.Level * .25:0.00}，岗位增加 1",
                 BuildingKind.MountainPass => $"步行耗时系数 {3.5 / (1 + building.Value.Level * .25):0.00}",
                 BuildingKind.Bridge =>
                     $"离岸上限 {BridgeShoreLimit(building.Value.Level)} 至 {BridgeShoreLimit(next)} 格，步行耗时系数 {1.2 / (1 + building.Value.Level * .25):0.00}",
@@ -224,7 +237,8 @@ public sealed partial class WorldEngine
             {
                 effects.Add(new EffectInfo("城镇组织",
                     $"本地研究效率 ×{1 + EffectiveSettlementRank(town) * .1:0.00}" +
-                    (IsSettlementActive(town.Value.Id) ? "" : "，占地不足，加成暂停"), town.Value.Name, Active: IsSettlementActive(town.Value.Id)));
+                    (IsSettlementActive(town.Value.Id) ? "" : "，占地不足，加成暂停"), town.Value.Name,
+                    Active: IsSettlementActive(town.Value.Id)));
             }
 
             if (building.Value.Kind == BuildingKind.Farm && HasResearch(town.Value.Id, Advancement.Agriculture))
@@ -236,7 +250,8 @@ public sealed partial class WorldEngine
                     effects.Add(new EffectInfo(kind.Name, description, town.Value.Name));
             }
 
-            if (building.Value.Kind == BuildingKind.Farm || ProductionRules.For(building.Value.Kind)?.Output == ResourceKind.Food)
+            if (building.Value.Kind == BuildingKind.Farm ||
+                ProductionRules.For(building.Value.Kind)?.Output == ResourceKind.Food)
                 Knowledge(Advancement.Irrigation, "粮食实际产出 ×1.25");
             if (building.Value.Kind is BuildingKind.Workshop or BuildingKind.LumberCamp or BuildingKind.Quarry)
                 Knowledge(Advancement.Forestry, "材料采集效率 ×1.25");
@@ -283,13 +298,15 @@ public sealed partial class WorldEngine
         if (!InBounds(x, y))
             return effects;
         var tile = Tiles[Index(x, y)];
-        effects.Add(new EffectInfo("地形可燃性", $"{TerrainFlammability(tile.Value):0.00} / 1；受植被、剩余资源、供水与干旱影响", "当地地形；建筑可燃性另计"));
+        effects.Add(new EffectInfo("地形可燃性", $"{TerrainFlammability(tile.Value):0.00} / 1；受植被、剩余资源、供水与干旱影响",
+            "当地地形；建筑可燃性另计"));
         if (tile.Value.FireTicks > 0)
             effects.Add(new EffectInfo("燃烧", "停止生产与取水，居民每刻灼伤 4", "", tile.Value.FireTicks));
         if (tile.Value.DroughtTicks > 0)
         {
             effects.Add(new EffectInfo("干旱", "野外食物产出 ×0.15   农场粮食 ×0.18"
-                                             + (IsWaterTerrain(tile.Value.Terrain) ? "   河湖无限淡水不减少" : "   天然供水 ×0.20"), "",
+                                             + (IsWaterTerrain(tile.Value.Terrain) ? "   河湖无限淡水不减少" : "   天然供水 ×0.20"),
+                "",
                 tile.Value.DroughtTicks));
         }
 
@@ -310,9 +327,13 @@ public sealed partial class WorldEngine
                 var status = GetBuildingDetailStatus(building.Value.Id);
                 if (status.Length > 0)
                     effects.Add(new EffectInfo(BuildingName(building.Value.Kind) + "状态", status, ""));
-                effects.AddRange(GetBuildingEffects(building.Value.Id).Select(effect => string.IsNullOrEmpty(effect.Source)
-                    ? effect with { Source = BuildingName(building.Value.Kind) + $"（{building.Value.X}, {building.Value.Y}）" }
-                    : effect));
+                effects.AddRange(GetBuildingEffects(building.Value.Id).Select(effect =>
+                    string.IsNullOrEmpty(effect.Source)
+                        ? effect with
+                        {
+                            Source = BuildingName(building.Value.Kind) + $"（{building.Value.X}, {building.Value.Y}）",
+                        }
+                        : effect));
             }
 
         return effects;

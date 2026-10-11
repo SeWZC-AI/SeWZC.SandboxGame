@@ -9,10 +9,10 @@ public readonly partial record struct InventoryTransfer
     /// <param name="thirst">是否领取饮水。</param>
     internal static bool HasSupplies(in ResourceStock warehouse, Profession profession, bool hunger, bool thirst)
     {
-        return hunger && warehouse.Food > 0 || thirst && warehouse.Water > 0
-               || profession == Profession.Engineer && warehouse.Tools > 0
-               || profession == Profession.Physician && warehouse.Medicine > 0
-               || profession == Profession.Ranger && warehouse.Ammunition > 0;
+        return (hunger && warehouse.Food > 0) || (thirst && warehouse.Water > 0)
+                                              || (profession == Profession.Engineer && warehouse.Tools > 0)
+                                              || (profession == Profession.Physician && warehouse.Medicine > 0)
+                                              || (profession == Profession.Ranger && warehouse.Ammunition > 0);
     }
 
     /// <summary>按公共保留量和个人储备目标计算补给，返回个人库存与仓库的新值。</summary>
@@ -34,7 +34,8 @@ public readonly partial record struct InventoryTransfer
         var food = hunger ? Math.Min(available, Math.Max(0, foodReserve - inventory.Food)) : 0;
         available = Math.Max(Math.Min(warehouse.Water, waterUse), warehouse.Water - population * .03);
         var water = thirst ? Math.Min(available, Math.Max(0, waterReserve - inventory.Water)) : 0;
-        var supplied = new InventoryTransfer(inventory with { Food = inventory.Food + food, Water = inventory.Water + water },
+        var supplied = new InventoryTransfer(
+            inventory with { Food = inventory.Food + food, Water = inventory.Water + water },
             warehouse with { Food = warehouse.Food - food, Water = warehouse.Water - water });
         return profession switch
         {

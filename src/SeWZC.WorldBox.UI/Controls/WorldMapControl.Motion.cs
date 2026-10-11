@@ -1,5 +1,5 @@
-using System.Diagnostics;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -203,8 +203,12 @@ public sealed partial class WorldMapControl
         ClearMapSelection();
     }
 
-    internal Point ArmyPresentationPosition(Army army, double simulationTime) =>
-        _armyMotion.TryGetValue(army.Id, out var motion) ? motion.Position(simulationTime) : new Point(army.X, army.Y);
+    internal Point ArmyPresentationPosition(Army army, double simulationTime)
+    {
+        return _armyMotion.TryGetValue(army.Id, out var motion)
+            ? motion.Position(simulationTime)
+            : new Point(army.X, army.Y);
+    }
 
     private void CaptureMotionSnapshots()
     {
@@ -229,17 +233,21 @@ public sealed partial class WorldMapControl
         _motionRevision++;
         foreach (var resident in state.Residents)
             Capture(_residentMotion, resident.Id, resident.X, resident.Y,
-                resident.FromX, resident.FromY, resident.MoveStartedTick, resident.MoveDurationTicks, resident.MovementRoute);
+                resident.FromX, resident.FromY, resident.MoveStartedTick, resident.MoveDurationTicks,
+                resident.MovementRoute);
         foreach (var army in state.Armies)
         {
             var commander = Engine.GetResident(army.CommanderId);
             var route = commander is not null && commander.X == army.X && commander.Y == army.Y
-                && commander.FromX == army.FromX && commander.FromY == army.FromY
-                && commander.MoveStartedTick == army.MoveStartedTick && commander.MoveDurationTicks == army.MoveDurationTicks
-                ? commander.MovementRoute : default;
+                        && commander.FromX == army.FromX && commander.FromY == army.FromY
+                        && commander.MoveStartedTick == army.MoveStartedTick &&
+                        commander.MoveDurationTicks == army.MoveDurationTicks
+                ? commander.MovementRoute
+                : default;
             Capture(_armyMotion, army.Id, army.X, army.Y,
                 army.FromX, army.FromY, army.MoveStartedTick, army.MoveDurationTicks, route);
         }
+
         RemoveExpired(_residentMotion);
         RemoveExpired(_armyMotion);
         if (SelectedResidentId is { } selected && !_residentMotion.ContainsKey(selected))
@@ -417,6 +425,7 @@ public sealed partial class WorldMapControl
             var position = ResidentMapPosition(id, person.X, person.Y);
             point = ToScreen(position.X, position.Y);
         }
+
         var radius = Math.Max(6, _zoom * 3.5);
         context.DrawEllipse(null, SelectionPen, point, radius, radius);
         context.DrawLine(SelectionPen, new Point(point.X, point.Y - radius - 5),

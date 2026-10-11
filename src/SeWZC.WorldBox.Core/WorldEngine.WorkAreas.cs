@@ -48,11 +48,16 @@ public sealed partial class WorldEngine
         return Math.Max(0, Math.Max(80, reserve.Stone) - town.Value.Resources.Stone)
                + Math.Max(0, Math.Max(80, reserve.Ore) - town.Value.Resources.Ore)
                + (HasResearch(town.Value.Id, Advancement.Industry) ? Math.Max(0, 16 - town.Value.Resources.Coal) : 0)
-               + (HasResearch(town.Value.Id, Advancement.Electrification) ? Math.Max(0, 16 - town.Value.Resources.Oil) : 0)
-               + (HasResearch(town.Value.Id, Advancement.AdvancedComputing) ? Math.Max(0, 16 - town.Value.Resources.RareEarth) : 0);
+               + (HasResearch(town.Value.Id, Advancement.Electrification)
+                   ? Math.Max(0, 16 - town.Value.Resources.Oil)
+                   : 0)
+               + (HasResearch(town.Value.Id, Advancement.AdvancedComputing)
+                   ? Math.Max(0, 16 - town.Value.Resources.RareEarth)
+                   : 0);
     }
 
-    private void AssignNaturalWorkAreas(StateReference<Settlement> town, List<StateReference<Resident>> adults, List<NaturalWorkPlot> plots)
+    private void AssignNaturalWorkAreas(StateReference<Settlement> town, List<StateReference<Resident>> adults,
+        List<NaturalWorkPlot> plots)
     {
         var occupied = new Dictionary<NaturalWorkPlot, int>();
         foreach (var person in adults)
@@ -65,15 +70,17 @@ public sealed partial class WorldEngine
         foreach (var person in adults)
         {
             if (person.Value.Health < 60 || person.Value.SicknessTicks > 0 || person.Value.Agent.Goal.PlayerDirected
-                || person.Value.Agent.DestinationSettlementId != 0 || Distance(person.Value.X, person.Value.Y, town.Value.X, town.Value.Y) > 3
+                || person.Value.Agent.DestinationSettlementId != 0 ||
+                Distance(person.Value.X, person.Value.Y, town.Value.X, town.Value.Y) > 3
                 || person.Value.TravelMode != TravelMode.Foot ||
                 SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks)
                 continue;
             var previous = person.Value.Agent.WorkAreaIndex;
             var previousPlot = new NaturalWorkPlot(previous, person.Value.Profession);
             if (person.Value.Agent.WorkplaceId == 0 && plots.Contains(previousPlot)
-                                              && occupied.GetValueOrDefault(previousPlot) == 1
-                                              && RaceTerrainRules.CanWalk(Tiles[previous].Value, person.Value.Race))
+                                                    && occupied.GetValueOrDefault(previousPlot) == 1
+                                                    && RaceTerrainRules.CanWalk(Tiles[previous].Value,
+                                                        person.Value.Race))
                 continue;
             if (previous >= 0)
                 occupied[previousPlot]--;
@@ -84,8 +91,8 @@ public sealed partial class WorldEngine
                 foreach (var plot in plots)
                 {
                     if (plot.Profession != person.Value.Profession || occupied.GetValueOrDefault(plot) > 0
-                                                             || !RaceTerrainRules.CanWalk(Tiles[plot.Index].Value,
-                                                                 person.Value.Race))
+                                                                   || !RaceTerrainRules.CanWalk(Tiles[plot.Index].Value,
+                                                                       person.Value.Race))
                         continue;
                     var distance = Distance(person.Value.X, person.Value.Y, plot.Index % Width, plot.Index / Width);
                     if (distance < bestDistance || (distance == bestDistance && plot.Index < selected))

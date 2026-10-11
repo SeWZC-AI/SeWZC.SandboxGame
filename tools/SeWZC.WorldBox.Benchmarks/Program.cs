@@ -44,8 +44,11 @@ if (args.Length < 1 || options.Any(option =>
                         option is not ("--initialization" or "--large")
                         && !option.StartsWith("--seed=", StringComparison.Ordinal) &&
                         !option.StartsWith("--repetitions=", StringComparison.Ordinal))))
+{
     throw new ArgumentException(
         "请指定结果 JSON 路径；--audit 检查指定年数（默认 100 年），可搭配 --seed、--years 及自定义场景；--initialization 测量创建地图并补足人口，--default-rules 使用默认规则，--large 只测 256² / 4096 人，--size=整数 --population=整数 选择自定义场景，--steady 测量后续 64 日；--seed=整数 指定种子，--start-day=整数 指定计时前推进日数；--years=整数 测量长期演化，--repetitions=整数 指定轮数，--population-floor=整数 在计时外补充居民维持人口负载；--save-final 在计时外保存终态，--verify 独立验证续演，可搭配自定义场景和种子。");
+}
+
 var benchmarkSeed = ReadIntegerOption(options, "--seed=", options.Contains("--audit") ? 73921 : 42);
 var years = ReadIntegerOption(options, "--years=", 0);
 var repetitions = ReadIntegerOption(options, "--repetitions=", years > 0 ? 3 : 7);
@@ -56,8 +59,11 @@ if (customSize != 0 || customPopulation != 0)
 {
     if (customSize is < 32 or > 256 || customPopulation is < 144 or > WorldEngine.MaxPopulation
                                     || options.Contains("--large") || options.Contains("--initialization"))
+    {
         throw new ArgumentException(
             "自定义场景须同时指定 --size=32..256 和 --population=144..10000，不能搭配 --large 或 --initialization。");
+    }
+
     cases = [($"{customSize}x{customSize}-{customPopulation}", customSize, customPopulation, 24)];
 }
 
@@ -73,8 +79,11 @@ if (options.Contains("--large"))
 if (options.Contains("--steady"))
     cases = cases.Select(scenario => (scenario.Name, scenario.Size, scenario.Population, 64)).ToArray();
 if (years > 0)
+{
     cases = cases.Select(scenario => (scenario.Name, scenario.Size, scenario.Population, years * daysPerYear))
         .ToArray();
+}
+
 Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(args[0]))!);
 var core = typeof(WorldEngine).Assembly;
 var coreSha256 = Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(core.Location)));
@@ -267,8 +276,11 @@ foreach (var scenario in cases)
             var cpuAfter = BenchmarkClock.ReadProcessCpu();
             var allocated = GC.GetTotalAllocatedBytes(true) - dayAllocated;
             if (allocated < 0)
+            {
                 throw new InvalidOperationException(
                     $"GC allocation counter decreased at tick {engine.State.Tick}. Disable DATAS with DOTNET_GCDynamicAdaptationMode=0 on runtimes affected by dotnet/runtime#131069.");
+            }
+
             var g0 = GC.CollectionCount(0) - dayGen0;
             var g1 = GC.CollectionCount(1) - dayGen1;
             var g2 = GC.CollectionCount(2) - dayGen2;

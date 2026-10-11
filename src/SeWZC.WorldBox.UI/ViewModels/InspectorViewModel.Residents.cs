@@ -1,9 +1,6 @@
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Media;
 using SeWZC.WorldBox.Core;
-using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI.ViewModels;
@@ -56,9 +53,11 @@ internal sealed partial class InspectorViewModel
             $"生命 {Current().Health:0} / 100   体力 {ResidentNeedsRules.StaminaValue(Current()):0.#} / {ResidentNeedsRules.StaminaCapacity(Current()):0.#}   睡眠 {ResidentNeedsRules.SleepValue(Current()):0.#} / {ResidentNeedsRules.SleepCapacity(Current()):0.#}   饥饿 {Current().Hunger:0}%   口渴 {Current().Thirst:0}%"));
         panel.Children.Add(LiveText(() => _engine.GetResidentActionSummary(id)));
         panel.Children.Add(LiveText(() => _engine.GetResidentHome(id) is { } dwelling
-            ? $"住所：住宅（{dwelling.X}，{dwelling.Y}），入住 {_engine.GetHousingOccupancy(dwelling.Id)} 人；{(Current().IsInsideHome ? "在家" : "外出")}" : "暂无空余住所"));
+            ? $"住所：住宅（{dwelling.X}，{dwelling.Y}），入住 {_engine.GetHousingOccupancy(dwelling.Id)} 人；{(Current().IsInsideHome ? "在家" : "外出")}"
+            : "暂无空余住所"));
         panel.Children.Add(LiveText(() => Current().Agent.DailyPlan is { } plan
-            ? $"今日预计返家：{DateLabel(plan.ReturnHomeTick)}" : ""));
+            ? $"今日预计返家：{DateLabel(plan.ReturnHomeTick)}"
+            : ""));
         panel.Children.Add(LiveText(() =>
         {
             var agent = Current().Agent;
@@ -80,10 +79,13 @@ internal sealed partial class InspectorViewModel
         if (resident.Health > 0)
         {
             var quick = new WrapNode { Orientation = Orientation.Horizontal };
-            quick.Children.Add(Named(Button("安排休息", () => _requests.Editors.QuickResidentGoal(id, AgentGoalKind.Rest)), "resident-rest"));
-            quick.Children.Add(Named(Button("返回家园", () => _requests.Editors.QuickResidentGoal(id, AgentGoalKind.ReturnHome)),
+            quick.Children.Add(Named(Button("安排休息", () => _requests.Editors.QuickResidentGoal(id, AgentGoalKind.Rest)),
+                "resident-rest"));
+            quick.Children.Add(Named(
+                Button("返回家园", () => _requests.Editors.QuickResidentGoal(id, AgentGoalKind.ReturnHome)),
                 "resident-home"));
-            quick.Children.Add(Named(Button("恢复自主", () => _requests.Editors.QuickResidentGoal(id, null)), "resident-autonomy"));
+            quick.Children.Add(Named(Button("恢复自主", () => _requests.Editors.QuickResidentGoal(id, null)),
+                "resident-autonomy"));
             quick.Children.Add(Named(
                 Button("治疗",
                     () => RunEdit(() => _engine.EditResident(id, new ResidentEdit { Health = 100, SicknessTicks = 0 }),
@@ -91,9 +93,11 @@ internal sealed partial class InspectorViewModel
             if (resident.Age >= ResidentNeedsRules.MinimumWorkAge)
             {
                 var cast = Named(
-                    Button("施放法术", () => _requests.Editors.ShowSpellSelectionEditor(SpellKind.Heal), "选择本人施法；窗口显示知识、训练和魔力要求"),
+                    Button("施放法术", () => _requests.Editors.ShowSpellSelectionEditor(SpellKind.Heal),
+                        "选择本人施法；窗口显示知识、训练和魔力要求"),
                     "resident-spell");
-                _inspectorUpdates.Add(() => cast.IsEnabled = Current().Health > 0 && ResidentNeedsRules.CanWork(Current()));
+                _inspectorUpdates.Add(() =>
+                    cast.IsEnabled = Current().Health > 0 && ResidentNeedsRules.CanWork(Current()));
                 quick.Children.Add(cast);
             }
 
@@ -166,9 +170,11 @@ internal sealed partial class InspectorViewModel
         }));
         secondary.Children.Add(Text("已知消息与记忆\n可能过时或有误", 12, Mint));
         secondary.Children.Add(Paragraph("下面是居民知道的内容，不等同于全世界的即时状态。改动只影响今后的认知与决策，不会重写已经发生的世界事件。"));
-        secondary.Children.Add(Named(Button("添加一条记忆", () => _requests.Editors.ShowMemoryEditor(id, null)), "resident-memory-add"));
+        secondary.Children.Add(Named(Button("添加一条记忆", () => _requests.Editors.ShowMemoryEditor(id, null)),
+            "resident-memory-add"));
         LiveRows(secondary, () => Current().Agent.Memory.OrderByDescending(f => f.LearnedTick).Take(40),
-            fact => fact.Id.ToString(), fact => FactLabel(fact), fact => _requests.Editors.ShowMemoryEditor(id, fact.Id));
+            fact => fact.Id.ToString(), fact => FactLabel(fact),
+            fact => _requests.Editors.ShowMemoryEditor(id, fact.Id));
         secondary.Children.Add(LiveText(() =>
             $"携带消息 {Current().Agent.CarriedMessages.Count} 条\n目的地 {TownName(Current().Agent.DestinationSettlementId)}"));
         secondary = FoldSection(panel, "决策记录", "resident-decisions");
@@ -177,7 +183,8 @@ internal sealed partial class InspectorViewModel
             d =>
                 $"{DateLabel(d.Tick)}\n{GoalName(d.Goal)}\n{d.Reason}\n评估 {d.Score:F2}\n依据记忆 #{d.EvidenceFactId}\n消息观察时间 {DateLabel(d.KnowledgeObservedTick)}\n来源 {ResidentName(d.SourceResidentId)}");
         secondary = FoldSection(panel, "个人履历", "resident-history");
-        secondary.Children.Add(Named(Button("添加个人经历", () => _requests.Editors.ShowHistoryEntryEditor(id, null)), "resident-history-add"));
+        secondary.Children.Add(Named(Button("添加个人经历", () => _requests.Editors.ShowHistoryEntryEditor(id, null)),
+            "resident-history-add"));
         LiveRows(secondary, () => Current().History.Select((entry, index) => (entry, index)).Reverse().Take(40),
             item => item.index.ToString(),
             item =>
@@ -194,5 +201,4 @@ internal sealed partial class InspectorViewModel
         return
             $"{FactKindName(fact.Kind)}\n{fact.Text}\n来源 {ResidentName(fact.SourceResidentId)}\n观察 {DateLabel(fact.ObservedTick)}{learned}{location}\n可信度 {fact.Confidence:P0}";
     }
-
 }

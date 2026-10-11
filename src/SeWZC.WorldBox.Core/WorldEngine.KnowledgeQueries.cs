@@ -51,8 +51,11 @@ public sealed partial class WorldEngine
     private int FindCultureContactIndex(int residentId, int cultureId)
     {
         if (!_knowledgeQueriesActive)
+        {
             return Society.CulturalContacts.FindIndex(c =>
                 c.ResidentId == residentId && c.CultureId == cultureId);
+        }
+
         // 新增接触同步登记；删除接触后重建位置，接触程度的改写仍从权威记录即时读取。
         if (_indexedCultureContactCount != Society.CulturalContacts.Count)
             IndexCultureContacts();

@@ -243,26 +243,33 @@ public sealed partial class WorldEngine
         {
             ValidateResidentV2(resident, state.Tick, state.Width, state.Height);
             Building? residence = null;
-            Require(resident.HomeBuildingId == 0 || residences.TryGetValue(resident.HomeBuildingId, out residence)
-                    && residence.Kind == BuildingKind.Housing && residence.SettlementId == resident.SettlementId,
+            Require(resident.HomeBuildingId == 0 || (residences.TryGetValue(resident.HomeBuildingId, out residence)
+                                                     && residence.Kind == BuildingKind.Housing &&
+                                                     residence.SettlementId == resident.SettlementId),
                 "居民住宅引用无效。");
             if (residence is not null && resident.Health > 0)
             {
                 homeOccupancy[residence.Id] = homeOccupancy.GetValueOrDefault(residence.Id) + 1;
                 Require(homeOccupancy[residence.Id] <= residence.Level * HousingCapacityPerLevel, "住宅入住人数超过容量。");
             }
-            Require(!resident.IsInsideHome || residence is not null && resident.X == residence.X && resident.Y == residence.Y
-                    && ResidentHasArrived(resident, state.Tick)
-                    && resident.CarriedByResidentId == 0, "住宅内的位置或到达状态无效。");
+
+            Require(!resident.IsInsideHome || (residence is not null && resident.X == residence.X &&
+                                               resident.Y == residence.Y
+                                               && ResidentHasArrived(resident, state.Tick)
+                                               && resident.CarriedByResidentId == 0), "住宅内的位置或到达状态无效。");
             Resident? carrier = null;
             Require(resident.CarriedByResidentId == 0 || occupiedCarriers.Add(resident.CarriedByResidentId),
                 "一名居民不能同时背负多人。");
-            Require(resident.CarriedByResidentId == 0 || living.TryGetValue(resident.CarriedByResidentId, out carrier)
-                    && carrier.Health > 0
-                    && carrier.CarriedByResidentId == 0 && carrier.X == resident.X && carrier.Y == resident.Y
-                    && carrier.FromX == resident.FromX && carrier.FromY == resident.FromY
-                    && carrier.MoveStartedTick == resident.MoveStartedTick && carrier.MoveDurationTicks == resident.MoveDurationTicks
-                    && carrier.MovementRoute.SequenceEqual(resident.MovementRoute),
+            Require(resident.CarriedByResidentId == 0 || (living.TryGetValue(resident.CarriedByResidentId, out carrier)
+                                                          && carrier.Health > 0
+                                                          && carrier.CarriedByResidentId == 0 &&
+                                                          carrier.X == resident.X && carrier.Y == resident.Y
+                                                          && carrier.FromX == resident.FromX &&
+                                                          carrier.FromY == resident.FromY
+                                                          && carrier.MoveStartedTick == resident.MoveStartedTick &&
+                                                          carrier.MoveDurationTicks == resident.MoveDurationTicks
+                                                          && carrier.MovementRoute.SequenceEqual(
+                                                              resident.MovementRoute)),
                 "背负救助关系或位置无效。");
             Require(
                 nations.ContainsKey(resident.NationId) && towns.TryGetValue(resident.SettlementId, out var home) &&

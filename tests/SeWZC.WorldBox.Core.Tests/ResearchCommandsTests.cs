@@ -8,7 +8,8 @@ public sealed class ResearchCommandsTests
     private static WorldFixture ReadyWorld()
     {
         var fixture = new WorldFixture();
-        fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock { Food = 100, Wood = 100, Stone = 100, Ore = 100 }));
+        fixture.Town.Replace(
+            fixture.Town.Value.WithResources(new ResourceStock { Food = 100, Wood = 100, Stone = 100, Ore = 100 }));
         fixture.Engine.Buildings.Add(new StateReference<Building>(new Building
         {
             Id = fixture.Engine.NextId++,

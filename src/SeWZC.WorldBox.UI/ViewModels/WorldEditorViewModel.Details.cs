@@ -1,9 +1,3 @@
-using Avalonia;
-using Avalonia.Media;
-using SeWZC.WorldBox.Core;
-using SeWZC.WorldBox.UI.Controls;
-using SeWZC.WorldBox.UI.ViewModels.Details;
-
 namespace SeWZC.WorldBox.UI.ViewModels;
 
 internal sealed partial class WorldEditorViewModel
@@ -24,5 +18,4 @@ internal sealed partial class WorldEditorViewModel
         }, "地格已更新，可撤销")), "tile-apply"));
         OpenModal(panel);
     }
-
 }

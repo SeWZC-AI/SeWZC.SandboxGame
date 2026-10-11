@@ -145,7 +145,8 @@ public sealed class AgentGoalTests
         Assert.Equal(1, moved.MoveDurationTicks);
         Assert.Equal(1, moved.Agent.Goal.NavigationBestDistance);
         Assert.Empty(moved.Agent.Goal.NavigationVisited);
-        Assert.Equal(2 * ResidentNeedsRules.WalkingCost, ResidentNeedsRules.StaminaValue(before) - ResidentNeedsRules.StaminaValue(moved), 10);
+        Assert.Equal(2 * ResidentNeedsRules.WalkingCost,
+            ResidentNeedsRules.StaminaValue(before) - ResidentNeedsRules.StaminaValue(moved), 10);
         Assert.Equal(ResidentActivity.Wandering, moved.Activity);
 
         fixture.Engine.Step();

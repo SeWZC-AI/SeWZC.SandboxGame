@@ -27,6 +27,7 @@ public sealed partial record Tile
     /// <summary>最近记录的模拟日内，累计采收的资源数量。</summary>
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public double Harvested { get; init; }
+
     /// <summary>根据种子和位置重新生成矿藏，不修改原地格。</summary>
     /// <param name="seed">地图种子。</param>
     /// <param name="x">横向地格坐标。</param>
@@ -51,6 +52,7 @@ public sealed partial record Tile
         }
 
         return Deposit == deposit && DepositAmount == amount && !DepositDiscovered
-            ? this : this with { Deposit = deposit, DepositAmount = amount, DepositDiscovered = false };
+            ? this
+            : this with { Deposit = deposit, DepositAmount = amount, DepositDiscovered = false };
     }
 }

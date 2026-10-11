@@ -42,8 +42,13 @@ public sealed partial record Resident
                 return value;
             return value with
             {
-                Age = Age, Health = Health, SicknessTicks = Sickness, Activity = Activity,
-                Mana = Mana, Hunger = Hunger, Thirst = Thirst,
+                Age = Age,
+                Health = Health,
+                SicknessTicks = Sickness,
+                Activity = Activity,
+                Mana = Mana,
+                Hunger = Hunger,
+                Thirst = Thirst,
                 Profession = Profession,
                 DiseaseImmuneUntilTick = Immunity,
                 DeathCause = DeathCause,

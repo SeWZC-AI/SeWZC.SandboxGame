@@ -39,11 +39,16 @@ public sealed partial record Tile
             };
         }
 
-        return (this with { Elevation = elevation, Fertility = fertility, Rainfall = rainfall, NaturalWaterYield = rainfall })
+        return (this with
+            {
+                Elevation = elevation, Fertility = fertility, Rainfall = rainfall, NaturalWaterYield = rainfall,
+            })
             .WithTerrain(terrain);
     }
 
-    internal Tile WithSeededPlants() => WithPlants(Terrain switch
+    internal Tile WithSeededPlants()
+    {
+        return WithPlants(Terrain switch
         {
             TerrainType.Grass or TerrainType.Hills or TerrainType.Tundra or TerrainType.DryFertile or TerrainType.Meadow
                 or TerrainType.Savanna or TerrainType.Scrub or TerrainType.Floodplain
@@ -55,6 +60,7 @@ public sealed partial record Tile
             TerrainType.Wetland => new PlantCoverage { Reeds = .6, Grass = .3 },
             _ => new PlantCoverage(),
         });
+    }
 
     private TerrainType GeneratedTerrain(double latitude, int waterDistance)
     {

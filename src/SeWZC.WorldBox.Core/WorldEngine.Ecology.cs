@@ -216,9 +216,11 @@ public sealed partial class WorldEngine
             tile.Value.CopyAnimalPopulations(_wildlifePopulations.AsSpan(offset, AnimalRules.SpeciesCount));
             _wildlifeMasks[local] = mask;
             // 食物供给饱和后，更多资源不应使环境容量缓存反复失效。
-            var habitat = new WildlifeHabitat(tile.Value.Terrain, Math.Clamp(tile.Value.ResourceAmount / 100, 0, 1), tile.Value.Fertility,
+            var habitat = new WildlifeHabitat(tile.Value.Terrain, Math.Clamp(tile.Value.ResourceAmount / 100, 0, 1),
+                tile.Value.Fertility,
                 tile.Value.Improvement,
-                tile.Value.SettlementId != 0, tile.Value.DroughtTicks > 0, tile.Value.FireTicks > 0, tile.Value.NaturalWaterYield, tile.Value.Plants,
+                tile.Value.SettlementId != 0, tile.Value.DroughtTicks > 0, tile.Value.FireTicks > 0,
+                tile.Value.NaturalWaterYield, tile.Value.Plants,
                 true);
             if (_wildlifeHabitats[habitatSlot] != habitat)
             {
@@ -457,7 +459,9 @@ public sealed partial class WorldEngine
         var suffix = SettlementTierName(town.Value.Tier);
         if (town.Value.Name.EndsWith(suffix, StringComparison.Ordinal))
             return;
-        var stem = town.Value.Name.Length > 0 && town.Value.Name[^1] is '城' or '镇' or '村' ? town.Value.Name[..^1] : town.Value.Name;
+        var stem = town.Value.Name.Length > 0 && town.Value.Name[^1] is '城' or '镇' or '村'
+            ? town.Value.Name[..^1]
+            : town.Value.Name;
         var name = stem + suffix;
         if (Settlements.Any(other => other.Value.Id != town.Value.Id && other.Value.Name == name))
             name = stem + town.Value.Id + suffix;
@@ -488,16 +492,22 @@ public sealed partial class WorldEngine
             }
 
             center.Replace(center.Value with { X = town.Value.X, Y = town.Value.Y });
-            if (center.Value.Health <= 0 && Tiles[Index(town.Value.X, town.Value.Y)].Value.FireTicks == 0 && Rules.Construction
+            if (center.Value.Health <= 0 && Tiles[Index(town.Value.X, town.Value.Y)].Value.FireTicks == 0 &&
+                Rules.Construction
                 && MissingResources(town.Value.Resources, GetBuildingCost(BuildingKind.TownCenter)) is null)
             {
-                town.Replace(town.Value.WithResources(Spend(town.Value.Resources, GetBuildingCost(BuildingKind.TownCenter))));
+                town.Replace(town.Value.WithResources(Spend(town.Value.Resources,
+                    GetBuildingCost(BuildingKind.TownCenter))));
                 center.Replace(center.Value with { Health = 100, ConstructionProgress = 0 });
                 center.Replace(center.Value with { Workers = center.Value.Workers.Clear() });
                 center.Replace(center.Value with { LastWorkedTick = -100, Observation = new ProjectObservation() });
-                var rebuilding = AddEvent(WorldEventKind.Construction, $"{town.Value.Name}投入材料重建受损的城镇中心。", town.Value.X, town.Value.Y,
+                var rebuilding = AddEvent(WorldEventKind.Construction, $"{town.Value.Name}投入材料重建受损的城镇中心。", town.Value.X,
+                    town.Value.Y,
                     EventAction.Started, town.Value.Id);
-                center.Replace(center.Value with { Observation = center.Value.Observation with { StartEventId = rebuilding.Id } });
+                center.Replace(center.Value with
+                {
+                    Observation = center.Value.Observation with { StartEventId = rebuilding.Id },
+                });
             }
         }
     }

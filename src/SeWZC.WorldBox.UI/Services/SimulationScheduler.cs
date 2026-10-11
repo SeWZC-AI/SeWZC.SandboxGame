@@ -14,18 +14,36 @@ internal sealed class SimulationScheduler
     internal double LastMapRefreshMilliseconds { get; set; }
     internal double TickFraction => Math.Clamp(Accumulator / TickSeconds, 0, .999999);
     internal bool IsCatchingUp => Accumulator > .4;
-    internal double DaysPerSecond(long timestamp) => _simulationDays.Count(timestamp) / (double)SimulationTime.TicksPerDay;
-    internal void ClearPendingTime() => Accumulator = 0;
-    internal void ClearActivity() => _simulationDays.Clear();
+
+    internal double DaysPerSecond(long timestamp)
+    {
+        return _simulationDays.Count(timestamp) / (double)SimulationTime.TicksPerDay;
+    }
+
+    internal void ClearPendingTime()
+    {
+        Accumulator = 0;
+    }
+
+    internal void ClearActivity()
+    {
+        _simulationDays.Clear();
+    }
+
     internal void Reset()
     {
         Accumulator = 0;
         _lastStepMilliseconds = LastMapRefreshMilliseconds = 0;
         _simulationDays.Clear();
     }
-    internal double NextDelay(int speed, bool idle, double callbackMilliseconds) => idle ? 50
-        : speed == UnlimitedSpeed ? 1
-        : Math.Clamp((TickSeconds - Accumulator) * 1000 / speed - callbackMilliseconds, 1, 50);
+
+    internal double NextDelay(int speed, bool idle, double callbackMilliseconds)
+    {
+        return idle ? 50
+            : speed == UnlimitedSpeed ? 1
+            : Math.Clamp((TickSeconds - Accumulator) * 1000 / speed - callbackMilliseconds, 1, 50);
+    }
+
     internal int Advance(WorldEngine engine, int speed, double elapsed)
     {
         var unlimited = speed == UnlimitedSpeed;

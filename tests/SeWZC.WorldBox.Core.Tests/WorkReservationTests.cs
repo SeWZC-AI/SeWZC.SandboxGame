@@ -28,9 +28,7 @@ public sealed class WorkReservationTests
                 {
                     Goal = new AgentGoal
                     {
-                        Kind = AgentGoalKind.Work,
-                        TargetEntityId = building.Value.Id,
-                        PlayerDirected = true,
+                        Kind = AgentGoalKind.Work, TargetEntityId = building.Value.Id, PlayerDirected = true,
                     },
                 },
             });
@@ -87,7 +85,10 @@ public sealed class WorkReservationTests
         var clinic = fixture.Engine.Buildings.Single(building => building.Value.Id == clinicId);
         clinic.Replace(clinic.Value with { WorkSlots = 1 });
         foreach (var building in fixture.Engine.Buildings)
-            building.Replace(building.Value with { Enabled = building.Value.Id == towerId || building.Value.Id == clinicId });
+            building.Replace(building.Value with
+            {
+                Enabled = building.Value.Id == towerId || building.Value.Id == clinicId,
+            });
         otherTown.Replace(otherTown.Value.WithResources(new ResourceStock { Food = 100 }));
         fixture.Town.Replace(fixture.Town.Value.WithResources(otherTown.Value.Resources));
         foreach (var person in fixture.Engine.Residents)
@@ -235,7 +236,8 @@ public sealed class WorkReservationTests
         site.Replace(site.Value.WithAnimalPopulation(WildlifeKind.Deer, 10));
         if (kind == BuildingKind.Reservoir)
         {
-            fixture.Engine.Tiles[17 * 32 + 14].Replace(fixture.Engine.Tiles[17 * 32 + 14].Value.WithTerrain(TerrainType.River));
+            fixture.Engine.Tiles[17 * 32 + 14]
+                .Replace(fixture.Engine.Tiles[17 * 32 + 14].Value.WithTerrain(TerrainType.River));
             GrantResearch(fixture, Advancement.CivilEngineering);
         }
 

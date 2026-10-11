@@ -14,15 +14,31 @@ public sealed class ResidentVitalsTests
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(new WorldRules
         {
-            Aging = false, Hunger = false, Thirst = false, Births = false,
-            Construction = false, Expansion = false, Research = false,
-            Migration = false, Secession = false, Wars = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Research = false,
+            Migration = false,
+            Secession = false,
+            Wars = false,
         }, false, false);
         var person = fixture.Resident.Value with
         {
-            Age = 25, Profession = Profession.Farmer, X = 16, Y = 17, FromX = 16, FromY = 17,
-            DiseaseImmuneUntilTick = 0, FrozenUntilTick = 100,
-            Agent = new AgentState { Initialized = true, NextThinkTick = 100, Goal = new AgentGoal { ReviewTick = 100 } },
+            Age = 25,
+            Profession = Profession.Farmer,
+            X = 16,
+            Y = 17,
+            FromX = 16,
+            FromY = 17,
+            DiseaseImmuneUntilTick = 0,
+            FrozenUntilTick = 100,
+            Agent = new AgentState
+            {
+                Initialized = true, NextThinkTick = 100, Goal = new AgentGoal { ReviewTick = 100 },
+            },
         };
         fixture.Resident.Replace(person with { SicknessTicks = 100 });
         var exposed = new StateReference<Resident>(person with { Id = 900, X = 17, FromX = 17 });
@@ -67,7 +83,7 @@ public sealed class ResidentVitalsTests
         var tile = new Tile { FireTicks = fire ? 1 : 0 };
         var fields = original.CalculateDay(rules, tile, 12, original.Profession, 0, .1, true);
         var immutable = original.AdvanceDay(rules, tile, 12, original.Profession, 0, .1, true);
-        fixture.Resident.Replace((fields).Apply(fixture.Resident.Value));
+        fixture.Resident.Replace(fields.Apply(fixture.Resident.Value));
         Assert.Equal(immutable, fixture.Resident.Value);
         fixture.Resident.Replace(fixture.Resident.Value with { X = 15 });
         fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Fatigue = 30 }));
@@ -104,7 +120,8 @@ public sealed class ResidentVitalsTests
     {
         var before = new Resident
         {
-            Age = 25, TravelMode = TravelMode.Boat,
+            Age = 25,
+            TravelMode = TravelMode.Boat,
             Agent = new AgentState { MissionOriginSettlementId = 7, FamiliarTiles = [5] },
         };
         var returned = before.Agent with
@@ -114,7 +131,8 @@ public sealed class ResidentVitalsTests
         var supplies = new ResourceStock { Food = 1, Water = 1, Medicine = 2 };
 
         var after = before.CalculateDay(new WorldRules(), new Tile(), 1, Profession.Farmer, 0, 0,
-            consumeNeeds, arrivedTile: 6, suppliedInventory: supplies, suppliedAgent: returned).Apply(before, TravelMode.Foot);
+                consumeNeeds, arrivedTile: 6, suppliedInventory: supplies, suppliedAgent: returned)
+            .Apply(before, TravelMode.Foot);
 
         Assert.Equal(0, after.Agent.MissionOriginSettlementId);
         Assert.Equal(AgentGoalKind.ReturnHome, after.Agent.Goal.Kind);

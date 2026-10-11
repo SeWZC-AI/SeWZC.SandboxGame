@@ -7,5 +7,8 @@ namespace SeWZC.WorldBox.UI.Views;
 public sealed partial class GameWindow : Window
 {
     /// <summary>加载桌面窗口及共享主视图。</summary>
-    public GameWindow() => AvaloniaXamlLoader.Load(this);
+    public GameWindow()
+    {
+        AvaloniaXamlLoader.Load(this);
+    }
 }

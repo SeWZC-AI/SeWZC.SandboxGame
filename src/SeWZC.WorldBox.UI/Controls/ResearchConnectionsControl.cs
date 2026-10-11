@@ -9,7 +9,6 @@ namespace SeWZC.WorldBox.UI.Controls;
 /// <summary>绘制研究分支背景、连接与所选路径。</summary>
 public sealed class ResearchConnectionsControl : Control
 {
-
     private static readonly IBrush Locked = Brush.Parse("#496075"),
         Done = Brush.Parse("#65B995"),
         Path = Brush.Parse("#F1CD83"),
@@ -18,7 +17,8 @@ public sealed class ResearchConnectionsControl : Control
     /// <inheritdoc />
     public override void Render(DrawingContext context)
     {
-        if (DataContext is not ResearchGraphViewModel model) return;
+        if (DataContext is not ResearchGraphViewModel model)
+            return;
         var ancestors = new HashSet<Advancement>();
 
         void Visit(Advancement kind)

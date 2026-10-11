@@ -107,11 +107,11 @@ public sealed partial class WorldEngine
     private bool SettlementNeedsClaimArea(StateReference<Settlement> town)
     {
         return Rules.Expansion && !town.Value.FoundationPending
-                                       && (!IsSettlementActive(town.Value.Id) || (town.Value.Tier < SettlementTier.City &&
-                                                                            town.Value.Population >=
-                                                                            ExpansionPopulation(town.Value.Tier)
-                                                                            && GetSettlementArea(town.Value.Id) <
-                                                                            GetSettlementExpansionArea(town.Value.Id)));
+                               && (!IsSettlementActive(town.Value.Id) || (town.Value.Tier < SettlementTier.City &&
+                                                                          town.Value.Population >=
+                                                                          ExpansionPopulation(town.Value.Tier)
+                                                                          && GetSettlementArea(town.Value.Id) <
+                                                                          GetSettlementExpansionArea(town.Value.Id)));
     }
 
     /// <summary>查询居民在此地采集所用的本城镇领地内外倍率。</summary>
@@ -171,7 +171,8 @@ public sealed partial class WorldEngine
         {
             ExpansionProgress = 0, ExpansionRequired = town.Value.Tier == SettlementTier.Village ? 60 : 120,
         });
-        AddEvent(WorldEventKind.Construction, $"{town.Value.Name}投入扩充材料，居民到城镇中心施工后升为{SettlementTierName(town.Value.Tier + 1)}。",
+        AddEvent(WorldEventKind.Construction,
+            $"{town.Value.Name}投入扩充材料，居民到城镇中心施工后升为{SettlementTierName(town.Value.Tier + 1)}。",
             town.Value.X, town.Value.Y, EventAction.Started, town.Value.Id);
     }
 
@@ -188,7 +189,8 @@ public sealed partial class WorldEngine
         if (after.Tier == before.Tier)
             return true;
         RefreshSettlementName(town);
-        AddEvent(WorldEventKind.Growth, $"{town.Value.Name}完成城镇扩充，公共组织与通信效率提高。", town.Value.X, town.Value.Y, EventAction.Completed,
+        AddEvent(WorldEventKind.Growth, $"{town.Value.Name}完成城镇扩充，公共组织与通信效率提高。", town.Value.X, town.Value.Y,
+            EventAction.Completed,
             town.Value.Id);
         return true;
     }

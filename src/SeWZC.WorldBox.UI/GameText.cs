@@ -4,8 +4,12 @@ namespace SeWZC.WorldBox.UI;
 
 internal static class GameText
 {
-    internal static string Date(long tick) => tick < 0 ? "尚无记录"
-        : $"第 {1 + tick / SimulationTime.TicksPerYear} 年 {1 + tick / SimulationTime.TicksPerMonth % SimulationTime.MonthsPerYear} 月 {1 + tick / SimulationTime.TicksPerDay % SimulationTime.DaysPerMonth} 日   第 {SimulationTime.TimeOfDay(tick)} 刻";
+    internal static string Date(long tick)
+    {
+        return tick < 0
+            ? "尚无记录"
+            : $"第 {1 + tick / SimulationTime.TicksPerYear} 年 {1 + tick / SimulationTime.TicksPerMonth % SimulationTime.MonthsPerYear} 月 {1 + tick / SimulationTime.TicksPerDay % SimulationTime.DaysPerMonth} 日   第 {SimulationTime.TimeOfDay(tick)} 刻";
+    }
 
     internal static string Terrain(TerrainType terrain)
     {
@@ -36,5 +40,4 @@ internal static class GameText
             _ => "苔原",
         };
     }
-
 }

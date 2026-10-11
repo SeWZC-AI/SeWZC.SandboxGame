@@ -29,9 +29,13 @@ public sealed class ResidentEnduranceTests
     [InlineData(ResidentActivity.Resting, 1, 46.875, 43.75)]
     [InlineData(ResidentActivity.Sleeping, 2, 65.625, 37.5)]
     [InlineData(ResidentActivity.Sleeping, 0, 50, 50)]
-    public void Recovery_accounts_for_sleep_consumption_and_quality(ResidentActivity activity, double quality, double sleep, double fatigue)
+    public void Recovery_accounts_for_sleep_consumption_and_quality(ResidentActivity activity, double quality,
+        double sleep, double fatigue)
     {
-        var person = new Resident { Age = 18, Activity = activity, Agent = new AgentState { Sleep = 50, Fatigue = 50 } };
+        var person = new Resident
+        {
+            Age = 18, Activity = activity, Agent = new AgentState { Sleep = 50, Fatigue = 50 },
+        };
         var after = ResidentNeedsRules.Advance(person, quality);
         Assert.Equal(sleep, after.Sleep);
         Assert.Equal(fatigue, after.Fatigue);
@@ -46,7 +50,8 @@ public sealed class ResidentEnduranceTests
     [InlineData(100, 75, .5, .75)]
     [InlineData(100, 100, 0, .5)]
     [InlineData(25, 75, .375, .375)]
-    public void Sleep_and_stamina_reduce_different_work_types(double sleep, double fatigue, double physical, double mental)
+    public void Sleep_and_stamina_reduce_different_work_types(double sleep, double fatigue, double physical,
+        double mental)
     {
         var person = new Resident { Age = 18, Agent = new AgentState { Sleep = sleep, Fatigue = fatigue } };
         Assert.Equal(physical, ResidentNeedsRules.WorkEfficiency(person));
@@ -71,7 +76,8 @@ public sealed class ResidentEnduranceTests
     {
         var person = new Resident { Age = 18 };
         var physical = ResidentNeedsRules.ExertionFatigue(person, ResidentNeedsRules.PhysicalWorkCostPerTick * 12);
-        var mental = ResidentNeedsRules.ExertionFatigue(person, ResidentNeedsRules.PhysicalWorkCostPerTick * ResidentNeedsRules.MentalWorkCostRatio * 12);
+        var mental = ResidentNeedsRules.ExertionFatigue(person,
+            ResidentNeedsRules.PhysicalWorkCostPerTick * ResidentNeedsRules.MentalWorkCostRatio * 12);
         Assert.Equal(50, physical);
         Assert.Equal(10, mental, 10);
     }
@@ -85,7 +91,8 @@ public sealed class ResidentEnduranceTests
         Assert.Equal(100, ResidentNeedsRules.StaminaCapacity(human));
         Assert.Equal(105, ResidentNeedsRules.SleepCapacity(human with { Race = RaceKind.Elf }));
         Assert.Equal(105, ResidentNeedsRules.StaminaCapacity(human with { Race = RaceKind.Orc }));
-        Assert.NotEqual(ResidentNeedsRules.SleepCapacity(human with { Id = 1 }), ResidentNeedsRules.SleepCapacity(human with { Id = 2 }));
+        Assert.NotEqual(ResidentNeedsRules.SleepCapacity(human with { Id = 1 }),
+            ResidentNeedsRules.SleepCapacity(human with { Id = 2 }));
         Assert.InRange(ResidentNeedsRules.StaminaCapacity(human with { Id = 1 }), 97.5, 102.5);
     }
 
@@ -96,7 +103,10 @@ public sealed class ResidentEnduranceTests
     public void Exhaustion_forces_unconsciousness_and_blocks_directed_movement(double sleep, double fatigue)
     {
         var fixture = DirectedWorld(25, AgentGoalKind.Explore, 20, 16);
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Sleep = sleep, Fatigue = fatigue }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
+        {
+            Sleep = sleep, Fatigue = fatigue,
+        }));
         fixture.Engine.Step();
         Assert.Equal(16, fixture.Resident.Value.X);
         Assert.Equal(ResidentActivity.Unconscious, fixture.Resident.Value.Activity);
@@ -123,7 +133,10 @@ public sealed class ResidentEnduranceTests
     [InlineData(50, 50, false)]
     public void Waking_requires_both_needs_to_recover(double sleep, double fatigue, bool unconscious)
     {
-        var person = new Resident { Activity = ResidentActivity.Unconscious, Agent = new AgentState { Sleep = sleep, Fatigue = fatigue } };
+        var person = new Resident
+        {
+            Activity = ResidentActivity.Unconscious, Agent = new AgentState { Sleep = sleep, Fatigue = fatigue },
+        };
         Assert.Equal(unconscious, ResidentNeedsRules.IsUnconscious(person));
     }
 
@@ -179,7 +192,8 @@ public sealed class ResidentEnduranceTests
     public void Unconscious_recovery_survives_save_and_resume()
     {
         var fixture = DirectedWorld(25, AgentGoalKind.Explore, 20, 16);
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Sleep = 0, Fatigue = 100 }));
+        fixture.Resident.Replace(
+            fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Sleep = 0, Fatigue = 100 }));
         fixture.Engine.Step();
         var loaded = WorldEngine.ImportJson(fixture.Engine.ExportJson());
         fixture.Engine.Step();
@@ -196,10 +210,13 @@ public sealed class ResidentEnduranceTests
         fixture.Engine.SimulationTick = SimulationTime.WakeTick - 1;
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            X = 24, FromX = 24, Activity = ResidentActivity.Sleeping,
+            X = 24,
+            FromX = 24,
+            Activity = ResidentActivity.Sleeping,
             Agent = fixture.Resident.Value.Agent with
             {
-                Sleep = 60, NextThinkTick = 100,
+                Sleep = 60,
+                NextThinkTick = 100,
                 Goal = fixture.Resident.Value.Agent.Goal with { PlayerDirected = false },
             },
         });
@@ -226,26 +243,48 @@ public sealed class ResidentEnduranceTests
         foreach (var person in fixture.Engine.Residents)
             person.Replace(person.Value with
             {
-                Age = 25, X = 16, Y = 16, Hunger = 60, Inventory = new ResourceStock(), FrozenUntilTick = 100,
+                Age = 25,
+                X = 16,
+                Y = 16,
+                Hunger = 60,
+                Inventory = new ResourceStock(),
+                FrozenUntilTick = 100,
                 Agent = new AgentState
                 {
-                    Initialized = true, Sleep = existingViolence && person.Value.Id != fixture.ResidentId ? 100 : 0,
-                    NextThinkTick = 100, Goal = new AgentGoal { ReviewTick = 100 },
-                    Memory = [new AgentFact
-                    {
-                        Kind = AgentFactKind.FoodSupply, SubjectId = fixture.Town.Value.Id,
-                        Confidence = 1, ObservedTick = 1, LearnedTick = 1,
-                    }],
+                    Initialized = true,
+                    Sleep = existingViolence && person.Value.Id != fixture.ResidentId ? 100 : 0,
+                    NextThinkTick = 100,
+                    Goal = new AgentGoal { ReviewTick = 100 },
+                    Memory =
+                    [
+                        new AgentFact
+                        {
+                            Kind = AgentFactKind.FoodSupply,
+                            SubjectId = fixture.Town.Value.Id,
+                            Confidence = 1,
+                            ObservedTick = 1,
+                            LearnedTick = 1,
+                        },
+                    ],
                 },
             });
         if (existingViolence)
-            fixture.Engine.Conflicts = [new LocalConflict
-            {
-                Id = fixture.Engine.NextId++, FirstResidentId = fixture.ResidentId,
-                SecondResidentId = fixture.Engine.Residents.Single(r => r.Value.Id != fixture.ResidentId).Value.Id,
-                SettlementId = fixture.Town.Value.Id, X = 16, Y = 16, Tension = 80,
-                Stage = ConflictStage.Violence,
-            }];
+        {
+            fixture.Engine.Conflicts =
+            [
+                new LocalConflict
+                {
+                    Id = fixture.Engine.NextId++,
+                    FirstResidentId = fixture.ResidentId,
+                    SecondResidentId = fixture.Engine.Residents.Single(r => r.Value.Id != fixture.ResidentId).Value.Id,
+                    SettlementId = fixture.Town.Value.Id,
+                    X = 16,
+                    Y = 16,
+                    Tension = 80,
+                    Stage = ConflictStage.Violence,
+                },
+            ];
+        }
 
         fixture.Engine.Step();
 
@@ -289,12 +328,22 @@ public sealed class ResidentEnduranceTests
             Agent = fixture.Resident.Value.Agent with
             {
                 Sleep = sleep,
-                Memory = [new AgentFact
-                {
-                    Id = fixture.Engine.NextId++, Kind = AgentFactKind.SettlementLocation,
-                    SubjectId = destination.Value.Id, X = 0, Y = 16, ObservedTick = 1, LearnedTick = 1,
-                    OriginResidentId = fixture.ResidentId, SourceResidentId = fixture.ResidentId, Confidence = 1,
-                }],
+                Memory =
+                [
+                    new AgentFact
+                    {
+                        Id = fixture.Engine.NextId++,
+                        Kind = AgentFactKind.SettlementLocation,
+                        SubjectId = destination.Value.Id,
+                        X = 0,
+                        Y = 16,
+                        ObservedTick = 1,
+                        LearnedTick = 1,
+                        OriginResidentId = fixture.ResidentId,
+                        SourceResidentId = fixture.ResidentId,
+                        Confidence = 1,
+                    },
+                ],
             },
         });
         Assert.True(fixture.Engine.CanRelayInformation(fixture.Town.Value.Id, destination.Value.Id, out _));
@@ -315,7 +364,9 @@ public sealed class ResidentEnduranceTests
         GrantResearch(fixture, Advancement.NatureBinding);
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            MagicTalent = 60, MagicTraining = 20, Mana = 100,
+            MagicTalent = 60,
+            MagicTraining = 20,
+            Mana = 100,
             Agent = fixture.Resident.Value.Agent with { Sleep = sleep },
         });
         var tile = fixture.Engine.Tiles[16 * 32 + 16];
@@ -346,7 +397,9 @@ public sealed class ResidentEnduranceTests
             GrantResearch(fixture, Advancement.Elementalism);
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            MagicTalent = 60, MagicTraining = 20, Mana = 100,
+            MagicTalent = 60,
+            MagicTraining = 20,
+            Mana = 100,
             Agent = fixture.Resident.Value.Agent with
             {
                 Sleep = sleep,
@@ -374,18 +427,37 @@ public sealed class ResidentEnduranceTests
         var fixture = new WorldFixture();
         fixture.Engine.ConfigureWorld(new WorldRules
         {
-            Aging = false, Hunger = false, Thirst = false, Disease = false, Births = false,
-            Construction = false, Expansion = false, Research = false, Migration = false, Secession = false, Wars = false,
+            Aging = false,
+            Hunger = false,
+            Thirst = false,
+            Disease = false,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Research = false,
+            Migration = false,
+            Secession = false,
+            Wars = false,
         }, false, false);
         fixture.Engine.SimulationTick = SimulationTime.WakeTick;
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            Age = age, Profession = Profession.Farmer, X = 16, Y = 16, FromX = 16, FromY = 16,
+            Age = age,
+            Profession = Profession.Farmer,
+            X = 16,
+            Y = 16,
+            FromX = 16,
+            FromY = 16,
             Agent = new AgentState
             {
-                Initialized = true, Goal = new AgentGoal
+                Initialized = true,
+                Goal = new AgentGoal
                 {
-                    Kind = kind, TargetX = x, TargetY = y, PlayerDirected = true, ReviewTick = 100,
+                    Kind = kind,
+                    TargetX = x,
+                    TargetY = y,
+                    PlayerDirected = true,
+                    ReviewTick = 100,
                 },
             },
         });

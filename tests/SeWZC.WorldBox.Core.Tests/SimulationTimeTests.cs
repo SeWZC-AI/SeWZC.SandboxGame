@@ -9,11 +9,16 @@ public sealed class SimulationTimeTests
     {
         var fixture = Prepare(12);
         var ground = fixture.Engine.Tiles[16 * 32 + 22];
-        ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+        ground.Replace(ground.Value with
+        {
+            ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId,
+        });
         var buildingId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Farm, 22, 16);
-        fixture.Engine.Buildings.Single(b => b.Value.Id == buildingId).Replace(fixture.Engine.Buildings.Single(b => b.Value.Id == buildingId).Value with { Health = 10 });
+        fixture.Engine.Buildings.Single(b => b.Value.Id == buildingId)
+            .Replace(fixture.Engine.Buildings.Single(b => b.Value.Id == buildingId).Value with { Health = 10 });
         fixture.Resident.Replace(fixture.Resident.Value with { Profession = Profession.Builder });
-        fixture.Resident.Replace(fixture.Resident.Value.WithInventory(fixture.Resident.Value.Inventory with { Stone = 1 }));
+        fixture.Resident.Replace(
+            fixture.Resident.Value.WithInventory(fixture.Resident.Value.Inventory with { Stone = 1 }));
         fixture.Resident.Replace(fixture.Resident.Value.WithActivity(ResidentActivity.Working));
         fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
@@ -93,7 +98,8 @@ public sealed class SimulationTimeTests
         var fixture = Prepare(SimulationTime.ReturnHomeTick - 1);
         var dwelling = fixture.Engine.GetResidentHome(fixture.ResidentId)!;
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(dwelling.X, dwelling.Y));
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Sleep = 60, Fatigue = 40 }));
+        fixture.Resident.Replace(
+            fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Sleep = 60, Fatigue = 40 }));
 
         fixture.Engine.Step();
 
@@ -116,8 +122,11 @@ public sealed class SimulationTimeTests
             Sleep = sleep,
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Rest, TargetX = 16, TargetY = 16,
-                PlayerDirected = true, ReviewTick = SimulationTime.TicksPerYear,
+                Kind = AgentGoalKind.Rest,
+                TargetX = 16,
+                TargetY = 16,
+                PlayerDirected = true,
+                ReviewTick = SimulationTime.TicksPerYear,
             },
         }));
 
@@ -147,7 +156,10 @@ public sealed class SimulationTimeTests
     {
         var fixture = Prepare(SimulationTime.SleepTick - 1);
         var ground = fixture.Engine.Tiles[16 * 32 + 14];
-        ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+        ground.Replace(ground.Value with
+        {
+            ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId,
+        });
         var clinicId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Infirmary, 14, 16);
         fixture.Resident.Replace(fixture.Resident.Value with { FromX = x, X = x, Health = 50 });
         fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
@@ -155,7 +167,10 @@ public sealed class SimulationTimeTests
             Sleep = 50,
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Rest, TargetEntityId = clinicId, TargetX = 14, TargetY = 16,
+                Kind = AgentGoalKind.Rest,
+                TargetEntityId = clinicId,
+                TargetX = 14,
+                TargetY = 16,
                 ReviewTick = SimulationTime.TicksPerYear,
             },
         }));
@@ -164,7 +179,8 @@ public sealed class SimulationTimeTests
 
         Assert.Equal(AgentGoalKind.Sleep, fixture.Resident.Value.Agent.Goal.Kind);
         Assert.Equal(clinicId, fixture.Resident.Value.Agent.DaytimeGoal!.TargetEntityId);
-        Assert.Equal(fixture.Engine.GetResidentHome(fixture.ResidentId)!.Id, fixture.Resident.Value.Agent.Goal.TargetEntityId);
+        Assert.Equal(fixture.Engine.GetResidentHome(fixture.ResidentId)!.Id,
+            fixture.Resident.Value.Agent.Goal.TargetEntityId);
         Assert.NotEqual(ResidentActivity.Sleeping, fixture.Resident.Value.Activity);
         Assert.Contains("正在返家", fixture.Engine.GetResidentActionSummary(fixture.ResidentId));
     }
@@ -177,15 +193,23 @@ public sealed class SimulationTimeTests
     {
         var fixture = Prepare(SimulationTime.WakeTick);
         var ground = fixture.Engine.Tiles[16 * 32 + 14];
-        ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+        ground.Replace(ground.Value with
+        {
+            ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId,
+        });
         var clinicId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Infirmary, 14, 16);
         fixture.Resident.Replace(fixture.Resident.Value with { FromX = x, X = x, Health = 50 });
         fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
-            Sleep = 100, Fatigue = 0, NextThinkTick = 0,
+            Sleep = 100,
+            Fatigue = 0,
+            NextThinkTick = 0,
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Rest, TargetEntityId = clinicId, TargetX = 14, TargetY = 16,
+                Kind = AgentGoalKind.Rest,
+                TargetEntityId = clinicId,
+                TargetX = 14,
+                TargetY = 16,
                 ReviewTick = fixture.Engine.State.Tick,
             },
         }));
@@ -212,25 +236,36 @@ public sealed class SimulationTimeTests
     [InlineData(AgentGoalKind.Rest, true, true)]
     [InlineData(AgentGoalKind.Sleep, false, false)]
     [InlineData(AgentGoalKind.Sleep, true, false)]
-    public void Directed_recovery_summary_respects_the_selected_place_and_schedule(AgentGoalKind kind, bool arrived, bool retargeted)
+    public void Directed_recovery_summary_respects_the_selected_place_and_schedule(AgentGoalKind kind, bool arrived,
+        bool retargeted)
     {
         var fixture = Prepare(SimulationTime.WakeTick);
         var clinicId = 0;
         if (retargeted)
         {
             var ground = fixture.Engine.Tiles[16 * 32 + 14];
-            ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+            ground.Replace(ground.Value with
+            {
+                ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId,
+            });
             clinicId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Infirmary, 14, 16);
         }
+
         if (arrived)
             fixture.Resident.Replace(fixture.Resident.Value with { X = 24, FromX = 24 });
         fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
-            Sleep = 80, Fatigue = 40,
+            Sleep = 80,
+            Fatigue = 40,
             Goal = new AgentGoal
             {
-                Kind = kind, TargetX = 24, TargetY = 16, TargetSettlementId = fixture.Town.Value.Id, TargetEntityId = clinicId,
-                PlayerDirected = true, ReviewTick = SimulationTime.TicksPerYear,
+                Kind = kind,
+                TargetX = 24,
+                TargetY = 16,
+                TargetSettlementId = fixture.Town.Value.Id,
+                TargetEntityId = clinicId,
+                PlayerDirected = true,
+                ReviewTick = SimulationTime.TicksPerYear,
             },
         }));
 
@@ -258,18 +293,24 @@ public sealed class SimulationTimeTests
     [InlineData(AgentGoalKind.Sleep, 16, 16)]
     [InlineData(AgentGoalKind.Sleep, 24, 24)]
     [InlineData(AgentGoalKind.Sleep, 16, 24)]
-    public void Recovery_summary_does_not_claim_rest_started_before_the_next_step(AgentGoalKind kind, int x, int targetX)
+    public void Recovery_summary_does_not_claim_rest_started_before_the_next_step(AgentGoalKind kind, int x,
+        int targetX)
     {
         var fixture = Prepare(SimulationTime.WakeTick);
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            X = x, FromX = x, Activity = ResidentActivity.Working,
+            X = x,
+            FromX = x,
+            Activity = ResidentActivity.Working,
             Agent = fixture.Resident.Value.Agent with
             {
                 Goal = new AgentGoal
                 {
-                    Kind = kind, TargetX = targetX, TargetY = 16,
-                    PlayerDirected = true, ReviewTick = SimulationTime.TicksPerYear,
+                    Kind = kind,
+                    TargetX = targetX,
+                    TargetY = 16,
+                    PlayerDirected = true,
+                    ReviewTick = SimulationTime.TicksPerYear,
                 },
             },
         });
@@ -297,8 +338,11 @@ public sealed class SimulationTimeTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Sleep, TargetX = 24, TargetY = 16,
-                PlayerDirected = true, ReviewTick = SimulationTime.SleepTick + remaining,
+                Kind = AgentGoalKind.Sleep,
+                TargetX = 24,
+                TargetY = 16,
+                PlayerDirected = true,
+                ReviewTick = SimulationTime.SleepTick + remaining,
             },
         }));
 
@@ -314,8 +358,8 @@ public sealed class SimulationTimeTests
         else
         {
             var house = fixture.Engine.GetResidentHome(fixture.ResidentId)!;
-        Assert.True(Math.Abs(fixture.Resident.Value.X - house.X) + Math.Abs(fixture.Resident.Value.Y - house.Y)
-                    < Math.Abs(22 - house.X) + Math.Abs(16 - house.Y));
+            Assert.True(Math.Abs(fixture.Resident.Value.X - house.X) + Math.Abs(fixture.Resident.Value.Y - house.Y)
+                        < Math.Abs(22 - house.X) + Math.Abs(16 - house.Y));
             Assert.Contains("正在返家", summary);
             Assert.Contains("清晨", summary);
             Assert.DoesNotContain("指定地点", summary);
@@ -330,14 +374,20 @@ public sealed class SimulationTimeTests
         var fixture = Prepare(SimulationTime.SleepTick - 1);
         fixture.Resident.Replace(fixture.Resident.Value with
         {
-            X = 23, FromX = 22, MoveStartedTick = SimulationTime.SleepTick - 1, MoveDurationTicks = 2,
+            X = 23,
+            FromX = 22,
+            MoveStartedTick = SimulationTime.SleepTick - 1,
+            MoveDurationTicks = 2,
             Activity = ResidentActivity.Wandering,
             Agent = fixture.Resident.Value.Agent with
             {
                 Goal = new AgentGoal
                 {
-                    Kind = AgentGoalKind.Sleep, TargetX = 24, TargetY = 16,
-                    PlayerDirected = true, ReviewTick = SimulationTime.SleepTick,
+                    Kind = AgentGoalKind.Sleep,
+                    TargetX = 24,
+                    TargetY = 16,
+                    PlayerDirected = true,
+                    ReviewTick = SimulationTime.SleepTick,
                 },
             },
         });
@@ -370,8 +420,11 @@ public sealed class SimulationTimeTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Rest, TargetX = 24, TargetY = 16,
-                PlayerDirected = true, ReviewTick = SimulationTime.SleepTick,
+                Kind = AgentGoalKind.Rest,
+                TargetX = 24,
+                TargetY = 16,
+                PlayerDirected = true,
+                ReviewTick = SimulationTime.SleepTick,
             },
         }));
 
@@ -423,7 +476,8 @@ public sealed class SimulationTimeTests
         fixture.Resident.Replace(fixture.Resident.Value.WithPosition(dwelling.X, dwelling.Y));
         fixture.Engine.Step();
         var location = fixture.Resident.Value.Y * 32 + fixture.Resident.Value.X;
-        fixture.Engine.Tiles[location].Replace(fixture.Engine.Tiles[location].Value.WithFireTicks(SimulationTime.TicksPerDay));
+        fixture.Engine.Tiles[location]
+            .Replace(fixture.Engine.Tiles[location].Value.WithFireTicks(SimulationTime.TicksPerDay));
 
         fixture.Engine.Step();
 
@@ -482,7 +536,8 @@ public sealed class SimulationTimeTests
     public void Water_trip_can_collect_after_arriving_in_the_evening()
     {
         var fixture = Prepare(SimulationTime.ReturnHomeTick - 1);
-        fixture.Engine.Tiles[16 * 32 + 23].Replace(fixture.Engine.Tiles[16 * 32 + 23].Value.WithTerrain(TerrainType.River));
+        fixture.Engine.Tiles[16 * 32 + 23]
+            .Replace(fixture.Engine.Tiles[16 * 32 + 23].Value.WithTerrain(TerrainType.River));
         fixture.Resident.Replace(fixture.Resident.Value with { FromX = 22, X = 22 });
         fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Food = 1 }));
         fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with

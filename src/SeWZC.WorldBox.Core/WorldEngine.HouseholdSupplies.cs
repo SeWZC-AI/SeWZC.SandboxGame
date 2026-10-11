@@ -4,15 +4,21 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private readonly Dictionary<int, (double Food, double Water, int Adults)> _householdSupplyNeeds = [];
     private readonly Dictionary<int, List<StateReference<Resident>>> _householdCarers = [];
+    private readonly Dictionary<int, (double Food, double Water, int Adults)> _householdSupplyNeeds = [];
 
-    private bool HasHouseholdCarer(Resident person) => person.IsInsideHome
-        && _householdCarers.TryGetValue(person.HomeBuildingId, out var carers)
-        && carers.Any(carer => carer.Value.Health > 0 && !ResidentNeedsRules.IsUnconscious(carer.Value));
+    private bool HasHouseholdCarer(Resident person)
+    {
+        return person.IsInsideHome
+               && _householdCarers.TryGetValue(person.HomeBuildingId, out var carers)
+               && carers.Any(carer => carer.Value.Health > 0 && !ResidentNeedsRules.IsUnconscious(carer.Value));
+    }
 
-    private static bool NeedsHouseholdCare(Resident person) => person.Age < ResidentNeedsRules.MinimumOutdoorAge
-        || ResidentNeedsRules.IsUnconscious(person);
+    private static bool NeedsHouseholdCare(Resident person)
+    {
+        return person.Age < ResidentNeedsRules.MinimumOutdoorAge
+               || ResidentNeedsRules.IsUnconscious(person);
+    }
 
     private void ShareHouseholdSupplies()
     {
@@ -36,8 +42,10 @@ public sealed partial class WorldEngine
                     atHome.Add(reference);
                 }
             }
+
             _householdSupplyNeeds[person.HomeBuildingId] = need;
         }
+
         foreach (var reference in Residents)
         {
             var person = reference.Value;
@@ -48,15 +56,23 @@ public sealed partial class WorldEngine
             foreach (var donor in atHome)
             {
                 var supply = donor.Value.Inventory;
-                var food = Rules.Hunger ? Math.Min(Math.Max(0, FoodUse(person) * DailyRoutineRules.SupplyReserveDays - inventory.Food),
-                    Math.Max(0, supply.Food - FoodUse(donor.Value) * DailyRoutineRules.SupplyReserveDays)) : 0;
-                var water = Rules.Thirst ? Math.Min(Math.Max(0, WaterUse(person) * DailyRoutineRules.SupplyReserveDays - inventory.Water),
-                    Math.Max(0, supply.Water - WaterUse(donor.Value) * DailyRoutineRules.SupplyReserveDays)) : 0;
+                var food = Rules.Hunger
+                    ? Math.Min(Math.Max(0, FoodUse(person) * DailyRoutineRules.SupplyReserveDays - inventory.Food),
+                        Math.Max(0, supply.Food - FoodUse(donor.Value) * DailyRoutineRules.SupplyReserveDays))
+                    : 0;
+                var water = Rules.Thirst
+                    ? Math.Min(Math.Max(0, WaterUse(person) * DailyRoutineRules.SupplyReserveDays - inventory.Water),
+                        Math.Max(0, supply.Water - WaterUse(donor.Value) * DailyRoutineRules.SupplyReserveDays))
+                    : 0;
                 if (food == 0 && water == 0)
                     continue;
-                donor.Replace(donor.Value.WithInventory(supply with { Food = supply.Food - food, Water = supply.Water - water }));
+                donor.Replace(donor.Value.WithInventory(supply with
+                {
+                    Food = supply.Food - food, Water = supply.Water - water,
+                }));
                 inventory = inventory with { Food = inventory.Food + food, Water = inventory.Water + water };
             }
+
             reference.Replace(person.WithInventory(inventory));
         }
     }

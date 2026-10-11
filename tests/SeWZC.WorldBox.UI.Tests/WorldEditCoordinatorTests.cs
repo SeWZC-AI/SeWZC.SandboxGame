@@ -69,11 +69,20 @@ public sealed class WorldEditCoordinatorTests
         {
             switch (action)
             {
-                case "close": session = session with { Generation = 2, Modal = false }; break;
-                case "navigate": session = session with { Navigation = 2 }; break;
-                case "world": state.Engine = WorldEngine.Create(43, 32, 32, false); break;
-                case "cancel": coordinator.CancelPending(); break;
+                case "close":
+                    session = session with { Generation = 2, Modal = false };
+                    break;
+                case "navigate":
+                    session = session with { Navigation = 2 };
+                    break;
+                case "world":
+                    state.Engine = WorldEngine.Create(43, 32, 32, false);
+                    break;
+                case "cancel":
+                    coordinator.CancelPending();
+                    break;
             }
+
             return () => restored = true;
         });
 
@@ -101,7 +110,15 @@ public sealed class WorldEditCoordinatorTests
         Assert.False(coordinator.CaptureActive);
     }
 
-    private static MainViewModel CreateState() => new(WorldEngine.Create(42, 32, 32, false));
-    private static WorldEditCoordinator CreateCoordinator(MainViewModel state) => new(state,
-        new WorldSaveCoordinator(() => state.Engine, () => null, () => 0), () => new EditSession(1, true, 1, false));
+    private static MainViewModel CreateState()
+    {
+        return new MainViewModel(WorldEngine.Create(42, 32, 32, false));
+    }
+
+    private static WorldEditCoordinator CreateCoordinator(MainViewModel state)
+    {
+        return new WorldEditCoordinator(state,
+            new WorldSaveCoordinator(() => state.Engine, () => null, () => 0),
+            () => new EditSession(1, true, 1, false));
+    }
 }

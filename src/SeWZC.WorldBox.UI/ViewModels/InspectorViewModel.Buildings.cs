@@ -1,8 +1,5 @@
-using Avalonia;
 using Avalonia.Layout;
-using Avalonia.Media;
 using SeWZC.WorldBox.Core;
-using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI.ViewModels;
@@ -91,9 +88,11 @@ internal sealed partial class InspectorViewModel
         }), "building-locate"));
         actions.Children.Add(Named(Button("修复建筑", () => RunEdit(() => _engine.RestoreBuilding(id), "建筑已修复")),
             "building-repair"));
-        actions.Children.Add(Named(Button("升级建筑", () => _requests.Editors.ShowBuildingUpgrade(id, false)), "building-upgrade"));
+        actions.Children.Add(Named(Button("升级建筑", () => _requests.Editors.ShowBuildingUpgrade(id, false)),
+            "building-upgrade"));
         if (building.Kind == BuildingKind.Bridge)
-            actions.Children.Add(Named(Button("改造桥梁方向", () => _requests.Editors.ShowBuildingUpgrade(id, true)), "building-reorient"));
+            actions.Children.Add(Named(Button("改造桥梁方向", () => _requests.Editors.ShowBuildingUpgrade(id, true)),
+                "building-reorient"));
         if (!building.IsCompleted)
         {
             actions.Children.Add(Named(
@@ -328,5 +327,4 @@ internal sealed partial class InspectorViewModel
             CloseInspector();
         }));
     }
-
 }

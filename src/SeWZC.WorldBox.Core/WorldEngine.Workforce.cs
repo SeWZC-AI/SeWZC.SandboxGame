@@ -108,15 +108,16 @@ public sealed partial class WorldEngine
             }
 
             var contacts = town.Value.PublicKnowledge.Count(f => f.Kind == AgentFactKind.SettlementLocation
-                                                           && f.SubjectId != town.Value.Id &&
-                                                           f.ReliabilityAt(SimulationTick) >= .5);
+                                                                 && f.SubjectId != town.Value.Id &&
+                                                                 f.ReliabilityAt(SimulationTick) >= .5);
             targets[(int)Profession.Messenger] = Math.Min(contacts, (adults.Count + 79) / 80);
             targets[(int)Profession.Trader] = town.Value.Resources.Food > dailyFood * 30 ? Math.Min(contacts, 3) : 0;
             var researching =
                 Society.Research.Any(r => r.SettlementId == town.Value.Id && r.ActiveProject is not null);
             foreach (var building in Buildings)
             {
-                if (building.Value.SettlementId != town.Value.Id || building.Value.Health <= 0 || !building.Value.Enabled
+                if (building.Value.SettlementId != town.Value.Id || building.Value.Health <= 0 ||
+                    !building.Value.Enabled
                     || Distance(building.Value.X, building.Value.Y, town.Value.X, town.Value.Y) > 8)
                     continue;
                 buildings.Add(building);
@@ -190,7 +191,8 @@ public sealed partial class WorldEngine
     {
         return person.Value.Health >= 60 && person.Value.SicknessTicks == 0 && person.Value.ArmyId == 0
                && !person.Value.Agent.Goal.PlayerDirected && person.Value.Agent.DestinationSettlementId == 0
-               && person.Value.TravelMode == TravelMode.Foot && Distance(person.Value.X, person.Value.Y, town.Value.X, town.Value.Y) <= 3
+               && person.Value.TravelMode == TravelMode.Foot &&
+               Distance(person.Value.X, person.Value.Y, town.Value.X, town.Value.Y) <= 3
                && SimulationTick - person.Value.MoveStartedTick >= person.Value.MoveDurationTicks
                && (person.Value.Profession == Profession.Laborer || SimulationTick == 0 ||
                    SimulationTick - person.Value.Agent.JobChangedTick >= SimulationTime.TicksPerYear);
@@ -198,7 +200,8 @@ public sealed partial class WorldEngine
 
     private static bool SuitableForProfession(StateReference<Resident> person, Profession job)
     {
-        return job is not (Profession.Mage or Profession.Battlemage or Profession.Gardener) || person.Value.MagicTalent >= 35;
+        return job is not (Profession.Mage or Profession.Battlemage or Profession.Gardener) ||
+               person.Value.MagicTalent >= 35;
     }
 
     private static double ProfessionSuitability(StateReference<Resident> person, Profession job)
@@ -267,18 +270,20 @@ public sealed partial class WorldEngine
         var occupied = new Dictionary<int, int>();
         foreach (var person in adults)
             if (person.Value.Agent.WorkplaceId != 0)
-                occupied[person.Value.Agent.WorkplaceId] = occupied.GetValueOrDefault(person.Value.Agent.WorkplaceId) + 1;
+                occupied[person.Value.Agent.WorkplaceId] =
+                    occupied.GetValueOrDefault(person.Value.Agent.WorkplaceId) + 1;
         foreach (var person in adults)
         {
             // 工作地点稳定；旧岗位失效时只有本人回到家园，才重新接受当地安排。
             if (person.Value.Health < 60 || person.Value.SicknessTicks > 0 || person.Value.Agent.Goal.PlayerDirected
-                || person.Value.Agent.DestinationSettlementId != 0 || Distance(person.Value.X, person.Value.Y, town.Value.X, town.Value.Y) > 3
+                || person.Value.Agent.DestinationSettlementId != 0 ||
+                Distance(person.Value.X, person.Value.Y, town.Value.X, town.Value.Y) > 3
                 || person.Value.TravelMode != TravelMode.Foot ||
                 SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks)
                 continue;
             var previous = person.Value.Agent.WorkplaceId;
             if (buildings.Any(b => b.Value.Id == previous && WorkplaceFits(b.Value, person)
-                                                    && occupied.GetValueOrDefault(previous) <= b.Value.WorkSlots))
+                                                          && occupied.GetValueOrDefault(previous) <= b.Value.WorkSlots))
                 continue;
             if (previous != 0)
                 occupied[previous]--;
@@ -286,7 +291,8 @@ public sealed partial class WorldEngine
             var bestDistance = int.MaxValue;
             foreach (var building in buildings)
             {
-                if (!WorkplaceFits(building.Value, person) || occupied.GetValueOrDefault(building.Value.Id) >= building.Value.WorkSlots)
+                if (!WorkplaceFits(building.Value, person) ||
+                    occupied.GetValueOrDefault(building.Value.Id) >= building.Value.WorkSlots)
                     continue;
                 var distance = Distance(person.Value.X, person.Value.Y, building.Value.X, building.Value.Y);
                 if (distance < bestDistance || (distance == bestDistance && building.Value.Id < selected!.Value.Id))

@@ -7,8 +7,15 @@ public sealed class TileQueryCacheTests
     [Fact]
     public void Depleted_animals_invalidate_edible_species_and_harvest()
     {
-        var before = new Tile { Terrain = TerrainType.Grass, Fertility = 80, ResourceAmount = 100,
-            Plants = new PlantCoverage { Grass = .6 }, Wildlife = WildlifeKind.Deer, WildlifePopulation = 2 };
+        var before = new Tile
+        {
+            Terrain = TerrainType.Grass,
+            Fertility = 80,
+            ResourceAmount = 100,
+            Plants = new PlantCoverage { Grass = .6 },
+            Wildlife = WildlifeKind.Deer,
+            WildlifePopulation = 2,
+        };
         var cache = new TileQueryCache();
         Assert.Equal(WildlifeKind.Deer, cache.EdibleAnimal(before, false));
         Assert.True(cache.HarvestEfficiency(before, WildlifeKind.Deer) > 0);
@@ -25,8 +32,14 @@ public sealed class TileQueryCacheTests
     [Fact]
     public void Fire_and_harvest_invalidate_habitat_and_plant_yield()
     {
-        var before = new Tile { Terrain = TerrainType.Forest, Fertility = 80, ResourceAmount = 100,
-            Plants = new PlantCoverage { Trees = .7 }, NaturalWaterYield = .1 };
+        var before = new Tile
+        {
+            Terrain = TerrainType.Forest,
+            Fertility = 80,
+            ResourceAmount = 100,
+            Plants = new PlantCoverage { Trees = .7 },
+            NaturalWaterYield = .1,
+        };
         var cache = new TileQueryCache();
         Assert.True(cache.EnvironmentalCapacity(before, WildlifeKind.Deer) > 0);
         Assert.True(cache.PlantSiteYield(before, true) > 0);

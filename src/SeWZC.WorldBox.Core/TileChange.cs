@@ -26,7 +26,7 @@ internal readonly record struct TileChange
             Plants = terrain || improvement || fertility || plants || drought
                      || before.ResourceAmount != after.ResourceAmount,
             Population = before.Wildlife != after.Wildlife || before.WildlifePopulation != after.WildlifePopulation
-                         || !before.SameOtherWildlife(after),
+                                                           || !before.SameOtherWildlife(after),
             Habitat = terrain || improvement || fertility || plants || drought || fire
                       || before.NaturalWaterYield != after.NaturalWaterYield
                       || before.SettlementId != 0 != (after.SettlementId != 0)

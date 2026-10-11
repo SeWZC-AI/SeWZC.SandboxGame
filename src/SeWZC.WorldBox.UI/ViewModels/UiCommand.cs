@@ -6,7 +6,10 @@ internal sealed class UiCommand(Action<object?> execute, Func<bool>? available =
 {
     public event EventHandler? CanExecuteChanged;
 
-    public bool CanExecute(object? parameter) => available?.Invoke() ?? true;
+    public bool CanExecute(object? parameter)
+    {
+        return available?.Invoke() ?? true;
+    }
 
     public void Execute(object? parameter)
     {
@@ -14,5 +17,8 @@ internal sealed class UiCommand(Action<object?> execute, Func<bool>? available =
             execute(parameter);
     }
 
-    internal void Refresh() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    internal void Refresh()
+    {
+        CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+    }
 }

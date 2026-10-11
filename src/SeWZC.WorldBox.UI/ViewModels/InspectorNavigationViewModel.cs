@@ -1,46 +1,66 @@
 using Avalonia;
 using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.UI.Controls;
+
 namespace SeWZC.WorldBox.UI.ViewModels;
+
 /// <summary>详情导航、地图选择与观察位置的返回历史。</summary>
 internal sealed class InspectorNavigationViewModel : ViewModelBase
 {
-    private readonly GameSessionViewModel _session;
     private readonly Stack<InspectorLocation> _navigation = new();
+    private readonly GameSessionViewModel _session;
+    private WorldMapControl.MapSelectionState _returnSelection;
+    private WorldMapControl.ViewportState? _returnViewport;
     private Vector _scrollOffset;
+
     /// <summary>连接导航使用的会话状态。</summary>
     /// <param name="session">当前游戏会话。</param>
     internal InspectorNavigationViewModel(GameSessionViewModel session)
     {
         _session = session;
-        BackCommand = new(_ => GoBack());
-        CloseCommand = new(_ => CloseInspector());
-        ExpandCommand = new(_ =>
+        BackCommand = new UiCommand(_ => GoBack());
+        CloseCommand = new UiCommand(_ => CloseInspector());
+        ExpandCommand = new UiCommand(_ =>
         {
             State.InspectorExpanded = !State.InspectorExpanded;
             Layout.Refresh();
             _session.Inspector.RefreshInspector();
         });
     }
+
     public MainViewModel State => _session.State;
     public ShellLayoutViewModel Layout => _session.Layout;
-    public Vector ScrollOffset { get => _scrollOffset; set => Set(ref _scrollOffset, value); }
+
+    public Vector ScrollOffset
+    {
+        get => _scrollOffset;
+        set => Set(ref _scrollOffset, value);
+    }
+
     public UiCommand BackCommand { get; }
     public UiCommand CloseCommand { get; }
     public UiCommand ExpandCommand { get; }
-    internal void ClearHistory() { _navigation.Clear(); Generation++; }
-    internal void ClearObservation() { _returnViewport = null; }
 
     internal int Generation { get; private set; }
-    private WorldMapControl.ViewportState? _returnViewport;
-    private WorldMapControl.MapSelectionState _returnSelection;
+
+    internal void ClearHistory()
+    {
+        _navigation.Clear();
+        Generation++;
+    }
+
+    internal void ClearObservation()
+    {
+        _returnViewport = null;
+    }
 
     internal void RememberObservation()
     {
         RememberObservation(_session.Map.CaptureViewport(), _session.Map.CaptureMapSelection());
     }
 
-    internal void RememberObservation(WorldMapControl.ViewportState viewport, WorldMapControl.MapSelectionState selection)
+    internal void RememberObservation(WorldMapControl.ViewportState viewport,
+        WorldMapControl.MapSelectionState selection)
     {
         if (_returnViewport is not null)
             return;
@@ -66,6 +86,7 @@ internal sealed class InspectorNavigationViewModel : ViewModelBase
             _session.SetStatus("这位居民已不在地图上，无法定位");
             return false;
         }
+
         _session.State.SelectedResidentId = id;
         _session.State.SelectedBuildingId = 0;
         _session.State.SelectedTile = null;
@@ -87,7 +108,8 @@ internal sealed class InspectorNavigationViewModel : ViewModelBase
         _session.State.SelectedBuildingId = _returnSelection.BuildingId ?? 0;
         _session.State.SelectedTile = _returnSelection.Tile;
         _session.State.SelectionKind = _returnSelection.ResidentId is not null ? "resident"
-            : _returnSelection.BuildingId is not null ? "building" : _returnSelection.Tile is not null ? "tile" : null;
+            : _returnSelection.BuildingId is not null ? "building"
+            : _returnSelection.Tile is not null ? "tile" : null;
         _returnViewport = null;
         _session.State.CanReturnObservation = false;
         _session.Layout.Refresh();
@@ -97,11 +119,16 @@ internal sealed class InspectorNavigationViewModel : ViewModelBase
     {
         if (_session.Interaction.IsPickingLocation || !_session.State.InspectorVisible)
             return;
-        var location = new InspectorLocation(_session.State.InspectorMode, _session.State.SelectedNationId, _session.State.SelectedResidentId,
-            _session.Inspector._inspectorSettlementId, _session.State.SelectedTile, _session.State.SelectedBuildingId, _session.Inspector._eventDetailId,
-            ScrollOffset, _session.State.SelectionKind, _session.State.InspectorExpanded, _session.Inspector._researchExpanded,
-            _session.Map.CaptureMapSelection(), _session.Map.CaptureViewport(), new Dictionary<string, bool>(_session.Inspector._expandedDetails),
-            new ResearchViewState(_session.Inspector._selectedResearch, _session.Inspector._researchRoute, _session.Inspector._researchBranch,
+        var location = new InspectorLocation(_session.State.InspectorMode, _session.State.SelectedNationId,
+            _session.State.SelectedResidentId,
+            _session.Inspector._inspectorSettlementId, _session.State.SelectedTile, _session.State.SelectedBuildingId,
+            _session.Inspector._eventDetailId,
+            ScrollOffset, _session.State.SelectionKind, _session.State.InspectorExpanded,
+            _session.Inspector._researchExpanded,
+            _session.Map.CaptureMapSelection(), _session.Map.CaptureViewport(),
+            new Dictionary<string, bool>(_session.Inspector._expandedDetails),
+            new ResearchViewState(_session.Inspector._selectedResearch, _session.Inspector._researchRoute,
+                _session.Inspector._researchBranch,
                 _session.Inspector._civilizationDetails, _session.State.InspectorMode == "research"
                     ? _session.Inspector.ResearchGraph?.CaptureViewport()
                     : null));
@@ -126,7 +153,8 @@ internal sealed class InspectorNavigationViewModel : ViewModelBase
             return;
         }
 
-        if (_session.State.InspectorVisible && mode == _session.State.InspectorMode && _session.Inspector._inspectorKey == _session.Inspector.InspectorKey())
+        if (_session.State.InspectorVisible && mode == _session.State.InspectorMode &&
+            _session.Inspector._inspectorKey == _session.Inspector.InspectorKey())
             return;
         if (remember)
             RememberLocation();
@@ -190,7 +218,8 @@ internal sealed class InspectorNavigationViewModel : ViewModelBase
     {
         if (_session.Interaction.IsPickingLocation)
             return;
-        if (_session.State.InspectorVisible && _session.State.InspectorMode == "resident" && _session.State.SelectedResidentId == id)
+        if (_session.State.InspectorVisible && _session.State.InspectorMode == "resident" &&
+            _session.State.SelectedResidentId == id)
             return;
         RememberLocation();
         _session.State.SelectedResidentId = id;
@@ -205,7 +234,8 @@ internal sealed class InspectorNavigationViewModel : ViewModelBase
     {
         if (_session.Interaction.IsPickingLocation)
             return;
-        if (_session.State.InspectorVisible && _session.State.InspectorMode == "nation" && _session.State.SelectedNationId == id)
+        if (_session.State.InspectorVisible && _session.State.InspectorMode == "nation" &&
+            _session.State.SelectedNationId == id)
             return;
         RememberLocation();
         _session.State.SelectedNationId = id;
@@ -216,7 +246,8 @@ internal sealed class InspectorNavigationViewModel : ViewModelBase
     {
         if (_session.Interaction.IsPickingLocation)
             return;
-        if (_session.State.InspectorVisible && _session.State.InspectorMode == mode && _session.Inspector._inspectorSettlementId == id)
+        if (_session.State.InspectorVisible && _session.State.InspectorMode == mode &&
+            _session.Inspector._inspectorSettlementId == id)
             return;
         RememberLocation();
         _session.Inspector._inspectorSettlementId = id;
@@ -227,7 +258,8 @@ internal sealed class InspectorNavigationViewModel : ViewModelBase
     {
         if (_session.Interaction.IsPickingLocation)
             return;
-        if (_session.State.InspectorVisible && _session.State.InspectorMode == "tile" && _session.State.SelectedTile == (x, y))
+        if (_session.State.InspectorVisible && _session.State.InspectorMode == "tile" &&
+            _session.State.SelectedTile == (x, y))
             return;
         if (locate)
             RememberObservation();
@@ -252,7 +284,8 @@ internal sealed class InspectorNavigationViewModel : ViewModelBase
             _session.State.SelectedBuildingId = 0;
             _session.State.SelectedTile = null;
             _session.Map.SelectResident(_session.State.SelectedResidentId,
-                _session.Map.SelectedResidentId == _session.State.SelectedResidentId && _session.Map.FollowSelectedResident);
+                _session.Map.SelectedResidentId == _session.State.SelectedResidentId &&
+                _session.Map.FollowSelectedResident);
         }
         else if (_session.State.InspectorMode == "building")
         {
@@ -268,30 +301,6 @@ internal sealed class InspectorNavigationViewModel : ViewModelBase
             _session.Map.SelectMapTile(tile.X, tile.Y);
         }
     }
-
-    private sealed record InspectorLocation(
-        string Mode,
-        int Nation,
-        int Resident,
-        int Town,
-        (int X, int Y)? Tile,
-        int Building,
-        int Event,
-        Vector Scroll,
-        string? SelectionKind,
-        bool Expanded,
-        bool ResearchExpanded,
-        WorldMapControl.MapSelectionState MapSelection,
-        WorldMapControl.ViewportState Viewport,
-        Dictionary<string, bool> Details,
-        ResearchViewState Research);
-
-    private sealed record ResearchViewState(
-        Advancement Selected,
-        ResearchRoute Route,
-        ResearchBranch? Branch,
-        bool CivilizationDetails,
-        ResearchGraphViewModel.ViewportState? Viewport);
 
 
     internal void SelectMapObject(string kind, int id = 0, int x = 0, int y = 0)
@@ -349,12 +358,12 @@ internal sealed class InspectorNavigationViewModel : ViewModelBase
     }
 
 
-
     internal void OpenBuilding(Building building)
     {
         if (_session.Interaction.IsPickingLocation)
             return;
-        if (_session.State.InspectorVisible && _session.State.InspectorMode == "building" && _session.State.SelectedBuildingId == building.Id)
+        if (_session.State.InspectorVisible && _session.State.InspectorMode == "building" &&
+            _session.State.SelectedBuildingId == building.Id)
             return;
         RememberLocation();
         _session.State.SelectedBuildingId = building.Id;
@@ -368,12 +377,14 @@ internal sealed class InspectorNavigationViewModel : ViewModelBase
     {
         if (_session.Interaction.IsPickingLocation)
             return;
-        if (_session.State.InspectorVisible && _session.State.InspectorMode == "event" && _session.Inspector._eventDetailId == item.Id)
+        if (_session.State.InspectorVisible && _session.State.InspectorMode == "event" &&
+            _session.Inspector._eventDetailId == item.Id)
             return;
         RememberLocation();
         _session.Inspector._eventDetailId = item.Id;
         OpenInspector("event", false);
     }
+
     internal void CloseInspector()
     {
         if (_session.Interaction.IsPickingLocation)
@@ -387,6 +398,7 @@ internal sealed class InspectorNavigationViewModel : ViewModelBase
         _session.Layout.Refresh();
         _session.RequestFocus();
     }
+
     internal void LocateMapSelection()
     {
         if (_session.State.SelectionKind == "resident")
@@ -394,4 +406,28 @@ internal sealed class InspectorNavigationViewModel : ViewModelBase
         else if (_session.State.SelectedTile is { } tile)
             FocusMapTile(tile.X, tile.Y);
     }
+
+    private sealed record InspectorLocation(
+        string Mode,
+        int Nation,
+        int Resident,
+        int Town,
+        (int X, int Y)? Tile,
+        int Building,
+        int Event,
+        Vector Scroll,
+        string? SelectionKind,
+        bool Expanded,
+        bool ResearchExpanded,
+        WorldMapControl.MapSelectionState MapSelection,
+        WorldMapControl.ViewportState Viewport,
+        Dictionary<string, bool> Details,
+        ResearchViewState Research);
+
+    private sealed record ResearchViewState(
+        Advancement Selected,
+        ResearchRoute Route,
+        ResearchBranch? Branch,
+        bool CivilizationDetails,
+        ResearchGraphViewModel.ViewportState? Viewport);
 }

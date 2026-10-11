@@ -15,6 +15,7 @@ public sealed class EntityMotionTrackTests
         Assert.Equal(new Point(3, 2), track.Position(10.5));
         Assert.Equal(new Point(3, 2.5), track.Position(10.75));
     }
+
     /// <summary>未提交移动时保持初始位置。</summary>
     [Fact]
     public void New_track_stays_at_its_initial_position()

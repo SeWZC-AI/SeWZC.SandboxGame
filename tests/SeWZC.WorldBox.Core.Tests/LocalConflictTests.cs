@@ -11,31 +11,58 @@ public sealed class LocalConflictTests
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, 1);
         fixture.Engine.ConfigureWorld(new WorldRules
         {
-            Aging = false, Hunger = true, Thirst = false, Disease = false, Births = false,
-            Construction = false, Expansion = false, Research = false, Migration = false, Secession = false,
+            Aging = false,
+            Hunger = true,
+            Thirst = false,
+            Disease = false,
+            Births = false,
+            Construction = false,
+            Expansion = false,
+            Research = false,
+            Migration = false,
+            Secession = false,
         }, false, false);
         foreach (var person in fixture.Engine.Residents)
             person.Replace(person.Value with
             {
-                Age = 25, Hunger = 50, Inventory = new ResourceStock(), FrozenUntilTick = 100,
+                Age = 25,
+                Hunger = 50,
+                Inventory = new ResourceStock(),
+                FrozenUntilTick = 100,
                 Agent = new AgentState
                 {
-                    Initialized = true, NextThinkTick = 100, Goal = new AgentGoal { ReviewTick = 100 },
-                    Memory = [new AgentFact
-                    {
-                        Kind = AgentFactKind.FoodSupply, SubjectId = fixture.Town.Value.Id,
-                        Confidence = 1, ObservedTick = 1, LearnedTick = 1,
-                    }],
+                    Initialized = true,
+                    NextThinkTick = 100,
+                    Goal = new AgentGoal { ReviewTick = 100 },
+                    Memory =
+                    [
+                        new AgentFact
+                        {
+                            Kind = AgentFactKind.FoodSupply,
+                            SubjectId = fixture.Town.Value.Id,
+                            Confidence = 1,
+                            ObservedTick = 1,
+                            LearnedTick = 1,
+                        },
+                    ],
                 },
             });
         var first = fixture.Engine.Residents[0];
         var second = fixture.Engine.Residents[1];
-        fixture.Engine.Conflicts = [new LocalConflict
-        {
-            Id = fixture.Engine.NextId++, FirstResidentId = first.Value.Id, SecondResidentId = second.Value.Id,
-            SettlementId = fixture.Town.Value.Id, X = 16, Y = 16, Tension = 20,
-            Participants = [first.Value.Id, second.Value.Id],
-        }];
+        fixture.Engine.Conflicts =
+        [
+            new LocalConflict
+            {
+                Id = fixture.Engine.NextId++,
+                FirstResidentId = first.Value.Id,
+                SecondResidentId = second.Value.Id,
+                SettlementId = fixture.Town.Value.Id,
+                X = 16,
+                Y = 16,
+                Tension = 20,
+                Participants = [first.Value.Id, second.Value.Id],
+            },
+        ];
         fixture.Engine.SimulationTick = 11;
         fixture.Engine.Step();
         var before = fixture.Engine.State;

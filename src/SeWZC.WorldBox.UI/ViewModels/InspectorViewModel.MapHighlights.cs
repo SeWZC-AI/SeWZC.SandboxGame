@@ -1,8 +1,4 @@
-using Avalonia;
 using Avalonia.Layout;
-using Avalonia.Media;
-using SeWZC.WorldBox.Core;
-using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI.ViewModels;
@@ -56,5 +52,4 @@ internal sealed partial class InspectorViewModel
         panel.Children.Add(Paragraph("地图标记\n在世界概览或道路与建筑页面选择高亮类型，选择关闭后保持关闭。煤堆表示煤，油井表示石油，紫色矿晶表示稀土。所有高亮和图标设置只影响观察。"));
         panel.Children.Add(Button("返回世界概览", () => OpenInspector("overview")));
     }
-
 }

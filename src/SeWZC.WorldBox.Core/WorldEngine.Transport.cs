@@ -15,9 +15,11 @@ public sealed partial class WorldEngine
     /// <param name="home">出借载具的本地聚落仓库。</param>
     private void PrepareJourneyTransport(StateReference<Resident> person, StateReference<Settlement> home)
     {
-        if (person.Value.TravelMode != TravelMode.Foot || Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) > 1)
+        if (person.Value.TravelMode != TravelMode.Foot ||
+            Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) > 1)
             return;
-        var distance = Distance(home.Value.X, home.Value.Y, person.Value.Agent.Goal.TargetX, person.Value.Agent.Goal.TargetY);
+        var distance = Distance(home.Value.X, home.Value.Y, person.Value.Agent.Goal.TargetX,
+            person.Value.Agent.Goal.TargetY);
         if (distance < 6 && person.Value.Agent.Goal.Kind != AgentGoalKind.Fish)
             return;
         // 起飞时预留往返燃料，避免途中凭空从远方仓库补给。
@@ -26,8 +28,14 @@ public sealed partial class WorldEngine
             HasResearch(home.Value.Id, Advancement.Electrification)
             && home.Value.Resources.Aircraft >= 1 && home.Value.Resources.Oil >= fuel)
         {
-            home.Replace(home.Value.WithResources(home.Value.Resources with { Aircraft = home.Value.Resources.Aircraft - 1 }));
-            person.Replace(person.Value.WithInventory(person.Value.Inventory with { Aircraft = person.Value.Inventory.Aircraft + 1 }));
+            home.Replace(home.Value.WithResources(home.Value.Resources with
+            {
+                Aircraft = home.Value.Resources.Aircraft - 1,
+            }));
+            person.Replace(person.Value.WithInventory(person.Value.Inventory with
+            {
+                Aircraft = person.Value.Inventory.Aircraft + 1,
+            }));
             home.Replace(home.Value.WithResources(home.Value.Resources with { Oil = home.Value.Resources.Oil - fuel }));
             person.Replace(person.Value.WithTravelMode(TravelMode.Aircraft));
             AddEvent(WorldEventKind.Trade, $"{person.Value.Name}在{home.Value.Name}装载运输机，携带货物与消息启程；已消耗往返燃料 {fuel:0.#}。",
@@ -35,8 +43,14 @@ public sealed partial class WorldEngine
         }
         else if (HasResearch(home.Value.Id, Advancement.Logistics) && home.Value.Resources.Boats >= 1)
         {
-            home.Replace(home.Value.WithResources(home.Value.Resources with { Boats = home.Value.Resources.Boats - 1 }));
-            person.Replace(person.Value.WithInventory(person.Value.Inventory with { Boats = person.Value.Inventory.Boats + 1 }));
+            home.Replace(home.Value.WithResources(home.Value.Resources with
+            {
+                Boats = home.Value.Resources.Boats - 1,
+            }));
+            person.Replace(person.Value.WithInventory(person.Value.Inventory with
+            {
+                Boats = person.Value.Inventory.Boats + 1,
+            }));
             person.Replace(person.Value.WithTravelMode(TravelMode.Boat));
         }
     }

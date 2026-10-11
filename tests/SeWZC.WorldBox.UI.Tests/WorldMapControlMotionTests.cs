@@ -22,26 +22,46 @@ public sealed class WorldMapControlMotionTests
                 engine.PaintTerrain(3, 2, TerrainType.Mountain, 0);
                 engine.PaintTerrain(2, 4, TerrainType.Mountain, 0);
             }
+
             var snapshot = engine.State;
             var commander = snapshot.Residents[0];
             var army = new Army
             {
-                Id = snapshot.NextId, NationId = commander.NationId,
+                Id = snapshot.NextId,
+                NationId = commander.NationId,
                 TargetNationId = snapshot.Nations.Single(n => n.Id != commander.NationId).Id,
-                X = 2, Y = 2, FromX = 2, FromY = 2, TargetX = 16, TargetY = 16,
-                CommanderId = commander.Id, Soldiers = 1, InitialSoldiers = 1,
-                Gathering = false, Retreating = true, Supplies = 10, WaterSupplies = 10,
+                X = 2,
+                Y = 2,
+                FromX = 2,
+                FromY = 2,
+                TargetX = 16,
+                TargetY = 16,
+                CommanderId = commander.Id,
+                Soldiers = 1,
+                InitialSoldiers = 1,
+                Gathering = false,
+                Retreating = true,
+                Supplies = 10,
+                WaterSupplies = 10,
             };
             commander = commander with
             {
-                X = 2, Y = 2, FromX = 2, FromY = 2, Age = 25, ArmyId = army.Id,
-                IsInsideHome = false, Inventory = new ResourceStock { Food = 1, Water = 1 },
+                X = 2,
+                Y = 2,
+                FromX = 2,
+                FromY = 2,
+                Age = 25,
+                ArmyId = army.Id,
+                IsInsideHome = false,
+                Inventory = new ResourceStock { Food = 1, Water = 1 },
                 Agent = commander.Agent with { Initialized = true },
             };
             engine = WorldEngine.FromSnapshot(snapshot with
             {
-                Tick = SimulationTime.WakeTick, NextId = snapshot.NextId + 1,
-                Residents = snapshot.Residents.SetItem(0, commander), Armies = snapshot.Armies.Add(army),
+                Tick = SimulationTime.WakeTick,
+                NextId = snapshot.NextId + 1,
+                Residents = snapshot.Residents.SetItem(0, commander),
+                Armies = snapshot.Armies.Add(army),
             });
             var map = new WorldMapControl { Engine = engine };
 

@@ -32,7 +32,7 @@ public sealed partial class WorldEngine
                 building.Replace(building.Value with
                 {
                     Observation = building.Value.Observation.Observe(SimulationTick, Rules.DevelopmentRate,
-                    building.Value.ConstructionProgress)
+                        building.Value.ConstructionProgress),
                 });
             }
 

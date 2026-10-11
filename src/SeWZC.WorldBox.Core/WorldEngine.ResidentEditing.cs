@@ -138,9 +138,7 @@ public sealed partial class WorldEngine
                 throw new ArgumentException("目标聚落不存在。");
             candidate = candidate with { SettlementId = townId, NationId = town.NationId };
             if (townId != original.SettlementId)
-            {
                 candidate = candidate with { X = town.X, Y = town.Y, ArmyId = 0 };
-            }
         }
 
         candidate = candidate with
@@ -165,9 +163,7 @@ public sealed partial class WorldEngine
         };
         var agent = candidate.Agent;
         if (candidate.Profession != original.Profession || candidate.SettlementId != original.SettlementId)
-        {
             agent = agent with { WorkplaceId = 0, WorkAreaIndex = -1 };
-        }
 
         if (patch.Trait is not null)
         {
@@ -190,8 +186,15 @@ public sealed partial class WorldEngine
         {
             candidate = candidate with
             {
-                FromX = candidate.X, FromY = candidate.Y, MoveStartedTick = state.Tick, MoveDurationTicks = 1,
-                MovementRoute = [], MovementCredit = 0, IsInsideHome = false, BedRestAfterRescue = false, CarriedByResidentId = 0,
+                FromX = candidate.X,
+                FromY = candidate.Y,
+                MoveStartedTick = state.Tick,
+                MoveDurationTicks = 1,
+                MovementRoute = [],
+                MovementCredit = 0,
+                IsInsideHome = false,
+                BedRestAfterRescue = false,
+                CarriedByResidentId = 0,
             };
         }
 
@@ -199,7 +202,8 @@ public sealed partial class WorldEngine
         ValidateStoryReferences(candidate, state.NextId);
         if (isLive)
         {
-            var carrier = candidate.CarriedByResidentId == 0 ? null
+            var carrier = candidate.CarriedByResidentId == 0
+                ? null
                 : state.Residents.FirstOrDefault(person => person.Id == candidate.CarriedByResidentId);
             if (!Coordinates(candidate.X, candidate.Y, state.Width, state.Height) || !CanTraverse(
                     state.Tiles[candidate.Y * state.Width + candidate.X],
@@ -264,10 +268,14 @@ public sealed partial class WorldEngine
 
         candidate = candidate with { Agent = candidate.Agent with { NextThinkTick = state.Tick } };
         if (patch.Agent is not null || candidate.Profession != original.Profession
-            || candidate.SettlementId != original.SettlementId || candidate.X != original.X || candidate.Y != original.Y)
+                                    || candidate.SettlementId != original.SettlementId || candidate.X != original.X ||
+                                    candidate.Y != original.Y)
             candidate = candidate with { Agent = candidate.Agent with { DailyPlan = null } };
         if (candidate.SettlementId != original.SettlementId)
-            candidate = candidate with { HomeBuildingId = 0, IsInsideHome = false, BedRestAfterRescue = false, CarriedByResidentId = 0 };
+            candidate = candidate with
+            {
+                HomeBuildingId = 0, IsInsideHome = false, BedRestAfterRescue = false, CarriedByResidentId = 0,
+            };
 
 
         var startMission = isLive && patch.Agent is not null &&

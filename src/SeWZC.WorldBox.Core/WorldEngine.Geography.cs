@@ -1,5 +1,3 @@
-using SeWZC.WorldBox.Core.Runtime;
-
 namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
@@ -24,7 +22,9 @@ public sealed partial class WorldEngine
             tile.Replace(before with
             {
                 RiverWidth = 0,
-                Terrain = before.Elevation < 51 ? TerrainType.DeepWater : before.Elevation < 69 ? TerrainType.Water : TerrainType.Grass,
+                Terrain =
+                before.Elevation < 51 ? TerrainType.DeepWater :
+                before.Elevation < 69 ? TerrainType.Water : TerrainType.Grass,
                 Fertility = (byte)Math.Clamp(15 + Noise(x / 23d, y / 23d, 1201) * 85, 0, 100),
                 Rainfall = Math.Round(.002 + Math.Pow(Noise(x / 27d, y / 27d, 1601), 3) * .24, 6),
             });
@@ -168,16 +168,19 @@ public sealed partial class WorldEngine
             var tile = tiles[i];
             var shore = distances[i] == int.MaxValue ? 0 : .1 * Math.Exp(-Math.Pow(distances[i] / 4d, 2));
             var generated = tile.Value.WithNaturalWaterYield(IsWaterTerrain(tile.Value.Terrain)
-                ? 0 : Math.Round(tile.Value.Rainfall + shore, 6));
+                ? 0
+                : Math.Round(tile.Value.Rainfall + shore, 6));
             if (!IsWaterTerrain(generated.Terrain))
             {
-                RaceKind? demoRace = _demoHabitat is not null && _demoHabitat[i] >= 0 ? (RaceKind)_demoHabitat[i] : null;
+                RaceKind? demoRace =
+                    _demoHabitat is not null && _demoHabitat[i] >= 0 ? (RaceKind)_demoHabitat[i] : null;
                 var variation = demoRace is null ? 0 : Noise(i % Width / 2d, i / Width / 2d, 1901);
                 generated = generated.WithGeneratedBiome((i / Width + .5) / Height * 2 - 1,
                     distances[i], demoRace, variation);
             }
 
-            tile.Replace(generated.WithResourceAmount(IsWaterTerrain(generated.Terrain) ? 0 : 50 + generated.Fertility));
+            tile.Replace(
+                generated.WithResourceAmount(IsWaterTerrain(generated.Terrain) ? 0 : 50 + generated.Fertility));
             tile.Replace(tile.Value.WithGeneratedDeposit(Seed, i % Width, i / Width));
         }
 

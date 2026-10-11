@@ -4,9 +4,11 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private bool CompleteBuildingWorkCycle(StateReference<Building> building, StateReference<Resident> person, bool service = false)
+    private bool CompleteBuildingWorkCycle(StateReference<Building> building, StateReference<Resident> person,
+        bool service = false)
     {
-        var progress = building.Value.ProductionProgress + ResidentNeedsRules.WorkEfficiency(person.Value, IsMentalWork(building.Value));
+        var progress = building.Value.ProductionProgress +
+                       ResidentNeedsRules.WorkEfficiency(person.Value, IsMentalWork(building.Value));
         var complete = progress >= 1;
         building.Replace(building.Value with
         {
@@ -16,8 +18,10 @@ public sealed partial class WorldEngine
         return complete;
     }
 
-    private static int ServiceDurationTicks(Resident person, Building building, int ticks) =>
-        (int)(ticks * ResidentNeedsRules.WorkEfficiency(person, IsMentalWork(building)));
+    private static int ServiceDurationTicks(Resident person, Building building, int ticks)
+    {
+        return (int)(ticks * ResidentNeedsRules.WorkEfficiency(person, IsMentalWork(building)));
+    }
 
     private static double CombatEffort(IEnumerable<StateReference<Resident>> residents, int elapsedTicks)
     {
@@ -27,11 +31,14 @@ public sealed partial class WorldEngine
             if (person.Value.Health <= 0 || !ResidentNeedsRules.CanWork(person.Value))
                 continue;
             effort += ResidentNeedsRules.WorkEfficiency(person.Value);
-            person.Replace(person.Value.WithAction(person.Value.Agent with
-            {
-                Fatigue = ResidentNeedsRules.ExertionFatigue(person.Value, ResidentNeedsRules.PhysicalWorkCostPerTick * elapsedTicks),
-            }, ResidentActivity.Working));
+            person.Replace(person.Value.WithAction(
+                person.Value.Agent with
+                {
+                    Fatigue = ResidentNeedsRules.ExertionFatigue(person.Value,
+                        ResidentNeedsRules.PhysicalWorkCostPerTick * elapsedTicks),
+                }, ResidentActivity.Working));
         }
+
         return effort;
     }
 
@@ -54,19 +61,28 @@ public sealed partial class WorldEngine
                     homeQuality.Add(person.SettlementId, quality);
                 }
             }
+
             reference.Replace(person.AdvanceRecovery(Rules, SimulationTick, quality));
         }
     }
 
-    private static bool IsLaborGoal(AgentGoalKind kind) => kind is AgentGoalKind.Gather or AgentGoalKind.Work
-        or AgentGoalKind.Study or AgentGoalKind.TrainMagic or AgentGoalKind.ClaimLand or AgentGoalKind.FetchWater
-        or AgentGoalKind.Hunt or AgentGoalKind.Fish or AgentGoalKind.ExtinguishFire or AgentGoalKind.DeliverMessage
-        or AgentGoalKind.Trade or AgentGoalKind.Petition or AgentGoalKind.Rescue;
+    private static bool IsLaborGoal(AgentGoalKind kind)
+    {
+        return kind is AgentGoalKind.Gather or AgentGoalKind.Work
+            or AgentGoalKind.Study or AgentGoalKind.TrainMagic or AgentGoalKind.ClaimLand or AgentGoalKind.FetchWater
+            or AgentGoalKind.Hunt or AgentGoalKind.Fish or AgentGoalKind.ExtinguishFire or AgentGoalKind.DeliverMessage
+            or AgentGoalKind.Trade or AgentGoalKind.Petition or AgentGoalKind.Rescue;
+    }
 
-    private static bool IsMentalWork(Building building) => building.IsCompleted && !building.IsUpgrading && building.Health >= 50
-        && building.Kind is BuildingKind.Academy or BuildingKind.Waystation or BuildingKind.SignalTower
-            or BuildingKind.ArcaneSanctum or BuildingKind.Infirmary or BuildingKind.Crystallizer
-            or BuildingKind.Market or BuildingKind.AssemblyHall or BuildingKind.TradeGuild or BuildingKind.SacredGrove
-            or BuildingKind.Hospital or BuildingKind.Library or BuildingKind.SurveyOffice or BuildingKind.AlchemyLab
-            or BuildingKind.WardTower or BuildingKind.StormSpire or BuildingKind.Waygate;
+    private static bool IsMentalWork(Building building)
+    {
+        return building.IsCompleted && !building.IsUpgrading && building.Health >= 50
+               && building.Kind is BuildingKind.Academy or BuildingKind.Waystation or BuildingKind.SignalTower
+                   or BuildingKind.ArcaneSanctum or BuildingKind.Infirmary or BuildingKind.Crystallizer
+                   or BuildingKind.Market or BuildingKind.AssemblyHall or BuildingKind.TradeGuild
+                   or BuildingKind.SacredGrove
+                   or BuildingKind.Hospital or BuildingKind.Library or BuildingKind.SurveyOffice
+                   or BuildingKind.AlchemyLab
+                   or BuildingKind.WardTower or BuildingKind.StormSpire or BuildingKind.Waygate;
+    }
 }

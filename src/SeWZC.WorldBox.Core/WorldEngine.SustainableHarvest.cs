@@ -44,7 +44,8 @@ public sealed partial class WorldEngine
 
     private double WildlifeHarvestAmount(StateReference<Tile> tile, WildlifeKind kind, double effort)
     {
-        return Math.Min(tile.Value.AnimalPopulation(kind) * .1, Math.Max(0, effort) * WildlifeHarvestEfficiency(tile, kind));
+        return Math.Min(tile.Value.AnimalPopulation(kind) * .1,
+            Math.Max(0, effort) * WildlifeHarvestEfficiency(tile, kind));
     }
 
     private double NaturalPlantHarvestEfficiency(StateReference<Tile> tile, bool wood = false)

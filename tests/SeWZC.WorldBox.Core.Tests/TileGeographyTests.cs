@@ -7,8 +7,15 @@ public sealed class TileGeographyTests
     [Fact]
     public void Demo_biome_returns_complete_hydrology_without_mutating_source()
     {
-        var before = new Tile { Terrain = TerrainType.River, RiverWidth = 3, Fertility = 20,
-            Elevation = 100, Rainfall = .1, NaturalWaterYield = .2 };
+        var before = new Tile
+        {
+            Terrain = TerrainType.River,
+            RiverWidth = 3,
+            Fertility = 20,
+            Elevation = 100,
+            Rainfall = .1,
+            NaturalWaterYield = .2,
+        };
 
         var after = before.WithGeneratedBiome(0, 4, RaceKind.Human, .2);
 

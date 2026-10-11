@@ -12,7 +12,8 @@ public sealed partial class WorldEngine
     // 建村登记实际占据的地点，人口决定占地上限。
     private void ClaimTerritory(StateReference<Settlement> town, int radius)
     {
-        town.Replace(town.Value with { MaxClaimRadius = Math.Max(town.Value.MaxClaimRadius, Math.Clamp(radius, 1, 17)) });
+        town.Replace(
+            town.Value with { MaxClaimRadius = Math.Max(town.Value.MaxClaimRadius, Math.Clamp(radius, 1, 17)) });
         if (town.Value.FoundationPending)
             return;
         var tile = Tiles[Index(town.Value.X, town.Value.Y)];
@@ -24,7 +25,8 @@ public sealed partial class WorldEngine
         var tile = Tiles[index];
         var x = index % Width;
         var y = index / Width;
-        if (!RaceTerrainRules.CanWalk(tile.Value, race) || IsWaterTerrain(tile.Value.Terrain) || tile.Value.FireTicks > 0 ||
+        if (!RaceTerrainRules.CanWalk(tile.Value, race) || IsWaterTerrain(tile.Value.Terrain) ||
+            tile.Value.FireTicks > 0 ||
             tile.Value.ClaimedSettlementId != 0
             || (tile.Value.NationId != 0 && tile.Value.NationId != town.Value.NationId)
             || Distance(town.Value.X, town.Value.Y, x, y) > town.Value.MaxClaimRadius)
@@ -38,7 +40,8 @@ public sealed partial class WorldEngine
 
     private int VisibleClaimSite(StateReference<Resident> person, StateReference<Settlement> town)
     {
-        if (town.Value.FoundationPending || !Rules.Expansion || person.Value.Age < ResidentNeedsRules.MinimumWorkAge || person.Value.ArmyId != 0
+        if (town.Value.FoundationPending || !Rules.Expansion || person.Value.Age < ResidentNeedsRules.MinimumWorkAge ||
+            person.Value.ArmyId != 0
             || person.Value.Profession != Profession.Builder)
             return -1;
         var active = 0;
@@ -74,14 +77,16 @@ public sealed partial class WorldEngine
 
     private bool TryClaimLand(StateReference<Resident> person)
     {
-        if (!_settlements.TryGetValue(person.Value.SettlementId, out var town) || !ResidentNeedsRules.CanWork(person.Value) || person.Value.ArmyId != 0
+        if (!_settlements.TryGetValue(person.Value.SettlementId, out var town) ||
+            !ResidentNeedsRules.CanWork(person.Value) || person.Value.ArmyId != 0
             || person.Value.Health <= 0 || person.Value.Agent.Goal.Kind != AgentGoalKind.ClaimLand
             || SimulationTick - person.Value.MoveStartedTick < person.Value.MoveDurationTicks
             || person.Value.X != person.Value.Agent.Goal.TargetX || person.Value.Y != person.Value.Agent.Goal.TargetY)
             return false;
         var index = Index(person.Value.X, person.Value.Y);
         if (Residents.Any(r =>
-                r.Value.Id != person.Value.Id && r.Value.Health > 0 && r.Value.SettlementId != town.Value.Id && r.Value.X == person.Value.X && r.Value.Y == person.Value.Y))
+                r.Value.Id != person.Value.Id && r.Value.Health > 0 && r.Value.SettlementId != town.Value.Id &&
+                r.Value.X == person.Value.X && r.Value.Y == person.Value.Y))
             return false;
         if (!CanClaimTile(town, index, person.Value.Race))
         {
@@ -90,12 +95,15 @@ public sealed partial class WorldEngine
         }
 
         var goal = person.Value.Agent.Goal;
-        var progress = Math.Min(AgentGoal.MaximumResidenceTicks, goal.LaborProgress + ResidentNeedsRules.WorkEfficiency(person.Value));
-        person.Replace(person.Value.WithAction(person.Value.Agent with
-        {
-            Goal = goal with { LaborProgress = progress },
-            Fatigue = ResidentNeedsRules.ExertionFatigue(person.Value, ResidentNeedsRules.PhysicalWorkCostPerTick),
-        }, ResidentActivity.Working));
+        var progress = Math.Min(AgentGoal.MaximumResidenceTicks,
+            goal.LaborProgress + ResidentNeedsRules.WorkEfficiency(person.Value));
+        person.Replace(person.Value.WithAction(
+            person.Value.Agent with
+            {
+                Goal = goal with { LaborProgress = progress },
+                Fatigue = ResidentNeedsRules.ExertionFatigue(person.Value,
+                    ResidentNeedsRules.PhysicalWorkCostPerTick),
+            }, ResidentActivity.Working));
         if (progress < AgentGoal.MaximumResidenceTicks)
             return true;
         var tile = Tiles[index];
@@ -103,7 +111,8 @@ public sealed partial class WorldEngine
         person.Replace(person.Value.WithAgent(person.Value.Agent with { NextThinkTick = SimulationTick }));
         if (SimulationTick % 12 == 0)
         {
-            AddEvent(WorldEventKind.Growth, $"{person.Value.Name}实地为{town.Value.Name}登记新地盘。", person.Value.X, person.Value.Y,
+            AddEvent(WorldEventKind.Growth, $"{person.Value.Name}实地为{town.Value.Name}登记新地盘。", person.Value.X,
+                person.Value.Y,
                 EventAction.General, town.Value.Id, person.Value.Id);
         }
 
@@ -131,7 +140,8 @@ public sealed partial class WorldEngine
         ClaimTerritory(town, 4);
         AddFoundingFacility(town, BuildingKind.Farm);
         AddFoundingFacility(town, BuildingKind.Workshop);
-        AddEvent(WorldEventKind.Founding, $"{person.Value.Name}到场驻留后建立{town.Value.Name}，开始实地登记地盘。", town.Value.X, town.Value.Y,
+        AddEvent(WorldEventKind.Founding, $"{person.Value.Name}到场驻留后建立{town.Value.Name}，开始实地登记地盘。", town.Value.X,
+            town.Value.Y,
             EventAction.Completed, town.Value.Id, person.Value.Id);
     }
 
@@ -147,9 +157,10 @@ public sealed partial class WorldEngine
         if (tile.Value.ClaimedSettlementId != 0 && tile.Value.ClaimedSettlementId != town.Value.Id)
             return;
         if (tile.Value.ClaimedSettlementId == 0 && !Directions.Any(d => InBounds(building.X + d.X, building.Y + d.Y)
-                                                                  && Tiles[
-                                                                          Index(building.X + d.X, building.Y + d.Y)].Value
-                                                                      .ClaimedSettlementId == town.Value.Id))
+                                                                        && Tiles[
+                                                                                Index(building.X + d.X,
+                                                                                    building.Y + d.Y)].Value
+                                                                            .ClaimedSettlementId == town.Value.Id))
             return;
         tile.Replace(tile.Value.WithNationId(town.Value.NationId));
         if (tile.Value.ClaimedSettlementId == 0)

@@ -115,7 +115,10 @@ public sealed class MainViewModelTests
         Assert.True(model.HasEvent);
     }
 
-    private static MainViewModel CreateModel() => new(WorldEngine.Create(42, 32, 32, false));
+    private static MainViewModel CreateModel()
+    {
+        return new MainViewModel(WorldEngine.Create(42, 32, 32, false));
+    }
 
     /// <summary>进食和昏迷会中断劳动，摘要显示实际行动而非保留的任务目标。</summary>
     [Theory]
@@ -131,15 +134,21 @@ public sealed class MainViewModelTests
         var resident = state.Residents.Single();
         model.Engine = WorldEngine.FromSnapshot(state with
         {
-            Residents = state.Residents.SetItem(0, resident with
-            {
-                Activity = activity,
-                Agent = resident.Agent with
+            Residents = state.Residents.SetItem(0,
+                resident with
                 {
-                    Sleep = activity == ResidentActivity.Unconscious ? 0 : ResidentNeedsRules.MaximumPercent,
-                    Goal = new AgentGoal { Kind = AgentGoalKind.Work, TargetX = resident.X, TargetY = resident.Y },
-                },
-            }),
+                    Activity = activity,
+                    Agent = resident.Agent with
+                    {
+                        Sleep = activity == ResidentActivity.Unconscious
+                            ? 0
+                            : ResidentNeedsRules.MaximumPercent,
+                        Goal = new AgentGoal
+                        {
+                            Kind = AgentGoalKind.Work, TargetX = resident.X, TargetY = resident.Y,
+                        },
+                    },
+                }),
         });
         var world = model.Engine.ExportJson();
         model.SelectionKind = "resident";

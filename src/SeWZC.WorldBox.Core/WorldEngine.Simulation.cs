@@ -85,6 +85,7 @@ public sealed partial class WorldEngine
             if (person.SicknessTicks > 0)
                 infected.Add(Index(person.X, person.Y));
         }
+
         BeginDailyDrinking();
         // 库存只在本阶段按居民顺序记账，阶段结束显式提交聚落。
         var warehouses = new ResourceStock[Settlements.Count];
@@ -131,14 +132,18 @@ public sealed partial class WorldEngine
                 warehouses[home.Position] = supplied.Warehouse;
             }
             else if (person.Health > 0 && person.ArmyId != 0
-                     && tick - person.MoveStartedTick >= person.MoveDurationTicks
-                     && Armies.FirstOrDefault(a => a.Value.Id == person.ArmyId) is { } army
-                     && Distance(person.X, person.Y, army.Value.X, army.Value.Y) <= 2)
+                                       && tick - person.MoveStartedTick >= person.MoveDurationTicks
+                                       && Armies.FirstOrDefault(a => a.Value.Id == person.ArmyId) is { } army
+                                       && Distance(person.X, person.Y, army.Value.X, army.Value.Y) <= 2)
             {
                 var food = rules.Hunger
-                    ? Math.Min(army.Value.Supplies, Math.Max(0, FoodUse(person) / ResidentNeedsRules.MealsPerDay - inventory.Food)) : 0;
+                    ? Math.Min(army.Value.Supplies,
+                        Math.Max(0, FoodUse(person) / ResidentNeedsRules.MealsPerDay - inventory.Food))
+                    : 0;
                 var waterSupply = rules.Thirst
-                    ? Math.Min(army.Value.WaterSupplies, Math.Max(0, ResidentNeedsRules.WaterPerDrink(person.Age) - inventory.Water)) : 0;
+                    ? Math.Min(army.Value.WaterSupplies,
+                        Math.Max(0, ResidentNeedsRules.WaterPerDrink(person.Age) - inventory.Water))
+                    : 0;
                 inventory = inventory with { Food = inventory.Food + food, Water = inventory.Water + waterSupply };
                 army.Replace(army.Value with
                 {
@@ -175,8 +180,11 @@ public sealed partial class WorldEngine
                   * (HasResearch(person.SettlementId, Advancement.ManaAttunement) ? 1.5 : 1);
             var hasHome = _settlements.ContainsKey(person.SettlementId);
             var thirst = rules.Thirst
-                ? person.Thirst + ResidentNeedsRules.ThirstGrowthPerDay(age, tile.Value) / SimulationTime.TicksPerDay : 0;
-            var hunger = rules.Hunger ? person.Hunger + ResidentNeedsRules.HungerPerDay / SimulationTime.TicksPerDay : 0;
+                ? person.Thirst + ResidentNeedsRules.ThirstGrowthPerDay(age, tile.Value) / SimulationTime.TicksPerDay
+                : 0;
+            var hunger = rules.Hunger
+                ? person.Hunger + ResidentNeedsRules.HungerPerDay / SimulationTime.TicksPerDay
+                : 0;
             var assistedFeeding = HasHouseholdCarer(person);
             var waterPerDrink = ResidentNeedsRules.WaterPerDrink(age);
             var water = rules.Thirst && thirst >= ResidentNeedsRules.DrinkThreshold && inventory.Water < waterPerDrink
@@ -207,21 +215,23 @@ public sealed partial class WorldEngine
             var developmentReserve = LocalDevelopmentReserve(town);
             if (Rules.Construction && Rules.Expansion && SettlementExpansionError(town.Value.Id) is null
                 && ResourceStock.Kinds.All(k =>
-                    town.Value.Resources.Get(k) >= SettlementExpansionCost(town.Value.Tier).Get(k) + developmentReserve.Get(k)))
+                    town.Value.Resources.Get(k) >=
+                    SettlementExpansionCost(town.Value.Tier).Get(k) + developmentReserve.Get(k)))
                 ExpandTown(town.Value.Id);
             if (Rules.Construction && town.Value.Resources.Food >= citizens.Count * 2 + developmentReserve.Food
-                                           && GetHousingCapacity(town.Value.Id) < 60 + Buildings.Where(b =>
-                                                   b.Value.SettlementId == town.Value.Id && IsFacilityOperating(b.Value))
-                                               .Sum(b => b.Value.Kind == BuildingKind.Farm
-                                                   ? 30 * b.Value.Efficiency
-                                                   : b.Value.Kind is BuildingKind.AutomatedFarm or BuildingKind.RunicGarden
-                                                       ? 120 * b.Value.Efficiency
-                                                       : 0)
-                                           && citizens.Count > GetHousingCapacity(town.Value.Id) * 0.75
-                                           && !Buildings.Any(b =>
-                                               b.Value.SettlementId == town.Value.Id && (!b.Value.IsCompleted || b.Value.IsUpgrading))
-                                           && town.Value.Resources.Wood >= 25 + developmentReserve.Wood &&
-                                           town.Value.Resources.Stone >= 8 + developmentReserve.Stone)
+                                   && GetHousingCapacity(town.Value.Id) < 60 + Buildings.Where(b =>
+                                           b.Value.SettlementId == town.Value.Id && IsFacilityOperating(b.Value))
+                                       .Sum(b => b.Value.Kind == BuildingKind.Farm
+                                           ? 30 * b.Value.Efficiency
+                                           : b.Value.Kind is BuildingKind.AutomatedFarm or BuildingKind.RunicGarden
+                                               ? 120 * b.Value.Efficiency
+                                               : 0)
+                                   && citizens.Count > GetHousingCapacity(town.Value.Id) * 0.75
+                                   && !Buildings.Any(b =>
+                                       b.Value.SettlementId == town.Value.Id &&
+                                       (!b.Value.IsCompleted || b.Value.IsUpgrading))
+                                   && town.Value.Resources.Wood >= 25 + developmentReserve.Wood &&
+                                   town.Value.Resources.Stone >= 8 + developmentReserve.Stone)
             {
                 var site = BestBuildingSite(town, BuildingKind.Housing);
                 if (site >= 0)
@@ -240,7 +250,8 @@ public sealed partial class WorldEngine
                     && SimulationTick - p.Value.MoveStartedTick >= p.Value.MoveDurationTicks)
                 .ToArray();
             // 已返家的家庭可用随身口粮抚育下一代；不要求所有食物先积存在公共仓库，也不读取远处背包。
-            var familyFood = town.Value.Resources.Food + adults.Sum(p => Math.Max(0, p.Value.Inventory.Food - FoodUse(p) * 2));
+            var familyFood = town.Value.Resources.Food +
+                             adults.Sum(p => Math.Max(0, p.Value.Inventory.Food - FoodUse(p) * 2));
             var dailyFood = citizens.Sum(p => FoodUse(p));
             if (Rules.Births && adults.Length >= 6 &&
                 familyFood > dailyFood * 4 + .6 && Residents.Count < MaxPopulation)
@@ -257,14 +268,21 @@ public sealed partial class WorldEngine
                 {
                     var remaining = .6;
                     var stored = Math.Min(town.Value.Resources.Food, remaining);
-                    town.Replace(town.Value.WithResources(town.Value.Resources with { Food = town.Value.Resources.Food - stored }));
+                    town.Replace(town.Value.WithResources(town.Value.Resources with
+                    {
+                        Food = town.Value.Resources.Food - stored,
+                    }));
                     remaining -= stored;
                     foreach (var parent in adults)
                     {
                         if (remaining <= .000001)
                             break;
-                        var supplied = Math.Min(remaining, Math.Max(0, parent.Value.Inventory.Food - FoodUse(parent) * 2));
-                        parent.Replace(parent.Value.WithInventory(parent.Value.Inventory with { Food = parent.Value.Inventory.Food - supplied }));
+                        var supplied = Math.Min(remaining,
+                            Math.Max(0, parent.Value.Inventory.Food - FoodUse(parent) * 2));
+                        parent.Replace(parent.Value.WithInventory(parent.Value.Inventory with
+                        {
+                            Food = parent.Value.Inventory.Food - supplied,
+                        }));
                         remaining -= supplied;
                     }
 
@@ -277,7 +295,8 @@ public sealed partial class WorldEngine
                 }
 
                 if (SimulationTick % SimulationTime.TicksPerYear == 0)
-                    AddEvent(WorldEventKind.Growth, $"{town.Value.Name}迎来新生儿，人口增至{citizens.Count}。", town.Value.X, town.Value.Y);
+                    AddEvent(WorldEventKind.Growth, $"{town.Value.Name}迎来新生儿，人口增至{citizens.Count}。", town.Value.X,
+                        town.Value.Y);
             }
 
             if (Rules.Expansion && SimulationTick % SimulationTime.TicksPerYear == 0 && citizens.Count >= 80 &&
@@ -299,11 +318,11 @@ public sealed partial class WorldEngine
             return;
         // 建村地点须在出发前报告给原聚落，避免迁徙队伍使用未送达的信息。
         var location = origin.Value.PublicKnowledge.Where(f => f.Kind == AgentFactKind.FoundingSite &&
-                                                         f.LearnedTick < SimulationTick
-                                                         && SimulationTick - f.ObservedTick <=
-                                                         5 * SimulationTime.TicksPerYear &&
-                                                         f.Confidence >= .5 &&
-                                                         InBounds(f.X, f.Y))
+                                                               f.LearnedTick < SimulationTick
+                                                               && SimulationTick - f.ObservedTick <=
+                                                               5 * SimulationTime.TicksPerYear &&
+                                                               f.Confidence >= .5 &&
+                                                               InBounds(f.X, f.Y))
             .Select(f => Index(f.X, f.Y)).Where(i => !IsWaterTerrain(Tiles[i].Value.Terrain)
                                                      && pioneers.All(p =>
                                                          RaceTerrainRules.CanWalk(Tiles[i].Value, p.Value.Race)) &&
@@ -383,7 +402,8 @@ public sealed partial class WorldEngine
         ClaimTerritory(town, 4);
         InitializeSociety();
         AddEvent(WorldEventKind.Growth,
-            $"{_nations[origin.Value.NationId].Value.Name}派出 {pioneers.Length} 名成年人，携物资前往{town.Value.Name}；仓库等待实物抵达。", x, y);
+            $"{_nations[origin.Value.NationId].Value.Name}派出 {pioneers.Length} 名成年人，携物资前往{town.Value.Name}；仓库等待实物抵达。",
+            x, y);
     }
 
     private bool FoundingSiteSuitable(int index, ReadOnlySpan<RaceKind> races)
@@ -469,7 +489,10 @@ public sealed partial class WorldEngine
     private void RefreshTerritoryClaims()
     {
         foreach (var town in Settlements)
-            town.Replace(town.Value with { MaxClaimRadius = Math.Max(town.Value.MaxClaimRadius,
-                Math.Min(17, 6 + (_citizens.GetValueOrDefault(town.Value.Id)?.Count ?? 0) / 15)) });
+            town.Replace(town.Value with
+            {
+                MaxClaimRadius = Math.Max(town.Value.MaxClaimRadius,
+                    Math.Min(17, 6 + (_citizens.GetValueOrDefault(town.Value.Id)?.Count ?? 0) / 15)),
+            });
     }
 }

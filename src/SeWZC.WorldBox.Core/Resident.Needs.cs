@@ -7,8 +7,8 @@ public sealed partial record Resident
         bool assistedFeeding = false)
     {
         return CalculateNeeds(rules, tick, new VitalState(Age, Profession, Health, SicknessTicks,
-            DiseaseImmuneUntilTick,
-            DeathCause, DeathTick, Activity, Mana), tile: tile, elapsedDays: elapsedDays,
+                DiseaseImmuneUntilTick,
+                DeathCause, DeathTick, Activity, Mana), tile: tile, elapsedDays: elapsedDays,
             assistedFeeding: assistedFeeding).Apply(this);
     }
 
@@ -18,12 +18,17 @@ public sealed partial record Resident
         var restored = Math.Max(0, Agent.Fatigue - agent.Fatigue) / ResidentNeedsRules.MaximumPercent
                        * ResidentNeedsRules.StaminaCapacity(this);
         var hunger = rules.Hunger
-            ? Math.Min(ResidentNeedsRules.MaximumPercent, Hunger + restored * ResidentNeedsRules.RecoveryHungerPerStamina) : 0;
+            ? Math.Min(ResidentNeedsRules.MaximumPercent,
+                Hunger + restored * ResidentNeedsRules.RecoveryHungerPerStamina)
+            : 0;
         var thirst = rules.Thirst
-            ? Math.Min(ResidentNeedsRules.MaximumPercent, Thirst + restored * ResidentNeedsRules.RecoveryThirstPerStamina) : 0;
+            ? Math.Min(ResidentNeedsRules.MaximumPercent,
+                Thirst + restored * ResidentNeedsRules.RecoveryThirstPerStamina)
+            : 0;
         if (Health > 0)
             agent = ReviewNutritionCrisis(rules, tick, agent, hunger, thirst, Inventory);
-        return (hunger == Hunger && thirst == Thirst ? this : this with { Hunger = hunger, Thirst = thirst }).WithAgent(agent);
+        return (hunger == Hunger && thirst == Thirst ? this : this with { Hunger = hunger, Thirst = thirst })
+            .WithAgent(agent);
     }
 
     private AgentState ReviewNutritionCrisis(WorldRules rules, long tick, AgentState agent, double hunger,
@@ -35,10 +40,15 @@ public sealed partial record Resident
     }
 
     internal bool CanConsumeSupplies(long tick, ResidentActivity activity, bool unconscious, bool assistedFeeding,
-        double hunger, double thirst) => Health > 0 && tick - MoveStartedTick >= MoveDurationTicks
-        && (!unconscious || assistedFeeding)
-        && (activity != ResidentActivity.Sleeping || hunger >= ResidentNeedsRules.UrgentNutritionThreshold
-            || thirst >= ResidentNeedsRules.UrgentNutritionThreshold);
+        double hunger, double thirst)
+    {
+        return Health > 0 && tick - MoveStartedTick >= MoveDurationTicks
+                          && (!unconscious || assistedFeeding)
+                          && (activity != ResidentActivity.Sleeping || hunger >=
+                                                                    ResidentNeedsRules.UrgentNutritionThreshold
+                                                                    || thirst >= ResidentNeedsRules
+                                                                        .UrgentNutritionThreshold);
+    }
 
     private DailyState CalculateNeeds(WorldRules rules, long tick, VitalState vitals, double socialGrowth = .07,
         double deliveredWater = 0, AgentState? arrivedAgent = null, ResourceStock? suppliedInventory = null,
@@ -80,11 +90,13 @@ public sealed partial record Resident
                                  / (WorldEngine.WaterUse(vitals.Age) * ResidentNeedsRules.NormalWaterRequirementRatio);
             var drink = canConsume && thirst >= ResidentNeedsRules.DrinkThreshold
                 ? Math.Min(water, Math.Min(thirst / reliefPerWater,
-                    ResidentNeedsRules.WaterPerDrink(vitals.Age))) : 0;
+                    ResidentNeedsRules.WaterPerDrink(vitals.Age)))
+                : 0;
             water -= drink;
             thirst -= drink * reliefPerWater;
             consumed |= drink > 0;
-            var depletedDays = Math.Clamp((thirst - ResidentNeedsRules.MaximumPercent) / thirstGrowth, 0, 1) * elapsedDays;
+            var depletedDays = Math.Clamp((thirst - ResidentNeedsRules.MaximumPercent) / thirstGrowth, 0, 1) *
+                               elapsedDays;
             Damage(ResidentNeedsRules.DehydrationDamagePerDay * depletedDays, DeathCause.Dehydration);
         }
 
@@ -94,13 +106,15 @@ public sealed partial record Resident
             var dailyUse = WorldEngine.FoodUse(vitals.Age, Race);
             var reliefPerFood = ResidentNeedsRules.HungerPerDay / dailyUse;
             var meal = rules.Hunger && canConsume && hunger >= ResidentNeedsRules.MealThreshold
-                ? Math.Min(food, Math.Min(hunger / reliefPerFood, dailyUse / ResidentNeedsRules.MealsPerDay)) : 0;
+                ? Math.Min(food, Math.Min(hunger / reliefPerFood, dailyUse / ResidentNeedsRules.MealsPerDay))
+                : 0;
             food -= meal;
             hunger -= meal * reliefPerFood;
             consumed |= meal > 0;
             if (rules.Hunger)
             {
-                var depletedDays = Math.Clamp((hunger - ResidentNeedsRules.MaximumPercent) / hungerGrowth, 0, 1) * elapsedDays;
+                var depletedDays = Math.Clamp((hunger - ResidentNeedsRules.MaximumPercent) / hungerGrowth, 0, 1) *
+                                   elapsedDays;
                 Damage(ResidentNeedsRules.StarvationDamagePerDay * depletedDays, DeathCause.Starvation);
             }
         }

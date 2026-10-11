@@ -5,13 +5,13 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial class WorldEngine
 {
-    private WorldState _state;
-    private EntityStore<Tile>? _tileStates;
-    private EntityStore<Resident>? _residentStates, _archivedResidentStates;
-    private EntityStore<Settlement>? _settlementStates;
-    private EntityStore<Nation>? _nationStates;
     private EntityStore<Army>? _armyStates;
     private EntityStore<Building>? _buildingStates;
+    private EntityStore<Nation>? _nationStates;
+    private EntityStore<Resident>? _residentStates, _archivedResidentStates;
+    private EntityStore<Settlement>? _settlementStates;
+    private WorldState _state;
+    private EntityStore<Tile>? _tileStates;
 
     // 时间、随机序列和编号只有引擎中的当前值；不可变世界在捕获时一次组合。
     internal long SimulationTick { get; set; }
@@ -23,43 +23,22 @@ public sealed partial class WorldEngine
     internal int Population => Residents.Count;
     internal WorldRules Rules => _state.Rules;
 
-    private WorldState CaptureSnapshot()
-    {
-        var tiles = _tileStates?.CaptureSnapshot() ?? _state.Tiles;
-        var residents = _residentStates?.CaptureSnapshot() ?? _state.Residents;
-        var archived = _archivedResidentStates?.CaptureSnapshot() ?? _state.ArchivedResidents;
-        var settlements = _settlementStates?.CaptureSnapshot() ?? _state.Settlements;
-        var nations = _nationStates?.CaptureSnapshot() ?? _state.Nations;
-        var armies = _armyStates?.CaptureSnapshot() ?? _state.Armies;
-        var buildings = _buildingStates?.CaptureSnapshot() ?? _state.Society.Buildings;
-        var society = ReferenceEquals(_state.Society.Buildings, buildings)
-            ? _state.Society : _state.Society with { Buildings = buildings };
-        if (_state.Tick == SimulationTick && _state.RandomState == RandomState && _state.NextId == NextId
-            && ReferenceEquals(_state.Tiles, tiles) && ReferenceEquals(_state.Residents, residents)
-            && ReferenceEquals(_state.ArchivedResidents, archived) && ReferenceEquals(_state.Settlements, settlements)
-            && ReferenceEquals(_state.Nations, nations) && ReferenceEquals(_state.Armies, armies)
-            && ReferenceEquals(_state.Society, society))
-            return _state;
-
-        _state = _state with
-        {
-            Tick = SimulationTick, RandomState = RandomState, NextId = NextId,
-            Tiles = tiles, Residents = residents, ArchivedResidents = archived,
-            Settlements = settlements, Nations = nations, Armies = armies, Society = society,
-        };
-        return _state;
-    }
-
     // 集合只维护定位索引和自身的持久化树，捕获时统一组合世界。
-    internal EntityStore<Tile> Tiles => _tileStates ??= new(_state.Tiles);
-    internal EntityStore<Resident> Residents => _residentStates ??= new(_state.Residents,
+    internal EntityStore<Tile> Tiles => _tileStates ??= new EntityStore<Tile>(_state.Tiles);
+
+    internal EntityStore<Resident> Residents => _residentStates ??= new EntityStore<Resident>(_state.Residents,
         static (before, after) => before.SettlementId != after.SettlementId);
-    internal EntityStore<Resident> ArchivedResidents => _archivedResidentStates ??= new(_state.ArchivedResidents,
+
+    internal EntityStore<Resident> ArchivedResidents => _archivedResidentStates ??= new EntityStore<Resident>(
+        _state.ArchivedResidents,
         static (before, after) => before.SettlementId != after.SettlementId);
-    internal EntityStore<Settlement> Settlements => _settlementStates ??= new(_state.Settlements);
-    internal EntityStore<Nation> Nations => _nationStates ??= new(_state.Nations);
-    internal EntityStore<Army> Armies => _armyStates ??= new(_state.Armies);
-    internal EntityStore<Building> Buildings => _buildingStates ??= new(Society.Buildings);
+
+    internal EntityStore<Settlement> Settlements =>
+        _settlementStates ??= new EntityStore<Settlement>(_state.Settlements);
+
+    internal EntityStore<Nation> Nations => _nationStates ??= new EntityStore<Nation>(_state.Nations);
+    internal EntityStore<Army> Armies => _armyStates ??= new EntityStore<Army>(_state.Armies);
+    internal EntityStore<Building> Buildings => _buildingStates ??= new EntityStore<Building>(Society.Buildings);
 
     internal ImmutableVector<DiplomaticRelation> Diplomacies
     {
@@ -119,5 +98,40 @@ public sealed partial class WorldEngine
             if (!ReferenceEquals(_state.PendingMessages, value))
                 _state = _state with { PendingMessages = value };
         }
+    }
+
+    private WorldState CaptureSnapshot()
+    {
+        var tiles = _tileStates?.CaptureSnapshot() ?? _state.Tiles;
+        var residents = _residentStates?.CaptureSnapshot() ?? _state.Residents;
+        var archived = _archivedResidentStates?.CaptureSnapshot() ?? _state.ArchivedResidents;
+        var settlements = _settlementStates?.CaptureSnapshot() ?? _state.Settlements;
+        var nations = _nationStates?.CaptureSnapshot() ?? _state.Nations;
+        var armies = _armyStates?.CaptureSnapshot() ?? _state.Armies;
+        var buildings = _buildingStates?.CaptureSnapshot() ?? _state.Society.Buildings;
+        var society = ReferenceEquals(_state.Society.Buildings, buildings)
+            ? _state.Society
+            : _state.Society with { Buildings = buildings };
+        if (_state.Tick == SimulationTick && _state.RandomState == RandomState && _state.NextId == NextId
+            && ReferenceEquals(_state.Tiles, tiles) && ReferenceEquals(_state.Residents, residents)
+            && ReferenceEquals(_state.ArchivedResidents, archived) && ReferenceEquals(_state.Settlements, settlements)
+            && ReferenceEquals(_state.Nations, nations) && ReferenceEquals(_state.Armies, armies)
+            && ReferenceEquals(_state.Society, society))
+            return _state;
+
+        _state = _state with
+        {
+            Tick = SimulationTick,
+            RandomState = RandomState,
+            NextId = NextId,
+            Tiles = tiles,
+            Residents = residents,
+            ArchivedResidents = archived,
+            Settlements = settlements,
+            Nations = nations,
+            Armies = armies,
+            Society = society,
+        };
+        return _state;
     }
 }

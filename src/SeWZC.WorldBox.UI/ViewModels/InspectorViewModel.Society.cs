@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
-using Avalonia.Media;
 using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
@@ -64,8 +63,10 @@ internal sealed partial class InspectorViewModel
         panel.Children.Add(RelatedObjectLink("查看代表", () => nation.RepresentativeId, ResidentName,
             id => _engine.GetResident(id) is not null, OpenResident, "nation-representative"));
         panel.Children.Add(Button("编辑这个国家", () => _requests.Editors.ShowNationEditor(nation.Id)));
-        panel.Children.Add(Named(Button("文化、制度与政策", () => _requests.Editors.ShowGovernanceEditor(nation.Id)), "nation-governance"));
-        panel.Children.Add(Named(Button("编辑国家文化价值", () => _requests.Editors.ShowCultureEditor(nation.CultureId)), "nation-culture-edit"));
+        panel.Children.Add(Named(Button("文化、制度与政策", () => _requests.Editors.ShowGovernanceEditor(nation.Id)),
+            "nation-governance"));
+        panel.Children.Add(Named(Button("编辑国家文化价值", () => _requests.Editors.ShowCultureEditor(nation.CultureId)),
+            "nation-culture-edit"));
         panel.Children.Add(Text("国家决策及其已知议题", 12, Mint));
         panel.Children.Add(LiveText(() =>
         {
@@ -216,7 +217,8 @@ internal sealed partial class InspectorViewModel
                 SetCategory(ToolCategory.Build);
                 FocusMapTile(town.X, town.Y);
             }), "infrastructure-build"));
-            actions.Children.Add(Named(Button("查看设施成本与建造", () => _requests.Editors.ShowBuildingEditor(town.Id)), "building-open"));
+            actions.Children.Add(Named(Button("查看设施成本与建造", () => _requests.Editors.ShowBuildingEditor(town.Id)),
+                "building-open"));
             panel.Children.Add(actions);
             panel.Children.Add(Named(LiveText(() => _engine.GetSettlementSummary(town.Id)), "town-expansion-summary"));
             panel.Children.Add(LiveText(() => "实际库存：" + StockLabel(town.Resources)));
@@ -276,5 +278,4 @@ internal sealed partial class InspectorViewModel
             r =>
                 $"{FactKindName(r.Topic)}\n主题 #{r.SubjectId}\n数值 {r.Value:F2}\n原始提出者：{ResidentName(r.OriginResidentId)}（{ProfessionName(r.ReportedProfession)}）\n递送代表：{ResidentName(r.RepresentativeId)}\n观察：{DateLabel(r.ObservedTick)}\n递送：{DateLabel(r.ReceivedTick)}\n可信度 {r.Confidence:P0}\n消息年龄 {Math.Max(0, _engine.State.Tick - r.ObservedTick) / (double)SimulationTime.TicksPerDay:0.##} 日");
     }
-
 }

@@ -4,15 +4,18 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using SeWZC.WorldBox.Core;
-using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI.ViewModels;
 
 internal abstract partial class WorldPresentationModel
 {
-    internal static readonly IBrush Ink = Brush.Parse("#111E29"), Panel = Brush.Parse("#172632"),
-        Line = Brush.Parse("#2A3C46"), Muted = Brush.Parse("#8FA8AE"), Mint = Brush.Parse("#B8E9BC");
+    internal static readonly IBrush Ink = Brush.Parse("#111E29"),
+        Panel = Brush.Parse("#172632"),
+        Line = Brush.Parse("#2A3C46"),
+        Muted = Brush.Parse("#8FA8AE"),
+        Mint = Brush.Parse("#B8E9BC");
+
     internal string BuildingLabel(Building building)
     {
         var name = WorldEngine.BuildingName(building.Kind);
@@ -149,14 +152,6 @@ internal abstract partial class WorldPresentationModel
         panel.Children.Add(preview);
     }
 
-    internal sealed record EntityChoice(int Id, string Label)
-    {
-        public override string ToString()
-        {
-            return Label;
-        }
-    }
-
     internal string NationName(int id)
     {
         return _engine.State.Nations.FirstOrDefault(n => n.Id == id)?.Name ?? (id == 0 ? "世界" : $"国家 #{id}（已消亡）");
@@ -172,7 +167,10 @@ internal abstract partial class WorldPresentationModel
         return _engine.State.Settlements.FirstOrDefault(t => t.Id == id)?.Name ?? (id == 0 ? "无" : $"聚落 #{id}");
     }
 
-    internal static string DateLabel(long tick) => GameText.Date(tick);
+    internal static string DateLabel(long tick)
+    {
+        return GameText.Date(tick);
+    }
 
     internal static string StockLabel(ResourceStock stock)
     {
@@ -242,10 +240,10 @@ internal abstract partial class WorldPresentationModel
         };
     }
 
-    internal static bool DetailsVisible(ViewModels.Details.VisualNode node)
+    internal static bool DetailsVisible(VisualNode node)
     {
         for (var parent = node.Parent; parent is not null; parent = parent.Parent)
-            if (parent is ViewModels.Details.ExpanderNode { IsExpanded: false })
+            if (parent is ExpanderNode { IsExpanded: false })
                 return false;
         return true;
     }
@@ -390,13 +388,13 @@ internal abstract partial class WorldPresentationModel
         return WorldEngine.SpellName(value);
     }
 
-    internal ViewModels.Details.StackNode ModalPanel(string title, string description)
+    internal StackNode ModalPanel(string title, string description)
     {
-        var panel = new ViewModels.Details.StackNode { Spacing = 5, MaxWidth = 460 };
-        var header = new ViewModels.Details.GridNode { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var panel = new StackNode { Spacing = 5, MaxWidth = 460 };
+        var header = new GridNode { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         header.Children.Add(Text(title, 17, null, true));
         var close = IconButton("close", CloseModal, "关闭窗口", "modal-close");
-        ViewModels.Details.GridNode.SetColumn(close, 1);
+        GridNode.SetColumn(close, 1);
         header.Children.Add(close);
         panel.Children.Add(header);
         panel.Children.Add(Paragraph(description));
@@ -408,9 +406,9 @@ internal abstract partial class WorldPresentationModel
         return ex.Message.Length > 160 ? ex.Message[..160] : ex.Message;
     }
 
-    internal static ViewModels.Details.TextNode Text(string text, double size = 13, IBrush? color = null, bool bold = false)
+    internal static TextNode Text(string text, double size = 13, IBrush? color = null, bool bold = false)
     {
-        return new ViewModels.Details.TextNode
+        return new TextNode
         {
             Text = text,
             FontSize = size,
@@ -420,9 +418,9 @@ internal abstract partial class WorldPresentationModel
         };
     }
 
-    internal static ViewModels.Details.TextNode Paragraph(string text)
+    internal static TextNode Paragraph(string text)
     {
-        return new ViewModels.Details.TextNode
+        return new TextNode
         {
             Text = text,
             FontSize = 12,
@@ -479,27 +477,24 @@ internal abstract partial class WorldPresentationModel
         return button;
     }
 
-    internal static T Named<T>(T control, string id) where T : ViewModels.Details.VisualNode
+    internal static T Named<T>(T control, string id) where T : VisualNode
     {
         control.Name = id.Replace('-', '_');
         control.AutomationId = id;
         return control;
     }
 
-    internal static ViewModels.Details.BorderNode Card(ViewModels.Details.VisualNode child)
+    internal static BorderNode Card(VisualNode child)
     {
-        return new ViewModels.Details.BorderNode
+        return new BorderNode
         {
-            Child = child,
-            Background = Ink,
-            CornerRadius = new CornerRadius(9),
-            Padding = new Thickness(8),
+            Child = child, Background = Ink, CornerRadius = new CornerRadius(9), Padding = new Thickness(8),
         };
     }
 
-    internal static ViewModels.Details.BorderNode StatCard(string label, string value, string hint)
+    internal static BorderNode StatCard(string label, string value, string hint)
     {
-        var stack = new ViewModels.Details.StackNode { Spacing = 6 };
+        var stack = new StackNode { Spacing = 6 };
         stack.Children.Add(Text(label, 10, Muted));
         stack.Children.Add(Text(value, 28, Mint, true));
         stack.Children.Add(Text(hint, 9, Muted));
@@ -517,7 +512,10 @@ internal abstract partial class WorldPresentationModel
         };
     }
 
-    internal static string TerrainName(TerrainType terrain) => GameText.Terrain(terrain);
+    internal static string TerrainName(TerrainType terrain)
+    {
+        return GameText.Terrain(terrain);
+    }
 
     internal static string ProfessionName(Profession job)
     {
@@ -545,4 +543,11 @@ internal abstract partial class WorldPresentationModel
         };
     }
 
+    internal sealed record EntityChoice(int Id, string Label)
+    {
+        public override string ToString()
+        {
+            return Label;
+        }
+    }
 }

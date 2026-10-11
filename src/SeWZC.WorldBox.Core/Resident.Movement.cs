@@ -5,6 +5,9 @@ namespace SeWZC.WorldBox.Core;
 
 public sealed partial record Resident
 {
+    // 相应字段以不可变记录共享，一次动作或结算只复制发生变化的这一组。
+    private readonly Movement _movement = Movement.Default;
+
     /// <summary>当前移动区段经过的地格索引，包含起点与终点。</summary>
     [JsonRequired]
     public ImmutableArray<int> MovementRoute
@@ -23,8 +26,6 @@ public sealed partial record Resident
                 _movement = _movement with { Credit = value };
         }
     }
-    // 相应字段以不可变记录共享，一次动作或结算只复制发生变化的这一组。
-    private readonly Movement _movement = Movement.Default;
 
     private Movement MovementState
     {

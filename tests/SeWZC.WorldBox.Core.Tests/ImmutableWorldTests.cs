@@ -199,7 +199,8 @@ public sealed class ImmutableWorldTests
             fixture.Resident.Replace(fixture.Resident.Value.WithHealth(70));
             fixture.Resident.Replace(fixture.Resident.Value with { X = 15 });
             fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Food = 3 }));
-            fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Fatigue = 40 }));
+            fixture.Resident.Replace(
+                fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Fatigue = 40 }));
             Assert.Equal(70, fixture.Resident.Value.Health);
             Assert.Equal(15, fixture.Resident.Value.X);
             var middle = fixture.Engine.State;
@@ -437,10 +438,12 @@ public sealed class ImmutableWorldTests
             }
 
             fixture.Engine.Residents.Transform(person => person with { Hunger = 20 });
-            fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Fatigue = 25 }));
+            fixture.Resident.Replace(
+                fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Fatigue = 25 }));
             fixture.Engine.Residents.Remove(fixture.Resident);
             fixture.Engine.Residents.Add(new StateReference<Resident>(new Resident { Id = 900, Name = "新居民" }));
-            fixture.Engine.Residents[0].Replace(fixture.Engine.Residents[0].Value.WithInventory(new ResourceStock { Food = 7 }));
+            fixture.Engine.Residents[0]
+                .Replace(fixture.Engine.Residents[0].Value.WithInventory(new ResourceStock { Food = 7 }));
         }
 
         var after = Assert.Single(fixture.Engine.State.Residents);
@@ -485,7 +488,8 @@ public sealed class ImmutableWorldTests
         {
             Health = 80, Agent = person.Agent with { Fatigue = 25 },
         });
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent.Remember(new AgentFact { SubjectId = 99 }, fixture.Town.Value.Id)));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(
+            fixture.Resident.Value.Agent.Remember(new AgentFact { SubjectId = 99 }, fixture.Town.Value.Id)));
 
         Assert.Equal(80, fixture.Engine.State.Residents[0].Health);
         Assert.Equal(25, fixture.Engine.State.Residents[0].Agent.Fatigue);
@@ -588,7 +592,10 @@ public sealed class ImmutableWorldTests
         var initialKnowledge = initial.Residents[0].Agent.Memory;
         var fact = new AgentFact { Id = fixture.Engine.NextId++, Text = "新观察" };
 
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Memory = fixture.Resident.Value.Agent.Memory.Add(fact) }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
+        {
+            Memory = fixture.Resident.Value.Agent.Memory.Add(fact),
+        }));
         var observed = fixture.Engine.State;
         fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Food = 3 }));
         var supplied = fixture.Engine.State;
@@ -613,7 +620,8 @@ public sealed class ImmutableWorldTests
         {
             Agent = agent with { Fatigue = 25 }, Activity = ResidentActivity.Working,
         });
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { SocialNeed = 30 }));
+        fixture.Resident.Replace(
+            fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { SocialNeed = 30 }));
 
         Assert.Equal(25, fixture.Engine.State.Residents[0].Agent.Fatigue);
         Assert.Equal(30, fixture.Engine.State.Residents[0].Agent.SocialNeed);

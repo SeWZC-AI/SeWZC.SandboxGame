@@ -18,10 +18,7 @@ public sealed class ResidentNamesTests
             fixture.Resident.Replace(original with { Name = "在世居民" });
             fixture.Engine.ArchivedResidents.Add(new StateReference<Resident>(original with
             {
-                Id = original.Id + 1000,
-                Health = 0,
-                DeathCause = DeathCause.OldAge,
-                DeathTick = 0,
+                Id = original.Id + 1000, Health = 0, DeathCause = DeathCause.OldAge, DeathTick = 0,
             }));
         }
 

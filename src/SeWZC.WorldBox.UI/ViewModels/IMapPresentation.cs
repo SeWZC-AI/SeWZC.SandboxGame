@@ -1,7 +1,9 @@
 using Avalonia.Media;
 using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.UI.Controls;
+
 namespace SeWZC.WorldBox.UI.ViewModels;
+
 /// <summary>地图显示设置、人物跟随与图例素材的呈现接口。</summary>
 internal interface IMapPresentation
 {

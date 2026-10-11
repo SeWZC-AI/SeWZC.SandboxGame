@@ -7,10 +7,10 @@ public sealed partial class WorldEngine
     private bool HasResourcePressure(StateReference<Resident> person)
     {
         return person.Value.Hunger >= 40 && person.Value.Inventory.Food < .5
-                                   && person.Value.Agent.Memory.Any(f =>
-                                       f.Kind == AgentFactKind.FoodSupply && f.Value < 12 && f.Confidence >= .5 &&
-                                       f.SubjectId == person.Value.SettlementId &&
-                                       SimulationTick - f.ObservedTick <= 2 * SimulationTime.TicksPerMonth);
+                                         && person.Value.Agent.Memory.Any(f =>
+                                             f.Kind == AgentFactKind.FoodSupply && f.Value < 12 && f.Confidence >= .5 &&
+                                             f.SubjectId == person.Value.SettlementId &&
+                                             SimulationTick - f.ObservedTick <= 2 * SimulationTime.TicksPerMonth);
     }
 
     private void TickLocalConflicts()
@@ -31,9 +31,9 @@ public sealed partial class WorldEngine
                            && Distance(first.Value.X, first.Value.Y, second.Value.X, second.Value.Y) <= 2
                            && Distance(first.Value.X, first.Value.Y, conflict.X, conflict.Y) <= 2;
             var pressured = together && !ResidentNeedsRules.IsUnconscious(first!.Value)
-                            && !ResidentNeedsRules.IsUnconscious(residents[conflict.SecondResidentId].Value)
-                            && HasResourcePressure(first!) &&
-                            HasResourcePressure(residents[conflict.SecondResidentId]);
+                                     && !ResidentNeedsRules.IsUnconscious(residents[conflict.SecondResidentId].Value)
+                                     && HasResourcePressure(first!) &&
+                                     HasResourcePressure(residents[conflict.SecondResidentId]);
             conflict = PublishConflict(conflict with
             {
                 Participants = conflict.Participants.RemoveAll(id => !residents.ContainsKey(id)),
@@ -64,11 +64,15 @@ public sealed partial class WorldEngine
             if (pressured && SimulationTick - conflict.StartedTick >= 72 && conflict.Participants.Count < 16)
             {
                 var witness = _citizens[conflict.SettlementId].Where(r => r.Value.Age >= 14 && r.Value.ArmyId == 0
-                    && !ResidentNeedsRules.IsUnconscious(r.Value)
-                    && !conflict.Participants.Contains(r.Value.Id) && HasResourcePressure(r)
-                    && Distance(r.Value.X, r.Value.Y, conflict.X, conflict.Y) <= 2).OrderBy(r => r.Value.Id).FirstOrDefault();
+                        && !ResidentNeedsRules.IsUnconscious(r.Value)
+                        && !conflict.Participants.Contains(r.Value.Id) && HasResourcePressure(r)
+                        && Distance(r.Value.X, r.Value.Y, conflict.X, conflict.Y) <= 2).OrderBy(r => r.Value.Id)
+                    .FirstOrDefault();
                 if (witness is not null)
-                    conflict = PublishConflict(conflict with { Participants = conflict.Participants.Add(witness.Value.Id) });
+                    conflict = PublishConflict(conflict with
+                    {
+                        Participants = conflict.Participants.Add(witness.Value.Id),
+                    });
                 var scope = conflict.Participants.Count >= 8 &&
                             SimulationTick - conflict.StartedTick >= 2 * SimulationTime.TicksPerMonth
                     ? ConflictScope.Settlement
@@ -88,17 +92,18 @@ public sealed partial class WorldEngine
         foreach (var town in Settlements)
         {
             if (Conflicts.Count >= 128 || Conflicts.Any(c => c.SettlementId == town.Value.Id
-                                                                             && (c.Stage != ConflictStage.Resolved ||
-                                                                                 SimulationTick - c.LastChangedTick <
-                                                                                 120)))
+                                                             && (c.Stage != ConflictStage.Resolved ||
+                                                                 SimulationTick - c.LastChangedTick <
+                                                                 120)))
                 continue;
             var candidates = _citizens[town.Value.Id].Where(r => r.Value.Age >= 14 && r.Value.ArmyId == 0
-                && !ResidentNeedsRules.IsUnconscious(r.Value) && HasResourcePressure(r))
+                    && !ResidentNeedsRules.IsUnconscious(r.Value) && HasResourcePressure(r))
                 .OrderBy(r => r.Value.Id).Take(32).ToArray();
             for (var i = 0; i < candidates.Length; i++)
             {
                 var first = candidates[i];
-                var second = candidates.Skip(i + 1).FirstOrDefault(r => Distance(r.Value.X, r.Value.Y, first.Value.X, first.Value.Y) <= 1);
+                var second = candidates.Skip(i + 1)
+                    .FirstOrDefault(r => Distance(r.Value.X, r.Value.Y, first.Value.X, first.Value.Y) <= 1);
                 if (second is null)
                     continue;
                 var conflict = new LocalConflict

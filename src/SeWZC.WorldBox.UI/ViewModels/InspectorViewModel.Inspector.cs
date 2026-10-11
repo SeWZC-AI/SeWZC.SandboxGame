@@ -3,7 +3,6 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using SeWZC.WorldBox.Core;
-using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI.ViewModels;
@@ -76,7 +75,10 @@ internal sealed partial class InspectorViewModel
                     "communication" => "消息与通信",
                     _ => "世界概览",
                 };
-                var navigation = new GridNode { ColumnDefinitions = new ColumnDefinitions("*,*,*,*,*"), ColumnSpacing = 3 };
+                var navigation = new GridNode
+                {
+                    ColumnDefinitions = new ColumnDefinitions("*,*,*,*,*"), ColumnSpacing = 3,
+                };
                 var entries = new[]
                 {
                     ("世界", "overview"), ("居民", "residents"), ("国家", "nations"), ("聚落", "settlements"),
@@ -342,8 +344,7 @@ internal sealed partial class InspectorViewModel
             var show = Named(
                 new CheckNode
                 {
-                    Content = "显示" + ResourceStock.Name(kind),
-                    IsChecked = _map.VisibleResources.Contains(kind),
+                    Content = "显示" + ResourceStock.Name(kind), IsChecked = _map.VisibleResources.Contains(kind),
                 },
                 "map-resource-" + kind.ToString().ToLowerInvariant());
             show.IsCheckedChanged += (_, _) =>
@@ -399,9 +400,7 @@ internal sealed partial class InspectorViewModel
             var item = new StackNode { Margin = new Thickness(4, 0), Spacing = 2 };
             item.Children.Add(new ImageNode
             {
-                Source = _map.ResidentPreview(race, Profession.Lumberjack),
-                Width = 32,
-                Height = 40,
+                Source = _map.ResidentPreview(race, Profession.Lumberjack), Width = 32, Height = 40,
             });
             item.Children.Add(Text(RaceName(race), 11));
             races.Children.Add(item);
@@ -415,9 +414,7 @@ internal sealed partial class InspectorViewModel
         {
             var item = new StackNode
             {
-                Orientation = Orientation.Horizontal,
-                Spacing = 3,
-                Margin = new Thickness(3, 2),
+                Orientation = Orientation.Horizontal, Spacing = 3, Margin = new Thickness(3, 2),
             };
             item.Children.Add(new ImageNode { Source = _map.AnimalPreview(kind), Width = 20, Height = 20 });
             item.Children.Add(Text(WorldEngine.WildlifeName(kind), 11));
@@ -430,9 +427,7 @@ internal sealed partial class InspectorViewModel
         {
             var item = new StackNode
             {
-                Orientation = Orientation.Horizontal,
-                Spacing = 3,
-                Margin = new Thickness(3, 2),
+                Orientation = Orientation.Horizontal, Spacing = 3, Margin = new Thickness(3, 2),
             };
             item.Children.Add(new ImageNode { Source = _map.PlantPreview(kind), Width = 20, Height = 20 });
             item.Children.Add(Text(PlantResources.Name(kind), 11));
@@ -535,8 +530,10 @@ internal sealed partial class InspectorViewModel
         panel.Children.Add(LiveText(() => TerrainName(Tile().Terrain), 16, Mint));
         panel.Children.Add(Named(
             LiveText(() => _engine.GetTileProductionSummary(point.X, point.Y, _resourceVisibility)), "tile-water"));
-        panel.Children.Add(Named(Button("安排居民改造此地", () => _requests.Editors.ShowLandProject(point.X, point.Y)), "tile-improve"));
-        panel.Children.Add(Named(Button("编辑此地资源与道路", () => _requests.Editors.ShowTileEditor(point.X, point.Y)), "tile-edit"));
+        panel.Children.Add(Named(Button("安排居民改造此地", () => _requests.Editors.ShowLandProject(point.X, point.Y)),
+            "tile-improve"));
+        panel.Children.Add(Named(Button("编辑此地资源与道路", () => _requests.Editors.ShowTileEditor(point.X, point.Y)),
+            "tile-edit"));
         LiveRows(panel, () => _engine.State.Society.Buildings.Where(b => b.X == point.X && b.Y == point.Y),
             b => b.Id.ToString(),
             b => BuildingLabel(b) + "\n" + BuildingTask(b), OpenBuilding);
@@ -711,5 +708,4 @@ internal sealed partial class InspectorViewModel
         panel.Children.Add(LiveText(() => $"符合筛选：{Filter().Count()} 条\n点击事件查看经过和前因"));
         LiveRows(panel, () => WorldStories.Group(Filter()).Take(100), GroupKey, GroupLabel, g => FocusEvent(g.Latest));
     }
-
 }

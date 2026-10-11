@@ -6,8 +6,8 @@ namespace SeWZC.WorldBox.Core.Runtime;
 internal sealed class EntityStore<T> : IReadOnlyList<StateReference<T>>, StateReference<T>.ICollectionOwner
     where T : class
 {
-    private readonly List<StateReference<T>> _items = [];
     private readonly Func<T, T, bool>? _groupChanged;
+    private readonly List<StateReference<T>> _items = [];
     private bool _membershipChanged;
     private T[] _membershipValues = [];
     private ImmutableVector<T> _snapshot;
@@ -28,12 +28,6 @@ internal sealed class EntityStore<T> : IReadOnlyList<StateReference<T>>, StateRe
             reference.Position = _items.Count;
             _items.Add(reference);
         }
-    }
-
-    internal ImmutableVector<T> CaptureSnapshot()
-    {
-        FlushUpdates();
-        return _snapshot;
     }
 
     internal Action<int, T, T>? Changed { get; set; }
@@ -70,17 +64,10 @@ internal sealed class EntityStore<T> : IReadOnlyList<StateReference<T>>, StateRe
         return GetEnumerator();
     }
 
-    public List<StateReference<T>>.Enumerator GetEnumerator()
-    {
-        return _items.GetEnumerator();
-    }
-
     void StateReference<T>.ICollectionOwner.Replace(StateReference<T> reference, T value)
     {
         if (_groupChanged?.Invoke(reference.Value, value) == true)
-        {
             GroupRevision++;
-        }
 
         Changed?.Invoke(reference.Position, reference.Value, value);
         reference.Synchronize(value);
@@ -90,6 +77,17 @@ internal sealed class EntityStore<T> : IReadOnlyList<StateReference<T>>, StateRe
             (_updates ??= new ImmutableVector<T>.Builder(_snapshot)).SetItem(reference.Position, value);
         else
             _snapshot = _snapshot.SetItem(reference.Position, value);
+    }
+
+    internal ImmutableVector<T> CaptureSnapshot()
+    {
+        FlushUpdates();
+        return _snapshot;
+    }
+
+    public List<StateReference<T>>.Enumerator GetEnumerator()
+    {
+        return _items.GetEnumerator();
     }
 
     internal UpdateScope BeginUpdates()

@@ -9,8 +9,16 @@ public sealed class ResidentTransitionsTests
     {
         var initial = new Resident
         {
-            Id = 1, Age = 42, Health = 85, Hunger = 12, X = 3, Y = 4,
-            FromX = 2, FromY = 4, MoveStartedTick = 10, MoveDurationTicks = 3,
+            Id = 1,
+            Age = 42,
+            Health = 85,
+            Hunger = 12,
+            X = 3,
+            Y = 4,
+            FromX = 2,
+            FromY = 4,
+            MoveStartedTick = 10,
+            MoveDurationTicks = 3,
             Inventory = new ResourceStock { Food = 5, Water = 2 },
         };
         var agent = initial.Agent with { Fatigue = 4 };
@@ -18,7 +26,8 @@ public sealed class ResidentTransitionsTests
 
         var result = initial.WithAction(inventory, agent, ResidentActivity.Working);
 
-        Assert.Equal(initial with { Agent = agent, Inventory = inventory, Activity = ResidentActivity.Working }, result);
+        Assert.Equal(initial with { Agent = agent, Inventory = inventory, Activity = ResidentActivity.Working },
+            result);
         Assert.Equal(5, initial.Inventory.Food);
         Assert.Equal(ResidentActivity.Wandering, initial.Activity);
         Assert.NotSame(agent, initial.Agent);
@@ -48,8 +57,15 @@ public sealed class ResidentTransitionsTests
     {
         var initial = new Resident
         {
-            X = 3, Y = 4, FromX = 2, FromY = 4, MovementRoute = [130, 131], MovementCredit = .5,
-            IsInsideHome = true, BedRestAfterRescue = true, CarriedByResidentId = 2,
+            X = 3,
+            Y = 4,
+            FromX = 2,
+            FromY = 4,
+            MovementRoute = [130, 131],
+            MovementCredit = .5,
+            IsInsideHome = true,
+            BedRestAfterRescue = true,
+            CarriedByResidentId = 2,
         };
         var agent = initial.Agent with { Sleep = sleep };
 

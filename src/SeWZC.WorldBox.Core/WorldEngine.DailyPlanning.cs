@@ -10,8 +10,11 @@ public sealed partial class WorldEngine
         return Math.Max(0, start > tick ? start - SimulationTime.TicksPerDay : start);
     }
 
-    private static bool DailyWorkGoal(AgentGoalKind kind) => kind is AgentGoalKind.Gather or AgentGoalKind.Work
-        or AgentGoalKind.Study or AgentGoalKind.TrainMagic or AgentGoalKind.Hunt or AgentGoalKind.Fish;
+    private static bool DailyWorkGoal(AgentGoalKind kind)
+    {
+        return kind is AgentGoalKind.Gather or AgentGoalKind.Work
+            or AgentGoalKind.Study or AgentGoalKind.TrainMagic or AgentGoalKind.Hunt or AgentGoalKind.Fish;
+    }
 
     private void PlanResidentDay(StateReference<Resident> reference, bool refresh = false)
     {
@@ -19,15 +22,18 @@ public sealed partial class WorldEngine
         if (person.Agent.Goal.PlayerDirected && SimulationTick < person.Agent.Goal.ReviewTick)
             return;
         var previous = person.Agent.DailyPlan;
-        if (!refresh && previous is not null && RoutineDayStart(previous.PlannedTick) == RoutineDayStart(SimulationTick))
+        if (!refresh && previous is not null &&
+            RoutineDayStart(previous.PlannedTick) == RoutineDayStart(SimulationTick))
             return;
         var day = SimulationTime.DayIndex(RoutineDayStart(SimulationTick)) * SimulationTime.TicksPerDay;
         var nextMorning = day + SimulationTime.TicksPerDay + SimulationTime.WakeTick;
         var work = DailyWorkGoal(person.Agent.Goal.Kind) ? person.Agent.Goal
             : person.Agent.DaytimeGoal is { } daytime && DailyWorkGoal(daytime.Kind) ? daytime : previous?.WorkGoal;
         var home = ResidentHome(person);
-        var distance = home is null ? 0 : Math.Max(Distance(person.X, person.Y, home.Value.X, home.Value.Y),
-            work is null ? 0 : Distance(work.TargetX, work.TargetY, home.Value.X, home.Value.Y));
+        var distance = home is null
+            ? 0
+            : Math.Max(Distance(person.X, person.Y, home.Value.X, home.Value.Y),
+                work is null ? 0 : Distance(work.TargetX, work.TargetY, home.Value.X, home.Value.Y));
         var travel = (int)Math.Ceiling(distance * AgentMoveCost(reference, Index(person.X, person.Y)))
                      + Math.Max(0, person.MoveDurationTicks - (int)(SimulationTick - person.MoveStartedTick));
         var returnTick = Math.Clamp(day + SimulationTime.SleepTick - travel - DailyRoutineRules.ReturnMarginTicks,
@@ -40,23 +46,33 @@ public sealed partial class WorldEngine
                 ? new AgentGoal { TargetX = person.X, TargetY = person.Y, Reason = "原工作点过远，重新安排当天工作" }
                 : person.Agent.Goal;
             ChangeWorkReservation(person.Agent.Goal, goal);
-            person = person.WithAgent(person.Agent with { Goal = goal, DaytimeGoal = null, NextThinkTick = SimulationTick });
+            person = person.WithAgent(person.Agent with
+            {
+                Goal = goal, DaytimeGoal = null, NextThinkTick = SimulationTick,
+            });
             returnTick = day + SimulationTime.ReturnHomeTick;
         }
+
         var fatigueCost = ResidentNeedsRules.PhysicalWorkCostPerTick;
         if (work is not null && FindBuilding(work.TargetEntityId) is { } facility && IsMentalWork(facility.Value))
             fatigueCost *= ResidentNeedsRules.MentalWorkCostRatio;
-        var fatiguePerTick = fatigueCost / ResidentNeedsRules.StaminaCapacity(person) * ResidentNeedsRules.MaximumPercent;
-        var sleepPerTick = ResidentNeedsRules.SleepConsumptionPerTick / ResidentNeedsRules.SleepCapacity(person) * ResidentNeedsRules.MaximumPercent;
+        var fatiguePerTick = fatigueCost / ResidentNeedsRules.StaminaCapacity(person) *
+                             ResidentNeedsRules.MaximumPercent;
+        var sleepPerTick = ResidentNeedsRules.SleepConsumptionPerTick / ResidentNeedsRules.SleepCapacity(person) *
+                           ResidentNeedsRules.MaximumPercent;
         var restTick = SimulationTick + (long)Math.Ceiling(Math.Max(0, Math.Min(
             (DailyRoutineRules.RestFatigueThreshold - person.Agent.Fatigue) / fatiguePerTick,
-            (person.Agent.Sleep - ResidentNeedsRules.FullEfficiencyThreshold * ResidentNeedsRules.MaximumPercent) / sleepPerTick)));
+            (person.Agent.Sleep - ResidentNeedsRules.FullEfficiencyThreshold * ResidentNeedsRules.MaximumPercent) /
+            sleepPerTick)));
         var plan = new ResidentDailyPlan
         {
-            PlannedTick = SimulationTick, ReturnHomeTick = returnTick,
+            PlannedTick = SimulationTick,
+            ReturnHomeTick = returnTick,
             FoodReviewTick = Rules.Hunger ? SupplyReview(person.Inventory.Food, FoodUse(person)) : nextMorning,
-            WaterReviewTick = Rules.Thirst ? SupplyReview(person.Inventory.Water, LocalWaterUse(reference)) : nextMorning,
-            RestReviewTick = Math.Min(nextMorning, Math.Max(SimulationTick + DailyRoutineRules.MinimumReviewTicks, restTick)),
+            WaterReviewTick =
+                Rules.Thirst ? SupplyReview(person.Inventory.Water, LocalWaterUse(reference)) : nextMorning,
+            RestReviewTick =
+                Math.Min(nextMorning, Math.Max(SimulationTick + DailyRoutineRules.MinimumReviewTicks, restTick)),
             WorkGoal = work?.ResetNavigation(),
         };
         var next = NextDailyReview(plan);
@@ -64,12 +80,17 @@ public sealed partial class WorldEngine
         {
             DailyPlan = plan,
             NextThinkTick = DailyWorkGoal(person.Agent.Goal.Kind) && person.Hunger < 60 && person.Thirst < 60
-                ? Math.Min(person.Agent.NextThinkTick, next) : person.Agent.NextThinkTick,
+                ? Math.Min(person.Agent.NextThinkTick, next)
+                : person.Agent.NextThinkTick,
         }));
 
-        long SupplyReview(double stock, double dailyUse) => Math.Min(nextMorning,
-            SimulationTick + Math.Max(DailyRoutineRules.MinimumReviewTicks,
-                (long)Math.Floor(Math.Max(0, stock / dailyUse - DailyRoutineRules.SupplyReserveDays) * SimulationTime.TicksPerDay)));
+        long SupplyReview(double stock, double dailyUse)
+        {
+            return Math.Min(nextMorning,
+                SimulationTick + Math.Max(DailyRoutineRules.MinimumReviewTicks,
+                    (long)Math.Floor(Math.Max(0, stock / dailyUse - DailyRoutineRules.SupplyReserveDays) *
+                                     SimulationTime.TicksPerDay)));
+        }
     }
 
     private long NextDailyReview(ResidentDailyPlan plan)
@@ -87,24 +108,33 @@ public sealed partial class WorldEngine
         var goal = person.Agent.Goal;
         if (!DailyWorkGoal(goal.Kind) || !IsWorkDay(reference))
             return false;
-        if (person.Health < 40 || person.SicknessTicks > 0 || person.Agent.Fatigue > DailyRoutineRules.RestFatigueThreshold
+        if (person.Health < 40 || person.SicknessTicks > 0 ||
+            person.Agent.Fatigue > DailyRoutineRules.RestFatigueThreshold
             || person.Agent.Sleep < ResidentNeedsRules.FullEfficiencyThreshold * ResidentNeedsRules.MaximumPercent)
             return true;
-        if (goal.TargetEntityId != 0 && goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic)
+        if (goal.TargetEntityId != 0 &&
+            goal.Kind is AgentGoalKind.Work or AgentGoalKind.Study or AgentGoalKind.TrainMagic)
+        {
             return Distance(person.X, person.Y, goal.TargetX, goal.TargetY) <= 6
-                   && (FindBuilding(goal.TargetEntityId) is not { } building || !BuildingHasWork(building.Value, reference));
-        return goal.Kind == AgentGoalKind.Gather ? !FoodSupplyNeeded(reference, town)
+                   && (FindBuilding(goal.TargetEntityId) is not { } building ||
+                       !BuildingHasWork(building.Value, reference));
+        }
+
+        return goal.Kind == AgentGoalKind.Gather
+            ? !FoodSupplyNeeded(reference, town)
             : goal.Kind == AgentGoalKind.Work && !LocalMaterialsNeeded(reference, town);
     }
 
     private bool RepeatDailyWork(StateReference<Resident> person, StateReference<Settlement> home)
     {
         if (person.Value.Agent.DailyPlan?.WorkGoal is not { } work
-            || person.Value.Agent.Goal.Kind is not (AgentGoalKind.Idle or AgentGoalKind.ReturnHome or AgentGoalKind.Rest)
+            || person.Value.Agent.Goal.Kind is not (AgentGoalKind.Idle or AgentGoalKind.ReturnHome or AgentGoalKind.Rest
+                )
             || person.Value.Hunger >= 20 || person.Value.Thirst >= 60
             || RecoveryGoalContinues(person))
             return false;
-        var candidate = new StateReference<Resident>(person.Value.WithAgent(person.Value.Agent.WithGoal(work.ResetNavigation())));
+        var candidate =
+            new StateReference<Resident>(person.Value.WithAgent(person.Value.Agent.WithGoal(work.ResetNavigation())));
         if (!ProductiveGoalContinues(candidate, home))
             return false;
         ChangeWorkReservation(person.Value.Agent.Goal, candidate.Value.Agent.Goal);

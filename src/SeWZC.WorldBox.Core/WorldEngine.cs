@@ -91,14 +91,13 @@ public sealed partial class WorldEngine
             {
                 var location = demoSites[race];
                 engine.SpawnResidents(location % width, location / width, (RaceKind)race, 36);
-                var town = engine.Settlements.Single(t => t.Value.X == location % width && t.Value.Y == location / width);
+                var town =
+                    engine.Settlements.Single(t => t.Value.X == location % width && t.Value.Y == location / width);
                 foreach (var i in engine.Circle(town.Value.X, town.Value.Y, 3))
-                {
                     engine.Tiles[i].Replace(engine.Tiles[i].Value with
                     {
                         NationId = town.Value.NationId, ClaimedSettlementId = town.Value.Id,
                     });
-                }
             }
 
             engine._creatingDemo = false;
@@ -273,8 +272,10 @@ public sealed partial class WorldEngine
                 (deceased ??= []).Add(resident);
         // 先固定死亡名单，再按原顺序归档，保留事件、编号及死亡时记录的因果顺序。
         if (deceased is not null)
+        {
             foreach (var resident in deceased)
                 ArchiveResident(resident);
+        }
 
         while (ArchivedResidents.Count > 256)
             ArchivedResidents.RemoveAt(0);
@@ -291,10 +292,15 @@ public sealed partial class WorldEngine
             }
 
             var death = AddEvent(WorldEventKind.Death,
-                $"{resident.Value.Name}逝世：{DeathCauseName(resident.Value.DeathCause)}，终年 {resident.Value.Age:0.0} 岁。", resident.Value.X,
+                $"{resident.Value.Name}逝世：{DeathCauseName(resident.Value.DeathCause)}，终年 {resident.Value.Age:0.0} 岁。",
+                resident.Value.X,
                 resident.Value.Y, residentId: resident.Value.Id);
-            death = PublishEvent(death with { NationId = resident.Value.NationId, SettlementId = resident.Value.SettlementId });
-            RecordLife(resident, $"逝世原因：{DeathCauseName(resident.Value.DeathCause)}，终年 {resident.Value.Age:0.0} 岁。", death,
+            death = PublishEvent(death with
+            {
+                NationId = resident.Value.NationId, SettlementId = resident.Value.SettlementId,
+            });
+            RecordLife(resident, $"逝世原因：{DeathCauseName(resident.Value.DeathCause)}，终年 {resident.Value.Age:0.0} 岁。",
+                death,
                 importance: EventImportance.Major);
             if (resident.Value.History.Count > 24)
                 resident.Replace(resident.Value with { History = resident.Value.History.RemoveAt(0) });

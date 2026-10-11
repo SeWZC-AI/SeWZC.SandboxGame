@@ -1,10 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Avalonia;
 using Avalonia.Layout;
 using Avalonia.Media;
 using SeWZC.WorldBox.Core;
-using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI.ViewModels;
@@ -163,21 +161,21 @@ internal sealed partial class WorldEditorViewModel
                 for (var yy = Math.Max(0, resident.Y - 6);
                      yy <= Math.Min(_engine.State.Height - 1, resident.Y + 6);
                      yy++)
-                    for (var xx = Math.Max(0, resident.X - 6);
-                         xx <= Math.Min(_engine.State.Width - 1, resident.X + 6);
-                         xx++)
-                    {
-                        var index = yy * _engine.State.Width + xx;
-                        var tile = _engine.State.Tiles[index];
-                        if (kind == AgentGoalKind.FetchWater
-                                ? _engine.GetDailyWaterCapacity(xx, yy) > 0
-                                : kind == AgentGoalKind.Fish
-                                    ? WorldEngine.IsWaterTerrain(tile.Terrain) && AnimalRules.Species.Any(s =>
-                                        AnimalRules.For(s).Aquatic && AnimalRules.For(s).Diet == AnimalDiet.Herbivore &&
-                                        tile.AnimalPopulation(s) > 0)
-                                    : tile.WildlifeMask != 0 && RaceTerrainRules.CanWalk(tile, resident.Race))
-                            choices.Add(new EntityChoice(index + 1, $"{TerrainName(tile.Terrain)} {xx}, {yy}"));
-                    }
+                for (var xx = Math.Max(0, resident.X - 6);
+                     xx <= Math.Min(_engine.State.Width - 1, resident.X + 6);
+                     xx++)
+                {
+                    var index = yy * _engine.State.Width + xx;
+                    var tile = _engine.State.Tiles[index];
+                    if (kind == AgentGoalKind.FetchWater
+                            ? _engine.GetDailyWaterCapacity(xx, yy) > 0
+                            : kind == AgentGoalKind.Fish
+                                ? WorldEngine.IsWaterTerrain(tile.Terrain) && AnimalRules.Species.Any(s =>
+                                    AnimalRules.For(s).Aquatic && AnimalRules.For(s).Diet == AnimalDiet.Herbivore &&
+                                    tile.AnimalPopulation(s) > 0)
+                                : tile.WildlifeMask != 0 && RaceTerrainRules.CanWalk(tile, resident.Race))
+                        choices.Add(new EntityChoice(index + 1, $"{TerrainName(tile.Terrain)} {xx}, {yy}"));
+                }
             }
             else
                 choices.AddRange(_engine.State.Residents.Select(person => new EntityChoice(person.Id, person.Name)));
@@ -658,9 +656,8 @@ internal sealed partial class WorldEditorViewModel
         }), history ? "resident-history-apply" : "resident-mind-apply"));
         OpenModal(panel);
     }
-
 }
 
-[System.Text.Json.Serialization.JsonSerializable(typeof(AgentState))]
-[System.Text.Json.Serialization.JsonSerializable(typeof(List<ResidentHistoryEntry>))]
-internal partial class ResidentUiJsonContext : System.Text.Json.Serialization.JsonSerializerContext;
+[JsonSerializable(typeof(AgentState))]
+[JsonSerializable(typeof(List<ResidentHistoryEntry>))]
+internal partial class ResidentUiJsonContext : JsonSerializerContext;

@@ -125,7 +125,8 @@ public sealed partial class WorldEngine
 
     private void PlanVisibleCrossing(StateReference<Resident> person, int targetX, int targetY)
     {
-        if (!Rules.Construction || person.Value.TravelMode != TravelMode.Foot || person.Value.ArmyId != 0 || person.Value.Age < ResidentNeedsRules.MinimumWorkAge
+        if (!Rules.Construction || person.Value.TravelMode != TravelMode.Foot || person.Value.ArmyId != 0 ||
+            person.Value.Age < ResidentNeedsRules.MinimumWorkAge
             || !HasResearch(person.Value.SettlementId, Advancement.Logistics)
             || person.Value.Agent.Goal.Kind is AgentGoalKind.Gather or AgentGoalKind.Explore or AgentGoalKind.FetchWater
             || (person.Value.Agent.Goal.TargetSettlementId == 0 && person.Value.Agent.Goal.TargetEntityId == 0))
@@ -134,8 +135,10 @@ public sealed partial class WorldEngine
                 b.Value.SettlementId == person.Value.SettlementId && (!b.Value.IsCompleted || b.Value.IsUpgrading)))
             return;
         // 任务确有需求仍须核对可见陆路，已有通路时不应无故建桥。
-        if (Distance(person.Value.X, person.Value.Y, targetX, targetY) <= 6 && VisibleWorkSiteReachable(person, targetX, targetY,
-                AgentInteractionRange(person.Value.Agent.Goal, _settlements.GetValueOrDefault(person.Value.SettlementId)?.Value.FoundationPending == true) > 0))
+        if (Distance(person.Value.X, person.Value.Y, targetX, targetY) <= 6 && VisibleWorkSiteReachable(person, targetX,
+                targetY,
+                AgentInteractionRange(person.Value.Agent.Goal,
+                    _settlements.GetValueOrDefault(person.Value.SettlementId)?.Value.FoundationPending == true) > 0))
             return;
         foreach (var (dx, dy) in Directions)
         {
@@ -168,9 +171,10 @@ public sealed partial class WorldEngine
                 }
 
                 if (tile.Value.Terrain == TerrainType.DeepWater || tile.Value.FireTicks > 0
-                                                          || (tile.Value.Improvement == LandImprovement.Bridge &&
-                                                              tile.Value.BridgeDirection != direction)
-                                                          || (tile.Value.NationId != 0 && tile.Value.NationId != person.Value.NationId))
+                                                                || (tile.Value.Improvement == LandImprovement.Bridge &&
+                                                                    tile.Value.BridgeDirection != direction)
+                                                                || (tile.Value.NationId != 0 && tile.Value.NationId !=
+                                                                    person.Value.NationId))
                     break;
                 span++;
                 if (tile.Value.Improvement != LandImprovement.Bridge)
@@ -183,9 +187,11 @@ public sealed partial class WorldEngine
             var bankY = person.Value.Y + dy * (span + 1);
             if (Distance(bankX, bankY, targetX, targetY) >= Distance(person.Value.X, person.Value.Y, targetX, targetY))
                 continue;
-            if (Distance(person.Value.X, person.Value.Y, targetX, targetY) <= 6 && !VisibleLandPathConnects(person, bankX, bankY,
+            if (Distance(person.Value.X, person.Value.Y, targetX, targetY) <= 6 && !VisibleLandPathConnects(person,
+                    bankX, bankY,
                     targetX, targetY,
-                    AgentInteractionRange(person.Value.Agent.Goal, _settlements.GetValueOrDefault(person.Value.SettlementId)?.Value.FoundationPending == true)))
+                    AgentInteractionRange(person.Value.Agent.Goal,
+                        _settlements.GetValueOrDefault(person.Value.SettlementId)?.Value.FoundationPending == true)))
                 continue;
             var level = Math.Clamp(Math.Max((span + 3) / 4, (BridgeShoreDistance(x, y, direction) + 1) / 2), 1, 3);
             var home = _settlements[person.Value.SettlementId];
@@ -193,7 +199,8 @@ public sealed partial class WorldEngine
             var cost = FacilityCost(BuildingKind.Bridge, level);
             if (ResourceStock.Kinds.Any(k => home.Value.Resources.Get(k) < cost.Get(k) * unfinished + reserve.Get(k)))
                 continue;
-            if (FacilityPlacementError(home.Value.Id, BuildingKind.Bridge, x, y, direction: direction, bridgeLevel: level) is
+            if (FacilityPlacementError(home.Value.Id, BuildingKind.Bridge, x, y, direction: direction,
+                    bridgeLevel: level) is
                 not null)
                 continue;
             var reason =
@@ -203,7 +210,8 @@ public sealed partial class WorldEngine
         }
     }
 
-    private bool VisibleLandPathConnects(StateReference<Resident> observer, int originX, int originY, int targetX, int targetY,
+    private bool VisibleLandPathConnects(StateReference<Resident> observer, int originX, int originY, int targetX,
+        int targetY,
         int range)
     {
         if (_localMoveVisited.Length != Tiles.Count)
@@ -341,16 +349,20 @@ public sealed partial class WorldEngine
             var amount = Math.Min(tile.Value.DepositAmount,
                 WorkInterval(person) / (double)SimulationTime.TicksPerDay * .4 * Rules.GatheringRate *
                 GatheringCondition(person.Value.SicknessTicks, person.Value.Hunger, person.Value.Thirst) *
-                ResidentNeedsRules.WorkEfficiency(person.Value) * GatheringTerritoryMultiplier(person.Value.SettlementId, person.Value.NationId, tile.Value) *
+                ResidentNeedsRules.WorkEfficiency(person.Value) *
+                GatheringTerritoryMultiplier(person.Value.SettlementId, person.Value.NationId, tile.Value) *
                 (HasResearch(person.Value.SettlementId, Advancement.Forestry) ? 1.25 : 1));
             amount = Math.Min(amount, 1_000_000 - person.Value.Inventory.Get(kind));
-            tile.Replace(tile.Value.WithDepositAmount(tile.Value.DepositAmount - (amount)));
-            person.Replace(person.Value.WithInventory(person.Value.Inventory.WithAmount(kind, person.Value.Inventory.Get(kind) + amount)));
+            tile.Replace(tile.Value.WithDepositAmount(tile.Value.DepositAmount - amount));
+            person.Replace(
+                person.Value.WithInventory(
+                    person.Value.Inventory.WithAmount(kind, person.Value.Inventory.Get(kind) + amount)));
             RecordHarvest(tile, amount);
             person.Replace(person.Value.WithActivity(ResidentActivity.Working));
             person.Replace(person.Value.WithAgent(person.Value.Agent with
             {
-                Fatigue = ResidentNeedsRules.ExertionFatigue(person.Value, ResidentNeedsRules.PhysicalWorkCostPerTick * WorkInterval(person)),
+                Fatigue = ResidentNeedsRules.ExertionFatigue(person.Value,
+                    ResidentNeedsRules.PhysicalWorkCostPerTick * WorkInterval(person)),
             }));
             return amount > 0;
         }

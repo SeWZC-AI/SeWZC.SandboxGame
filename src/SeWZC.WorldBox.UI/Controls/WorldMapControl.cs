@@ -167,6 +167,9 @@ public sealed partial class WorldMapControl : Control
     /// <summary>执行地图编辑前异步准备暂停和撤销恢复点的回调。</summary>
     public Func<Task>? PrepareWorldEdit { get; set; }
 
+    /// <summary>地图比例尺距视图底部的像素距离，由 HUD 布局留出空间。</summary>
+    public double ScaleBottomInset { get; set; } = 22;
+
     /// <summary>捕获地图选择及跟随设置，用于界面导航返回。</summary>
     public MapSelectionState CaptureMapSelection()
     {
@@ -326,8 +329,11 @@ public sealed partial class WorldMapControl : Control
     }
 
     /// <summary>捕获观察位置和地图缩放，不读取或修改模拟状态。</summary>
-    public ViewportState CaptureViewport() => new(
-        new Point((Bounds.Width / 2 - _origin.X) / _zoom, (Bounds.Height / 2 - _origin.Y) / _zoom), _zoom);
+    public ViewportState CaptureViewport()
+    {
+        return new ViewportState(
+            new Point((Bounds.Width / 2 - _origin.X) / _zoom, (Bounds.Height / 2 - _origin.Y) / _zoom), _zoom);
+    }
 
     /// <summary>恢复观察位置和缩放，在当前窗口尺寸下保持原世界中心。</summary>
     /// <param name="viewport">此前捕获的观察视野。</param>
@@ -339,11 +345,6 @@ public sealed partial class WorldMapControl : Control
         _cameraReady = true;
         InvalidateVisual();
     }
-
-    /// <summary>地图的观察中心和缩放。</summary>
-    /// <param name="Center">以未缩放地图像素计的世界中心。</param>
-    /// <param name="Zoom">地图缩放倍数。</param>
-    public readonly record struct ViewportState(Point Center, double Zoom);
 
     /// <summary>在控件尺寸变化时使地图视野缓存失效，并初始化镜头。</summary>
     /// <param name="change">发生变化的 Avalonia 属性及其新旧值。</param>
@@ -1081,9 +1082,6 @@ public sealed partial class WorldMapControl : Control
         context.DrawEllipse(previewFill, previewPen, point, radius, radius);
     }
 
-    /// <summary>地图比例尺距视图底部的像素距离，由 HUD 布局留出空间。</summary>
-    public double ScaleBottomInset { get; set; } = 22;
-
     private void DrawScale(DrawingContext context)
     {
         var tiles = _zoom > 1 ? 5 : _zoom > .3 ? 10 : 25;
@@ -1430,6 +1428,11 @@ public sealed partial class WorldMapControl : Control
         _chunkTileSnapshot = null;
         _chunkNationSnapshot = null;
     }
+
+    /// <summary>地图的观察中心和缩放。</summary>
+    /// <param name="Center">以未缩放地图像素计的世界中心。</param>
+    /// <param name="Zoom">地图缩放倍数。</param>
+    public readonly record struct ViewportState(Point Center, double Zoom);
 
     /// <summary>地图当前选择和跟随设置，用于界面导航返回时恢复。</summary>
     /// <param name="ResidentId">选中的居民 ID，空值表示未选中。</param>

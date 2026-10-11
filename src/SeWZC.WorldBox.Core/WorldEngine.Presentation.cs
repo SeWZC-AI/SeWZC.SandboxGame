@@ -49,7 +49,8 @@ public sealed partial class WorldEngine
         var targetY = goal.TargetY;
         var factory = goal.Kind == AgentGoalKind.Work
             ? Buildings.FirstOrDefault(b =>
-                b.Value.Id == goal.TargetEntityId && b.Value.SettlementId == person.Value.SettlementId && b.Value.IsCompleted)
+                b.Value.Id == goal.TargetEntityId && b.Value.SettlementId == person.Value.SettlementId &&
+                b.Value.IsCompleted)
             : null;
         var production = factory is null ? null : ProductionRules.For(factory.Value.Kind);
         if (production is not null && _settlements.TryGetValue(person.Value.SettlementId, out var home))
@@ -64,8 +65,10 @@ public sealed partial class WorldEngine
         var visited = new HashSet<int> { Index(cursor.Value.X, cursor.Value.Y) };
         for (var i = 0; i < Math.Clamp(steps, 0, 64); i++)
         {
-            var interactionRange = production is not null ? 1 : AgentInteractionRange(goal,
-                _settlements.GetValueOrDefault(person.Value.SettlementId)?.Value.FoundationPending == true);
+            var interactionRange = production is not null
+                ? 1
+                : AgentInteractionRange(goal,
+                    _settlements.GetValueOrDefault(person.Value.SettlementId)?.Value.FoundationPending == true);
             if (Distance(cursor.Value.X, cursor.Value.Y, targetX, targetY) <= interactionRange &&
                 Walkable(cursor.Value.X, cursor.Value.Y, cursor.Value.Race))
                 break;

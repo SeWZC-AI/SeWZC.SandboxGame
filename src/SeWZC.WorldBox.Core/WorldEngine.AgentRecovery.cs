@@ -35,17 +35,23 @@ public sealed partial class WorldEngine
 
     private bool RecoveryGoalContinues(StateReference<Resident> person)
     {
-        return (person.Value.Agent.Fatigue > 8 || person.Value.Agent.Sleep < ResidentNeedsRules.FullEfficiencyThreshold * ResidentNeedsRules.MaximumPercent
-                || person.Value.SicknessTicks > 0 || person.Value.Health < 70)
+        return (person.Value.Agent.Fatigue > 8 || person.Value.Agent.Sleep <
+                                               ResidentNeedsRules.FullEfficiencyThreshold *
+                                               ResidentNeedsRules.MaximumPercent
+                                               || person.Value.SicknessTicks > 0 || person.Value.Health < 70)
                && (person.Value.Agent.Goal.TargetEntityId == 0
                    || (FindBuilding(person.Value.Agent.Goal.TargetEntityId) is { } clinic
-                       && (clinic.Value.Kind == BuildingKind.Housing ? ResidentHome(person.Value) == clinic : IsBuildingOperational(clinic.Value))));
+                       && (clinic.Value.Kind == BuildingKind.Housing
+                           ? ResidentHome(person.Value) == clinic
+                           : IsBuildingOperational(clinic.Value))));
     }
 
-    private void AddRecoveryChoice(StateReference<Resident> person, StateReference<Settlement> home, List<GoalChoice> choices)
+    private void AddRecoveryChoice(StateReference<Resident> person, StateReference<Settlement> home,
+        List<GoalChoice> choices)
     {
         if (person.Value.SicknessTicks == 0 && person.Value.Health >= 40
-                                      && !(person.Value.Agent.Goal.Kind == AgentGoalKind.Rest && person.Value.Health < 70))
+                                            && !(person.Value.Agent.Goal.Kind == AgentGoalKind.Rest &&
+                                                 person.Value.Health < 70))
             return;
         IReadOnlyList<StateReference<Building>>? buildings = _localWorkQueriesActive
             ? _localWorkBuildings.GetValueOrDefault(home.Value.Id)
@@ -58,12 +64,13 @@ public sealed partial class WorldEngine
             foreach (var building in buildings)
             {
                 if (building.Value.SettlementId != home.Value.Id || building.Value.Kind is not (BuildingKind.Infirmary
-                                                         or BuildingKind.Hospital)
-                                                     || !IsBuildingOperational(building.Value))
+                                                                     or BuildingKind.Hospital)
+                                                                 || !IsBuildingOperational(building.Value))
                     continue;
                 var distance = Distance(person.Value.X, person.Value.Y, building.Value.X, building.Value.Y);
                 if (distance > 6 || distance >= bestDistance
-                                 || !VisibleSiteReachable(person, Index(building.Value.X, building.Value.Y), ref reachable))
+                                 || !VisibleSiteReachable(person, Index(building.Value.X, building.Value.Y),
+                                     ref reachable))
                     continue;
                 selected = building;
                 bestDistance = distance;

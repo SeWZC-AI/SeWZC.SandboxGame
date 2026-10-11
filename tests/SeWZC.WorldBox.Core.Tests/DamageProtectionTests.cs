@@ -85,7 +85,7 @@ public sealed class DamageProtectionTests
         }
 
         fixture.Engine.SimulationTick = SimulationTime.WakeTick
-                                      + (11 - fixture.ResidentId % 12 - SimulationTime.WakeTick + 24) % 12;
+                                        + (11 - fixture.ResidentId % 12 - SimulationTime.WakeTick + 24) % 12;
 
         if (automatic)
             fixture.Engine.Step();

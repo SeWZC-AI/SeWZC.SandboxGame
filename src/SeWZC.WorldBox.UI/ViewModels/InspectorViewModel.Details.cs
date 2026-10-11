@@ -1,8 +1,5 @@
 using Avalonia;
 using Avalonia.Layout;
-using Avalonia.Media;
-using SeWZC.WorldBox.Core;
-using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI.ViewModels;
@@ -34,5 +31,4 @@ internal sealed partial class InspectorViewModel
         parent.Children.Add(fold);
         return content;
     }
-
 }

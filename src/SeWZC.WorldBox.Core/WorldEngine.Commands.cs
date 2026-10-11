@@ -83,7 +83,9 @@ public sealed partial class WorldEngine
         count = Math.Clamp(count, 1, Math.Min(200, MaxPopulation - Residents.Count));
         var owner = Tiles[index].Value.NationId;
         var settlement = Settlements
-            .Where(s => owner > 0 ? s.Value.NationId == owner : Distance(s.Value.X, s.Value.Y, x, y) < MinimumSettlementDistance)
+            .Where(s => owner > 0
+                ? s.Value.NationId == owner
+                : Distance(s.Value.X, s.Value.Y, x, y) < MinimumSettlementDistance)
             .OrderBy(s => Distance(s.Value.X, s.Value.Y, x, y)).FirstOrDefault();
         if (settlement is null)
         {
@@ -133,7 +135,8 @@ public sealed partial class WorldEngine
             _citizens[settlement.Value.Id] = [];
             Tiles[Index(x, y)].Replace(Tiles[Index(x, y)].Value.WithSettlementId(settlement.Value.Id));
             ClaimTerritory(settlement, 6);
-            AddEvent(WorldEventKind.Founding, $"{RaceNames[(int)race]}在{settlement.Value.Name}定居，建立了{nation.Value.Name}。", x, y);
+            AddEvent(WorldEventKind.Founding,
+                $"{RaceNames[(int)race]}在{settlement.Value.Name}定居，建立了{nation.Value.Name}。", x, y);
         }
 
         using var residentUpdates = Residents.BeginUpdates();
@@ -167,10 +170,22 @@ public sealed partial class WorldEngine
             // 开局口粮统一分配，避免职业和居民处理顺序造成不公平的库存差异。
             var food = Rules.Hunger ? Math.Min(settlement.Value.Resources.Food, 1) : 0;
             var water = Rules.Thirst ? Math.Min(settlement.Value.Resources.Water, .75) : 0;
-            settlement.Replace(settlement.Value.WithResources(settlement.Value.Resources with { Food = settlement.Value.Resources.Food - food }));
-            person.Replace(person.Value.WithInventory(person.Value.Inventory with { Food = person.Value.Inventory.Food + food }));
-            settlement.Replace(settlement.Value.WithResources(settlement.Value.Resources with { Water = settlement.Value.Resources.Water - water }));
-            person.Replace(person.Value.WithInventory(person.Value.Inventory with { Water = person.Value.Inventory.Water + water }));
+            settlement.Replace(settlement.Value.WithResources(settlement.Value.Resources with
+            {
+                Food = settlement.Value.Resources.Food - food,
+            }));
+            person.Replace(person.Value.WithInventory(person.Value.Inventory with
+            {
+                Food = person.Value.Inventory.Food + food,
+            }));
+            settlement.Replace(settlement.Value.WithResources(settlement.Value.Resources with
+            {
+                Water = settlement.Value.Resources.Water - water,
+            }));
+            person.Replace(person.Value.WithInventory(person.Value.Inventory with
+            {
+                Water = person.Value.Inventory.Water + water,
+            }));
         }
 
         InitializeSociety();
@@ -284,13 +299,15 @@ public sealed partial class WorldEngine
         if (kind == DisasterKind.Plague)
         {
             foreach (var resident in Residents.Where(r => r.Value.Health > 0 && r.Value.SicknessTicks == 0
-                                                                               && r.Value.DiseaseImmuneUntilTick <=
-                                                                               SimulationTick &&
-                                                                               Distance(r.Value.X, r.Value.Y, x, y) <= radius)
+                                                                             && r.Value.DiseaseImmuneUntilTick <=
+                                                                             SimulationTick &&
+                                                                             Distance(r.Value.X, r.Value.Y, x, y) <=
+                                                                             radius)
                          .OrderBy(r => Distance(r.Value.X, r.Value.Y, x, y)).ThenBy(r => r.Value.Id)
                          .Take(Math.Clamp(1 + radius / 10, 1, 3)))
             {
-                resident.Replace(resident.Value.WithSicknessTicks(3 * SimulationTime.TicksPerDay + RandomInt(SimulationTime.TicksPerDay + 1)));
+                resident.Replace(resident.Value.WithSicknessTicks(3 * SimulationTime.TicksPerDay +
+                                                                  RandomInt(SimulationTime.TicksPerDay + 1)));
                 EmitVisual(WorldVisualKind.Plague, resident.Value.X, resident.Value.Y);
             }
         }
@@ -451,17 +468,19 @@ public sealed partial class WorldEngine
         foreach (var settlement in Settlements.ToArray())
         {
             var center = Tiles[Index(settlement.Value.X, settlement.Value.Y)];
-            if ((center.Value.IsWalkable && !IsWaterTerrain(center.Value.Terrain)) || (center.Value.Terrain == TerrainType.Mountain
-                                                                           && _citizens.GetValueOrDefault(settlement.Value.Id)
-                                                                               ?.Any(p => p.Value.Race == RaceKind.Dwarf &&
-                                                                                   p.Value.Health > 0 && p.Value.Age >= ResidentNeedsRules.MinimumWorkAge) ==
-                                                                           true))
+            if ((center.Value.IsWalkable && !IsWaterTerrain(center.Value.Terrain)) ||
+                (center.Value.Terrain == TerrainType.Mountain
+                 && _citizens.GetValueOrDefault(settlement.Value.Id)
+                     ?.Any(p => p.Value.Race == RaceKind.Dwarf &&
+                                p.Value.Health > 0 && p.Value.Age >= ResidentNeedsRules.MinimumWorkAge) ==
+                 true))
             {
                 ClaimTerritory(settlement, 6);
                 continue;
             }
 
-            Tiles[Index(settlement.Value.X, settlement.Value.Y)].Replace(Tiles[Index(settlement.Value.X, settlement.Value.Y)].Value.WithSettlementId(0));
+            Tiles[Index(settlement.Value.X, settlement.Value.Y)]
+                .Replace(Tiles[Index(settlement.Value.X, settlement.Value.Y)].Value.WithSettlementId(0));
             var position = Circle(settlement.Value.X, settlement.Value.Y, 12)
                 .Where(i => Tiles[i].Value.IsWalkable && !IsWaterTerrain(Tiles[i].Value.Terrain) &&
                             Tiles[i].Value.SettlementId == 0 &&
@@ -475,7 +494,8 @@ public sealed partial class WorldEngine
                     settlement.Value with { X = position % Width, Y = position / Width });
                 Tiles[position].Replace(Tiles[position].Value.WithSettlementId(settlement.Value.Id));
                 ClaimTerritory(settlement, 6);
-                AddEvent(WorldEventKind.Editor, $"地形改变，{settlement.Value.Name}迁往可居住的土地。", settlement.Value.X, settlement.Value.Y);
+                AddEvent(WorldEventKind.Editor, $"地形改变，{settlement.Value.Name}迁往可居住的土地。", settlement.Value.X,
+                    settlement.Value.Y);
             }
             else
                 RemoveSettlement(settlement, "家园被地形变化摧毁");
@@ -485,7 +505,8 @@ public sealed partial class WorldEngine
         {
             if (resident.Value.CarriedByResidentId != 0)
                 continue;
-            if (CanTraverse(Tiles[Index(resident.Value.X, resident.Value.Y)].Value, resident.Value.TravelMode, resident.Value.Race))
+            if (CanTraverse(Tiles[Index(resident.Value.X, resident.Value.Y)].Value, resident.Value.TravelMode,
+                    resident.Value.Race))
                 continue;
             var position = FindWalkable(resident.Value.X, resident.Value.Y, 10, resident.Value.Race);
             if (position >= 0)

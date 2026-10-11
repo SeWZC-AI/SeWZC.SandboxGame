@@ -40,7 +40,8 @@ public sealed partial class WorldEngine
             return;
         radius = Math.Clamp(radius, 0, 32);
         var indexes = Circle(x, y, radius).ToHashSet();
-        foreach (var town in Settlements.Where(s => s.Value.NationId != nationId && indexes.Contains(Index(s.Value.X, s.Value.Y)))
+        foreach (var town in Settlements
+                     .Where(s => s.Value.NationId != nationId && indexes.Contains(Index(s.Value.X, s.Value.Y)))
                      .ToArray())
             TransferSettlementOwnership(town, nationId);
         foreach (var index in indexes)
@@ -117,17 +118,18 @@ public sealed partial class WorldEngine
             Diplomacies =
                 Diplomacies.Add(new DiplomaticRelation
                 {
-                    FirstNationId = other.Value.Id,
-                    SecondNationId = nation.Value.Id,
+                    FirstNationId = other.Value.Id, SecondNationId = nation.Value.Id,
                 });
         Nations.Add(nation);
         _nations[nation.Value.Id] = nation;
         TransferSettlementOwnership(town, nation.Value.Id);
-        Tiles[Index(town.Value.X, town.Value.Y)].Replace(Tiles[Index(town.Value.X, town.Value.Y)].Value.WithNationId(nation.Value.Id));
+        Tiles[Index(town.Value.X, town.Value.Y)]
+            .Replace(Tiles[Index(town.Value.X, town.Value.Y)].Value.WithNationId(nation.Value.Id));
         Reindex();
         InitializeSociety();
         RefreshTotals();
-        AddEvent(WorldEventKind.Editor, $"{town.Value.Name}从{parent.Value.Name}独立，成立{nation.Value.Name}。", town.Value.X, town.Value.Y);
+        AddEvent(WorldEventKind.Editor, $"{town.Value.Name}从{parent.Value.Name}独立，成立{nation.Value.Name}。", town.Value.X,
+            town.Value.Y);
         return nation.Value.Id;
     }
 
@@ -141,7 +143,8 @@ public sealed partial class WorldEngine
         foreach (var ground in Tiles)
             if (ground.Value.ClaimedSettlementId == town.Value.Id)
                 ground.Replace(ground.Value.WithNationId(targetNationId));
-        Tiles[Index(town.Value.X, town.Value.Y)].Replace(Tiles[Index(town.Value.X, town.Value.Y)].Value.WithNationId(targetNationId));
+        Tiles[Index(town.Value.X, town.Value.Y)]
+            .Replace(Tiles[Index(town.Value.X, town.Value.Y)].Value.WithNationId(targetNationId));
         var remainingHome = Settlements.FirstOrDefault(s => s.Value.NationId == previousId);
         if (previousNation.Value.CapitalId == town.Value.Id)
             previousNation.Replace(previousNation.Value with { CapitalId = remainingHome?.Value.Id ?? 0 });

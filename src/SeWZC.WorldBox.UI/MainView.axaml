@@ -2,20 +2,27 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels"
              xmlns:views="using:SeWZC.WorldBox.UI.Views" xmlns:controls="using:SeWZC.WorldBox.UI.Controls"
              x:Class="SeWZC.WorldBox.UI.MainView" x:DataType="vm:GameSessionViewModel" x:CompileBindings="True"
-             Background="#111E29" Focusable="True" d:DesignWidth="1440" d:DesignHeight="920" d:DataContext="{x:Static vm:DesignData.Session}">
+             Background="#111E29" Focusable="True" d:DesignWidth="1440" d:DesignHeight="920"
+             d:DataContext="{x:Static vm:DesignData.Session}">
     <Grid>
         <Grid IsEnabled="{Binding IsReady}">
             <Grid ClipToBounds="True" Background="#122D3D">
                 <controls:WorldMapControl x:Name="Map" />
                 <views:CameraControls HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10,54,10,10" />
-                <views:MapInteractionView DataContext="{Binding Interaction}" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,112,10,10" ZIndex="30" />
+                <views:MapInteractionView DataContext="{Binding Interaction}" HorizontalAlignment="Left"
+                                          VerticalAlignment="Top" Margin="10,112,10,10" ZIndex="30" />
                 <views:GameHud x:Name="Hud">
-                    <views:GameHud.ToolContent><views:ToolPaletteView DataContext="{Binding Tools}" /></views:GameHud.ToolContent>
+                    <views:GameHud.ToolContent>
+                        <views:ToolPaletteView DataContext="{Binding Tools}" />
+                    </views:GameHud.ToolContent>
                 </views:GameHud>
             </Grid>
             <views:InspectorPanel DataContext="{Binding Navigation}" IsVisible="{Binding State.InspectorVisible}"
-                                  Width="{Binding Layout.InspectorWidth}" MaxHeight="{Binding Layout.InspectorMaxHeight}" Height="{Binding Layout.InspectorHeight}"
-                                  HorizontalAlignment="Right" VerticalAlignment="{Binding Layout.InspectorAlignment}" Margin="{Binding Layout.InspectorMargin}" ZIndex="20" />
+                                  Width="{Binding Layout.InspectorWidth}"
+                                  MaxHeight="{Binding Layout.InspectorMaxHeight}"
+                                  Height="{Binding Layout.InspectorHeight}"
+                                  HorizontalAlignment="Right" VerticalAlignment="{Binding Layout.InspectorAlignment}"
+                                  Margin="{Binding Layout.InspectorMargin}" ZIndex="20" />
         </Grid>
         <views:ModalHost IsVisible="{Binding IsVisible}" DataContext="{Binding Dialogs}" ZIndex="100" />
     </Grid>

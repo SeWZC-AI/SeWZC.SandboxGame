@@ -11,12 +11,8 @@ internal sealed class WorldSaveCoordinator
     private readonly Func<IWorldStorage?> _currentStorage;
     private readonly Func<double> _elapsedSeconds;
     private readonly SemaphoreSlim _saveGate = new(1, 1);
-    private bool _ready, _allowAutosave = true, _saving;
-    private CancellationTokenSource? _saveCapture;
     private WorldEngine? _savedSource;
-    private long _savedTick = -1, _worldEditRevision, _savedEditRevision = -1, _lastSaveYield;
-    private double _lastSave;
-    private WorldEngine _engine => _currentEngine();
+    private long _savedTick = -1, _savedEditRevision = -1, _lastSaveYield;
 
     /// <summary>连接当前世界、平台存储与会话内计时。</summary>
     /// <param name="currentEngine">读取当前世界引擎。</param>
@@ -30,35 +26,67 @@ internal sealed class WorldSaveCoordinator
         _elapsedSeconds = elapsedSeconds;
     }
 
+    private WorldEngine _engine => _currentEngine();
+    internal bool Ready { get; set; }
+
+    internal bool AllowAutosave { get; set; } = true;
+    internal bool IsSaving { get; private set; }
+
+    internal CancellationTokenSource? Capture { get; private set; }
+
+    internal double LastSave { get; set; }
+
+    internal long EditRevision { get; set; }
+
+    internal bool IsAvailable => _currentStorage() is not null;
+    internal bool IsBackground => _currentStorage()?.IsBackground == true;
+
     internal event Action? CaptureChanged;
     internal event Action? TimeAnchorChanged;
     internal event Action<string>? Feedback;
-    internal bool Ready { get => _ready; set => _ready = value; }
-    internal bool AllowAutosave { get => _allowAutosave; set => _allowAutosave = value; }
-    internal bool IsSaving => _saving;
-    internal CancellationTokenSource? Capture => _saveCapture;
-    internal double LastSave { get => _lastSave; set => _lastSave = value; }
-    internal long EditRevision { get => _worldEditRevision; set => _worldEditRevision = value; }
-    internal bool IsAvailable => _currentStorage() is not null;
-    internal bool IsBackground => _currentStorage()?.IsBackground == true;
-    internal void CancelCapture() => _saveCapture?.Cancel();
+
+    internal void CancelCapture()
+    {
+        Capture?.Cancel();
+    }
+
     internal void MarkLoaded(WorldEngine source)
     {
         _savedSource = source;
         _savedTick = source.State.Tick;
-        _savedEditRevision = _worldEditRevision;
+        _savedEditRevision = EditRevision;
     }
+
     internal async Task<string?> LoadAsync(Func<bool> current)
     {
         var storage = _currentStorage();
-        if (storage is null) return null;
+        if (storage is null)
+            return null;
         await _saveGate.WaitAsync();
-        try { return current() ? await storage.LoadAsync() : null; }
-        finally { _saveGate.Release(); }
+        try
+        {
+            return current() ? await storage.LoadAsync() : null;
+        }
+        finally
+        {
+            _saveGate.Release();
+        }
     }
-    internal Task<string?> ImportAsync() => _currentStorage()?.ImportAsync() ?? Task.FromResult<string?>(null);
-    private void SetStatus(string text) => Feedback?.Invoke(text);
-    private static string FriendlyError(Exception exception) => exception.Message.Length > 160 ? exception.Message[..160] : exception.Message;
+
+    internal Task<string?> ImportAsync()
+    {
+        return _currentStorage()?.ImportAsync() ?? Task.FromResult<string?>(null);
+    }
+
+    private void SetStatus(string text)
+    {
+        Feedback?.Invoke(text);
+    }
+
+    private static string FriendlyError(Exception exception)
+    {
+        return exception.Message.Length > 160 ? exception.Message[..160] : exception.Message;
+    }
 
     internal async Task ExportWorldAsync(Func<bool> originalWindowOpen, Action exported)
     {
@@ -67,7 +95,10 @@ internal sealed class WorldSaveCoordinator
             return;
         var source = _engine;
 
-        bool OriginalWindowOpen() => originalWindowOpen();
+        bool OriginalWindowOpen()
+        {
+            return originalWindowOpen();
+        }
 
         await _saveGate.WaitAsync();
         using var capture = new CancellationTokenSource();
@@ -76,8 +107,8 @@ internal sealed class WorldSaveCoordinator
             // 排队请求须绑定原窗口和世界，避免窗口关闭后捕获新选中的世界。
             if (!OriginalWindowOpen())
                 return;
-            _saving = true;
-            _saveCapture = capture;
+            IsSaving = true;
+            Capture = capture;
             _lastSaveYield = Stopwatch.GetTimestamp();
             CaptureChanged?.Invoke();
             var filename = $"worldbox-{source.State.Seed}-year{source.State.Year}.json";
@@ -104,7 +135,7 @@ internal sealed class WorldSaveCoordinator
         finally
         {
             FinishSaveCapture(capture);
-            _saving = false;
+            IsSaving = false;
             _saveGate.Release();
         }
     }
@@ -112,7 +143,7 @@ internal sealed class WorldSaveCoordinator
     internal async Task SaveAsync(bool manual)
     {
         var storage = _currentStorage();
-        if (storage is null || !_ready || (!manual && (_saving || !_allowAutosave || !WorldNeedsSave())))
+        if (storage is null || !Ready || (!manual && (IsSaving || !AllowAutosave || !WorldNeedsSave())))
             return;
         await _saveGate.WaitAsync();
         using var capture = new CancellationTokenSource();
@@ -120,12 +151,12 @@ internal sealed class WorldSaveCoordinator
         {
             if (!manual && !WorldNeedsSave())
                 return;
-            _saving = true;
+            IsSaving = true;
             var source = _engine;
             var tick = source.State.Tick;
-            var revision = _worldEditRevision;
+            var revision = EditRevision;
             var year = source.State.Year;
-            _saveCapture = capture;
+            Capture = capture;
             _lastSaveYield = Stopwatch.GetTimestamp();
             CaptureChanged?.Invoke();
 
@@ -136,10 +167,10 @@ internal sealed class WorldSaveCoordinator
             _savedSource = source;
             _savedTick = tick;
             _savedEditRevision = revision;
-            _lastSave = _elapsedSeconds();
+            LastSave = _elapsedSeconds();
             if (manual)
             {
-                _allowAutosave = true;
+                AllowAutosave = true;
                 SetStatus("世界已保存到本机");
             }
             else
@@ -147,7 +178,7 @@ internal sealed class WorldSaveCoordinator
         }
         catch (Exception) when (capture.IsCancellationRequested)
         {
-            _lastSave = _elapsedSeconds() - 25;
+            LastSave = _elapsedSeconds() - 25;
         }
         catch (Exception ex)
         {
@@ -156,7 +187,7 @@ internal sealed class WorldSaveCoordinator
         finally
         {
             FinishSaveCapture(capture);
-            _saving = false;
+            IsSaving = false;
             _saveGate.Release();
         }
     }
@@ -164,13 +195,13 @@ internal sealed class WorldSaveCoordinator
     internal bool WorldNeedsSave()
     {
         return !ReferenceEquals(_savedSource, _engine) || _savedTick != _engine.State.Tick
-                                                       || _savedEditRevision != _worldEditRevision;
+                                                       || _savedEditRevision != EditRevision;
     }
 
     // 从编辑结束重新计算保存静默期，避免连续命令立即触发自动保存。
     internal void DeferAutosaveAfterEdit()
     {
-        _lastSave = Math.Max(_lastSave, _elapsedSeconds() - 25);
+        LastSave = Math.Max(LastSave, _elapsedSeconds() - 25);
     }
 
     private async ValueTask YieldDuringSave(CancellationToken cancellationToken)
@@ -183,12 +214,11 @@ internal sealed class WorldSaveCoordinator
 
     private void FinishSaveCapture(CancellationTokenSource capture)
     {
-        if (!ReferenceEquals(_saveCapture, capture))
+        if (!ReferenceEquals(Capture, capture))
             return;
         // 捕获期间模拟暂停，恢复时不能把捕获耗时计入待推进的模拟时间。
-        _saveCapture = null;
+        Capture = null;
         TimeAnchorChanged?.Invoke();
         CaptureChanged?.Invoke();
     }
-
 }

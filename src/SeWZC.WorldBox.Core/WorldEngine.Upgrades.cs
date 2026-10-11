@@ -146,7 +146,8 @@ public sealed partial class WorldEngine
             return "需先完工并修复建筑";
         if (building.Value.IsUpgrading)
             return "已有升级或改向项目";
-        if (building.Value.Kind == BuildingKind.TownCenter && RequireTown(building.Value.SettlementId).Value.IsExpanding)
+        if (building.Value.Kind == BuildingKind.TownCenter &&
+            RequireTown(building.Value.SettlementId).Value.IsExpanding)
             return "中心正在组织城镇扩充，完成后可单独升级建筑";
         if (Tiles[Index(building.Value.X, building.Value.Y)].Value.FireTicks > 0)
             return "所在地正在燃烧";
@@ -178,8 +179,9 @@ public sealed partial class WorldEngine
         var building = Buildings.First(b => b.Value.Id == id);
         if (!gift)
         {
-            RequireTown(building.Value.SettlementId).Replace(RequireTown(building.Value.SettlementId).Value.WithResources(Spend(RequireTown(building.Value.SettlementId).Value.Resources,
-                GetUpgradeCost(building.Value, direction.HasValue))));
+            RequireTown(building.Value.SettlementId).Replace(RequireTown(building.Value.SettlementId).Value
+                .WithResources(Spend(RequireTown(building.Value.SettlementId).Value.Resources,
+                    GetUpgradeCost(building.Value, direction.HasValue))));
         }
 
         building.Replace(building.Value with
@@ -226,15 +228,17 @@ public sealed partial class WorldEngine
         foreach (var building in buildings.OrderBy(b => b.Value.Level).ThenBy(b => b.Value.Id))
         {
             if (!FacilityNeeded(demand, building.Value.Kind) || (building.Value.Kind != BuildingKind.TownCenter
-                                                           && building.Value.Kind != BuildingKind.Housing &&
-                                                           building.Value.Workers.Count < building.Value.WorkSlots))
+                                                                 && building.Value.Kind != BuildingKind.Housing &&
+                                                                 building.Value.Workers.Count <
+                                                                 building.Value.WorkSlots))
                 continue;
             if (building.Value.Level >= 3 || SimulationTick - building.Value.LastWorkedTick > 24 ||
                 BuildingUpgradeError(building.Value.Id) is not null)
                 continue;
             var cost = GetUpgradeCost(building.Value);
             if (ResourceStock.Kinds.Any(k => town.Value.Resources.Get(k) < cost.Get(k) + reserve.Get(k) +
-                    (k == ResourceKind.Food && building.Value.Kind is not (BuildingKind.Farm or BuildingKind.AutomatedFarm
+                    (k == ResourceKind.Food && building.Value.Kind is not (BuildingKind.Farm
+                        or BuildingKind.AutomatedFarm
                         or BuildingKind.RunicGarden or BuildingKind.Pasture or BuildingKind.Aquaculture)
                         ? town.Value.Population * 2
                         : 0)))

@@ -28,27 +28,30 @@ public sealed partial class WorldEngine
         };
     }
 
-    private void EndCampaign(StateReference<Army> army, WarOutcome outcome, StateReference<Resident>[] soldiers, int cause = 0)
+    private void EndCampaign(StateReference<Army> army, WarOutcome outcome, StateReference<Resident>[] soldiers,
+        int cause = 0)
     {
         if (army.Value.Outcome != WarOutcome.None)
             return;
         army.Replace(army.Value with
         {
-            Outcome = outcome,
-            Retreating = true,
-            Gathering = false,
-            Status = OutcomeName(outcome) + "，实际返乡并报告",
+            Outcome = outcome, Retreating = true, Gathering = false, Status = OutcomeName(outcome) + "，实际返乡并报告",
         });
-        var entry = AddEvent(WorldEventKind.War, $"{_nations[army.Value.NationId].Value.Name}的军队{army.Value.Status}。", army.Value.X, army.Value.Y,
-            EventAction.Retreat, army.Value.TargetSettlementId, causeEventId: cause > 0 ? cause : army.Value.LastEventId);
+        var entry = AddEvent(WorldEventKind.War, $"{_nations[army.Value.NationId].Value.Name}的军队{army.Value.Status}。",
+            army.Value.X, army.Value.Y,
+            EventAction.Retreat, army.Value.TargetSettlementId,
+            causeEventId: cause > 0 ? cause : army.Value.LastEventId);
         entry = PublishEvent(entry with { NationId = army.Value.NationId, SecondNationId = army.Value.TargetNationId });
         army.Replace(army.Value with { LastEventId = entry.Id });
         // 编年史记录世界事实，但战报只能由实际目击者获得。
-        var witnesses = soldiers.Where(r => r.Value.Health > 0 && Distance(r.Value.X, r.Value.Y, army.Value.X, army.Value.Y) <= 3).ToArray();
+        var witnesses = soldiers
+            .Where(r => r.Value.Health > 0 && Distance(r.Value.X, r.Value.Y, army.Value.X, army.Value.Y) <= 3)
+            .ToArray();
         if (witnesses.Length == 0)
             return;
         var witness = witnesses.FirstOrDefault(r => r.Value.Id == army.Value.CommanderId) ?? witnesses[0];
-        var report = MakeAgentFact(witness, AgentFactKind.WarReport, army.Value.TargetNationId, army.Value.X, army.Value.Y, (int)outcome,
+        var report = MakeAgentFact(witness, AgentFactKind.WarReport, army.Value.TargetNationId, army.Value.X,
+            army.Value.Y, (int)outcome,
             $"{ObjectiveName(army.Value.Objective)}：{OutcomeName(outcome)}；在场部队剩余 {soldiers.Length}/{army.Value.InitialSoldiers} 人");
         report = report with
         {
@@ -73,7 +76,8 @@ public sealed partial class WorldEngine
         if (army.Value.BattleRecorded)
             return;
         army.Replace(army.Value with { BattleRecorded = true });
-        var entry = AddEvent(WorldEventKind.War, $"{_nations[army.Value.NationId].Value.Name}的军队在目标附近实际交战。", army.Value.X, army.Value.Y,
+        var entry = AddEvent(WorldEventKind.War, $"{_nations[army.Value.NationId].Value.Name}的军队在目标附近实际交战。",
+            army.Value.X, army.Value.Y,
             EventAction.Battle, army.Value.TargetSettlementId, causeEventId: army.Value.LastEventId);
         entry = PublishEvent(entry with { NationId = army.Value.NationId, SecondNationId = army.Value.TargetNationId });
         army.Replace(army.Value with { LastEventId = entry.Id });
@@ -89,26 +93,28 @@ public sealed partial class WorldEngine
             || fact.Value != Math.Truncate(fact.Value) || fact.Value < 1 ||
             fact.Value > (int)WarOutcome.Exhausted)
             return;
-        if (fact.CampaignEventId != nation.Value.Military.CampaignEventId || fact.SubjectId != nation.Value.Military.EnemyNationId
-                                                                    || fact.EventId ==
-                                                                    nation.Value.Military.LastReportEventId ||
-                                                                    fact.ObservedTick <
-                                                                    nation.Value.Military.LastReportObservedTick)
+        if (fact.CampaignEventId != nation.Value.Military.CampaignEventId || fact.SubjectId !=
+                                                                          nation.Value.Military.EnemyNationId
+                                                                          || fact.EventId ==
+                                                                          nation.Value.Military.LastReportEventId ||
+                                                                          fact.ObservedTick <
+                                                                          nation.Value.Military.LastReportObservedTick)
             return;
         nation.Replace(nation.Value with
         {
             Military = nation.Value.Military with
-        {
-            LastReportEventId = fact.EventId,
-            LastReportObservedTick = fact.ObservedTick,
-            LastReportReceivedTick = SimulationTick,
-            ReportedOutcome = (WarOutcome)(int)fact.Value,
-            Report = fact.Text,
-            RecoveryUntilTick = Math.Max(nation.Value.Military.RecoveryUntilTick,
-                SimulationTick + 3 * SimulationTime.TicksPerYear),
-            }
+            {
+                LastReportEventId = fact.EventId,
+                LastReportObservedTick = fact.ObservedTick,
+                LastReportReceivedTick = SimulationTick,
+                ReportedOutcome = (WarOutcome)(int)fact.Value,
+                Report = fact.Text,
+                RecoveryUntilTick = Math.Max(nation.Value.Military.RecoveryUntilTick,
+                    SimulationTick + 3 * SimulationTime.TicksPerYear),
+            },
         });
-        var received = AddEvent(WorldEventKind.War, $"{nation.Value.Name}首都实际收到战报：{fact.Text}。", town.Value.X, town.Value.Y,
+        var received = AddEvent(WorldEventKind.War, $"{nation.Value.Name}首都实际收到战报：{fact.Text}。", town.Value.X,
+            town.Value.Y,
             EventAction.Report, town.Value.Id, causeEventId: fact.EventId, evidenceFactId: fact.Id);
         received = PublishEvent(received with { NationId = nation.Value.Id, SecondNationId = fact.SubjectId });
         if (!Rules.Peace || !_nations.TryGetValue(fact.SubjectId, out var other))

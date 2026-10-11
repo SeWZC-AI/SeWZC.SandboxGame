@@ -57,7 +57,8 @@ public sealed partial class WorldEngine
             var academy = Buildings.FirstOrDefault(b =>
                 b.Value.SettlementId == town.Value.Id && b.Value.Kind == BuildingKind.Academy && b.Value.IsCompleted);
             return new DevelopmentSummary(stage, "研究" + project.Name,
-                academy is null ? "需要已建成学舍" : SimulationTick - academy.Value.LastWorkedTick > 12 ? "等待学者到学舍工作" : "学者正在推进研究",
+                academy is null ? "需要已建成学舍" :
+                SimulationTick - academy.Value.LastWorkedTick > 12 ? "等待学者到学舍工作" : "学者正在推进研究",
                 research.Progress / Math.Max(1, research.RequiredProgress));
         }
 
@@ -100,7 +101,9 @@ public sealed partial class WorldEngine
             BridgePlacementError(x, y, direction ?? InferBridgeDirection(x, y), bridgeLevel) is
                 { } bridgeError)
             return bridgeError;
-        var range = kind is BuildingKind.MountainPass or BuildingKind.Bridge ? 24 : Math.Max(8, town.Value.MaxClaimRadius);
+        var range = kind is BuildingKind.MountainPass or BuildingKind.Bridge
+            ? 24
+            : Math.Max(8, town.Value.MaxClaimRadius);
         if (Distance(x, y, town.Value.X, town.Value.Y) > range)
             return $"距归属聚落超过 {range} 格";
         if (kind is BuildingKind.MountainPass or BuildingKind.Bridge &&
@@ -112,7 +115,8 @@ public sealed partial class WorldEngine
             return "需要紧邻自然陆岸，居民从岸边施工和工作";
         var tile = Tiles[Index(x, y)];
         if (tile.Value.Terrain == TerrainType.Mountain && kind != BuildingKind.MountainPass && !Residents.Any(p =>
-                p.Value.SettlementId == settlementId && p.Value.Race == RaceKind.Dwarf && p.Value.Health > 0 && p.Value.Age >= ResidentNeedsRules.MinimumWorkAge))
+                p.Value.SettlementId == settlementId && p.Value.Race == RaceKind.Dwarf && p.Value.Health > 0 &&
+                p.Value.Age >= ResidentNeedsRules.MinimumWorkAge))
             return "山地建设需要当地成年矮人";
         if (tile.Value.FireTicks > 0)
             return "此处正在燃烧";
@@ -267,6 +271,7 @@ public sealed partial class WorldEngine
                     prior = known;
                     break;
                 }
+
             if (prior is not null && prior.ObservedTick >= site.ObservedTick)
                 continue;
             var delivered = site with { LearnedTick = SimulationTick, SourceResidentId = person.Value.Id };
@@ -285,11 +290,13 @@ public sealed partial class WorldEngine
                 continue;
             AgentFact? old = null;
             foreach (var known in home.Value.PublicKnowledge)
-                if (known.Kind == fact.Kind && known.SubjectId == fact.SubjectId && known.TargetNationId == fact.TargetNationId)
+                if (known.Kind == fact.Kind && known.SubjectId == fact.SubjectId &&
+                    known.TargetNationId == fact.TargetNationId)
                 {
                     old = known;
                     break;
                 }
+
             if (old is not null && old.ObservedTick >= fact.ObservedTick)
                 continue;
             var delivered = fact with { LearnedTick = SimulationTick, SourceResidentId = person.Value.Id };
@@ -300,7 +307,8 @@ public sealed partial class WorldEngine
 
     internal void ReceiveDiplomaticNotice(StateReference<Settlement> town, AgentFact fact)
     {
-        if (fact.Kind != AgentFactKind.DiplomaticNotice || fact.SubjectId == town.Value.NationId || fact.Value is < 0 or > 2
+        if (fact.Kind != AgentFactKind.DiplomaticNotice || fact.SubjectId == town.Value.NationId ||
+            fact.Value is < 0 or > 2
             || !_nations.ContainsKey(fact.SubjectId) || fact.Confidence < .4 ||
             town.Value.Id != _nations[town.Value.NationId].Value.CapitalId)
             return;
@@ -329,7 +337,8 @@ public sealed partial class WorldEngine
                 Reason = "结盟提议已实际送达，对方依据已有接触消息接受",
             });
             var alliance = AddEvent(WorldEventKind.Diplomacy,
-                $"{_nations[town.Value.NationId].Value.Name}收到并接受{_nations[fact.SubjectId].Value.Name}的结盟提议。", town.Value.X, town.Value.Y);
+                $"{_nations[town.Value.NationId].Value.Name}收到并接受{_nations[fact.SubjectId].Value.Name}的结盟提议。",
+                town.Value.X, town.Value.Y);
             alliance = PublishEvent(alliance with
             {
                 SecondNationId = fact.SubjectId, CauseEventId = relation.LastEventId,
@@ -366,11 +375,11 @@ public sealed partial class WorldEngine
             if (!_settlements.TryGetValue(nation.Value.CapitalId, out var capital))
                 continue;
             var contacts = capital.Value.PublicKnowledge.Where(f => f.Kind == AgentFactKind.SettlementLocation &&
-                                                              f.LearnedTick < SimulationTick
-                                                              && f.Confidence >= .4 &&
-                                                              SimulationTick - f.ObservedTick <=
-                                                              10 * SimulationTime.TicksPerYear &&
-                                                              f.Value != nation.Value.Id && f.Value > 0)
+                                                                    f.LearnedTick < SimulationTick
+                                                                    && f.Confidence >= .4 &&
+                                                                    SimulationTick - f.ObservedTick <=
+                                                                    10 * SimulationTime.TicksPerYear &&
+                                                                    f.Value != nation.Value.Id && f.Value > 0)
                 .GroupBy(f => (int)f.Value).Select(g => g.OrderByDescending(f => f.ObservedTick).First())
                 .OrderBy(f => f.Value).ToArray();
             foreach (var contact in contacts)
@@ -398,7 +407,8 @@ public sealed partial class WorldEngine
                 var bothScarce = ownFood < capital.Value.Population && otherFood is { Value: < 12 };
                 var abundant = ownFood >= capital.Value.Population * 3 && otherFood is { Value: >= 36 };
                 var pressure = nearby &&
-                               (ownFood < capital.Value.Population || GetLocalPolicy(capital.Value.Id) == PolicyKind.Defense);
+                               (ownFood < capital.Value.Population ||
+                                GetLocalPolicy(capital.Value.Id) == PolicyKind.Defense);
                 var change = trade ? 10 :
                     abundant ? 6 :
                     pressure ? -(3 + Rules.Conflict * (bothScarce ? 6 : 3)) :
@@ -438,12 +448,12 @@ public sealed partial class WorldEngine
                     {
                         started = SimulationTick;
                         var dispute = AddEvent(WorldEventKind.Diplomacy,
-                            $"{side.Nation.Value.Name}与{side.Other.Value.Name}的竞争发展为外交争端：{side.Reason}。", side.Capital.Value.X,
+                            $"{side.Nation.Value.Name}与{side.Other.Value.Name}的竞争发展为外交争端：{side.Reason}。",
+                            side.Capital.Value.X,
                             side.Capital.Value.Y, causeEventId: relation.LastEventId);
                         dispute = PublishEvent(dispute with
                         {
-                            SecondNationId = side.Other.Value.Id,
-                            Importance = EventImportance.Notable,
+                            SecondNationId = side.Other.Value.Id, Importance = EventImportance.Notable,
                         });
                         relation = relation with { LastEventId = dispute.Id };
                     }
@@ -500,9 +510,9 @@ public sealed partial class WorldEngine
             }
 
             if (!Rules.Alliances || relation.Status != DiplomaticStatus.Neutral
-                                         || (relation.AllianceOfferNationId != 0 &&
-                                             SimulationTick - relation.AllianceOfferTick <=
-                                             5 * SimulationTime.TicksPerYear))
+                                 || (relation.AllianceOfferNationId != 0 &&
+                                     SimulationTick - relation.AllianceOfferTick <=
+                                     5 * SimulationTime.TicksPerYear))
                 continue;
             var proposer = sides.Where(a => LocalOpinion(relation, a.Nation.Value.Id) >= 55)
                 .OrderByDescending(a => LocalOpinion(relation, a.Nation.Value.Id)).FirstOrDefault();
@@ -533,7 +543,8 @@ public sealed partial class WorldEngine
                 OriginProfession = Profession.Representative,
                 Text = "友好往来促成结盟提议，请对方议事回应",
             });
-            var proposal = AddEvent(WorldEventKind.Diplomacy, $"{nation.Value.Name}向{other.Value.Name}提出结盟，等待消息实际送达。", capital.Value.X,
+            var proposal = AddEvent(WorldEventKind.Diplomacy, $"{nation.Value.Name}向{other.Value.Name}提出结盟，等待消息实际送达。",
+                capital.Value.X,
                 capital.Value.Y);
             proposal = PublishEvent(proposal with
             {
@@ -549,12 +560,16 @@ public sealed partial class WorldEngine
         }
     }
 
-    private void ChangeAutonomousDiplomacy(StateReference<Nation> nation, StateReference<Nation> other, DiplomaticRelation relation,
+    private void ChangeAutonomousDiplomacy(StateReference<Nation> nation, StateReference<Nation> other,
+        DiplomaticRelation relation,
         AgentFact contact,
         DiplomaticStatus status, string reason)
     {
         var previous = relation.LastEventId;
-        relation = PublishRelation(relation with { Status = status, LastChangedTick = SimulationTick, Reason = reason });
+        relation = PublishRelation(relation with
+        {
+            Status = status, LastChangedTick = SimulationTick, Reason = reason,
+        });
         if (status == DiplomaticStatus.Neutral)
             relation = PublishRelation(relation.WithLocalOpinion(nation.Value.Id, 0));
         var capital = _settlements[nation.Value.CapitalId];
@@ -563,8 +578,7 @@ public sealed partial class WorldEngine
             capital.Value.X, capital.Value.Y);
         entry = PublishEvent(entry with
         {
-            SecondNationId = other.Value.Id,
-            CauseEventId = contact.EventId > 0 ? contact.EventId : previous,
+            SecondNationId = other.Value.Id, CauseEventId = contact.EventId > 0 ? contact.EventId : previous,
         });
         if (previous > 0 && previous != entry.CauseEventId)
             entry = PublishEvent(entry with { AdditionalCauseEventIds = entry.AdditionalCauseEventIds.Add(previous) });
@@ -610,19 +624,27 @@ public sealed partial class WorldEngine
                     SimulationTick - r.ObservedTick < 2 * SimulationTime.TicksPerMonth)
                 .ToArray();
             var hardship = reports.Any(r => r.Topic == AgentFactKind.ReliefRequest && r.Value > 55);
-            town.Replace(town.Value with { Unrest = Math.Clamp(town.Value.Unrest + (hardship ? 5 + Rules.Conflict : -4), 0, 100) });
+            town.Replace(town.Value with
+            {
+                Unrest = Math.Clamp(town.Value.Unrest + (hardship ? 5 + Rules.Conflict : -4), 0, 100),
+            });
             if (Rules.Secession && town.Value.Unrest >= 80 &&
                 SimulationTick - town.Value.LastPoliticalChangeTick >= 10 * SimulationTime.TicksPerYear
-                && Nations.Count < 64 && _nations[town.Value.NationId].Value.CapitalId != town.Value.Id && town.Value.Population >= 12
+                && Nations.Count < 64 && _nations[town.Value.NationId].Value.CapitalId != town.Value.Id &&
+                town.Value.Population >= 12
                 && Settlements.Count(t => t.Value.NationId == town.Value.NationId) > 1)
             {
                 var parent = town.Value.NationId;
                 var id = SplitSettlement(town.Value.Id, town.Value.Name + "自由邦");
                 town.Replace(town.Value with { Unrest = 20, LastPoliticalChangeTick = SimulationTick });
-                var entry = AddEvent(WorldEventKind.Founding, $"{town.Value.Name}长期收到未解决的困苦诉求，宣布自治建国。", town.Value.X, town.Value.Y);
+                var entry = AddEvent(WorldEventKind.Founding, $"{town.Value.Name}长期收到未解决的困苦诉求，宣布自治建国。", town.Value.X,
+                    town.Value.Y);
                 entry = PublishEvent(entry with
                 {
-                    NationId = id, SecondNationId = parent, Action = EventAction.Secession, SettlementId = town.Value.Id,
+                    NationId = id,
+                    SecondNationId = parent,
+                    Action = EventAction.Secession,
+                    SettlementId = town.Value.Id,
                 });
                 var evidence = reports.Where(r => r.Topic == AgentFactKind.ReliefRequest && r.Value > 55)
                     .OrderByDescending(r => r.ObservedTick).FirstOrDefault();
@@ -636,7 +658,8 @@ public sealed partial class WorldEngine
         if (!Rules.Migration)
             return;
         foreach (var person in Residents.Where(r =>
-                         r.Value.Age >= 16 && r.Value.ArmyId == 0 && r.Value.Hunger > 65 && r.Value.Agent.DestinationSettlementId == 0
+                         r.Value.Age >= 16 && r.Value.ArmyId == 0 && r.Value.Hunger > 65 &&
+                         r.Value.Agent.DestinationSettlementId == 0
                          && !r.Value.Agent.Goal.PlayerDirected && r.Value.Agent.Goal.Kind != AgentGoalKind.Migrate)
                      .OrderBy(r => r.Value.Id)
                      .ToArray())
@@ -645,8 +668,9 @@ public sealed partial class WorldEngine
                 && person.Value.Inventory.Food < FoodUse(person) * 8)
                 continue;
             var destination = person.Value.Agent.Memory.Where(f => f.Kind == AgentFactKind.FoodSupply &&
-                                                             f.SubjectId != person.Value.SettlementId
-                                                             && f.Value > 50 && f.ReliabilityAt(SimulationTick) >= .5)
+                                                                   f.SubjectId != person.Value.SettlementId
+                                                                   && f.Value > 50 &&
+                                                                   f.ReliabilityAt(SimulationTick) >= .5)
                 .OrderByDescending(f => f.Value).FirstOrDefault();
             if (destination is null || !_settlements.TryGetValue(destination.SubjectId, out var town))
                 continue;
@@ -685,18 +709,21 @@ public sealed partial class WorldEngine
             return;
         }
 
-        if (!_settlements.TryGetValue(goal.TargetSettlementId, out var town) || Distance(person.Value.X, person.Value.Y, town.Value.X,
+        if (!_settlements.TryGetValue(goal.TargetSettlementId, out var town) || Distance(person.Value.X, person.Value.Y,
+                                                                                 town.Value.X,
                                                                                  town.Value.Y) > 1
                                                                              || town.Value.Resources.Food < 10 ||
                                                                              _citizens[town.Value.Id].Count >=
                                                                              GetHousingCapacity(town.Value.Id) ||
-                                                                             IsKnownHostile(person, town.Value.NationId))
+                                                                             IsKnownHostile(person,
+                                                                                 town.Value.NationId))
         {
             person.Replace(person.Value with
             {
                 Agent = person.Value.Agent with
                 {
-                    Goal = person.Value.Agent.Goal with { Kind = AgentGoalKind.Idle }, NextThinkTick = SimulationTick,
+                    Goal = person.Value.Agent.Goal with { Kind = AgentGoalKind.Idle },
+                    NextThinkTick = SimulationTick,
                 },
             });
             return;
@@ -715,12 +742,14 @@ public sealed partial class WorldEngine
             Reason = "实地抵达后确认新家园可以接纳",
         })));
         RememberAgentFact(person,
-            MakeAgentFact(person, AgentFactKind.SettlementLocation, town.Value.Id, town.Value.X, town.Value.Y, town.Value.NationId,
+            MakeAgentFact(person, AgentFactKind.SettlementLocation, town.Value.Id, town.Value.X, town.Value.Y,
+                town.Value.NationId,
                 "步行抵达的新家园"));
         if (_citizens.TryGetValue(old, out var previous))
             previous.Remove(person);
         _citizens[town.Value.Id].Add(person);
-        var entry = AddEvent(WorldEventKind.Growth, $"{person.Value.Name}依据获知的粮情，步行迁入{town.Value.Name}。", town.Value.X, town.Value.Y);
+        var entry = AddEvent(WorldEventKind.Growth, $"{person.Value.Name}依据获知的粮情，步行迁入{town.Value.Name}。", town.Value.X,
+            town.Value.Y);
         entry = PublishEvent(entry with
         {
             ResidentId = person.Value.Id,

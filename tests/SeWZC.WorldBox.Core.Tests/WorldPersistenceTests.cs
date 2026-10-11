@@ -82,7 +82,10 @@ public sealed class WorldPersistenceTests
     {
         var fixture = new WorldFixture();
         var fact = fixture.Resident.Value.Agent.Memory[0] with { Confidence = 0, Text = "中文 <html>" };
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Memory = [fact], Goal = new AgentGoal() }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
+        {
+            Memory = [fact], Goal = new AgentGoal(),
+        }));
 
         var json = fixture.Engine.ExportJson();
         var restored = WorldEngine.ImportJson(json).GetResident(fixture.ResidentId)!;
@@ -257,7 +260,10 @@ public sealed class WorldPersistenceTests
             Confidence = 0.8,
             Text = "现场危险观察",
         };
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Memory = fixture.Resident.Value.Agent.Memory.Add(fact) }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
+        {
+            Memory = fixture.Resident.Value.Agent.Memory.Add(fact),
+        }));
         fixture.Engine.PendingMessages = fixture.Engine.PendingMessages.Add(new PendingMessage
         {
             SenderId = fixture.ResidentId, RecipientId = fixture.ResidentId, DeliverTick = 1, Facts = [fact],

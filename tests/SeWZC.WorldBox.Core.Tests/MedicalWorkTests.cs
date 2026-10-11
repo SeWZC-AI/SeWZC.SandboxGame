@@ -19,8 +19,9 @@ public sealed class MedicalWorkTests
 
         fixture.Engine.Step();
 
-        Assert.Equal<int>([first.Value.Id, second.Value.Id], fixture.Engine.State.ArchivedResidents.Select(person => person.Id));
-        Assert.Equal<int>([first.Value.Id, second.Value.Id], fixture.Engine.State.Events
+        Assert.Equal([first.Value.Id, second.Value.Id],
+            fixture.Engine.State.ArchivedResidents.Select(person => person.Id));
+        Assert.Equal([first.Value.Id, second.Value.Id], fixture.Engine.State.Events
             .Where(entry => entry.Kind == WorldEventKind.Death).Select(entry => entry.ResidentId));
         Assert.Single(fixture.Engine.Residents);
         Assert.Empty(before.ArchivedResidents);
@@ -65,7 +66,10 @@ public sealed class MedicalWorkTests
     {
         var (fixture, clinic, worker) = PrepareClinic(3);
         clinic.Replace(clinic.Value with { WorkSlots = 1 });
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { Goal = worker.Value.Agent.Goal }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
+        {
+            Goal = worker.Value.Agent.Goal,
+        }));
         var patient = fixture.Engine.Residents.Single(person =>
             person.Value.Id != fixture.ResidentId && person.Value.Id != worker.Value.Id);
         patient.Replace(patient.Value.WithHealth(50));
@@ -86,7 +90,8 @@ public sealed class MedicalWorkTests
         Assert.True(patient.Value.Health > 50 + .15 / SimulationTime.TicksPerDay);
     }
 
-    private static (WorldFixture Fixture, StateReference<Building> Clinic, StateReference<Resident> Worker) PrepareClinic(int residentCount)
+    private static (WorldFixture Fixture, StateReference<Building> Clinic, StateReference<Resident> Worker)
+        PrepareClinic(int residentCount)
     {
         var fixture = new WorldFixture();
         fixture.Engine.SpawnResidents(16, 16, RaceKind.Human, residentCount - 1);

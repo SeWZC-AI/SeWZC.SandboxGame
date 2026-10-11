@@ -87,7 +87,8 @@ public sealed class ResidentEditingTests
     public void Position_rejects_inaccessible_land()
     {
         var fixture = new WorldFixture();
-        fixture.Engine.Tiles[10 * 32 + 10].Replace(fixture.Engine.Tiles[10 * 32 + 10].Value.WithTerrain(TerrainType.DeepWater));
+        fixture.Engine.Tiles[10 * 32 + 10]
+            .Replace(fixture.Engine.Tiles[10 * 32 + 10].Value.WithTerrain(TerrainType.DeepWater));
         var before = fixture.Engine.ExportJson();
 
         Assert.Throws<ArgumentException>(() => fixture.Engine.EditResident(fixture.ResidentId,
@@ -195,7 +196,8 @@ public sealed class ResidentEditingTests
     {
         var fixture = new WorldFixture();
         var prior = fixture.Resident.Value.Agent.Memory.First();
-        fixture.Town.Replace(fixture.Town.Value with { PublicKnowledge = fixture.Town.Value.PublicKnowledge.Add(prior) });
+        fixture.Town.Replace(
+            fixture.Town.Value with { PublicKnowledge = fixture.Town.Value.PublicKnowledge.Add(prior) });
         fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Decisions = fixture.Resident.Value.Agent.Decisions.Add(new AgentDecision { EvidenceFactId = prior.Id }),

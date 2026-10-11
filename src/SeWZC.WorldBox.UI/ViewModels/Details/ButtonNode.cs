@@ -7,12 +7,11 @@ namespace SeWZC.WorldBox.UI.ViewModels.Details;
 internal sealed class ButtonNode : VisualNode
 {
     private object? _content;
-    public object? Content { get => _content; set { Adopt(value); Set(ref _content, value); } }
-    public event EventHandler? Click;
-    public UiCommand Command { get; }
+
     public ButtonNode() : this(null)
     {
     }
+
     internal ButtonNode(UiCommand? command)
     {
         CornerRadius = new CornerRadius(4);
@@ -20,4 +19,17 @@ internal sealed class ButtonNode : VisualNode
         Foreground = Brush.Parse("#DDE8E1");
         Command = command ?? new UiCommand(_ => Click?.Invoke(this, EventArgs.Empty));
     }
+
+    public object? Content
+    {
+        get => _content;
+        set
+        {
+            Adopt(value);
+            Set(ref _content, value);
+        }
+    }
+
+    public UiCommand Command { get; }
+    public event EventHandler? Click;
 }

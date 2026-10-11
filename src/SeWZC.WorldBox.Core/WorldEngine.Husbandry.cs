@@ -81,7 +81,8 @@ public sealed partial class WorldEngine
     private bool ActOnHusbandry(StateReference<Resident> person, StateReference<Settlement> home)
     {
         var goal = person.Value.Agent.Goal;
-        if (goal.Kind != AgentGoalKind.Work || FindBuilding(goal.TargetEntityId) is not { } b || !IsHusbandry(b.Value.Kind)
+        if (goal.Kind != AgentGoalKind.Work || FindBuilding(goal.TargetEntityId) is not { } b ||
+            !IsHusbandry(b.Value.Kind)
             || !b.Value.IsCompleted || b.Value.IsUpgrading)
             return false;
         if (!HusbandryHasWork(b.Value, person))
@@ -91,9 +92,10 @@ public sealed partial class WorldEngine
         }
 
         if (b.Value.LivestockPopulation >= .01 && (person.Value.Inventory.Food < LivestockFeed(b.Value) ||
-                                             person.Value.Inventory.Water < .75 + LivestockWater(b.Value)))
+                                                   person.Value.Inventory.Water < .75 + LivestockWater(b.Value)))
         {
-            person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(goal = goal with { TargetX = home.Value.X, TargetY = home.Value.Y })));
+            person.Replace(person.Value.WithAgent(
+                person.Value.Agent.WithGoal(goal = goal with { TargetX = home.Value.X, TargetY = home.Value.Y })));
             if (Distance(person.Value.X, person.Value.Y, home.Value.X, home.Value.Y) > 1)
             {
                 MoveAgentTowards(person, home.Value.X, home.Value.Y);
@@ -106,15 +108,20 @@ public sealed partial class WorldEngine
                          (ResourceKind.Food, TravelReserve(person) + 1), (ResourceKind.Water, 1.5),
                      })
             {
-                var take = Math.Min(home.Value.Resources.Get(kind), Math.Max(0, target - person.Value.Inventory.Get(kind)));
-                home.Replace(home.Value.WithResources(home.Value.Resources.WithAmount(kind, home.Value.Resources.Get(kind) - take)));
-                person.Replace(person.Value.WithInventory(person.Value.Inventory.WithAmount(kind, person.Value.Inventory.Get(kind) + take)));
+                var take = Math.Min(home.Value.Resources.Get(kind),
+                    Math.Max(0, target - person.Value.Inventory.Get(kind)));
+                home.Replace(
+                    home.Value.WithResources(home.Value.Resources.WithAmount(kind,
+                        home.Value.Resources.Get(kind) - take)));
+                person.Replace(person.Value.WithInventory(
+                    person.Value.Inventory.WithAmount(kind, person.Value.Inventory.Get(kind) + take)));
             }
 
             DrawWater(person, Index(person.Value.X, person.Value.Y), Math.Max(0, 1.5 - person.Value.Inventory.Water));
         }
 
-        person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(goal = goal with { TargetX = b.Value.X, TargetY = b.Value.Y })));
+        person.Replace(person.Value.WithAgent(
+            person.Value.Agent.WithGoal(goal = goal with { TargetX = b.Value.X, TargetY = b.Value.Y })));
         if (Distance(person.Value.X, person.Value.Y, b.Value.X, b.Value.Y) > 0)
         {
             MoveAgentTowards(person, b.Value.X, b.Value.Y);
@@ -129,7 +136,10 @@ public sealed partial class WorldEngine
             var previous = person.Value.Agent.Goal;
             person.Replace(person.Value.WithAgent(person.Value.Agent.WithGoal(new AgentGoal
             {
-                Kind = AgentGoalKind.ReturnHome, TargetX = home.Value.X, TargetY = home.Value.Y, StartedTick = SimulationTick,
+                Kind = AgentGoalKind.ReturnHome,
+                TargetX = home.Value.X,
+                TargetY = home.Value.Y,
+                StartedTick = SimulationTick,
             })));
             ChangeWorkReservation(previous, person.Value.Agent.Goal);
             person.Replace(person.Value.WithAgent(person.Value.Agent with { NextThinkTick = SimulationTick }));
@@ -156,7 +166,8 @@ public sealed partial class WorldEngine
         }
         else
         {
-            if (person.Value.Inventory.Food < LivestockFeed(b.Value) || person.Value.Inventory.Water < .75 + LivestockWater(b.Value))
+            if (person.Value.Inventory.Food < LivestockFeed(b.Value) ||
+                person.Value.Inventory.Water < .75 + LivestockWater(b.Value))
                 return false;
             person.Replace(person.Value.WithInventory(person.Value.Inventory with
             {
@@ -165,18 +176,19 @@ public sealed partial class WorldEngine
             }));
             var tile = Tiles[Index(b.Value.X, b.Value.Y)];
             if (b.Value.Kind == BuildingKind.Pasture)
-                HarvestPlants(tile, .04 * Math.Min(6, b.Value.LivestockPopulation) * NaturalPlantHarvestEfficiency(tile));
+                HarvestPlants(tile,
+                    .04 * Math.Min(6, b.Value.LivestockPopulation) * NaturalPlantHarvestEfficiency(tile));
             // 种群恢复需要饲料和到场劳动，采收不能消耗保留的繁殖种群。
             b.Replace(b.Value with
             {
                 LivestockPopulation = Math.Min(LivestockCapacity(b.Value),
-                b.Value.LivestockPopulation + .04 * effort * b.Value.LivestockPopulation *
-                (1 - b.Value.LivestockPopulation / LivestockCapacity(b.Value)))
+                    b.Value.LivestockPopulation + .04 * effort * b.Value.LivestockPopulation *
+                    (1 - b.Value.LivestockPopulation / LivestockCapacity(b.Value))),
             });
             if (b.Value.LivestockPopulation > 2)
             {
                 var harvest = Math.Min(b.Value.LivestockPopulation - 2, .04 * Math.Min(1.5, effort));
-                b.Replace(b.Value with { LivestockPopulation = b.Value.LivestockPopulation - (harvest) });
+                b.Replace(b.Value with { LivestockPopulation = b.Value.LivestockPopulation - harvest });
                 person.Replace(person.Value.WithInventory(person.Value.Inventory with
                 {
                     Food = person.Value.Inventory.Food + harvest * (b.Value.Kind == BuildingKind.Pasture ? 8 : 9),
@@ -187,8 +199,7 @@ public sealed partial class WorldEngine
 
         b.Replace(b.Value with
         {
-            ServiceActions = Math.Min(1_000_000_000, b.Value.ServiceActions + 1),
-            LastServiceTick = SimulationTick,
+            ServiceActions = Math.Min(1_000_000_000, b.Value.ServiceActions + 1), LastServiceTick = SimulationTick,
         });
         return true;
     }

@@ -14,7 +14,8 @@ public sealed class AgentCadenceTests
         var due = fixture.Engine.SimulationTick + 1;
         fixture.Resident.Replace(fixture.Resident.Value.WithActivity(activity));
         fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Food = 1, Water = 1 }));
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = due }));
+        fixture.Resident.Replace(
+            fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = due }));
         fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Goal = new AgentGoal
@@ -41,7 +42,8 @@ public sealed class AgentCadenceTests
     [Theory]
     [InlineData(AgentGoalKind.Rest, ResidentActivity.Resting)]
     [InlineData(AgentGoalKind.Socialize, ResidentActivity.Talking)]
-    public void Recovered_resident_consumes_sleep_without_changing_the_goal(AgentGoalKind kind, ResidentActivity activity)
+    public void Recovered_resident_consumes_sleep_without_changing_the_goal(AgentGoalKind kind,
+        ResidentActivity activity)
     {
         var fixture = Prepare();
         fixture.Resident.Replace(fixture.Resident.Value.WithActivity(activity));
@@ -129,7 +131,10 @@ public sealed class AgentCadenceTests
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock()));
         fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Water = 10 }));
         fixture.Resident.Replace(fixture.Resident.Value.WithHunger(90));
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = fixture.Engine.SimulationTick + 4 }));
+        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
+        {
+            NextThinkTick = fixture.Engine.SimulationTick + 4,
+        }));
         fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Goal = new AgentGoal
@@ -206,7 +211,10 @@ public sealed class AgentCadenceTests
         {
             Goal = new AgentGoal
             {
-                Kind = AgentGoalKind.Gather, TargetX = 16, TargetY = 16, StartedTick = fixture.Engine.SimulationTick - 4,
+                Kind = AgentGoalKind.Gather,
+                TargetX = 16,
+                TargetY = 16,
+                StartedTick = fixture.Engine.SimulationTick - 4,
             },
         }));
 
@@ -240,7 +248,8 @@ public sealed class AgentCadenceTests
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock()));
         fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Water = 10 }));
         fixture.Resident.Replace(fixture.Resident.Value.WithHunger(90));
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = 100 }));
+        fixture.Resident.Replace(
+            fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = 100 }));
         fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {
             Goal = new AgentGoal
@@ -282,7 +291,8 @@ public sealed class AgentCadenceTests
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock { Food = 40 }));
         fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock { Food = 10 }));
         fixture.Resident.Replace(fixture.Resident.Value.WithThirst(90));
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = 100 }));
+        fixture.Resident.Replace(
+            fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = 100 }));
         fixture.Resident.Replace(fixture.Resident.Value with { FrozenUntilTick = fixture.Engine.SimulationTick + 2 });
         var source = 17 * 32 + 16;
         fixture.AddWell(16, 17, .1);
@@ -304,8 +314,10 @@ public sealed class AgentCadenceTests
         fixture.Resident.Replace(fixture.Resident.Value with { X = 16 });
         fixture.Resident.Replace(fixture.Resident.Value with { Y = 17 });
         fixture.Resident.Replace(fixture.Resident.Value.WithInventory(new ResourceStock()));
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { ExplorationHeading = 2 }));
-        fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = 37 }));
+        fixture.Resident.Replace(
+            fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { ExplorationHeading = 2 }));
+        fixture.Resident.Replace(
+            fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with { NextThinkTick = 37 }));
         var source = 17 * 32 + 16;
         fixture.Resident.Replace(fixture.Resident.Value.WithAgent(fixture.Resident.Value.Agent with
         {

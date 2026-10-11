@@ -21,7 +21,10 @@ public sealed class WorkforceTests
         physician.Replace(physician.Value with { Profession = initialProfession });
         GrantResearch(fixture, Advancement.Sanitation);
         var ground = fixture.Engine.Tiles[16 * 32 + 17];
-        ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+        ground.Replace(ground.Value with
+        {
+            ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId,
+        });
         var hospitalId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Hospital, 17, 16);
         fixture.Engine.SimulationTick =
             SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
@@ -41,7 +44,8 @@ public sealed class WorkforceTests
         var fixture = Prepare();
         foreach (var tile in fixture.Engine.Tiles)
             tile.Replace(tile.Value with { ResourceAmount = 0, Deposit = null, DepositAmount = 0 });
-        fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Stone = 100, Ore = 0 }));
+        fixture.Town.Replace(
+            fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Stone = 100, Ore = 0 }));
         var mountainIndex = 16 * 32 + 17;
         var mountain = fixture.Engine.Tiles[mountainIndex];
         mountain.Replace(mountain.Value with { Terrain = TerrainType.Mountain, ResourceAmount = 100 });
@@ -68,7 +72,8 @@ public sealed class WorkforceTests
         var fixture = Prepare();
         foreach (var tile in fixture.Engine.Tiles)
             tile.Replace(tile.Value with { ResourceAmount = 0, Deposit = null, DepositAmount = 0 });
-        fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Stone = 0, Ore = 0 }));
+        fixture.Town.Replace(
+            fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Stone = 0, Ore = 0 }));
         var mountainIndex = 16 * 32 + 17;
         var mountain = fixture.Engine.Tiles[mountainIndex];
         mountain.Replace(mountain.Value with { Terrain = TerrainType.Mountain, ResourceAmount = 100 });
@@ -275,10 +280,16 @@ public sealed class WorkforceTests
         fixture.Town.Replace(fixture.Town.Value.WithResources(fixture.Town.Value.Resources with { Wood = 48 }));
         var people = fixture.Engine.Residents.Where(p => p.Value.Id != fixture.ResidentId).ToArray();
         foreach (var person in people)
-            person.Replace(person.Value.WithAgent(person.Value.Agent with { Personality = person.Value.Agent.Personality with { Diligence = .2 } }));
+            person.Replace(person.Value.WithAgent(person.Value.Agent with
+            {
+                Personality = person.Value.Agent.Personality with { Diligence = .2 },
+            }));
         var suitable = people[^1];
         suitable.Replace(suitable.Value with { Race = RaceKind.Elf });
-        suitable.Replace(suitable.Value.WithAgent(suitable.Value.Agent with { Personality = suitable.Value.Agent.Personality with { Diligence = .9 } }));
+        suitable.Replace(suitable.Value.WithAgent(suitable.Value.Agent with
+        {
+            Personality = suitable.Value.Agent.Personality with { Diligence = .9 },
+        }));
         var source = fixture.Engine.Tiles[16 * 32 + 18];
         source.Replace(source.Value with
         {
@@ -290,7 +301,8 @@ public sealed class WorkforceTests
         });
         fixture.Engine.Tiles[16 * 32 + 19].Replace(source.Value);
         var workplace = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.LumberCamp, 18, 16);
-        fixture.Engine.Buildings.Single(b => b.Value.Id == workplace).Replace(fixture.Engine.Buildings.Single(b => b.Value.Id == workplace).Value with { WorkSlots = 1 });
+        fixture.Engine.Buildings.Single(b => b.Value.Id == workplace)
+            .Replace(fixture.Engine.Buildings.Single(b => b.Value.Id == workplace).Value with { WorkSlots = 1 });
         var before = fixture.Engine.State;
         fixture.Engine.SimulationTick = SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
 
@@ -350,7 +362,8 @@ public sealed class WorkforceTests
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Research = true, Construction = true }, false,
             false);
         fixture.Town.Replace(fixture.Town.Value with { Population = 100 });
-        fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock { Food = 400, Water = 10_000, Wood = 50, Stone = 20 }));
+        fixture.Town.Replace(
+            fixture.Town.Value.WithResources(new ResourceStock { Food = 400, Water = 10_000, Wood = 50, Stone = 20 }));
         fixture.Engine.SimulationTick =
             2 * SimulationTime.TicksPerMonth - fixture.Town.Value.Id % (2 * SimulationTime.TicksPerMonth);
 
@@ -407,11 +420,15 @@ public sealed class WorkforceTests
         if (pending)
         {
             var ground = fixture.Engine.Tiles[17 * 32 + 16];
-            ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+            ground.Replace(ground.Value with
+            {
+                ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId,
+            });
             var plannedId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Housing, 16, 17);
             var planned = fixture.Engine.Buildings.Single(building => building.Value.Id == plannedId);
             planned.Replace(planned.Value with { ConstructionProgress = 0 });
         }
+
         fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Construction = true }, false, false);
         fixture.Town.Replace(fixture.Town.Value with { Population = level * WorldEngine.HousingCapacityPerLevel + 1 });
         fixture.Engine.SimulationTick =
@@ -419,7 +436,8 @@ public sealed class WorkforceTests
 
         fixture.Engine.TickSociety();
 
-        Assert.Equal(2, fixture.Engine.State.Society.Buildings.Count(building => building.Kind == BuildingKind.Housing));
+        Assert.Equal(2,
+            fixture.Engine.State.Society.Buildings.Count(building => building.Kind == BuildingKind.Housing));
     }
 
     /// <summary>公开职业分配与自动岗位调整均使旧日工作计划失效。</summary>
@@ -441,11 +459,13 @@ public sealed class WorkforceTests
         });
         if (automatic)
         {
-            foreach (var patient in fixture.Engine.Residents.Where(person => person.Value.Id != fixture.ResidentId && person.Value.Id != worker.Value.Id))
+            foreach (var patient in fixture.Engine.Residents.Where(person =>
+                         person.Value.Id != fixture.ResidentId && person.Value.Id != worker.Value.Id))
                 patient.Replace(patient.Value with { Age = 10, Profession = Profession.Child, SicknessTicks = 20 });
             GrantResearch(fixture, Advancement.Sanitation);
             fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Hospital, 17, 16);
-            fixture.Engine.SimulationTick = SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
+            fixture.Engine.SimulationTick =
+                SimulationTime.TicksPerYear + SimulationTime.TicksPerMonth + SimulationTime.WakeTick;
             fixture.Engine.TickSociety();
         }
         else
@@ -506,19 +526,26 @@ public sealed class WorkforceTests
     public void A_family_inside_real_housing_can_support_a_birth()
     {
         var fixture = Prepare();
-        fixture.Engine.ConfigureWorld(fixture.Engine.State.Rules with { Births = true, Hunger = false, Thirst = false, Aging = false }, false, false);
+        fixture.Engine.ConfigureWorld(
+            fixture.Engine.State.Rules with { Births = true, Hunger = false, Thirst = false, Aging = false }, false,
+            false);
         for (var x = 17; x <= 18; x++)
         {
             var ground = fixture.Engine.Tiles[16 * 32 + x];
-            ground.Replace(ground.Value with { ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId });
+            ground.Replace(ground.Value with
+            {
+                ClaimedSettlementId = fixture.Town.Value.Id, NationId = fixture.Town.Value.NationId,
+            });
         }
+
         var homeId = fixture.Engine.GrantFacility(fixture.Town.Value.Id, BuildingKind.Housing, 18, 16);
         fixture.Engine.SimulationTick = SimulationTime.TicksPerYear / 10 - 1;
         fixture.Town.Replace(fixture.Town.Value.WithResources(new ResourceStock()));
         foreach (var person in fixture.Engine.Residents)
             person.Replace(person.Value.WithPosition(18, 16) with
             {
-                HomeBuildingId = homeId, IsInsideHome = true,
+                HomeBuildingId = homeId,
+                IsInsideHome = true,
                 Inventory = new ResourceStock { Food = .8, Water = 1 },
                 FrozenUntilTick = fixture.Engine.SimulationTick + 2,
             });
@@ -531,7 +558,8 @@ public sealed class WorkforceTests
         var newborn = Assert.Single(after.Residents, person => person.Age == 0);
         Assert.True(newborn.IsInsideHome);
         Assert.Equal(homeId, newborn.HomeBuildingId);
-        Assert.Equal(before.Residents.Sum(person => person.Inventory.Food), after.Residents.Sum(person => person.Inventory.Food), 8);
+        Assert.Equal(before.Residents.Sum(person => person.Inventory.Food),
+            after.Residents.Sum(person => person.Inventory.Food), 8);
     }
 
     /// <summary>尚未返家的家庭携带粮食不能隔空支付家园新生儿的补给。</summary>

@@ -29,7 +29,7 @@ public sealed class ResearchGraphViewModelTests
         graph.ShowRoute(ResearchRules.Route(true));
         Assert.Equal(default, graph.Offset);
         Vector? correction = null;
-        Func<bool> current = () => true;
+        var current = () => true;
         graph.ViewportRestoreRequested += (offset, check) =>
         {
             correction = offset;

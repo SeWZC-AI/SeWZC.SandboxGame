@@ -1,8 +1,8 @@
 using Avalonia;
-using SeWZC.WorldBox.UI.ViewModels.Details;
 using Avalonia.Media;
 using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.UI.Controls;
+using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI.ViewModels;
 
@@ -11,35 +11,35 @@ internal sealed class ResearchGraphViewModel : VisualNode
 {
     private readonly List<TextNode> _laneLabels = [];
     private Dictionary<Advancement, ButtonNode> _nodes = [];
-    private readonly CanvasNode _surface = new();
-    private double _zoom = 1;
     private Vector _offset;
+    private double _zoom = 1;
+
     internal ResearchGraphViewModel()
     {
         Layout = new ResearchTreeLayout(ResearchRules.Route(false));
         ApplyGeometry();
     }
-    public CanvasNode Surface => _surface;
-    public Size Viewport { get; set; }
-    internal event Action? ConnectionsChanged;
-    internal event Action<Vector, Func<bool>?>? ViewportRestoreRequested;
 
-    internal void SetNodes(Dictionary<Advancement, ButtonNode> nodes)
-    {
-        _nodes = nodes;
-        foreach (var node in nodes.Values)
-            _surface.Children.Add(node);
-        ApplyGeometry();
-    }
+    public CanvasNode Surface { get; } = new();
+
+    public Size Viewport { get; set; }
 
     /// <summary>当前路线的节点、分支和连接线布局。</summary>
     public ResearchTreeLayout Layout { get; private set; }
 
     /// <summary>当前缩放倍率。</summary>
-    public double Zoom { get => _zoom; private set => Set(ref _zoom, value); }
+    public double Zoom
+    {
+        get => _zoom;
+        private set => Set(ref _zoom, value);
+    }
 
     /// <summary>当前视口的滚动偏移，以控件布局单位计。</summary>
-    public Vector Offset { get => _offset; set => Set(ref _offset, value); }
+    public Vector Offset
+    {
+        get => _offset;
+        set => Set(ref _offset, value);
+    }
 
     /// <summary>当前选中并高亮前置路径的研究。</summary>
     public Advancement Selected { get; set; } = Advancement.Agriculture;
@@ -49,6 +49,17 @@ internal sealed class ResearchGraphViewModel : VisualNode
 
     /// <summary>查询各研究是否已完成的回调，用于连接线着色。</summary>
     public Func<Advancement, bool> IsCompleted { get; set; } = _ => false;
+
+    internal event Action? ConnectionsChanged;
+    internal event Action<Vector, Func<bool>?>? ViewportRestoreRequested;
+
+    internal void SetNodes(Dictionary<Advancement, ButtonNode> nodes)
+    {
+        _nodes = nodes;
+        foreach (var node in nodes.Values)
+            Surface.Children.Add(node);
+        ApplyGeometry();
+    }
 
     /// <summary>捕获当前缩放、滚动位置和前置路径显示设置。</summary>
     public ViewportState CaptureViewport()
@@ -114,10 +125,10 @@ internal sealed class ResearchGraphViewModel : VisualNode
 
     private void ApplyGeometry()
     {
-        _surface.Width = Layout.Size.Width * Zoom;
-        _surface.Height = Layout.Size.Height * Zoom;
+        Surface.Width = Layout.Size.Width * Zoom;
+        Surface.Height = Layout.Size.Height * Zoom;
         foreach (var label in _laneLabels)
-            _surface.Children.Remove(label);
+            Surface.Children.Remove(label);
         _laneLabels.Clear();
         foreach (var lane in Layout.Lanes)
         {
@@ -125,7 +136,7 @@ internal sealed class ResearchGraphViewModel : VisualNode
             label.Left = (lane.Left + 10) * Zoom;
             label.Top = 12 * Zoom;
             _laneLabels.Add(label);
-            _surface.Children.Add(label);
+            Surface.Children.Add(label);
         }
 
         foreach (var (kind, node) in _nodes)
@@ -155,5 +166,4 @@ internal sealed class ResearchGraphViewModel : VisualNode
     /// <param name="Offset">视口滚动偏移，以控件布局单位计。</param>
     /// <param name="ShowFullPath">是否显示选中研究的全部递归前置路径。</param>
     public readonly record struct ViewportState(double Zoom, Vector Offset, bool ShowFullPath);
-
 }

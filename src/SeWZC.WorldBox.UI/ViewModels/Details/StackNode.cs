@@ -7,12 +7,29 @@ namespace SeWZC.WorldBox.UI.ViewModels.Details;
 internal sealed class StackNode : VisualNode
 {
     private Orientation _orientation = Orientation.Vertical;
-    public Orientation Orientation { get => _orientation; set => Set(ref _orientation, value); }
-    private double _spacing = 0;
-    public double Spacing { get => _spacing; set => Set(ref _spacing, value); }
-    public ObservableCollection<VisualNode> Children { get; } = [];
-    public StackNode() => Children.CollectionChanged += (_, args) =>
+    private double _spacing;
+
+    public StackNode()
     {
-        if (args.NewItems is not null) foreach (var child in args.NewItems) Adopt(child);
-    };
+        Children.CollectionChanged += (_, args) =>
+        {
+            if (args.NewItems is not null)
+                foreach (var child in args.NewItems)
+                    Adopt(child);
+        };
+    }
+
+    public Orientation Orientation
+    {
+        get => _orientation;
+        set => Set(ref _orientation, value);
+    }
+
+    public double Spacing
+    {
+        get => _spacing;
+        set => Set(ref _spacing, value);
+    }
+
+    public ObservableCollection<VisualNode> Children { get; } = [];
 }

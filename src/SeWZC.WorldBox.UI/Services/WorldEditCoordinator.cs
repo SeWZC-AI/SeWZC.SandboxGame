@@ -6,13 +6,13 @@ namespace SeWZC.WorldBox.UI.Services;
 /// <summary>管理世界编辑恢复点与提交，拒绝已经关闭或切换的会话。</summary>
 internal sealed class WorldEditCoordinator
 {
+    private readonly Func<EditSession> _currentSession;
     private readonly MainViewModel _state;
     private readonly WorldSaveCoordinator _storage;
-    private readonly Func<EditSession> _currentSession;
-    private EditSubmission? _submission;
-    private CancellationTokenSource? _mapCapture;
     private int _captureCount;
+    private CancellationTokenSource? _mapCapture;
     private Task<WorldState>? _prepareTask;
+    private EditSubmission? _submission;
 
     /// <summary>连接当前世界、保存捕获和界面会话检查。</summary>
     /// <param name="state">主界面的引擎引用与暂停偏好。</param>
@@ -25,12 +25,13 @@ internal sealed class WorldEditCoordinator
         _currentSession = currentSession;
     }
 
-    internal event Action? StateChanged;
-    internal event Action? Completed;
-    internal event Action<string>? Feedback;
     internal WorldState? Checkpoint { get; set; }
     internal bool CaptureActive => _captureCount > 0 || _prepareTask is not null;
     internal bool CanSubmit => !_currentSession().PickingLocation && _submission is null;
+
+    internal event Action? StateChanged;
+    internal event Action? Completed;
+    internal event Action<string>? Feedback;
 
     internal void CancelPending()
     {
@@ -46,10 +47,13 @@ internal sealed class WorldEditCoordinator
         var session = _currentSession();
         return !request.Cancellation.IsCancellationRequested && ReferenceEquals(request.Source, _state.Engine) &&
                request.Session.Generation == session.Generation &&
-               (request.Session.Modal ? session.Modal : !session.Modal && request.Session.Navigation == session.Navigation);
+               (request.Session.Modal
+                   ? session.Modal
+                   : !session.Modal && request.Session.Navigation == session.Navigation);
     }
 
-    private Task<WorldState> ReadCheckpointAsync(WorldEngine source, CancellationToken cancellationToken, Func<bool> current)
+    private Task<WorldState> ReadCheckpointAsync(WorldEngine source, CancellationToken cancellationToken,
+        Func<bool> current)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!ReferenceEquals(source, _state.Engine) || !current())
@@ -86,7 +90,12 @@ internal sealed class WorldEditCoordinator
         using var cancellation = new CancellationTokenSource();
         _mapCapture?.Cancel();
         _mapCapture = cancellation;
-        bool Current() => !cancellation.IsCancellationRequested && ReferenceEquals(source, _state.Engine) && current();
+
+        bool Current()
+        {
+            return !cancellation.IsCancellationRequested && ReferenceEquals(source, _state.Engine) && current();
+        }
+
         try
         {
             if (!Current())
@@ -99,6 +108,7 @@ internal sealed class WorldEditCoordinator
                     throw new OperationCanceledException(cancellation.Token);
                 Checkpoint ??= checkpoint;
             }
+
             if (!Current())
                 throw new OperationCanceledException(cancellation.Token);
             _state.IsPaused = true;
@@ -113,7 +123,8 @@ internal sealed class WorldEditCoordinator
     }
 
     /// <summary>提交同步世界修改；准备时锁定原输入，结束后恢复，部分失败保留撤销点。</summary>
-    internal async Task<bool> SubmitAsync(Action command, bool replaceCheckpoint = false, Func<bool, Action>? lockInputs = null)
+    internal async Task<bool> SubmitAsync(Action command, bool replaceCheckpoint = false,
+        Func<bool, Action>? lockInputs = null)
     {
         if (!CanSubmit)
             return false;
@@ -127,7 +138,8 @@ internal sealed class WorldEditCoordinator
             restoreInputs = lockInputs?.Invoke(request.Session.Modal);
             _storage.CancelCapture();
             var checkpoint = replaceCheckpoint || previousCheckpoint is null
-                ? await PrepareCheckpointAsync(request.Source, request.Cancellation.Token, () => SubmissionCurrent(request))
+                ? await PrepareCheckpointAsync(request.Source, request.Cancellation.Token,
+                    () => SubmissionCurrent(request))
                 : previousCheckpoint;
             if (!SubmissionCurrent(request))
                 return false;
@@ -156,6 +168,7 @@ internal sealed class WorldEditCoordinator
                     partialChange = true;
                 }
             }
+
             if (ex is not OperationCanceledException && SubmissionCurrent(request))
                 Feedback?.Invoke((partialChange ? "变更未完成，可撤销：" : "未应用变更：") + FriendlyError(ex));
             return false;
@@ -172,7 +185,10 @@ internal sealed class WorldEditCoordinator
         }
     }
 
-    private static string FriendlyError(Exception exception) => exception.Message.Length > 160 ? exception.Message[..160] : exception.Message;
+    private static string FriendlyError(Exception exception)
+    {
+        return exception.Message.Length > 160 ? exception.Message[..160] : exception.Message;
+    }
 
     private sealed class EditSubmission(WorldEngine source, EditSession session)
     {

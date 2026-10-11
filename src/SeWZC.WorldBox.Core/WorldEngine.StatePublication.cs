@@ -22,20 +22,14 @@ public sealed partial class WorldEngine
     private NationInstitution PublishInstitution(NationInstitution institution)
     {
         var index = Society.Institutions.FindIndex(i => i.NationId == institution.NationId);
-        Society = Society with
-        {
-            Institutions = Society.Institutions.SetItem(index, institution),
-        };
+        Society = Society with { Institutions = Society.Institutions.SetItem(index, institution) };
         return institution;
     }
 
     private CulturalContact PublishContact(CulturalContact contact)
     {
         var index = FindCultureContactIndex(contact.ResidentId, contact.CultureId);
-        Society = Society with
-        {
-            CulturalContacts = Society.CulturalContacts.SetItem(index, contact),
-        };
+        Society = Society with { CulturalContacts = Society.CulturalContacts.SetItem(index, contact) };
         return contact;
     }
 
