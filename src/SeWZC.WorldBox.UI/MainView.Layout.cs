@@ -1,3 +1,4 @@
+using static SeWZC.WorldBox.UI.ViewModels.WorldPresentationModel;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Interactivity;
@@ -115,5 +116,48 @@ public sealed partial class MainView
             FocusMapResident(_selectedResidentId);
         else if (_selectedTile is { } tile)
             FocusMapTile(tile.X, tile.Y);
+    }
+    private void ApplyLayout()
+    {
+        _isCompact = Bounds.Width < 980;
+        _viewModel.IsCompactHud = _isCompact;
+        _viewModel.IsShortHud = Bounds.Height < 540;
+        var stackedDock = Views.GameHud.HasStackedDock(Bounds.Width);
+        _map.ScaleBottomInset = stackedDock ? 138 : 88;
+        _hud.Resize(Bounds.Width, _mobilePanel || _toolsOpen);
+        _cameraBar.Orientation = _mobilePanel || _toolsOpen ? Orientation.Horizontal : Orientation.Vertical;
+        _inspector.IsVisible = _mobilePanel;
+        _inspector.Width = _isCompact ? Math.Max(280, Bounds.Width - 20)
+            : _inspectorMode == "research" && _researchExpanded ? Math.Max(360, Bounds.Width - 20) : 360;
+        var inspectorTop = _isCompact && _viewModel.CanReturnObservation ? 130 : 90;
+        var inspectorBottom = stackedDock ? 126 : 90;
+        var inspectorSpace = Math.Max(0, Bounds.Height - inspectorTop - inspectorBottom);
+        _inspector.MaxHeight = _isCompact && !_expandedInspector
+            ? Math.Min(inspectorSpace, Math.Clamp(inspectorSpace * .7, 140, 430)) : inspectorSpace;
+        _inspector.Height = _expandedInspector ? inspectorSpace : double.NaN;
+        _inspector.VerticalAlignment = _isCompact ? VerticalAlignment.Bottom : VerticalAlignment.Top;
+        _inspector.HorizontalAlignment = HorizontalAlignment.Right;
+        _inspector.Margin = new Thickness(10, inspectorTop, 10, inspectorBottom);
+        _inspector.ZIndex = 20;
+        _mapPickBar.IsVisible = _mapPick is not null;
+        _toolHint.IsVisible = Bounds.Width > 600;
+        UpdateToolBarSize();
+        UpdateModalBounds();
+        RefreshSelectionSummary();
+    }
+
+    private void UpdateToolBarSize()
+    {
+        var compact = Bounds.Width < 700;
+        _toolChoices.Columns = compact ? 4 : 8;
+        _toolChoices.Rows = compact ? 2 : 1;
+        _toolScroll.Width = Math.Max(280, Math.Min(650, _map.Bounds.Width - 20));
+        var hudSpace = Views.GameHud.HasStackedDock(Bounds.Width) ? 240 : 180;
+        if (_viewModel.CanReturnObservation)
+            hudSpace += 40;
+        _toolScroll.MaxHeight = Math.Max(80, Bounds.Height - hudSpace);
+        _placementBar.MaxWidth = Math.Max(120, Math.Min(280, _map.Bounds.Width - 60));
+        _toolContext.Width = compact ? 108 : 132;
+        _toolTitle.FontSize = compact ? 12 : 13;
     }
 }

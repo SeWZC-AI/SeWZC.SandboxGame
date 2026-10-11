@@ -2,13 +2,14 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.UI.ViewModels;
 
 namespace SeWZC.WorldBox.UI.Controls;
 
 /// <summary>绘制研究分支背景、连接与所选路径。</summary>
 public sealed class ResearchConnectionsControl : Control
 {
-    internal ResearchGraphControl Owner { get; set; } = null!;
+
     private static readonly IBrush Locked = Brush.Parse("#496075"),
         Done = Brush.Parse("#65B995"),
         Path = Brush.Parse("#F1CD83"),
@@ -17,6 +18,7 @@ public sealed class ResearchConnectionsControl : Control
     /// <inheritdoc />
     public override void Render(DrawingContext context)
     {
+        if (DataContext is not ResearchGraphViewModel model) return;
         var ancestors = new HashSet<Advancement>();
 
         void Visit(Advancement kind)
@@ -27,29 +29,29 @@ public sealed class ResearchConnectionsControl : Control
                 Visit(p);
         }
 
-        if (Owner.ShowFullPath)
-            Visit(Owner.Selected);
+        if (model.ShowFullPath)
+            Visit(model.Selected);
         else
         {
-            ancestors.Add(Owner.Selected);
-            foreach (var p in Owner.Selected.Prerequisites)
+            ancestors.Add(model.Selected);
+            foreach (var p in model.Selected.Prerequisites)
                 ancestors.Add(p);
         }
 
-        using var scale = context.PushTransform(Matrix.CreateScale(Owner.Zoom, Owner.Zoom));
-        var laneBottom = Owner.Layout.Nodes.Max(n => n.Value.Bottom) + 16;
-        foreach (var lane in Owner.Layout.Lanes)
+        using var scale = context.PushTransform(Matrix.CreateScale(model.Zoom, model.Zoom));
+        var laneBottom = model.Layout.Nodes.Max(n => n.Value.Bottom) + 16;
+        foreach (var lane in model.Layout.Lanes)
             context.DrawRectangle(Brush.Parse("#10212D"), null,
                 new Rect(lane.Left, 38, lane.Width, laneBottom - 38), 8, 8);
         // 选中前置路径最后绘制，使交叉处仍能清晰追踪。
         foreach (var edge in
-                 Owner.Layout.Edges.OrderBy(e => ancestors.Contains(e.To) && ancestors.Contains(e.From)))
+                 model.Layout.Edges.OrderBy(e => ancestors.Contains(e.To) && ancestors.Contains(e.From)))
         {
-            var selected = Owner.ShowFullPath
+            var selected = model.ShowFullPath
                 ? ancestors.Contains(edge.To) && ancestors.Contains(edge.From)
-                : edge.To == Owner.Selected;
+                : edge.To == model.Selected;
             var brush = selected ? Path
-                : Owner.IsCompleted(edge.From) && Owner.IsCompleted(edge.To) ? Done
+                : model.IsCompleted(edge.From) && model.IsCompleted(edge.To) ? Done
                 : edge.To.Magic ? Magic : Locked;
             var pen = new Pen(brush, selected ? 2.4 : 1.6);
             var geometry = new StreamGeometry();
@@ -73,4 +75,4 @@ public sealed class ResearchConnectionsControl : Control
             context.DrawLine(pen, tip, tip + new Vector(4, -6));
         }
     }
-    }
+}

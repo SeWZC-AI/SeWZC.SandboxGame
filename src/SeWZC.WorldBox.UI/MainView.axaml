@@ -1,10 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels"
              xmlns:views="using:SeWZC.WorldBox.UI.Views"
              xmlns:controls="using:SeWZC.WorldBox.UI.Controls"
              x:Class="SeWZC.WorldBox.UI.MainView" x:DataType="vm:MainViewModel" x:CompileBindings="True"
-             Design.Width="1440" Design.Height="920" Background="#111E29" Focusable="True">
+             Background="#111E29" Focusable="True" d:DesignWidth="1440" d:DesignHeight="920" d:DataContext="{x:Static vm:DesignData.Main}">
     <UserControl.Styles>
         <Style Selector="Button.action">
             <Setter Property="FontSize" Value="12" />
@@ -185,7 +185,7 @@
                                 <Path Data="M 4,4 L 12,12 M 12,4 L 4,12" />
                             </Button>
                         </Grid>
-                        <ScrollViewer x:Name="InspectorScroll" HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="inspector-scroll" />
+                        <ScrollViewer x:Name="InspectorScroll" HorizontalScrollBarVisibility="Disabled" AutomationProperties.AutomationId="inspector-scroll"><views:DetailView DataContext="{Binding InspectorContent}" /></ScrollViewer>
                     </DockPanel>
                 </Border>
             </Grid>

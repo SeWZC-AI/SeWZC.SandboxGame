@@ -12,6 +12,7 @@ internal sealed class MainViewModel : INotifyPropertyChanged
     private string _worldDate = "", _timeHold = "", _selectionTitle = "", _selectionDescription = "";
     private string _inspectorTitle = "世界概览", _performanceText = "FPS 0\n0 日/秒";
     private bool _inspectorExpanded, _showPerformance = true;
+    private Details.VisualNode? _inspectorContent;
     private string _eventTitle = "", _eventText = "", _feedback = "正在载入世界…";
     private bool _hasSelection, _hasEvent, _placementPending, _canChangeTime = true;
     private int _eventId;
@@ -59,6 +60,7 @@ internal sealed class MainViewModel : INotifyPropertyChanged
         : _limited ? "运行中（设备限速）" : Speed == 0 ? "运行中（不限速）" : $"运行中（{Speed} 倍）";
     public string PauseLabel => IsPaused ? "继续" : "暂停";
     public string InspectorTitle { get => _inspectorTitle; internal set => Set(ref _inspectorTitle, value); }
+    public Details.VisualNode? InspectorContent { get => _inspectorContent; internal set => Set(ref _inspectorContent, value); }
     public string PerformanceText { get => _performanceText; internal set => Set(ref _performanceText, value); }
     public bool ShowPerformance { get => _showPerformance; internal set => Set(ref _showPerformance, value); }
     public bool InspectorExpanded

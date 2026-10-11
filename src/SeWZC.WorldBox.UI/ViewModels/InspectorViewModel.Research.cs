@@ -6,27 +6,33 @@ using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
 
-namespace SeWZC.WorldBox.UI;
+namespace SeWZC.WorldBox.UI.ViewModels;
 
-public sealed partial class MainView : IResearchActionHandler
+internal sealed partial class InspectorViewModel : IResearchActionHandler
 {
-    private bool _civilizationDetails;
-    private ResearchBranch? _researchBranch;
-    private bool _researchExpanded;
-    private ResearchRoute _researchRoute = ResearchRoute.Technology;
-    private Advancement _selectedResearch = Advancement.Agriculture;
+    internal bool _civilizationDetails;
+
+    internal ResearchBranch? _researchBranch;
+
+    internal bool _researchExpanded;
+
+    internal ResearchRoute _researchRoute = ResearchRoute.Technology;
+
+    internal Advancement _selectedResearch = Advancement.Agriculture;
+
 
     void IResearchActionHandler.ShowRailEditor(int settlementId)
     {
-        ShowRailEditor(settlementId);
+        _requests.Editors.ShowRailEditor(settlementId);
     }
+
 
     void IResearchActionHandler.ShowWaygateEditor()
     {
-        ShowWaygateEditor();
+        _requests.Editors.ShowWaygateEditor();
     }
 
-    private void BuildResearchTree(StackNode panel, Settlement town)
+    internal void BuildResearchTree(StackNode panel, Settlement town)
     {
         panel.Children.Add(LiveText(
             () => _researchRoute.Title, 17, Mint));
@@ -106,13 +112,14 @@ public sealed partial class MainView : IResearchActionHandler
             nodes.Add(definition, node);
         }
 
-        var graph = new ResearchGraphControl
+        var graph = new ResearchGraphViewModel
         {
             Height = _isCompact ? 380 : 560,
             IsCompleted = kind => _engine.HasResearch(town.Id, kind),
             Selected = _selectedResearch,
         };
-        Avalonia.Automation.AutomationProperties.SetAutomationId(graph, "research-graph");
+        graph.AutomationId = "research-graph";
+        ResearchGraph = graph;
         graph.SetNodes(nodes);
 
         IEnumerable<Advancement> Route()
@@ -295,7 +302,7 @@ public sealed partial class MainView : IResearchActionHandler
                 var button =
                     Named(
                         Button("建造 " + WorldEngine.BuildingName(kind),
-                            () => ShowBuildingSelectionEditor(town.Id, kind)), "research-build-" + kind);
+                            () => _requests.Editors.ShowBuildingSelectionEditor(town.Id, kind)), "research-build-" + kind);
                 button.IsEnabled = known;
                 unlocks.Children.Add(button);
             }
@@ -305,7 +312,7 @@ public sealed partial class MainView : IResearchActionHandler
                 unlocks.Children.Add(Paragraph(WorldEngine.ProfessionName(job) + "：" +
                                                WorldEngine.ProfessionDescription(job)));
                 var button =
-                    Named(Button("分配 " + WorldEngine.ProfessionName(job), () => ShowResearchJobEditor(town.Id, job)),
+                    Named(Button("分配 " + WorldEngine.ProfessionName(job), () => _requests.Editors.ShowResearchJobEditor(town.Id, job)),
                         "research-job-" + job);
                 button.IsEnabled = known;
                 unlocks.Children.Add(button);
@@ -316,7 +323,7 @@ public sealed partial class MainView : IResearchActionHandler
                 var button =
                     Named(
                         Button("施放 " + WorldEngine.SpellName(spell) + $"  魔力 {WorldEngine.SpellManaCost(spell):0}",
-                            () => ShowSpellSelectionEditor(spell, town.Id)), "research-spell-" + spell);
+                            () => _requests.Editors.ShowSpellSelectionEditor(spell, town.Id)), "research-spell-" + spell);
                 button.IsEnabled = known;
                 unlocks.Children.Add(button);
             }
@@ -338,4 +345,5 @@ public sealed partial class MainView : IResearchActionHandler
         panel.Children.Add(Card(detail));
         _inspectorUpdates.Add(() => start.IsEnabled = Blocker(_selectedResearch) is null);
     }
+
 }

@@ -1,6 +1,6 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:nodes="using:SeWZC.WorldBox.UI.ViewModels.Details" xmlns:views="using:SeWZC.WorldBox.UI.Views"
-             x:Class="SeWZC.WorldBox.UI.Views.DetailView" x:CompileBindings="True" x:DataType="nodes:VisualNode">
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels" xmlns:controls="using:SeWZC.WorldBox.UI.Controls" xmlns:nodes="using:SeWZC.WorldBox.UI.ViewModels.Details" xmlns:views="using:SeWZC.WorldBox.UI.Views"
+             x:Class="SeWZC.WorldBox.UI.Views.DetailView" x:CompileBindings="True" x:DataType="nodes:VisualNode" d:DesignWidth="420" d:DesignHeight="560" d:DataContext="{x:Static vm:DesignData.Details}">
     <UserControl.Resources>
         <ControlTheme x:Key="DetailItemContainer" TargetType="ContentPresenter" x:DataType="nodes:VisualNode">
             <Setter Property="IsVisible" Value="{Binding IsVisible}" />
@@ -11,6 +11,7 @@
         </ControlTheme>
     </UserControl.Resources>
     <UserControl.DataTemplates>
+        <DataTemplate DataType="vm:ResearchGraphViewModel" x:DataType="vm:ResearchGraphViewModel"><controls:ResearchGraphControl Height="{Binding Height}" AutomationProperties.AutomationId="{Binding AutomationId}" /></DataTemplate>
         <DataTemplate DataType="nodes:StackNode" x:DataType="nodes:StackNode">
             <ItemsControl ItemsSource="{Binding Children}" IsVisible="{Binding IsVisible}" IsEnabled="{Binding IsEnabled}" Opacity="{Binding Opacity}" Width="{Binding Width}" Height="{Binding Height}" MinWidth="{Binding MinWidth}" MinHeight="{Binding MinHeight}" MaxWidth="{Binding MaxWidth}" MaxHeight="{Binding MaxHeight}" Margin="{Binding Margin}" HorizontalAlignment="{Binding HorizontalAlignment}" VerticalAlignment="{Binding VerticalAlignment}" AutomationProperties.AutomationId="{Binding AutomationId}" AutomationProperties.Name="{Binding AccessibleName}" ToolTip.Tip="{Binding ToolTip}" views:NodeLifetime.Node="{Binding}" ItemContainerTheme="{StaticResource DetailItemContainer}">
                 <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="{Binding Orientation}" Spacing="{Binding Spacing}" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>

@@ -1,27 +1,30 @@
-using Avalonia.Controls;
+using Avalonia;
+using Avalonia.Media;
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
 
-namespace SeWZC.WorldBox.UI;
+namespace SeWZC.WorldBox.UI.ViewModels;
 
-public sealed partial class MainView
+internal sealed partial class InspectorViewModel
 {
-    private readonly HashSet<ObservedObject> _watched = [];
-    private bool _historyWatchedOnly;
+    internal readonly HashSet<ObservedObject> _watched = [];
 
-    private bool InvolvesObject(WorldEvent item, ObservedObject target)
+    internal bool _historyWatchedOnly;
+
+    internal bool InvolvesObject(WorldEvent item, ObservedObject target)
     {
         return WorldStories.Involves(item, target)
                || (target.Kind == ObservedObjectKind.Resident && _engine.GetResident(target.Id)?.History
                    .Any(h => !h.PlayerEdited && h.EventId == item.Id) == true);
     }
 
-    private bool IsWatched(WorldEvent item)
+    internal bool IsWatched(WorldEvent item)
     {
         return _watched.Any(target => InvolvesObject(item, target));
     }
 
-    private CheckNode WatchControl(ObservedObjectKind kind, int id, string name)
+    internal CheckNode WatchControl(ObservedObjectKind kind, int id, string name)
     {
         var target = new ObservedObject(kind, id);
         var check = Named(new CheckNode { Content = Text("关注相关事件", 12), IsChecked = _watched.Contains(target) }, name);
@@ -36,7 +39,7 @@ public sealed partial class MainView
         return check;
     }
 
-    private string EvidenceLabel(int id)
+    internal string EvidenceLabel(int id)
     {
         var fact = _engine.State.Residents.Concat(_engine.State.ArchivedResidents)
             .SelectMany(r => r.Agent.Memory.Concat(r.Agent.CarriedMessages))
@@ -46,7 +49,7 @@ public sealed partial class MainView
             : $"采用的消息：{fact.Text}\n观察时间：{DateLabel(fact.ObservedTick)}\n原始来源：{ResidentName(fact.OriginResidentId)}";
     }
 
-    private string WatchedName(ObservedObject target)
+    internal string WatchedName(ObservedObject target)
     {
         return target.Kind switch
         {
@@ -56,7 +59,7 @@ public sealed partial class MainView
         };
     }
 
-    private void OpenWatched(ObservedObject target)
+    internal void OpenWatched(ObservedObject target)
     {
         if (target.Kind == ObservedObjectKind.Nation)
             OpenNation(target.Id);
@@ -68,7 +71,7 @@ public sealed partial class MainView
             SetStatus("这处聚落已不在当前世界中；其保留事件仍可在编年史查看。");
     }
 
-    private void BuildWatchedInspector(StackNode panel)
+    internal void BuildWatchedInspector(StackNode panel)
     {
         panel.Children.Add(Paragraph("关注国家、聚落和居民的关键变化。仅在当前世界会话保留；不会自动移动镜头。"));
         panel.Children.Add(LiveText(() => $"已关注 {_watched.Count} 个对象"));
@@ -83,19 +86,19 @@ public sealed partial class MainView
             g => FocusEvent(g.Latest));
     }
 
-    private static string GroupKey(EventGroup group)
+    internal static string GroupKey(EventGroup group)
     {
         return group.Entries[0].Id.ToString();
     }
 
-    private string GroupLabel(EventGroup group)
+    internal string GroupLabel(EventGroup group)
     {
         return group.Count == 1
             ? EventLabel(group.Latest)
             : $"同类事件 {group.Count} 次   {DateLabel(group.Entries[0].Tick)} 至 {DateLabel(group.Latest.Tick)}\n{EventLabel(group.Latest)}\n点击展开原始记录";
     }
 
-    private void BuildStoryInspector(StackNode panel)
+    internal void BuildStoryInspector(StackNode panel)
     {
         var person = _engine.GetResident(_selectedResidentId);
         if (person is null)
@@ -141,7 +144,7 @@ public sealed partial class MainView
             g => FocusEvent(g.Latest));
     }
 
-    private void BuildMilitarySummary(StackNode panel, Nation nation)
+    internal void BuildMilitarySummary(StackNode panel, Nation nation)
     {
         _inspectorUpdates.Add(() => nation = _engine.State.Nations.FirstOrDefault(n => n.Id == nation.Id) ?? nation);
         panel.Children.Add(Text("作战目标与已收战报", 13, Mint));
@@ -164,5 +167,32 @@ public sealed partial class MainView
             a =>
                 $"作战目标：{WorldEngine.ObjectiveName(a.Objective)}\n行动状态：{a.Status}\n目标聚落：{TownName(a.TargetSettlementId)}\n部队：{a.Soldiers}/{a.InitialSoldiers} 人\n实有军粮：{a.Supplies:F1}\n实有饮水：{a.WaterSupplies:F1}\n士气：{a.Morale:F0}\n{WorldEngine.OutcomeName(a.Outcome)}",
             a => FocusMapTile(a.X, a.Y));
+    }
+
+    private ImmutableVector<WorldEvent>? _spotlightEvents;
+    private EventGroup? _spotlightGroup;
+    private (int LastId, int Count, int Watches) _spotlightRevision;
+
+    internal EventGroup? SelectSpotlight()
+    {
+        var state = _engine.State;
+        var watchHash = 17;
+        foreach (var watch in _watched)
+            watchHash = unchecked(watchHash * 31 + watch.GetHashCode());
+        var revision = (state.Events.LastOrDefault()?.Id ?? 0, state.Events.Count, watchHash);
+        if (!ReferenceEquals(_spotlightEvents, state.Events) || _spotlightRevision != revision)
+        {
+            _spotlightEvents = state.Events;
+            _spotlightRevision = revision;
+            var candidates = state.Events.Where(e =>
+                e.Importance >= EventImportance.Notable && e.Kind is not (WorldEventKind.Editor
+                    or WorldEventKind.Culture
+                    or WorldEventKind.Policy or WorldEventKind.Magic));
+            _spotlightGroup = WorldStories.Group(candidates)
+                .OrderByDescending(g => _watched.Count > 0 && g.Entries.Any(IsWatched))
+                .ThenByDescending(g => g.Latest.Tick).ThenByDescending(g => g.Latest.Id).FirstOrDefault();
+        }
+
+        return _spotlightGroup;
     }
 }

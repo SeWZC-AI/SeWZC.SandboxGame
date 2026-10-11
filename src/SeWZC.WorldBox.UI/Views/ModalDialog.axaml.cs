@@ -8,7 +8,5 @@ public sealed partial class ModalDialog : Border
     public ModalDialog()
     {
         AvaloniaXamlLoader.Load(this);
-        if (Design.IsDesignMode)
-            DataContext = ViewModels.PreviewModels.Dialog();
     }
 }

@@ -1,3 +1,4 @@
+using static SeWZC.WorldBox.UI.ViewModels.WorldPresentationModel;
 using Avalonia;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -70,12 +71,6 @@ public sealed partial class MainView
         ApplyLayout();
     }
 
-    private string InspectorKey()
-    {
-        return
-            $"{_inspectorMode}:{_selectedNationId}:{_selectedResidentId}:{_selectedTile}:{_eventDetailId}:{_inspectorSettlementId}:{_selectedBuildingId}";
-    }
-
     private void RememberLocation()
     {
         if (_mapPick is not null || !_mobilePanel)
@@ -86,8 +81,7 @@ public sealed partial class MainView
             _map.CaptureMapSelection(), _map.CaptureViewport(), new Dictionary<string, bool>(_expandedDetails),
             new ResearchViewState(_selectedResearch, _researchRoute, _researchBranch,
                 _civilizationDetails, _inspectorMode == "research"
-                    ? _inspectorScroll.GetVisualDescendants().OfType<ResearchGraphControl>().FirstOrDefault()
-                        ?.CaptureViewport()
+                    ? _inspectorModel.ResearchGraph?.CaptureViewport()
                     : null));
         if (_navigation.Count >= 32)
         {
@@ -110,7 +104,7 @@ public sealed partial class MainView
             return;
         }
 
-        if (_mobilePanel && mode == _inspectorMode && _inspectorKey == InspectorKey())
+        if (_mobilePanel && mode == _inspectorMode && _inspectorKey == _inspectorModel.InspectorKey())
             return;
         if (remember)
             RememberLocation();
@@ -162,7 +156,7 @@ public sealed partial class MainView
                 return;
             _inspectorScroll.Offset = view.Scroll;
             if (view.Research.Viewport is { } viewport &&
-                _inspectorScroll.GetVisualDescendants().OfType<ResearchGraphControl>().FirstOrDefault() is { } graph)
+                _inspectorModel.ResearchGraph is { } graph)
             {
                 graph.RestoreViewport(viewport, () => _mobilePanel && generation == _inspectorNavigationGeneration);
                 RefreshInspector();
@@ -275,5 +269,5 @@ public sealed partial class MainView
         ResearchRoute Route,
         ResearchBranch? Branch,
         bool CivilizationDetails,
-        ResearchGraphControl.ViewportState? Viewport);
+        ViewModels.ResearchGraphViewModel.ViewportState? Viewport);
 }

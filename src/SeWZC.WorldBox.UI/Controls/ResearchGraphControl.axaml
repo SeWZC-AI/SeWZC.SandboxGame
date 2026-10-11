@@ -1,12 +1,12 @@
-<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:controls="using:SeWZC.WorldBox.UI.Controls" xmlns:views="using:SeWZC.WorldBox.UI.Views"
-             xmlns:nodes="using:SeWZC.WorldBox.UI.ViewModels.Details"
-             x:Class="SeWZC.WorldBox.UI.Controls.ResearchGraphControl" x:DataType="nodes:CanvasNode" x:CompileBindings="True"
-             Background="#0D1822" ClipToBounds="True" Design.Width="900" Design.Height="560">
-    <ScrollViewer x:Name="GraphScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-        <Grid Width="{Binding Width}" Height="{Binding Height}">
+             xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels"
+             x:Class="SeWZC.WorldBox.UI.Controls.ResearchGraphControl" x:DataType="vm:ResearchGraphViewModel" x:CompileBindings="True"
+             Background="#0D1822" ClipToBounds="True" d:DesignWidth="900" d:DesignHeight="560" d:DataContext="{x:Static vm:DesignData.Graph}">
+    <ScrollViewer x:Name="GraphScroll" Offset="{Binding Offset, Mode=TwoWay}" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <Grid Width="{Binding Surface.Width}" Height="{Binding Surface.Height}">
             <controls:ResearchConnectionsControl x:Name="Connections" IsHitTestVisible="False" />
-            <views:DetailView DataContext="{Binding}" />
+            <views:DetailView DataContext="{Binding Surface}" />
         </Grid>
     </ScrollViewer>
 </UserControl>

@@ -8,7 +8,5 @@ public sealed partial class DetailView : UserControl
     public DetailView()
     {
         AvaloniaXamlLoader.Load(this);
-        if (Design.IsDesignMode)
-            DataContext = ViewModels.PreviewModels.Details();
     }
 }

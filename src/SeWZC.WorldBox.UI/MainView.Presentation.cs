@@ -1,3 +1,4 @@
+using static SeWZC.WorldBox.UI.ViewModels.WorldPresentationModel;
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -22,15 +23,7 @@ public sealed partial class MainView
     private void RefreshTimeState()
     {
         _viewModel.RefreshTime(_modal.IsVisible, _mapPick is not null, EditCaptureActive,
-            _saveCapture is not null, App.Storage?.IsBackground == true, _accumulator > .4);
-    }
-
-    private static bool DetailsVisible(ViewModels.Details.VisualNode node)
-    {
-        for (var parent = node.Parent; parent is not null; parent = parent.Parent)
-            if (parent is ViewModels.Details.ExpanderNode { IsExpanded: false })
-                return false;
-        return true;
+            _saveCapture is not null, App.Storage?.IsBackground == true, _simulation.IsCatchingUp);
     }
 
     private bool IsEditingText()
@@ -40,34 +33,4 @@ public sealed partial class MainView
                    control.GetVisualAncestors().Any(c => c is TextBox));
     }
 
-    private void BindSearch(ViewModels.Details.TextInputNode input, Action<string> changed)
-    {
-        // 搜索刷新合并连续输入事件，并保留获得焦点的编辑器，避免打断输入法组合。
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(220) };
-        var viewKey = _inspectorKey;
-        timer.Tick += (_, _) =>
-        {
-            timer.Stop();
-            if (_inspectorKey == viewKey)
-                RefreshInspector();
-        };
-        input.TextChanged += (_, _) =>
-        {
-            changed(input.Text ?? "");
-            timer.Stop();
-            timer.Start();
-        };
-        input.Detached += (_, _) => timer.Stop();
-    }
-
-    private string ResidentTask(Resident person)
-    {
-        return _engine.GetResidentTaskSummary(person.Id);
-    }
-
-    private string BuildingTask(Building building)
-    {
-        return !building.IsCompleted ? $"施工 {building.ConstructionProgress / building.ConstructionRequired:P0}"
-            : !building.Enabled ? "已停用" : _engine.GetProductionStatus(building.Id).Split('\n')[0];
-    }
 }

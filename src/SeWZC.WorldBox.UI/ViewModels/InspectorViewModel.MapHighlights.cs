@@ -1,18 +1,21 @@
-using Avalonia.Controls;
+using Avalonia;
 using Avalonia.Layout;
+using Avalonia.Media;
+using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
 
-namespace SeWZC.WorldBox.UI;
+namespace SeWZC.WorldBox.UI.ViewModels;
 
-public sealed partial class MainView
+internal sealed partial class InspectorViewModel
 {
-    private static readonly string[] MapHighlightLabels =
+    internal static readonly string[] MapHighlightLabels =
     [
         "关闭高亮标记", "粮食压力", "货物与消息运输", "通信网络", "道路与建筑",
         "城镇占领区域", "饮水与水源", "地形肥力", "火灾与干旱", "捕鱼与舟船", "居民当前任务",
     ];
 
-    private void BuildMapHighlights(StackNode panel)
+    internal void BuildMapHighlights(StackNode panel)
     {
         panel.Children.Add(Text("地图高亮标记", 13, Mint));
         var overlay =
@@ -37,7 +40,7 @@ public sealed partial class MainView
         }), "map-highlights-off"));
     }
 
-    private void BuildGameGuide(StackNode panel)
+    internal void BuildGameGuide(StackNode panel)
     {
         panel.Children.Add(Text("玩法说明", 18, Mint));
         panel.Children.Add(Paragraph(
@@ -53,4 +56,5 @@ public sealed partial class MainView
         panel.Children.Add(Paragraph("地图标记\n在世界概览或道路与建筑页面选择高亮类型，选择关闭后保持关闭。煤堆表示煤，油井表示石油，紫色矿晶表示稀土。所有高亮和图标设置只影响观察。"));
         panel.Children.Add(Button("返回世界概览", () => OpenInspector("overview")));
     }
+
 }

@@ -1,10 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:views="using:SeWZC.WorldBox.UI.Views"
              xmlns:vm="using:SeWZC.WorldBox.UI.ViewModels"
              x:Class="SeWZC.WorldBox.UI.Views.GameHud"
              x:DataType="vm:MainViewModel"
-             x:CompileBindings="True">
+             x:CompileBindings="True" d:DesignWidth="1440" d:DesignHeight="920" d:DataContext="{x:Static vm:DesignData.Main}">
     <UserControl.Styles>
         <Style Selector="Border.hud">
             <Setter Property="Background" Value="#F0172632" />

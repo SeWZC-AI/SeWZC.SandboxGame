@@ -12,8 +12,6 @@ public sealed partial class GameHud : UserControl
     public GameHud()
     {
         AvaloniaXamlLoader.Load(this);
-        if (Design.IsDesignMode)
-            DataContext = ViewModels.PreviewModels.Hud();
     }
 
     /// <summary>地图工具面板的 XAML 内容。</summary>

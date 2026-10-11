@@ -16,7 +16,7 @@ flowchart TD
     UITests[UI.Tests xUnit 逻辑测试] --> UI
 ```
 
-Core 不引用 Avalonia、平台 API 或文件系统。主界面采用 MVVM：`ViewModels/MainViewModel.cs` 持有引擎引用、时间偏好、选择、面板与通知状态及 HUD 命令；`MainView.axaml`、`Views/GameHud.axaml` 与 `Controls/ResearchGraphControl.axaml` 定义主界面和研究树。`ViewModels/Details` 提供详情、列表及编辑字段的可观察展示状态，`Views/DetailView.axaml` 使用编译模板创建控件，`Views/ModalDialog.axaml` 定义窗口的固定标题、滚动内容与提交区；视图附带设计器示例数据。`MainView` 协调地图控件、详情表单、模拟调度、异步编辑和保存，平台入口实现 `IWorldStorage`。浏览器模拟及界面使用单线程 WebAssembly，普通 JavaScript Worker 仅用于保存。原生大群体先按固定顺序结算随机事件、公共补给与取水，再顺序转换整批个人身体的不可变输入，避免每 tick 的线程调度，按居民顺序提交结果。
+Core 不引用 Avalonia、平台 API 或文件系统。主界面采用 MVVM：`MainViewModel` 持有引擎引用、时间偏好、选择、面板与通知状态及 HUD 命令；`InspectorViewModel` 管理详情列表、关注、研究和折叠状态；`WorldEditorViewModel` 管理编辑草稿与提交命令；`ResearchGraphViewModel` 管理研究节点布局、缩放与滚动状态。`ViewModels/Details` 提供可观察字段，`MainView.axaml`、`Views/GameHud.axaml`、`Views/DetailView.axaml`、`Views/ModalDialog.axaml` 和 `Controls/ResearchGraphControl.axaml` 定义布局及编译模板。`MainView` 接入地图、窗口、导航、输入和界面计时器；`PresentationRequests` 与 `IMapPresentation` 传递展示请求，不将控件交给展示模型。`Services/SimulationScheduler`、`WorldEditCoordinator`、`WorldSaveCoordinator` 分别承担模拟预算、编辑事务和存档协调，平台入口实现 `IWorldStorage`。设计器配置见 [开发指南](development.md#axaml-设计时数据)。浏览器模拟及界面使用单线程 WebAssembly，普通 JavaScript Worker 仅用于保存。原生大群体先按固定顺序结算随机事件、公共补给与取水，再顺序转换整批个人身体的不可变输入，避免每 tick 的线程调度，按居民顺序提交结果。
 
 模拟按完整离散日推进，呈现时钟在真实移动起终点间插值。慢设备限制实际推进速度，不跳过劳动、运输、通信或生存步骤。暂停冻结显示，变速重锚时间，载入和编辑传送重置轨迹；命中、标记、选中圈和跟随共用显示位置。短暂动作通知只说明已执行结果，不保存为世界事实或分配实体 ID。
 
@@ -59,10 +59,10 @@ Core 不引用 Avalonia、平台 API 或文件系统。主界面采用 MVVM：`V
 | 生态与养殖 | Core `AnimalRules.cs`、`PlantCoverage.cs`、`WorldEngine.Ecology.cs`、`WorldEngine.Husbandry.cs`、`WorldEngine.SustainableHarvest.cs` |
 | 生产与研究玩法 | Core `Advancement.Catalog.cs`、`ProductionRules.cs`、`WorldEngine.Advancement.cs`、`WorldEngine.ResearchGameplay.cs`、`WorldEngine.KnowledgeQueries.cs` |
 | 战争与灾害 | Core `WorldEngine.Warfare.cs`、`WorldEngine.Campaigns.cs`、`WorldEngine.Conflicts.cs`、`WorldEngine.Fire.cs`、`WorldEngine.Mortality.cs` |
-| 观察与故事 | Core `WorldEngine.Inspection.cs`、`WorldEngine.EffectsInfo.cs`、`WorldEngine.TaskIcons.cs`、`WorldEngine.Presentation.cs`、`WorldEngine.Stories.cs`；UI `MainView.Stories.cs` |
+| 观察与故事 | Core `WorldEngine.Inspection.cs`、`WorldEngine.EffectsInfo.cs`、`WorldEngine.TaskIcons.cs`、`WorldEngine.Presentation.cs`、`WorldEngine.Stories.cs`；UI `ViewModels/InspectorViewModel.Stories.cs` |
 | 编辑与存档 | Core `WorldEngine.Commands.cs`、`WorldEngine.ResidentEditing.cs`、`WorldEngine.NationEditing.cs`、`WorldEngine.Persistence.cs`、`WorldEngine.ValidationV2.cs`、`WorldJsonContext.cs` |
-| 详情与异步提交 | UI `MainView.Navigation.cs`、`MainView.AsyncEdits.cs`、`MainView.Inputs.cs`、`MainView.Residents.cs`、`MainView.Buildings.cs` |
-| 科技树 | UI `MainView.Research.cs`、`MainView.ResearchActions.cs`；Controls `ResearchTreeLayout.cs`、`ResearchGraphControl.axaml`、`ResearchGraphControl.axaml.cs` |
+| 详情与异步提交 | UI `ViewModels/InspectorViewModel.*.cs`、`ViewModels/WorldEditorViewModel.*.cs`、`Services/WorldEditCoordinator.cs`；视图 `MainView.Navigation.cs`、`MainView.AsyncEdits.cs`、`MainView.Inputs.cs` |
+| 科技树 | UI `ViewModels/InspectorViewModel.Research.cs`、`ViewModels/ResearchGraphViewModel.cs`、`ViewModels/WorldEditorViewModel.ResearchActions.cs`；Controls `ResearchTreeLayout.cs`、`ResearchGraphControl.axaml`、`ResearchGraphControl.axaml.cs` |
 | 地图与输入 | Controls `WorldMapControl.*.cs`、`EntityMotionTrack.cs`；Browser `wwwroot/text-input.js`、`touch-gestures.js` |
 | 平台保存 | [BrowserWorldStorage](../src/SeWZC.WorldBox.Browser/BrowserWorldStorage.cs)、`storage.js`、`storage-worker.js`；[DesktopWorldStorage](../src/SeWZC.WorldBox.Desktop/DesktopWorldStorage.cs) |
 | 发布与 CI | [发布脚本](../scripts/publish-browser.sh)、[静态检查](../scripts/check-static-site.py)、[工作流](../.github/workflows/build-and-deploy.yml) |
@@ -93,11 +93,11 @@ JSON 使用源生成上下文，中文直接写入 UTF-8，仍转义 HTML 敏感
 
 ### 编辑与保存协调
 
-`MainView.Navigation.cs` 保存最近 32 处 UI 历史，`MainView.AsyncEdits.cs` 将提交绑定原世界、窗口世代和导航会话。对象跳转先记录当前位置；窗口和地图取点仅临时停表。恢复点准备期间锁定原输入并可取消，失效任务不得修改新世界或关闭新窗口。
+`MainView.Navigation.cs` 保存最近 32 处 UI 历史，`WorldEditCoordinator` 将提交绑定原世界、窗口世代和导航会话，`MainView.AsyncEdits.cs` 仅适配控件锁定与地图工具有效性。对象跳转先记录当前位置；窗口和地图取点仅临时停表。恢复点准备期间锁定原输入并可取消，失效任务不得修改新世界或关闭新窗口。
 
 有效编辑先取得整轮世界快照，再提交并保持暂停；命令部分成功后报错仍保留撤销点，完全未变的失败恢复原运行偏好。继续模拟清除这一轮恢复点，历史记录编辑不回算客观世界。
 
-`ExportJsonChunksAsync` 用 16 KiB 序列化缓冲与完整 UTF-8 码点产生有界文本块，前台约每 4 ms 让出执行权。捕获时固定世界 tick 序，镜头可用；编辑、撤销或换世界在修改前取消捕获并保留旧存档。自动保存不拼接整块字符串，文件导出仍有最终拼接开销。
+`WorldSaveCoordinator` 串行协调保存、读取和导出，记录世界引用、tick 与编辑修订，判断世界是否需要重新保存。`ExportJsonChunksAsync` 用 16 KiB 序列化缓冲与完整 UTF-8 码点产生有界文本块，前台约每 4 ms 让出执行权。捕获时固定世界 tick 序，镜头可用；编辑、撤销或换世界在修改前取消捕获并保留旧存档。自动保存不拼接整块字符串，文件导出仍有最终拼接开销。
 
 UI 每 30 秒检查自动保存，世界实例、tick 序及编辑修订都未变时跳过；手动保存仍执行，失败保留待保存状态。编辑结束至少留 5 秒空闲后再捕获。捕获完毕恢复模拟，压缩与落盘期间继续，不追赶捕获停留或后台离线时间；完整写入成功才更新保存标记。
 

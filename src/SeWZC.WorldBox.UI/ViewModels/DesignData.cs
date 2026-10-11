@@ -6,9 +6,16 @@ using SeWZC.WorldBox.UI.ViewModels.Details;
 namespace SeWZC.WorldBox.UI.ViewModels;
 
 /// <summary>为 XAML 设计器提供示例数据。</summary>
-internal static class PreviewModels
+internal static class DesignData
 {
-    internal static StackNode Details()
+    private static readonly Lazy<MainViewModel> MainSample = new(CreateMain);
+    private static readonly Lazy<ResearchGraphViewModel> GraphSample = new(CreateGraph);
+    public static MainViewModel Main => MainSample.Value;
+    public static StackNode Details => CreateDetails();
+    public static ModalViewModel Dialog => CreateDialog();
+    public static ResearchGraphViewModel Graph => GraphSample.Value;
+
+    private static StackNode CreateDetails()
     {
         var content = new StackNode { Spacing = 6, Margin = new Thickness(6) };
         content.Children.Add(new TextNode { Text = "居民档案", FontSize = 17, Foreground = Brush.Parse("#B8E9BC") });
@@ -20,15 +27,26 @@ internal static class PreviewModels
         return content;
     }
 
-    internal static ModalViewModel Dialog() => new(
+    private static ModalViewModel CreateDialog() => new(
         new TextNode { Text = "编辑居民档案", FontSize = 17, Foreground = Brush.Parse("#E9EFEB") },
-        Details(), new ButtonNode { Content = "应用档案变更", Padding = new Thickness(8, 3), MinHeight = 30 },
+        CreateDetails(), new ButtonNode { Content = "应用档案变更", Padding = new Thickness(8, 3), MinHeight = 30 },
         new TextNode { Text = "修改将在暂停的世界中生效", Foreground = Brush.Parse("#E7BD87") }, () => { });
 
-    internal static MainViewModel Hud()
+    private static MainViewModel CreateMain()
     {
         var model = new MainViewModel(WorldEngine.Create(42, 32, 32, false)) { IsPaused = true };
         model.ShowEvent(new EventGroup([new WorldEvent { Id = 1, Message = "示例：居民抵达家园，交付实际携带的粮食" }]));
+        model.InspectorTitle = "居民档案（示例）";
+        model.InspectorContent = CreateDetails();
+        model.InspectorVisible = true;
         return model;
     }
+    private static ResearchGraphViewModel CreateGraph()
+    {
+        var graph = new ResearchGraphViewModel { Selected = Advancement.Agriculture };
+        graph.SetNodes(ResearchRules.All.ToDictionary(research => research, research =>
+            new ButtonNode { Content = new TextNode { Text = research.Name, Foreground = Brush.Parse("#E9EFEB") } }));
+        return graph;
+    }
+
 }

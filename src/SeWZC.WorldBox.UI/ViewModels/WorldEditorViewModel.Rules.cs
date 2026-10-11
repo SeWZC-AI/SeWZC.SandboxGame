@@ -1,13 +1,15 @@
-using Avalonia.Controls;
+using Avalonia;
 using Avalonia.Layout;
+using Avalonia.Media;
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.UI.Controls;
 using SeWZC.WorldBox.UI.ViewModels.Details;
 
-namespace SeWZC.WorldBox.UI;
+namespace SeWZC.WorldBox.UI.ViewModels;
 
-public sealed partial class MainView
+internal sealed partial class WorldEditorViewModel
 {
-    private void BuildWorldRules(StackNode panel)
+    internal void BuildWorldRules(StackNode panel)
     {
         var draft = _engine.State.Rules;
         var switches = new List<(CheckNode Box, Func<WorldRules, bool> Get, Func<WorldRules, bool, WorldRules> Set)>();
@@ -127,4 +129,5 @@ public sealed partial class MainView
             CloseModal();
         }, "世界规则已应用并随存档保存，点击继续观察")), "world-rules-apply"));
     }
+
 }

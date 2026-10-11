@@ -1,3 +1,4 @@
+using static SeWZC.WorldBox.UI.ViewModels.WorldPresentationModel;
 using Avalonia.Controls;
 using Avalonia.Media;
 using SeWZC.WorldBox.UI.Controls;
@@ -193,12 +194,7 @@ public sealed partial class MainView
         Focus();
     }
 
-    private void ShowRules()
-    {
-        var panel = ModalPanel("世界规则", "规则会随世界保存。关闭自主行为停止新的选择，已有项目与成果保留。");
-        BuildWorldRules(panel);
-        OpenModal(panel);
-    }
+    private void ShowRules() => _editorModel.ShowRules();
 
     private async void RunEdit(Action command, string message)
     {
