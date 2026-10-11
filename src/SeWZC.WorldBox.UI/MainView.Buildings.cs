@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI;
 
@@ -46,7 +47,7 @@ public sealed partial class MainView
         OpenInspector("building", false);
     }
 
-    private void BuildBuildingInspector(StackPanel panel)
+    private void BuildBuildingInspector(StackNode panel)
     {
         var id = _selectedBuildingId;
 
@@ -94,7 +95,7 @@ public sealed partial class MainView
                   (b.LastWorkedTick >= 0 ? $"\n最近工作：{DateLabel(b.LastWorkedTick)}" : "")));
         condition.Children.Add(LiveText(() =>
             string.Join("\n", _engine.GetBuildingEffects(id).Where(e => e.Name == "建筑耐火"))));
-        var actions = new WrapPanel { Orientation = Orientation.Horizontal };
+        var actions = new WrapNode { Orientation = Orientation.Horizontal };
         panel.Children.Add(actions);
         actions.Children.Add(Named(Button("定位建筑", () =>
         {
@@ -194,7 +195,7 @@ public sealed partial class MainView
         OpenModal(panel);
     }
 
-    private void BuildStructuresInspector(StackPanel panel)
+    private void BuildStructuresInspector(StackNode panel)
     {
         if (!_engine.State.Settlements.Any(t => t.Id == _structuresTownId))
             _structuresTownId = 0;
@@ -214,7 +215,7 @@ public sealed partial class MainView
         var towns = _engine.State.Settlements.OrderBy(t => t.Id).ToArray();
         var townFilter =
             Named(
-                new ComboBox
+                new ChoiceNode
                 {
                     ItemsSource = new[] { "全部城镇" }.Concat(towns.Select(t => t.Name)).ToArray(),
                     SelectedIndex = Math.Max(0, Array.FindIndex(towns, t => t.Id == _structuresTownId) + 1),
@@ -233,7 +234,7 @@ public sealed partial class MainView
         var kinds = Enum.GetValues<BuildingKind>();
         var kindFilter =
             Named(
-                new ComboBox
+                new ChoiceNode
                 {
                     ItemsSource = new[] { "全部建筑种类" }.Concat(kinds.Select(WorldEngine.BuildingName)).ToArray(),
                     SelectedIndex =
@@ -250,7 +251,7 @@ public sealed partial class MainView
             _map.RefreshWorld();
         };
         panel.Children.Add(kindFilter);
-        var showBuildings = Named(new CheckBox { Content = "地图显示建筑", IsChecked = _map.HighlightBuildings },
+        var showBuildings = Named(new CheckNode { Content = "地图显示建筑", IsChecked = _map.HighlightBuildings },
             "structures-show-buildings");
         showBuildings.IsCheckedChanged += (_, _) =>
         {
@@ -258,7 +259,7 @@ public sealed partial class MainView
             _map.RefreshWorld();
         };
         panel.Children.Add(showBuildings);
-        var showRoads = Named(new CheckBox { Content = "地图显示道路", IsChecked = _map.HighlightRoads },
+        var showRoads = Named(new CheckNode { Content = "地图显示道路", IsChecked = _map.HighlightRoads },
             "structures-show-roads");
         showRoads.IsCheckedChanged += (_, _) =>
         {
@@ -267,7 +268,7 @@ public sealed partial class MainView
         };
         panel.Children.Add(showRoads);
         var mode = Named(
-            new ComboBox
+            new ChoiceNode
             {
                 ItemsSource = new[] { "建筑", "道路地块" },
                 SelectedIndex = _listRoads ? 1 : 0,
@@ -281,7 +282,7 @@ public sealed partial class MainView
             RefreshInspector();
         };
         panel.Children.Add(mode);
-        var search = Named(new TextBox { Text = _structureSearch, PlaceholderText = "按建筑、聚落或国家名称搜索" },
+        var search = Named(new TextInputNode { Text = _structureSearch, PlaceholderText = "按建筑、聚落或国家名称搜索" },
             "structures-search");
         BindSearch(search, value =>
         {
@@ -355,7 +356,7 @@ public sealed partial class MainView
 
         panel.Children.Add(LiveText(() =>
             $"共 {Count()} 处{(_listRoads ? "道路地块" : "建筑")}   第 {_structurePage + 1} / {Math.Max(1, (Count() + 19) / 20)} 页"));
-        var pages = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        var pages = new StackNode { Orientation = Orientation.Horizontal, Spacing = 8 };
         pages.Children.Add(Named(Button("上一页", () =>
         {
             _structurePage = Math.Max(0, _structurePage - 1);

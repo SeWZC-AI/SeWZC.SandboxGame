@@ -50,7 +50,7 @@ public sealed partial class MainView
             if (AutomationProperties.GetAutomationId(control) is "modal-close" or "modal-cancel")
                 continue;
             request.Inputs.Add((control, control.IsEnabled));
-            control.IsEnabled = false;
+            control.SetCurrentValue(IsEnabledProperty, false);
         }
     }
 
@@ -197,7 +197,7 @@ public sealed partial class MainView
             if (ReferenceEquals(_editSubmission, request))
                 _editSubmission = null;
             foreach (var (control, enabled) in request.Inputs)
-                control.IsEnabled = enabled;
+                control.SetCurrentValue(IsEnabledProperty, enabled);
             request.Cancellation.Dispose();
             _previousTime = _clock.Elapsed.TotalSeconds;
             _map.IsSimulationPaused = WorldTimeStopped;

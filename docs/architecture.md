@@ -16,7 +16,7 @@ flowchart TD
     UITests[UI.Tests xUnit 逻辑测试] --> UI
 ```
 
-Core 不引用 Avalonia、平台 API 或文件系统。主界面采用 MVVM：`ViewModels/MainViewModel.cs` 持有引擎引用、时间偏好、选择、面板与通知状态及 HUD 命令；`Views/GameHud.axaml` 使用编译绑定呈现。`MainView` 协调地图控件、详情表单、模拟调度、异步编辑和保存，平台入口实现 `IWorldStorage`。浏览器模拟及界面使用单线程 WebAssembly，普通 JavaScript Worker 仅用于保存。原生大群体先按固定顺序结算随机事件、公共补给与取水，再顺序转换整批个人身体的不可变输入，避免每 tick 的线程调度，按居民顺序提交结果。
+Core 不引用 Avalonia、平台 API 或文件系统。主界面采用 MVVM：`ViewModels/MainViewModel.cs` 持有引擎引用、时间偏好、选择、面板与通知状态及 HUD 命令；`MainView.axaml`、`Views/GameHud.axaml` 与 `Controls/ResearchGraphControl.axaml` 定义主界面和研究树。`ViewModels/Details` 提供详情、列表及编辑字段的可观察展示状态，`Views/DetailView.axaml` 使用编译模板创建控件，`Views/ModalDialog.axaml` 定义窗口的固定标题、滚动内容与提交区；视图附带设计器示例数据。`MainView` 协调地图控件、详情表单、模拟调度、异步编辑和保存，平台入口实现 `IWorldStorage`。浏览器模拟及界面使用单线程 WebAssembly，普通 JavaScript Worker 仅用于保存。原生大群体先按固定顺序结算随机事件、公共补给与取水，再顺序转换整批个人身体的不可变输入，避免每 tick 的线程调度，按居民顺序提交结果。
 
 模拟按完整离散日推进，呈现时钟在真实移动起终点间插值。慢设备限制实际推进速度，不跳过劳动、运输、通信或生存步骤。暂停冻结显示，变速重锚时间，载入和编辑传送重置轨迹；命中、标记、选中圈和跟随共用显示位置。短暂动作通知只说明已执行结果，不保存为世界事实或分配实体 ID。
 
@@ -62,7 +62,7 @@ Core 不引用 Avalonia、平台 API 或文件系统。主界面采用 MVVM：`V
 | 观察与故事 | Core `WorldEngine.Inspection.cs`、`WorldEngine.EffectsInfo.cs`、`WorldEngine.TaskIcons.cs`、`WorldEngine.Presentation.cs`、`WorldEngine.Stories.cs`；UI `MainView.Stories.cs` |
 | 编辑与存档 | Core `WorldEngine.Commands.cs`、`WorldEngine.ResidentEditing.cs`、`WorldEngine.NationEditing.cs`、`WorldEngine.Persistence.cs`、`WorldEngine.ValidationV2.cs`、`WorldJsonContext.cs` |
 | 详情与异步提交 | UI `MainView.Navigation.cs`、`MainView.AsyncEdits.cs`、`MainView.Inputs.cs`、`MainView.Residents.cs`、`MainView.Buildings.cs` |
-| 科技树 | UI `MainView.Research.cs`、`MainView.ResearchActions.cs`；Controls `ResearchTreeLayout.cs`、`ResearchGraphControl.cs` |
+| 科技树 | UI `MainView.Research.cs`、`MainView.ResearchActions.cs`；Controls `ResearchTreeLayout.cs`、`ResearchGraphControl.axaml`、`ResearchGraphControl.axaml.cs` |
 | 地图与输入 | Controls `WorldMapControl.*.cs`、`EntityMotionTrack.cs`；Browser `wwwroot/text-input.js`、`touch-gestures.js` |
 | 平台保存 | [BrowserWorldStorage](../src/SeWZC.WorldBox.Browser/BrowserWorldStorage.cs)、`storage.js`、`storage-worker.js`；[DesktopWorldStorage](../src/SeWZC.WorldBox.Desktop/DesktopWorldStorage.cs) |
 | 发布与 CI | [发布脚本](../scripts/publish-browser.sh)、[静态检查](../scripts/check-static-site.py)、[工作流](../.github/workflows/build-and-deploy.yml) |

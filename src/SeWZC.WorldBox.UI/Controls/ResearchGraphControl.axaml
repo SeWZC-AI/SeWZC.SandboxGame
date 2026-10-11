@@ -1,0 +1,12 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="using:SeWZC.WorldBox.UI.Controls" xmlns:views="using:SeWZC.WorldBox.UI.Views"
+             xmlns:nodes="using:SeWZC.WorldBox.UI.ViewModels.Details"
+             x:Class="SeWZC.WorldBox.UI.Controls.ResearchGraphControl" x:DataType="nodes:CanvasNode" x:CompileBindings="True"
+             Background="#0D1822" ClipToBounds="True" Design.Width="900" Design.Height="560">
+    <ScrollViewer x:Name="GraphScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <Grid Width="{Binding Width}" Height="{Binding Height}">
+            <controls:ResearchConnectionsControl x:Name="Connections" IsHitTestVisible="False" />
+            <views:DetailView DataContext="{Binding}" />
+        </Grid>
+    </ScrollViewer>
+</UserControl>

@@ -4,6 +4,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.UI.Controls;
+using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI;
 
@@ -25,7 +26,7 @@ public sealed partial class MainView : IResearchActionHandler
         ShowWaygateEditor();
     }
 
-    private void BuildResearchTree(StackPanel panel, Settlement town)
+    private void BuildResearchTree(StackNode panel, Settlement town)
     {
         panel.Children.Add(LiveText(
             () => _researchRoute.Title, 17, Mint));
@@ -60,10 +61,10 @@ public sealed partial class MainView : IResearchActionHandler
                    ?? WorldEngine.MissingResources(town.Resources, WorldEngine.GetResearchCost(kind));
         }
 
-        var nodes = new Dictionary<Advancement, Button>();
+        var nodes = new Dictionary<Advancement, ButtonNode>();
         foreach (var definition in ResearchRules.All)
         {
-            var content = new StackPanel { Spacing = 2 };
+            var content = new StackNode { Spacing = 2 };
             content.Children.Add(Text(definition.Name, 13, null, true));
             content.Children.Add(Text(definition.Branch.Name, 11, Muted));
             content.Children.Add(Named(LiveText(() =>
@@ -79,7 +80,7 @@ public sealed partial class MainView : IResearchActionHandler
                                 ? "可研究"
                                 : "待投入";
             }, 11, Mint), "research-state-" + definition.Key));
-            var node = Named(new Button
+            var node = Named(new ButtonNode
             {
                 Content = content,
                 HorizontalContentAlignment = HorizontalAlignment.Stretch,
@@ -88,7 +89,7 @@ public sealed partial class MainView : IResearchActionHandler
                 Margin = new Thickness(0),
                 Padding = new Thickness(8, 5),
             }, "research-node-" + definition.Key);
-            ToolTip.SetTip(node, definition.Name + "\n" + definition.Effect);
+            node.ToolTip = definition.Name + "\n" + definition.Effect;
             node.Click += (_, _) =>
             {
                 _selectedResearch = definition;
@@ -105,13 +106,14 @@ public sealed partial class MainView : IResearchActionHandler
             nodes.Add(definition, node);
         }
 
-        var graph = Named(
-            new ResearchGraphControl(nodes)
-            {
-                Height = _isCompact ? 380 : 560,
-                IsCompleted = kind => _engine.HasResearch(town.Id, kind),
-                Selected = _selectedResearch,
-            }, "research-graph");
+        var graph = new ResearchGraphControl
+        {
+            Height = _isCompact ? 380 : 560,
+            IsCompleted = kind => _engine.HasResearch(town.Id, kind),
+            Selected = _selectedResearch,
+        };
+        Avalonia.Automation.AutomationProperties.SetAutomationId(graph, "research-graph");
+        graph.SetNodes(nodes);
 
         IEnumerable<Advancement> Route()
         {
@@ -134,7 +136,7 @@ public sealed partial class MainView : IResearchActionHandler
         }
 
         graph.ShowRoute(Route());
-        var tabs = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = 4 };
+        var tabs = new GridNode { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = 4 };
         var routes = new[]
         {
             ("科技路线", ResearchRoute.Technology), ("魔法路线", ResearchRoute.Magic), ("共同基础", ResearchRoute.Common),
@@ -155,12 +157,12 @@ public sealed partial class MainView : IResearchActionHandler
             tab.HorizontalAlignment = HorizontalAlignment.Stretch;
             tab.Padding = new Thickness(4, 5);
             _inspectorUpdates.Add(() => tab.BorderBrush = _researchRoute == route ? Mint : Line);
-            Grid.SetColumn(tab, i);
+            GridNode.SetColumn(tab, i);
             tabs.Children.Add(tab);
         }
 
         panel.Children.Add(tabs);
-        var branches = new WrapPanel { Orientation = Orientation.Horizontal };
+        var branches = new WrapNode { Orientation = Orientation.Horizontal };
         foreach (var branch in
                  new ResearchBranch?[] { null }.Concat(ResearchRules.All.Select(d => d.Branch).Distinct()))
         {
@@ -183,7 +185,7 @@ public sealed partial class MainView : IResearchActionHandler
         }
 
         panel.Children.Add(branches);
-        var outcome = new StackPanel { Spacing = 5 };
+        var outcome = new StackNode { Spacing = 5 };
         outcome.Children.Add(Named(LiveText(() =>
         {
             var result = _engine.GetCivilizationProgress(town.Id, _researchRoute.IsMagic);
@@ -206,7 +208,7 @@ public sealed partial class MainView : IResearchActionHandler
         outcome.Children.Add(outcomeDetails);
         _inspectorUpdates.Add(() => outcomeDetails.IsVisible = _civilizationDetails);
         panel.Children.Add(Card(outcome));
-        var tools = new WrapPanel { Orientation = Orientation.Horizontal };
+        var tools = new WrapNode { Orientation = Orientation.Horizontal };
         tools.Children.Add(Named(Button("缩小", () =>
         {
             graph.SetZoom(graph.Zoom - .15);
@@ -248,7 +250,7 @@ public sealed partial class MainView : IResearchActionHandler
                                                         _selectedResearch.Prerequisites
                                                             .Select(research => research.Name))), 12, Muted),
             "research-path-caption"));
-        panel.Children.Add(new Border
+        panel.Children.Add(new BorderNode
         {
             Child = graph,
             BorderBrush = Line,
@@ -262,7 +264,7 @@ public sealed partial class MainView : IResearchActionHandler
             graph.Height = _isCompact ? 380 : _researchExpanded ? 720 : 560;
             graph.RefreshConnections();
         });
-        var detail = new StackPanel { Spacing = 6 };
+        var detail = new StackNode { Spacing = 6 };
         detail.Children.Add(Named(LiveText(() => _selectedResearch.Name, 15, Mint),
             "research-selected"));
         detail.Children.Add(Named(LiveText(() =>
@@ -275,7 +277,7 @@ public sealed partial class MainView : IResearchActionHandler
                    + "\n投入材料：" + StockLabel(WorldEngine.GetResearchCost(_selectedResearch))
                    + "\n" + (Blocker(_selectedResearch) ?? "前置知识与魔法规则已满足，研究材料充足");
         }), "research-requirements"));
-        var unlocks = Named(new StackPanel { Spacing = 5 }, "research-unlocks");
+        var unlocks = Named(new StackNode { Spacing = 5 }, "research-unlocks");
         detail.Children.Add(unlocks);
         Advancement? shown = null;
         bool? shownKnown = null;

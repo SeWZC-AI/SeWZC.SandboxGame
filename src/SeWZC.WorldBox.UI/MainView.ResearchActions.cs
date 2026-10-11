@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI;
 
@@ -81,7 +82,7 @@ public sealed partial class MainView
         OpenModal(panel);
     }
 
-    private void BuildResearchResidentActions(StackPanel panel, Resident person)
+    private void BuildResearchResidentActions(StackNode panel, Resident person)
     {
         panel.Children.Add(Named(LiveText(() =>
         {

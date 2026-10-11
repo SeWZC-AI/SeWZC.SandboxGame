@@ -25,9 +25,12 @@ public sealed partial class MainView
             _saveCapture is not null, App.Storage?.IsBackground == true, _accumulator > .4);
     }
 
-    private static bool DetailsVisible(Control control)
+    private static bool DetailsVisible(ViewModels.Details.VisualNode node)
     {
-        return !control.GetVisualAncestors().OfType<Expander>().Any(e => !e.IsExpanded);
+        for (var parent = node.Parent; parent is not null; parent = parent.Parent)
+            if (parent is ViewModels.Details.ExpanderNode { IsExpanded: false })
+                return false;
+        return true;
     }
 
     private bool IsEditingText()
@@ -37,7 +40,7 @@ public sealed partial class MainView
                    control.GetVisualAncestors().Any(c => c is TextBox));
     }
 
-    private void BindSearch(TextBox input, Action<string> changed)
+    private void BindSearch(ViewModels.Details.TextInputNode input, Action<string> changed)
     {
         // 搜索刷新合并连续输入事件，并保留获得焦点的编辑器，避免打断输入法组合。
         var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(220) };
@@ -54,7 +57,7 @@ public sealed partial class MainView
             timer.Stop();
             timer.Start();
         };
-        input.DetachedFromVisualTree += (_, _) => timer.Stop();
+        input.Detached += (_, _) => timer.Stop();
     }
 
     private string ResidentTask(Resident person)

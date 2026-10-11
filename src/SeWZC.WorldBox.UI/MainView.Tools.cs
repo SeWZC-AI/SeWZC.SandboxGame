@@ -6,10 +6,6 @@ namespace SeWZC.WorldBox.UI;
 
 public sealed partial class MainView
 {
-    private Button? _toolNext;
-    private readonly TextBlock _toolPageLabel = Text("", 11);
-    private Button? _toolPrevious;
-
     private int _toolPage;
 
     private void SetCategory(ToolCategory category)

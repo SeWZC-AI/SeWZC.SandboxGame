@@ -6,6 +6,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.UI.Controls;
@@ -22,62 +23,41 @@ public sealed partial class MainView : UserControl
     private static readonly IBrush Line = Brush.Parse("#2A3C46");
     private static readonly IBrush Muted = Brush.Parse("#8FA8AE");
     private static readonly IBrush Mint = Brush.Parse("#B8E9BC");
-    private readonly Grid _body = new();
-    private readonly StackPanel _cameraBar = new()
-    {
-        Spacing = 4, HorizontalAlignment = HorizontalAlignment.Right,
-        VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(10, 54, 10, 10),
-    };
-
-    private readonly WrapPanel _bridgeSettings = new()
-    {
-        Orientation = Orientation.Horizontal, IsVisible = false,
-    };
-
-    private readonly ComboBox _brushPicker = new() { Width = 100, MinHeight = 36, FontSize = 11 };
-
-    private readonly ComboBox _buildMode = new()
-    {
-        Width = 132,
-        MinHeight = 36,
-        FontSize = 11,
-        ItemsSource = new[] { "直接赐予", "居民施工" },
-        SelectedIndex = 0,
-    };
-
+    private readonly Grid _body;
+    private readonly StackPanel _cameraBar;
+    private readonly WrapPanel _bridgeSettings;
+    private readonly ComboBox _brushPicker;
+    private readonly ComboBox _buildMode;
+    private readonly Border _inspector;
+    private readonly ScrollViewer _inspectorScroll;
+    private readonly WorldMapControl _map;
+    private readonly Border _mapPickBar;
+    private readonly Border _modal;
+    private readonly Border _placementBar;
+    private readonly TextBlock _placementText;
+    private readonly Grid _shell;
+    private readonly Views.GameHud _hud;
+    private readonly Border _toolBar;
+    private readonly ScrollViewer _toolScroll;
+    private readonly UniformGrid _toolChoices;
+    private readonly ComboBox _toolContext;
+    private readonly TextBlock _toolHint;
+    private readonly TextBlock _toolTitle;
+    private readonly Button _toolPrevious;
+    private readonly Button _toolNext;
+    private readonly TextBlock _toolPageLabel;
+    private readonly Flyout _worldMenuFlyout;
     private readonly List<Button> _categoryButtons = [];
     private readonly Stopwatch _clock = Stopwatch.StartNew();
-    private readonly Border _inspector = new();
-    private readonly StackPanel _inspectorNavigation = new() { Margin = new Thickness(8, 4), Spacing = 4 };
-    private readonly ScrollViewer _inspectorScroll = new();
-    private readonly WorldMapControl _map = new();
-    private readonly Border _mapPickBar = new() { IsVisible = false };
-    private readonly Border _modal = new() { IsVisible = false, Background = Brush.Parse("#BD071118"), ZIndex = 100 };
     private readonly Stack<InspectorLocation> _navigation = new();
-    private readonly Border _performancePanel = new();
-    private readonly TextBlock _performanceText = Named(Text("FPS 0\n0 日/秒", 10, Mint), "performance-stats");
-    private readonly Border _placementBar = new();
-    private readonly TextBlock _placementText = Text("", 12);
     private readonly SemaphoreSlim _saveGate = new(1, 1);
-    private readonly Grid _shell = new();
-    private readonly Views.GameHud _hud = new();
     private readonly ViewModels.MainViewModel _viewModel;
     private readonly RecentActivityCounter _simulationDays = new();
     private readonly MapTool?[] _slotTools = new MapTool?[8];
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(50) };
-    private readonly Border _toolBar = new();
-    private readonly ScrollViewer _toolScroll = new()
-    {
-        HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
-        VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-    };
-    private readonly UniformGrid _toolChoices = new() { Columns = 8, Rows = 1 };
-    private readonly ComboBox _toolContext = new() { Width = 112, MinHeight = 36, FontSize = 10 };
-    private readonly TextBlock _toolHint = Text("选择一种地形，在世界上绘制", 11, Muted);
     private readonly TextBlock[] _toolLabels = new TextBlock[8];
     private readonly Button[] _toolSlots = new Button[8];
     private readonly Border[] _toolSwatches = new Border[8];
-    private readonly TextBlock _toolTitle = Text("塑造山海", 13, Mint);
     private readonly List<(MapTool Tool, Button Button)> _tools = [];
     private bool _allowAutosave = true;
     private ToolCategory _category = ToolCategory.Terrain;
@@ -88,7 +68,7 @@ public sealed partial class MainView : UserControl
     private bool _isCompact;
     private long _lastSaveYield;
     private double _lastStepMilliseconds, _lastMapRefreshMilliseconds;
-    private TextBlock? _modalFeedback;
+    private ViewModels.Details.TextNode? _modalFeedback;
     private int _modalGeneration;
     private bool _modalHasPrimary;
     private bool _ready, _saving, _wasBackground;
@@ -100,7 +80,7 @@ public sealed partial class MainView : UserControl
     private ImmutableVector<WorldEvent>? _spotlightEvents;
     private EventGroup? _spotlightGroup;
     private (int LastId, int Count, int Watches) _spotlightRevision;
-    private Button? _storageUndo;
+    private ViewModels.Details.ButtonNode? _storageUndo;
     private bool _updatingToolContext;
     private long _worldEditRevision, _savedEditRevision = -1, _savedTick = -1;
 
@@ -115,6 +95,32 @@ public sealed partial class MainView : UserControl
     {
         _viewModel = new ViewModels.MainViewModel(engine ?? WorldEngine.Create(73921));
         DataContext = _viewModel;
+        AvaloniaXamlLoader.Load(this);
+        _body = this.FindControl<Grid>("Body")!;
+        _cameraBar = this.FindControl<StackPanel>("CameraBar")!;
+        _bridgeSettings = this.FindControl<WrapPanel>("BridgeSettings")!;
+        _brushPicker = this.FindControl<ComboBox>("BrushPicker")!;
+        _buildMode = this.FindControl<ComboBox>("BuildMode")!;
+        _inspector = this.FindControl<Border>("Inspector")!;
+        _inspectorScroll = this.FindControl<ScrollViewer>("InspectorScroll")!;
+        _map = this.FindControl<WorldMapControl>("Map")!;
+        _mapPickBar = this.FindControl<Border>("MapPickBar")!;
+        _modal = this.FindControl<Border>("Modal")!;
+        _placementBar = this.FindControl<Border>("PlacementBar")!;
+        _placementText = this.FindControl<TextBlock>("PlacementText")!;
+        _shell = this.FindControl<Grid>("Shell")!;
+        _hud = this.FindControl<Views.GameHud>("Hud")!;
+        _toolBar = this.FindControl<Border>("ToolBar")!;
+        _toolScroll = this.FindControl<ScrollViewer>("ToolScroll")!;
+        _toolChoices = this.FindControl<UniformGrid>("ToolChoices")!;
+        _toolContext = this.FindControl<ComboBox>("ToolContext")!;
+        _toolHint = this.FindControl<TextBlock>("ToolHint")!;
+        _toolTitle = this.FindControl<TextBlock>("ToolTitle")!;
+        _toolPrevious = this.FindControl<Button>("ToolPrevious")!;
+        _toolNext = this.FindControl<Button>("ToolNext")!;
+        _toolPageLabel = this.FindControl<TextBlock>("ToolPageLabel")!;
+        _worldMenuFlyout = (Flyout)Resources["WorldMenuFlyout"]!;
+        InitializeViewControls();
         _viewModel.ViewRequested += HandleViewRequest;
         _viewModel.PauseChanged += () =>
         {
@@ -134,8 +140,6 @@ public sealed partial class MainView : UserControl
             UpdateSpeedButtons();
             RefreshTimeState();
         };
-        Background = Ink;
-        Focusable = true;
         _map.Engine = _engine;
         _map.PrepareWorldEdit = PrepareEditAsync;
         _map.WorldMutationStarting += (_, _) =>
@@ -164,7 +168,6 @@ public sealed partial class MainView : UserControl
         };
         _map.ToolError += message => SetStatus("工具未应用：" + message);
 
-        BuildMainLayout();
         SizeChanged += (_, _) => ApplyLayout();
         _body.SizeChanged += (_, _) => ApplyLayout();
         _map.SizeChanged += (_, _) => UpdateToolBarSize();
@@ -172,6 +175,8 @@ public sealed partial class MainView : UserControl
         _timer.Tick += OnTick;
         AttachedToVisualTree += async (_, _) =>
         {
+            if (Design.IsDesignMode)
+                return;
             await (_initialization ??= InitializeAsync());
             _previousTime = _clock.Elapsed.TotalSeconds;
             _timer.Start();
@@ -179,6 +184,7 @@ public sealed partial class MainView : UserControl
         DetachedFromVisualTree += (_, _) => _timer.Stop();
         SetCategory(ToolCategory.Terrain);
         _toolsOpen = false;
+        _shell.IsEnabled = Design.IsDesignMode;
         ApplyLayout();
         UpdateSpeedButtons();
         RefreshUi(true);
@@ -415,13 +421,12 @@ public sealed partial class MainView : UserControl
 
     private void RefreshPerformanceStats()
     {
-        if (!_performancePanel.IsVisible)
+        if (!_viewModel.ShowPerformance)
             return;
         var timestamp = Stopwatch.GetTimestamp();
         var text =
             $"FPS {_map.GetRecentFrameCount(timestamp)}\n{_simulationDays.Count(timestamp) / (double)SimulationTime.TicksPerDay:0.##} 日/秒";
-        if (_performanceText.Text != text)
-            _performanceText.Text = text;
+        _viewModel.PerformanceText = text;
     }
 
     private void RefreshUi(bool force = false)
@@ -696,7 +701,7 @@ public sealed partial class MainView : UserControl
         var panel = ModalPanel("让一个新世界诞生", "相同的种子生成相同的山海。当前世界会暂存为本次会话的恢复点。");
         panel.Children.Add(Text("世界种子", 12, Muted));
         var seed = Named(
-            new NumericUpDown
+            new ViewModels.Details.NumberNode
             {
                 Minimum = int.MinValue,
                 Maximum = int.MaxValue,
@@ -707,14 +712,14 @@ public sealed partial class MainView : UserControl
         panel.Children.Add(seed);
         panel.Children.Add(Text("世界大小", 12, Muted));
         var size = Named(
-            new ComboBox
+            new ViewModels.Details.ChoiceNode
             {
                 ItemsSource = new[] { "小型世界（128 × 128）", "中型世界（256 × 256）" },
                 SelectedIndex = 1,
                 HorizontalAlignment = HorizontalAlignment.Stretch,
             }, "world-size");
         panel.Children.Add(size);
-        var life = Named(new CheckBox { Content = Text("播下四个种族，立即开始观察", 12), IsChecked = true }, "world-initial-life");
+        var life = Named(new ViewModels.Details.CheckNode { Content = Text("播下四个种族，立即开始观察", 12), IsChecked = true }, "world-initial-life");
         panel.Children.Add(life);
         var create = Button("创造世界", async () =>
         {
@@ -780,18 +785,18 @@ public sealed partial class MainView : UserControl
         if (nation is null)
             return;
         var panel = ModalPanel("改写文明的方向", "编辑国家名称、库存与外交关系。变更将在暂停的世界中生效。");
-        var name = Named(new TextBox { Text = nation.Name, MaxLength = 40 }, "nation-name");
+        var name = Named(new ViewModels.Details.TextInputNode { Text = nation.Name, MaxLength = 40 }, "nation-name");
         panel.Children.Add(name);
         panel.Children.Add(Text("旗色", 12, Muted));
         var color = nation.ColorArgb;
-        var palette = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
-        var swatches = new List<(uint Color, Button Button)>();
+        var palette = new ViewModels.Details.StackNode { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var swatches = new List<(uint Color, ViewModels.Details.ButtonNode Button)>();
         foreach (var argb in new[]
                  {
                      0xFFE7AD62, 0xFF63CCA7, 0xFF8C9DEB, 0xFFE27A7C, 0xFFDFC16E, 0xFFB593DB, 0xFF74BBDC, 0xFFD294C8,
                  })
         {
-            var swatch = new Button
+            var swatch = new ViewModels.Details.ButtonNode
             {
                 Width = 34,
                 Height = 34,
@@ -815,7 +820,7 @@ public sealed partial class MainView : UserControl
         panel.Children.Add(Text("古代发展水平（影响生产效率）", 12, Muted));
         var technology =
             Named(
-                new ComboBox
+                new ViewModels.Details.ChoiceNode
                 {
                     ItemsSource = new[] { "1  部落", "2  定居", "3  农业", "4  冶炼", "5  城邦" },
                     SelectedIndex = Math.Clamp(nation.Technology - 1, 0, 4),
@@ -824,7 +829,7 @@ public sealed partial class MainView : UserControl
         panel.Children.Add(technology);
         panel.Children.Add(Text("自主发展方向", 12, Muted));
         var focus = Named(
-            new ComboBox
+            new ViewModels.Details.ChoiceNode
             {
                 ItemsSource = Enum.GetValues<DevelopmentFocus>().Select(WorldEngine.DevelopmentFocusName).ToArray(),
                 SelectedIndex = (int)nation.DevelopmentFocus,
@@ -832,7 +837,7 @@ public sealed partial class MainView : UserControl
             }, "nation-development-focus");
         panel.Children.Add(focus);
         panel.Children.Add(Paragraph("科技优先工业与能源；法术传承依靠施法者与训练，不要求魔晶设施。魔法工艺与兼修路线才会自主建设魔晶生产链。"));
-        var fields = new List<NumericUpDown>();
+        var fields = new List<ViewModels.Details.NumberNode>();
         foreach (var kind in ResourceStock.Kinds)
         {
             var value = nation.Resources.Get(kind);
@@ -843,7 +848,7 @@ public sealed partial class MainView : UserControl
 
         var others = _engine.State.Nations.Where(n => n.Id != nationId).ToList();
         var other = Named(
-            new ComboBox
+            new ViewModels.Details.ChoiceNode
             {
                 ItemsSource = others.Select(n => n.Name).ToArray(),
                 SelectedIndex = others.Count > 0 ? 0 : -1,
@@ -851,7 +856,7 @@ public sealed partial class MainView : UserControl
             }, "nation-diplomacy-target");
         var diplomacy =
             Named(
-                new ComboBox
+                new ViewModels.Details.ChoiceNode
                 {
                     ItemsSource = new[] { "保持现有关系", "和平", "结盟", "宣战" },
                     SelectedIndex = 0,
@@ -926,7 +931,7 @@ public sealed partial class MainView : UserControl
                 SetStatus("国家已更新");
             });
         }));
-        panel.Children.Add(new Border { Height = 1, Background = Line });
+        panel.Children.Add(new ViewModels.Details.BorderNode { Height = 1, Background = Line });
         panel.Children.Add(Button("绘制这个国家的领土", async () =>
         {
             await SubmitEditAsync(() =>
@@ -943,7 +948,7 @@ public sealed partial class MainView : UserControl
             });
         }));
         panel.Children.Add(Text("向首都添加居民（每次 12 人）", 12, Muted));
-        var people = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var people = new ViewModels.Details.StackNode { Orientation = Orientation.Horizontal, Spacing = 6 };
         foreach (var race in Enum.GetValues<RaceKind>())
             people.Children.Add(Button(RaceName(race), async () =>
             {
@@ -964,7 +969,7 @@ public sealed partial class MainView : UserControl
         if (towns.Count >= 2)
         {
             panel.Children.Add(Text("选择一处聚落独立建国", 12, Muted));
-            var townPicker = new ComboBox
+            var townPicker = new ViewModels.Details.ChoiceNode
             {
                 ItemsSource = towns.Select(t => t.Name).ToArray(),
                 SelectedIndex = 0,
@@ -1001,79 +1006,41 @@ public sealed partial class MainView : UserControl
         OpenModal(panel);
     }
 
-    private StackPanel ModalPanel(string title, string description)
+    private ViewModels.Details.StackNode ModalPanel(string title, string description)
     {
-        var panel = new StackPanel { Spacing = 5, MaxWidth = 460 };
-        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var panel = new ViewModels.Details.StackNode { Spacing = 5, MaxWidth = 460 };
+        var header = new ViewModels.Details.GridNode { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
         header.Children.Add(Text(title, 17, null, true));
         var close = IconButton("close", CloseModal, "关闭窗口", "modal-close");
-        Grid.SetColumn(close, 1);
+        ViewModels.Details.GridNode.SetColumn(close, 1);
         header.Children.Add(close);
         panel.Children.Add(header);
         panel.Children.Add(Paragraph(description));
         return panel;
     }
 
-    private void OpenModal(Control content)
+    private void OpenModal(ViewModels.Details.StackNode content)
     {
         CancelPendingEdit();
         CancelMapPick(true);
         _modalGeneration++;
-        var hasPrimary = false;
         _modalFeedback = Paragraph("");
         _modalFeedback.Foreground = Brush.Parse("#E7BD87");
-        var layout = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), RowSpacing = 6 };
-        if (content is StackPanel panel && panel.Children.Count > 0)
+        ViewModels.Details.VisualNode? header = null;
+        if (content.Children.Count > 0)
         {
-            var header = panel.Children[0];
-            panel.Children.RemoveAt(0);
-            layout.Children.Add(header);
-            var primary = panel.Children.OfType<Button>().LastOrDefault(button =>
-                (AutomationProperties.GetAutomationId(button) ?? "").EndsWith("-apply", StringComparison.Ordinal));
-            if (primary is not null)
-            {
-                hasPrimary = true;
-                panel.Children.Remove(primary);
-                var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8 };
-                footer.Children.Add(primary);
-                var cancel = Named(Button("取消", CloseModal), "modal-cancel");
-                Grid.SetColumn(cancel, 1);
-                footer.Children.Add(cancel);
-                var footerArea = new StackPanel { Spacing = 6 };
-                footerArea.Children.Add(_modalFeedback);
-                footerArea.Children.Add(footer);
-                Grid.SetRow(footerArea, 2);
-                layout.Children.Add(footerArea);
-            }
+            header = content.Children[0];
+            content.Children.RemoveAt(0);
         }
-
-        if (!hasPrimary)
+        var primary = content.Children.OfType<ViewModels.Details.ButtonNode>().LastOrDefault(button =>
+            button.AutomationId.EndsWith("-apply", StringComparison.Ordinal));
+        if (primary is not null)
+            content.Children.Remove(primary);
+        _modal.Child = new Views.ModalDialog
         {
-            Grid.SetRow(_modalFeedback, 2);
-            layout.Children.Add(_modalFeedback);
-        }
-
-        var scroll =
-            Named(new ScrollViewer { Content = content, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled },
-                "modal-scroll");
-        Grid.SetRow(scroll, 1);
-        layout.Children.Add(scroll);
-        _modal.Child = new Border
-        {
-            Background = Panel,
-            CornerRadius = new CornerRadius(8),
-            BorderBrush = Line,
-            BorderThickness = new Thickness(1),
-            Padding = new Thickness(12),
-            Margin = new Thickness(14),
-            Width = Math.Min(520, Math.Max(280, Bounds.Width - 28)),
-            Height = hasPrimary ? Math.Min(760, Math.Max(220, Bounds.Height - 28)) : double.NaN,
-            MaxHeight = Math.Max(220, Bounds.Height - 28),
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Child = layout,
+            DataContext = new ViewModels.ModalViewModel(header, content, primary, _modalFeedback, CloseModal),
         };
-        _modalHasPrimary = hasPrimary;
+        _modalHasPrimary = primary is not null;
         UpdateModalBounds();
         _modal.IsVisible = true;
         _map.IsSimulationPaused = true;
@@ -1142,9 +1109,9 @@ public sealed partial class MainView : UserControl
         return ex.Message.Length > 160 ? ex.Message[..160] : ex.Message;
     }
 
-    private static TextBlock Text(string text, double size = 13, IBrush? color = null, bool bold = false)
+    private static ViewModels.Details.TextNode Text(string text, double size = 13, IBrush? color = null, bool bold = false)
     {
-        return new TextBlock
+        return new ViewModels.Details.TextNode
         {
             Text = text,
             FontSize = size,
@@ -1154,9 +1121,9 @@ public sealed partial class MainView : UserControl
         };
     }
 
-    private static TextBlock Paragraph(string text)
+    private static ViewModels.Details.TextNode Paragraph(string text)
     {
-        return new TextBlock
+        return new ViewModels.Details.TextNode
         {
             Text = text,
             FontSize = 12,
@@ -1166,9 +1133,9 @@ public sealed partial class MainView : UserControl
         };
     }
 
-    private static Button Button(string label, Action action, string? tooltip = null, double minWidth = 0)
+    private static ViewModels.Details.ButtonNode Button(string label, Action action, string? tooltip = null, double minWidth = 0)
     {
-        var button = new Button
+        var button = new ViewModels.Details.ButtonNode
         {
             Content = label,
             MinWidth = minWidth,
@@ -1182,7 +1149,7 @@ public sealed partial class MainView : UserControl
         };
         button.Click += (_, _) => action();
         if (tooltip is not null)
-            ToolTip.SetTip(button, tooltip);
+            button.ToolTip = tooltip;
         var id = label switch
         {
             "新世界" => "header-new-world",
@@ -1207,24 +1174,24 @@ public sealed partial class MainView : UserControl
         return button;
     }
 
-    private static T Named<T>(T control, string id) where T : Control
+    private static T Named<T>(T control, string id) where T : ViewModels.Details.VisualNode
     {
         control.Name = id.Replace('-', '_');
-        AutomationProperties.SetAutomationId(control, id);
+        control.AutomationId = id;
         return control;
     }
 
-    private static Border Card(Control child)
+    private static ViewModels.Details.BorderNode Card(ViewModels.Details.VisualNode child)
     {
-        return new Border
+        return new ViewModels.Details.BorderNode
         {
             Child = child, Background = Ink, CornerRadius = new CornerRadius(9), Padding = new Thickness(8),
         };
     }
 
-    private static Border StatCard(string label, string value, string hint)
+    private static ViewModels.Details.BorderNode StatCard(string label, string value, string hint)
     {
-        var stack = new StackPanel { Spacing = 6 };
+        var stack = new ViewModels.Details.StackNode { Spacing = 6 };
         stack.Children.Add(Text(label, 10, Muted));
         stack.Children.Add(Text(value, 28, Mint, true));
         stack.Children.Add(Text(hint, 9, Muted));

@@ -6,12 +6,13 @@ using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using Avalonia.Media;
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI;
 
 public sealed partial class MainView
 {
-    private void BuildResidentInspector(StackPanel panel)
+    private void BuildResidentInspector(StackNode panel)
     {
         var id = _selectedResidentId;
         if (_engine.GetResident(id) is not { } resident)
@@ -28,7 +29,7 @@ public sealed partial class MainView
         panel.Children.Add(LiveText(() => $"{Current().Name}   {ProfessionName(Current().Profession)}", 18, Mint));
         panel.Children.Add(LiveText(() =>
             $"{RaceName(Current().Race)}   年龄 {Current().Age:F1} / 预期寿命 {WorldEngine.Lifespan(Current().Race)} 岁"));
-        var belonging = new WrapPanel { Orientation = Orientation.Horizontal };
+        var belonging = new WrapNode { Orientation = Orientation.Horizontal };
         var nation = Named(Button("查看国家", () => OpenNation(Current().NationId)), "resident-nation");
         var settlement = Named(Button("查看所属聚落", () => OpenSettlement(Current().SettlementId)),
             "resident-settlement-link");
@@ -43,8 +44,8 @@ public sealed partial class MainView
             nation.IsEnabled = _engine.State.Nations.Any(n => n.Id == r.NationId);
             settlement.Content = "聚落：" + TownName(r.SettlementId);
             settlement.IsEnabled = _engine.State.Settlements.Any(t => t.Id == r.SettlementId);
-            ToolTip.SetTip(nation, nation.IsEnabled ? "查看所属国家" : "原属国家已不存在，保留历史归属");
-            ToolTip.SetTip(settlement, settlement.IsEnabled ? "查看所属聚落" : "原属聚落已不存在，保留历史归属");
+            nation.ToolTip = nation.IsEnabled ? "查看所属国家" : "原属国家已不存在，保留历史归属";
+            settlement.ToolTip = settlement.IsEnabled ? "查看所属聚落" : "原属聚落已不存在，保留历史归属";
         }
 
         _inspectorUpdates.Add(UpdateBelonging);
@@ -80,7 +81,7 @@ public sealed partial class MainView
         BuildResearchResidentActions(panel, resident);
         if (resident.Health > 0)
         {
-            var quick = new WrapPanel { Orientation = Orientation.Horizontal };
+            var quick = new WrapNode { Orientation = Orientation.Horizontal };
             quick.Children.Add(Named(Button("安排休息", () => QuickResidentGoal(id, AgentGoalKind.Rest)), "resident-rest"));
             quick.Children.Add(Named(Button("返回家园", () => QuickResidentGoal(id, AgentGoalKind.ReturnHome)),
                 "resident-home"));
@@ -103,14 +104,14 @@ public sealed partial class MainView
 
         panel.Children.Add(WatchControl(ObservedObjectKind.Resident, id, "resident-watch"));
         panel.Children.Add(Named(Button("人物故事与重要转折", () => OpenInspector("story")), "resident-story"));
-        var actions = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = 5 };
+        var actions = new GridNode { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = 5 };
         var locate = Named(Button("定位", () =>
         {
             if (FocusMapResident(id) && _isCompact)
                 CloseInspector();
         }), "resident-locate");
         actions.Children.Add(locate);
-        var follow = Named(new CheckBox { Content = Text("跟随", 12), IsChecked = _map.FollowSelectedResident },
+        var follow = Named(new CheckNode { Content = Text("跟随", 12), IsChecked = _map.FollowSelectedResident },
             "resident-follow");
         var syncingFollow = false;
         follow.IsCheckedChanged += (_, _) =>
@@ -134,10 +135,10 @@ public sealed partial class MainView
             follow.IsChecked = actual;
             syncingFollow = false;
         });
-        Grid.SetColumn(follow, 1);
+        GridNode.SetColumn(follow, 1);
         actions.Children.Add(follow);
         var edit = Named(Button("编辑", () => ShowResidentEditor(id)), "resident-edit");
-        Grid.SetColumn(edit, 2);
+        GridNode.SetColumn(edit, 2);
         actions.Children.Add(edit);
         panel.Children.Add(actions);
         var body = FoldSection(panel, "身体、库存与魔法", "resident-body");
@@ -149,7 +150,7 @@ public sealed partial class MainView
         }));
         var effects = FoldSection(panel, "当前加成与减益", "resident-effects");
         effects.Children.Add(LiveText(() => EffectLabel(_engine.GetResidentEffects(id))));
-        var route = Named(new CheckBox { Content = "显示后续行动轨迹", IsChecked = _map.ShowResidentRoute }, "resident-route");
+        var route = Named(new CheckNode { Content = "显示后续行动轨迹", IsChecked = _map.ShowResidentRoute }, "resident-route");
         route.IsCheckedChanged += (_, _) =>
         {
             _map.ShowResidentRoute = route.IsChecked == true;
@@ -225,23 +226,23 @@ public sealed partial class MainView
             return;
         var archived = _engine.State.ArchivedResidents.Any(person => person.Id == id);
         var panel = ModalPanel("编辑居民档案", "打开期间时间暂时停止，取消会恢复原状态；应用修改后保持暂停。迁居会改变国家归属，当前任务请在目标编辑中调整。");
-        var identity = new StackPanel { Spacing = 10 };
-        var condition = new StackPanel { Spacing = 10 };
-        var belonging = new StackPanel { Spacing = 10 };
-        var magic = new StackPanel { Spacing = 10 };
-        var possessions = new StackPanel { Spacing = 10 };
+        var identity = new StackNode { Spacing = 10 };
+        var condition = new StackNode { Spacing = 10 };
+        var belonging = new StackNode { Spacing = 10 };
+        var magic = new StackNode { Spacing = 10 };
+        var possessions = new StackNode { Spacing = 10 };
         var tabs = Named(
-            new TabControl
+            new TabsNode
             {
                 ItemsSource = new[]
                 {
-                    Named(new TabItem { Header = Text("身份", 12), Content = identity }, "resident-tab-identity"), Named(
-                        new TabItem { Header = Text("生理", 12), Content = condition },
+                    Named(new TabNode { Header = Text("身份", 12), Content = identity }, "resident-tab-identity"), Named(
+                        new TabNode { Header = Text("生理", 12), Content = condition },
                         "resident-tab-condition"),
-                    Named(new TabItem { Header = Text("归属", 12), Content = belonging },
+                    Named(new TabNode { Header = Text("归属", 12), Content = belonging },
                         "resident-tab-belonging"),
-                    Named(new TabItem { Header = Text("魔法", 12), Content = magic }, "resident-tab-magic"), Named(
-                        new TabItem { Header = Text("物品", 12), Content = possessions },
+                    Named(new TabNode { Header = Text("魔法", 12), Content = magic }, "resident-tab-magic"), Named(
+                        new TabNode { Header = Text("物品", 12), Content = possessions },
                         "resident-tab-possessions"),
                 },
                 SelectedIndex = 0,
@@ -342,7 +343,7 @@ public sealed partial class MainView
             mind.Goal.TargetSettlementId, "resident-goal-town", true, true);
         var entityLabel = Text("目标对象", 12, Muted);
         panel.Children.Add(entityLabel);
-        var entity = Named(new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 36 },
+        var entity = Named(new ChoiceNode { HorizontalAlignment = HorizontalAlignment.Stretch, MinHeight = 36 },
             "resident-goal-entity");
         panel.Children.Add(entity);
         var updatingEntities = false;
@@ -570,7 +571,7 @@ public sealed partial class MainView
         value.Minimum = -1_000_000_000;
         value.Maximum = 1_000_000_000;
         value.Value = (decimal)fact.Value;
-        var choice = Named(new ComboBox { HorizontalAlignment = HorizontalAlignment.Stretch }, "memory-value-choice");
+        var choice = Named(new ChoiceNode { HorizontalAlignment = HorizontalAlignment.Stretch }, "memory-value-choice");
         panel.Children.Add(choice);
         var addressed = ObjectField(panel, "外交声明／军令的接收国家", _engine.State.Nations.Select(n => (n.Id, n.Name)),
             fact.TargetNationId, "memory-addressed", true);
@@ -844,7 +845,7 @@ public sealed partial class MainView
                 ? "个人历史与世界事件独立。Experience 与 Impact 是结构化心理影响；文本不会被当作可执行命令。仅影响今后认知，不重新计算过去的世界。"
                 : "包含目标、人格、全部记忆、决策依据、携带消息与任务。字段统一经过模拟核心校验。只修改这个角色的认知，不会改动世界事实。");
         var input = Named(
-            new TextBox
+            new TextInputNode
             {
                 Text = history ? _engine.ExportResidentHistory(id) : _engine.ExportResidentMind(id),
                 AcceptsReturn = true,
@@ -879,7 +880,7 @@ public sealed partial class MainView
         OpenModal(panel);
     }
 
-    private static void AddDatePreview(StackPanel panel, TextBox input, string label)
+    private static void AddDatePreview(StackNode panel, TextInputNode input, string label)
     {
         var preview = Paragraph("");
 
@@ -895,33 +896,33 @@ public sealed partial class MainView
         panel.Children.Add(preview);
     }
 
-    private static TextBox Field(StackPanel panel, string label, object value, string id)
+    private static TextInputNode Field(StackNode panel, string label, object value, string id)
     {
         panel.Children.Add(Text(label, 12, Muted));
         var text = value is IFormattable format
             ? format.ToString(null, CultureInfo.InvariantCulture)
             : value.ToString();
-        var box = Named(new TextBox { Text = text, HorizontalAlignment = HorizontalAlignment.Stretch }, id);
+        var box = Named(new TextInputNode { Text = text, HorizontalAlignment = HorizontalAlignment.Stretch }, id);
         panel.Children.Add(box);
         return box;
     }
 
-    private static ComboBox EnumField<T>(StackPanel panel, string label, T value, Func<T, string> name, string id)
+    private static ChoiceNode EnumField<T>(StackNode panel, string label, T value, Func<T, string> name, string id)
         where T : struct, Enum
     {
         panel.Children.Add(Text(label, 12, Muted));
-        var picker = Named(new ComboBox
+        var picker = Named(new ChoiceNode
         {
             ItemsSource = Enum.GetValues<T>(),
             SelectedItem = value,
             HorizontalAlignment = HorizontalAlignment.Stretch,
-            ItemTemplate = new FuncDataTemplate<T>((item, _) => Text(name(item), 12)),
+            DisplayLabel = item => name((T)item),
         }, id);
         panel.Children.Add(picker);
         return picker;
     }
 
-    private static double Number(TextBox field)
+    private static double Number(TextInputNode field)
     {
         if (!double.TryParse(field.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value) ||
             !double.IsFinite(value))
@@ -929,14 +930,14 @@ public sealed partial class MainView
         return value;
     }
 
-    private static int Integer(TextBox field)
+    private static int Integer(TextInputNode field)
     {
         if (!int.TryParse(field.Text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
             throw new ArgumentException("请输入有效整数。");
         return value;
     }
 
-    private NumericUpDown[] StockFields(StackPanel panel, ResourceStock stock, string prefix)
+    private NumberNode[] StockFields(StackNode panel, ResourceStock stock, string prefix)
     {
         return
         [
@@ -945,7 +946,7 @@ public sealed partial class MainView
         ];
     }
 
-    private static ResourceStock ReadStock(NumericUpDown[] fields)
+    private static ResourceStock ReadStock(NumberNode[] fields)
     {
         var stock = new ResourceStock();
         for (var i = 0; i < fields.Length; i++)

@@ -3,12 +3,13 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI;
 
 public sealed partial class MainView
 {
-    private bool _expandedInspector;
+    private bool _expandedInspector { get => _viewModel.InspectorExpanded; set => _viewModel.InspectorExpanded = value; }
 
     private void SelectMapObject(string kind, int id = 0, int x = 0, int y = 0)
     {
@@ -79,7 +80,7 @@ public sealed partial class MainView
                 or TerrainType.LargeRiver ? BuildingKind.Bridge : BuildingKind.Farm;
         var panel = ModalPanel("安排居民改造地块", $"{WorldEngine.BuildingName(kind)}\n投入材料后，由居民到场施工；桥梁和山路完工后才可通行。");
         var town = ObjectField(panel, "负责聚落", towns.Select(t => (t.Id, t.Name)), towns[0].Id, "land-town");
-        var bridgeOptions = new StackPanel { IsVisible = kind == BuildingKind.Bridge };
+        var bridgeOptions = new StackNode { IsVisible = kind == BuildingKind.Bridge };
         panel.Children.Add(bridgeOptions);
         var direction = EnumField(bridgeOptions, "桥梁方向", BridgeDirection.Horizontal, WorldEngine.BridgeDirectionName,
             "land-bridge-direction");

@@ -1,34 +1,35 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI;
 
 public sealed partial class MainView
 {
-    private void BuildWorldRules(StackPanel panel)
+    private void BuildWorldRules(StackNode panel)
     {
         var draft = _engine.State.Rules;
-        var switches = new List<(CheckBox Box, Func<WorldRules, bool> Get, Func<WorldRules, bool, WorldRules> Set)>();
+        var switches = new List<(CheckNode Box, Func<WorldRules, bool> Get, Func<WorldRules, bool, WorldRules> Set)>();
         var preset =
             Named(
-                new ComboBox
+                new ChoiceNode
                 {
                     ItemsSource = new[] { "自定义 / 当前规则", "和平繁荣", "文明兴衰", "动荡世界" },
                     SelectedIndex = 0,
                     HorizontalAlignment = HorizontalAlignment.Stretch,
                 }, "rules-preset");
         panel.Children.Add(preset);
-        var disasters = Named(new CheckBox { Content = "允许自然灾害", IsChecked = _engine.State.NaturalDisasters },
+        var disasters = Named(new CheckNode { Content = "允许自然灾害", IsChecked = _engine.State.NaturalDisasters },
             "rule-disasters");
-        var magic = Named(new CheckBox { Content = "允许新的魔法发展", IsChecked = _engine.State.Society.MagicEnabled },
+        var magic = Named(new CheckNode { Content = "允许新的魔法发展", IsChecked = _engine.State.Society.MagicEnabled },
             "rule-magic");
 
         void Toggle(string title, string hint, string id, Func<WorldRules, bool> get,
             Func<WorldRules, bool, WorldRules> set)
         {
-            var check = Named(new CheckBox { Content = title, IsChecked = get(draft), MinHeight = 36 }, id);
-            ToolTip.SetTip(check, hint);
+            var check = Named(new CheckNode { Content = title, IsChecked = get(draft), MinHeight = 36 }, id);
+            check.ToolTip = hint;
             switches.Add((check, get, set));
             panel.Children.Add(check);
         }
@@ -55,11 +56,11 @@ public sealed partial class MainView
         Toggle("聚落分裂", "长期未解决的困苦报告积累动荡，非首都聚落可能独立", "rule-secession", r => r.Secession,
             (r, v) => r with { Secession = v });
 
-        ComboBox Select(string title, string[] choices, int selected, string id)
+        ChoiceNode Select(string title, string[] choices, int selected, string id)
         {
             panel.Children.Add(Text(title, 12, Muted));
             var box = Named(
-                new ComboBox
+                new ChoiceNode
                 {
                     ItemsSource = choices,
                     SelectedIndex = selected,

@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI;
 
@@ -43,9 +44,8 @@ public sealed partial class MainView
             {
                 _inspectorKey = key;
                 _inspectorUpdates.Clear();
-                var content = new StackPanel { Margin = new Thickness(6), Spacing = 5 };
-                var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto") };
-                header.Children.Add(Named(Text(_inspectorMode switch
+                var content = new StackNode { Margin = new Thickness(6), Spacing = 5 };
+                _viewModel.InspectorTitle = _inspectorMode switch
                 {
                     "watched" => "我的关注",
                     "story" => "人物故事",
@@ -66,27 +66,8 @@ public sealed partial class MainView
                     "research" => "科技与魔法研究",
                     "communication" => "消息与通信",
                     _ => "世界概览",
-                }, 17, null, true), "inspector-title"));
-                var back = IconButton("back", GoBack, "返回上一处", "inspector-back");
-                Grid.SetColumn(back, 1);
-                header.Children.Add(back);
-                var expand = Named(Button(_expandedInspector ? "收起" : "展开", () =>
-                {
-                    _expandedInspector = !_expandedInspector;
-                    ApplyLayout();
-                    RefreshInspector();
-                }), "inspector-expand");
-                expand.Content = LiveText(() => _expandedInspector ? "收起" : "展开", 11);
-                expand.IsVisible = _isCompact;
-                Grid.SetColumn(expand, 2);
-                header.Children.Add(expand);
-                _inspectorUpdates.Add(() => expand.IsVisible = _isCompact);
-                var close = IconButton("close", CloseInspector, "关闭详情，返回地图", "inspector-close");
-                Grid.SetColumn(close, 3);
-                header.Children.Add(close);
-                _inspectorNavigation.Children.Clear();
-                _inspectorNavigation.Children.Add(header);
-                var navigation = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*,*,*"), ColumnSpacing = 3 };
+                };
+                var navigation = new GridNode { ColumnDefinitions = new ColumnDefinitions("*,*,*,*,*"), ColumnSpacing = 3 };
                 var entries = new[]
                 {
                     ("世界", "overview"), ("居民", "residents"), ("国家", "nations"), ("聚落", "settlements"),
@@ -100,7 +81,7 @@ public sealed partial class MainView
                     button.Padding = new Thickness(4, 3);
                     button.FontSize = 11;
                     button.HorizontalAlignment = HorizontalAlignment.Stretch;
-                    Grid.SetColumn(button, i);
+                    GridNode.SetColumn(button, i);
                     navigation.Children.Add(button);
                     button.MinWidth = 0;
                     button.Background = _inspectorMode == entry.Item2 ? Line : Ink;
@@ -172,7 +153,7 @@ public sealed partial class MainView
                         break;
                 }
 
-                _inspectorScroll.Content = content;
+                _inspectorScroll.Content = new Views.DetailView { DataContext = content };
                 _inspectorScroll.Offset = default;
             }
 
@@ -186,7 +167,7 @@ public sealed partial class MainView
         }
     }
 
-    private TextBlock LiveText(Func<string> value, double size = 12, IBrush? color = null)
+    private TextNode LiveText(Func<string> value, double size = 12, IBrush? color = null)
     {
         var text = Text(value(), size, color);
         text.TextWrapping = TextWrapping.Wrap;
@@ -204,12 +185,12 @@ public sealed partial class MainView
         return text;
     }
 
-    private void LiveRows<T>(StackPanel parent, Func<IEnumerable<T>> items, Func<T, string> key, Func<T, string> label,
+    private void LiveRows<T>(StackNode parent, Func<IEnumerable<T>> items, Func<T, string> key, Func<T, string> label,
         Action<T>? action = null)
     {
-        var list = new StackPanel { Spacing = 3 };
+        var list = new StackNode { Spacing = 3 };
         parent.Children.Add(list);
-        var rows = new Dictionary<string, (Control Row, TextBlock Text)>();
+        var rows = new Dictionary<string, (VisualNode Row, TextNode Text)>();
 
         void Update()
         {
@@ -225,12 +206,12 @@ public sealed partial class MainView
                 if (!rows.TryGetValue(id, out var row))
                 {
                     var text = Paragraph(label(item));
-                    Control control;
+                    VisualNode control;
                     if (action is null)
                         control = Card(text);
                     else
                     {
-                        var button = new Button
+                        var button = new ButtonNode
                         {
                             Content = text,
                             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -270,11 +251,11 @@ public sealed partial class MainView
                 var nextLabel = label(item);
                 if (row.Text.Text != nextLabel)
                     row.Text.Text = nextLabel;
-                if (row.Row is Button b)
+                if (row.Row is ButtonNode b)
                 {
                     b.Tag = item;
                     if (item is EventGroup group)
-                        AutomationProperties.SetAutomationId(b, $"history-row-{group.Latest.Id}");
+                        b.AutomationId = $"history-row-{group.Latest.Id}";
                 }
             }
 
@@ -325,7 +306,7 @@ public sealed partial class MainView
         return ResourceStock.Format(stock) is { Length: > 0 } text ? text : "暂无库存";
     }
 
-    private void BuildOverview(StackPanel panel)
+    private void BuildOverview(StackNode panel)
     {
         panel.Children.Add(LiveText(() => $"{_engine.State.Population:N0} 位居民\n{_engine.State.Nations.Count} 个国家", 19,
             Mint));
@@ -335,15 +316,15 @@ public sealed partial class MainView
         panel.Children.Add(Named(Button("聚落列表", () => OpenInspector("settlements")), "overview-settlements"));
         panel.Children.Add(Named(Button("科技与魔法研究", () => OpenInspector("research")), "overview-research"));
         panel.Children.Add(Named(Button("消息与通信", () => OpenInspector("communication")), "overview-communication"));
-        var performance = Named(new CheckBox { Content = "显示 FPS 和模拟速度", IsChecked = _performancePanel.IsVisible },
+        var performance = Named(new CheckNode { Content = "显示 FPS 和模拟速度", IsChecked = _viewModel.ShowPerformance },
             "map-performance-stats");
         performance.IsCheckedChanged += (_, _) =>
         {
-            _performancePanel.IsVisible = performance.IsChecked == true;
+            _viewModel.ShowPerformance = performance.IsChecked == true;
             RefreshPerformanceStats();
         };
         panel.Children.Add(performance);
-        var borders = Named(new CheckBox { Content = "显示国界", IsChecked = _map.ShowBorders }, "map-borders");
+        var borders = Named(new CheckNode { Content = "显示国界", IsChecked = _map.ShowBorders }, "map-borders");
         borders.IsCheckedChanged += (_, _) =>
         {
             _map.ShowBorders = borders.IsChecked == true;
@@ -356,7 +337,7 @@ public sealed partial class MainView
         panel.Children.Add(Text("矿藏显示", 13, Mint));
         var resources =
             Named(
-                new ComboBox
+                new ChoiceNode
                 {
                     ItemsSource = new[] { "已发现或已有聚落掌握开采技术", "全部矿藏（含未发现）", "关闭矿藏显示" },
                     SelectedIndex = (int)_resourceVisibility,
@@ -372,7 +353,7 @@ public sealed partial class MainView
         foreach (var kind in new[] { ResourceKind.Coal, ResourceKind.Oil, ResourceKind.RareEarth })
         {
             var show = Named(
-                new CheckBox
+                new CheckNode
                 {
                     Content = "显示" + ResourceStock.Name(kind), IsChecked = _map.VisibleResources.Contains(kind),
                 },
@@ -388,21 +369,21 @@ public sealed partial class MainView
             panel.Children.Add(show);
         }
 
-        var wildlife = Named(new CheckBox { Content = "近景显示野生动物图标", IsChecked = _map.ShowWildlife }, "map-wildlife");
+        var wildlife = Named(new CheckNode { Content = "近景显示野生动物图标", IsChecked = _map.ShowWildlife }, "map-wildlife");
         wildlife.IsCheckedChanged += (_, _) =>
         {
             _map.ShowWildlife = wildlife.IsChecked == true;
             _map.RefreshWorld();
         };
         panel.Children.Add(wildlife);
-        var plants = Named(new CheckBox { Content = "显示植物资源", IsChecked = _map.ShowPlants }, "map-plants");
+        var plants = Named(new CheckNode { Content = "显示植物资源", IsChecked = _map.ShowPlants }, "map-plants");
         plants.IsCheckedChanged += (_, _) =>
         {
             _map.ShowPlants = plants.IsChecked == true;
             _map.RefreshWorld();
         };
         panel.Children.Add(plants);
-        var names = Named(new CheckBox { Content = "近景显示建筑名称", IsChecked = _map.ShowBuildingNames },
+        var names = Named(new CheckNode { Content = "近景显示建筑名称", IsChecked = _map.ShowBuildingNames },
             "map-building-names");
         names.IsCheckedChanged += (_, _) =>
         {
@@ -414,21 +395,21 @@ public sealed partial class MainView
         legend.Children.Add(
             Paragraph("矿藏图标：煤堆、油井、紫色矿晶。显示设置只改变你看到的内容，不会让居民获得开采知识。\n放大到 3 倍可见动植物；图标越大，动物越多或植被越密。同格可有多种动物，植物对应当地可采资源。"));
         legend.Children.Add(Paragraph("工作标记在 5 倍近景显示。图标表示实际任务，图标下的短线表示正在移动；查看角色可见具体设施、材料与后续步骤。"));
-        var tasks = new WrapPanel { Orientation = Orientation.Horizontal };
+        var tasks = new WrapNode { Orientation = Orientation.Horizontal };
         foreach (var icon in Enum.GetValues<ResidentTaskIcon>())
         {
-            var item = new StackPanel { Margin = new Thickness(5), Spacing = 2 };
-            item.Children.Add(new Image { Source = _map.ActivityPreview(icon), Width = 28, Height = 28 });
+            var item = new StackNode { Margin = new Thickness(5), Spacing = 2 };
+            item.Children.Add(new ImageNode { Source = _map.ActivityPreview(icon), Width = 28, Height = 28 });
             item.Children.Add(Text(WorldEngine.TaskIconName(icon), 11));
             tasks.Children.Add(item);
         }
 
         legend.Children.Add(tasks);
-        var races = new WrapPanel { Orientation = Orientation.Horizontal };
+        var races = new WrapNode { Orientation = Orientation.Horizontal };
         foreach (var race in Enum.GetValues<RaceKind>())
         {
-            var item = new StackPanel { Margin = new Thickness(4, 0), Spacing = 2 };
-            item.Children.Add(new Image
+            var item = new StackNode { Margin = new Thickness(4, 0), Spacing = 2 };
+            item.Children.Add(new ImageNode
             {
                 Source = _map.ResidentPreview(race, Profession.Lumberjack), Width = 32, Height = 40,
             });
@@ -439,27 +420,27 @@ public sealed partial class MainView
         legend.Children.Add(races);
         legend.Children.Add(
             Paragraph("斧头：伐木工   矿镐与头灯：矿工   草帽与锄头：农民\n铁盔与盾：战士   尖帽与法杖：法师   书本：学者\n邮包：信使   背包与货袋：商人   金色绶带：代表"));
-        var animals = new WrapPanel { Orientation = Orientation.Horizontal };
+        var animals = new WrapNode { Orientation = Orientation.Horizontal };
         foreach (var kind in Enum.GetValues<WildlifeKind>().Where(k => k != WildlifeKind.None))
         {
-            var item = new StackPanel
+            var item = new StackNode
             {
                 Orientation = Orientation.Horizontal, Spacing = 3, Margin = new Thickness(3, 2),
             };
-            item.Children.Add(new Image { Source = _map.AnimalPreview(kind), Width = 20, Height = 20 });
+            item.Children.Add(new ImageNode { Source = _map.AnimalPreview(kind), Width = 20, Height = 20 });
             item.Children.Add(Text(WorldEngine.WildlifeName(kind), 11));
             animals.Children.Add(item);
         }
 
         legend.Children.Add(animals);
-        var vegetation = new WrapPanel { Orientation = Orientation.Horizontal };
+        var vegetation = new WrapNode { Orientation = Orientation.Horizontal };
         foreach (var kind in Enum.GetValues<PlantKind>())
         {
-            var item = new StackPanel
+            var item = new StackNode
             {
                 Orientation = Orientation.Horizontal, Spacing = 3, Margin = new Thickness(3, 2),
             };
-            item.Children.Add(new Image { Source = _map.PlantPreview(kind), Width = 20, Height = 20 });
+            item.Children.Add(new ImageNode { Source = _map.PlantPreview(kind), Width = 20, Height = 20 });
             item.Children.Add(Text(PlantResources.Name(kind), 11));
             vegetation.Children.Add(item);
         }
@@ -478,16 +459,16 @@ public sealed partial class MainView
         panel.Children.Add(Button("展开编年史", () => OpenInspector("history")));
     }
 
-    private void BuildNationList(StackPanel panel)
+    private void BuildNationList(StackNode panel)
     {
         panel.Children.Add(LiveText(() => $"{_engine.State.Nations.Count} 个国家\n点击查看其文化、政策、研究与库存"));
         LiveRows(panel, () => _engine.State.Nations.OrderBy(n => n.Id), n => n.Id.ToString(),
             n => $"{n.Name}   人口 {n.Population}   领土 {n.Territory} 格\n{n.Decision}", n => OpenNation(n.Id));
     }
 
-    private void BuildResidentList(StackPanel panel)
+    private void BuildResidentList(StackNode panel)
     {
-        var search = Named(new TextBox { Text = _residentSearch, PlaceholderText = "搜索姓名 / 编号 / 国家" },
+        var search = Named(new TextInputNode { Text = _residentSearch, PlaceholderText = "搜索姓名 / 编号 / 国家" },
             "resident-search");
         BindSearch(search, value =>
         {
@@ -495,7 +476,7 @@ public sealed partial class MainView
             _residentPage = 0;
         });
         panel.Children.Add(search);
-        var deceased = Named(new CheckBox { Content = "包含亡者", IsChecked = _includeDeceased }, "residents-deceased");
+        var deceased = Named(new CheckNode { Content = "包含亡者", IsChecked = _includeDeceased }, "residents-deceased");
         deceased.IsCheckedChanged += (_, _) =>
         {
             _includeDeceased = deceased.IsChecked == true;
@@ -523,7 +504,7 @@ public sealed partial class MainView
             _residentPage = Math.Clamp(_residentPage, 0, Math.Max(0, (filtered.Length - 1) / 20));
         });
         filtered = Matches().ToArray();
-        var pages = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var pages = new StackNode { Orientation = Orientation.Horizontal, Spacing = 6 };
         pages.Children.Add(Named(Button("上一页", () =>
         {
             _residentPage = Math.Max(0, _residentPage - 1);
@@ -543,7 +524,7 @@ public sealed partial class MainView
             r => OpenResident(r.Id));
     }
 
-    private void BuildTileInspector(StackPanel panel)
+    private void BuildTileInspector(StackNode panel)
     {
         if (_selectedTile is not { } point || point.X < 0 || point.Y < 0 || point.X >= _engine.State.Width ||
             point.Y >= _engine.State.Height)
@@ -615,7 +596,7 @@ public sealed partial class MainView
         OpenInspector("event", false);
     }
 
-    private void BuildEventInspector(StackPanel panel)
+    private void BuildEventInspector(StackNode panel)
     {
         var item = _engine.State.Events.FirstOrDefault(e => e.Id == _eventDetailId);
         if (item is null)
@@ -671,9 +652,9 @@ public sealed partial class MainView
         }), "event-locate"));
     }
 
-    private void BuildHistoryInspector(StackPanel panel)
+    private void BuildHistoryInspector(StackNode panel)
     {
-        var watched = Named(new CheckBox { Content = Text("仅看关注对象", 12), IsChecked = _historyWatchedOnly },
+        var watched = Named(new CheckNode { Content = Text("仅看关注对象", 12), IsChecked = _historyWatchedOnly },
             "history-watched");
         watched.IsCheckedChanged += (_, _) =>
         {
@@ -683,7 +664,7 @@ public sealed partial class MainView
         panel.Children.Add(watched);
         var importance =
             Named(
-                new ComboBox
+                new ChoiceNode
                 {
                     ItemsSource = new[] { "重大事件（默认）", "普通与重要日常", "全部事件" },
                     SelectedIndex = _historyImportance,
@@ -701,7 +682,7 @@ public sealed partial class MainView
                 .Select(id => (Id: id, Name: NationName(id)))).ToList();
         var country =
             Named(
-                new ComboBox
+                new ChoiceNode
                 {
                     ItemsSource = countries.Select(n => n.Name).ToArray(),
                     SelectedIndex = Math.Max(0, countries.FindIndex(n => n.Id == _historyNationId)),
@@ -716,7 +697,7 @@ public sealed partial class MainView
         panel.Children.Add(country);
         var kinds = Enum.GetValues<WorldEventKind>();
         var kind = Named(
-            new ComboBox
+            new ChoiceNode
             {
                 ItemsSource = new[] { "所有类型" }.Concat(kinds.Select(EventKindName)).ToArray(),
                 SelectedIndex = _historyKind.HasValue ? Array.IndexOf(kinds, _historyKind.Value) + 1 : 0,
@@ -728,7 +709,7 @@ public sealed partial class MainView
             RefreshInspector();
         };
         panel.Children.Add(kind);
-        var search = Named(new TextBox { Text = _historySearch, PlaceholderText = "搜索事件内容" }, "history-search");
+        var search = Named(new TextInputNode { Text = _historySearch, PlaceholderText = "搜索事件内容" }, "history-search");
         BindSearch(search, value => _historySearch = value);
         panel.Children.Add(search);
 

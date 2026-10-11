@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using SeWZC.WorldBox.Core;
 using SeWZC.WorldBox.UI.Controls;
+using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI;
 
@@ -30,7 +31,7 @@ public sealed partial class MainView
         return WorldEngine.SpellName(value);
     }
 
-    private Button RelatedObjectLink(string label, Func<int> target, Func<int, string> name,
+    private ButtonNode RelatedObjectLink(string label, Func<int> target, Func<int, string> name,
         Func<int, bool> exists, Action<int> open, string id)
     {
         var button = Named(Button(label, () =>
@@ -47,7 +48,7 @@ public sealed partial class MainView
             if (!Equals(button.Content, text))
                 button.Content = text;
             button.IsEnabled = exists(current);
-            ToolTip.SetTip(button, button.IsEnabled ? label : "对象尚未指定或已不存在");
+            button.ToolTip = button.IsEnabled ? label : "对象尚未指定或已不存在";
         }
 
         _inspectorUpdates.Add(Update);
@@ -55,7 +56,7 @@ public sealed partial class MainView
         return button;
     }
 
-    private void BuildNationInspector(StackPanel panel)
+    private void BuildNationInspector(StackNode panel)
     {
         var nation = _engine.State.Nations.FirstOrDefault(n => n.Id == _selectedNationId);
         if (nation is null)
@@ -123,7 +124,7 @@ public sealed partial class MainView
         panel.Children.Add(Text("国家文化", 12, Muted));
         var culture =
             Named(
-                new ComboBox
+                new ChoiceNode
                 {
                     ItemsSource = cultures.Select(c => c.Name).ToArray(),
                     SelectedIndex = Array.FindIndex(cultures, c => c.Id == nation.CultureId),
@@ -134,7 +135,7 @@ public sealed partial class MainView
         var policy = EnumField(panel, "政策方向", institution.PlayerPolicy ?? PolicyKind.Balanced, WorldEngine.PolicyName,
             "nation-policy");
         var autonomous =
-            Named(new CheckBox { Content = Text("由居民与代表自治决定政策", 12), IsChecked = institution.PlayerPolicy is null },
+            Named(new CheckNode { Content = Text("由居民与代表自治决定政策", 12), IsChecked = institution.PlayerPolicy is null },
                 "nation-policy-autonomy");
         panel.Children.Add(autonomous);
         policy.IsEnabled = autonomous.IsChecked != true;
@@ -197,11 +198,11 @@ public sealed partial class MainView
         OpenModal(panel);
     }
 
-    private void BuildSettlementNavigation(StackPanel panel)
+    private void BuildSettlementNavigation(StackNode panel)
     {
         panel.Children.Add(Named(LiveText(() => "当前聚落：" + TownName(_inspectorSettlementId), 11, Muted),
             "settlement-context"));
-        var tabs = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*,*"), ColumnSpacing = 4 };
+        var tabs = new GridNode { ColumnDefinitions = new ColumnDefinitions("*,*,*,*"), ColumnSpacing = 4 };
         var entries = new[]
         {
             ("概况", "settlement"), ("建设", "infrastructure"), ("研究", "research"), ("通信", "communication"),
@@ -214,14 +215,14 @@ public sealed partial class MainView
             button.Padding = new Thickness(4, 3);
             button.FontSize = 11;
             button.BorderBrush = _inspectorMode == mode ? Mint : Line;
-            Grid.SetColumn(button, i);
+            GridNode.SetColumn(button, i);
             tabs.Children.Add(button);
         }
 
         panel.Children.Add(tabs);
     }
 
-    private Settlement? BuildSettlementPicker(StackPanel panel)
+    private Settlement? BuildSettlementPicker(StackNode panel)
     {
         var towns = _engine.State.Settlements.OrderBy(t => t.Id).ToArray();
         if (towns.Length == 0)
@@ -235,7 +236,7 @@ public sealed partial class MainView
         _inspectorSettlementId = town.Id;
         var picker =
             Named(
-                new ComboBox
+                new ChoiceNode
                 {
                     ItemsSource = towns.Select(t => $"{t.Name}\n{NationName(t.NationId)}").ToArray(),
                     SelectedIndex = selected,
@@ -250,7 +251,7 @@ public sealed partial class MainView
         return town;
     }
 
-    private void BuildSettlementList(StackPanel panel)
+    private void BuildSettlementList(StackNode panel)
     {
         panel.Children.Add(LiveText(() => $"{_engine.State.Settlements.Count} 处聚落\n选择聚落后可查看概况、建设、研究与通信。"));
         LiveRows(panel, () => _engine.State.Settlements.OrderBy(t => t.NationId).ThenBy(t => t.Id),
@@ -260,7 +261,7 @@ public sealed partial class MainView
             t => OpenSettlement(t.Id));
     }
 
-    private void BuildSettlementOverview(StackPanel panel)
+    private void BuildSettlementOverview(StackNode panel)
     {
         if (BuildSettlementPicker(panel) is not { } town)
             return;
@@ -297,7 +298,7 @@ public sealed partial class MainView
         }), "settlement-locate"));
     }
 
-    private void BuildSettlementResearch(StackPanel panel)
+    private void BuildSettlementResearch(StackNode panel)
     {
         if (BuildSettlementPicker(panel) is not { } town)
             return;
@@ -305,14 +306,14 @@ public sealed partial class MainView
         BuildResearchTree(panel, town);
     }
 
-    private void BuildInfrastructureInspector(StackPanel panel, bool communications)
+    private void BuildInfrastructureInspector(StackNode panel, bool communications)
     {
         if (BuildSettlementPicker(panel) is not { } town)
             return;
         _inspectorUpdates.Add(() => town = _engine.State.Settlements.FirstOrDefault(t => t.Id == town.Id) ?? town);
         if (!communications)
         {
-            var actions = new WrapPanel { Orientation = Orientation.Horizontal };
+            var actions = new WrapNode { Orientation = Orientation.Horizontal };
             actions.Children.Add(Named(Button("定位聚落并开始建设", () =>
             {
                 _map.SelectedSettlementId = town.Id;
@@ -392,7 +393,7 @@ public sealed partial class MainView
             return;
         var panel = ModalPanel("建造设施", "选择设施和目标地块。安排施工会扣除当地材料，等待居民到场完成。");
         var type = EnumField(panel, "设施类型", initialKind, WorldEngine.BuildingName, "building-kind");
-        var bridgeOptions = Named(new StackPanel { Spacing = 10 }, "building-bridge-options");
+        var bridgeOptions = Named(new StackNode { Spacing = 10 }, "building-bridge-options");
         panel.Children.Add(bridgeOptions);
         var direction = EnumField(bridgeOptions, "桥梁方向", BridgeDirection.Horizontal, WorldEngine.BridgeDirectionName,
             "building-bridge-direction");
@@ -430,7 +431,7 @@ public sealed partial class MainView
         var x = Field(panel, "目标 X", _selectedTile?.X ?? town.X + 1, "building-x");
         var y = Field(panel, "目标 Y", _selectedTile?.Y ?? town.Y, "building-y");
         AddMapPicker(panel, x, y);
-        var gift = Named(new CheckBox { Content = Text("直接赐予完工（不扣施工材料，仍需运营条件）", 12), IsChecked = false },
+        var gift = Named(new CheckNode { Content = Text("直接赐予完工（不扣施工材料，仍需运营条件）", 12), IsChecked = false },
             "building-gift");
         panel.Children.Add(gift);
         var placement = Named(Paragraph(""), "building-placement-status");
@@ -512,7 +513,7 @@ public sealed partial class MainView
         }
 
         var panel = ModalPanel("施放魔法", "选择当地施法者和目标。需要成年、天赋至少 25、训练至少 8；目标须在施法者 4 格内，具体法术还需满足当地研究、魔力和目标条件。");
-        var caster = Named(new ComboBox
+        var caster = Named(new ChoiceNode
         {
             ItemsSource = casters.Select(r =>
                     $"{r.Name}   {TownName(r.SettlementId)}\n天赋 {r.MagicTalent:F0}   训练 {r.MagicTraining:F0}   魔力 {r.Mana:F0}")

@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
+using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI;
 
@@ -8,10 +9,10 @@ public sealed partial class MainView
 {
     private readonly Dictionary<string, bool> _expandedDetails = [];
 
-    private StackPanel FoldSection(StackPanel parent, string title, string id, bool expanded = false)
+    private StackNode FoldSection(StackNode parent, string title, string id, bool expanded = false)
     {
-        var content = new StackPanel { Spacing = 3, Margin = new Thickness(0) };
-        var fold = Named(new Expander
+        var content = new StackNode { Spacing = 3, Margin = new Thickness(0) };
+        var fold = Named(new ExpanderNode
         {
             Header = Text(title, 12, Mint),
             Content = content,
@@ -22,7 +23,7 @@ public sealed partial class MainView
         }, id);
         fold.PropertyChanged += (_, e) =>
         {
-            if (e.Property == Expander.IsExpandedProperty)
+            if (e.PropertyName == nameof(ExpanderNode.IsExpanded))
             {
                 _expandedDetails[id] = fold.IsExpanded;
                 RefreshInspector();

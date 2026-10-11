@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Layout;
+using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI;
 
@@ -11,12 +12,12 @@ public sealed partial class MainView
         "城镇占领区域", "饮水与水源", "地形肥力", "火灾与干旱", "捕鱼与舟船", "居民当前任务",
     ];
 
-    private void BuildMapHighlights(StackPanel panel)
+    private void BuildMapHighlights(StackNode panel)
     {
         panel.Children.Add(Text("地图高亮标记", 13, Mint));
         var overlay =
             Named(
-                new ComboBox
+                new ChoiceNode
                 {
                     ItemsSource = MapHighlightLabels,
                     SelectedIndex = _map.Overlay,
@@ -36,7 +37,7 @@ public sealed partial class MainView
         }), "map-highlights-off"));
     }
 
-    private void BuildGameGuide(StackPanel panel)
+    private void BuildGameGuide(StackNode panel)
     {
         panel.Children.Add(Text("玩法说明", 18, Mint));
         panel.Children.Add(Paragraph(

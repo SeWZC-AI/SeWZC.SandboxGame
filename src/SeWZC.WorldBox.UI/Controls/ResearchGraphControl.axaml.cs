@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Markup.Xaml;
+using SeWZC.WorldBox.UI.ViewModels.Details;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -11,36 +13,26 @@ using SeWZC.WorldBox.Core;
 namespace SeWZC.WorldBox.UI.Controls;
 
 /// <summary>可交互的研究树视图。</summary>
-public sealed class ResearchGraphControl : UserControl
+public sealed partial class ResearchGraphControl : UserControl
 {
-    private readonly Connections _connections;
-    private readonly List<TextBlock> _laneLabels = [];
-    private readonly Dictionary<Advancement, Button> _nodes;
+    private readonly ResearchConnectionsControl _connections;
+    private readonly List<TextNode> _laneLabels = [];
+    private Dictionary<Advancement, ButtonNode> _nodes = [];
     private readonly ScrollViewer _scroll;
-    private readonly Canvas _surface = new();
+    private readonly CanvasNode _surface = new();
     private bool _dragging;
     private Point? _press;
     private Vector _pressOffset;
 
-    /// <summary>创建研究树视图，并将提供的节点按钮加入画布。</summary>
-    /// <param name="nodes">以研究类别索引的节点按钮，供视图布局和显示。</param>
-    public ResearchGraphControl(Dictionary<Advancement, Button> nodes)
+    /// <summary>加载研究树的 XAML 画布及滚动区域。</summary>
+    public ResearchGraphControl()
     {
-        _nodes = nodes;
         Layout = new ResearchTreeLayout(ResearchRules.Route(false));
-        _connections = new Connections(this) { IsHitTestVisible = false };
-        _surface.Children.Add(_connections);
-        foreach (var node in nodes.Values)
-            _surface.Children.Add(node);
-        _scroll = new ScrollViewer
-        {
-            Content = _surface,
-            HorizontalScrollBarVisibility = ScrollBarVisibility.Auto,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
-        };
-        Content = _scroll;
-        Background = Brush.Parse("#0D1822");
-        ClipToBounds = true;
+        DataContext = _surface;
+        AvaloniaXamlLoader.Load(this);
+        _connections = this.FindControl<ResearchConnectionsControl>("Connections")!;
+        _connections.Owner = this;
+        _scroll = this.FindControl<ScrollViewer>("GraphScroll")!;
         AddHandler(PointerPressedEvent, BeginDrag, RoutingStrategies.Tunnel);
         AddHandler(PointerMovedEvent, MoveDrag, RoutingStrategies.Tunnel);
         AddHandler(PointerReleasedEvent, EndDrag, RoutingStrategies.Tunnel);
@@ -52,6 +44,14 @@ public sealed class ResearchGraphControl : UserControl
             _press = null;
             _dragging = false;
         });
+        ApplyGeometry();
+    }
+
+    internal void SetNodes(Dictionary<Advancement, ButtonNode> nodes)
+    {
+        _nodes = nodes;
+        foreach (var node in nodes.Values)
+            _surface.Children.Add(node);
         ApplyGeometry();
     }
 
@@ -149,9 +149,9 @@ public sealed class ResearchGraphControl : UserControl
         _laneLabels.Clear();
         foreach (var lane in Layout.Lanes)
         {
-            var label = new TextBlock { Text = lane.Name, FontSize = 14 * Zoom, Foreground = Brush.Parse("#8EB6C6") };
-            Canvas.SetLeft(label, (lane.Left + 10) * Zoom);
-            Canvas.SetTop(label, 12 * Zoom);
+            var label = new TextNode { Text = lane.Name, FontSize = 14 * Zoom, Foreground = Brush.Parse("#8EB6C6") };
+            label.Left = (lane.Left + 10) * Zoom;
+            label.Top = 12 * Zoom;
             _laneLabels.Add(label);
             _surface.Children.Add(label);
         }
@@ -161,16 +161,16 @@ public sealed class ResearchGraphControl : UserControl
             node.IsVisible = Layout.Nodes.TryGetValue(kind, out var rect);
             if (!node.IsVisible)
                 continue;
-            Canvas.SetLeft(node, rect.X * Zoom);
-            Canvas.SetTop(node, rect.Y * Zoom);
+            node.Left = rect.X * Zoom;
+            node.Top = rect.Y * Zoom;
             node.Width = rect.Width * Zoom;
             node.Height = rect.Height * Zoom;
             node.Padding = new Thickness(8 * Zoom, 5 * Zoom);
-            if (node.Content is StackPanel content)
+            if (node.Content is StackNode content)
             {
                 content.Spacing = 2 * Zoom;
                 for (var i = 0; i < content.Children.Count; i++)
-                    if (content.Children[i] is TextBlock text)
+                    if (content.Children[i] is TextNode text)
                         text.FontSize = (i == 0 ? 13 : 11) * Zoom;
             }
         }
@@ -223,70 +223,4 @@ public sealed class ResearchGraphControl : UserControl
     /// <param name="ShowFullPath">是否显示选中研究的全部递归前置路径。</param>
     public readonly record struct ViewportState(double Zoom, Vector Offset, bool ShowFullPath);
 
-    private sealed class Connections(ResearchGraphControl owner) : Control
-    {
-        private static readonly IBrush Locked = Brush.Parse("#496075"),
-            Done = Brush.Parse("#65B995"),
-            Path = Brush.Parse("#F1CD83"),
-            Magic = Brush.Parse("#A996D8");
-
-        public override void Render(DrawingContext context)
-        {
-            var ancestors = new HashSet<Advancement>();
-
-            void Visit(Advancement kind)
-            {
-                if (!ancestors.Add(kind))
-                    return;
-                foreach (var p in kind.Prerequisites)
-                    Visit(p);
-            }
-
-            if (owner.ShowFullPath)
-                Visit(owner.Selected);
-            else
-            {
-                ancestors.Add(owner.Selected);
-                foreach (var p in owner.Selected.Prerequisites)
-                    ancestors.Add(p);
-            }
-
-            using var scale = context.PushTransform(Matrix.CreateScale(owner.Zoom, owner.Zoom));
-            var laneBottom = owner.Layout.Nodes.Max(n => n.Value.Bottom) + 16;
-            foreach (var lane in owner.Layout.Lanes)
-                context.DrawRectangle(Brush.Parse("#10212D"), null,
-                    new Rect(lane.Left, 38, lane.Width, laneBottom - 38), 8, 8);
-            // 选中前置路径最后绘制，使交叉处仍能清晰追踪。
-            foreach (var edge in
-                     owner.Layout.Edges.OrderBy(e => ancestors.Contains(e.To) && ancestors.Contains(e.From)))
-            {
-                var selected = owner.ShowFullPath
-                    ? ancestors.Contains(edge.To) && ancestors.Contains(edge.From)
-                    : edge.To == owner.Selected;
-                var brush = selected ? Path
-                    : owner.IsCompleted(edge.From) && owner.IsCompleted(edge.To) ? Done
-                    : edge.To.Magic ? Magic : Locked;
-                var pen = new Pen(brush, selected ? 2.4 : 1.6);
-                var geometry = new StreamGeometry();
-                using (var path = geometry.Open())
-                {
-                    path.BeginFigure(edge.Points[0], false);
-                    if (edge.Points.Length == 4)
-                        path.CubicBezierTo(edge.Points[1], edge.Points[2], edge.Points[3]);
-                    else
-                    {
-                        foreach (var point in edge.Points.Skip(1))
-                            path.LineTo(point);
-                    }
-
-                    path.EndFigure(false);
-                }
-
-                context.DrawGeometry(null, pen, geometry);
-                var tip = edge.Points[^1];
-                context.DrawLine(pen, tip, tip + new Vector(-4, -6));
-                context.DrawLine(pen, tip, tip + new Vector(4, -6));
-            }
-        }
-    }
 }

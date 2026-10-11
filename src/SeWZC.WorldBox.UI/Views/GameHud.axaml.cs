@@ -12,7 +12,15 @@ public sealed partial class GameHud : UserControl
     public GameHud()
     {
         AvaloniaXamlLoader.Load(this);
+        if (Design.IsDesignMode)
+            DataContext = ViewModels.PreviewModels.Hud();
     }
+
+    /// <summary>地图工具面板的 XAML 内容。</summary>
+    public static readonly StyledProperty<Control?> ToolContentProperty = AvaloniaProperty.Register<GameHud, Control?>(nameof(ToolContent));
+
+    /// <summary>地图工具面板的 XAML 内容。</summary>
+    public Control? ToolContent { get => GetValue(ToolContentProperty); set => SetValue(ToolContentProperty, value); }
 
     internal static bool HasStackedDock(double width) => width < 600;
 

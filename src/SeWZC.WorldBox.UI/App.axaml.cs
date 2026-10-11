@@ -1,8 +1,6 @@
 using Avalonia;
-using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using Avalonia.Media;
 using SeWZC.WorldBox.UI.Platform;
 
 namespace SeWZC.WorldBox.UI;
@@ -22,22 +20,10 @@ public class App : Application
     /// <summary>按平台生命周期创建桌面窗口或浏览器单视图。</summary>
     public override void OnFrameworkInitializationCompleted()
     {
-        var view = new MainView();
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-        {
-            desktop.MainWindow = new Window
-            {
-                Title = "SeWZC.WorldBox：众生与山海",
-                Width = 1440,
-                Height = 920,
-                MinWidth = 390,
-                MinHeight = 640,
-                Content = view,
-                Background = Brush.Parse("#101C27"),
-            };
-        }
+            desktop.MainWindow = new Views.GameWindow();
         else if (ApplicationLifetime is ISingleViewApplicationLifetime single)
-            single.MainView = view;
+            single.MainView = new MainView();
 
         base.OnFrameworkInitializationCompleted();
     }

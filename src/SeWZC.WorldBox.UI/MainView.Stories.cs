@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using SeWZC.WorldBox.Core;
+using SeWZC.WorldBox.UI.ViewModels.Details;
 
 namespace SeWZC.WorldBox.UI;
 
@@ -20,10 +21,10 @@ public sealed partial class MainView
         return _watched.Any(target => InvolvesObject(item, target));
     }
 
-    private CheckBox WatchControl(ObservedObjectKind kind, int id, string name)
+    private CheckNode WatchControl(ObservedObjectKind kind, int id, string name)
     {
         var target = new ObservedObject(kind, id);
-        var check = Named(new CheckBox { Content = Text("关注相关事件", 12), IsChecked = _watched.Contains(target) }, name);
+        var check = Named(new CheckNode { Content = Text("关注相关事件", 12), IsChecked = _watched.Contains(target) }, name);
         check.IsCheckedChanged += (_, _) =>
         {
             if (check.IsChecked == true)
@@ -67,7 +68,7 @@ public sealed partial class MainView
             SetStatus("这处聚落已不在当前世界中；其保留事件仍可在编年史查看。");
     }
 
-    private void BuildWatchedInspector(StackPanel panel)
+    private void BuildWatchedInspector(StackNode panel)
     {
         panel.Children.Add(Paragraph("关注国家、聚落和居民的关键变化。仅在当前世界会话保留；不会自动移动镜头。"));
         panel.Children.Add(LiveText(() => $"已关注 {_watched.Count} 个对象"));
@@ -94,7 +95,7 @@ public sealed partial class MainView
             : $"同类事件 {group.Count} 次   {DateLabel(group.Entries[0].Tick)} 至 {DateLabel(group.Latest.Tick)}\n{EventLabel(group.Latest)}\n点击展开原始记录";
     }
 
-    private void BuildStoryInspector(StackPanel panel)
+    private void BuildStoryInspector(StackNode panel)
     {
         var person = _engine.GetResident(_selectedResidentId);
         if (person is null)
@@ -140,7 +141,7 @@ public sealed partial class MainView
             g => FocusEvent(g.Latest));
     }
 
-    private void BuildMilitarySummary(StackPanel panel, Nation nation)
+    private void BuildMilitarySummary(StackNode panel, Nation nation)
     {
         _inspectorUpdates.Add(() => nation = _engine.State.Nations.FirstOrDefault(n => n.Id == nation.Id) ?? nation);
         panel.Children.Add(Text("作战目标与已收战报", 13, Mint));
